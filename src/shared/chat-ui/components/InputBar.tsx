@@ -13,7 +13,10 @@ interface InputBarProps {
 }
 
 export const InputBar = forwardRef<HTMLInputElement, InputBarProps>(
-  ({ value, onChange, onSend, placeholder, disabled, enableVoice, enableAttachments, disclaimer }, ref) => {
+  (
+    { value, onChange, onSend, placeholder, disabled, enableVoice, enableAttachments, disclaimer },
+    ref
+  ) => {
     const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
@@ -35,11 +38,11 @@ export const InputBar = forwardRef<HTMLInputElement, InputBarProps>(
               disabled={disabled}
               className="w-full px-5 py-4 pr-32 text-gray-900 placeholder-gray-500 bg-gray-50 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
             />
-            
+
             {/* Action Buttons */}
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
               {enableAttachments && (
-                <button 
+                <button
                   className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
                   title="Attach file"
                   type="button"
@@ -48,7 +51,7 @@ export const InputBar = forwardRef<HTMLInputElement, InputBarProps>(
                 </button>
               )}
               {enableVoice && (
-                <button 
+                <button
                   className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
                   title="Voice message"
                   type="button"

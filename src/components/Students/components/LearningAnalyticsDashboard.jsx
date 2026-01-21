@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { Clock, BookOpen, Target, Award, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { useMemo } from 'react';
+import { Clock, BookOpen, Target, Award, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 /**
  * Learning Analytics Dashboard Component
@@ -20,39 +20,44 @@ const LearningAnalyticsDashboard = ({ trainings = [], stats = {} }) => {
 
     // Courses completed this month
     const completedThisMonth = trainings.filter((t) => {
-      if (t.status !== "completed") return false;
+      if (t.status !== 'completed') return false;
       const updated = new Date(t.updatedAt || t.updated_at);
       return updated.getMonth() === thisMonth && updated.getFullYear() === thisYear;
     }).length;
 
     // Courses completed last month
     const completedLastMonth = trainings.filter((t) => {
-      if (t.status !== "completed") return false;
+      if (t.status !== 'completed') return false;
       const updated = new Date(t.updatedAt || t.updated_at);
       return updated.getMonth() === lastMonth && updated.getFullYear() === lastMonthYear;
     }).length;
 
     // Completion rate
     const totalCourses = trainings.length;
-    const completedCourses = trainings.filter((t) => t.status === "completed").length;
-    const completionRate = totalCourses > 0 ? Math.round((completedCourses / totalCourses) * 100) : 0;
+    const completedCourses = trainings.filter((t) => t.status === 'completed').length;
+    const completionRate =
+      totalCourses > 0 ? Math.round((completedCourses / totalCourses) * 100) : 0;
 
     // Total modules completed
-    const totalModulesCompleted = trainings.reduce((sum, t) => sum + (Number(t.completedModules) || 0), 0);
+    const totalModulesCompleted = trainings.reduce(
+      (sum, t) => sum + (Number(t.completedModules) || 0),
+      0
+    );
     const totalModules = trainings.reduce((sum, t) => sum + (Number(t.totalModules) || 0), 0);
 
     // Average progress
-    const avgProgress = totalModules > 0 ? Math.round((totalModulesCompleted / totalModules) * 100) : 0;
+    const avgProgress =
+      totalModules > 0 ? Math.round((totalModulesCompleted / totalModules) * 100) : 0;
 
     // Generate activity data for heatmap (last 4 weeks)
     const activityData = generateActivityData(trainings);
 
     // Course progress data
     const courseProgress = trainings
-      .filter((t) => t.status === "ongoing")
+      .filter((t) => t.status === 'ongoing')
       .map((t) => ({
         id: t.id,
-        title: t.title || t.course || "Untitled",
+        title: t.title || t.course || 'Untitled',
         progress: t.totalModules > 0 ? Math.round((t.completedModules / t.totalModules) * 100) : 0,
         hoursSpent: t.hoursSpent || 0,
       }))
@@ -80,8 +85,7 @@ const LearningAnalyticsDashboard = ({ trainings = [], stats = {} }) => {
     if (current > previous) {
       return (
         <span className="flex items-center text-green-600 text-xs font-semibold mt-2">
-          <TrendingUp className="w-3 h-3 mr-1" />
-          +{current - previous} this month
+          <TrendingUp className="w-3 h-3 mr-1" />+{current - previous} this month
         </span>
       );
     } else if (current < previous) {
@@ -123,7 +127,10 @@ const LearningAnalyticsDashboard = ({ trainings = [], stats = {} }) => {
             <div className="space-y-1">
               <p className="text-3xl font-bold text-slate-900">{analytics.completedCourses}</p>
               <p className="text-sm font-medium text-slate-600">Completed</p>
-              <TrendIndicator current={analytics.completedThisMonth} previous={analytics.completedLastMonth} />
+              <TrendIndicator
+                current={analytics.completedThisMonth}
+                previous={analytics.completedLastMonth}
+              />
             </div>
             <div className="w-12 h-12 bg-green-100 rounded-2xl flex items-center justify-center">
               <Award className="w-6 h-6 text-green-600" />
@@ -166,22 +173,24 @@ const LearningAnalyticsDashboard = ({ trainings = [], stats = {} }) => {
             <h3 className="text-lg font-bold text-slate-900">Learning Activity</h3>
             <div className="text-sm text-slate-500">Last 4 weeks</div>
           </div>
-          
+
           <div className="space-y-4">
             {/* Day Labels */}
             <div className="flex gap-2 pl-10">
-              {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
+              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
                 <div key={day} className="flex-1 text-center text-xs font-medium text-slate-400">
                   {day}
                 </div>
               ))}
             </div>
-            
+
             {/* Heatmap Grid */}
             <div className="space-y-2">
               {analytics.activityData.map((week, weekIdx) => (
                 <div key={weekIdx} className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-slate-400 w-8 text-right">W{4 - weekIdx}</span>
+                  <span className="text-xs font-medium text-slate-400 w-8 text-right">
+                    W{4 - weekIdx}
+                  </span>
                   <div className="flex gap-2 flex-1">
                     {week.map((day, dayIdx) => (
                       <div
@@ -194,7 +203,7 @@ const LearningAnalyticsDashboard = ({ trainings = [], stats = {} }) => {
                 </div>
               ))}
             </div>
-            
+
             {/* Legend */}
             <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-slate-100">
               <span className="text-xs font-medium text-slate-400">Less</span>
@@ -214,7 +223,7 @@ const LearningAnalyticsDashboard = ({ trainings = [], stats = {} }) => {
             <h3 className="text-lg font-bold text-slate-900">Course Progress</h3>
             <div className="text-sm text-slate-500">In Progress</div>
           </div>
-          
+
           <div className="space-y-5">
             {analytics.courseProgress.length > 0 ? (
               analytics.courseProgress.map((course) => (
@@ -239,7 +248,9 @@ const LearningAnalyticsDashboard = ({ trainings = [], stats = {} }) => {
                   <BookOpen className="w-8 h-8 text-slate-400" />
                 </div>
                 <p className="text-sm font-medium text-slate-500">No courses in progress</p>
-                <p className="text-xs text-slate-400 mt-1">Start a new course to see progress here</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  Start a new course to see progress here
+                </p>
               </div>
             )}
           </div>
@@ -252,10 +263,10 @@ const LearningAnalyticsDashboard = ({ trainings = [], stats = {} }) => {
           <h3 className="text-lg font-bold text-slate-900">Monthly Completions</h3>
           <div className="text-sm text-slate-500">Last 6 months</div>
         </div>
-        
+
         <div className="flex items-end justify-between h-48 gap-4 px-2">
           {analytics.monthlyTrend.map((month, idx) => {
-            const maxCount = Math.max(...analytics.monthlyTrend.map(m => m.count), 1);
+            const maxCount = Math.max(...analytics.monthlyTrend.map((m) => m.count), 1);
             const heightPercent = (month.count / maxCount) * 100;
             return (
               <div key={idx} className="flex-1 flex flex-col items-center group">
@@ -292,7 +303,7 @@ function generateActivityData(trainings) {
       date.setDate(date.getDate() - (w * 7 + (6 - d)));
 
       // Simulate activity based on training data
-      const dayStr = date.toISOString().split("T")[0];
+      const dayStr = date.toISOString().split('T')[0];
       const hasActivity = trainings.some((t) => {
         const start = new Date(t.start_date || t.startDate);
         const end = t.end_date || t.endDate ? new Date(t.end_date || t.endDate) : now;
@@ -322,10 +333,10 @@ function generateMonthlyTrend(trainings) {
 
   for (let i = 5; i >= 0; i--) {
     const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const monthName = date.toLocaleString("default", { month: "short" });
+    const monthName = date.toLocaleString('default', { month: 'short' });
 
     const count = trainings.filter((t) => {
-      if (t.status !== "completed") return false;
+      if (t.status !== 'completed') return false;
       const updated = new Date(t.updatedAt || t.updated_at || t.created_at);
       return updated.getMonth() === date.getMonth() && updated.getFullYear() === date.getFullYear();
     }).length;
@@ -343,17 +354,17 @@ function generateMonthlyTrend(trainings) {
 function getActivityColor(level) {
   switch (level) {
     case 0:
-      return "bg-slate-100";
+      return 'bg-slate-100';
     case 1:
-      return "bg-blue-100";
+      return 'bg-blue-100';
     case 2:
-      return "bg-blue-300";
+      return 'bg-blue-300';
     case 3:
-      return "bg-blue-500";
+      return 'bg-blue-500';
     case 4:
-      return "bg-green-500";
+      return 'bg-green-500';
     default:
-      return "bg-slate-100";
+      return 'bg-slate-100';
   }
 }
 

@@ -1,21 +1,21 @@
 /**
  * MemberAssignments Component
- * 
+ *
  * Manages license assignments to organization members.
  * Supports search, bulk selection, assign/unassign actions, and assignment history.
  */
 
 import {
-    ArrowLeftRight,
-    Check,
-    ChevronDown,
-    Clock,
-    Search,
-    Trash2,
-    UserMinus,
-    UserPlus,
-    Users,
-    X,
+  ArrowLeftRight,
+  Check,
+  ChevronDown,
+  Clock,
+  Search,
+  Trash2,
+  UserMinus,
+  UserPlus,
+  Users,
+  X,
 } from 'lucide-react';
 import { memo, useCallback, useMemo, useState } from 'react';
 import AddStudentModal from '../../educator/modals/Addstudentmodal';
@@ -61,7 +61,7 @@ function MemberAssignments({
   const [memberTypeFilter, setMemberTypeFilter] = useState<'all' | 'educator' | 'student'>('all');
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [transferSource, setTransferSource] = useState<string | null>(null);
-  
+
   // Remove member confirmation modal state
   const [showRemoveModal, setShowRemoveModal] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState<Member | null>(null);
@@ -165,7 +165,7 @@ function MemberAssignments({
 
   const handleConfirmRemove = useCallback(async () => {
     if (!memberToRemove || !onRemoveMember) return;
-    
+
     setIsRemoving(true);
     try {
       await onRemoveMember(memberToRemove.id, memberToRemove.memberType);
@@ -301,9 +301,9 @@ function MemberAssignments({
           </div>
           <h4 className="font-medium text-gray-900 mb-1">No Members Found</h4>
           <p className="text-sm text-gray-500 mb-4">
-            {searchQuery 
-              ? 'Try adjusting your search or filters' 
-              : members.length === 0 
+            {searchQuery
+              ? 'Try adjusting your search or filters'
+              : members.length === 0
                 ? 'Add students and educators to your organization first'
                 : 'No members match the current filters'}
           </p>
@@ -514,11 +514,13 @@ function MemberAssignments({
                 <div className="font-medium text-gray-900">{memberToRemove.name}</div>
                 <div className="text-sm text-gray-500">{memberToRemove.email}</div>
                 <div className="mt-2">
-                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                    memberToRemove.memberType === 'educator'
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'bg-green-100 text-green-700'
-                  }`}>
+                  <span
+                    className={`px-2 py-0.5 rounded text-xs font-medium ${
+                      memberToRemove.memberType === 'educator'
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'bg-green-100 text-green-700'
+                    }`}
+                  >
                     {memberToRemove.memberType === 'educator' ? 'Educator' : 'Student'}
                   </span>
                   {memberToRemove.hasLicense && (
@@ -530,9 +532,10 @@ function MemberAssignments({
               </div>
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
                 <p className="text-sm text-amber-800">
-                  <strong>Note:</strong> This will remove the member's association with your organization. 
-                  {memberToRemove.hasLicense && ' Their license will also be revoked.'}
-                  {' '}The member's account will not be deleted.
+                  <strong>Note:</strong> This will remove the member's association with your
+                  organization.
+                  {memberToRemove.hasLicense && ' Their license will also be revoked.'} The member's
+                  account will not be deleted.
                 </p>
               </div>
             </div>
@@ -555,8 +558,20 @@ function MemberAssignments({
                 {isRemoving ? (
                   <>
                     <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                        fill="none"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
                     </svg>
                     Removing...
                   </>

@@ -5,11 +5,7 @@ import MessageService from '../services/messageService';
 /**
  * Hook for managing messages in an educator conversation
  */
-export const useEducatorMessages = ({ 
-  conversationId, 
-  enabled = true,
-  enableRealtime = true 
-}) => {
+export const useEducatorMessages = ({ conversationId, enabled = true, enableRealtime = true }) => {
   const queryClient = useQueryClient();
 
   // Fetch messages
@@ -17,7 +13,7 @@ export const useEducatorMessages = ({
     data: messages = [],
     isLoading,
     error,
-    refetch
+    refetch,
   } = useQuery({
     queryKey: ['educator-messages', conversationId],
     queryFn: async () => {
@@ -35,29 +31,26 @@ export const useEducatorMessages = ({
   useEffect(() => {
     if (!conversationId || !enableRealtime) return;
 
-    const subscription = MessageService.subscribeToConversation(
-      conversationId,
-      (newMessage) => {
-        console.log('📨 [Educator] New message received:', newMessage);
-        
-        // Add message to cache optimistically
-        queryClient.setQueryData(['educator-messages', conversationId], (oldMessages) => {
-          if (!oldMessages) return [newMessage];
-          
-          // Check if message already exists (prevent duplicates)
-          const exists = oldMessages.some(msg => msg.id === newMessage.id);
-          if (exists) return oldMessages;
-          
-          return [...oldMessages, newMessage];
-        });
+    const subscription = MessageService.subscribeToConversation(conversationId, (newMessage) => {
+      console.log('📨 [Educator] New message received:', newMessage);
 
-        // Update conversation list with new message preview
-        queryClient.invalidateQueries({ 
-          queryKey: ['educator-conversations'],
-          refetchType: 'active'
-        });
-      }
-    );
+      // Add message to cache optimistically
+      queryClient.setQueryData(['educator-messages', conversationId], (oldMessages) => {
+        if (!oldMessages) return [newMessage];
+
+        // Check if message already exists (prevent duplicates)
+        const exists = oldMessages.some((msg) => msg.id === newMessage.id);
+        if (exists) return oldMessages;
+
+        return [...oldMessages, newMessage];
+      });
+
+      // Update conversation list with new message preview
+      queryClient.invalidateQueries({
+        queryKey: ['educator-conversations'],
+        refetchType: 'active',
+      });
+    });
 
     return () => {
       subscription.unsubscribe();
@@ -66,14 +59,14 @@ export const useEducatorMessages = ({
 
   // Send message mutation
   const sendMessageMutation = useMutation({
-    mutationFn: async ({ 
-      senderId, 
-      senderType, 
-      receiverId, 
-      receiverType, 
-      messageText, 
+    mutationFn: async ({
+      senderId,
+      senderType,
+      receiverId,
+      receiverType,
+      messageText,
       classId,
-      subject 
+      subject,
     }) => {
       return await MessageService.sendMessage(
         conversationId,
@@ -108,7 +101,7 @@ export const useEducatorMessages = ({
         subject: variables.subject,
         is_read: false,
         created_at: new Date().toISOString(),
-        _optimistic: true
+        _optimistic: true,
       };
 
       queryClient.setQueryData(['educator-messages', conversationId], (old) => {
@@ -128,17 +121,15 @@ export const useEducatorMessages = ({
       // Replace optimistic message with real one
       queryClient.setQueryData(['educator-messages', conversationId], (old) => {
         if (!old) return [data];
-        return old.map(msg => 
-          msg.id === context?.optimisticMessage?.id ? data : msg
-        );
+        return old.map((msg) => (msg.id === context?.optimisticMessage?.id ? data : msg));
       });
 
       // Update conversation list
-      queryClient.invalidateQueries({ 
+      queryClient.invalidateQueries({
         queryKey: ['educator-conversations'],
-        refetchType: 'active'
+        refetchType: 'active',
       });
-    }
+    },
   });
 
   return {
@@ -147,6 +138,6 @@ export const useEducatorMessages = ({
     error,
     refetch,
     sendMessage: sendMessageMutation.mutateAsync,
-    isSending: sendMessageMutation.isPending
+    isSending: sendMessageMutation.isPending,
   };
 };

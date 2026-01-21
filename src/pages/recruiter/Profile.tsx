@@ -1,27 +1,27 @@
 import {
-    Calendar,
-    CheckCircle,
-    Copy,
-    ExternalLink,
-    Globe,
-    Mail,
-    MapPin,
-    ShieldCheck,
-    User,
-    XCircle,
-} from "lucide-react";
-import React, { useEffect, useState } from "react";
+  Calendar,
+  CheckCircle,
+  Copy,
+  ExternalLink,
+  Globe,
+  Mail,
+  MapPin,
+  ShieldCheck,
+  User,
+  XCircle,
+} from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 // import { useAuth } from "../context/AuthContext";
-import { useAuth } from "../../context/AuthContext";
-import { supabase } from "../../lib/supabaseClient";
+import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../lib/supabaseClient';
 
 function formatDate(isoLike: string) {
   try {
     const d = new Date(isoLike);
     return d.toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
     });
   } catch {
     return isoLike;
@@ -30,21 +30,21 @@ function formatDate(isoLike: string) {
 
 const initials = (name: string) =>
   name
-    ?.split(" ")
+    ?.split(' ')
     .map((s) => s[0])
     .slice(0, 2)
-    .join("")
+    .join('')
     .toUpperCase();
 
 const RecruiterProfile: React.FC = () => {
   const { user } = useAuth();
   const [recruiter, setRecruiter] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [copied, setCopied] = useState<{ field: "email" | "phone" | null }>({
+  const [copied, setCopied] = useState<{ field: 'email' | 'phone' | null }>({
     field: null,
   });
 
-  const handleCopy = async (value: string, field: "email" | "phone") => {
+  const handleCopy = async (value: string, field: 'email' | 'phone') => {
     try {
       await navigator.clipboard.writeText(value);
       setCopied({ field });
@@ -59,13 +59,13 @@ const RecruiterProfile: React.FC = () => {
       if (!user?.email) return;
       setLoading(true);
       const { data, error } = await supabase
-        .from("recruiters")
-        .select("*")
-        .eq("email", user.email)
+        .from('recruiters')
+        .select('*')
+        .eq('email', user.email)
         .maybeSingle();
 
       if (error) {
-        console.error("❌ Error fetching recruiter:", error);
+        console.error('❌ Error fetching recruiter:', error);
       } else {
         setRecruiter(data);
       }
@@ -76,15 +76,11 @@ const RecruiterProfile: React.FC = () => {
   }, [user]);
 
   if (loading) {
-    return (
-      <div className="p-10 text-center text-gray-500">Loading profile...</div>
-    );
+    return <div className="p-10 text-center text-gray-500">Loading profile...</div>;
   }
 
   if (!recruiter) {
-    return (
-      <div className="p-10 text-center text-red-500">Recruiter not found.</div>
-    );
+    return <div className="p-10 text-center text-red-500">Recruiter not found.</div>;
   }
 
   return (
@@ -97,7 +93,6 @@ const RecruiterProfile: React.FC = () => {
             <div className="flex items-center gap-5 md:gap-8">
               <div
                 className="w-28 h-28 md:w-32 md:h-32 rounded-full flex items-center justify-center text-3xl md:text-4xl font-bold text-white bg-primary-600"
-                
                 aria-hidden
               >
                 {initials(recruiter.name)}
@@ -115,16 +110,14 @@ const RecruiterProfile: React.FC = () => {
                 <div className="mt-3 flex flex-wrap items-center gap-3">
                   <div className="inline-flex items-center gap-2 bg-slate-50 border border-slate-100 px-3 py-1 rounded-full text-xs text-slate-600">
                     <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                    <span className="font-medium">
-                      {recruiter.verificationstatus || "Pending"}
-                    </span>
+                    <span className="font-medium">{recruiter.verificationstatus || 'Pending'}</span>
                   </div>
 
                   <div
                     className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs ${
                       recruiter.isactive
-                        ? "bg-white border border-slate-100 text-emerald-700"
-                        : "bg-white border border-slate-100 text-rose-600"
+                        ? 'bg-white border border-slate-100 text-emerald-700'
+                        : 'bg-white border border-slate-100 text-rose-600'
                     }`}
                   >
                     {recruiter.isactive ? (
@@ -133,7 +126,7 @@ const RecruiterProfile: React.FC = () => {
                       <XCircle className="w-4 h-4 text-rose-500" />
                     )}
                     <span className="font-medium">
-                      {recruiter.isactive ? "Active" : "Inactive"}
+                      {recruiter.isactive ? 'Active' : 'Inactive'}
                     </span>
                   </div>
 
@@ -159,11 +152,11 @@ const RecruiterProfile: React.FC = () => {
               )}
 
               <button
-                onClick={() => handleCopy(recruiter.email, "email")}
+                onClick={() => handleCopy(recruiter.email, 'email')}
                 className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-gray-200 text-slate-700 hover:shadow-sm transition"
               >
                 <Copy className="w-4 h-4" />
-                {copied.field === "email" ? "Copied" : "Copy Email"}
+                {copied.field === 'email' ? 'Copied' : 'Copy Email'}
               </button>
             </div>
           </div>
@@ -176,12 +169,8 @@ const RecruiterProfile: React.FC = () => {
             <div className="rounded-2xl p-6 bg-gradient-to-r from-[#f8fbff] to-[#eef6ff] border border-gray-100 shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-lg font-semibold text-slate-900">
-                    {recruiter.name}
-                  </div>
-                  <div className="text-sm text-slate-500">
-                    {recruiter.state}
-                  </div>
+                  <div className="text-lg font-semibold text-slate-900">{recruiter.name}</div>
+                  <div className="text-sm text-slate-500">{recruiter.state}</div>
                 </div>
                 <div className="text-right">
                   {recruiter.website && (
@@ -194,9 +183,7 @@ const RecruiterProfile: React.FC = () => {
                       <Globe className="w-4 h-4" /> Visit website
                     </a>
                   )}
-                  <div className="text-xs text-slate-400 mt-1">
-                    ID: {recruiter.id.slice(0, 8)}…
-                  </div>
+                  <div className="text-xs text-slate-400 mt-1">ID: {recruiter.id.slice(0, 8)}…</div>
                 </div>
               </div>
 
@@ -206,7 +193,7 @@ const RecruiterProfile: React.FC = () => {
                   <div className="mt-1 text-sm font-medium text-slate-800 flex items-center gap-3">
                     <span className="truncate">{recruiter.email}</span>
                     <button
-                      onClick={() => handleCopy(recruiter.email, "email")}
+                      onClick={() => handleCopy(recruiter.email, 'email')}
                       className="text-slate-400 hover:text-slate-600"
                     >
                       <Copy className="w-4 h-4" />
@@ -217,10 +204,10 @@ const RecruiterProfile: React.FC = () => {
                 <div className="p-4 bg-white rounded-lg border border-gray-100 shadow-sm">
                   <div className="text-xs text-slate-400">Phone</div>
                   <div className="mt-1 text-sm font-medium text-slate-800 flex items-center gap-3">
-                    <span>{recruiter.phone || "—"}</span>
+                    <span>{recruiter.phone || '—'}</span>
                     {recruiter.phone && (
                       <button
-                        onClick={() => handleCopy(recruiter.phone, "phone")}
+                        onClick={() => handleCopy(recruiter.phone, 'phone')}
                         className="text-slate-400 hover:text-slate-600"
                       >
                         <Copy className="w-4 h-4" />
@@ -233,7 +220,7 @@ const RecruiterProfile: React.FC = () => {
                   <div className="text-xs text-slate-400">Location</div>
                   <div className="mt-1 text-sm font-medium text-slate-800 flex items-center gap-2">
                     <MapPin className="w-4 h-4 text-slate-400" />
-                    <span>{recruiter.state || "—"}</span>
+                    <span>{recruiter.state || '—'}</span>
                   </div>
                 </div>
               </div>
@@ -243,21 +230,17 @@ const RecruiterProfile: React.FC = () => {
           {/* Right column */}
           <aside className="space-y-6">
             <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-              <h4 className="text-sm font-semibold text-slate-800 mb-3">
-                Verification & Status
-              </h4>
+              <h4 className="text-sm font-semibold text-slate-800 mb-3">Verification & Status</h4>
 
               <div className="flex items-center gap-3">
                 <div className="flex-shrink-0 p-3 rounded-lg bg-green-50">
                   <CheckCircle className="w-5 h-5 text-green-600" />
                 </div>
                 <div>
-                  <div className="text-sm font-medium text-slate-800">
-                    Verification
-                  </div>
+                  <div className="text-sm font-medium text-slate-800">Verification</div>
                   <div className="text-xs text-slate-500">
-                    {recruiter.verificationstatus === "approved"
-                      ? "Approved"
+                    {recruiter.verificationstatus === 'approved'
+                      ? 'Approved'
                       : recruiter.verificationstatus}
                   </div>
                 </div>
@@ -268,32 +251,26 @@ const RecruiterProfile: React.FC = () => {
                   <User className="w-5 h-5 text-slate-600" />
                 </div>
                 <div>
-                  <div className="text-sm font-medium text-slate-800">
-                    Account status
-                  </div>
+                  <div className="text-sm font-medium text-slate-800">Account status</div>
                   <div
                     className={`text-xs font-medium ${
-                      recruiter.isactive ? "text-emerald-600" : "text-rose-600"
+                      recruiter.isactive ? 'text-emerald-600' : 'text-rose-600'
                     }`}
                   >
-                    {recruiter.isactive ? "Active" : "Inactive"}
+                    {recruiter.isactive ? 'Active' : 'Inactive'}
                   </div>
                 </div>
               </div>
             </div>
 
             <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-              <h4 className="text-sm font-semibold text-slate-800 mb-3">
-                Meta
-              </h4>
+              <h4 className="text-sm font-semibold text-slate-800 mb-3">Meta</h4>
               <div className="text-sm text-slate-600 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <MapPin className="w-4 h-4 text-slate-400" /> Location
                   </div>
-                  <div className="text-slate-800 font-medium">
-                    {recruiter.state || "—"}
-                  </div>
+                  <div className="text-slate-800 font-medium">{recruiter.state || '—'}</div>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -307,9 +284,7 @@ const RecruiterProfile: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <Mail className="w-4 h-4 text-slate-400" /> Contact
                   </div>
-                  <div className="text-slate-800 font-medium">
-                    {recruiter.email}
-                  </div>
+                  <div className="text-slate-800 font-medium">{recruiter.email}</div>
                 </div>
               </div>
             </div>

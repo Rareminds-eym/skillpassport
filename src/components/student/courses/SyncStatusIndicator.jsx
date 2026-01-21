@@ -21,7 +21,7 @@ const SyncStatusIndicator = ({ className = '' }) => {
           setShowToast(true);
           break;
         case 'offline':
-          setToastMessage('You\'re offline - progress will sync when connected');
+          setToastMessage("You're offline - progress will sync when connected");
           setShowToast(true);
           break;
         case 'syncComplete':
@@ -54,9 +54,7 @@ const SyncStatusIndicator = ({ className = '' }) => {
           initial={{ scale: 0.8 }}
           animate={{ scale: 1 }}
           className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${
-            isOnline
-              ? 'bg-emerald-100 text-emerald-700'
-              : 'bg-amber-100 text-amber-700'
+            isOnline ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
           }`}
         >
           {isOnline ? (
@@ -109,9 +107,11 @@ const SyncStatusIndicator = ({ className = '' }) => {
             exit={{ opacity: 0, y: 50 }}
             className="fixed bottom-4 right-4 z-50"
           >
-            <div className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg ${
-              isOnline ? 'bg-gray-900 text-white' : 'bg-amber-500 text-white'
-            }`}>
+            <div
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg ${
+                isOnline ? 'bg-gray-900 text-white' : 'bg-amber-500 text-white'
+              }`}
+            >
               {isOnline ? (
                 syncInProgress ? (
                   <RefreshCw className="w-5 h-5 animate-spin" />

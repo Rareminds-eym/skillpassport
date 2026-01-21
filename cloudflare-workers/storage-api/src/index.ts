@@ -35,7 +35,11 @@ function jsonResponse(data: any, status = 200) {
 // ==================== UPLOAD ====================
 
 async function handleUpload(request: Request, env: Env): Promise<Response> {
-  if (!env.CLOUDFLARE_ACCOUNT_ID || !env.CLOUDFLARE_R2_ACCESS_KEY_ID || !env.CLOUDFLARE_R2_SECRET_ACCESS_KEY) {
+  if (
+    !env.CLOUDFLARE_ACCOUNT_ID ||
+    !env.CLOUDFLARE_R2_ACCESS_KEY_ID ||
+    !env.CLOUDFLARE_R2_SECRET_ACCESS_KEY
+  ) {
     return jsonResponse({ error: 'R2 credentials not configured' }, 500);
   }
 
@@ -85,11 +89,15 @@ async function handleUpload(request: Request, env: Env): Promise<Response> {
 // ==================== DELETE ====================
 
 async function handleDelete(request: Request, env: Env): Promise<Response> {
-  if (!env.CLOUDFLARE_ACCOUNT_ID || !env.CLOUDFLARE_R2_ACCESS_KEY_ID || !env.CLOUDFLARE_R2_SECRET_ACCESS_KEY) {
+  if (
+    !env.CLOUDFLARE_ACCOUNT_ID ||
+    !env.CLOUDFLARE_R2_ACCESS_KEY_ID ||
+    !env.CLOUDFLARE_R2_SECRET_ACCESS_KEY
+  ) {
     return jsonResponse({ error: 'R2 credentials not configured' }, 500);
   }
 
-  const body = await request.json() as { url?: string };
+  const body = (await request.json()) as { url?: string };
   const { url } = body;
 
   if (!url) {
@@ -98,7 +106,7 @@ async function handleDelete(request: Request, env: Env): Promise<Response> {
 
   // Extract filename from URL - handle both direct R2 URLs and proxy URLs
   let filename = '';
-  
+
   if (url.includes('.r2.dev/')) {
     // Direct R2 URL: https://pub-xxx.r2.dev/assignments/...
     const urlParts = url.split('.r2.dev/');
@@ -156,7 +164,10 @@ async function handleDelete(request: Request, env: Env): Promise<Response> {
   const response = await fetch(signedRequest);
 
   if (!response.ok && response.status !== 204) {
-    console.error('R2 delete failed:', { status: response.status, statusText: response.statusText });
+    console.error('R2 delete failed:', {
+      status: response.status,
+      statusText: response.statusText,
+    });
     return jsonResponse({ error: 'Delete failed', status: response.status }, 500);
   }
 
@@ -165,7 +176,7 @@ async function handleDelete(request: Request, env: Env): Promise<Response> {
   return jsonResponse({
     success: true,
     message: 'File deleted successfully',
-    filename: filename
+    filename: filename,
   });
 }
 
@@ -174,7 +185,7 @@ async function handleDelete(request: Request, env: Env): Promise<Response> {
 async function handleExtractContent(request: Request, env: Env): Promise<Response> {
   const supabase = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 
-  const body = await request.json() as {
+  const body = (await request.json()) as {
     resourceId?: string;
     resourceIds?: string[];
     lessonId?: string;
@@ -261,11 +272,15 @@ async function handleExtractContent(request: Request, env: Env): Promise<Respons
 // ==================== PRESIGNED URL FOR UPLOAD ====================
 
 async function handlePresigned(request: Request, env: Env): Promise<Response> {
-  if (!env.CLOUDFLARE_ACCOUNT_ID || !env.CLOUDFLARE_R2_ACCESS_KEY_ID || !env.CLOUDFLARE_R2_SECRET_ACCESS_KEY) {
+  if (
+    !env.CLOUDFLARE_ACCOUNT_ID ||
+    !env.CLOUDFLARE_R2_ACCESS_KEY_ID ||
+    !env.CLOUDFLARE_R2_SECRET_ACCESS_KEY
+  ) {
     return jsonResponse({ error: 'R2 credentials not configured' }, 500);
   }
 
-  const body = await request.json() as {
+  const body = (await request.json()) as {
     filename: string;
     contentType: string;
     fileSize?: number;
@@ -276,10 +291,13 @@ async function handlePresigned(request: Request, env: Env): Promise<Response> {
   const { filename, contentType, courseId, lessonId } = body;
 
   if (!filename || !contentType || !courseId || !lessonId) {
-    return jsonResponse({
-      error: 'Missing required fields',
-      required: ['filename', 'contentType', 'courseId', 'lessonId']
-    }, 400);
+    return jsonResponse(
+      {
+        error: 'Missing required fields',
+        required: ['filename', 'contentType', 'courseId', 'lessonId'],
+      },
+      400
+    );
   }
 
   // Generate unique file key
@@ -301,12 +319,14 @@ async function handlePresigned(request: Request, env: Env): Promise<Response> {
 
   // For R2, we'll use direct upload with signed headers
   const expiresIn = 3600; // 1 hour
-  const signedRequest = await r2.sign(new Request(uploadUrl, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': contentType,
-    },
-  }));
+  const signedRequest = await r2.sign(
+    new Request(uploadUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': contentType,
+      },
+    })
+  );
 
   // Extract the signed URL from the request
   const signedUrl = signedRequest.url;
@@ -319,7 +339,7 @@ async function handlePresigned(request: Request, env: Env): Promise<Response> {
       uploadUrl: signedUrl,
       fileKey,
       headers: {
-        'Authorization': authHeader,
+        Authorization: authHeader,
         'x-amz-date': dateHeader,
         'Content-Type': contentType,
       },
@@ -330,7 +350,7 @@ async function handlePresigned(request: Request, env: Env): Promise<Response> {
 // ==================== CONFIRM UPLOAD ====================
 
 async function handleConfirm(request: Request, env: Env): Promise<Response> {
-  const body = await request.json() as {
+  const body = (await request.json()) as {
     fileKey: string;
     fileName?: string;
     fileSize?: number;
@@ -363,7 +383,7 @@ async function handleConfirm(request: Request, env: Env): Promise<Response> {
 // ==================== GET FILE URL ====================
 
 async function handleGetFileUrl(request: Request, env: Env): Promise<Response> {
-  const body = await request.json() as { fileKey?: string };
+  const body = (await request.json()) as { fileKey?: string };
   const { fileKey } = body;
 
   if (!fileKey) {
@@ -384,14 +404,18 @@ async function handleGetFileUrl(request: Request, env: Env): Promise<Response> {
 // ==================== DOCUMENT ACCESS (PROXY) ====================
 
 async function handleDocumentAccess(request: Request, env: Env): Promise<Response> {
-  if (!env.CLOUDFLARE_ACCOUNT_ID || !env.CLOUDFLARE_R2_ACCESS_KEY_ID || !env.CLOUDFLARE_R2_SECRET_ACCESS_KEY) {
+  if (
+    !env.CLOUDFLARE_ACCOUNT_ID ||
+    !env.CLOUDFLARE_R2_ACCESS_KEY_ID ||
+    !env.CLOUDFLARE_R2_SECRET_ACCESS_KEY
+  ) {
     return jsonResponse({ error: 'R2 credentials not configured' }, 500);
   }
 
   const url = new URL(request.url);
   let fileKey = url.searchParams.get('key');
   const mode = url.searchParams.get('mode') || 'inline'; // 'inline' for viewing, 'download' for downloading
-  
+
   // Also support extracting key from full URL
   const fileUrl = url.searchParams.get('url');
   if (!fileKey && fileUrl) {
@@ -431,20 +455,22 @@ async function handleDocumentAccess(request: Request, env: Env): Promise<Respons
   const response = await fetch(signedRequest);
 
   if (!response.ok) {
-    return jsonResponse({ error: 'File not found or access denied', status: response.status }, response.status);
+    return jsonResponse(
+      { error: 'File not found or access denied', status: response.status },
+      response.status
+    );
   }
 
   // Get the file content and return it with proper headers
   const fileContent = await response.arrayBuffer();
   const contentType = response.headers.get('Content-Type') || 'application/octet-stream';
-  
+
   // Extract filename from key
   const filename = fileKey.split('/').pop() || 'document';
-  
+
   // Set Content-Disposition based on mode
-  const contentDisposition = mode === 'download' 
-    ? `attachment; filename="${filename}"` 
-    : `inline; filename="${filename}"`;
+  const contentDisposition =
+    mode === 'download' ? `attachment; filename="${filename}"` : `inline; filename="${filename}"`;
 
   return new Response(fileContent, {
     status: 200,
@@ -461,11 +487,15 @@ async function handleDocumentAccess(request: Request, env: Env): Promise<Respons
 // ==================== SIGNED URL FOR DOCUMENT ACCESS ====================
 
 async function handleSignedUrl(request: Request, env: Env): Promise<Response> {
-  if (!env.CLOUDFLARE_ACCOUNT_ID || !env.CLOUDFLARE_R2_ACCESS_KEY_ID || !env.CLOUDFLARE_R2_SECRET_ACCESS_KEY) {
+  if (
+    !env.CLOUDFLARE_ACCOUNT_ID ||
+    !env.CLOUDFLARE_R2_ACCESS_KEY_ID ||
+    !env.CLOUDFLARE_R2_SECRET_ACCESS_KEY
+  ) {
     return jsonResponse({ error: 'R2 credentials not configured' }, 500);
   }
 
-  const body = await request.json() as {
+  const body = (await request.json()) as {
     url?: string;
     fileKey?: string;
     expiresIn?: number;
@@ -508,7 +538,7 @@ async function handleSignedUrl(request: Request, env: Env): Promise<Response> {
 // ==================== BATCH SIGNED URLS ====================
 
 async function handleSignedUrls(request: Request, env: Env): Promise<Response> {
-  const body = await request.json() as {
+  const body = (await request.json()) as {
     urls: string[];
     expiresIn?: number;
   };
@@ -555,14 +585,18 @@ async function handleSignedUrls(request: Request, env: Env): Promise<Response> {
 }
 
 async function handleCourseCertificate(request: Request, env: Env): Promise<Response> {
-  if (!env.CLOUDFLARE_ACCOUNT_ID || !env.CLOUDFLARE_R2_ACCESS_KEY_ID || !env.CLOUDFLARE_R2_SECRET_ACCESS_KEY) {
+  if (
+    !env.CLOUDFLARE_ACCOUNT_ID ||
+    !env.CLOUDFLARE_R2_ACCESS_KEY_ID ||
+    !env.CLOUDFLARE_R2_SECRET_ACCESS_KEY
+  ) {
     return jsonResponse({ error: 'R2 credentials not configured' }, 500);
   }
 
   const url = new URL(request.url);
   let fileKey = url.searchParams.get('key');
   const mode = url.searchParams.get('mode') || 'inline'; // 'inline' for viewing, 'download' for downloading
-  
+
   // Also support extracting key from full URL
   const fileUrl = url.searchParams.get('url');
   if (!fileKey && fileUrl) {
@@ -600,20 +634,22 @@ async function handleCourseCertificate(request: Request, env: Env): Promise<Resp
   const response = await fetch(signedRequest);
 
   if (!response.ok) {
-    return jsonResponse({ error: 'File not found or access denied', status: response.status }, response.status);
+    return jsonResponse(
+      { error: 'File not found or access denied', status: response.status },
+      response.status
+    );
   }
 
   // Get the file content and return it with proper headers
   const fileContent = await response.arrayBuffer();
   const contentType = response.headers.get('Content-Type') || 'image/png';
-  
+
   // Extract filename from key
   const filename = fileKey.split('/').pop() || 'certificate.png';
-  
+
   // Set Content-Disposition based on mode
-  const contentDisposition = mode === 'download' 
-    ? `attachment; filename="${filename}"` 
-    : `inline; filename="${filename}"`;
+  const contentDisposition =
+    mode === 'download' ? `attachment; filename="${filename}"` : `inline; filename="${filename}"`;
 
   return new Response(fileContent, {
     status: 200,
@@ -628,8 +664,17 @@ async function handleCourseCertificate(request: Request, env: Env): Promise<Resp
 
 // ==================== LIST FILES ====================
 
-async function handleListFiles(request: Request, env: Env, courseId: string, lessonId: string): Promise<Response> {
-  if (!env.CLOUDFLARE_ACCOUNT_ID || !env.CLOUDFLARE_R2_ACCESS_KEY_ID || !env.CLOUDFLARE_R2_SECRET_ACCESS_KEY) {
+async function handleListFiles(
+  request: Request,
+  env: Env,
+  courseId: string,
+  lessonId: string
+): Promise<Response> {
+  if (
+    !env.CLOUDFLARE_ACCOUNT_ID ||
+    !env.CLOUDFLARE_R2_ACCESS_KEY_ID ||
+    !env.CLOUDFLARE_R2_SECRET_ACCESS_KEY
+  ) {
     return jsonResponse({ error: 'R2 credentials not configured' }, 500);
   }
 
@@ -661,9 +706,9 @@ async function handleListFiles(request: Request, env: Env, courseId: string, les
   const sizeMatches = xmlText.matchAll(/<Size>([^<]+)<\/Size>/g);
   const lastModMatches = xmlText.matchAll(/<LastModified>([^<]+)<\/LastModified>/g);
 
-  const keys = Array.from(keyMatches, m => m[1]);
-  const sizes = Array.from(sizeMatches, m => m[1]);
-  const lastMods = Array.from(lastModMatches, m => m[1]);
+  const keys = Array.from(keyMatches, (m) => m[1]);
+  const sizes = Array.from(sizeMatches, (m) => m[1]);
+  const lastMods = Array.from(lastModMatches, (m) => m[1]);
 
   for (let i = 0; i < keys.length; i++) {
     const fileUrl = env.CLOUDFLARE_R2_PUBLIC_URL
@@ -688,27 +733,43 @@ async function handleListFiles(request: Request, env: Env, courseId: string, les
 
 async function handleUploadPaymentReceipt(request: Request, env: Env): Promise<Response> {
   console.log(`[STORAGE-API] ========== UPLOAD PAYMENT RECEIPT START ==========`);
-  
-  if (!env.CLOUDFLARE_ACCOUNT_ID || !env.CLOUDFLARE_R2_ACCESS_KEY_ID || !env.CLOUDFLARE_R2_SECRET_ACCESS_KEY) {
+
+  if (
+    !env.CLOUDFLARE_ACCOUNT_ID ||
+    !env.CLOUDFLARE_R2_ACCESS_KEY_ID ||
+    !env.CLOUDFLARE_R2_SECRET_ACCESS_KEY
+  ) {
     console.error(`[STORAGE-API] R2 credentials missing!`);
-    console.error(`[STORAGE-API] CLOUDFLARE_ACCOUNT_ID: ${env.CLOUDFLARE_ACCOUNT_ID ? 'SET' : 'MISSING'}`);
-    console.error(`[STORAGE-API] CLOUDFLARE_R2_ACCESS_KEY_ID: ${env.CLOUDFLARE_R2_ACCESS_KEY_ID ? 'SET' : 'MISSING'}`);
-    console.error(`[STORAGE-API] CLOUDFLARE_R2_SECRET_ACCESS_KEY: ${env.CLOUDFLARE_R2_SECRET_ACCESS_KEY ? 'SET' : 'MISSING'}`);
+    console.error(
+      `[STORAGE-API] CLOUDFLARE_ACCOUNT_ID: ${env.CLOUDFLARE_ACCOUNT_ID ? 'SET' : 'MISSING'}`
+    );
+    console.error(
+      `[STORAGE-API] CLOUDFLARE_R2_ACCESS_KEY_ID: ${env.CLOUDFLARE_R2_ACCESS_KEY_ID ? 'SET' : 'MISSING'}`
+    );
+    console.error(
+      `[STORAGE-API] CLOUDFLARE_R2_SECRET_ACCESS_KEY: ${env.CLOUDFLARE_R2_SECRET_ACCESS_KEY ? 'SET' : 'MISSING'}`
+    );
     return jsonResponse({ error: 'R2 credentials not configured' }, 500);
   }
-  
+
   console.log(`[STORAGE-API] R2 credentials verified`);
 
-  let body: { pdfBase64?: string; paymentId?: string; userId?: string; userName?: string; filename?: string };
+  let body: {
+    pdfBase64?: string;
+    paymentId?: string;
+    userId?: string;
+    userName?: string;
+    filename?: string;
+  };
   try {
-    body = await request.json() as typeof body;
+    body = (await request.json()) as typeof body;
   } catch (parseError) {
     console.error(`[STORAGE-API] Failed to parse request body:`, parseError);
     return jsonResponse({ error: 'Invalid JSON body' }, 400);
   }
 
   const { pdfBase64, paymentId, userId, userName, filename } = body;
-  
+
   console.log(`[STORAGE-API] Request params:`);
   console.log(`[STORAGE-API] - paymentId: ${paymentId}`);
   console.log(`[STORAGE-API] - userId: ${userId}`);
@@ -738,23 +799,29 @@ async function handleUploadPaymentReceipt(request: Request, env: Env): Promise<R
   // Generate unique filename with hybrid folder structure: {name}_{short_id}/
   const timestamp = Date.now();
   const sanitizedPaymentId = paymentId.replace(/[^a-zA-Z0-9_-]/g, '');
-  
+
   // Create folder name: sanitized_name + short user_id (first 8 chars)
   const shortUserId = userId.substring(0, 8);
-  const sanitizedName = userName 
-    ? userName.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').substring(0, 20)
+  const sanitizedName = userName
+    ? userName
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '_')
+        .replace(/_+/g, '_')
+        .substring(0, 20)
     : 'user';
   const folderName = `${sanitizedName}_${shortUserId}`;
-  
+
   const fileKey = `payment_pdf/${folderName}/${sanitizedPaymentId}_${timestamp}.pdf`;
-  const finalFilename = filename || `Receipt-${sanitizedPaymentId.slice(-8)}-${new Date().toISOString().split('T')[0]}.pdf`;
-  
+  const finalFilename =
+    filename ||
+    `Receipt-${sanitizedPaymentId.slice(-8)}-${new Date().toISOString().split('T')[0]}.pdf`;
+
   console.log(`[STORAGE-API] File key: ${fileKey}`);
   console.log(`[STORAGE-API] Final filename: ${finalFilename}`);
 
   const bucketName = env.CLOUDFLARE_R2_BUCKET_NAME || 'skill-echosystem';
   console.log(`[STORAGE-API] Bucket: ${bucketName}`);
-  
+
   const r2 = new AwsClient({
     accessKeyId: env.CLOUDFLARE_R2_ACCESS_KEY_ID,
     secretAccessKey: env.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
@@ -775,13 +842,15 @@ async function handleUploadPaymentReceipt(request: Request, env: Env): Promise<R
 
   console.log(`[STORAGE-API] Signing request...`);
   const signedRequest = await r2.sign(uploadRequest);
-  
+
   console.log(`[STORAGE-API] Uploading to R2...`);
   const startTime = Date.now();
   const response = await fetch(signedRequest);
   const duration = Date.now() - startTime;
-  
-  console.log(`[STORAGE-API] R2 response in ${duration}ms: ${response.status} ${response.statusText}`);
+
+  console.log(
+    `[STORAGE-API] R2 response in ${duration}ms: ${response.status} ${response.statusText}`
+  );
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -808,14 +877,18 @@ async function handleUploadPaymentReceipt(request: Request, env: Env): Promise<R
 // ==================== GET PAYMENT RECEIPT ====================
 
 async function handleGetPaymentReceipt(request: Request, env: Env): Promise<Response> {
-  if (!env.CLOUDFLARE_ACCOUNT_ID || !env.CLOUDFLARE_R2_ACCESS_KEY_ID || !env.CLOUDFLARE_R2_SECRET_ACCESS_KEY) {
+  if (
+    !env.CLOUDFLARE_ACCOUNT_ID ||
+    !env.CLOUDFLARE_R2_ACCESS_KEY_ID ||
+    !env.CLOUDFLARE_R2_SECRET_ACCESS_KEY
+  ) {
     return jsonResponse({ error: 'R2 credentials not configured' }, 500);
   }
 
   const url = new URL(request.url);
   let fileKey = url.searchParams.get('key');
   const mode = url.searchParams.get('mode') || 'download'; // 'inline' for viewing, 'download' for downloading
-  
+
   // Also support extracting key from full URL
   const fileUrl = url.searchParams.get('url');
   if (!fileKey && fileUrl) {
@@ -853,19 +926,21 @@ async function handleGetPaymentReceipt(request: Request, env: Env): Promise<Resp
   const response = await fetch(signedRequest);
 
   if (!response.ok) {
-    return jsonResponse({ error: 'Receipt not found or access denied', status: response.status }, response.status);
+    return jsonResponse(
+      { error: 'Receipt not found or access denied', status: response.status },
+      response.status
+    );
   }
 
   // Get the file content and return it with proper headers
   const fileContent = await response.arrayBuffer();
-  
+
   // Extract filename from key
   const filename = fileKey.split('/').pop() || 'receipt.pdf';
-  
+
   // Set Content-Disposition based on mode
-  const contentDisposition = mode === 'download' 
-    ? `attachment; filename="${filename}"` 
-    : `inline; filename="${filename}"`;
+  const contentDisposition =
+    mode === 'download' ? `attachment; filename="${filename}"` : `inline; filename="${filename}"`;
 
   return new Response(fileContent, {
     status: 200,
@@ -891,7 +966,7 @@ export default {
 
     try {
       // Check for /files/:courseId/:lessonId pattern
-      const filesMatch = path.match(/^\/files\/([^\/]+)\/([^\/]+)$/);
+      const filesMatch = path.match(/^\/files\/([^/]+)\/([^/]+)$/);
       if (filesMatch) {
         return await handleListFiles(request, env, filesMatch[1], filesMatch[2]);
       }
@@ -927,11 +1002,38 @@ export default {
           return jsonResponse({
             status: 'ok',
             service: 'storage-api',
-            endpoints: ['/upload', '/upload-payment-receipt', '/payment-receipt', '/presigned', '/confirm', '/get-url', '/course-certificate', '/delete', '/files/:courseId/:lessonId', '/extract-content'],
-            timestamp: new Date().toISOString()
+            endpoints: [
+              '/upload',
+              '/upload-payment-receipt',
+              '/payment-receipt',
+              '/presigned',
+              '/confirm',
+              '/get-url',
+              '/course-certificate',
+              '/delete',
+              '/files/:courseId/:lessonId',
+              '/extract-content',
+            ],
+            timestamp: new Date().toISOString(),
           });
         default:
-          return jsonResponse({ error: 'Not found', availableEndpoints: ['/upload', '/upload-payment-receipt', '/payment-receipt', '/presigned', '/confirm', '/get-url', '/course-certificate', '/delete', '/extract-content'] }, 404);
+          return jsonResponse(
+            {
+              error: 'Not found',
+              availableEndpoints: [
+                '/upload',
+                '/upload-payment-receipt',
+                '/payment-receipt',
+                '/presigned',
+                '/confirm',
+                '/get-url',
+                '/course-certificate',
+                '/delete',
+                '/extract-content',
+              ],
+            },
+            404
+          );
       }
     } catch (error) {
       console.error('Worker error:', error);

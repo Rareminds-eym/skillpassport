@@ -10,7 +10,7 @@ export interface AdmissionApplication {
   passportNumber?: string;
   email: string;
   phone: string;
-  
+
   // Parent Details
   fatherName: string;
   fatherOccupation: string;
@@ -21,19 +21,19 @@ export interface AdmissionApplication {
   guardianName?: string;
   guardianRelation?: string;
   guardianPhone?: string;
-  
+
   // Address
   address: string;
   city: string;
   state: string;
   pincode: string;
-  
+
   // Previous School
   previousSchool?: string;
   previousClass?: string;
   previousBoard?: string;
   transferCertificate?: string;
-  
+
   // Documents
   documents: {
     birthCertificate?: string;
@@ -42,7 +42,7 @@ export interface AdmissionApplication {
     photos?: string[];
     medicalRecords?: string[];
   };
-  
+
   // Application Status
   status: 'pending' | 'document_verification' | 'fee_payment' | 'approved' | 'rejected';
   appliedFor: string; // Class applying for
@@ -50,12 +50,12 @@ export interface AdmissionApplication {
   verifiedBy?: string;
   verifiedDate?: string;
   enrollmentNumber?: string;
-  
+
   // Fee Details
   feeStatus?: 'pending' | 'partial' | 'paid';
   feeAmount?: number;
   feePaid?: number;
-  
+
   remarks?: string;
 }
 
@@ -67,7 +67,7 @@ export interface StudentProfile {
   gender: 'male' | 'female' | 'other';
   bloodGroup?: string;
   aadharNumber?: string;
-  
+
   // Contact
   email: string;
   phone: string;
@@ -75,14 +75,14 @@ export interface StudentProfile {
   city: string;
   state: string;
   pincode: string;
-  
+
   // Academic
   class: string;
   section: string;
   rollNumber: string;
   admissionDate: string;
   academicYear: string;
-  
+
   // Parent Details
   fatherName: string;
   fatherOccupation: string;
@@ -95,12 +95,12 @@ export interface StudentProfile {
   guardianName?: string;
   guardianRelation?: string;
   guardianPhone?: string;
-  
+
   // Previous School
   previousSchool?: string;
   previousClass?: string;
   previousBoard?: string;
-  
+
   // Medical Information
   medicalInfo: {
     allergies?: string[];
@@ -110,7 +110,7 @@ export interface StudentProfile {
     emergencyContact: string;
     emergencyPhone: string;
   };
-  
+
   // Skill Assessment History
   skillAssessments: {
     id: string;
@@ -119,7 +119,7 @@ export interface StudentProfile {
     score: number;
     remarks?: string;
   }[];
-  
+
   // Career Interest Profile
   careerInterests: {
     primaryInterest?: string;
@@ -127,7 +127,7 @@ export interface StudentProfile {
     skills?: string[];
     aspirations?: string;
   };
-  
+
   // Fee Status
   feeStatus: {
     totalFee: number;
@@ -136,7 +136,7 @@ export interface StudentProfile {
     lastPaymentDate?: string;
     nextDueDate?: string;
   };
-  
+
   // Attendance Trend
   attendanceTrend: {
     totalDays: number;
@@ -145,7 +145,7 @@ export interface StudentProfile {
     percentage: number;
     isAtRisk: boolean; // < 75%
   };
-  
+
   // Status
   status: 'active' | 'inactive' | 'transferred' | 'graduated';
   photo?: string;
@@ -188,10 +188,10 @@ export interface StudentReport {
   generatedBy: string;
   academicYear: string;
   term?: string;
-  
+
   // Report Data
   data: any;
-  
+
   // Export Options
   pdfUrl?: string;
   hasSchoolLogo: boolean;

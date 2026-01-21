@@ -1,16 +1,16 @@
 import { WavyBackground } from '@/components/Students/components/ui/wavy-background';
 import { motion } from 'framer-motion';
 import {
-    AlertCircle,
-    Briefcase,
-    CheckCircle,
-    Clock,
-    MapPin,
-    RefreshCw,
-    Sparkles,
-    TrendingUp,
-    X,
-    Zap
+  AlertCircle,
+  Briefcase,
+  CheckCircle,
+  Clock,
+  MapPin,
+  RefreshCw,
+  Sparkles,
+  TrendingUp,
+  X,
+  Zap,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useAIJobMatching } from '../../../hooks/useAIJobMatching';
@@ -18,13 +18,13 @@ import { FeatureGate } from '../../Subscription/FeatureGate';
 
 /**
  * RecommendedJobs - AI-powered job recommendations with industrial-grade caching
- * 
+ *
  * Uses the useAIJobMatching hook which implements:
  * - Database-level caching (24-hour TTL)
  * - Automatic cache invalidation when student data changes
  * - Profile hash-based change detection
  * - Force refresh capability
- * 
+ *
  * Wrapped with FeatureGate for ai_job_matching add-on access control
  */
 const RecommendedJobsContent = ({
@@ -33,7 +33,7 @@ const RecommendedJobsContent = ({
   appliedJobs = new Set(),
   savedJobs = new Set(),
   onToggleSave,
-  onApply
+  onApply,
 }) => {
   const [showAnimation, setShowAnimation] = useState(true);
   const [isDismissed, setIsDismissed] = useState(false);
@@ -44,7 +44,7 @@ const RecommendedJobsContent = ({
     loading,
     error,
     cacheInfo = {},
-    refreshMatches
+    refreshMatches,
   } = useAIJobMatching(studentProfile, !isDismissed, 3);
 
   // Check localStorage for dismiss preference
@@ -113,7 +113,9 @@ const RecommendedJobsContent = ({
             </div>
             <div className="text-left">
               <h3 className="text-sm font-semibold text-gray-900">Show AI Recommendations</h3>
-              <p className="text-xs text-gray-600">Get personalized job matches based on your profile</p>
+              <p className="text-xs text-gray-600">
+                Get personalized job matches based on your profile
+              </p>
             </div>
           </div>
         </button>
@@ -132,13 +134,13 @@ const RecommendedJobsContent = ({
         style={{
           width: '100vw',
           marginLeft: 'calc(-50vw + 50%)',
-          marginRight: 'calc(-50vw + 50%)'
+          marginRight: 'calc(-50vw + 50%)',
         }}
       >
         <WavyBackground
           className="w-full pb-20"
           containerClassName="h-full"
-          colors={["#4f46e5", "#7c3aed", "#2563eb", "#06b6d4", "#8b5cf6"]}
+          colors={['#4f46e5', '#7c3aed', '#2563eb', '#06b6d4', '#8b5cf6']}
           waveOpacity={0.3}
           speed="fast"
           blur={10}
@@ -147,7 +149,7 @@ const RecommendedJobsContent = ({
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: "spring" }}
+              transition={{ delay: 0.2, type: 'spring' }}
               className="flex justify-center"
             >
               <div className="relative">
@@ -156,7 +158,7 @@ const RecommendedJobsContent = ({
                 </div>
                 <motion.div
                   animate={{ rotate: 360 }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                  transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
                   className="absolute -top-5 -right-2"
                 >
                   <Sparkles className="w-8 h-8 text-yellow-300" />
@@ -226,11 +228,7 @@ const RecommendedJobsContent = ({
   // Show error state with user-friendly message
   if (error && !loading && !showAnimation) {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-6"
-      >
+      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 relative">
           <button
             onClick={handleDismiss}
@@ -257,7 +255,8 @@ const RecommendedJobsContent = ({
                 <li>API rate limits</li>
               </ul>
               <p className="text-sm text-amber-700">
-                Don't worry! You can still browse all available opportunities below. Please try refreshing the page in a few moments for AI-powered recommendations.
+                Don't worry! You can still browse all available opportunities below. Please try
+                refreshing the page in a few moments for AI-powered recommendations.
               </p>
             </div>
           </div>
@@ -318,7 +317,7 @@ const RecommendedJobsContent = ({
               </p>
             </div>
           </div>
-          
+
           {/* Refresh button */}
           <button
             onClick={handleRefresh}
@@ -333,69 +332,77 @@ const RecommendedJobsContent = ({
 
         {/* Grid Content */}
         <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {recommendations.slice(0, 3).map((currentJob, index) => {
-              // Support both nested opportunity and flat structure from API
-              const opportunity = currentJob?.opportunity || currentJob;
-              if (!opportunity) return null;
+          {recommendations.slice(0, 3).map((currentJob, index) => {
+            // Support both nested opportunity and flat structure from API
+            const opportunity = currentJob?.opportunity || currentJob;
+            if (!opportunity) return null;
 
-              // Get job details - handle both structures
-              const jobTitle = currentJob.job_title || opportunity.job_title || opportunity.title;
-              const companyName = currentJob.company_name || opportunity.company_name;
-              const matchScore = currentJob.match_score || Math.round((opportunity.similarity || opportunity.final_score || 0.5) * 100);
-              const location = opportunity.location;
-              const employmentType = opportunity.employment_type;
-              const skillsRequired = opportunity.skills_required || [];
-              const matchReason = currentJob.match_reason || `This opportunity matches your profile with ${matchScore}% similarity.`;
-              const jobId = currentJob.job_id || opportunity.id;
+            // Get job details - handle both structures
+            const jobTitle = currentJob.job_title || opportunity.job_title || opportunity.title;
+            const companyName = currentJob.company_name || opportunity.company_name;
+            const matchScore =
+              currentJob.match_score ||
+              Math.round((opportunity.similarity || opportunity.final_score || 0.5) * 100);
+            const location = opportunity.location;
+            const employmentType = opportunity.employment_type;
+            const skillsRequired = opportunity.skills_required || [];
+            const matchReason =
+              currentJob.match_reason ||
+              `This opportunity matches your profile with ${matchScore}% similarity.`;
+            const jobId = currentJob.job_id || opportunity.id;
 
-              return (
-                <motion.div
-                  key={jobId || index}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: index * 0.1 }}
-                  className="bg-white rounded-lg p-5 shadow-md flex flex-col h-full border border-gray-100 hover:border-indigo-200 transition-all"
-                >
-                  {/* Job Header */}
-                  <div className="mb-3">
-                    <div className="flex flex-col gap-2 mb-2">
-                      <div className="flex justify-between items-start">
-                        <h3 className="text-lg font-bold text-gray-900 line-clamp-1" title={jobTitle}>
-                          {jobTitle}
-                        </h3>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ml-2 ${getMatchColor(matchScore)}`}>
-                          {matchScore}%
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-700 font-medium line-clamp-1">{companyName}</p>
+            return (
+              <motion.div
+                key={jobId || index}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: index * 0.1 }}
+                className="bg-white rounded-lg p-5 shadow-md flex flex-col h-full border border-gray-100 hover:border-indigo-200 transition-all"
+              >
+                {/* Job Header */}
+                <div className="mb-3">
+                  <div className="flex flex-col gap-2 mb-2">
+                    <div className="flex justify-between items-start">
+                      <h3 className="text-lg font-bold text-gray-900 line-clamp-1" title={jobTitle}>
+                        {jobTitle}
+                      </h3>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ml-2 ${getMatchColor(matchScore)}`}
+                      >
+                        {matchScore}%
+                      </span>
                     </div>
+                    <p className="text-sm text-gray-700 font-medium line-clamp-1">{companyName}</p>
                   </div>
+                </div>
 
-                  {/* Job Details */}
-                  <div className="flex flex-wrap gap-3 mb-3 text-xs text-gray-600">
-                    {location && (
-                      <div className="flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5" />
-                        <span className="truncate max-w-[100px]">{location}</span>
-                      </div>
-                    )}
-                    {employmentType && (
-                      <div className="flex items-center gap-1">
-                        <Briefcase className="w-3.5 h-3.5" />
-                        <span className="capitalize">{employmentType}</span>
-                      </div>
-                    )}
-                  </div>
+                {/* Job Details */}
+                <div className="flex flex-wrap gap-3 mb-3 text-xs text-gray-600">
+                  {location && (
+                    <div className="flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5" />
+                      <span className="truncate max-w-[100px]">{location}</span>
+                    </div>
+                  )}
+                  {employmentType && (
+                    <div className="flex items-center gap-1">
+                      <Briefcase className="w-3.5 h-3.5" />
+                      <span className="capitalize">{employmentType}</span>
+                    </div>
+                  )}
+                </div>
 
-                  {/* Skills - Show required skills from opportunity */}
-                  {skillsRequired && skillsRequired.length > 0 && (
-                    <div className="mb-3 flex-grow">
-                      <div className="flex items-center gap-1.5 mb-1.5">
-                        <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
-                        <h4 className="font-semibold text-gray-900 text-xs">Required Skills</h4>
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {(Array.isArray(skillsRequired) ? skillsRequired : [skillsRequired]).slice(0, 3).map((skill, idx) => (
+                {/* Skills - Show required skills from opportunity */}
+                {skillsRequired && skillsRequired.length > 0 && (
+                  <div className="mb-3 flex-grow">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                      <h4 className="font-semibold text-gray-900 text-xs">Required Skills</h4>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(Array.isArray(skillsRequired) ? skillsRequired : [skillsRequired])
+                        .slice(0, 3)
+                        .map((skill, idx) => (
                           <span
                             key={idx}
                             className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-[10px] font-medium border border-emerald-100"
@@ -403,50 +410,50 @@ const RecommendedJobsContent = ({
                             {skill}
                           </span>
                         ))}
-                        {Array.isArray(skillsRequired) && skillsRequired.length > 3 && (
-                          <span className="px-2 py-0.5 bg-gray-50 text-gray-500 rounded-full text-[10px] font-medium border border-gray-100">
-                            +{skillsRequired.length - 3}
-                          </span>
-                        )}
-                      </div>
+                      {Array.isArray(skillsRequired) && skillsRequired.length > 3 && (
+                        <span className="px-2 py-0.5 bg-gray-50 text-gray-500 rounded-full text-[10px] font-medium border border-gray-100">
+                          +{skillsRequired.length - 3}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Match Reason - Truncated */}
+                <div className="bg-indigo-50/50 border border-indigo-100 rounded-lg p-3 mb-4 text-xs">
+                  <div className="flex items-start gap-1.5 ">
+                    <TrendingUp className="w-4 h-4 text-indigo-600 mt-0.5 flex-shrink-0" />
+                    <p className="text-indigo-900 line-clamp-2" title={matchReason}>
+                      {matchReason}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2 mt-auto">
+                  <button
+                    onClick={() => onSelectJob(opportunity)}
+                    className="flex-1 bg-white border border-indigo-200 hover:bg-indigo-50 text-indigo-700 px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
+                  >
+                    Details
+                  </button>
+                  {!appliedJobs.has(jobId) ? (
+                    <button
+                      onClick={() => onApply(opportunity)}
+                      className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
+                    >
+                      Apply
+                    </button>
+                  ) : (
+                    <div className="flex-1 bg-green-50 text-green-700 border border-green-200 px-3 py-2 rounded-lg text-sm font-semibold flex items-center justify-center gap-1">
+                      <CheckCircle className="w-4 h-4" />
+                      Applied
                     </div>
                   )}
-
-                  {/* Match Reason - Truncated */}
-                  <div className="bg-indigo-50/50 border border-indigo-100 rounded-lg p-3 mb-4 text-xs">
-                    <div className="flex items-start gap-1.5 ">
-                      <TrendingUp className="w-4 h-4 text-indigo-600 mt-0.5 flex-shrink-0" />
-                      <p className="text-indigo-900 line-clamp-2" title={matchReason}>
-                        {matchReason}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex gap-2 mt-auto">
-                    <button
-                      onClick={() => onSelectJob(opportunity)}
-                      className="flex-1 bg-white border border-indigo-200 hover:bg-indigo-50 text-indigo-700 px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
-                    >
-                      Details
-                    </button>
-                    {!appliedJobs.has(jobId) ? (
-                      <button
-                        onClick={() => onApply(opportunity)}
-                        className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
-                      >
-                        Apply
-                      </button>
-                    ) : (
-                      <div className="flex-1 bg-green-50 text-green-700 border border-green-200 px-3 py-2 rounded-lg text-sm font-semibold flex items-center justify-center gap-1">
-                        <CheckCircle className="w-4 h-4" />
-                        Applied
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              );
-            })}
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
       </div>
     </motion.div>

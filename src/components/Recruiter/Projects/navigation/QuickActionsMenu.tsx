@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  PlusIcon, 
+import {
+  PlusIcon,
   DocumentPlusIcon,
   BriefcaseIcon,
   ChartBarIcon,
   Squares2X2Icon,
-  XMarkIcon
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 
 interface QuickAction {
@@ -98,7 +98,7 @@ const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({ actions }) => {
 
       {/* Backdrop for mobile */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-20 -z-10 md:hidden"
           onClick={() => setIsOpen(false)}
         />
@@ -121,4 +121,3 @@ export const CompactQuickActions: React.FC<{ onNewProject: () => void }> = ({ on
     </button>
   );
 };
-

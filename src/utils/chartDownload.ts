@@ -16,7 +16,9 @@ export const downloadChartAsPNG = async (elementId: string, filename: string) =>
     if (typeof window !== 'undefined' && (window as any).html2canvas) {
       const html2canvas = (window as any).html2canvas;
       const canvas = await html2canvas(element, {
-        backgroundColor: document.documentElement.classList.contains('dark') ? '#111827' : '#ffffff',
+        backgroundColor: document.documentElement.classList.contains('dark')
+          ? '#111827'
+          : '#ffffff',
         scale: 2, // Higher quality
       });
 
@@ -55,7 +57,7 @@ const downloadSVGChart = async (element: HTMLElement, filename: string) => {
   const svgData = new XMLSerializer().serializeToString(svg);
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
-  
+
   if (!ctx) return;
 
   // Set canvas size
@@ -108,15 +110,17 @@ export const downloadChartDataAsCSV = (data: any[], filename: string) => {
   const headers = Object.keys(data[0]);
   const csvContent = [
     headers.join(','),
-    ...data.map(row =>
-      headers.map(header => {
-        const value = row[header];
-        if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
-          return `"${value.replace(/"/g, '""')}"`;
-        }
-        return value;
-      }).join(',')
-    )
+    ...data.map((row) =>
+      headers
+        .map((header) => {
+          const value = row[header];
+          if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+            return `"${value.replace(/"/g, '""')}"`;
+          }
+          return value;
+        })
+        .join(',')
+    ),
   ].join('\n');
 
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -139,15 +143,15 @@ export const copyChartToClipboard = async (elementId: string) => {
     if ((window as any).html2canvas) {
       const html2canvas = (window as any).html2canvas;
       const canvas = await html2canvas(element, {
-        backgroundColor: document.documentElement.classList.contains('dark') ? '#111827' : '#ffffff',
+        backgroundColor: document.documentElement.classList.contains('dark')
+          ? '#111827'
+          : '#ffffff',
         scale: 2,
       });
 
       canvas.toBlob(async (blob: Blob | null) => {
         if (blob && navigator.clipboard) {
-          await navigator.clipboard.write([
-            new ClipboardItem({ 'image/png': blob })
-          ]);
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
           alert('Chart copied to clipboard!');
         }
       });

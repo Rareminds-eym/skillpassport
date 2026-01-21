@@ -3,7 +3,18 @@
  * Shows confirmation after successful payment with login credentials
  */
 
-import { ArrowLeft, ArrowRight, Check, CheckCircle, Copy, Eye, EyeOff, Key, Mail, Sparkles } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  CheckCircle,
+  Copy,
+  Eye,
+  EyeOff,
+  Key,
+  Mail,
+  Sparkles,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import Header from '../../layouts/Header';
@@ -61,7 +72,7 @@ export default function EventSalesSuccess() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      
+
       <div className="py-12 px-4">
         <div className="max-w-lg mx-auto">
           {/* Back Button */}
@@ -98,7 +109,9 @@ export default function EventSalesSuccess() {
                     <p className="font-medium text-gray-900">{registration?.email}</p>
                   </div>
                   <div>
-                    <label className="text-xs text-gray-500 uppercase tracking-wider">Temporary Password</label>
+                    <label className="text-xs text-gray-500 uppercase tracking-wider">
+                      Temporary Password
+                    </label>
                     <div className="flex items-center gap-2 mt-1">
                       <div className="flex-1 bg-white border border-gray-200 rounded-lg px-3 py-2 font-mono text-sm">
                         {showPassword ? tempPassword : '••••••••••'}
@@ -108,14 +121,22 @@ export default function EventSalesSuccess() {
                         className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                         title={showPassword ? 'Hide password' : 'Show password'}
                       >
-                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        {showPassword ? (
+                          <EyeOff className="w-5 h-5" />
+                        ) : (
+                          <Eye className="w-5 h-5" />
+                        )}
                       </button>
                       <button
                         onClick={copyPassword}
                         className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                         title="Copy password"
                       >
-                        {copied ? <Check className="w-5 h-5 text-green-600" /> : <Copy className="w-5 h-5" />}
+                        {copied ? (
+                          <Check className="w-5 h-5 text-green-600" />
+                        ) : (
+                          <Copy className="w-5 h-5" />
+                        )}
                       </button>
                     </div>
                   </div>
@@ -128,7 +149,9 @@ export default function EventSalesSuccess() {
 
             {/* Order Details */}
             <div className="bg-gray-50 rounded-xl p-5 mb-6 text-left">
-              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Order Details</h3>
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                Order Details
+              </h3>
               <div className="space-y-3">
                 {registration && (
                   <>
@@ -139,23 +162,31 @@ export default function EventSalesSuccess() {
                     {registration.institution_name && (
                       <div className="flex justify-between">
                         <span className="text-gray-600">Institution</span>
-                        <span className="font-medium text-gray-900">{registration.institution_name}</span>
+                        <span className="font-medium text-gray-900">
+                          {registration.institution_name}
+                        </span>
                       </div>
                     )}
                   </>
                 )}
                 <div className="flex justify-between">
                   <span className="text-gray-600">Plan</span>
-                  <span className="font-medium text-gray-900">{planName || registration?.plan_type || 'Professional'}</span>
+                  <span className="font-medium text-gray-900">
+                    {planName || registration?.plan_type || 'Professional'}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Amount Paid</span>
-                  <span className="font-bold text-green-600">₹{registration?.plan_amount?.toLocaleString() || '999'}</span>
+                  <span className="font-bold text-green-600">
+                    ₹{registration?.plan_amount?.toLocaleString() || '999'}
+                  </span>
                 </div>
                 {registration?.razorpay_payment_id && (
                   <div className="flex justify-between">
                     <span className="text-gray-600">Transaction ID</span>
-                    <span className="font-mono text-xs text-gray-500">{registration.razorpay_payment_id.slice(-12)}</span>
+                    <span className="font-mono text-xs text-gray-500">
+                      {registration.razorpay_payment_id.slice(-12)}
+                    </span>
                   </div>
                 )}
               </div>

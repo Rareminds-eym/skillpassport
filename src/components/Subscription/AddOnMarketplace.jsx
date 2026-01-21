@@ -1,15 +1,15 @@
 /**
  * AddOnMarketplace Component
- * 
+ *
  * Full marketplace view for browsing and purchasing add-ons and bundles.
- * 
+ *
  * Features:
  * - Display add-ons in grid/list view
  * - Filter by category and role
  * - Show monthly/annual pricing toggle
  * - Indicate owned add-ons
  * - Bundle section with savings
- * 
+ *
  * @requirement REQ-5.2 - Add-On Marketplace Component
  */
 
@@ -25,7 +25,7 @@ import { BundleCard } from './BundleCard';
 
 /**
  * AddOnMarketplace - Full marketplace for add-ons and bundles
- * 
+ *
  * @param {Object} props
  * @param {string} props.role - Filter by user role (optional)
  * @param {boolean} props.showBundles - Whether to show bundles section
@@ -38,7 +38,7 @@ export function AddOnMarketplace({
   showBundles = true,
   showHeader = true,
   compact = false,
-  className = ''
+  className = '',
 }) {
   const [billingPeriod, setBillingPeriod] = useState('monthly');
   const [viewMode, setViewMode] = useState('grid');
@@ -46,44 +46,52 @@ export function AddOnMarketplace({
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
 
-  const { 
-    addOns, 
-    bundles, 
-    categories, 
-    addOnsByCategory,
-    isLoading,
-    searchAddOns 
-  } = useAddOnCatalog({ role });
+  const { addOns, bundles, categories, addOnsByCategory, isLoading, searchAddOns } =
+    useAddOnCatalog({ role });
 
-  const { purchaseAddOn, purchaseBundle, isPurchasing, refreshAccess, fetchUserEntitlements, activeEntitlements } = useSubscriptionContext();
+  const {
+    purchaseAddOn,
+    purchaseBundle,
+    isPurchasing,
+    refreshAccess,
+    fetchUserEntitlements,
+    activeEntitlements,
+  } = useSubscriptionContext();
   const [purchaseError, setPurchaseError] = useState(null);
 
   // Helper to check if user already owns an add-on (including cancelled but not expired)
-  const isAddOnOwned = useCallback((featureKey) => {
-    if (!activeEntitlements) return false;
-    const now = new Date();
-    return activeEntitlements.some(ent => 
-      ent.feature_key === featureKey && 
-      (ent.status === 'active' || 
-       ent.status === 'grace_period' ||
-       (ent.status === 'cancelled' && ent.end_date && new Date(ent.end_date) >= now))
-    );
-  }, [activeEntitlements]);
+  const isAddOnOwned = useCallback(
+    (featureKey) => {
+      if (!activeEntitlements) return false;
+      const now = new Date();
+      return activeEntitlements.some(
+        (ent) =>
+          ent.feature_key === featureKey &&
+          (ent.status === 'active' ||
+            ent.status === 'grace_period' ||
+            (ent.status === 'cancelled' && ent.end_date && new Date(ent.end_date) >= now))
+      );
+    },
+    [activeEntitlements]
+  );
 
   // Helper to check if user owns all features in a bundle
-  const isBundleFullyOwned = useCallback((bundleFeatureKeys) => {
-    if (!activeEntitlements || !bundleFeatureKeys?.length) return false;
-    return bundleFeatureKeys.every(key => isAddOnOwned(key));
-  }, [activeEntitlements, isAddOnOwned]);
+  const isBundleFullyOwned = useCallback(
+    (bundleFeatureKeys) => {
+      if (!activeEntitlements || !bundleFeatureKeys?.length) return false;
+      return bundleFeatureKeys.every((key) => isAddOnOwned(key));
+    },
+    [activeEntitlements, isAddOnOwned]
+  );
 
   // Filter add-ons based on search and category
   const filteredAddOns = useMemo(() => {
     let result = searchTerm ? searchAddOns(searchTerm) : addOns;
-    
+
     if (selectedCategory) {
-      result = result.filter(a => a.category === selectedCategory);
+      result = result.filter((a) => a.category === selectedCategory);
     }
-    
+
     return result;
   }, [addOns, searchTerm, selectedCategory, searchAddOns]);
 
@@ -91,20 +99,22 @@ export function AddOnMarketplace({
   const handlePurchaseAddOn = async (featureKey, period) => {
     try {
       setPurchaseError(null);
-      
+
       // Frontend duplicate check
       if (isAddOnOwned(featureKey)) {
-        setPurchaseError('You already own this add-on. Access is active until your subscription expires.');
+        setPurchaseError(
+          'You already own this add-on. Access is active until your subscription expires.'
+        );
         return;
       }
-      
+
       // Load Razorpay script first
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
         setPurchaseError('Failed to load payment system. Please refresh and try again.');
         return;
       }
-      
+
       const orderData = await purchaseAddOn(featureKey, period);
       if (orderData && window.Razorpay) {
         initializeRazorpay(orderData, 'addon');
@@ -112,7 +122,10 @@ export function AddOnMarketplace({
     } catch (error) {
       console.error('Purchase failed:', error);
       // Handle specific error codes from backend
-      if (error.message?.includes('already have') || error.message?.includes('ENTITLEMENT_EXISTS')) {
+      if (
+        error.message?.includes('already have') ||
+        error.message?.includes('ENTITLEMENT_EXISTS')
+      ) {
         setPurchaseError('You already own this add-on.');
       } else {
         setPurchaseError(error.message || 'Purchase failed');
@@ -124,24 +137,24 @@ export function AddOnMarketplace({
   const handlePurchaseBundle = async (bundleId, period) => {
     try {
       setPurchaseError(null);
-      
+
       // Get bundle to check features
-      const bundle = bundles.find(b => b.id === bundleId);
-      const bundleFeatureKeys = bundle?.bundle_features?.map(bf => bf.feature_key) || [];
-      
+      const bundle = bundles.find((b) => b.id === bundleId);
+      const bundleFeatureKeys = bundle?.bundle_features?.map((bf) => bf.feature_key) || [];
+
       // Frontend duplicate check
       if (isBundleFullyOwned(bundleFeatureKeys)) {
         setPurchaseError('You already own all features in this bundle.');
         return;
       }
-      
+
       // Load Razorpay script first
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
         setPurchaseError('Failed to load payment system. Please refresh and try again.');
         return;
       }
-      
+
       const orderData = await purchaseBundle(bundleId, period);
       if (orderData && window.Razorpay) {
         initializeRazorpay(orderData, 'bundle');
@@ -166,13 +179,13 @@ export function AddOnMarketplace({
       name: 'SkillPassport',
       description: orderData.addOnName || orderData.bundleName,
       order_id: orderData.orderId,
-      handler: async function(response) {
+      handler: async function (response) {
         // Payment successful - verify and create entitlement
         console.log('[AddOnMarketplace] Payment successful, verifying...', response);
-        
+
         try {
           let verifyResult;
-          
+
           if (type === 'bundle') {
             // Use bundle verification endpoint
             verifyResult = await addOnPaymentService.verifyBundlePayment(
@@ -190,42 +203,45 @@ export function AddOnMarketplace({
               response.razorpay_signature
             );
           }
-          
+
           console.log('[AddOnMarketplace] Verification result:', verifyResult);
-          
+
           if (verifyResult.success) {
             console.log('[AddOnMarketplace] Payment verified and entitlement created!');
             // Clear feature access cache to force re-check
             clearFeatureAccessCache();
             // Refresh entitlements in context instead of page reload
-            await Promise.all([
-              refreshAccess(),
-              fetchUserEntitlements()
-            ]);
+            await Promise.all([refreshAccess(), fetchUserEntitlements()]);
           } else {
-            setPurchaseError(`Payment verification failed: ${verifyResult.error}. Please contact support with Order ID: ${response.razorpay_order_id}`);
+            setPurchaseError(
+              `Payment verification failed: ${verifyResult.error}. Please contact support with Order ID: ${response.razorpay_order_id}`
+            );
           }
         } catch (verifyError) {
           console.error('[AddOnMarketplace] Verification error:', verifyError);
-          setPurchaseError(`Payment completed but verification failed. Please contact support with Order ID: ${response.razorpay_order_id}`);
+          setPurchaseError(
+            `Payment completed but verification failed. Please contact support with Order ID: ${response.razorpay_order_id}`
+          );
         }
       },
       theme: { color: '#4F46E5' },
       modal: {
         ondismiss: () => {
           console.log('[AddOnMarketplace] Payment modal dismissed');
-        }
-      }
+        },
+      },
     };
-    
+
     const rzp = new window.Razorpay(options);
-    
+
     // Handle payment failure
     rzp.on('payment.failed', (response) => {
       console.error('[AddOnMarketplace] Payment failed:', response.error);
-      setPurchaseError(`Payment failed: ${response.error.description || 'Unknown error'}. Please try again.`);
+      setPurchaseError(
+        `Payment failed: ${response.error.description || 'Unknown error'}. Please try again.`
+      );
     });
-    
+
     rzp.open();
   };
 
@@ -241,7 +257,7 @@ export function AddOnMarketplace({
           <X className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
             <p className="text-red-700 text-sm">{purchaseError}</p>
-            <button 
+            <button
               onClick={() => setPurchaseError(null)}
               className="text-red-600 text-sm underline mt-1 hover:text-red-800"
             >
@@ -250,15 +266,13 @@ export function AddOnMarketplace({
           </div>
         </div>
       )}
-      
+
       {/* Header - conditionally rendered */}
       {showHeader && (
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Add-On Marketplace</h1>
-            <p className="text-gray-600 mt-1">
-              Enhance your experience with premium features
-            </p>
+            <p className="text-gray-600 mt-1">Enhance your experience with premium features</p>
           </div>
 
           {/* Billing Period Toggle */}
@@ -390,7 +404,7 @@ export function AddOnMarketplace({
           >
             All
           </button>
-          {categories.map(category => (
+          {categories.map((category) => (
             <button
               key={category}
               onClick={() => setSelectedCategory(category)}
@@ -416,7 +430,7 @@ export function AddOnMarketplace({
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {bundles.map(bundle => (
+            {bundles.map((bundle) => (
               <BundleCard
                 key={bundle.id}
                 bundle={bundle}
@@ -438,14 +452,9 @@ export function AddOnMarketplace({
           <div className="flex items-center gap-2 mb-4">
             <Sparkles className="w-5 h-5 text-indigo-600" />
             <h2 className="text-lg font-semibold text-gray-900">
-              {selectedCategory 
-                ? `${selectedCategory.replace(/_/g, ' ')} Add-ons`
-                : 'All Add-ons'
-              }
+              {selectedCategory ? `${selectedCategory.replace(/_/g, ' ')} Add-ons` : 'All Add-ons'}
             </h2>
-            <span className="text-sm text-gray-500">
-              {filteredAddOns.length} available
-            </span>
+            <span className="text-sm text-gray-500">{filteredAddOns.length} available</span>
           </div>
         )}
 
@@ -464,7 +473,7 @@ export function AddOnMarketplace({
           </div>
         ) : viewMode === 'grid' ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {filteredAddOns.map(addOn => (
+            {filteredAddOns.map((addOn) => (
               <AddOnCard
                 key={addOn.feature_key}
                 addOn={addOn}
@@ -477,7 +486,7 @@ export function AddOnMarketplace({
           </div>
         ) : (
           <div className="space-y-3">
-            {filteredAddOns.map(addOn => (
+            {filteredAddOns.map((addOn) => (
               <AddOnCard
                 key={addOn.feature_key}
                 addOn={addOn}
@@ -512,13 +521,13 @@ function MarketplaceSkeleton() {
       <div className="h-12 bg-gray-200 rounded-lg" />
 
       <div className="grid md:grid-cols-3 gap-6">
-        {[1, 2, 3].map(i => (
+        {[1, 2, 3].map((i) => (
           <div key={i} className="h-64 bg-gray-200 rounded-xl" />
         ))}
       </div>
 
       <div className="grid md:grid-cols-4 gap-6">
-        {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+        {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
           <div key={i} className="h-48 bg-gray-200 rounded-xl" />
         ))}
       </div>

@@ -1,7 +1,7 @@
 /**
  * Stream Selection Screen Component
  * Displays specific stream options based on selected category
- * 
+ *
  * @module features/assessment/components/StreamSelectionScreen
  */
 
@@ -10,7 +10,11 @@ import { ArrowLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { Button } from '../../../components/Students/components/ui/button';
 import { Card, CardContent } from '../../../components/Students/components/ui/card';
 import { Label } from '../../../components/Students/components/ui/label';
-import { STREAMS_BY_CATEGORY, STREAM_CATEGORIES, AFTER10_STREAMS_BY_CATEGORY } from '../constants/config';
+import {
+  STREAMS_BY_CATEGORY,
+  STREAM_CATEGORIES,
+  AFTER10_STREAMS_BY_CATEGORY,
+} from '../constants/config';
 
 /**
  * @typedef {Object} StreamSelectionScreenProps
@@ -27,7 +31,7 @@ import { STREAMS_BY_CATEGORY, STREAM_CATEGORIES, AFTER10_STREAMS_BY_CATEGORY } f
  */
 const getCategoryLabel = (categoryId) => {
   if (!categoryId) return 'Selected';
-  const category = STREAM_CATEGORIES.find(c => c.id === categoryId);
+  const category = STREAM_CATEGORIES.find((c) => c.id === categoryId);
   return category?.label || categoryId;
 };
 
@@ -38,8 +42,8 @@ const StreamOptionButton = ({ stream, onClick, isRecommended }) => (
   <button
     onClick={() => onClick(stream.id)}
     className={`w-full p-5 bg-white/80 backdrop-blur-sm border-2 rounded-xl shadow-sm hover:shadow-lg hover:shadow-indigo-500/10 transition-all duration-300 text-left group transform hover:-translate-y-0.5 relative overflow-hidden ${
-      isRecommended 
-        ? 'border-indigo-300 bg-indigo-50/50' 
+      isRecommended
+        ? 'border-indigo-300 bg-indigo-50/50'
         : 'border-gray-100 hover:border-indigo-300'
     }`}
   >
@@ -57,11 +61,7 @@ const StreamOptionButton = ({ stream, onClick, isRecommended }) => (
           )}
         </div>
         {/* Show description if available (for after10 streams) */}
-        {stream.description && (
-          <p className="text-sm text-gray-600 mt-1">
-            {stream.description}
-          </p>
-        )}
+        {stream.description && <p className="text-sm text-gray-600 mt-1">{stream.description}</p>}
         {/* Show RIASEC info if no description */}
         {!stream.description && stream.riasec && stream.riasec.length > 0 && (
           <p className="text-xs text-gray-500 mt-1">
@@ -100,12 +100,13 @@ export const StreamSelectionScreen = ({
   // Use different streams based on grade level
   // For higher_secondary (11th/12th), after10, and after12, use the school stream config (PCMB, Commerce with Maths, etc.)
   // For college, use the college degree config (BSc, BA, BBA, etc.)
-  const streamsConfig = (gradeLevel === 'after10' || gradeLevel === 'higher_secondary' || gradeLevel === 'after12') 
-    ? AFTER10_STREAMS_BY_CATEGORY 
-    : STREAMS_BY_CATEGORY;
-  
+  const streamsConfig =
+    gradeLevel === 'after10' || gradeLevel === 'higher_secondary' || gradeLevel === 'after12'
+      ? AFTER10_STREAMS_BY_CATEGORY
+      : STREAMS_BY_CATEGORY;
+
   // Get streams for selected category (handle null/undefined)
-  const streams = selectedCategory ? (streamsConfig[selectedCategory] || []) : [];
+  const streams = selectedCategory ? streamsConfig[selectedCategory] || [] : [];
   const categoryLabel = getCategoryLabel(selectedCategory);
 
   // Check if a stream matches student's program (for recommendations)
@@ -114,10 +115,12 @@ export const StreamSelectionScreen = ({
     const programLower = studentProgram.toLowerCase();
     const streamLabel = stream.label.toLowerCase();
     const streamId = stream.id.toLowerCase();
-    
-    return streamLabel.includes(programLower) || 
-           programLower.includes(streamId) ||
-           streamId.includes(programLower.substring(0, 3));
+
+    return (
+      streamLabel.includes(programLower) ||
+      programLower.includes(streamId) ||
+      streamId.includes(programLower.substring(0, 3))
+    );
   };
 
   // Sort streams to show recommended first
@@ -187,7 +190,7 @@ export const StreamSelectionScreen = ({
               </Label>
 
               {sortedStreams.length > 0 ? (
-                sortedStreams.map(stream => (
+                sortedStreams.map((stream) => (
                   <StreamOptionButton
                     key={stream.id}
                     stream={stream}

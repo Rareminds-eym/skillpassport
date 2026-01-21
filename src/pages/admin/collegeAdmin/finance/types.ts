@@ -36,8 +36,16 @@ export interface FeeStructure {
   updated_at?: string;
 }
 
-export type FeeCategory = "General" | "OBC" | "SC" | "ST" | "EWS" | "Management" | "NRI" | "Foreign";
-export type FeeQuota = "Merit" | "Management" | "NRI" | "Sports" | "Defense";
+export type FeeCategory =
+  | 'General'
+  | 'OBC'
+  | 'SC'
+  | 'ST'
+  | 'EWS'
+  | 'Management'
+  | 'NRI'
+  | 'Foreign';
+export type FeeQuota = 'Merit' | 'Management' | 'NRI' | 'Sports' | 'Defense';
 
 export interface Department {
   id: string;
@@ -55,43 +63,51 @@ export interface Program {
 
 // PU College Streams
 export const PU_STREAMS = [
-  "Science (PCMB)",
-  "Science (PCMC)",
-  "Science (PCME)",
-  "Commerce",
-  "Commerce with Computer Science",
-  "Arts",
-  "Arts with Psychology",
+  'Science (PCMB)',
+  'Science (PCMC)',
+  'Science (PCME)',
+  'Commerce',
+  'Commerce with Computer Science',
+  'Arts',
+  'Arts with Psychology',
 ];
 
 // College Years
 export const PU_YEARS = [
-  { value: 1, label: "1st Year" },
-  { value: 2, label: "2nd Year" },
-  { value: 3, label: "3rd Year" },
-  { value: 4, label: "4th Year" },
+  { value: 1, label: '1st Year' },
+  { value: 2, label: '2nd Year' },
+  { value: 3, label: '3rd Year' },
+  { value: 4, label: '4th Year' },
 ];
 
-export const FEE_CATEGORIES: FeeCategory[] = ["General", "OBC", "SC", "ST", "EWS", "Management", "NRI", "Foreign"];
-export const FEE_QUOTAS: FeeQuota[] = ["Merit", "Management", "NRI", "Sports", "Defense"];
+export const FEE_CATEGORIES: FeeCategory[] = [
+  'General',
+  'OBC',
+  'SC',
+  'ST',
+  'EWS',
+  'Management',
+  'NRI',
+  'Foreign',
+];
+export const FEE_QUOTAS: FeeQuota[] = ['Merit', 'Management', 'NRI', 'Sports', 'Defense'];
 
 export const DEFAULT_FEE_HEADS = [
-  "Tuition Fee",
-  "Admission Fee",
-  "Lab Fee",
-  "Library Fee",
-  "Examination Fee",
-  "Development Fee",
-  "Sports Fee",
-  "Cultural Fee",
-  "Computer Lab Fee",
-  "ID Card Fee",
-  "Caution Deposit",
-  "Registration Fee",
-  "Association Fee",
-  "Magazine Fee",
+  'Tuition Fee',
+  'Admission Fee',
+  'Lab Fee',
+  'Library Fee',
+  'Examination Fee',
+  'Development Fee',
+  'Sports Fee',
+  'Cultural Fee',
+  'Computer Lab Fee',
+  'ID Card Fee',
+  'Caution Deposit',
+  'Registration Fee',
+  'Association Fee',
+  'Magazine Fee',
 ];
-
 
 // Fee Tracking Types
 export interface StudentLedger {
@@ -121,7 +137,7 @@ export interface StudentLedger {
   updated_at?: string;
 }
 
-export type PaymentStatus = "pending" | "partial" | "paid" | "overdue" | "waived";
+export type PaymentStatus = 'pending' | 'partial' | 'paid' | 'overdue' | 'waived';
 
 export interface FeePayment {
   id: string;
@@ -152,9 +168,17 @@ export interface FeePayment {
   updated_at?: string;
 }
 
-export type PaymentMode = "Cash" | "Cheque" | "DD" | "Online" | "UPI" | "Bank Transfer" | "Card";
+export type PaymentMode = 'Cash' | 'Cheque' | 'DD' | 'Online' | 'UPI' | 'Bank Transfer' | 'Card';
 
-export const PAYMENT_MODES: PaymentMode[] = ["Cash", "Cheque", "DD", "Online", "UPI", "Bank Transfer", "Card"];
+export const PAYMENT_MODES: PaymentMode[] = [
+  'Cash',
+  'Cheque',
+  'DD',
+  'Online',
+  'UPI',
+  'Bank Transfer',
+  'Card',
+];
 
 // Aggregated student fee summary for list view
 export interface StudentFeeSummary {

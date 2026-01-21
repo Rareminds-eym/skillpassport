@@ -1,11 +1,11 @@
 import {
-    ChevronDownIcon,
-    ClipboardDocumentListIcon,
-    EyeIcon,
-    FunnelIcon,
-    SparklesIcon,
-    Squares2X2Icon,
-    TableCellsIcon
+  ChevronDownIcon,
+  ClipboardDocumentListIcon,
+  EyeIcon,
+  FunnelIcon,
+  SparklesIcon,
+  Squares2X2Icon,
+  TableCellsIcon,
 } from '@heroicons/react/24/outline';
 import React, { useEffect, useMemo, useState } from 'react';
 import SearchBar from '../../components/common/SearchBar';
@@ -44,9 +44,7 @@ const FilterSection = ({ title, children, defaultOpen = false }: any) => {
         className="flex items-center justify-between w-full text-left"
       >
         <span className="text-sm font-medium text-gray-900">{title}</span>
-        <ChevronDownIcon
-          className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-        />
+        <ChevronDownIcon className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {isOpen && <div className="mt-3">{children}</div>}
     </div>
@@ -93,9 +91,7 @@ const ScoreBadge = ({ score, label }: { score: number | null; label: string }) =
 
   return (
     <div className="flex flex-col items-center">
-      <span
-        className={`px-2 py-1 rounded-full text-xs font-semibold ${getScoreColor(score)}`}
-      >
+      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getScoreColor(score)}`}>
         {score !== null ? `${score}%` : 'N/A'}
       </span>
       <span className="text-xs text-gray-500 mt-1">{label}</span>
@@ -127,15 +123,8 @@ const ReadinessBadge = ({ readiness }: { readiness: string | null }) => {
   );
 };
 
-
 // Assessment Card Component
-const AssessmentCard = ({
-  result,
-  onView,
-}: {
-  result: AssessmentResult;
-  onView: () => void;
-}) => {
+const AssessmentCard = ({ result, onView }: { result: AssessmentResult; onView: () => void }) => {
   return (
     <div
       className="bg-white border border-gray-200 rounded-lg p-5 hover:shadow-md transition-all duration-200 cursor-pointer group"
@@ -227,8 +216,6 @@ const AssessmentCard = ({
   );
 };
 
-
-
 // Main Component
 const EducatorAssessmentResults: React.FC = () => {
   // @ts-ignore - AuthContext is a .jsx file
@@ -310,7 +297,7 @@ const EducatorAssessmentResults: React.FC = () => {
       if (schoolEducatorData?.school_id) {
         // School educator
         schoolId = schoolEducatorData.school_id;
-        
+
         // Apply filtering based on educator role and class assignments
         if (schoolEducatorData.role === 'admin' || schoolEducatorData.role === 'school_admin') {
           // School admins can see all students in their school
@@ -323,7 +310,7 @@ const EducatorAssessmentResults: React.FC = () => {
             .eq('educator_id', schoolEducatorData.id);
 
           if (!classError && classAssignments && classAssignments.length > 0) {
-            const assignedClassIds = classAssignments.map(assignment => assignment.class_id);
+            const assignedClassIds = classAssignments.map((assignment) => assignment.class_id);
             studentsQuery = studentsQuery
               .eq('school_id', schoolId)
               .in('school_class_id', assignedClassIds);
@@ -341,7 +328,7 @@ const EducatorAssessmentResults: React.FC = () => {
           .select('name')
           .eq('id', schoolId)
           .maybeSingle();
-        
+
         schoolName = orgData?.name || '';
       } else {
         // Check if they are a college lecturer
@@ -358,7 +345,7 @@ const EducatorAssessmentResults: React.FC = () => {
         if (collegeLecturerData?.collegeId) {
           // College lecturer - check for course assignments
           schoolId = collegeLecturerData.collegeId;
-          
+
           // Check if lecturer has any course assignments
           const { data: courseAssignments, error: courseAssignError } = await supabase
             .from('college_lecturer_course_assignments')
@@ -367,7 +354,7 @@ const EducatorAssessmentResults: React.FC = () => {
 
           if (!courseAssignError && courseAssignments && courseAssignments.length > 0) {
             // Lecturer has course assignments - filter students by those courses
-            const assignedCourseIds = courseAssignments.map(a => a.courseId);
+            const assignedCourseIds = courseAssignments.map((a) => a.courseId);
             studentsQuery = studentsQuery
               .eq('college_id', schoolId)
               .in('collegeCourseId', assignedCourseIds);
@@ -375,7 +362,7 @@ const EducatorAssessmentResults: React.FC = () => {
             // No course assignments - lecturer should see no students
             // (unless they are an admin, which we check via metadata or role)
             const isCollegeAdmin = collegeLecturerData.department === 'Administration';
-            
+
             if (isCollegeAdmin) {
               // College admin can see all students in their college
               studentsQuery = studentsQuery.eq('college_id', schoolId);
@@ -383,14 +370,14 @@ const EducatorAssessmentResults: React.FC = () => {
               // Regular lecturer with no assignments - return empty results
               setResults([]);
               setSchoolName('');
-              
+
               // Get college name for display from organizations table
               const { data: orgData } = await supabase
                 .from('organizations')
                 .select('name')
                 .eq('id', schoolId)
                 .maybeSingle();
-              
+
               setSchoolName(orgData?.name || '');
               setLoading(false);
               return;
@@ -403,11 +390,13 @@ const EducatorAssessmentResults: React.FC = () => {
             .select('name')
             .eq('id', schoolId)
             .maybeSingle();
-          
+
           schoolName = orgData?.name || '';
         } else {
           console.error('No educator found for user:', { userId, userEmail });
-          setError('No school or college associated with your account. Please contact your administrator.');
+          setError(
+            'No school or college associated with your account. Please contact your administrator.'
+          );
           setLoading(false);
           return;
         }
@@ -428,7 +417,7 @@ const EducatorAssessmentResults: React.FC = () => {
 
       // Filter out students with null user_id to avoid UUID parsing errors
       const validStudents = studentsData.filter((s) => s.user_id != null);
-      
+
       if (validStudents.length === 0) {
         setResults([]);
         setLoading(false);
@@ -441,7 +430,8 @@ const EducatorAssessmentResults: React.FC = () => {
       // Fetch assessment results for these students
       const { data, error: fetchError } = await supabase
         .from('personal_assessment_results')
-        .select(`
+        .select(
+          `
           id,
           student_id,
           stream_id,
@@ -454,7 +444,8 @@ const EducatorAssessmentResults: React.FC = () => {
           career_fit,
           skill_gap,
           gemini_results
-        `)
+        `
+        )
         .in('student_id', studentIds)
         .order('created_at', { ascending: false });
 
@@ -562,17 +553,13 @@ const EducatorAssessmentResults: React.FC = () => {
 
     // Status filter
     if (filters.statuses.length > 0) {
-      filtered = filtered.filter(
-        (r) => r.status && filters.statuses.includes(r.status)
-      );
+      filtered = filtered.filter((r) => r.status && filters.statuses.includes(r.status));
     }
 
     // Readiness filter
     if (filters.readiness.length > 0) {
       filtered = filtered.filter(
-        (r) =>
-          r.employability_readiness &&
-          filters.readiness.includes(r.employability_readiness)
+        (r) => r.employability_readiness && filters.readiness.includes(r.employability_readiness)
       );
     }
 
@@ -580,25 +567,16 @@ const EducatorAssessmentResults: React.FC = () => {
     const sorted = [...filtered];
     switch (sortBy) {
       case 'date':
-        sorted.sort(
-          (a, b) =>
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
+        sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         break;
       case 'name':
-        sorted.sort((a, b) =>
-          (a.student_name || '').localeCompare(b.student_name || '')
-        );
+        sorted.sort((a, b) => (a.student_name || '').localeCompare(b.student_name || ''));
         break;
       case 'aptitude':
-        sorted.sort(
-          (a, b) => (b.aptitude_overall || 0) - (a.aptitude_overall || 0)
-        );
+        sorted.sort((a, b) => (b.aptitude_overall || 0) - (a.aptitude_overall || 0));
         break;
       case 'knowledge':
-        sorted.sort(
-          (a, b) => (b.knowledge_score || 0) - (a.knowledge_score || 0)
-        );
+        sorted.sort((a, b) => (b.knowledge_score || 0) - (a.knowledge_score || 0));
         break;
       default:
         break;
@@ -635,16 +613,12 @@ const EducatorAssessmentResults: React.FC = () => {
     const avgAptitude =
       results.length > 0
         ? Math.round(
-            results.reduce((sum, r) => sum + (r.aptitude_overall || 0), 0) /
-              results.length
+            results.reduce((sum, r) => sum + (r.aptitude_overall || 0), 0) / results.length
           )
         : 0;
     const avgKnowledge =
       results.length > 0
-        ? Math.round(
-            results.reduce((sum, r) => sum + (r.knowledge_score || 0), 0) /
-              results.length
-          )
+        ? Math.round(results.reduce((sum, r) => sum + (r.knowledge_score || 0), 0) / results.length)
         : 0;
     return { total: results.length, completed, avgAptitude, avgKnowledge };
   }, [results]);
@@ -666,9 +640,7 @@ const EducatorAssessmentResults: React.FC = () => {
       <div className="p-6 bg-white border-b border-gray-200">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Student Assessment Results
-            </h1>
+            <h1 className="text-2xl font-bold text-gray-900">Student Assessment Results</h1>
             <p className="text-sm text-gray-600 mt-1">
               View personal assessment results for {schoolName || 'your school'}
             </p>
@@ -774,9 +746,7 @@ const EducatorAssessmentResults: React.FC = () => {
                 <CheckboxGroup
                   options={streamOptions}
                   selectedValues={filters.streams}
-                  onChange={(values: string[]) =>
-                    setFilters({ ...filters, streams: values })
-                  }
+                  onChange={(values: string[]) => setFilters({ ...filters, streams: values })}
                 />
               </FilterSection>
 
@@ -784,9 +754,7 @@ const EducatorAssessmentResults: React.FC = () => {
                 <CheckboxGroup
                   options={statusOptions}
                   selectedValues={filters.statuses}
-                  onChange={(values: string[]) =>
-                    setFilters({ ...filters, statuses: values })
-                  }
+                  onChange={(values: string[]) => setFilters({ ...filters, statuses: values })}
                 />
               </FilterSection>
 
@@ -794,9 +762,7 @@ const EducatorAssessmentResults: React.FC = () => {
                 <CheckboxGroup
                   options={readinessOptions}
                   selectedValues={filters.readiness}
-                  onChange={(values: string[]) =>
-                    setFilters({ ...filters, readiness: values })
-                  }
+                  onChange={(values: string[]) => setFilters({ ...filters, readiness: values })}
                 />
               </FilterSection>
             </div>
@@ -834,8 +800,7 @@ const EducatorAssessmentResults: React.FC = () => {
           ) : (
             <>
               <div className="mb-4 text-sm text-gray-600">
-                Showing {startIndex + 1}-
-                {Math.min(endIndex, filteredResults.length)} of{' '}
+                Showing {startIndex + 1}-{Math.min(endIndex, filteredResults.length)} of{' '}
                 {filteredResults.length} results
               </div>
 
@@ -887,17 +852,14 @@ const EducatorAssessmentResults: React.FC = () => {
                             <div className="flex items-center">
                               <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
                                 <span className="text-white font-semibold text-sm">
-                                  {result.student_name?.charAt(0)?.toUpperCase() ||
-                                    '?'}
+                                  {result.student_name?.charAt(0)?.toUpperCase() || '?'}
                                 </span>
                               </div>
                               <div className="ml-4">
                                 <div className="text-sm font-medium text-gray-900">
                                   {result.student_name || 'Unknown'}
                                 </div>
-                                <div className="text-sm text-gray-500">
-                                  {result.student_email}
-                                </div>
+                                <div className="text-sm text-gray-500">{result.student_email}</div>
                               </div>
                             </div>
                           </td>
@@ -910,19 +872,13 @@ const EducatorAssessmentResults: React.FC = () => {
                             {result.riasec_code || '-'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            {result.aptitude_overall !== null
-                              ? `${result.aptitude_overall}%`
-                              : '-'}
+                            {result.aptitude_overall !== null ? `${result.aptitude_overall}%` : '-'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            {result.knowledge_score !== null
-                              ? `${result.knowledge_score}%`
-                              : '-'}
+                            {result.knowledge_score !== null ? `${result.knowledge_score}%` : '-'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <ReadinessBadge
-                              readiness={result.employability_readiness}
-                            />
+                            <ReadinessBadge readiness={result.employability_readiness} />
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {new Date(result.created_at).toLocaleDateString()}
@@ -956,9 +912,7 @@ const EducatorAssessmentResults: React.FC = () => {
                     Page {currentPage} of {totalPages}
                   </span>
                   <button
-                    onClick={() =>
-                      setCurrentPage((p) => Math.min(totalPages, p + 1))
-                    }
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages}
                     className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50"
                   >
@@ -973,14 +927,18 @@ const EducatorAssessmentResults: React.FC = () => {
 
       {/* Assessment Report Drawer - Uses the same design as student assessment result page */}
       <AssessmentReportDrawer
-        student={selectedResult ? {
-          id: selectedResult.student_id, // This is actually the user_id
-          user_id: selectedResult.student_id,
-          name: selectedResult.student_name,
-          email: selectedResult.student_email,
-          college: selectedResult.college_name,
-          college_name: selectedResult.college_name,
-        } : null}
+        student={
+          selectedResult
+            ? {
+                id: selectedResult.student_id, // This is actually the user_id
+                user_id: selectedResult.student_id,
+                name: selectedResult.student_name,
+                email: selectedResult.student_email,
+                college: selectedResult.college_name,
+                college_name: selectedResult.college_name,
+              }
+            : null
+        }
         assessmentResult={selectedResult}
         isOpen={showDetailModal}
         onClose={() => {

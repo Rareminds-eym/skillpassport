@@ -26,10 +26,10 @@ export function buildRichStudentContext(profile: StudentProfile): string {
   const projects = profile.profile?.projects || [];
   const certificates = profile.profile?.certificates || [];
   const experience = profile.profile?.experience || [];
-  
+
   const completedTraining = training.filter((t: any) => t.status === 'completed');
   const ongoingTraining = training.filter((t: any) => t.status === 'ongoing');
-  
+
   return `**STUDENT PROFILE:**
 Name: ${profile.name}
 Field/Department: ${profile.department}
@@ -38,43 +38,66 @@ ${profile.cgpa ? `CGPA: ${profile.cgpa}` : ''}
 ${profile.year_of_passing ? `Year of Passing: ${profile.year_of_passing}` : ''}
 
 **TECHNICAL SKILLS (${skills.length}):**
-${skills.length > 0 
-  ? skills.map((s: any) => `- ${s.name} (Level: ${s.level}/5)${s.source ? ` [from ${s.source}]` : ''}`).join('\n')
-  : '- No technical skills listed yet'}
+${
+  skills.length > 0
+    ? skills
+        .map(
+          (s: any) => `- ${s.name} (Level: ${s.level}/5)${s.source ? ` [from ${s.source}]` : ''}`
+        )
+        .join('\n')
+    : '- No technical skills listed yet'
+}
 
 **SOFT SKILLS:**
-${softSkills.length > 0 
-  ? softSkills.map((s: any) => `- ${s.name}`).join('\n')
-  : '- Not specified'}
+${softSkills.length > 0 ? softSkills.map((s: any) => `- ${s.name}`).join('\n') : '- Not specified'}
 
 **COMPLETED TRAINING/COURSES (${completedTraining.length}):**
-${completedTraining.length > 0
-  ? completedTraining.map((t: any) => `- ${t.course}${t.skills ? ` [Skills: ${t.skills.join(', ')}]` : ''}`).join('\n')
-  : '- None completed yet'}
+${
+  completedTraining.length > 0
+    ? completedTraining
+        .map((t: any) => `- ${t.course}${t.skills ? ` [Skills: ${t.skills.join(', ')}]` : ''}`)
+        .join('\n')
+    : '- None completed yet'
+}
 
 **ONGOING LEARNING (${ongoingTraining.length}):**
-${ongoingTraining.length > 0
-  ? ongoingTraining.map((t: any) => `- ${t.course}`).join('\n')
-  : '- No active courses'}
+${
+  ongoingTraining.length > 0
+    ? ongoingTraining.map((t: any) => `- ${t.course}`).join('\n')
+    : '- No active courses'
+}
 
 **PROJECTS (${projects.length}):**
-${projects.length > 0
-  ? projects.map((p: any) => `- ${p.title || 'Untitled'}${p.status ? ` (${p.status})` : ''}${
-      p.skills || p.technologies || p.techStack 
-        ? ` [Tech: ${(p.skills || p.technologies || p.techStack).join(', ')}]` 
-        : ''
-    }`).join('\n')
-  : '- No projects listed'}
+${
+  projects.length > 0
+    ? projects
+        .map(
+          (p: any) =>
+            `- ${p.title || 'Untitled'}${p.status ? ` (${p.status})` : ''}${
+              p.skills || p.technologies || p.techStack
+                ? ` [Tech: ${(p.skills || p.technologies || p.techStack).join(', ')}]`
+                : ''
+            }`
+        )
+        .join('\n')
+    : '- No projects listed'
+}
 
 **CERTIFICATIONS (${certificates.length}):**
-${certificates.length > 0
-  ? certificates.map((c: any) => `- ${c.name}${c.issuer ? ` by ${c.issuer}` : ''}`).join('\n')
-  : '- No certifications yet'}
+${
+  certificates.length > 0
+    ? certificates.map((c: any) => `- ${c.name}${c.issuer ? ` by ${c.issuer}` : ''}`).join('\n')
+    : '- No certifications yet'
+}
 
 **EXPERIENCE:**
-${experience.length > 0
-  ? experience.map((e: any) => `- ${e.role} at ${e.company}${e.duration ? ` (${e.duration})` : ''}`).join('\n')
-  : '- No formal experience yet (projects count!)'}`;
+${
+  experience.length > 0
+    ? experience
+        .map((e: any) => `- ${e.role} at ${e.company}${e.duration ? ` (${e.duration})` : ''}`)
+        .join('\n')
+    : '- No formal experience yet (projects count!)'
+}`;
 }
 
 /**
@@ -82,67 +105,98 @@ ${experience.length > 0
  */
 export function buildMarketContext(opportunities: Opportunity[], inDemandSkills: string[]): string {
   const topSkills = inDemandSkills.slice(0, 15);
-  
+
   return `**CURRENT JOB MARKET DATA (${opportunities.length} opportunities analyzed):**
 
 **Top In-Demand Skills:**
-${topSkills.slice(0, 10).map((skill, i) => `${i + 1}. ${skill}`).join('\n')}
+${topSkills
+  .slice(0, 10)
+  .map((skill, i) => `${i + 1}. ${skill}`)
+  .join('\n')}
 
 **Job Types Available:**
-${Array.from(new Set(opportunities.map(o => o.employment_type)))
+${Array.from(new Set(opportunities.map((o) => o.employment_type)))
   .filter(Boolean)
-  .map(type => `- ${type}`)
+  .map((type) => `- ${type}`)
   .join('\n')}
 
 **Top Companies Hiring:**
-${Array.from(new Set(opportunities.map(o => o.company_name)))
+${Array.from(new Set(opportunities.map((o) => o.company_name)))
   .slice(0, 8)
-  .map(company => `- ${company}`)
+  .map((company) => `- ${company}`)
   .join('\n')}`;
 }
 
 /**
  * Detect if query is simple/specific or complex/comprehensive
  */
-export function detectQueryType(message: string): 'quick-answer' | 'detailed-guidance' | 'comprehensive-plan' {
+export function detectQueryType(
+  message: string
+): 'quick-answer' | 'detailed-guidance' | 'comprehensive-plan' {
   const lower = message.toLowerCase().trim();
   const wordCount = lower.split(/\s+/).length;
-  
+
   // Comparison question keywords (should get detailed guidance)
   const comparisonKeywords = [
-    'vs', 'versus', 'or', 'which is better', 'which one',
-    'difference between', 'compare', 'should i choose', 'should i use'
+    'vs',
+    'versus',
+    'or',
+    'which is better',
+    'which one',
+    'difference between',
+    'compare',
+    'should i choose',
+    'should i use',
   ];
-  
+
   // Quick answer keywords
   const quickKeywords = [
-    'suggest', 'recommend', 'list', 'best', 'top', 'good',
-    'which course', 'what course', 'any course', 'course for',
-    'tutorial', 'resource', 'platform', 'where to learn'
+    'suggest',
+    'recommend',
+    'list',
+    'best',
+    'top',
+    'good',
+    'which course',
+    'what course',
+    'any course',
+    'course for',
+    'tutorial',
+    'resource',
+    'platform',
+    'where to learn',
   ];
-  
+
   // Comprehensive plan keywords
   const planKeywords = [
-    'roadmap', 'plan', 'path', 'journey', 'prepare me',
-    'career guidance', 'how to become', 'switch career',
-    'comprehensive', 'complete guide', 'step by step'
+    'roadmap',
+    'plan',
+    'path',
+    'journey',
+    'prepare me',
+    'career guidance',
+    'how to become',
+    'switch career',
+    'comprehensive',
+    'complete guide',
+    'step by step',
   ];
-  
+
   // Check for comparison questions (always detailed guidance)
-  if (comparisonKeywords.some(kw => lower.includes(kw))) {
+  if (comparisonKeywords.some((kw) => lower.includes(kw))) {
     return 'detailed-guidance';
   }
-  
+
   // Check for comprehensive plan
-  if (planKeywords.some(kw => lower.includes(kw)) || wordCount > 15) {
+  if (planKeywords.some((kw) => lower.includes(kw)) || wordCount > 15) {
     return 'comprehensive-plan';
   }
-  
+
   // Check for quick answer (short, specific question)
-  if (quickKeywords.some(kw => lower.includes(kw)) && wordCount <= 10) {
+  if (quickKeywords.some((kw) => lower.includes(kw)) && wordCount <= 10) {
     return 'quick-answer';
   }
-  
+
   // Default to detailed guidance (middle ground)
   return 'detailed-guidance';
 }
@@ -159,7 +213,7 @@ export function createIntelligentLearningPrompt(
     context.marketData.relevantJobs,
     context.marketData.inDemandSkills
   );
-  
+
   const basePrompt = `${studentContext}
 
 ${marketContext}
@@ -193,7 +247,7 @@ The student asked a **specific, direct question**. Provide a **concise, focused 
 - Focus on actionable recommendations
 - Keep total response under 250 words`;
   }
-  
+
   if (context.userIntent === 'detailed-guidance') {
     return `${basePrompt}
 
@@ -226,7 +280,7 @@ Provide **detailed, personalized guidance** that considers their profile and mar
 - Connect to their career goals
 - Keep response under 500 words`;
   }
-  
+
   // comprehensive-plan
   return `${basePrompt}
 
@@ -291,16 +345,13 @@ For each resource:
 /**
  * Create context-aware general prompt (for questions without specific chips)
  */
-export function createIntelligentGeneralPrompt(
-  context: QueryContext,
-  userMessage: string
-): string {
+export function createIntelligentGeneralPrompt(context: QueryContext, userMessage: string): string {
   const studentContext = buildRichStudentContext(context.studentProfile);
   const marketContext = buildMarketContext(
     context.marketData.relevantJobs,
     context.marketData.inDemandSkills
   );
-  
+
   return `${studentContext}
 
 ${marketContext}
@@ -336,9 +387,8 @@ Keep responses concise (under 300 words unless they ask for comprehensive guidan
  */
 export const SYSTEM_PROMPTS = {
   learning: `You are an expert career coach and learning advisor with deep knowledge of online education platforms, courses, and learning paths. You provide personalized, actionable recommendations based on student profiles and market demand. You are honest about skill gaps and realistic about timelines. You always include specific course names, platforms, and practical next steps.`,
-  
-  general: `You are an intelligent career AI assistant with access to the student's complete profile and current job market data. You provide personalized, context-aware career guidance. You reference the student's actual skills, projects, and courses when relevant. You are conversational, encouraging, and always actionable. You adapt your response style to match the user's question - brief for simple questions, comprehensive for complex ones.`,
-  
-  jobMatching: `You are an expert career counselor and job matching AI with deep knowledge of the job market, student career development, and skill assessment. You provide accurate, honest, and helpful career guidance. You never inflate match scores - honesty helps students make better decisions.`
-};
 
+  general: `You are an intelligent career AI assistant with access to the student's complete profile and current job market data. You provide personalized, context-aware career guidance. You reference the student's actual skills, projects, and courses when relevant. You are conversational, encouraging, and always actionable. You adapt your response style to match the user's question - brief for simple questions, comprehensive for complex ones.`,
+
+  jobMatching: `You are an expert career counselor and job matching AI with deep knowledge of the job market, student career development, and skill assessment. You provide accurate, honest, and helpful career guidance. You never inflate match scores - honesty helps students make better decisions.`,
+};

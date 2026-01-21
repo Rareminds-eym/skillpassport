@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState } from 'react';
 import {
   RadarChart,
   PolarGrid,
@@ -7,19 +7,29 @@ import {
   Radar,
   ResponsiveContainer,
   Tooltip,
-} from "recharts";
-import { ChevronDown, ChevronUp, Target, TrendingUp, Rocket, Star, Sprout, Wrench, FileText } from "lucide-react";
+} from 'recharts';
+import {
+  ChevronDown,
+  ChevronUp,
+  Target,
+  TrendingUp,
+  Rocket,
+  Star,
+  Sprout,
+  Wrench,
+  FileText,
+} from 'lucide-react';
 
 // Map level to icon component
 const getLevelIcon = (level) => {
   switch (level) {
-    case "Excellent":
+    case 'Excellent':
       return <Star className="w-3.5 h-3.5" />;
-    case "Good":
+    case 'Good':
       return <Rocket className="w-3.5 h-3.5" />;
-    case "Moderate":
+    case 'Moderate':
       return <Sprout className="w-3.5 h-3.5" />;
-    case "Needs Support":
+    case 'Needs Support':
       return <Wrench className="w-3.5 h-3.5" />;
     default:
       return <FileText className="w-3.5 h-3.5" />;
@@ -34,9 +44,9 @@ const EmployabilityScoreCard = ({ employabilityData }) => {
 
   const {
     employabilityScore = 0,
-    level = "Not Started",
-    label: rawLabel = "Complete Your Profile",
-    focusArea = "All Areas",
+    level = 'Not Started',
+    label: rawLabel = 'Complete Your Profile',
+    focusArea = 'All Areas',
     breakdown = {},
   } = employabilityData || {};
 
@@ -50,52 +60,52 @@ const EmployabilityScoreCard = ({ employabilityData }) => {
 
   // Get color based on score
   const getScoreColor = () => {
-    if (employabilityScore >= 85) return "from-green-500 to-emerald-500";
-    if (employabilityScore >= 70) return "from-blue-500 via-indigo-500 to-blue-600";
-    if (employabilityScore >= 50) return "from-amber-500 to-yellow-500";
-    if (employabilityScore > 0) return "from-orange-500 to-red-500";
-    return "from-gray-400 to-gray-500";
+    if (employabilityScore >= 85) return 'from-green-500 to-emerald-500';
+    if (employabilityScore >= 70) return 'from-blue-500 via-indigo-500 to-blue-600';
+    if (employabilityScore >= 50) return 'from-amber-500 to-yellow-500';
+    if (employabilityScore > 0) return 'from-orange-500 to-red-500';
+    return 'from-gray-400 to-gray-500';
   };
 
   const getTextColor = () => {
-    if (employabilityScore >= 85) return "text-green-600";
-    if (employabilityScore >= 70) return "text-blue-600";
-    if (employabilityScore >= 50) return "text-amber-600";
-    if (employabilityScore > 0) return "text-orange-600";
-    return "text-gray-500";
+    if (employabilityScore >= 85) return 'text-green-600';
+    if (employabilityScore >= 70) return 'text-blue-600';
+    if (employabilityScore >= 50) return 'text-amber-600';
+    if (employabilityScore > 0) return 'text-orange-600';
+    return 'text-gray-500';
   };
 
   // Prepare radar chart data
   const radarData = [
     {
-      category: "Foundational",
+      category: 'Foundational',
       score: breakdown.foundational || 0,
       fullMark: 100,
-      description: "Communication, Comprehension, Critical Thinking",
+      description: 'Communication, Comprehension, Critical Thinking',
     },
     {
-      category: "21st Century",
+      category: '21st Century',
       score: breakdown.century21 || 0,
       fullMark: 100,
-      description: "Collaboration, Creativity, Problem Solving",
+      description: 'Collaboration, Creativity, Problem Solving',
     },
     {
-      category: "Digital",
+      category: 'Digital',
       score: breakdown.digital || 0,
       fullMark: 100,
-      description: "Digital Literacy, Tech Tools Usage",
+      description: 'Digital Literacy, Tech Tools Usage',
     },
     {
-      category: "Behavior",
+      category: 'Behavior',
       score: breakdown.behavior || 0,
       fullMark: 100,
-      description: "Punctuality, Discipline, Accountability",
+      description: 'Punctuality, Discipline, Accountability',
     },
     {
-      category: "Career",
+      category: 'Career',
       score: breakdown.career || 0,
       fullMark: 100,
-      description: "Projects, Internships, Achievements",
+      description: 'Projects, Internships, Achievements',
     },
   ];
 
@@ -141,7 +151,7 @@ const EmployabilityScoreCard = ({ employabilityData }) => {
           {getLevelIcon(level)}
           {label}
         </span>
-        {employabilityScore > 0 && focusArea && focusArea !== "All Areas" && (
+        {employabilityScore > 0 && focusArea && focusArea !== 'All Areas' && (
           <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 rounded-lg border border-blue-200">
             <Target className="w-3 h-3 text-blue-600" />
             <span className="text-xs text-blue-700">
@@ -156,12 +166,8 @@ const EmployabilityScoreCard = ({ employabilityData }) => {
         onClick={() => setShowBreakdown(!showBreakdown)}
         className="w-full text-blue-600 hover:text-blue-800 text-xs flex items-center justify-center gap-1 transition-colors pt-1"
       >
-        {showBreakdown ? "Hide" : "Show"} Details
-        {showBreakdown ? (
-          <ChevronUp className="w-3 h-3" />
-        ) : (
-          <ChevronDown className="w-3 h-3" />
-        )}
+        {showBreakdown ? 'Hide' : 'Show'} Details
+        {showBreakdown ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
       </button>
 
       {/* Expandable Breakdown Section */}
@@ -174,19 +180,13 @@ const EmployabilityScoreCard = ({ employabilityData }) => {
           {/* Radar Chart */}
           <div className="h-52">
             <ResponsiveContainer width="100%" height="100%">
-              <RadarChart
-                data={radarData}
-                margin={{ top: 10, right: 30, bottom: 10, left: 30 }}
-              >
+              <RadarChart data={radarData} margin={{ top: 10, right: 30, bottom: 10, left: 30 }}>
                 <PolarGrid stroke="#E5E7EB" />
-                <PolarAngleAxis
-                  dataKey="category"
-                  tick={{ fill: "#6B7280", fontSize: 10 }}
-                />
+                <PolarAngleAxis dataKey="category" tick={{ fill: '#6B7280', fontSize: 10 }} />
                 <PolarRadiusAxis
                   angle={90}
                   domain={[0, 100]}
-                  tick={{ fill: "#9CA3AF", fontSize: 9 }}
+                  tick={{ fill: '#9CA3AF', fontSize: 9 }}
                 />
                 <Radar
                   name="Score"
@@ -212,12 +212,12 @@ const EmployabilityScoreCard = ({ employabilityData }) => {
                 <span
                   className={`text-xs font-semibold ${
                     item.score >= 70
-                      ? "text-green-600"
+                      ? 'text-green-600'
                       : item.score >= 50
-                        ? "text-blue-600"
+                        ? 'text-blue-600'
                         : item.score > 0
-                          ? "text-amber-600"
-                          : "text-gray-400"
+                          ? 'text-amber-600'
+                          : 'text-gray-400'
                   }`}
                 >
                   {item.score}%

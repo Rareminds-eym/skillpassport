@@ -2,7 +2,7 @@ import { EducatorContext } from '../types';
 
 /**
  * Senior Prompt Engineering: Educator AI Copilot System Prompt
- * 
+ *
  * Design Principles:
  * 1. Clear role definition and boundaries
  * 2. Contextual awareness of educator's situation

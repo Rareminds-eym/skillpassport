@@ -18,27 +18,44 @@ export const StreamDebugPanel: React.FC<StreamDebugPanelProps> = ({
   gradeLevel,
   stream,
   riasecScores,
-  recommendedCareers
+  recommendedCareers,
 }) => {
   // Only show for after12 students
   if (gradeLevel !== 'after12') return null;
 
   // Determine if careers match the stream
   const streamCareerMapping = {
-    science: ['engineer', 'scientist', 'doctor', 'technology', 'data', 'research', 'biotech', 'medical'],
-    commerce: ['business', 'finance', 'accounting', 'management', 'banking', 'marketing', 'entrepreneur'],
-    arts: ['law', 'psychology', 'social', 'media', 'design', 'education', 'counseling', 'policy']
+    science: [
+      'engineer',
+      'scientist',
+      'doctor',
+      'technology',
+      'data',
+      'research',
+      'biotech',
+      'medical',
+    ],
+    commerce: [
+      'business',
+      'finance',
+      'accounting',
+      'management',
+      'banking',
+      'marketing',
+      'entrepreneur',
+    ],
+    arts: ['law', 'psychology', 'social', 'media', 'design', 'education', 'counseling', 'policy'],
   };
 
   const expectedKeywords = streamCareerMapping[stream.toLowerCase()] || [];
-  
-  const careerMatches = recommendedCareers?.map(career => {
+
+  const careerMatches = recommendedCareers?.map((career) => {
     const titleLower = career.title.toLowerCase();
-    const matches = expectedKeywords.some(keyword => titleLower.includes(keyword));
+    const matches = expectedKeywords.some((keyword) => titleLower.includes(keyword));
     return { ...career, matchesStream: matches };
   });
 
-  const matchCount = careerMatches?.filter(c => c.matchesStream).length || 0;
+  const matchCount = careerMatches?.filter((c) => c.matchesStream).length || 0;
   const totalCount = careerMatches?.length || 0;
   const matchPercentage = totalCount > 0 ? Math.round((matchCount / totalCount) * 100) : 0;
 
@@ -49,10 +66,8 @@ export const StreamDebugPanel: React.FC<StreamDebugPanelProps> = ({
       <div className="flex items-start gap-3">
         <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
         <div className="flex-1">
-          <h3 className="font-semibold text-blue-900 mb-2">
-            🔍 Stream Context Debug Panel
-          </h3>
-          
+          <h3 className="font-semibold text-blue-900 mb-2">🔍 Stream Context Debug Panel</h3>
+
           <div className="space-y-2 text-sm">
             <div className="flex items-center gap-2">
               <span className="font-medium text-blue-800">Your Stream:</span>
@@ -72,11 +87,13 @@ export const StreamDebugPanel: React.FC<StreamDebugPanelProps> = ({
                     .join('-')}
                 </span>
                 <span className="text-blue-600 text-xs">
-                  ({Object.entries(riasecScores)
+                  (
+                  {Object.entries(riasecScores)
                     .sort(([, a], [, b]) => b - a)
                     .slice(0, 3)
                     .map(([key, val]) => `${key}:${val}`)
-                    .join(', ')})
+                    .join(', ')}
+                  )
                 </span>
               </div>
             )}
@@ -114,8 +131,8 @@ export const StreamDebugPanel: React.FC<StreamDebugPanelProps> = ({
 
                 {!isGoodMatch && (
                   <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded text-xs text-orange-800">
-                    ⚠️ Warning: Most recommended careers don't match your {stream} stream. 
-                    This might indicate the AI needs to better consider your stream context.
+                    ⚠️ Warning: Most recommended careers don't match your {stream} stream. This
+                    might indicate the AI needs to better consider your stream context.
                   </div>
                 )}
               </div>

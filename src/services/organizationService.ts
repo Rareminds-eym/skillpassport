@@ -1,9 +1,9 @@
 /**
  * Centralized Organization Service
- * 
+ *
  * This service provides a unified interface for fetching organization data.
  * All organization queries should go through this service to ensure consistency.
- * 
+ *
  * The service uses the unified `organizations` table as the primary source.
  */
 
@@ -47,14 +47,11 @@ export interface OrganizationFilters {
  * Get organization by admin user ID
  */
 export async function getOrganizationByAdminId(
-  adminId: string, 
+  adminId: string,
   organizationType?: OrganizationType
 ): Promise<{ data: Organization | null; error: string | null }> {
   try {
-    let query = supabase
-      .from('organizations')
-      .select('*')
-      .eq('admin_id', adminId);
+    let query = supabase.from('organizations').select('*').eq('admin_id', adminId);
 
     if (organizationType) {
       query = query.eq('organization_type', organizationType);
@@ -106,10 +103,7 @@ export async function getOrganizations(
   filters?: OrganizationFilters
 ): Promise<{ data: Organization[]; error: string | null }> {
   try {
-    let query = supabase
-      .from('organizations')
-      .select('*')
-      .order('name');
+    let query = supabase.from('organizations').select('*').order('name');
 
     if (filters?.organizationType) {
       query = query.eq('organization_type', filters.organizationType);
@@ -239,10 +233,7 @@ export async function deleteOrganization(
   organizationId: string
 ): Promise<{ success: boolean; error: string | null }> {
   try {
-    const { error } = await supabase
-      .from('organizations')
-      .delete()
-      .eq('id', organizationId);
+    const { error } = await supabase.from('organizations').delete().eq('id', organizationId);
 
     if (error) {
       console.error('[OrganizationService] Error deleting organization:', error);
@@ -297,10 +288,7 @@ export async function getOrganizationByEmail(
   organizationType?: OrganizationType
 ): Promise<{ data: Organization | null; error: string | null }> {
   try {
-    let query = supabase
-      .from('organizations')
-      .select('*')
-      .eq('email', email);
+    let query = supabase.from('organizations').select('*').eq('email', email);
 
     if (organizationType) {
       query = query.eq('organization_type', organizationType);

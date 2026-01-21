@@ -4,11 +4,14 @@ import toast from 'react-hot-toast';
 
 // Import the college lesson plan UI
 import CollegeLessonPlanUI from '../../../components/admin/collegeAdmin/CollegeLessonPlanUI';
-import { lessonPlanService, type CollegeLessonPlan } from '../../../services/college/lessonPlanService';
+import {
+  lessonPlanService,
+  type CollegeLessonPlan,
+} from '../../../services/college/lessonPlanService';
 
 /**
  * CollegeLessonPlans - Lesson plan management for college faculty
- * 
+ *
  * Follows the same pattern as CurriculumBuilder with department → program → semester → course flow
  */
 const CollegeLessonPlans: React.FC = () => {
@@ -19,7 +22,7 @@ const CollegeLessonPlans: React.FC = () => {
   const [selectedSemester, setSelectedSemester] = useState('');
   const [selectedAcademicYear, setSelectedAcademicYear] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Configuration data from database
   const [courses, setCourses] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
@@ -32,10 +35,10 @@ const CollegeLessonPlans: React.FC = () => {
   const [units, setUnits] = useState<any[]>([]);
   const [learningOutcomes, setLearningOutcomes] = useState<any[]>([]);
   const [currentCurriculumId, setCurrentCurriculumId] = useState<string | undefined>(undefined);
-  
+
   // UI state
   const [loading, setLoading] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
 
   // Load configuration data on mount
   useEffect(() => {
@@ -92,25 +95,24 @@ const CollegeLessonPlans: React.FC = () => {
       // Load academic years
       const years = lessonPlanService.getAcademicYears();
       setAcademicYears(years);
-      
+
       // Auto-select current academic year
-      const currentYear = years.find(year => {
+      const currentYear = years.find((year) => {
         const startYear = parseInt(year.split('-')[0]);
         const now = new Date();
         const currentYearNum = now.getFullYear();
         const currentMonth = now.getMonth() + 1;
-        
+
         if (currentMonth >= 7) {
           return startYear === currentYearNum;
         } else {
           return startYear === currentYearNum - 1;
         }
       });
-      
+
       if (currentYear) {
         setSelectedAcademicYear(currentYear);
       }
-
     } catch (error: any) {
       console.error('Error loading configuration:', error);
       toast.error('Failed to load configuration data');
@@ -170,7 +172,7 @@ const CollegeLessonPlans: React.FC = () => {
   const loadLessonPlans = async () => {
     try {
       setLoading(true);
-      
+
       const filters: any = {};
       if (selectedDepartment) filters.department_id = selectedDepartment;
       if (selectedProgram) filters.program_id = selectedProgram;
@@ -197,7 +199,7 @@ const CollegeLessonPlans: React.FC = () => {
   // Handler for department change in form
   const handleDepartmentChange = async (departmentId: string) => {
     console.log('🔄 Department changed to:', departmentId);
-    
+
     if (departmentId) {
       const result = await lessonPlanService.getPrograms(departmentId);
       if (result.success) {
@@ -207,7 +209,7 @@ const CollegeLessonPlans: React.FC = () => {
         };
       }
     }
-    
+
     return {
       programs: [],
       courses: [],
@@ -217,19 +219,19 @@ const CollegeLessonPlans: React.FC = () => {
   // Handler for program change in form
   const handleProgramChange = async (programId: string) => {
     console.log('🔄 Program changed to:', programId);
-    
+
     if (programId) {
       const semesterResult = await lessonPlanService.getSemesters(programId);
       if (semesterResult.success) {
         // Update the semesters state for the form
         setSemesters(semesterResult.data || []);
         return {
-          semesters: (semesterResult.data || []).map(s => s.toString()),
+          semesters: (semesterResult.data || []).map((s) => s.toString()),
           courses: [], // Courses will be loaded after semester selection
         };
       }
     }
-    
+
     return {
       semesters: [],
       courses: [],
@@ -239,7 +241,7 @@ const CollegeLessonPlans: React.FC = () => {
   // Handler for semester change in form
   const handleSemesterChange = async (semester: string, programId: string) => {
     console.log('🔄 Semester changed to:', semester, 'for program:', programId);
-    
+
     if (semester && programId) {
       const result = await lessonPlanService.getCourses(programId, parseInt(semester));
       if (result.success) {
@@ -248,25 +250,39 @@ const CollegeLessonPlans: React.FC = () => {
         };
       }
     }
-    
+
     return {
       courses: [],
     };
   };
 
   // Handler for curriculum context change (course + program + academic year)
-  const handleCurriculumContextChange = async (courseId: string, programId: string, academicYear: string) => {
+  const handleCurriculumContextChange = async (
+    courseId: string,
+    programId: string,
+    academicYear: string
+  ) => {
     console.log('🔄 Curriculum context changed:', { courseId, programId, academicYear });
-    
+
     if (courseId && programId && academicYear) {
       try {
         // Load curriculum units
-        const unitsResult = await lessonPlanService.getCurriculumUnits(courseId, programId, academicYear);
+        const unitsResult = await lessonPlanService.getCurriculumUnits(
+          courseId,
+          programId,
+          academicYear
+        );
         if (unitsResult.success) {
           setUnits(unitsResult.data || []);
           setCurrentCurriculumId(unitsResult.curriculumId);
-          console.log('📚 Loaded curriculum:', unitsResult.curriculumId, 'with', unitsResult.data?.length, 'units');
-          
+          console.log(
+            '📚 Loaded curriculum:',
+            unitsResult.curriculumId,
+            'with',
+            unitsResult.data?.length,
+            'units'
+          );
+
           // Clear learning outcomes since unit hasn't been selected yet
           setLearningOutcomes([]);
         } else {
@@ -290,7 +306,7 @@ const CollegeLessonPlans: React.FC = () => {
   // Handler for unit selection change
   const handleUnitChange = async (unitId: string) => {
     console.log('🔄 Unit changed to:', unitId);
-    
+
     if (unitId) {
       try {
         const outcomesResult = await lessonPlanService.getLearningOutcomes(unitId);
@@ -311,9 +327,9 @@ const CollegeLessonPlans: React.FC = () => {
   // Handler for adding/updating lesson plan
   const handleAddLessonPlan = async (lessonPlan: any) => {
     try {
-      setSaveStatus("saving");
-      
-      if (lessonPlan.id && lessonPlans.find(lp => lp.id === lessonPlan.id)) {
+      setSaveStatus('saving');
+
+      if (lessonPlan.id && lessonPlans.find((lp) => lp.id === lessonPlan.id)) {
         // Update existing lesson plan
         const result = await lessonPlanService.updateLessonPlan(lessonPlan.id, {
           title: lessonPlan.title,
@@ -340,11 +356,11 @@ const CollegeLessonPlans: React.FC = () => {
         });
 
         if (result.success && result.data) {
-          setLessonPlans(prev => prev.map(lp => lp.id === lessonPlan.id ? result.data! : lp));
-          setSaveStatus("saved");
+          setLessonPlans((prev) => prev.map((lp) => (lp.id === lessonPlan.id ? result.data! : lp)));
+          setSaveStatus('saved');
           toast.success('Lesson plan updated successfully');
         } else {
-          setSaveStatus("idle");
+          setSaveStatus('idle');
           toast.error(result.error?.message || 'Failed to update lesson plan');
         }
       } else {
@@ -375,20 +391,20 @@ const CollegeLessonPlans: React.FC = () => {
         });
 
         if (result.success && result.data) {
-          setLessonPlans(prev => [result.data!, ...prev]);
-          setSaveStatus("saved");
+          setLessonPlans((prev) => [result.data!, ...prev]);
+          setSaveStatus('saved');
           toast.success('Lesson plan created successfully');
         } else {
-          setSaveStatus("idle");
+          setSaveStatus('idle');
           toast.error(result.error?.message || 'Failed to create lesson plan');
         }
       }
-      
+
       // Reset save status after a delay
-      setTimeout(() => setSaveStatus("idle"), 2000);
+      setTimeout(() => setSaveStatus('idle'), 2000);
     } catch (error: any) {
       console.error('Error saving lesson plan:', error);
-      setSaveStatus("idle");
+      setSaveStatus('idle');
       toast.error('Failed to save lesson plan');
     }
   };
@@ -398,7 +414,7 @@ const CollegeLessonPlans: React.FC = () => {
     try {
       const result = await lessonPlanService.deleteLessonPlan(id);
       if (result.success) {
-        setLessonPlans(prev => prev.filter(lp => lp.id !== id));
+        setLessonPlans((prev) => prev.filter((lp) => lp.id !== id));
         toast.success('Lesson plan deleted successfully');
       } else {
         toast.error(result.error?.message || 'Failed to delete lesson plan');
@@ -418,7 +434,7 @@ const CollegeLessonPlans: React.FC = () => {
       });
 
       if (result.success && result.data) {
-        setLessonPlans(prev => prev.map(lp => lp.id === id ? result.data! : lp));
+        setLessonPlans((prev) => prev.map((lp) => (lp.id === id ? result.data! : lp)));
         toast.success('Lesson plan published successfully');
       } else {
         toast.error(result.error?.message || 'Failed to publish lesson plan');
@@ -446,7 +462,7 @@ const CollegeLessonPlans: React.FC = () => {
       courses={courses}
       departments={departments}
       programs={programs}
-      semesters={semesters.map(s => s.toString())}
+      semesters={semesters.map((s) => s.toString())}
       academicYears={academicYears}
       // Data
       lessonPlans={lessonPlans}

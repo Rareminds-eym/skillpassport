@@ -1,10 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from 'react';
+import { XMarkIcon, UserGroupIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import {
-  XMarkIcon,
-  UserGroupIcon,
-  CheckCircleIcon,
-} from "@heroicons/react/24/outline";
-import { departmentService, DepartmentWithStats } from '../../../services/college/departmentService';
+  departmentService,
+  DepartmentWithStats,
+} from '../../../services/college/departmentService';
 
 interface Faculty {
   id: string;
@@ -14,8 +13,7 @@ interface Faculty {
   specialization: string;
 }
 
-interface Department extends DepartmentWithStats {
-}
+interface Department extends DepartmentWithStats {}
 
 interface FacultyAssignmentModalProps {
   isOpen: boolean;
@@ -35,14 +33,15 @@ const FacultyAssignmentModal: React.FC<FacultyAssignmentModalProps> = ({
   onSave,
 }) => {
   const [selectedFaculty, setSelectedFaculty] = useState<string[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     if (department && isOpen) {
       // Load currently assigned faculty for this department
-      departmentService.getDepartmentFaculty(department.id)
-        .then(assignedFaculty => {
-          setSelectedFaculty(assignedFaculty.map(f => f.id));
+      departmentService
+        .getDepartmentFaculty(department.id)
+        .then((assignedFaculty) => {
+          setSelectedFaculty(assignedFaculty.map((f) => f.id));
         })
         .catch(console.error);
     }
@@ -59,9 +58,7 @@ const FacultyAssignmentModal: React.FC<FacultyAssignmentModalProps> = ({
 
   const handleToggleFaculty = (facultyId: string) => {
     setSelectedFaculty((prev) =>
-      prev.includes(facultyId)
-        ? prev.filter((id) => id !== facultyId)
-        : [...prev, facultyId]
+      prev.includes(facultyId) ? prev.filter((id) => id !== facultyId) : [...prev, facultyId]
     );
   };
 
@@ -85,11 +82,7 @@ const FacultyAssignmentModal: React.FC<FacultyAssignmentModalProps> = ({
                 Select faculty members for this department
               </p>
             </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
-              type="button"
-            >
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600" type="button">
               <XMarkIcon className="h-6 w-6" />
             </button>
           </div>
@@ -111,9 +104,7 @@ const FacultyAssignmentModal: React.FC<FacultyAssignmentModalProps> = ({
                 Loading faculty...
               </div>
             ) : filteredFaculty.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                No faculty found
-              </div>
+              <div className="text-center py-8 text-gray-500">No faculty found</div>
             ) : (
               <div className="divide-y divide-gray-200">
                 {filteredFaculty.map((faculty) => (
@@ -130,9 +121,7 @@ const FacultyAssignmentModal: React.FC<FacultyAssignmentModalProps> = ({
                     <div className="ml-3 flex-1">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-gray-900">
-                            {faculty.name}
-                          </p>
+                          <p className="text-sm font-medium text-gray-900">{faculty.name}</p>
                           <p className="text-xs text-gray-500">
                             {faculty.designation} • {faculty.specialization}
                           </p>
@@ -151,7 +140,8 @@ const FacultyAssignmentModal: React.FC<FacultyAssignmentModalProps> = ({
 
           <div className="mt-6 flex items-center justify-between">
             <p className="text-sm text-gray-600">
-              {selectedFaculty.length} faculty member{selectedFaculty.length !== 1 ? "s" : ""} selected
+              {selectedFaculty.length} faculty member{selectedFaculty.length !== 1 ? 's' : ''}{' '}
+              selected
             </p>
             <div className="flex gap-3">
               <button

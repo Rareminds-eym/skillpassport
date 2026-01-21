@@ -1,34 +1,34 @@
 import {
-    AlertCircle,
-    BookOpen,
-    Brain,
-    ChevronRight,
-    Clock,
-    FileText,
-    List,
-    Loader2,
-    Maximize,
-    Pause,
-    Play,
-    RefreshCw,
-    Send,
-    SkipBack,
-    SkipForward,
-    Sparkles,
-    Tag,
-    Volume2,
-    VolumeX
+  AlertCircle,
+  BookOpen,
+  Brain,
+  ChevronRight,
+  Clock,
+  FileText,
+  List,
+  Loader2,
+  Maximize,
+  Pause,
+  Play,
+  RefreshCw,
+  Send,
+  SkipBack,
+  SkipForward,
+  Sparkles,
+  Tag,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useTutorChat } from '../../hooks/useTutorChat';
 import {
-    TranscriptSegment,
-    VideoSummary,
-    findSegmentAtTime,
-    formatTimestamp,
-    getVideoSummaryRobust,
-    processVideo
+  TranscriptSegment,
+  VideoSummary,
+  findSegmentAtTime,
+  formatTimestamp,
+  getVideoSummaryRobust,
+  processVideo,
 } from '../../services/videoSummarizerService';
 
 interface VideoSummarizerProps {
@@ -44,7 +44,7 @@ const VideoSummarizer: React.FC<VideoSummarizerProps> = ({
   videoUrl,
   lessonId,
   courseId,
-  lessonTitle = 'Lesson'
+  lessonTitle = 'Lesson',
 }) => {
   // Video player state
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -65,13 +65,9 @@ const VideoSummarizer: React.FC<VideoSummarizerProps> = ({
   const [chatInput, setChatInput] = useState('');
   const chatMessagesRef = useRef<HTMLDivElement>(null);
 
-  const {
-    messages,
-    isStreaming,
-    sendMessage,
-  } = useTutorChat({
+  const { messages, isStreaming, sendMessage } = useTutorChat({
     courseId: courseId || '',
-    lessonId
+    lessonId,
   });
 
   // Load existing summary or process video
@@ -86,7 +82,7 @@ const VideoSummarizer: React.FC<VideoSummarizerProps> = ({
     try {
       // Use robust video summary lookup with fallback strategies
       const existing = await getVideoSummaryRobust(lessonId, videoUrl);
-      
+
       if (existing && existing.processingStatus === 'completed') {
         setSummary(existing);
         setIsProcessing(false);
@@ -98,7 +94,7 @@ const VideoSummarizer: React.FC<VideoSummarizerProps> = ({
         videoUrl,
         lessonId,
         courseId,
-        language: 'en'
+        language: 'en',
       });
 
       setSummary(result);
@@ -124,7 +120,7 @@ const VideoSummarizer: React.FC<VideoSummarizerProps> = ({
   const handleTimeUpdate = () => {
     if (videoRef.current) {
       setCurrentTime(videoRef.current.currentTime);
-      
+
       // Update active transcript segment
       if (summary?.transcriptSegments) {
         const segment = findSegmentAtTime(summary.transcriptSegments, videoRef.current.currentTime);
@@ -178,10 +174,12 @@ const VideoSummarizer: React.FC<VideoSummarizerProps> = ({
     if (!chatInput.trim() || isStreaming) return;
 
     // Include video context in the message
-    const videoContext = summary ? `
+    const videoContext = summary
+      ? `
 [Video Context: Currently at ${formatTimestamp(currentTime)} in "${lessonTitle}"]
 ${activeSegment ? `Current segment: "${activeSegment.text}"` : ''}
-` : '';
+`
+      : '';
 
     const messageWithContext = `${chatInput}\n\n${videoContext}`;
     setChatInput('');
@@ -192,12 +190,13 @@ ${activeSegment ? `Current segment: "${activeSegment.text}"` : ''}
   useEffect(() => {
     chatMessagesRef.current?.scrollTo({
       top: chatMessagesRef.current.scrollHeight,
-      behavior: 'smooth'
+      behavior: 'smooth',
     });
   }, [messages]);
 
   const renderProgressBar = () => (
-    <div className="relative w-full h-1 bg-gray-700 rounded cursor-pointer group"
+    <div
+      className="relative w-full h-1 bg-gray-700 rounded cursor-pointer group"
       onClick={(e) => {
         const rect = e.currentTarget.getBoundingClientRect();
         const percent = (e.clientX - rect.left) / rect.width;
@@ -214,7 +213,6 @@ ${activeSegment ? `Current segment: "${activeSegment.text}"` : ''}
       />
     </div>
   );
-
 
   return (
     <div className="flex flex-col lg:flex-row h-full bg-gray-900 rounded-xl overflow-hidden">
@@ -313,7 +311,7 @@ ${activeSegment ? `Current segment: "${activeSegment.text}"` : ''}
             { id: 'transcript', icon: FileText, label: 'Transcript' },
             { id: 'chapters', icon: List, label: 'Chapters' },
             { id: 'chat', icon: Brain, label: 'AI Chat' },
-          ].map(tab => (
+          ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as TabType)}
@@ -457,9 +455,7 @@ ${activeSegment ? `Current segment: "${activeSegment.text}"` : ''}
                         </button>
                       ))
                     ) : (
-                      <p className="text-gray-500 text-sm text-center py-8">
-                        No chapters detected
-                      </p>
+                      <p className="text-gray-500 text-sm text-center py-8">No chapters detected</p>
                     )}
                   </div>
                 </div>
@@ -477,13 +473,13 @@ ${activeSegment ? `Current segment: "${activeSegment.text}"` : ''}
                         <p className="text-gray-400 text-sm mt-1">
                           I can answer questions about the content
                         </p>
-                        
+
                         {/* Quick Questions */}
                         <div className="mt-4 space-y-2">
                           {[
                             'Summarize the main points',
                             'What are the key takeaways?',
-                            'Explain this concept in simple terms'
+                            'Explain this concept in simple terms',
                           ].map((q, i) => (
                             <button
                               key={i}

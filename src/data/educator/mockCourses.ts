@@ -19,7 +19,7 @@ export const MOCK_COURSES: Course[] = [
     targetOutcomes: [
       'Build responsive websites using HTML and CSS',
       'Implement interactive features with JavaScript',
-      'Understand web accessibility principles'
+      'Understand web accessibility principles',
     ],
     modules: [
       {
@@ -29,7 +29,7 @@ export const MOCK_COURSES: Course[] = [
         skillTags: ['Technical Skills', 'Problem Solving'],
         lessons: [],
         activities: ['Assignment: Create a personal webpage'],
-        order: 1
+        order: 1,
       },
       {
         id: 'm2',
@@ -38,12 +38,12 @@ export const MOCK_COURSES: Course[] = [
         skillTags: ['Creativity', 'Technical Skills'],
         lessons: [],
         activities: ['Project: Design a portfolio site'],
-        order: 2
-      }
+        order: 2,
+      },
     ],
     createdAt: '2025-01-15T10:00:00Z',
     updatedAt: '2025-02-10T14:30:00Z',
-    coEducators: []
+    coEducators: [],
   },
   {
     id: '2',
@@ -63,12 +63,12 @@ export const MOCK_COURSES: Course[] = [
     targetOutcomes: [
       'Perform data analysis using pandas and numpy',
       'Create visualizations with matplotlib and seaborn',
-      'Build basic machine learning models'
+      'Build basic machine learning models',
     ],
     modules: [],
     createdAt: '2025-01-20T09:00:00Z',
     updatedAt: '2025-02-15T11:20:00Z',
-    coEducators: []
+    coEducators: [],
   },
   {
     id: '3',
@@ -88,12 +88,12 @@ export const MOCK_COURSES: Course[] = [
     targetOutcomes: [
       'Write compelling short stories',
       'Develop unique narrative voices',
-      'Provide constructive peer feedback'
+      'Provide constructive peer feedback',
     ],
     modules: [],
     createdAt: '2025-02-01T08:00:00Z',
     updatedAt: '2025-02-18T16:45:00Z',
-    coEducators: ['Dr. Sarah Johnson']
+    coEducators: ['Dr. Sarah Johnson'],
   },
   {
     id: '4',
@@ -113,12 +113,12 @@ export const MOCK_COURSES: Course[] = [
     targetOutcomes: [
       'Create effective social media campaigns',
       'Understand SEO best practices',
-      'Analyze marketing metrics'
+      'Analyze marketing metrics',
     ],
     modules: [],
     createdAt: '2025-02-20T10:00:00Z',
     updatedAt: '2025-02-20T10:00:00Z',
-    coEducators: []
+    coEducators: [],
   },
   {
     id: '5',
@@ -138,12 +138,12 @@ export const MOCK_COURSES: Course[] = [
     targetOutcomes: [
       'Build and program basic robots',
       'Understand sensors and actuators',
-      'Implement automation solutions'
+      'Implement automation solutions',
     ],
     modules: [],
     createdAt: '2025-02-22T14:00:00Z',
     updatedAt: '2025-02-22T14:00:00Z',
-    coEducators: []
+    coEducators: [],
   },
   {
     id: '6',
@@ -163,13 +163,13 @@ export const MOCK_COURSES: Course[] = [
     targetOutcomes: [
       'Understand climate change impacts',
       'Analyze environmental data',
-      'Propose sustainability solutions'
+      'Propose sustainability solutions',
     ],
     modules: [],
     createdAt: '2024-09-01T08:00:00Z',
     updatedAt: '2024-12-15T17:00:00Z',
-    coEducators: ['Prof. Michael Green']
-  }
+    coEducators: ['Prof. Michael Green'],
+  },
 ];
 
 export const SKILL_CATEGORIES = [
@@ -184,7 +184,7 @@ export const SKILL_CATEGORIES = [
   'Programming',
   'Research',
   'Strategic Thinking',
-  'Innovation'
+  'Innovation',
 ];
 
 export const CLASSES = [
@@ -194,5 +194,5 @@ export const CLASSES = [
   'Class 10B',
   'Class 11A',
   'Class 11B',
-  'Class 12A'
+  'Class 12A',
 ];

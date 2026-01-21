@@ -36,7 +36,7 @@ class ConversationMemoryService {
       userGoals: [],
       detectedDomains: [],
       technologiesMentioned: [],
-      sessionStarted: new Date()
+      sessionStarted: new Date(),
     };
     this.conversations.set(studentId, context);
     return context;
@@ -70,11 +70,11 @@ class ConversationMemoryService {
       timestamp: new Date(),
       intent,
       domain,
-      entities
+      entities,
     };
 
     context.messages.push(message);
-    
+
     // Update context metadata
     if (intent) context.lastIntent = intent;
     if (domain && !context.detectedDomains.includes(domain)) {
@@ -108,7 +108,7 @@ class ConversationMemoryService {
     const message: ConversationMessage = {
       role: 'assistant',
       content: content.substring(0, 500), // Store truncated version
-      timestamp: new Date()
+      timestamp: new Date(),
     };
 
     context.messages.push(message);
@@ -132,7 +132,7 @@ class ConversationMemoryService {
 
     const recentMessages = context.messages.slice(-lastN);
     return recentMessages
-      .map(msg => `${msg.role === 'user' ? 'Student' : 'AI'}: ${msg.content}`)
+      .map((msg) => `${msg.role === 'user' ? 'Student' : 'AI'}: ${msg.content}`)
       .join('\n');
   }
 
@@ -144,15 +144,15 @@ class ConversationMemoryService {
     if (!context) return 'New conversation';
 
     const parts: string[] = [];
-    
+
     if (context.detectedDomains.length > 0) {
       parts.push(`Interests: ${context.detectedDomains.join(', ')}`);
     }
-    
+
     if (context.technologiesMentioned.length > 0) {
       parts.push(`Technologies discussed: ${context.technologiesMentioned.join(', ')}`);
     }
-    
+
     if (context.lastIntent) {
       parts.push(`Last topic: ${context.lastIntent}`);
     }
@@ -175,14 +175,23 @@ class ConversationMemoryService {
     if (!context || context.messages.length === 0) return false;
 
     const followUpIndicators = [
-      'that one', 'first one', 'second one', 'last one',
-      'tell me more', 'more details', 'more about',
-      'what about', 'how about', 'and that',
-      'the one about', 'previous', 'earlier'
+      'that one',
+      'first one',
+      'second one',
+      'last one',
+      'tell me more',
+      'more details',
+      'more about',
+      'what about',
+      'how about',
+      'and that',
+      'the one about',
+      'previous',
+      'earlier',
     ];
 
     const lowerMessage = message.toLowerCase();
-    return followUpIndicators.some(indicator => lowerMessage.includes(indicator));
+    return followUpIndicators.some((indicator) => lowerMessage.includes(indicator));
   }
 }
 

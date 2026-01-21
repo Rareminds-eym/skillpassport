@@ -12,7 +12,9 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
     <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between mb-2">
         <div className="flex-1">
-          <h4 className="text-sm font-semibold text-gray-900">{project.title || 'Untitled Project'}</h4>
+          <h4 className="text-sm font-semibold text-gray-900">
+            {project.title || 'Untitled Project'}
+          </h4>
           {project.organization && (
             <p className="text-xs text-gray-600 mt-1">Organization: {project.organization}</p>
           )}
@@ -27,7 +29,10 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
       {project.tech_stack && project.tech_stack.length > 0 && (
         <div className="mb-3 flex flex-wrap gap-1">
           {project.tech_stack.slice(0, 3).map((tech, idx) => (
-            <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
+            <span
+              key={idx}
+              className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700"
+            >
               {tech}
             </span>
           ))}

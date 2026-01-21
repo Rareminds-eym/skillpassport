@@ -11,13 +11,13 @@ export const exportAsPDF = async (
 ): Promise<void> => {
   try {
     let element: HTMLElement | null;
-    
+
     if (typeof elementIdOrElement === 'string') {
       element = document.getElementById(elementIdOrElement);
     } else {
       element = elementIdOrElement;
     }
-    
+
     if (!element) {
       throw new Error('Portfolio content not found');
     }
@@ -27,14 +27,14 @@ export const exportAsPDF = async (
       scale: 2,
       useCORS: true,
       logging: false,
-      backgroundColor: '#ffffff'
+      backgroundColor: '#ffffff',
     });
 
     const imgData = canvas.toDataURL('image/png');
     const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
-      format: 'a4'
+      format: 'a4',
     });
 
     const imgWidth = 210; // A4 width in mm
@@ -73,7 +73,7 @@ export const exportAsJSON = (
       student,
       settings,
       exportedAt: new Date().toISOString(),
-      version: '1.0'
+      version: '1.0',
     };
 
     const jsonString = JSON.stringify(data, null, 2);
@@ -95,10 +95,11 @@ export const exportAsHTML = async (
 ): Promise<void> => {
   try {
     // Get the main portfolio container that has the actual layout rendered
-    const portfolioContainer = document.querySelector('[data-layout-container]') || 
-                              document.querySelector('main') ||
-                              document.body;
-    
+    const portfolioContainer =
+      document.querySelector('[data-layout-container]') ||
+      document.querySelector('main') ||
+      document.body;
+
     if (!portfolioContainer) {
       throw new Error('Portfolio content not found');
     }
@@ -107,17 +108,21 @@ export const exportAsHTML = async (
     const clonedContent = portfolioContainer.cloneNode(true) as HTMLElement;
 
     // Remove navigation, headers, and UI controls that shouldn't be in export
-    clonedContent.querySelectorAll('header, nav, .fixed, [class*="back-button"], button[type="button"]').forEach(el => {
-      const element = el as HTMLElement;
-      // Keep social media links and project buttons
-      if (!element.closest('a[href^="http"]') && 
-          !element.querySelector('svg[class*="lucide"]')?.closest('a')) {
-        el.remove();
-      }
-    });
+    clonedContent
+      .querySelectorAll('header, nav, .fixed, [class*="back-button"], button[type="button"]')
+      .forEach((el) => {
+        const element = el as HTMLElement;
+        // Keep social media links and project buttons
+        if (
+          !element.closest('a[href^="http"]') &&
+          !element.querySelector('svg[class*="lucide"]')?.closest('a')
+        ) {
+          el.remove();
+        }
+      });
 
     // Convert all relative image URLs to absolute
-    clonedContent.querySelectorAll('img').forEach(img => {
+    clonedContent.querySelectorAll('img').forEach((img) => {
       if (img.src && !img.src.startsWith('data:') && !img.src.startsWith('http')) {
         img.src = new URL(img.src, window.location.origin).href;
       }
@@ -125,7 +130,7 @@ export const exportAsHTML = async (
     });
 
     // Remove framer-motion animation attributes to prevent errors
-    clonedContent.querySelectorAll('[style*="transform"], [style*="opacity"]').forEach(el => {
+    clonedContent.querySelectorAll('[style*="transform"], [style*="opacity"]').forEach((el) => {
       (el as HTMLElement).style.transform = '';
       (el as HTMLElement).style.opacity = '1';
     });
@@ -213,11 +218,15 @@ export const exportAsHTML = async (
     <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-align: center; padding: 40px 20px; margin-top: 60px;">
         <p style="font-size: 1.1em; font-weight: 600;">Generated on ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
         <p style="margin-top: 10px; opacity: 0.9; font-size: 0.95em;">This portfolio was created using Rareminds Skill Ecosystem Platform</p>
-        ${preferences.includeContactDetails && student.profile.email ? `
+        ${
+          preferences.includeContactDetails && student.profile.email
+            ? `
         <div style="margin-top: 20px;">
             <a href="mailto:${student.profile.email}" style="color: white; text-decoration: none; opacity: 0.9;">📧 ${student.profile.email}</a>
         </div>
-        ` : ''}
+        `
+            : ''
+        }
     </div>
     
     <script>
@@ -259,8 +268,8 @@ export const generateQRCode = async (
       margin: 2,
       color: {
         dark: options.color?.dark || '#000000',
-        light: options.color?.light || '#FFFFFF'
-      }
+        light: options.color?.light || '#FFFFFF',
+      },
     });
     return qrDataURL;
   } catch (error) {
@@ -276,11 +285,11 @@ export const downloadQRCode = async (
 ): Promise<void> => {
   try {
     const qrDataURL = await generateQRCode(url, { width: 500 });
-    
+
     // Convert data URL to blob
     const response = await fetch(qrDataURL);
     const blob = await response.blob();
-    
+
     saveAs(blob, filename);
   } catch (error) {
     console.error('Error downloading QR code:', error);
@@ -299,7 +308,7 @@ export const sharePortfolio = async (
       await navigator.share({
         title,
         text,
-        url
+        url,
       });
       return true;
     } else {
@@ -326,11 +335,11 @@ export const copyToClipboard = async (text: string): Promise<void> => {
 // Generate shareable link (using current URL or custom format)
 export const generateShareableLink = (userId?: string): string => {
   const baseUrl = window.location.origin;
-  
+
   if (userId) {
     return `${baseUrl}/portfolio?user=${userId}`;
   }
-  
+
   // Generate random ID for demo
   const randomId = Math.random().toString(36).substring(2, 10);
   return `${baseUrl}/portfolio?id=${randomId}`;
@@ -345,7 +354,7 @@ export const exportResume = async (
     const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
-      format: 'a4'
+      format: 'a4',
     });
 
     let yPosition = 20;
@@ -381,7 +390,7 @@ export const exportResume = async (
       pdf.setFont('helvetica', 'bold');
       pdf.text('Professional Summary', leftMargin, yPosition);
       yPosition += 7;
-      
+
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
       const bioLines = pdf.splitTextToSize(student.profile.bio, pageWidth - 40);
@@ -396,16 +405,20 @@ export const exportResume = async (
       pdf.text('Education', leftMargin, yPosition);
       yPosition += 7;
 
-      student.profile.education.forEach(edu => {
+      student.profile.education.forEach((edu) => {
         pdf.setFontSize(10);
         pdf.setFont('helvetica', 'bold');
         pdf.text(edu.degree, leftMargin, yPosition);
         yPosition += 5;
-        
+
         pdf.setFont('helvetica', 'normal');
-        pdf.text(`${edu.institution} | ${edu.startDate} - ${edu.endDate || 'Present'}`, leftMargin, yPosition);
+        pdf.text(
+          `${edu.institution} | ${edu.startDate} - ${edu.endDate || 'Present'}`,
+          leftMargin,
+          yPosition
+        );
         yPosition += 5;
-        
+
         if (edu.grade) {
           pdf.text(`Grade: ${edu.grade}`, leftMargin, yPosition);
           yPosition += 5;
@@ -423,7 +436,7 @@ export const exportResume = async (
 
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
-      const skillsText = student.profile.skills.map(s => s.name).join(', ');
+      const skillsText = student.profile.skills.map((s) => s.name).join(', ');
       const skillsLines = pdf.splitTextToSize(skillsText, pageWidth - 40);
       pdf.text(skillsLines, leftMargin, yPosition);
       yPosition += skillsLines.length * 5 + 5;
@@ -436,12 +449,12 @@ export const exportResume = async (
       pdf.text('Projects', leftMargin, yPosition);
       yPosition += 7;
 
-      student.profile.projects.forEach(project => {
+      student.profile.projects.forEach((project) => {
         pdf.setFontSize(10);
         pdf.setFont('helvetica', 'bold');
         pdf.text(project.title, leftMargin, yPosition);
         yPosition += 5;
-        
+
         pdf.setFont('helvetica', 'normal');
         const descLines = pdf.splitTextToSize(project.description, pageWidth - 40);
         pdf.text(descLines, leftMargin, yPosition);

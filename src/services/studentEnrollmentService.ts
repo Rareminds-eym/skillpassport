@@ -33,7 +33,8 @@ export const studentEnrollmentService = {
     try {
       let query = supabase
         .from('students')
-        .select(`
+        .select(
+          `
           id,
           name,
           roll_number,
@@ -57,7 +58,8 @@ export const studentEnrollmentService = {
               code
             )
           )
-        `)
+        `
+        )
         .eq('is_deleted', false)
         .not('program_id', 'is', null)
         .order('name', { ascending: true });
@@ -69,7 +71,9 @@ export const studentEnrollmentService = {
         query = query.eq('semester', filters.semester);
       }
       if (filters?.search) {
-        query = query.or(`name.ilike.%${filters.search}%,roll_number.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
+        query = query.or(
+          `name.ilike.%${filters.search}%,roll_number.ilike.%${filters.search}%,email.ilike.%${filters.search}%`
+        );
       }
 
       const { data, error } = await query;
@@ -100,7 +104,7 @@ export const studentEnrollmentService = {
       // Apply department filter manually (since it's nested)
       let filteredData = transformedData;
       if (filters?.department_id) {
-        filteredData = transformedData.filter(s => s.department_id === filters.department_id);
+        filteredData = transformedData.filter((s) => s.department_id === filters.department_id);
       }
 
       return { success: true, data: filteredData };
@@ -156,15 +160,17 @@ export const studentEnrollmentService = {
   /**
    * Bulk enroll students (update students table)
    */
-  async bulkEnrollStudents(enrollments: Array<{
-    student_id: string;
-    program_id: string;
-    section?: string;
-    semester: number;
-  }>): Promise<{ success: boolean; data?: any[]; error?: any }> {
+  async bulkEnrollStudents(
+    enrollments: Array<{
+      student_id: string;
+      program_id: string;
+      section?: string;
+      semester: number;
+    }>
+  ): Promise<{ success: boolean; data?: any[]; error?: any }> {
     try {
       const results = [];
-      
+
       for (const enrollment of enrollments) {
         const result = await this.enrollStudent(enrollment);
         if (result.success) {
@@ -255,7 +261,8 @@ export const studentEnrollmentService = {
     try {
       let query = supabase
         .from('students')
-        .select(`
+        .select(
+          `
           id,
           program_id,
           semester,
@@ -267,7 +274,8 @@ export const studentEnrollmentService = {
               name
             )
           )
-        `)
+        `
+        )
         .eq('is_deleted', false)
         .not('program_id', 'is', null);
 
@@ -302,9 +310,8 @@ export const studentEnrollmentService = {
 
       // Apply department filter manually
       if (filters?.department_id) {
-        const filteredTotal = data?.filter((s: any) => 
-          s.programs?.department_id === filters.department_id
-        ).length || 0;
+        const filteredTotal =
+          data?.filter((s: any) => s.programs?.department_id === filters.department_id).length || 0;
         stats.total = filteredTotal;
       }
 

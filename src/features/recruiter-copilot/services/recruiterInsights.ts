@@ -18,7 +18,9 @@ class RecruiterInsightsService {
       // Fetch students with complete profiles
       const { data: students, error } = await supabase
         .from('students')
-        .select('user_id, name, email, university, branch_field, city, state, currentCgpa, expectedGraduationDate, updated_at, resumeUrl')
+        .select(
+          'user_id, name, email, university, branch_field, city, state, currentCgpa, expectedGraduationDate, updated_at, resumeUrl'
+        )
         .not('name', 'is', null)
         .order('updated_at', { ascending: false })
         .limit(limit * 2);
@@ -59,7 +61,7 @@ class RecruiterInsightsService {
             certCount: certCount || 0,
             hasCGPA: !!student.currentCgpa,
             hasResume: !!student.resumeUrl,
-            hasLocation: !!(student.city || student.state)
+            hasLocation: !!(student.city || student.state),
           });
 
           return {
@@ -69,14 +71,14 @@ class RecruiterInsightsService {
             institution: student.university,
             graduation_year: student.expectedGraduationDate?.split('-')[0],
             cgpa: student.currentCgpa?.toString(),
-            skills: skills?.map(s => s.name) || [],
+            skills: skills?.map((s) => s.name) || [],
             projects_count: 0,
             training_count: trainingCount || 0,
             experience_count: certCount || 0,
             career_interests: [student.branch_field].filter(Boolean),
             location: [student.city, student.state].filter(Boolean).join(', '),
             last_active: student.updated_at,
-            profile_completeness: profileScore
+            profile_completeness: profileScore,
           };
         })
       );
@@ -84,12 +86,11 @@ class RecruiterInsightsService {
       // Rank by quality: profile score + skill diversity
       return candidates
         .sort((a, b) => {
-          const scoreA = (a.profile_completeness || 0) + (a.skills.length * 2) + (a.training_count * 3);
-          const scoreB = (b.profile_completeness || 0) + (b.skills.length * 2) + (b.training_count * 3);
+          const scoreA = (a.profile_completeness || 0) + a.skills.length * 2 + a.training_count * 3;
+          const scoreB = (b.profile_completeness || 0) + b.skills.length * 2 + b.training_count * 3;
           return scoreB - scoreA;
         })
         .slice(0, limit);
-
     } catch (error) {
       console.error('Error in getTopCandidates:', error);
       return [];
@@ -99,7 +100,10 @@ class RecruiterInsightsService {
   /**
    * Find candidates by specific skills (smart matching)
    */
-  async findCandidatesBySkills(skillNames: string[], limit: number = 20): Promise<CandidateSummary[]> {
+  async findCandidatesBySkills(
+    skillNames: string[],
+    limit: number = 20
+  ): Promise<CandidateSummary[]> {
     try {
       // Search for skills (case-insensitive partial match)
       const { data: matchingSkills, error } = await supabase
@@ -113,12 +117,13 @@ class RecruiterInsightsService {
 
       // Calculate match scores per student
       const studentScores = new Map<string, { score: number; matchedSkills: string[] }>();
-      
-      matchingSkills.forEach(skill => {
+
+      matchingSkills.forEach((skill) => {
         const skillLower = skill.name.toLowerCase();
-        const matchedInputSkills = skillNames.filter(inputSkill => 
-          skillLower.includes(inputSkill.toLowerCase()) || 
-          inputSkill.toLowerCase().includes(skillLower)
+        const matchedInputSkills = skillNames.filter(
+          (inputSkill) =>
+            skillLower.includes(inputSkill.toLowerCase()) ||
+            inputSkill.toLowerCase().includes(skillLower)
         );
 
         if (matchedInputSkills.length > 0) {
@@ -126,7 +131,7 @@ class RecruiterInsightsService {
           const levelBonus = (skill.level || 1) * 0.5;
           studentScores.set(skill.student_id, {
             score: current.score + matchedInputSkills.length + levelBonus,
-            matchedSkills: [...current.matchedSkills, skill.name]
+            matchedSkills: [...current.matchedSkills, skill.name],
           });
         }
       });
@@ -135,12 +140,11 @@ class RecruiterInsightsService {
       const topStudents = Array.from(studentScores.entries())
         .sort((a, b) => b[1].score - a[1].score)
         .slice(0, limit)
-        .map(entry => entry[0]);
+        .map((entry) => entry[0]);
 
       if (topStudents.length === 0) return [];
 
       return await this.getCandidatesByIds(topStudents);
-
     } catch (error) {
       console.error('Error in findCandidatesBySkills:', error);
       return [];
@@ -168,9 +172,7 @@ class RecruiterInsightsService {
       }
 
       // Extract skills from JSONB
-      const requiredSkills = Array.isArray(opp.skills_required) 
-        ? opp.skills_required 
-        : [];
+      const requiredSkills = Array.isArray(opp.skills_required) ? opp.skills_required : [];
 
       if (requiredSkills.length === 0) {
         return [];
@@ -180,20 +182,21 @@ class RecruiterInsightsService {
       const candidates = await this.findCandidatesBySkills(requiredSkills, limit * 2);
 
       // Score each match
-      const matches: CandidateMatchResult[] = candidates.map(candidate => {
-        const candidateSkillsLower = candidate.skills.map(s => s.toLowerCase());
+      const matches: CandidateMatchResult[] = candidates.map((candidate) => {
+        const candidateSkillsLower = candidate.skills.map((s) => s.toLowerCase());
         const requiredSkillsLower = requiredSkills.map((s: string) => s.toLowerCase());
 
-        const matchedSkills = candidate.skills.filter(skill =>
-          requiredSkillsLower.some(req => 
-            skill.toLowerCase().includes(req) || req.includes(skill.toLowerCase())
+        const matchedSkills = candidate.skills.filter((skill) =>
+          requiredSkillsLower.some(
+            (req) => skill.toLowerCase().includes(req) || req.includes(skill.toLowerCase())
           )
         );
 
-        const missingSkills = requiredSkills.filter((req: string) =>
-          !candidateSkillsLower.some(cs => 
-            cs.includes(req.toLowerCase()) || req.toLowerCase().includes(cs)
-          )
+        const missingSkills = requiredSkills.filter(
+          (req: string) =>
+            !candidateSkillsLower.some(
+              (cs) => cs.includes(req.toLowerCase()) || req.toLowerCase().includes(cs)
+            )
         );
 
         // Intelligent scoring algorithm
@@ -202,7 +205,7 @@ class RecruiterInsightsService {
         const profileBonus = (candidate.profile_completeness || 0) * 0.2;
         const trainingBonus = Math.min(candidate.training_count * 3, 15);
         const certBonus = Math.min(candidate.experience_count * 2, 10);
-        
+
         const matchScore = Math.min(
           Math.round(skillScore + profileBonus + trainingBonus + certBonus),
           100
@@ -220,20 +223,17 @@ class RecruiterInsightsService {
             preferred_skills: [],
             experience_required: opp.experience_required || '',
             applicants_count: opp.applications_count || 0,
-            status: opp.is_active ? 'active' : 'closed'
+            status: opp.is_active ? 'active' : 'closed',
           },
           match_score: matchScore,
           matched_skills: matchedSkills,
           missing_skills: missingSkills,
           additional_strengths: this.identifyStrengths(candidate),
-          recommendation: this.generateRecommendation(matchScore, missingSkills.length)
+          recommendation: this.generateRecommendation(matchScore, missingSkills.length),
         };
       });
 
-      return matches
-        .sort((a, b) => b.match_score - a.match_score)
-        .slice(0, limit);
-
+      return matches.sort((a, b) => b.match_score - a.match_score).slice(0, limit);
     } catch (error) {
       console.error('Error matching candidates:', error);
       return [];
@@ -247,7 +247,9 @@ class RecruiterInsightsService {
     try {
       const { data: students, error } = await supabase
         .from('students')
-        .select('user_id, name, email, university, branch_field, city, state, currentCgpa, expectedGraduationDate, resumeUrl')
+        .select(
+          'user_id, name, email, university, branch_field, city, state, currentCgpa, expectedGraduationDate, resumeUrl'
+        )
         .in('user_id', userIds);
 
       if (error || !students) return [];
@@ -278,13 +280,13 @@ class RecruiterInsightsService {
             institution: student.university,
             graduation_year: student.expectedGraduationDate?.split('-')[0],
             cgpa: student.currentCgpa?.toString(),
-            skills: skills?.map(s => s.name) || [],
+            skills: skills?.map((s) => s.name) || [],
             projects_count: 0,
             training_count: trainingCount || 0,
             experience_count: certCount || 0,
             career_interests: [student.branch_field].filter(Boolean),
             location: [student.city, student.state].filter(Boolean).join(', '),
-            profile_completeness: 75
+            profile_completeness: 75,
           };
         })
       );
@@ -305,57 +307,165 @@ class RecruiterInsightsService {
     if (!certificates || certificates.length === 0) return [];
 
     const jobTitleLower = jobTitle.toLowerCase();
-    const skillsLower = requiredSkills.map(s => s.toLowerCase());
+    const skillsLower = requiredSkills.map((s) => s.toLowerCase());
 
     // Define role-specific certificate keywords
     const roleCertificateMap: { [key: string]: string[] } = {
       // Tech roles
-      'software': ['programming', 'developer', 'software', 'coding', 'computer science', 'web development', 'full stack', 'backend', 'frontend'],
-      'engineer': ['engineering', 'technical', 'certified engineer', 'professional engineer'],
-      'data': ['data science', 'data analysis', 'analytics', 'big data', 'machine learning', 'ai', 'tableau', 'power bi', 'sql', 'python'],
-      'cloud': ['aws', 'azure', 'google cloud', 'gcp', 'cloud practitioner', 'cloud architect', 'cloud developer', 'devops', 'kubernetes', 'docker'],
-      'security': ['security', 'cybersecurity', 'cissp', 'ceh', 'ethical hacking', 'penetration testing', 'security+'],
-      
-      // Design roles
-      'ux': ['ux', 'user experience', 'user research', 'usability', 'interaction design', 'ux design', 'google ux', 'nielsen norman'],
-      'ui': ['ui', 'user interface', 'interface design', 'visual design', 'figma', 'sketch', 'adobe xd'],
-      'design': ['design', 'graphic design', 'creative', 'adobe', 'photoshop', 'illustrator', 'branding'],
-      
-      // Business roles
-      'product': [
-        'product management', 'product owner', 'product manager', 
-        'certified product manager', 'pragmatic marketing',
-        'product-led', 'product strategy', 'product roadmap',
-        'google product management', 'meta product management'
+      software: [
+        'programming',
+        'developer',
+        'software',
+        'coding',
+        'computer science',
+        'web development',
+        'full stack',
+        'backend',
+        'frontend',
       ],
-      'project': ['project management', 'pmp', 'prince2', 'agile', 'scrum master', 'certified scrum', 'pmi'],
-      'business': ['business analysis', 'mba', 'business strategy', 'financial modeling', 'business intelligence'],
-      'marketing': ['marketing', 'digital marketing', 'google ads', 'facebook ads', 'seo', 'content marketing', 'hubspot', 'hootsuite'],
-      'sales': ['sales', 'salesforce', 'crm', 'sales training', 'negotiation'],
-      
+      engineer: ['engineering', 'technical', 'certified engineer', 'professional engineer'],
+      data: [
+        'data science',
+        'data analysis',
+        'analytics',
+        'big data',
+        'machine learning',
+        'ai',
+        'tableau',
+        'power bi',
+        'sql',
+        'python',
+      ],
+      cloud: [
+        'aws',
+        'azure',
+        'google cloud',
+        'gcp',
+        'cloud practitioner',
+        'cloud architect',
+        'cloud developer',
+        'devops',
+        'kubernetes',
+        'docker',
+      ],
+      security: [
+        'security',
+        'cybersecurity',
+        'cissp',
+        'ceh',
+        'ethical hacking',
+        'penetration testing',
+        'security+',
+      ],
+
+      // Design roles
+      ux: [
+        'ux',
+        'user experience',
+        'user research',
+        'usability',
+        'interaction design',
+        'ux design',
+        'google ux',
+        'nielsen norman',
+      ],
+      ui: [
+        'ui',
+        'user interface',
+        'interface design',
+        'visual design',
+        'figma',
+        'sketch',
+        'adobe xd',
+      ],
+      design: [
+        'design',
+        'graphic design',
+        'creative',
+        'adobe',
+        'photoshop',
+        'illustrator',
+        'branding',
+      ],
+
+      // Business roles
+      product: [
+        'product management',
+        'product owner',
+        'product manager',
+        'certified product manager',
+        'pragmatic marketing',
+        'product-led',
+        'product strategy',
+        'product roadmap',
+        'google product management',
+        'meta product management',
+      ],
+      project: [
+        'project management',
+        'pmp',
+        'prince2',
+        'agile',
+        'scrum master',
+        'certified scrum',
+        'pmi',
+      ],
+      business: [
+        'business analysis',
+        'mba',
+        'business strategy',
+        'financial modeling',
+        'business intelligence',
+      ],
+      marketing: [
+        'marketing',
+        'digital marketing',
+        'google ads',
+        'facebook ads',
+        'seo',
+        'content marketing',
+        'hubspot',
+        'hootsuite',
+      ],
+      sales: ['sales', 'salesforce', 'crm', 'sales training', 'negotiation'],
+
       // Consulting
-      'consultant': ['consulting', 'strategy', 'business transformation', 'change management', 'six sigma', 'lean'],
-      'management': ['management', 'leadership', 'mba', 'executive', 'organizational', 'people management'],
-      
+      consultant: [
+        'consulting',
+        'strategy',
+        'business transformation',
+        'change management',
+        'six sigma',
+        'lean',
+      ],
+      management: [
+        'management',
+        'leadership',
+        'mba',
+        'executive',
+        'organizational',
+        'people management',
+      ],
+
       // Finance
-      'finance': ['cfa', 'accounting', 'cpa', 'financial', 'chartered', 'bookkeeping', 'quickbooks'],
-      'analyst': ['analyst', 'analysis', 'financial modeling', 'excel', 'business intelligence'],
-      
+      finance: ['cfa', 'accounting', 'cpa', 'financial', 'chartered', 'bookkeeping', 'quickbooks'],
+      analyst: ['analyst', 'analysis', 'financial modeling', 'excel', 'business intelligence'],
+
       // Other
-      'hr': ['human resources', 'hr', 'shrm', 'phr', 'talent management', 'recruitment'],
-      'legal': ['legal', 'law', 'attorney', 'paralegal', 'compliance'],
-      'healthcare': ['medical', 'healthcare', 'nursing', 'clinical', 'health'],
+      hr: ['human resources', 'hr', 'shrm', 'phr', 'talent management', 'recruitment'],
+      legal: ['legal', 'law', 'attorney', 'paralegal', 'compliance'],
+      healthcare: ['medical', 'healthcare', 'nursing', 'clinical', 'health'],
     };
 
     // Match certificates
-    const matched = certificates.filter(cert => {
+    const matched = certificates.filter((cert) => {
       const certTitleLower = cert.title.toLowerCase();
       const certIssuerLower = (cert.issuer || '').toLowerCase();
       const certText = `${certTitleLower} ${certIssuerLower}`;
 
       // Method 1: Direct match with required skills
-      const matchesSkills = skillsLower.some(skill => 
-        certText.includes(skill) || skill.includes(certTitleLower)
+      const matchesSkills = skillsLower.some(
+        (skill) => certText.includes(skill) || skill.includes(certTitleLower)
       );
 
       if (matchesSkills) return true;
@@ -364,7 +474,7 @@ class RecruiterInsightsService {
       for (const [roleKey, keywords] of Object.entries(roleCertificateMap)) {
         if (jobTitleLower.includes(roleKey)) {
           // Check if certificate matches any keyword for this role
-          const matchesRoleKeywords = keywords.some(keyword => certText.includes(keyword));
+          const matchesRoleKeywords = keywords.some((keyword) => certText.includes(keyword));
           if (matchesRoleKeywords) return true;
         }
       }
@@ -372,13 +482,20 @@ class RecruiterInsightsService {
       // Method 3: Universal high-value certificates (STRICT)
       // Only soft skills and methodologies - NOT platform names
       const universalMethodologies = [
-        'agile', 'scrum master', 'pmp', 'six sigma', 'lean',
-        'leadership', 'communication', 'problem solving',
-        'time management', 'emotional intelligence',
-        'project management professional'
+        'agile',
+        'scrum master',
+        'pmp',
+        'six sigma',
+        'lean',
+        'leadership',
+        'communication',
+        'problem solving',
+        'time management',
+        'emotional intelligence',
+        'project management professional',
       ];
 
-      return universalMethodologies.some(keyword => certText.includes(keyword));
+      return universalMethodologies.some((keyword) => certText.includes(keyword));
     });
 
     return matched;
@@ -412,7 +529,7 @@ class RecruiterInsightsService {
    */
   private identifyStrengths(candidate: CandidateSummary): string[] {
     const strengths: string[] = [];
-    
+
     if (candidate.skills.length >= 5) {
       strengths.push(`${candidate.skills.length} verified skills`);
     }
@@ -455,25 +572,27 @@ class RecruiterInsightsService {
   /**
    * Analyze applicants and provide AI-powered recommendations
    */
-  async analyzeApplicantsForRecommendation(applicants: Array<{
-    id: number;
-    student_id: string;
-    opportunity_id: number;
-    pipeline_stage?: string;
-    student: {
-      id: string;
-      name: string;
-      email: string;
-      university?: string;
-      cgpa?: string;
-      branch_field?: string;
-    };
-    opportunity: {
+  async analyzeApplicantsForRecommendation(
+    applicants: Array<{
       id: number;
-      job_title: string;
-      skills_required?: any;
-    };
-  }>): Promise<{
+      student_id: string;
+      opportunity_id: number;
+      pipeline_stage?: string;
+      student: {
+        id: string;
+        name: string;
+        email: string;
+        university?: string;
+        cgpa?: string;
+        branch_field?: string;
+      };
+      opportunity: {
+        id: number;
+        job_title: string;
+        skills_required?: any;
+      };
+    }>
+  ): Promise<{
     topRecommendations: Array<{
       applicantId: number;
       studentName: string;
@@ -501,8 +620,8 @@ class RecruiterInsightsService {
             totalAnalyzed: 0,
             highPotential: 0,
             mediumPotential: 0,
-            lowPotential: 0
-          }
+            lowPotential: 0,
+          },
         };
       }
 
@@ -534,7 +653,7 @@ class RecruiterInsightsService {
             const requiredSkills = Array.isArray(applicant.opportunity.skills_required)
               ? applicant.opportunity.skills_required
               : [];
-            
+
             // Analyze certificate relevance to job role
             const relevantCertificates = this.matchCertificatesToRole(
               certificates || [],
@@ -542,10 +661,10 @@ class RecruiterInsightsService {
               requiredSkills
             );
 
-            const candidateSkills = skills?.map(s => s.name) || [];
+            const candidateSkills = skills?.map((s) => s.name) || [];
             const certCount = certificates?.length || 0;
             const relevantCertCount = relevantCertificates.length;
-            const candidateSkillsLower = candidateSkills.map(s => s.toLowerCase().trim());
+            const candidateSkillsLower = candidateSkills.map((s) => s.toLowerCase().trim());
             const requiredSkillsLower = requiredSkills.map((s: string) => s.toLowerCase().trim());
 
             // Normalize and deduplicate skills (e.g., "Testing" and "Test" should be one)
@@ -558,17 +677,19 @@ class RecruiterInsightsService {
             // Calculate matched skills with proper deduplication
             const matchedSkillsSet = new Set<string>();
             const matchedSkills: string[] = [];
-            
-            candidateSkills.forEach(skill => {
+
+            candidateSkills.forEach((skill) => {
               const normalizedCandidate = normalizeSkill(skill);
-              const hasMatch = requiredSkillsLower.some(req => {
+              const hasMatch = requiredSkillsLower.some((req) => {
                 const normalizedRequired = normalizeSkill(req);
-                return normalizedCandidate.includes(normalizedRequired) || 
-                       normalizedRequired.includes(normalizedCandidate) ||
-                       skill.toLowerCase().includes(req) || 
-                       req.includes(skill.toLowerCase());
+                return (
+                  normalizedCandidate.includes(normalizedRequired) ||
+                  normalizedRequired.includes(normalizedCandidate) ||
+                  skill.toLowerCase().includes(req) ||
+                  req.includes(skill.toLowerCase())
+                );
               });
-              
+
               if (hasMatch && !matchedSkillsSet.has(normalizedCandidate)) {
                 matchedSkills.push(skill);
                 matchedSkillsSet.add(normalizedCandidate);
@@ -577,12 +698,14 @@ class RecruiterInsightsService {
 
             const missingSkills = requiredSkills.filter((req: string) => {
               const normalizedRequired = normalizeSkill(req);
-              return !candidateSkillsLower.some(cs => {
+              return !candidateSkillsLower.some((cs) => {
                 const normalizedCandidate = normalizeSkill(cs);
-                return normalizedCandidate.includes(normalizedRequired) || 
-                       normalizedRequired.includes(normalizedCandidate) ||
-                       cs.includes(req.toLowerCase()) || 
-                       req.toLowerCase().includes(cs);
+                return (
+                  normalizedCandidate.includes(normalizedRequired) ||
+                  normalizedRequired.includes(normalizedCandidate) ||
+                  cs.includes(req.toLowerCase()) ||
+                  req.toLowerCase().includes(cs)
+                );
               });
             });
 
@@ -594,19 +717,18 @@ class RecruiterInsightsService {
               certCount: certCount,
               hasCGPA: !!applicant.student.cgpa,
               hasResume: false,
-              hasLocation: false
+              hasLocation: false,
             });
 
             // Calculate match score
-            const skillMatchPercent = requiredSkills.length > 0
-              ? (matchedSkills.length / requiredSkills.length) * 100
-              : 50;
+            const skillMatchPercent =
+              requiredSkills.length > 0 ? (matchedSkills.length / requiredSkills.length) * 100 : 50;
             const skillScore = Math.min(skillMatchPercent * 0.6, 60);
             const profileBonus = profileScore * 0.2;
             const trainingBonus = Math.min((trainingCount || 0) * 3, 15);
             // Only count RELEVANT certificates (5 points each, max 10)
             const certBonus = Math.min(relevantCertCount * 5, 10);
-            
+
             const matchScore = Math.min(
               Math.round(skillScore + profileBonus + trainingBonus + certBonus),
               100
@@ -615,14 +737,19 @@ class RecruiterInsightsService {
             // Build reasons
             const reasons: string[] = [];
             if (matchedSkills.length > 0) {
-              reasons.push(`${matchedSkills.length}/${requiredSkills.length} required skills matched`);
+              reasons.push(
+                `${matchedSkills.length}/${requiredSkills.length} required skills matched`
+              );
             }
             if ((trainingCount || 0) >= 2) {
               reasons.push(`${trainingCount} training programs completed`);
             }
             // Show relevant certificates with names
             if (relevantCertCount >= 1) {
-              const certNames = relevantCertificates.slice(0, 2).map(c => c.title).join(', ');
+              const certNames = relevantCertificates
+                .slice(0, 2)
+                .map((c) => c.title)
+                .join(', ');
               const remaining = relevantCertCount > 2 ? ` +${relevantCertCount - 2} more` : '';
               reasons.push(`Relevant certifications: ${certNames}${remaining}`);
             } else if (certCount >= 1) {
@@ -636,10 +763,12 @@ class RecruiterInsightsService {
               reasons.push(`Complete profile (${profileScore}% completeness)`);
             }
             // Only show university if it looks like a valid institution name
-            if (applicant.student.university && 
-                applicant.student.university.length < 100 &&
-                !applicant.student.university.toLowerCase().includes('botany') &&
-                !applicant.student.university.toLowerCase().includes('zoology')) {
+            if (
+              applicant.student.university &&
+              applicant.student.university.length < 100 &&
+              !applicant.student.university.toLowerCase().includes('botany') &&
+              !applicant.student.university.toLowerCase().includes('zoology')
+            ) {
               reasons.push(`From ${applicant.student.university}`);
             }
 
@@ -676,7 +805,7 @@ class RecruiterInsightsService {
               nextAction,
               suggestedStage,
               matchedSkills,
-              missingSkills
+              missingSkills,
             };
           } catch (error) {
             console.error(`Error analyzing applicant ${applicant.id}:`, error);
@@ -687,20 +816,20 @@ class RecruiterInsightsService {
 
       // Filter out null results, apply minimum threshold, and sort by match score
       const validRecommendations = recommendations
-        .filter(r => r !== null && r!.matchScore > 20) // Only show candidates with greater than 20% match
+        .filter((r) => r !== null && r!.matchScore > 20) // Only show candidates with greater than 20% match
         .sort((a, b) => b!.matchScore - a!.matchScore);
 
       // Calculate summary
       const summary = {
         totalAnalyzed: validRecommendations.length,
-        highPotential: validRecommendations.filter(r => r!.confidence === 'high').length,
-        mediumPotential: validRecommendations.filter(r => r!.confidence === 'medium').length,
-        lowPotential: validRecommendations.filter(r => r!.confidence === 'low').length
+        highPotential: validRecommendations.filter((r) => r!.confidence === 'high').length,
+        mediumPotential: validRecommendations.filter((r) => r!.confidence === 'medium').length,
+        lowPotential: validRecommendations.filter((r) => r!.confidence === 'low').length,
       };
 
       return {
         topRecommendations: validRecommendations as any,
-        summary
+        summary,
       };
     } catch (error) {
       console.error('Error analyzing applicants:', error);
@@ -710,8 +839,8 @@ class RecruiterInsightsService {
           totalAnalyzed: 0,
           highPotential: 0,
           mediumPotential: 0,
-          lowPotential: 0
-        }
+          lowPotential: 0,
+        },
       };
     }
   }

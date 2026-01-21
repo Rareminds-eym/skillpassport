@@ -6,13 +6,13 @@ A comprehensive career assessment system with 5 sections that analyzes student i
 
 ## 🎯 5 Assessment Sections Overview
 
-| # | Section | Purpose | Questions | Model |
-|---|---------|---------|-----------|-------|
-| 1 | **Interest** | Career interests | 48 | Holland's RIASEC |
-| 2 | **Strengths** | Personality traits | 30 | Big Five (OCEAN) |
-| 3 | **Learning** | Work preferences | 24 | Work Values |
-| 4 | **Aptitude** | Skills & employability | 31 | Self-rating + SJT |
-| 5 | **Adaptive** | Stream knowledge | 10-30 | AI-generated MCQs |
+| #   | Section       | Purpose                | Questions | Model             |
+| --- | ------------- | ---------------------- | --------- | ----------------- |
+| 1   | **Interest**  | Career interests       | 48        | Holland's RIASEC  |
+| 2   | **Strengths** | Personality traits     | 30        | Big Five (OCEAN)  |
+| 3   | **Learning**  | Work preferences       | 24        | Work Values       |
+| 4   | **Aptitude**  | Skills & employability | 31        | Self-rating + SJT |
+| 5   | **Adaptive**  | Stream knowledge       | 10-30     | AI-generated MCQs |
 
 ---
 
@@ -76,53 +76,58 @@ src/services/
 ## 🗄️ Database Tables (Supabase)
 
 ### `personal_assessment_attempts`
+
 Tracks each assessment attempt.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | UUID | Primary key |
-| `student_id` | UUID | FK to students |
-| `stream_id` | VARCHAR | Selected stream (cs, bca, bba, etc.) |
-| `grade_level` | TEXT | 'middle', 'highschool', 'after10', 'after12' |
-| `status` | VARCHAR | 'in_progress', 'completed', 'abandoned' |
-| `section_timings` | JSONB | Time spent per section |
-| `current_section_index` | INT | Progress tracking |
-| `current_question_index` | INT | Progress tracking |
+| Column                   | Type    | Description                                  |
+| ------------------------ | ------- | -------------------------------------------- |
+| `id`                     | UUID    | Primary key                                  |
+| `student_id`             | UUID    | FK to students                               |
+| `stream_id`              | VARCHAR | Selected stream (cs, bca, bba, etc.)         |
+| `grade_level`            | TEXT    | 'middle', 'highschool', 'after10', 'after12' |
+| `status`                 | VARCHAR | 'in_progress', 'completed', 'abandoned'      |
+| `section_timings`        | JSONB   | Time spent per section                       |
+| `current_section_index`  | INT     | Progress tracking                            |
+| `current_question_index` | INT     | Progress tracking                            |
 
 ### `personal_assessment_results`
+
 Stores AI analysis results.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | UUID | Primary key |
-| `attempt_id` | UUID | FK to attempts |
-| `student_id` | UUID | FK to students |
-| `riasec_scores` | JSONB | `{R:0, I:0, A:0, S:0, E:0, C:0}` |
-| `riasec_code` | VARCHAR | Top 2-3 types, e.g., "IR", "ASE" |
-| `bigfive_scores` | JSONB | `{O:0, C:0, E:0, A:0, N:0}` |
-| `work_values_scores` | JSONB | Work values analysis |
-| `aptitude_scores` | JSONB | Aptitude breakdown |
-| `employability_scores` | JSONB | Soft skills scores |
-| `knowledge_score` | NUMERIC | Stream knowledge percentage |
-| `career_fit` | JSONB | Career cluster recommendations |
-| `skill_gap` | JSONB | Skills to develop |
-| `roadmap` | JSONB | Development plan |
-| `gemini_results` | JSONB | **Full AI response** |
+| Column                 | Type    | Description                      |
+| ---------------------- | ------- | -------------------------------- |
+| `id`                   | UUID    | Primary key                      |
+| `attempt_id`           | UUID    | FK to attempts                   |
+| `student_id`           | UUID    | FK to students                   |
+| `riasec_scores`        | JSONB   | `{R:0, I:0, A:0, S:0, E:0, C:0}` |
+| `riasec_code`          | VARCHAR | Top 2-3 types, e.g., "IR", "ASE" |
+| `bigfive_scores`       | JSONB   | `{O:0, C:0, E:0, A:0, N:0}`      |
+| `work_values_scores`   | JSONB   | Work values analysis             |
+| `aptitude_scores`      | JSONB   | Aptitude breakdown               |
+| `employability_scores` | JSONB   | Soft skills scores               |
+| `knowledge_score`      | NUMERIC | Stream knowledge percentage      |
+| `career_fit`           | JSONB   | Career cluster recommendations   |
+| `skill_gap`            | JSONB   | Skills to develop                |
+| `roadmap`              | JSONB   | Development plan                 |
+| `gemini_results`       | JSONB   | **Full AI response**             |
 
 ### `personal_assessment_responses`
+
 Individual question responses.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `attempt_id` | UUID | FK to attempts |
-| `question_id` | UUID | FK to questions |
-| `response_value` | JSONB | Student's answer |
-| `is_correct` | BOOLEAN | For MCQ questions |
+| Column           | Type    | Description       |
+| ---------------- | ------- | ----------------- |
+| `attempt_id`     | UUID    | FK to attempts    |
+| `question_id`    | UUID    | FK to questions   |
+| `response_value` | JSONB   | Student's answer  |
+| `is_correct`     | BOOLEAN | For MCQ questions |
 
 ### `personal_assessment_sections`
+
 Section definitions by grade level.
 
 ### `personal_assessment_streams`
+
 Available streams (cs, bca, bba, dm, animation).
 
 ---
@@ -201,6 +206,7 @@ Available streams (cs, bca, bba, dm, animation).
 **File:** `data/questions/riasecQuestions.ts`
 
 **Holland's RIASEC Model:**
+
 - **R** - Realistic: Hands-on, tools, practical
 - **I** - Investigative: Analysis, science, logic
 - **A** - Artistic: Creative, ideas, expression
@@ -209,6 +215,7 @@ Available streams (cs, bca, bba, dm, animation).
 - **C** - Conventional: Order, systems, detail
 
 **Sample Question:**
+
 ```typescript
 { id: 'r1', type: 'R', text: 'Repair a broken appliance or device.' }
 ```
@@ -222,6 +229,7 @@ Available streams (cs, bca, bba, dm, animation).
 **File:** `data/questions/bigFiveQuestions.ts`
 
 **OCEAN Model:**
+
 - **O** - Openness: Curiosity, creativity
 - **C** - Conscientiousness: Organization, discipline
 - **E** - Extraversion: Sociability, energy
@@ -229,6 +237,7 @@ Available streams (cs, bca, bba, dm, animation).
 - **N** - Neuroticism: Emotional stability
 
 **Sample Question:**
+
 ```typescript
 { id: 'o1', type: 'O', text: 'I enjoy exploring new ideas.' }
 ```
@@ -240,6 +249,7 @@ Available streams (cs, bca, bba, dm, animation).
 **File:** `data/questions/workValuesQuestions.ts`
 
 **8 Value Types:**
+
 - Security/Stability
 - Autonomy/Independence
 - Creativity/Innovation
@@ -250,6 +260,7 @@ Available streams (cs, bca, bba, dm, animation).
 - Lifestyle/Balance
 
 **Sample Question:**
+
 ```typescript
 { id: 'sec1', type: 'Security', text: 'A predictable job with steady income.' }
 ```
@@ -261,6 +272,7 @@ Available streams (cs, bca, bba, dm, animation).
 **File:** `data/questions/employabilityQuestions.ts`
 
 **Part A: Self-Rating (25 questions)**
+
 - Communication (3)
 - Teamwork (3)
 - Problem Solving (3)
@@ -271,6 +283,7 @@ Available streams (cs, bca, bba, dm, animation).
 - Career Readiness (4)
 
 **Part B: Situational Judgement Test (6 scenarios)**
+
 ```typescript
 {
   id: 'sjt1',
@@ -298,6 +311,7 @@ Available streams (cs, bca, bba, dm, animation).
 | Animation | `animation` | 10 |
 
 **Sample Question:**
+
 ```typescript
 {
   id: 'cs1',
@@ -324,22 +338,22 @@ The Cloudflare Worker routes to different prompts based on `gradeLevel`:
 
 export function buildPrompt(assessmentData: AssessmentData): string {
   const { gradeLevel } = assessmentData;
-  
+
   switch (gradeLevel) {
     case 'middle':
-      return buildMiddleSchoolPrompt(assessmentData);  // Grades 6-8
-      
+      return buildMiddleSchoolPrompt(assessmentData); // Grades 6-8
+
     case 'highschool':
     case 'higher_secondary':
-      return buildHighSchoolPrompt(assessmentData);    // Grades 9-12
-      
+      return buildHighSchoolPrompt(assessmentData); // Grades 9-12
+
     case 'after10':
-      return buildCollegePrompt(assessmentData);       // isAfter10 = true
-      
+      return buildCollegePrompt(assessmentData); // isAfter10 = true
+
     case 'after12':
     case 'college':
-      return buildCollegePrompt(assessmentData);       // isAfter10 = false
-      
+      return buildCollegePrompt(assessmentData); // isAfter10 = false
+
     default:
       return buildCollegePrompt(assessmentData);
   }
@@ -348,11 +362,11 @@ export function buildPrompt(assessmentData: AssessmentData): string {
 
 ### Prompt Files
 
-| File | Grade Levels | Key Output |
-|------|--------------|------------|
-| `middleSchool.ts` | 6-8 | Career exploration, interests |
-| `highSchool.ts` | 9-12 | Career guidance, aptitude |
-| `college.ts` | after10, after12, college | Stream/Course recommendations |
+| File              | Grade Levels              | Key Output                    |
+| ----------------- | ------------------------- | ----------------------------- |
+| `middleSchool.ts` | 6-8                       | Career exploration, interests |
+| `highSchool.ts`   | 9-12                      | Career guidance, aptitude     |
+| `college.ts`      | after10, after12, college | Stream/Course recommendations |
 
 ### After 10th vs After 12th
 
@@ -373,6 +387,7 @@ if (isAfter10) {
 ```
 
 **Request:**
+
 ```json
 {
   "assessmentData": {
@@ -389,6 +404,7 @@ if (isAfter10) {
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -409,12 +425,12 @@ if (isAfter10) {
 
 ## 🎓 Grade Levels
 
-| Grade Level | Sections | Output |
-|-------------|----------|--------|
-| `middle` (6-8) | Interest, Strengths, Learning | Career exploration |
-| `highschool` (9-10) | All 5 sections | Career guidance |
-| `after10` | All 5 sections | **Stream recommendation** (PCMS, PCMB, Commerce, Arts) |
-| `after12` | All 5 sections | **Course/Degree recommendations** |
+| Grade Level         | Sections                      | Output                                                 |
+| ------------------- | ----------------------------- | ------------------------------------------------------ |
+| `middle` (6-8)      | Interest, Strengths, Learning | Career exploration                                     |
+| `highschool` (9-10) | All 5 sections                | Career guidance                                        |
+| `after10`           | All 5 sections                | **Stream recommendation** (PCMS, PCMB, Commerce, Arts) |
+| `after12`           | All 5 sections                | **Course/Degree recommendations**                      |
 
 ---
 
@@ -476,14 +492,14 @@ The system uses a **user-selected** grade level, not auto-detected from the data
 
 ### Key Files in Grade Level Flow
 
-| File | Purpose |
-|------|---------|
-| `constants/config.ts` | Defines GRADE_RANGES: middle(6-8), highschool(9-10), higher_secondary(11-12) |
-| `utils/gradeUtils.ts` | `getGradeLevelFromGrade()` - converts "Grade 10" → "highschool" |
-| `hooks/useStudentGrade.ts` | Fetches student grade from DB, calculates `detectedGradeLevel` |
-| `components/GradeSelectionScreen.jsx` | Shows grade options, handles user selection |
-| `AssessmentTestPage.tsx` | `handleGradeSelect()` - creates attempt with user-selected grade |
-| `services/assessmentService.js` | `createAttempt()` - saves grade_level to DB |
+| File                                  | Purpose                                                                      |
+| ------------------------------------- | ---------------------------------------------------------------------------- |
+| `constants/config.ts`                 | Defines GRADE_RANGES: middle(6-8), highschool(9-10), higher_secondary(11-12) |
+| `utils/gradeUtils.ts`                 | `getGradeLevelFromGrade()` - converts "Grade 10" → "highschool"              |
+| `hooks/useStudentGrade.ts`            | Fetches student grade from DB, calculates `detectedGradeLevel`               |
+| `components/GradeSelectionScreen.jsx` | Shows grade options, handles user selection                                  |
+| `AssessmentTestPage.tsx`              | `handleGradeSelect()` - creates attempt with user-selected grade             |
+| `services/assessmentService.js`       | `createAttempt()` - saves grade_level to DB                                  |
 
 ### Grade Level Visibility Rules
 
@@ -520,18 +536,19 @@ case 'after10':
 
 The `students.grade_start_date` field determines assessment eligibility:
 
-| Field | Type | Description |
-|-------|------|-------------|
+| Field              | Type | Description                                   |
+| ------------------ | ---- | --------------------------------------------- |
 | `grade_start_date` | DATE | Date when student started their current grade |
 
 **Calculation:**
+
 ```typescript
 // From gradeUtils.ts - calculateMonthsInGrade()
-const months = (now.getFullYear() - start.getFullYear()) * 12 + 
-               (now.getMonth() - start.getMonth());
+const months = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
 ```
 
 **Fallback:** If `grade_start_date` is null, the system estimates from `school_classes.academic_year`:
+
 ```typescript
 // e.g., "2024-2025" → June 2024 (assumed start)
 const estimatedStartDate = `${startYear}-06-01`;
@@ -539,16 +556,17 @@ const estimatedStartDate = `${startYear}-06-01`;
 
 ### Example: Grade 10 Student
 
-| Student Data | Value |
-|--------------|-------|
-| `students.grade` | "Grade 10" |
-| `school_classes.grade` | "10" |
-| `academic_year` | "2024-2025" |
-| `monthsInGrade` | 7 (calculated) |
+| Student Data           | Value          |
+| ---------------------- | -------------- |
+| `students.grade`       | "Grade 10"     |
+| `school_classes.grade` | "10"           |
+| `academic_year`        | "2024-2025"    |
+| `monthsInGrade`        | 7 (calculated) |
 
 **Detected Grade Level:** `highschool` (from GRADE_RANGES)
 
 **Options Shown:**
+
 - ❌ "Grades 9-10" (hidden because 6+ months in grade 10)
 - ✅ "After 10th" (shown because grade 10 + 6+ months)
 
@@ -568,6 +586,7 @@ const estimatedStartDate = `${startYear}-06-01`;
 ## 🔧 Environment Variables
 
 ### Frontend (.env)
+
 ```
 VITE_ASSESSMENT_API_URL=https://analyze-assessment-api.dark-mode-d021.workers.dev
 VITE_SUPABASE_URL=your-supabase-url
@@ -575,6 +594,7 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 ```
 
 ### Cloudflare Worker (wrangler.toml / secrets)
+
 ```
 OPENROUTER_API_KEY=your-openrouter-key
 VITE_SUPABASE_URL=your-supabase-url

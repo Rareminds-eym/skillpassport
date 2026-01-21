@@ -29,20 +29,20 @@ export async function sendOtp(phone, countryCode = '+91') {
     });
 
     const result = await response.json();
-    
+
     if (!response.ok) {
-      return { 
-        success: false, 
-        error: result.error || 'Failed to send OTP. Please try again.' 
+      return {
+        success: false,
+        error: result.error || 'Failed to send OTP. Please try again.',
       };
     }
 
     return result;
   } catch (error) {
     console.error('Send OTP Error:', error);
-    return { 
-      success: false, 
-      error: 'Network error. Please check your connection and try again.' 
+    return {
+      success: false,
+      error: 'Network error. Please check your connection and try again.',
     };
   }
 }
@@ -59,11 +59,11 @@ export async function verifyOtp(phone, otp, countryCode = '+91') {
     // Validate inputs
     const cleanPhone = phone.replace(/\D/g, '');
     const cleanOtp = otp.replace(/\D/g, '');
-    
+
     if (cleanPhone.length !== 10) {
       return { success: false, error: 'Invalid phone number' };
     }
-    
+
     if (cleanOtp.length !== 6) {
       return { success: false, error: 'Please enter a valid 6-digit OTP' };
     }
@@ -77,21 +77,21 @@ export async function verifyOtp(phone, otp, countryCode = '+91') {
     });
 
     const result = await response.json();
-    
+
     if (!response.ok) {
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: result.error || 'Invalid OTP. Please try again.',
-        data: result.data
+        data: result.data,
       };
     }
 
     return result;
   } catch (error) {
     console.error('Verify OTP Error:', error);
-    return { 
-      success: false, 
-      error: 'Network error. Please check your connection and try again.' 
+    return {
+      success: false,
+      error: 'Network error. Please check your connection and try again.',
     };
   }
 }
@@ -118,21 +118,21 @@ export async function resendOtp(phone, countryCode = '+91') {
     });
 
     const result = await response.json();
-    
+
     if (!response.ok) {
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: result.error || 'Failed to resend OTP. Please try again.',
-        data: result.data
+        data: result.data,
       };
     }
 
     return result;
   } catch (error) {
     console.error('Resend OTP Error:', error);
-    return { 
-      success: false, 
-      error: 'Network error. Please check your connection and try again.' 
+    return {
+      success: false,
+      error: 'Network error. Please check your connection and try again.',
     };
   }
 }

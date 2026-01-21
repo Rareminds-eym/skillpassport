@@ -11,12 +11,14 @@ const TimeWarningModal: React.FC<TimeWarningModalProps> = ({ type, onClose }) =>
   const messages = {
     'half-time': {
       title: '30 Minutes Remaining',
-      message: 'You have reached the halfway point. Please manage your time wisely and ensure all questions are answered.'
+      message:
+        'You have reached the halfway point. Please manage your time wisely and ensure all questions are answered.',
     },
     'review-time': {
       title: '10 Minutes Remaining',
-      message: 'You are now in the review period. Please review your answers carefully before the test auto-submits.'
-    }
+      message:
+        'You are now in the review period. Please review your answers carefully before the test auto-submits.',
+    },
   };
 
   return (
@@ -40,12 +42,8 @@ const TimeWarningModal: React.FC<TimeWarningModalProps> = ({ type, onClose }) =>
               <AlertCircle className="h-8 w-8 text-yellow-600" />
             )}
           </div>
-          <h3 className="text-xl font-bold text-gray-900 font-serif">
-            {messages[type].title}
-          </h3>
-          <p className="mt-2 text-gray-600">
-            {messages[type].message}
-          </p>
+          <h3 className="text-xl font-bold text-gray-900 font-serif">{messages[type].title}</h3>
+          <p className="mt-2 text-gray-600">{messages[type].message}</p>
         </div>
         <div className="flex justify-center">
           <button

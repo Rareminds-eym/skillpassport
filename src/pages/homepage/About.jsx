@@ -14,14 +14,14 @@ const About = () => {
         <div className="bg-white rounded-xl shadow-md p-8 mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Our Story</h2>
           <p className="text-gray-600 leading-relaxed mb-4">
-            SkillPassport was founded with a simple mission: to bridge the gap between talented students
-            and forward-thinking recruiters. We understand that finding the right career opportunity can
-            be challenging, and hiring the right talent is equally difficult.
+            SkillPassport was founded with a simple mission: to bridge the gap between talented
+            students and forward-thinking recruiters. We understand that finding the right career
+            opportunity can be challenging, and hiring the right talent is equally difficult.
           </p>
           <p className="text-gray-600 leading-relaxed">
-            Our platform provides a comprehensive solution that helps students showcase their skills,
-            track their applications, and connect with recruiters who are actively looking for talent
-            like them.
+            Our platform provides a comprehensive solution that helps students showcase their
+            skills, track their applications, and connect with recruiters who are actively looking
+            for talent like them.
           </p>
         </div>
 
@@ -54,8 +54,8 @@ const About = () => {
             </div>
             <h3 className="text-xl font-bold text-gray-900 mb-2">Our Vision</h3>
             <p className="text-gray-600">
-              To become the leading platform that transforms how students and recruiters connect
-              in the digital age.
+              To become the leading platform that transforms how students and recruiters connect in
+              the digital age.
             </p>
           </div>
         </div>

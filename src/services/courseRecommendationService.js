@@ -1,12 +1,12 @@
 /**
  * Course Recommendation Service
- * 
+ *
  * DEPRECATED: This file is kept for backward compatibility.
  * The service has been modularized into src/services/courseRecommendation/
- * 
+ *
  * New imports should use:
  * import { getRecommendedCourses } from './courseRecommendation';
- * 
+ *
  * @deprecated Use imports from './courseRecommendation' instead
  */
 
@@ -22,7 +22,7 @@ export {
   saveRecommendations,
   getSavedRecommendations,
   updateRecommendationStatus,
-  getAndSaveRecommendations
+  getAndSaveRecommendations,
 } from './courseRecommendation';
 
 // Default export for backward compatibility

@@ -17,6 +17,7 @@ placement/
 ## Components
 
 ### 1. CompanyRegistration.tsx
+
 - Manage company profiles and registrations
 - MoU/JD document uploads
 - Company status management (Active, Pending, Approved, etc.)
@@ -24,6 +25,7 @@ placement/
 - Static data with sample companies
 
 ### 2. JobPostings.tsx
+
 - Create and manage job postings
 - Job eligibility criteria setup
 - Recruitment rounds scheduling
@@ -31,6 +33,7 @@ placement/
 - Export shortlists functionality
 
 ### 3. ApplicationTracking.tsx
+
 - Track student applications across different stages
 - Recruitment pipeline visualization
 - Application status updates
@@ -38,6 +41,7 @@ placement/
 - Export application data
 
 ### 4. PlacementAnalytics.tsx
+
 - Department-wise placement statistics
 - CTC analysis (Average, Median, Highest)
 - Placement rate calculations
@@ -61,6 +65,7 @@ The main component (`index.tsx`) provides a tabbed interface to switch between d
 ## Data Structure
 
 All components use TypeScript interfaces for type safety:
+
 - `Company`: Company registration data
 - `JobPosting`: Job posting information with eligibility criteria
 - `EligibleStudent`: Student application data

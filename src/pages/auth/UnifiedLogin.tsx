@@ -19,17 +19,18 @@ const UnifiedLogin = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { login } = useAuth();
-  
+
   // Get return URL from query params or session storage (for invitation flow)
-  const returnUrl = searchParams.get('returnUrl') || sessionStorage.getItem('invitation_return_url');
-  
+  const returnUrl =
+    searchParams.get('returnUrl') || sessionStorage.getItem('invitation_return_url');
+
   const [state, setState] = useState<LoginState>({
     email: '',
     password: '',
     showPassword: false,
     loading: false,
     error: '',
-    selectedRole: null
+    selectedRole: null,
   });
 
   const allRoles: UserRole[] = [
@@ -38,7 +39,7 @@ const UnifiedLogin = () => {
     'educator',
     'school_admin',
     'college_admin',
-    'university_admin'
+    'university_admin',
   ];
 
   const getRoleDisplayName = (role: UserRole): string => {
@@ -48,32 +49,32 @@ const UnifiedLogin = () => {
       educator: 'Educator',
       school_admin: 'School Administrator',
       college_admin: 'College Administrator',
-      university_admin: 'University Administrator'
+      university_admin: 'University Administrator',
     };
     return roleNames[role];
   };
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       [name]: value,
-      error: ''
+      error: '',
     }));
   };
 
   const handleRoleChange = (e: ChangeEvent<HTMLSelectElement>) => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       selectedRole: e.target.value as UserRole,
-      error: ''
+      error: '',
     }));
   };
 
   const togglePasswordVisibility = () => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
-      showPassword: !prev.showPassword
+      showPassword: !prev.showPassword,
     }));
   };
 
@@ -82,33 +83,33 @@ const UnifiedLogin = () => {
 
     // Validate inputs
     if (!state.email || !state.password) {
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
-        error: 'Please enter both email and password'
+        error: 'Please enter both email and password',
       }));
       return;
     }
 
     // Validate role selection
     if (!state.selectedRole) {
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
-        error: 'Please select a role'
+        error: 'Please select a role',
       }));
       return;
     }
 
-    setState(prev => ({ ...prev, loading: true, error: '' }));
+    setState((prev) => ({ ...prev, loading: true, error: '' }));
 
     try {
       // Step 1: Authenticate user
       const authResult = await signIn(state.email, state.password);
 
       if (!authResult.success || !authResult.user) {
-        setState(prev => ({
+        setState((prev) => ({
           ...prev,
           loading: false,
-          error: authResult.error || 'Authentication failed'
+          error: authResult.error || 'Authentication failed',
         }));
         return;
       }
@@ -119,12 +120,15 @@ const UnifiedLogin = () => {
       console.log('🔍 Role lookup result:', roleLookup);
 
       // Handle error - no roles found
-      if (roleLookup.error || (!roleLookup.role && (!roleLookup.roles || roleLookup.roles.length === 0))) {
+      if (
+        roleLookup.error ||
+        (!roleLookup.role && (!roleLookup.roles || roleLookup.roles.length === 0))
+      ) {
         console.error('❌ Role lookup error:', roleLookup.error);
-        setState(prev => ({
+        setState((prev) => ({
           ...prev,
           loading: false,
-          error: roleLookup.error || 'Account not properly configured. Contact support'
+          error: roleLookup.error || 'Account not properly configured. Contact support',
         }));
         return;
       }
@@ -147,10 +151,10 @@ const UnifiedLogin = () => {
       }
 
       if (!userHasSelectedRole || !state.selectedRole) {
-        setState(prev => ({
+        setState((prev) => ({
           ...prev,
           loading: false,
-          error: `Not authorized. You do not have access to the ${state.selectedRole ? getRoleDisplayName(state.selectedRole) : 'selected'} role.`
+          error: `Not authorized. You do not have access to the ${state.selectedRole ? getRoleDisplayName(state.selectedRole) : 'selected'} role.`,
         }));
         return;
       }
@@ -159,7 +163,7 @@ const UnifiedLogin = () => {
       const userData = {
         ...userDataForRole,
         role: state.selectedRole,
-        user_id: authResult.user.id
+        user_id: authResult.user.id,
       };
 
       login(userData);
@@ -172,13 +176,12 @@ const UnifiedLogin = () => {
       } else {
         redirectToRoleDashboard(state.selectedRole, navigate);
       }
-
     } catch (error) {
       console.error('Login error:', error);
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         loading: false,
-        error: 'An unexpected error occurred. Please try again'
+        error: 'An unexpected error occurred. Please try again',
       }));
     }
   };
@@ -194,9 +197,9 @@ const UnifiedLogin = () => {
         <div className="hidden lg:flex relative p-10 text-white flex-col justify-between rounded-3xl shadow-lg bg-gradient-to-br from-[#0a6aba] to-[#09277f] overflow-hidden">
           {/* Background Image */}
           <div className="absolute inset-0 z-0">
-            <img 
-              src="/login/login.jpg" 
-              alt="Login background" 
+            <img
+              src="/login/login.jpg"
+              alt="Login background"
               className="w-full h-full object-cover"
             />
             <div className="absolute inset-0 "></div>
@@ -236,9 +239,7 @@ const UnifiedLogin = () => {
           {/* Form Container */}
           <div className="relative w-full max-w-md">
             <div className="text-center mb-8">
-              <h3 className="text-3xl font-bold text-white lg:text-gray-900">
-                Sign In
-              </h3>
+              <h3 className="text-3xl font-bold text-white lg:text-gray-900">Sign In</h3>
               <p className="text-sm text-white/80 lg:text-gray-600 mt-2">
                 Enter your credentials to continue
               </p>
@@ -257,7 +258,10 @@ const UnifiedLogin = () => {
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Email Input */}
                 <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-white lg:text-gray-700 mb-2">
+                  <label
+                    htmlFor="email"
+                    className="block text-sm font-medium text-white lg:text-gray-700 mb-2"
+                  >
                     Email Address
                   </label>
                   <div className="relative">
@@ -281,7 +285,10 @@ const UnifiedLogin = () => {
 
                 {/* Password Input */}
                 <div>
-                  <label htmlFor="password" className="block text-sm font-medium text-white lg:text-gray-700 mb-2">
+                  <label
+                    htmlFor="password"
+                    className="block text-sm font-medium text-white lg:text-gray-700 mb-2"
+                  >
                     Password
                   </label>
                   <div className="relative">
@@ -318,7 +325,10 @@ const UnifiedLogin = () => {
 
                 {/* Role Selection */}
                 <div>
-                  <label htmlFor="role" className="block text-sm font-medium text-white lg:text-gray-700 mb-2">
+                  <label
+                    htmlFor="role"
+                    className="block text-sm font-medium text-white lg:text-gray-700 mb-2"
+                  >
                     Select Role
                   </label>
                   <div className="relative">
@@ -342,8 +352,18 @@ const UnifiedLogin = () => {
                       ))}
                     </select>
                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                      <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      <svg
+                        className="h-5 w-5 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 9l-7 7-7-7"
+                        />
                       </svg>
                     </div>
                   </div>
@@ -385,7 +405,10 @@ const UnifiedLogin = () => {
               <div className="mt-6 text-center">
                 <p className="text-sm text-white lg:text-gray-600">
                   Don't have an account?{' '}
-                  <Link to="/signup" className="font-medium text-white lg:text-blue-600 hover:text-white/80 lg:hover:text-blue-500">
+                  <Link
+                    to="/signup"
+                    className="font-medium text-white lg:text-blue-600 hover:text-white/80 lg:hover:text-blue-500"
+                  >
                     Sign up
                   </Link>
                 </p>

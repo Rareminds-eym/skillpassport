@@ -12,7 +12,7 @@ const generateHash = (text) => {
   let hash = 0;
   for (let i = 0; i < text.length; i++) {
     const char = text.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash;
   }
   return hash.toString(36); // Base36 for shorter keys
@@ -27,7 +27,7 @@ const generateHash = (text) => {
 export const getFromDatabase = async (text, type = 'profile') => {
   try {
     const hash = generateHash(text);
-    
+
     const { data, error } = await supabase
       .from('embedding_cache')
       .select('embedding, created_at')
@@ -38,7 +38,9 @@ export const getFromDatabase = async (text, type = 'profile') => {
     // Handle table not existing gracefully
     if (error) {
       if (error.code === '42P01' || error.message?.includes('does not exist')) {
-        console.warn('⚠️ embedding_cache table not found. Run setup-embedding-cache.sql to enable database caching.');
+        console.warn(
+          '⚠️ embedding_cache table not found. Run setup-embedding-cache.sql to enable database caching.'
+        );
         return null;
       }
       // Silently ignore other errors (like 406)
@@ -52,13 +54,10 @@ export const getFromDatabase = async (text, type = 'profile') => {
     // Check if cache is still valid (30 days)
     const cacheAge = Date.now() - new Date(data.created_at).getTime();
     const maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days in ms
-    
+
     if (cacheAge > maxAge) {
       // Cache expired, delete it
-      await supabase
-        .from('embedding_cache')
-        .delete()
-        .eq('text_hash', hash);
+      await supabase.from('embedding_cache').delete().eq('text_hash', hash);
       return null;
     }
 
@@ -79,18 +78,19 @@ export const getFromDatabase = async (text, type = 'profile') => {
 export const saveToDatabase = async (text, embedding, type = 'profile') => {
   try {
     const hash = generateHash(text);
-    
-    const { error } = await supabase
-      .from('embedding_cache')
-      .upsert({
+
+    const { error } = await supabase.from('embedding_cache').upsert(
+      {
         text_hash: hash,
         cache_type: type,
         embedding: embedding,
         text_preview: text.substring(0, 200), // Store preview for debugging
-        created_at: new Date().toISOString()
-      }, {
-        onConflict: 'text_hash,cache_type'
-      });
+        created_at: new Date().toISOString(),
+      },
+      {
+        onConflict: 'text_hash,cache_type',
+      }
+    );
 
     if (error) {
       // Handle table not existing gracefully
@@ -161,8 +161,8 @@ export const getDatabaseCacheStats = async () => {
       byType: {
         profile: profileCount || 0,
         skill: skillCount || 0,
-        course: (totalCount || 0) - (profileCount || 0) - (skillCount || 0)
-      }
+        course: (totalCount || 0) - (profileCount || 0) - (skillCount || 0),
+      },
     };
   } catch (error) {
     console.warn('Failed to get cache stats:', error.message);

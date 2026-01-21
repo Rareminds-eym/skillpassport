@@ -28,7 +28,7 @@ export const mockStudents: Student[] = [
     joinedDate: '2024-09-01',
     activitiesCount: 24,
     verifiedActivitiesCount: 20,
-    portfolioComplete: true
+    portfolioComplete: true,
   },
   {
     id: 'std-002',
@@ -43,7 +43,7 @@ export const mockStudents: Student[] = [
     joinedDate: '2024-09-01',
     activitiesCount: 18,
     verifiedActivitiesCount: 15,
-    portfolioComplete: false
+    portfolioComplete: false,
   },
   {
     id: 'std-003',
@@ -58,7 +58,7 @@ export const mockStudents: Student[] = [
     joinedDate: '2024-09-01',
     activitiesCount: 28,
     verifiedActivitiesCount: 26,
-    portfolioComplete: true
+    portfolioComplete: true,
   },
   {
     id: 'std-004',
@@ -73,7 +73,7 @@ export const mockStudents: Student[] = [
     joinedDate: '2024-09-15',
     activitiesCount: 12,
     verifiedActivitiesCount: 10,
-    portfolioComplete: false
+    portfolioComplete: false,
   },
   {
     id: 'std-005',
@@ -88,7 +88,7 @@ export const mockStudents: Student[] = [
     joinedDate: '2024-08-25',
     activitiesCount: 31,
     verifiedActivitiesCount: 28,
-    portfolioComplete: true
+    portfolioComplete: true,
   },
   {
     id: 'std-006',
@@ -103,6 +103,6 @@ export const mockStudents: Student[] = [
     joinedDate: '2024-08-25',
     activitiesCount: 22,
     verifiedActivitiesCount: 19,
-    portfolioComplete: true
-  }
+    portfolioComplete: true,
+  },
 ];

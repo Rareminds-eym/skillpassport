@@ -1,10 +1,10 @@
 import {
-    BookOpenIcon,
-    CheckCircleIcon,
-    MagnifyingGlassIcon,
-    PlusIcon,
-    UsersIcon,
-    XMarkIcon
+  BookOpenIcon,
+  CheckCircleIcon,
+  MagnifyingGlassIcon,
+  PlusIcon,
+  UsersIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
@@ -56,7 +56,7 @@ interface LibraryStats {
 }
 
 export default function LibraryModule() {
-  const [activeTab, setActiveTab] = useState("Dashboard");
+  const [activeTab, setActiveTab] = useState('Dashboard');
   const [books, setBooks] = useState<Book[]>([]);
   const [bookIssues, setBookIssues] = useState<BookIssue[]>([]);
   const [libraryStats, setLibraryStats] = useState<LibraryStats>({
@@ -65,7 +65,7 @@ export default function LibraryModule() {
     available_copies: 0,
     currently_issued: 0,
     overdue_count: 0,
-    total_pending_fines: 0
+    total_pending_fines: 0,
   });
   const [loading, setLoading] = useState(false);
   const [schoolId, setSchoolId] = useState<string | null>(null);
@@ -80,47 +80,47 @@ export default function LibraryModule() {
     publisher: '',
     publication_year: new Date().getFullYear(),
     description: '',
-    location_shelf: ''
+    location_shelf: '',
   });
 
   // Student Search State
-  const [studentSearch, setStudentSearch] = useState("");
-  const [debouncedStudentSearch, setDebouncedStudentSearch] = useState("");
+  const [studentSearch, setStudentSearch] = useState('');
+  const [debouncedStudentSearch, setDebouncedStudentSearch] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [showStudentDropdown, setShowStudentDropdown] = useState(false);
   const [selectedBookForIssue, setSelectedBookForIssue] = useState<Book | null>(null);
   const studentSearchRef = useRef<HTMLDivElement>(null);
 
   // Return Book State
-  const [bookIdSearch, setBookIdSearch] = useState("");
-  const [studentIdSearch, setStudentIdSearch] = useState("");
-  const [searchAllBooks, setSearchAllBooks] = useState("");
+  const [bookIdSearch, setBookIdSearch] = useState('');
+  const [studentIdSearch, setStudentIdSearch] = useState('');
+  const [searchAllBooks, setSearchAllBooks] = useState('');
 
   // Details Tab State
-  const [detailsSearchQuery, setDetailsSearchQuery] = useState("");
-  const [detailsStatusFilter, setDetailsStatusFilter] = useState("all");
-  const [detailsCategoryFilter, setDetailsCategoryFilter] = useState("all");
+  const [detailsSearchQuery, setDetailsSearchQuery] = useState('');
+  const [detailsStatusFilter, setDetailsStatusFilter] = useState('all');
+  const [detailsCategoryFilter, setDetailsCategoryFilter] = useState('all');
   const [showEditBookModal, setShowEditBookModal] = useState(false);
   const [editingBook, setEditingBook] = useState<Book | null>(null);
   const [categories, setCategories] = useState<any[]>([]);
 
   // History Tab State
   const [historyData, setHistoryData] = useState<BookIssue[]>([]);
-  const [historySearchQuery, setHistorySearchQuery] = useState("");
-  const [historyStatusFilter, setHistoryStatusFilter] = useState("all");
-  const [historyDateFilter, setHistoryDateFilter] = useState("all");
+  const [historySearchQuery, setHistorySearchQuery] = useState('');
+  const [historyStatusFilter, setHistoryStatusFilter] = useState('all');
+  const [historyDateFilter, setHistoryDateFilter] = useState('all');
   const [historyLoading, setHistoryLoading] = useState(false);
 
   // Overdue Tab State
   const [overdueBooks, setOverdueBooks] = useState<BookIssue[]>([]);
-  const [overdueSearchQuery, setOverdueSearchQuery] = useState("");
+  const [overdueSearchQuery, setOverdueSearchQuery] = useState('');
   const [overdueLoading, setOverdueLoading] = useState(false);
 
   // Use the same hook as admissions page for fetching students
   const { students: studentSearchResults, loading: searchLoading } = useStudents({
     searchTerm: debouncedStudentSearch,
     page: 1,
-    pageSize: 10
+    pageSize: 10,
   });
 
   // Get current school ID from organizations table
@@ -138,7 +138,9 @@ export default function LibraryModule() {
         }
 
         // Then try Supabase auth
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (user) {
           // Check school_educators table first - use maybeSingle() to avoid 406 error
           const { data: educator } = await supabase
@@ -146,7 +148,7 @@ export default function LibraryModule() {
             .select('school_id')
             .eq('user_id', user.id)
             .maybeSingle();
-          
+
           if (educator?.school_id) {
             setSchoolId(educator.school_id);
           } else {
@@ -157,7 +159,7 @@ export default function LibraryModule() {
               .eq('organization_type', 'school')
               .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
               .maybeSingle();
-            
+
             if (org?.id) {
               setSchoolId(org.id);
             }
@@ -181,7 +183,7 @@ export default function LibraryModule() {
 
   const fetchLibraryData = async () => {
     if (!schoolId) return;
-    
+
     setLoading(true);
     try {
       // Fetch books
@@ -197,10 +199,12 @@ export default function LibraryModule() {
       // Fetch current issues
       const { data: issuesData, error: issuesError } = await supabase
         .from('library_book_issues_school')
-        .select(`
+        .select(
+          `
           *,
           book:library_books_school(*)
-        `)
+        `
+        )
         .eq('school_id', schoolId)
         .eq('status', 'issued')
         .order('issue_date', { ascending: false });
@@ -220,21 +224,21 @@ export default function LibraryModule() {
         // Calculate stats manually
         const totalBooks = booksData?.length || 0;
         const totalCopies = booksData?.reduce((sum, book) => sum + book.total_copies, 0) || 0;
-        const availableCopies = booksData?.reduce((sum, book) => sum + book.available_copies, 0) || 0;
+        const availableCopies =
+          booksData?.reduce((sum, book) => sum + book.available_copies, 0) || 0;
         const currentlyIssued = issuesData?.length || 0;
-        
+
         setLibraryStats({
           total_books: totalBooks,
           total_copies: totalCopies,
           available_copies: availableCopies,
           currently_issued: currentlyIssued,
           overdue_count: 0,
-          total_pending_fines: 0
+          total_pending_fines: 0,
         });
       } else {
         setLibraryStats(statsData);
       }
-
     } catch (error) {
       console.error('Error fetching library data:', error);
       toast.error('Failed to load library data');
@@ -246,7 +250,7 @@ export default function LibraryModule() {
   // Fetch categories
   const fetchCategories = async () => {
     if (!schoolId) return;
-    
+
     try {
       const { data: categoriesData, error } = await supabase
         .from('library_categories_school')
@@ -263,7 +267,13 @@ export default function LibraryModule() {
 
   // Edit book
   const handleEditBook = async () => {
-    if (!schoolId || !editingBook || !editingBook.title || !editingBook.author || !editingBook.isbn) {
+    if (
+      !schoolId ||
+      !editingBook ||
+      !editingBook.title ||
+      !editingBook.author ||
+      !editingBook.isbn
+    ) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -281,7 +291,7 @@ export default function LibraryModule() {
           publisher: editingBook.publisher || null,
           publication_year: editingBook.publication_year || null,
           description: editingBook.description || null,
-          location_shelf: editingBook.location_shelf || null
+          location_shelf: editingBook.location_shelf || null,
         })
         .eq('id', editingBook.id)
         .eq('school_id', schoolId);
@@ -337,32 +347,36 @@ export default function LibraryModule() {
   };
 
   // Filter books for details tab
-  const filteredBooksForDetails = books.filter(book => {
-    const matchesSearch = !detailsSearchQuery || 
+  const filteredBooksForDetails = books.filter((book) => {
+    const matchesSearch =
+      !detailsSearchQuery ||
       book.title.toLowerCase().includes(detailsSearchQuery.toLowerCase()) ||
       book.author.toLowerCase().includes(detailsSearchQuery.toLowerCase()) ||
       book.isbn.toLowerCase().includes(detailsSearchQuery.toLowerCase());
-    
+
     const matchesStatus = detailsStatusFilter === 'all' || book.status === detailsStatusFilter;
-    
-    const matchesCategory = detailsCategoryFilter === 'all' || 
+
+    const matchesCategory =
+      detailsCategoryFilter === 'all' ||
       (book.category && book.category.toLowerCase() === detailsCategoryFilter.toLowerCase());
-    
+
     return matchesSearch && matchesStatus && matchesCategory;
   });
 
   // Fetch history data
   const fetchHistoryData = async () => {
     if (!schoolId) return;
-    
+
     setHistoryLoading(true);
     try {
       const { data: historyData, error } = await supabase
         .from('library_book_issues_school')
-        .select(`
+        .select(
+          `
           *,
           book:library_books_school(*)
-        `)
+        `
+        )
         .eq('school_id', schoolId)
         .order('created_at', { ascending: false })
         .limit(100); // Limit to last 100 records for performance
@@ -380,28 +394,35 @@ export default function LibraryModule() {
   // Fetch overdue books
   const fetchOverdueBooks = async () => {
     if (!schoolId) return;
-    
+
     setOverdueLoading(true);
     try {
       // Fetch overdue books (issued books past due date)
       const { data: overdueData, error } = await supabase
         .from('library_book_issues_school')
-        .select(`
+        .select(
+          `
           *,
           book:library_books_school(*)
-        `)
+        `
+        )
         .eq('school_id', schoolId)
         .eq('status', 'issued')
         .lt('due_date', new Date().toISOString().split('T')[0])
         .order('due_date', { ascending: true });
 
       if (error) throw error;
-      
+
       // Calculate days overdue and fine for each book
-      const overdueWithFines = (overdueData || []).map(issue => ({
+      const overdueWithFines = (overdueData || []).map((issue) => ({
         ...issue,
-        days_overdue: Math.floor((new Date().getTime() - new Date(issue.due_date).getTime()) / (1000 * 60 * 60 * 24)),
-        calculated_fine: Math.floor((new Date().getTime() - new Date(issue.due_date).getTime()) / (1000 * 60 * 60 * 24)) * 10 // ₹10 per day
+        days_overdue: Math.floor(
+          (new Date().getTime() - new Date(issue.due_date).getTime()) / (1000 * 60 * 60 * 24)
+        ),
+        calculated_fine:
+          Math.floor(
+            (new Date().getTime() - new Date(issue.due_date).getTime()) / (1000 * 60 * 60 * 24)
+          ) * 10, // ₹10 per day
       }));
 
       setOverdueBooks(overdueWithFines);
@@ -414,46 +435,50 @@ export default function LibraryModule() {
   };
 
   // Filter history data
-  const filteredHistoryData = historyData.filter(issue => {
-    const matchesSearch = !historySearchQuery || 
+  const filteredHistoryData = historyData.filter((issue) => {
+    const matchesSearch =
+      !historySearchQuery ||
       issue.student_name.toLowerCase().includes(historySearchQuery.toLowerCase()) ||
       issue.roll_number.toLowerCase().includes(historySearchQuery.toLowerCase()) ||
       issue.book?.title.toLowerCase().includes(historySearchQuery.toLowerCase()) ||
       issue.book?.author.toLowerCase().includes(historySearchQuery.toLowerCase());
-    
+
     const matchesStatus = historyStatusFilter === 'all' || issue.status === historyStatusFilter;
-    
+
     let matchesDate = true;
     if (historyDateFilter !== 'all') {
       const issueDate = new Date(issue.issue_date);
       const now = new Date();
-      
+
       switch (historyDateFilter) {
         case 'today':
           matchesDate = issueDate.toDateString() === now.toDateString();
           break;
-        case 'week':
+        case 'week': {
           const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
           matchesDate = issueDate >= weekAgo;
           break;
-        case 'month':
+        }
+        case 'month': {
           const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
           matchesDate = issueDate >= monthAgo;
           break;
+        }
       }
     }
-    
+
     return matchesSearch && matchesStatus && matchesDate;
   });
 
   // Filter overdue data
-  const filteredOverdueBooks = overdueBooks.filter(issue => {
-    const matchesSearch = !overdueSearchQuery || 
+  const filteredOverdueBooks = overdueBooks.filter((issue) => {
+    const matchesSearch =
+      !overdueSearchQuery ||
       issue.student_name.toLowerCase().includes(overdueSearchQuery.toLowerCase()) ||
       issue.roll_number.toLowerCase().includes(overdueSearchQuery.toLowerCase()) ||
       issue.book?.title.toLowerCase().includes(overdueSearchQuery.toLowerCase()) ||
       issue.book?.author.toLowerCase().includes(overdueSearchQuery.toLowerCase());
-    
+
     return matchesSearch;
   });
 
@@ -461,15 +486,15 @@ export default function LibraryModule() {
   const handleMarkOverdue = async (issueId: string) => {
     try {
       setLoading(true);
-      
-      const issue = overdueBooks.find(b => b.id === issueId);
+
+      const issue = overdueBooks.find((b) => b.id === issueId);
       if (!issue) return;
 
       const { error } = await supabase
         .from('library_book_issues_school')
         .update({
           status: 'overdue',
-          fine_amount: issue.calculated_fine
+          fine_amount: issue.calculated_fine,
         })
         .eq('id', issueId)
         .eq('school_id', schoolId);
@@ -489,7 +514,7 @@ export default function LibraryModule() {
 
   // Send overdue reminder (placeholder for future implementation)
   const handleSendReminder = async (issueId: string) => {
-    const issue = overdueBooks.find(b => b.id === issueId);
+    const issue = overdueBooks.find((b) => b.id === issueId);
     if (!issue) return;
 
     // This would integrate with email/SMS service
@@ -507,20 +532,22 @@ export default function LibraryModule() {
       setLoading(true);
       const { error } = await supabase
         .from('library_books_school')
-        .insert([{
-          school_id: schoolId,
-          title: newBook.title,
-          author: newBook.author,
-          isbn: newBook.isbn,
-          total_copies: newBook.total_copies,
-          available_copies: newBook.total_copies,
-          category: newBook.category || null,
-          publisher: newBook.publisher || null,
-          publication_year: newBook.publication_year || null,
-          description: newBook.description || null,
-          location_shelf: newBook.location_shelf || null,
-          status: 'available'
-        }])
+        .insert([
+          {
+            school_id: schoolId,
+            title: newBook.title,
+            author: newBook.author,
+            isbn: newBook.isbn,
+            total_copies: newBook.total_copies,
+            available_copies: newBook.total_copies,
+            category: newBook.category || null,
+            publisher: newBook.publisher || null,
+            publication_year: newBook.publication_year || null,
+            description: newBook.description || null,
+            location_shelf: newBook.location_shelf || null,
+            status: 'available',
+          },
+        ])
         .select()
         .single();
 
@@ -536,7 +563,7 @@ export default function LibraryModule() {
         publisher: '',
         publication_year: new Date().getFullYear(),
         description: '',
-        location_shelf: ''
+        location_shelf: '',
       });
       fetchLibraryData(); // Refresh data
     } catch (error: any) {
@@ -565,7 +592,7 @@ export default function LibraryModule() {
 
     try {
       setLoading(true);
-      
+
       // Calculate due date (14 days from now by default)
       const issueDate = new Date();
       const dueDate = new Date();
@@ -573,32 +600,34 @@ export default function LibraryModule() {
 
       const { error } = await supabase
         .from('library_book_issues_school')
-        .insert([{
-          school_id: schoolId,
-          book_id: selectedBookForIssue.id,
-          student_id: selectedStudent.id,
-          student_name: selectedStudent.name,
-          roll_number: selectedStudent.roll_number || '',
-          class: selectedStudent.grade || selectedStudent.class || '',
-          academic_year: new Date().getFullYear().toString(),
-          issue_date: issueDate.toISOString().split('T')[0],
-          due_date: dueDate.toISOString().split('T')[0],
-          status: 'issued',
-          issued_by: 'Admin' // You can get this from current user
-        }])
+        .insert([
+          {
+            school_id: schoolId,
+            book_id: selectedBookForIssue.id,
+            student_id: selectedStudent.id,
+            student_name: selectedStudent.name,
+            roll_number: selectedStudent.roll_number || '',
+            class: selectedStudent.grade || selectedStudent.class || '',
+            academic_year: new Date().getFullYear().toString(),
+            issue_date: issueDate.toISOString().split('T')[0],
+            due_date: dueDate.toISOString().split('T')[0],
+            status: 'issued',
+            issued_by: 'Admin', // You can get this from current user
+          },
+        ])
         .select()
         .single();
 
       if (error) throw error;
 
       toast.success(`Book "${selectedBookForIssue.title}" issued to ${selectedStudent.name}`);
-      
+
       // Clear selections
       setSelectedStudent(null);
       setSelectedBookForIssue(null);
       setStudentSearch('');
       setDebouncedStudentSearch('');
-      
+
       fetchLibraryData(); // Refresh data
     } catch (error: any) {
       console.error('Error issuing book:', error);
@@ -612,13 +641,13 @@ export default function LibraryModule() {
   const handleReturnBook = async (issueId: string) => {
     try {
       setLoading(true);
-      
+
       const { error } = await supabase
         .from('library_book_issues_school')
         .update({
           return_date: new Date().toISOString().split('T')[0],
           status: 'returned',
-          returned_by: 'Admin'
+          returned_by: 'Admin',
         })
         .eq('id', issueId)
         .eq('school_id', schoolId)
@@ -719,7 +748,7 @@ export default function LibraryModule() {
       {/* Content */}
       <div className="p-6">
         {/* Dashboard Tab */}
-        {activeTab === "Dashboard" && (
+        {activeTab === 'Dashboard' && (
           <div>
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -733,7 +762,9 @@ export default function LibraryModule() {
               </div>
               <div className="bg-yellow-50 rounded-lg p-6 border border-yellow-200">
                 <h3 className="text-lg font-semibold text-yellow-900 mb-2">Currently Issued</h3>
-                <p className="text-3xl font-bold text-yellow-900">{libraryStats.currently_issued}</p>
+                <p className="text-3xl font-bold text-yellow-900">
+                  {libraryStats.currently_issued}
+                </p>
               </div>
             </div>
 
@@ -753,13 +784,27 @@ export default function LibraryModule() {
                 <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Author</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ISBN</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Copies</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Available</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Title
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Author
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        ISBN
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Total Copies
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Available
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -778,19 +823,36 @@ export default function LibraryModule() {
                     ) : (
                       books.map((book) => (
                         <tr key={book.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{book.title}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{book.author}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{book.isbn}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{book.total_copies}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">{book.available_copies}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {book.title}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {book.author}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {book.isbn}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {book.total_copies}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
+                            {book.available_copies}
+                          </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              book.status === 'available' ? 'bg-green-100 text-green-800' :
-                              book.status === 'all_issued' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-red-100 text-red-800'
-                            }`}>
-                              {book.status === 'available' ? 'Available' :
-                               book.status === 'all_issued' ? 'All Issued' : 'Maintenance'}
+                            <span
+                              className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                book.status === 'available'
+                                  ? 'bg-green-100 text-green-800'
+                                  : book.status === 'all_issued'
+                                    ? 'bg-yellow-100 text-yellow-800'
+                                    : 'bg-red-100 text-red-800'
+                              }`}
+                            >
+                              {book.status === 'available'
+                                ? 'Available'
+                                : book.status === 'all_issued'
+                                  ? 'All Issued'
+                                  : 'Maintenance'}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -816,11 +878,11 @@ export default function LibraryModule() {
         )}
 
         {/* Add Tab */}
-        {activeTab === "Add" && (
+        {activeTab === 'Add' && (
           <div className="max-w-4xl mx-auto">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-6">Add New Book</h2>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -834,7 +896,7 @@ export default function LibraryModule() {
                     onChange={(e) => setNewBook({ ...newBook, title: e.target.value })}
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Author <span className="text-red-500">*</span>
@@ -847,7 +909,7 @@ export default function LibraryModule() {
                     onChange={(e) => setNewBook({ ...newBook, author: e.target.value })}
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     ISBN <span className="text-red-500">*</span>
@@ -860,7 +922,7 @@ export default function LibraryModule() {
                     onChange={(e) => setNewBook({ ...newBook, isbn: e.target.value })}
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Total Copies <span className="text-red-500">*</span>
@@ -871,12 +933,16 @@ export default function LibraryModule() {
                     placeholder="1"
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     value={newBook.total_copies}
-                    onChange={(e) => setNewBook({ ...newBook, total_copies: parseInt(e.target.value) || 1 })}
+                    onChange={(e) =>
+                      setNewBook({ ...newBook, total_copies: parseInt(e.target.value) || 1 })
+                    }
                   />
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Publication Year</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Publication Year
+                  </label>
                   <input
                     type="number"
                     min="1900"
@@ -884,10 +950,15 @@ export default function LibraryModule() {
                     placeholder="2026"
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     value={newBook.publication_year}
-                    onChange={(e) => setNewBook({ ...newBook, publication_year: parseInt(e.target.value) || new Date().getFullYear() })}
+                    onChange={(e) =>
+                      setNewBook({
+                        ...newBook,
+                        publication_year: parseInt(e.target.value) || new Date().getFullYear(),
+                      })
+                    }
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
                   <input
@@ -898,7 +969,7 @@ export default function LibraryModule() {
                     onChange={(e) => setNewBook({ ...newBook, category: e.target.value })}
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Publisher</label>
                   <input
@@ -909,9 +980,11 @@ export default function LibraryModule() {
                     onChange={(e) => setNewBook({ ...newBook, publisher: e.target.value })}
                   />
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Shelf Location</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Shelf Location
+                  </label>
                   <input
                     type="text"
                     placeholder="e.g., A1-B2, Section 3"
@@ -921,7 +994,7 @@ export default function LibraryModule() {
                   />
                 </div>
               </div>
-              
+
               <div className="mt-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
                 <textarea
@@ -932,7 +1005,7 @@ export default function LibraryModule() {
                   onChange={(e) => setNewBook({ ...newBook, description: e.target.value })}
                 />
               </div>
-              
+
               <div className="mt-8 flex justify-end space-x-4">
                 <button
                   type="button"
@@ -946,7 +1019,7 @@ export default function LibraryModule() {
                       publisher: '',
                       publication_year: new Date().getFullYear(),
                       description: '',
-                      location_shelf: ''
+                      location_shelf: '',
                     });
                   }}
                   className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
@@ -966,7 +1039,7 @@ export default function LibraryModule() {
         )}
 
         {/* Details Tab */}
-        {activeTab === "Details" && (
+        {activeTab === 'Details' && (
           <div>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold text-gray-900">Book Details</h2>
@@ -979,7 +1052,9 @@ export default function LibraryModule() {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Search Books</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Search Books
+                  </label>
                   <div className="relative">
                     <input
                       type="text"
@@ -991,9 +1066,11 @@ export default function LibraryModule() {
                     <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 absolute left-3 top-4" />
                   </div>
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Status</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Filter by Status
+                  </label>
                   <select
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     value={detailsStatusFilter}
@@ -1005,9 +1082,11 @@ export default function LibraryModule() {
                     <option value="maintenance">Maintenance</option>
                   </select>
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Category</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Filter by Category
+                  </label>
                   <select
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     value={detailsCategoryFilter}
@@ -1035,7 +1114,9 @@ export default function LibraryModule() {
                 <BookOpenIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No books found</h3>
                 <p className="text-gray-600">
-                  {detailsSearchQuery || detailsStatusFilter !== 'all' || detailsCategoryFilter !== 'all'
+                  {detailsSearchQuery ||
+                  detailsStatusFilter !== 'all' ||
+                  detailsCategoryFilter !== 'all'
                     ? 'Try adjusting your search or filters'
                     : 'Add your first book to get started'}
                 </p>
@@ -1043,20 +1124,30 @@ export default function LibraryModule() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredBooksForDetails.map((book) => (
-                  <div key={book.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+                  <div
+                    key={book.id}
+                    className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+                  >
                     {/* Book Header */}
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
                         <h3 className="text-lg font-semibold text-gray-900 mb-1">{book.title}</h3>
                         <p className="text-sm text-gray-600">by {book.author}</p>
                       </div>
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        book.status === 'available' ? 'bg-green-100 text-green-800' :
-                        book.status === 'all_issued' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {book.status === 'available' ? 'Available' :
-                         book.status === 'all_issued' ? 'All Issued' : 'Maintenance'}
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          book.status === 'available'
+                            ? 'bg-green-100 text-green-800'
+                            : book.status === 'all_issued'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-red-100 text-red-800'
+                        }`}
+                      >
+                        {book.status === 'available'
+                          ? 'Available'
+                          : book.status === 'all_issued'
+                            ? 'All Issued'
+                            : 'Maintenance'}
                       </span>
                     </div>
 
@@ -1072,7 +1163,9 @@ export default function LibraryModule() {
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">Available:</span>
-                        <span className={`font-medium ${book.available_copies > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        <span
+                          className={`font-medium ${book.available_copies > 0 ? 'text-green-600' : 'text-red-600'}`}
+                        >
                           {book.available_copies}
                         </span>
                       </div>
@@ -1175,7 +1268,7 @@ export default function LibraryModule() {
                       onChange={(e) => setEditingBook({ ...editingBook, title: e.target.value })}
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Author <span className="text-red-500">*</span>
@@ -1187,7 +1280,7 @@ export default function LibraryModule() {
                       onChange={(e) => setEditingBook({ ...editingBook, author: e.target.value })}
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       ISBN <span className="text-red-500">*</span>
@@ -1199,7 +1292,7 @@ export default function LibraryModule() {
                       onChange={(e) => setEditingBook({ ...editingBook, isbn: e.target.value })}
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Total Copies <span className="text-red-500">*</span>
@@ -1209,22 +1302,34 @@ export default function LibraryModule() {
                       min="1"
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       value={editingBook.total_copies}
-                      onChange={(e) => setEditingBook({ ...editingBook, total_copies: parseInt(e.target.value) || 1 })}
+                      onChange={(e) =>
+                        setEditingBook({
+                          ...editingBook,
+                          total_copies: parseInt(e.target.value) || 1,
+                        })
+                      }
                     />
                   </div>
-                  
+
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Publication Year</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Publication Year
+                    </label>
                     <input
                       type="number"
                       min="1900"
                       max={new Date().getFullYear()}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       value={editingBook.publication_year || undefined}
-                      onChange={(e) => setEditingBook({ ...editingBook, publication_year: parseInt(e.target.value) || undefined })}
+                      onChange={(e) =>
+                        setEditingBook({
+                          ...editingBook,
+                          publication_year: parseInt(e.target.value) || undefined,
+                        })
+                      }
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
                     <select
@@ -1240,38 +1345,50 @@ export default function LibraryModule() {
                       ))}
                     </select>
                   </div>
-                  
+
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Publisher</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Publisher
+                    </label>
                     <input
                       type="text"
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       value={editingBook.publisher || ''}
-                      onChange={(e) => setEditingBook({ ...editingBook, publisher: e.target.value })}
+                      onChange={(e) =>
+                        setEditingBook({ ...editingBook, publisher: e.target.value })
+                      }
                     />
                   </div>
-                  
+
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Shelf Location</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Shelf Location
+                    </label>
                     <input
                       type="text"
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       value={editingBook.location_shelf || ''}
-                      onChange={(e) => setEditingBook({ ...editingBook, location_shelf: e.target.value })}
+                      onChange={(e) =>
+                        setEditingBook({ ...editingBook, location_shelf: e.target.value })
+                      }
                     />
                   </div>
                 </div>
-                
+
                 <div className="mt-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Description
+                  </label>
                   <textarea
                     rows={3}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     value={editingBook.description || ''}
-                    onChange={(e) => setEditingBook({ ...editingBook, description: e.target.value })}
+                    onChange={(e) =>
+                      setEditingBook({ ...editingBook, description: e.target.value })
+                    }
                   />
                 </div>
-                
+
                 <div className="mt-8 flex justify-end space-x-4">
                   <button
                     type="button"
@@ -1285,7 +1402,9 @@ export default function LibraryModule() {
                   </button>
                   <button
                     onClick={handleEditBook}
-                    disabled={loading || !editingBook.title || !editingBook.author || !editingBook.isbn}
+                    disabled={
+                      loading || !editingBook.title || !editingBook.author || !editingBook.isbn
+                    }
                     className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                   >
                     {loading ? 'Updating...' : 'Update Book'}
@@ -1296,7 +1415,7 @@ export default function LibraryModule() {
           </div>
         )}
         {/* History Tab */}
-        {activeTab === "History" && (
+        {activeTab === 'History' && (
           <div>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold text-gray-900">Issue History</h2>
@@ -1318,7 +1437,9 @@ export default function LibraryModule() {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Search History</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Search History
+                  </label>
                   <div className="relative">
                     <input
                       type="text"
@@ -1330,9 +1451,11 @@ export default function LibraryModule() {
                     <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 absolute left-3 top-4" />
                   </div>
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Status</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Filter by Status
+                  </label>
                   <select
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     value={historyStatusFilter}
@@ -1344,9 +1467,11 @@ export default function LibraryModule() {
                     <option value="overdue">Overdue</option>
                   </select>
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Date</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Filter by Date
+                  </label>
                   <select
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     value={historyDateFilter}
@@ -1394,14 +1519,30 @@ export default function LibraryModule() {
                   <table className="w-full">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Book</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Issue Date</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Return Date</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fine</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Book
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Student
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Issue Date
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Due Date
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Return Date
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Fine
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -1409,13 +1550,17 @@ export default function LibraryModule() {
                         <tr key={issue.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div>
-                              <div className="text-sm font-medium text-gray-900">{issue.book?.title || 'Unknown Book'}</div>
+                              <div className="text-sm font-medium text-gray-900">
+                                {issue.book?.title || 'Unknown Book'}
+                              </div>
                               <div className="text-sm text-gray-500">{issue.book?.author}</div>
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div>
-                              <div className="text-sm font-medium text-gray-900">{issue.student_name}</div>
+                              <div className="text-sm font-medium text-gray-900">
+                                {issue.student_name}
+                              </div>
                               <div className="text-sm text-gray-500">Roll: {issue.roll_number}</div>
                             </div>
                           </td>
@@ -1426,18 +1571,29 @@ export default function LibraryModule() {
                             {new Date(issue.due_date).toLocaleDateString()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {issue.return_date ? new Date(issue.return_date).toLocaleDateString() : '-'}
+                            {issue.return_date
+                              ? new Date(issue.return_date).toLocaleDateString()
+                              : '-'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              issue.status === 'issued' ? 'bg-blue-100 text-blue-800' :
-                              issue.status === 'returned' ? 'bg-green-100 text-green-800' :
-                              issue.status === 'overdue' ? 'bg-red-100 text-red-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {issue.status === 'issued' ? 'Issued' :
-                               issue.status === 'returned' ? 'Returned' :
-                               issue.status === 'overdue' ? 'Overdue' : issue.status}
+                            <span
+                              className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                issue.status === 'issued'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : issue.status === 'returned'
+                                    ? 'bg-green-100 text-green-800'
+                                    : issue.status === 'overdue'
+                                      ? 'bg-red-100 text-red-800'
+                                      : 'bg-gray-100 text-gray-800'
+                              }`}
+                            >
+                              {issue.status === 'issued'
+                                ? 'Issued'
+                                : issue.status === 'returned'
+                                  ? 'Returned'
+                                  : issue.status === 'overdue'
+                                    ? 'Overdue'
+                                    : issue.status}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -1465,7 +1621,7 @@ export default function LibraryModule() {
         )}
 
         {/* Overdue Tab */}
-        {activeTab === "Overdue" && (
+        {activeTab === 'Overdue' && (
           <div>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold text-gray-900">Overdue Books</h2>
@@ -1486,7 +1642,9 @@ export default function LibraryModule() {
             {/* Search Control */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
               <div className="max-w-md">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Search Overdue Books</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Search Overdue Books
+                </label>
                 <div className="relative">
                   <input
                     type="text"
@@ -1511,7 +1669,9 @@ export default function LibraryModule() {
                 <CheckCircleIcon className="h-12 w-12 text-green-400 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No Overdue Books!</h3>
                 <p className="text-gray-600">
-                  {overdueBooks.length === 0 ? 'All books are returned on time.' : 'No books match your search.'}
+                  {overdueBooks.length === 0
+                    ? 'All books are returned on time.'
+                    : 'No books match your search.'}
                 </p>
                 {overdueBooks.length === 0 && (
                   <button
@@ -1525,11 +1685,16 @@ export default function LibraryModule() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredOverdueBooks.map((issue) => (
-                  <div key={issue.id} className="bg-white rounded-lg shadow-sm border border-red-200 p-6">
+                  <div
+                    key={issue.id}
+                    className="bg-white rounded-lg shadow-sm border border-red-200 p-6"
+                  >
                     {/* Overdue Header */}
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-1">{issue.book?.title || 'Unknown Book'}</h3>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                          {issue.book?.title || 'Unknown Book'}
+                        </h3>
                         <p className="text-sm text-gray-600">by {issue.book?.author}</p>
                       </div>
                       <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
@@ -1553,11 +1718,15 @@ export default function LibraryModule() {
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">Issue Date:</span>
-                        <span className="font-medium text-gray-900">{new Date(issue.issue_date).toLocaleDateString()}</span>
+                        <span className="font-medium text-gray-900">
+                          {new Date(issue.issue_date).toLocaleDateString()}
+                        </span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">Due Date:</span>
-                        <span className="font-medium text-red-600">{new Date(issue.due_date).toLocaleDateString()}</span>
+                        <span className="font-medium text-red-600">
+                          {new Date(issue.due_date).toLocaleDateString()}
+                        </span>
                       </div>
                     </div>
 
@@ -1565,9 +1734,13 @@ export default function LibraryModule() {
                     <div className="bg-red-50 rounded-lg p-3 mb-4">
                       <div className="flex justify-between items-center">
                         <span className="text-sm font-medium text-red-800">Calculated Fine:</span>
-                        <span className="text-lg font-bold text-red-800">₹{issue.calculated_fine}</span>
+                        <span className="text-lg font-bold text-red-800">
+                          ₹{issue.calculated_fine}
+                        </span>
                       </div>
-                      <p className="text-xs text-red-600 mt-1">₹10 per day × {issue.days_overdue} days</p>
+                      <p className="text-xs text-red-600 mt-1">
+                        ₹10 per day × {issue.days_overdue} days
+                      </p>
                     </div>
 
                     {/* Action Buttons */}
@@ -1603,7 +1776,7 @@ export default function LibraryModule() {
         )}
 
         {/* Issue Tab */}
-        {activeTab === "Issue" && (
+        {activeTab === 'Issue' && (
           <div>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold text-gray-900">Issue Book</h2>
@@ -1638,9 +1811,11 @@ export default function LibraryModule() {
                   <UsersIcon className="h-6 w-6 text-blue-600 mr-3" />
                   <h3 className="text-lg font-semibold text-gray-900">Select Student</h3>
                 </div>
-                
+
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Search Student</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Search Student
+                  </label>
                   <div className="relative" ref={studentSearchRef}>
                     <input
                       type="text"
@@ -1656,7 +1831,7 @@ export default function LibraryModule() {
                         <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
                       )}
                     </div>
-                    
+
                     {/* Student Search Dropdown */}
                     {showStudentDropdown && studentSearchResults.length > 0 && (
                       <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-xl max-h-60 overflow-y-auto">
@@ -1669,7 +1844,8 @@ export default function LibraryModule() {
                             <div className="font-semibold text-gray-800">{student.name}</div>
                             <div className="text-sm text-gray-600 mt-1">
                               {student.roll_number && `Roll: ${student.roll_number}`}
-                              {student.admission_number && ` | Admission: ${student.admission_number}`}
+                              {student.admission_number &&
+                                ` | Admission: ${student.admission_number}`}
                             </div>
                             <div className="text-sm text-gray-600">
                               {student.grade && `Grade: ${student.grade}`}
@@ -1683,15 +1859,17 @@ export default function LibraryModule() {
                         ))}
                       </div>
                     )}
-                    
+
                     {/* No Results Message */}
-                    {!searchLoading && studentSearch.length >= 2 && studentSearchResults.length === 0 && (
-                      <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-3">
-                        <div className="text-sm text-gray-500 text-center">
-                          No students found matching "{studentSearch}"
+                    {!searchLoading &&
+                      studentSearch.length >= 2 &&
+                      studentSearchResults.length === 0 && (
+                        <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-3">
+                          <div className="text-sm text-gray-500 text-center">
+                            No students found matching "{studentSearch}"
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
                   </div>
                 </div>
 
@@ -1706,12 +1884,14 @@ export default function LibraryModule() {
                         </div>
                         <div className="text-sm text-green-700 mt-1">
                           {selectedStudent.roll_number && `Roll: ${selectedStudent.roll_number}`}
-                          {selectedStudent.admission_number && ` | Admission: ${selectedStudent.admission_number}`}
+                          {selectedStudent.admission_number &&
+                            ` | Admission: ${selectedStudent.admission_number}`}
                         </div>
                         <div className="text-sm text-green-700">
                           {selectedStudent.grade && `Grade: ${selectedStudent.grade}`}
                           {selectedStudent.section && ` | Section: ${selectedStudent.section}`}
-                          {selectedStudent.course_name && ` | Course: ${selectedStudent.course_name}`}
+                          {selectedStudent.course_name &&
+                            ` | Course: ${selectedStudent.course_name}`}
                         </div>
                         {selectedStudent.email && (
                           <div className="text-xs text-green-600 mt-1">{selectedStudent.email}</div>
@@ -1750,7 +1930,8 @@ export default function LibraryModule() {
                           ISBN: {selectedBookForIssue.isbn}
                         </div>
                         <div className="text-sm text-blue-700">
-                          Available: {selectedBookForIssue.available_copies} of {selectedBookForIssue.total_copies}
+                          Available: {selectedBookForIssue.available_copies} of{' '}
+                          {selectedBookForIssue.total_copies}
                         </div>
                       </div>
                       <button
@@ -1764,20 +1945,24 @@ export default function LibraryModule() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <p className="text-sm text-gray-600">Select a book from the available books below:</p>
+                    <p className="text-sm text-gray-600">
+                      Select a book from the available books below:
+                    </p>
                     <div className="max-h-64 overflow-y-auto space-y-2">
-                      {books.filter(book => book.available_copies > 0).map((book) => (
-                        <div
-                          key={book.id}
-                          className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                          onClick={() => setSelectedBookForIssue(book)}
-                        >
-                          <div className="font-medium text-gray-900">{book.title}</div>
-                          <div className="text-sm text-gray-600">
-                            {book.author} • Available: {book.available_copies}
+                      {books
+                        .filter((book) => book.available_copies > 0)
+                        .map((book) => (
+                          <div
+                            key={book.id}
+                            className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                            onClick={() => setSelectedBookForIssue(book)}
+                          >
+                            <div className="font-medium text-gray-900">{book.title}</div>
+                            <div className="text-sm text-gray-600">
+                              {book.author} • Available: {book.available_copies}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
                     </div>
                   </div>
                 )}
@@ -1792,7 +1977,9 @@ export default function LibraryModule() {
                   disabled={loading}
                   className="px-8 py-3 bg-green-600 text-white text-lg font-medium rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                 >
-                  {loading ? 'Issuing...' : `Issue "${selectedBookForIssue.title}" to ${selectedStudent.name}`}
+                  {loading
+                    ? 'Issuing...'
+                    : `Issue "${selectedBookForIssue.title}" to ${selectedStudent.name}`}
                 </button>
               </div>
             )}
@@ -1800,14 +1987,16 @@ export default function LibraryModule() {
         )}
 
         {/* Return Tab */}
-        {activeTab === "Return" && (
+        {activeTab === 'Return' && (
           <div>
             <h2 className="text-xl font-semibold text-gray-900 mb-6">Return Book</h2>
 
             {/* Search Options */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Search by Book ID</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Search by Book ID
+                </label>
                 <input
                   type="text"
                   placeholder="Enter book ID..."
@@ -1817,7 +2006,9 @@ export default function LibraryModule() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Search by Student ID</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Search by Student ID
+                </label>
                 <input
                   type="text"
                   placeholder="Enter student ID..."
@@ -1827,7 +2018,9 @@ export default function LibraryModule() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Or Search All</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Or Search All
+                </label>
                 <input
                   type="text"
                   placeholder="Search by book title or student..."
@@ -1845,7 +2038,9 @@ export default function LibraryModule() {
                   <BookOpenIcon className="h-5 w-5 text-blue-600 mr-2" />
                   <h3 className="text-lg font-semibold text-gray-900">Currently Issued Books</h3>
                 </div>
-                <p className="text-sm text-gray-600 mt-1">Showing {bookIssues.length} issued books</p>
+                <p className="text-sm text-gray-600 mt-1">
+                  Showing {bookIssues.length} issued books
+                </p>
               </div>
 
               {loading ? (
@@ -1855,8 +2050,13 @@ export default function LibraryModule() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
                   {bookIssues.map((issue) => (
-                    <div key={issue.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                      <h4 className="font-semibold text-gray-900 mb-2">{issue.book?.title || 'Unknown Book'}</h4>
+                    <div
+                      key={issue.id}
+                      className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                    >
+                      <h4 className="font-semibold text-gray-900 mb-2">
+                        {issue.book?.title || 'Unknown Book'}
+                      </h4>
                       <p className="text-sm text-gray-600 mb-2">ISBN: {issue.book?.isbn}</p>
                       <div className="space-y-1 text-sm">
                         <div className="flex justify-between">
@@ -1873,11 +2073,15 @@ export default function LibraryModule() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-600">Issue Date:</span>
-                          <span className="font-medium">{new Date(issue.issue_date).toLocaleDateString()}</span>
+                          <span className="font-medium">
+                            {new Date(issue.issue_date).toLocaleDateString()}
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-600">Due Date:</span>
-                          <span className={`font-medium ${new Date(issue.due_date) < new Date() ? 'text-red-600' : 'text-gray-900'}`}>
+                          <span
+                            className={`font-medium ${new Date(issue.due_date) < new Date() ? 'text-red-600' : 'text-gray-900'}`}
+                          >
                             {new Date(issue.due_date).toLocaleDateString()}
                           </span>
                         </div>
@@ -1900,7 +2104,9 @@ export default function LibraryModule() {
         )}
 
         {/* Other tabs placeholder */}
-        {!['Dashboard', 'Add', 'Details', 'Issue', 'Return', 'History', 'Overdue'].includes(activeTab) && (
+        {!['Dashboard', 'Add', 'Details', 'Issue', 'Return', 'History', 'Overdue'].includes(
+          activeTab
+        ) && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
             <h3 className="text-lg font-semibold text-gray-900 mb-2">{activeTab} Module</h3>
             <p className="text-gray-600">This section is under development.</p>

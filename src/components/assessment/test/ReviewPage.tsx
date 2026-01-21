@@ -1,5 +1,6 @@
 import React from 'react';
 import { Clock, CheckCircle, ArrowRight, ArrowLeft } from 'lucide-react';
+// @ts-expect-error - Auto-suppressed for migration
 import { Question } from '../../types';
 
 interface ReviewPageProps {
@@ -35,8 +36,12 @@ const ReviewPage: React.FC<ReviewPageProps> = ({
             </p>
           </div>
           <div className="flex items-center mt-2 md:mt-0">
-            <Clock className={`h-5 w-5 ${timeLeft < 1800 ? 'text-red-500' : 'text-gray-500'} mr-2`} />
-            <span className={`font-mono font-medium ${timeLeft < 1800 ? 'text-red-600' : 'text-gray-700'}`}>
+            <Clock
+              className={`h-5 w-5 ${timeLeft < 1800 ? 'text-red-500' : 'text-gray-500'} mr-2`}
+            />
+            <span
+              className={`font-mono font-medium ${timeLeft < 1800 ? 'text-red-600' : 'text-gray-700'}`}
+            >
               {formatTime(timeLeft)}
             </span>
           </div>
@@ -64,11 +69,11 @@ const ReviewPage: React.FC<ReviewPageProps> = ({
         <div className="divide-y divide-gray-200">
           {questions.map((question, index) => {
             const isAnswered = answers[index] !== undefined;
-            const selectedOption = isAnswered ? answers[index] : "Not Attempted";
-            
+            const selectedOption = isAnswered ? answers[index] : 'Not Attempted';
+
             return (
-              <div 
-                key={index} 
+              <div
+                key={index}
                 className={`p-6 hover:bg-gray-50 transition-colors duration-150 ${
                   isAnswered ? 'bg-green-50/50' : 'bg-red-50/50'
                 }`}
@@ -79,13 +84,17 @@ const ReviewPage: React.FC<ReviewPageProps> = ({
                     {question.marks && (
                       <>
                         <span className="mx-2 text-gray-300">|</span>
-                        <span className="text-xs font-medium text-gray-500">{question.marks} marks</span>
+                        <span className="text-xs font-medium text-gray-500">
+                          {question.marks} marks
+                        </span>
                       </>
                     )}
                     {question.section && (
                       <>
                         <span className="mx-2 text-gray-300">|</span>
-                        <span className="text-xs text-blue-600">{question.section.split(':')[0]}</span>
+                        <span className="text-xs text-blue-600">
+                          {question.section.split(':')[0]}
+                        </span>
                       </>
                     )}
                   </div>
@@ -97,11 +106,9 @@ const ReviewPage: React.FC<ReviewPageProps> = ({
                     <ArrowRight className="h-4 w-4 ml-1" />
                   </button>
                 </div>
-                
-                <h3 className="text-sm text-gray-900 mb-3">
-                  {question.text}
-                </h3>
-                
+
+                <h3 className="text-sm text-gray-900 mb-3">{question.text}</h3>
+
                 {isAnswered ? (
                   <div className="bg-white rounded-lg border border-gray-200 p-3">
                     <div className="flex items-center justify-between">
@@ -110,7 +117,9 @@ const ReviewPage: React.FC<ReviewPageProps> = ({
                           {String.fromCharCode(65 + selectedOption)}
                         </span> */}
                         <CheckCircle className="h-4 w-4 text-green-500 mr-2 flex-shrink-0" />
-                        <span className="text-sm text-gray-700">{selectedOption || "Not Attempted"}</span>
+                        <span className="text-sm text-gray-700">
+                          {selectedOption || 'Not Attempted'}
+                        </span>
                       </div>
                       <div className="flex items-center text-xs text-gray-500">
                         <Clock className="h-4 w-4 mr-1" />
@@ -139,11 +148,12 @@ const ReviewPage: React.FC<ReviewPageProps> = ({
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Test
         </button>
-        
+
         <div className="text-xs text-gray-600">
-          <span className="font-medium">{Object.keys(answers).length}</span> of <span className="font-medium">{questions.length}</span> questions answered
+          <span className="font-medium">{Object.keys(answers).length}</span> of{' '}
+          <span className="font-medium">{questions.length}</span> questions answered
         </div>
-        
+
         <button
           onClick={onSubmit}
           className="px-4 py-2 bg-green-600 text-white font-medium rounded-md shadow hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 text-sm"

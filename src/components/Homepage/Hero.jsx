@@ -40,7 +40,7 @@ const Hero = () => {
           <div className="max-w-3xl md:max-w-xl text-left">
             {/* Welcome Text */}
             {/* <h2 className="text-black text-lg sm:text-xl md:text-3xl mb-2">Welcome To</h2> */}
-            
+
             {/* Main Heading */}
             <h1 className="text-black  whitespace-nowrap font-black mb-2 sm:mb-4  text-[20px] sm:text-2xl md:text-4xl lg:text-6xl">
               {/* <span className="whitespace-nowrap mb-2">Hire Freshers, Freelancers</span><br />& Interns with Confidence */}

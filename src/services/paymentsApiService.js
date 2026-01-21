@@ -1,10 +1,10 @@
 /**
  * Payments API Service
  * Frontend API client for Cloudflare Worker (payments-api)
- * 
+ *
  * ALL subscription write operations go through this service → Worker → Supabase
  * This ensures security, consistency, and proper audit trails.
- * 
+ *
  * AVAILABLE METHODS:
  * - createOrder()              - Create Razorpay order for subscription
  * - createEventOrder()         - Create Razorpay order for events
@@ -50,7 +50,10 @@ const getAuthHeaders = (token) => {
  * @param {string} token - Auth token
  * @returns {Promise<Object>} Order details from Razorpay
  */
-export async function createOrder({ amount, currency = 'INR', planId, planName, userEmail, userName }, token) {
+export async function createOrder(
+  { amount, currency = 'INR', planId, planName, userEmail, userName },
+  token
+) {
   const response = await fetch(`${getBaseUrl()}/create-order`, {
     method: 'POST',
     headers: getAuthHeaders(token),
@@ -61,9 +64,9 @@ export async function createOrder({ amount, currency = 'INR', planId, planName, 
     const error = await response.json().catch(() => ({}));
     console.error('[createOrder] API Error:', error);
     // Include razorpay error details if available
-    const errorMessage = error.razorpay_error 
+    const errorMessage = error.razorpay_error
       ? `${error.error}: ${error.razorpay_error}`
-      : (error.error || 'Failed to create order');
+      : error.error || 'Failed to create order';
     throw new Error(errorMessage);
   }
 
@@ -83,11 +86,22 @@ export async function createOrder({ amount, currency = 'INR', planId, planName, 
  * @param {string} token - Auth token (optional for events)
  * @returns {Promise<Object>} Order details from Razorpay
  */
-export async function createEventOrder({ amount, currency = 'INR', registrationId, planName, userEmail, userName, origin }, token) {
+export async function createEventOrder(
+  { amount, currency = 'INR', registrationId, planName, userEmail, userName, origin },
+  token
+) {
   const response = await fetch(`${getBaseUrl()}/create-event-order`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify({ amount, currency, registrationId, planName, userEmail, userName, origin }),
+    body: JSON.stringify({
+      amount,
+      currency,
+      registrationId,
+      planName,
+      userEmail,
+      userName,
+      origin,
+    }),
   });
 
   if (!response.ok) {
@@ -109,7 +123,10 @@ export async function createEventOrder({ amount, currency = 'INR', registrationI
  * @param {string} token - Auth token
  * @returns {Promise<Object>} Verification result with subscription data
  */
-export async function verifyPayment({ razorpay_order_id, razorpay_payment_id, razorpay_signature, plan }, token) {
+export async function verifyPayment(
+  { razorpay_order_id, razorpay_payment_id, razorpay_signature, plan },
+  token
+) {
   const response = await fetch(`${getBaseUrl()}/verify-payment`, {
     method: 'POST',
     headers: getAuthHeaders(token),
@@ -175,7 +192,7 @@ export async function checkSubscriptionAccess(token) {
         showWarning: false,
       };
     }
-    
+
     const error = await response.json().catch(() => ({}));
     throw new Error(error.error || 'Failed to check subscription access');
   }
@@ -195,7 +212,10 @@ export async function cancelSubscription(subscriptionId, cancelAtCycleEnd = fals
   const response = await fetch(`${getBaseUrl()}/cancel-subscription`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify({ subscription_id: subscriptionId, cancel_at_cycle_end: cancelAtCycleEnd }),
+    body: JSON.stringify({
+      subscription_id: subscriptionId,
+      cancel_at_cycle_end: cancelAtCycleEnd,
+    }),
   });
 
   if (!response.ok) {
@@ -218,7 +238,10 @@ export async function deactivateSubscription(subscriptionId, cancellationReason 
   const response = await fetch(`${getBaseUrl()}/deactivate-subscription`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify({ subscription_id: subscriptionId, cancellation_reason: cancellationReason }),
+    body: JSON.stringify({
+      subscription_id: subscriptionId,
+      cancellation_reason: cancellationReason,
+    }),
   });
 
   if (!response.ok) {

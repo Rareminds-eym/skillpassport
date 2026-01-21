@@ -22,7 +22,7 @@ export class SkillsAnalyticsService {
   static async debugOpportunitiesTable() {
     try {
       this.log('=== DEBUGGING OPPORTUNITIES TABLE ===');
-      
+
       // Check table structure by fetching sample records
       const { data: samples, error: sampleError } = await supabase
         .from('opportunities')
@@ -36,7 +36,7 @@ export class SkillsAnalyticsService {
 
       if (samples && samples.length > 0) {
         this.log('Sample opportunity structure:', Object.keys(samples[0]));
-        
+
         // Analyze different skill formats in the samples
         this.log('=== SKILL FORMAT ANALYSIS ===');
         samples.forEach((sample, index) => {
@@ -45,7 +45,7 @@ export class SkillsAnalyticsService {
           this.log(`  Skills Type: ${typeof sample.skills_required}`);
           this.log(`  Is Array: ${Array.isArray(sample.skills_required)}`);
           this.log(`  Raw Skills:`, sample.skills_required);
-          
+
           if (sample.skills_required) {
             const parsed = this.parseSkills(sample.skills_required);
             this.log(`  Parsed Skills (${parsed.length}):`, parsed);
@@ -91,10 +91,10 @@ export class SkillsAnalyticsService {
           array: 0,
           string: 0,
           object: 0,
-          other: 0
+          other: 0,
         };
 
-        allSkillsData.forEach(item => {
+        allSkillsData.forEach((item) => {
           const skills = item.skills_required;
           if (Array.isArray(skills)) {
             formatCounts.array++;
@@ -128,14 +128,14 @@ export class SkillsAnalyticsService {
     try {
       // Handle array format
       if (Array.isArray(skillsData)) {
-        skills = skillsData.filter(skill => skill && typeof skill === 'string');
+        skills = skillsData.filter((skill) => skill && typeof skill === 'string');
       }
       // Handle string format (comma-separated, semicolon-separated, etc.)
       else if (typeof skillsData === 'string') {
         // Try different separators
         const separators = [',', ';', '|', '\n', '•', '-'];
         let bestSplit = [skillsData]; // Default to single skill
-        
+
         for (const separator of separators) {
           if (skillsData.includes(separator)) {
             const split = skillsData.split(separator);
@@ -144,10 +144,8 @@ export class SkillsAnalyticsService {
             }
           }
         }
-        
-        skills = bestSplit
-          .map(skill => skill.trim())
-          .filter(skill => skill.length > 0);
+
+        skills = bestSplit.map((skill) => skill.trim()).filter((skill) => skill.length > 0);
       }
       // Handle object format (in case skills are stored as objects)
       else if (typeof skillsData === 'object') {
@@ -159,9 +157,9 @@ export class SkillsAnalyticsService {
         } else {
           // Convert object values to skills
           skills = Object.values(skillsData)
-            .filter(value => typeof value === 'string')
-            .map(value => value.trim())
-            .filter(value => value.length > 0);
+            .filter((value) => typeof value === 'string')
+            .map((value) => value.trim())
+            .filter((value) => value.length > 0);
         }
       }
     } catch (error) {
@@ -171,7 +169,7 @@ export class SkillsAnalyticsService {
 
     // Normalize and clean skills
     return skills
-      .map(skill => {
+      .map((skill) => {
         // Remove common prefixes/suffixes and normalize
         return skill
           .trim()
@@ -180,12 +178,14 @@ export class SkillsAnalyticsService {
           .replace(/\s+/g, ' ') // Normalize whitespace
           .trim();
       })
-      .filter(skill => {
+      .filter((skill) => {
         // Filter out invalid skills
-        return skill.length > 1 && 
-               skill.length < 100 && 
-               !/^\d+$/.test(skill) && // Not just numbers
-               !/^[^a-zA-Z]*$/.test(skill); // Contains at least one letter
+        return (
+          skill.length > 1 &&
+          skill.length < 100 &&
+          !/^\d+$/.test(skill) && // Not just numbers
+          !/^[^a-zA-Z]*$/.test(skill)
+        ); // Contains at least one letter
       });
   }
 
@@ -197,7 +197,7 @@ export class SkillsAnalyticsService {
   static async getTopSkillsInDemand(limit = 5) {
     try {
       this.log(`Starting getTopSkillsInDemand with limit: ${limit}`);
-      
+
       // Fetch all active opportunities with their skills_required field
       this.log('Fetching opportunities from database...');
       const { data: opportunities, error } = await supabase
@@ -222,7 +222,9 @@ export class SkillsAnalyticsService {
       this.log('Sample opportunities with skill formats:');
       opportunities.slice(0, 5).forEach((opp, index) => {
         this.log(`  ${index + 1}. ID: ${opp.id}, Title: ${opp.job_title}`);
-        this.log(`     Skills Type: ${typeof opp.skills_required}, IsArray: ${Array.isArray(opp.skills_required)}`);
+        this.log(
+          `     Skills Type: ${typeof opp.skills_required}, IsArray: ${Array.isArray(opp.skills_required)}`
+        );
         this.log(`     Raw Skills:`, opp.skills_required);
         this.log(`     Parsed Skills:`, this.parseSkills(opp.skills_required));
       });
@@ -232,17 +234,17 @@ export class SkillsAnalyticsService {
       const skillCounts = {};
       let processedOpportunities = 0;
       let totalSkillsFound = 0;
-      let formatStats = {
+      const formatStats = {
         array: 0,
         string: 0,
         object: 0,
         other: 0,
-        empty: 0
+        empty: 0,
       };
-      
+
       opportunities.forEach((opportunity) => {
         const skillsData = opportunity.skills_required;
-        
+
         // Track format statistics
         if (!skillsData) {
           formatStats.empty++;
@@ -259,11 +261,11 @@ export class SkillsAnalyticsService {
 
         // Parse skills using the enhanced parser
         const parsedSkills = this.parseSkills(skillsData);
-        
+
         if (parsedSkills.length > 0) {
           processedOpportunities++;
-          
-          parsedSkills.forEach(skill => {
+
+          parsedSkills.forEach((skill) => {
             const normalizedSkill = skill.trim();
             if (normalizedSkill) {
               skillCounts[normalizedSkill] = (skillCounts[normalizedSkill] || 0) + 1;
@@ -289,7 +291,7 @@ export class SkillsAnalyticsService {
         .map(([skill, count]) => ({
           skill,
           count,
-          percentage: Math.round((count / opportunities.length) * 100)
+          percentage: Math.round((count / opportunities.length) * 100),
         }))
         .sort((a, b) => b.count - a.count)
         .slice(0, limit);
@@ -311,7 +313,7 @@ export class SkillsAnalyticsService {
   static async getSkillsDemandAnalysis(limit = 5) {
     try {
       const topSkills = await this.getTopSkillsInDemand(limit);
-      
+
       // Get total opportunities count for context
       const { count: totalOpportunities } = await supabase
         .from('opportunities')
@@ -324,10 +326,13 @@ export class SkillsAnalyticsService {
         lastUpdated: new Date().toISOString(),
         analysis: {
           mostDemandedSkill: topSkills[0]?.skill || null,
-          averageDemand: topSkills.length > 0 
-            ? Math.round(topSkills.reduce((sum, skill) => sum + skill.count, 0) / topSkills.length)
-            : 0
-        }
+          averageDemand:
+            topSkills.length > 0
+              ? Math.round(
+                  topSkills.reduce((sum, skill) => sum + skill.count, 0) / topSkills.length
+                )
+              : 0,
+        },
       };
     } catch (error) {
       console.error('Error in getSkillsDemandAnalysis:', error);
@@ -337,8 +342,8 @@ export class SkillsAnalyticsService {
         lastUpdated: new Date().toISOString(),
         analysis: {
           mostDemandedSkill: null,
-          averageDemand: 0
-        }
+          averageDemand: 0,
+        },
       };
     }
   }

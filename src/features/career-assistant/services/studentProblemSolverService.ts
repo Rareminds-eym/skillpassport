@@ -1,6 +1,6 @@
 /**
  * 🎯 STUDENT PROBLEM SOLVER SERVICE
- * 
+ *
  * Addresses REAL student struggles:
  * - Imposter syndrome ("I'm not good enough")
  * - Learning overwhelm ("Too much to learn")
@@ -43,7 +43,6 @@ export interface ProblemSolution {
 }
 
 class StudentProblemSolverService {
-  
   /**
    * 🎯 Identify and Solve Student Problem
    * Detects underlying issues and provides actionable solutions
@@ -57,10 +56,9 @@ class StudentProblemSolverService {
       recentActivity?: string;
     }
   ): Promise<ProblemSolution> {
-    
     try {
       console.log('🎯 Student Problem Solver: Analyzing issue...');
-      
+
       const prompt = `You are an empathetic student mentor who understands the REAL struggles students face. Not just technical problems, but emotional and psychological challenges.
 
 **STUDENT'S MESSAGE:**
@@ -68,10 +66,14 @@ class StudentProblemSolverService {
 
 **EMOTIONAL TONE:** ${emotionalTone || 'neutral'}
 
-${studentContext ? `**STUDENT CONTEXT:**
+${
+  studentContext
+    ? `**STUDENT CONTEXT:**
 - Skills: ${studentContext.skills.join(', ')}
 - Learning for: ${studentContext.learningDuration || 'Unknown'}
-- Recent activity: ${studentContext.recentActivity || 'Unknown'}` : ''}
+- Recent activity: ${studentContext.recentActivity || 'Unknown'}`
+    : ''
+}
 
 **YOUR TASK:**
 Identify the REAL problem and provide practical, empathetic solutions.
@@ -204,42 +206,39 @@ Identify the REAL problem and provide practical, empathetic solutions.
         messages: [
           {
             role: 'system',
-            content: 'You are an exceptionally empathetic student mentor. You understand that learning to code is as much emotional as it is technical. You provide practical, actionable advice while validating feelings. You are warm, genuine, and never dismissive.'
+            content:
+              'You are an exceptionally empathetic student mentor. You understand that learning to code is as much emotional as it is technical. You provide practical, actionable advice while validating feelings. You are warm, genuine, and never dismissive.',
           },
-          { role: 'user', content: prompt }
+          { role: 'user', content: prompt },
         ],
         temperature: 0.7, // Slightly higher for more empathetic, human responses
         max_tokens: 2500,
-        response_format: { type: 'json_object' }
+        response_format: { type: 'json_object' },
       });
-      
+
       const result = JSON.parse(completion.choices[0]?.message?.content || '{}');
-      
+
       console.log('🎯 Problem Identified:', result.problemIdentified);
       console.log('💚 Empathy provided');
       console.log('🎬 Immediate actions:', result.immediateActions?.length || 0);
       console.log('📚 Resources:', result.resources?.length || 0);
-      
+
       return result as ProblemSolution;
-      
     } catch (error) {
       console.error('Problem solving error:', error);
       throw new Error('Failed to analyze student problem');
     }
   }
-  
+
   /**
    * 💪 Generate Motivational Boost
    * For when students just need encouragement
    */
-  async generateMotivation(
-    studentContext: {
-      recentAchievements?: string[];
-      currentChallenge?: string;
-      skillLevel?: string;
-    }
-  ): Promise<string> {
-    
+  async generateMotivation(studentContext: {
+    recentAchievements?: string[];
+    currentChallenge?: string;
+    skillLevel?: string;
+  }): Promise<string> {
     try {
       const prompt = `Generate a personalized, genuine motivational message for a student.
 
@@ -255,77 +254,93 @@ Be personal, honest, and energizing. Like a mentor who really cares.`;
       const completion = await client.chat.completions.create({
         model: DEFAULT_MODEL,
         messages: [
-          { role: 'system', content: 'You write genuine, personalized encouragement that actually motivates people. No generic quotes.' },
-          { role: 'user', content: prompt }
+          {
+            role: 'system',
+            content:
+              'You write genuine, personalized encouragement that actually motivates people. No generic quotes.',
+          },
+          { role: 'user', content: prompt },
         ],
         temperature: 0.8,
-        max_tokens: 300
+        max_tokens: 300,
       });
-      
-      return completion.choices[0]?.message?.content || 'Keep pushing forward - you\'re doing better than you think! 💪';
-      
+
+      return (
+        completion.choices[0]?.message?.content ||
+        "Keep pushing forward - you're doing better than you think! 💪"
+      );
     } catch (error) {
       return 'Every expert was once a beginner. Your consistency will compound. Keep going! 🚀';
     }
   }
-  
+
   /**
    * 📋 Quick Problem Detection
    * Fast check if message contains common student problems
    */
   detectProblemType(message: string): StudentProblem | null {
     const lowerMessage = message.toLowerCase();
-    
+
     // Imposter syndrome indicators
-    if (/(not good enough|everyone.{1,20}better|don't belong|feel like.{1,20}fraud|fake|luck)/i.test(lowerMessage)) {
+    if (
+      /(not good enough|everyone.{1,20}better|don't belong|feel like.{1,20}fraud|fake|luck)/i.test(
+        lowerMessage
+      )
+    ) {
       return 'imposter-syndrome';
     }
-    
+
     // Learning overwhelm
     if (/(too much|overwhelm|don't know where to start|so many things)/i.test(lowerMessage)) {
       return 'learning-overwhelm';
     }
-    
+
     // Time management
     if (/(no time|can't balance|too busy|juggling)/i.test(lowerMessage)) {
       return 'time-management';
     }
-    
+
     // Project completion
     if (/(can't finish|start many|stuck halfway|give up|never complete)/i.test(lowerMessage)) {
       return 'project-completion';
     }
-    
+
     // Interview anxiety
     if (/(nervous.{1,20}interview|scared.{1,20}interview|freeze|blank)/i.test(lowerMessage)) {
       return 'interview-anxiety';
     }
-    
+
     // Skill validation
-    if (/(am i.{1,30}learning|is this enough|doubt.{1,20}progress|actually learning)/i.test(lowerMessage)) {
+    if (
+      /(am i.{1,30}learning|is this enough|doubt.{1,20}progress|actually learning)/i.test(
+        lowerMessage
+      )
+    ) {
       return 'skill-validation';
     }
-    
+
     // Career uncertainty
-    if (/(don't know what|confused.{1,20}career|many options|what should i do)/i.test(lowerMessage)) {
+    if (
+      /(don't know what|confused.{1,20}career|many options|what should i do)/i.test(lowerMessage)
+    ) {
       return 'career-uncertainty';
     }
-    
+
     // Comparison trap
     if (/(others.{1,20}ahead|already knows|i'm behind|comparing myself)/i.test(lowerMessage)) {
       return 'comparison-trap';
     }
-    
+
     // Motivation loss
     if (/(lost interest|not motivated|don't feel like|burnt out|demotivated)/i.test(lowerMessage)) {
       return 'motivation-loss';
     }
-    
+
     // Technical confusion
     if (/(don't understand|hard to understand|not clicking|confusing)/i.test(lowerMessage)) {
       return 'technical-confusion';
     }
-    
+
     return null;
   }
 }

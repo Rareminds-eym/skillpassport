@@ -116,19 +116,15 @@ const StreakTestPanel = () => {
               2. Trigger Manual Streak Check
             </h3>
             <p className="text-sm text-purple-700 mb-3">
-              Manually run the streak checker to see which students need reminders.
-              This will send actual emails to students who haven't completed their streak today.
+              Manually run the streak checker to see which students need reminders. This will send
+              actual emails to students who haven't completed their streak today.
             </p>
             <button
               onClick={() => handleAction('/api/streaks/admin/check-all')}
               disabled={loading}
               className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
             >
-              {loading ? (
-                <Loader className="w-4 h-4 animate-spin" />
-              ) : (
-                <Zap className="w-4 h-4" />
-              )}
+              {loading ? <Loader className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
               Run Streak Check Now
             </button>
           </div>
@@ -160,9 +156,7 @@ const StreakTestPanel = () => {
           {result && (
             <div
               className={`border rounded-lg p-4 ${
-                result.success
-                  ? 'bg-green-50 border-green-200'
-                  : 'bg-red-50 border-red-200'
+                result.success ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
               }`}
             >
               <div className="flex items-start gap-3">
@@ -180,9 +174,7 @@ const StreakTestPanel = () => {
                     {result.success ? 'Success!' : 'Error'}
                   </p>
                   <p
-                    className={`text-sm mt-1 ${
-                      result.success ? 'text-green-700' : 'text-red-700'
-                    }`}
+                    className={`text-sm mt-1 ${result.success ? 'text-green-700' : 'text-red-700'}`}
                   >
                     {result.message}
                   </p>
@@ -205,7 +197,10 @@ const StreakTestPanel = () => {
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
             <h4 className="font-semibold text-gray-900 mb-2">📋 Instructions:</h4>
             <ol className="text-sm text-gray-700 space-y-1 list-decimal list-inside">
-              <li>Start your backend server: <code className="bg-gray-200 px-1 rounded">cd Backend && npm start</code></li>
+              <li>
+                Start your backend server:{' '}
+                <code className="bg-gray-200 px-1 rounded">cd Backend && npm start</code>
+              </li>
               <li>Make sure you've run the database migration</li>
               <li>First, test email configuration with button #1</li>
               <li>Then test the streak checker with button #2</li>
@@ -216,8 +211,9 @@ const StreakTestPanel = () => {
           {/* Server Logs Reminder */}
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
             <p className="text-sm text-yellow-800">
-              <strong>💡 Tip:</strong> Watch your backend server terminal for detailed logs when you click these buttons.
-              You'll see which students would receive emails and what's happening.
+              <strong>💡 Tip:</strong> Watch your backend server terminal for detailed logs when you
+              click these buttons. You'll see which students would receive emails and what's
+              happening.
             </p>
           </div>
         </div>

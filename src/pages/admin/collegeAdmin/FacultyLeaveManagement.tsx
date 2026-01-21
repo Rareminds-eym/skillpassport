@@ -167,12 +167,14 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
   const loadLeaveRequests = async () => {
     const { data } = await supabase
       .from('college_faculty_leaves')
-      .select(`
+      .select(
+        `
         id, faculty_id, leave_type_id, start_date, end_date, total_days,
         reason, status, applied_at, reviewed_at, review_notes,
         college_lecturers!faculty_id(first_name, last_name),
         college_leave_types!leave_type_id(name, code, color)
-      `)
+      `
+      )
       .eq('college_id', collegeId)
       .order('applied_at', { ascending: false });
 
@@ -180,7 +182,8 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
       const processed = data.map((item: any) => ({
         id: item.id,
         faculty_id: item.faculty_id,
-        faculty_name: `${item.college_lecturers?.first_name || ''} ${item.college_lecturers?.last_name || ''}`.trim(),
+        faculty_name:
+          `${item.college_lecturers?.first_name || ''} ${item.college_lecturers?.last_name || ''}`.trim(),
         leave_type_id: item.leave_type_id,
         leave_type_name: item.college_leave_types?.name || '',
         leave_type_code: item.college_leave_types?.code || '',
@@ -201,13 +204,15 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
   const loadSubstitutions = async () => {
     const { data } = await supabase
       .from('college_faculty_substitutions')
-      .select(`
+      .select(
+        `
         id, leave_id, original_faculty_id, substitute_faculty_id,
         substitution_date, period_number, class_id, subject_name, status, notes,
         original:college_lecturers!original_faculty_id(first_name, last_name),
         substitute:college_lecturers!substitute_faculty_id(first_name, last_name),
         college_classes!class_id(name, grade, section)
-      `)
+      `
+      )
       .eq('college_id', collegeId)
       .order('substitution_date', { ascending: true });
 
@@ -216,13 +221,18 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
         id: item.id,
         leave_id: item.leave_id,
         original_faculty_id: item.original_faculty_id,
-        original_faculty_name: `${item.original?.first_name || ''} ${item.original?.last_name || ''}`.trim(),
+        original_faculty_name:
+          `${item.original?.first_name || ''} ${item.original?.last_name || ''}`.trim(),
         substitute_faculty_id: item.substitute_faculty_id,
-        substitute_faculty_name: item.substitute ? `${item.substitute.first_name || ''} ${item.substitute.last_name || ''}`.trim() : null,
+        substitute_faculty_name: item.substitute
+          ? `${item.substitute.first_name || ''} ${item.substitute.last_name || ''}`.trim()
+          : null,
         substitution_date: item.substitution_date,
         period_number: item.period_number,
         class_id: item.class_id,
-        class_name: item.college_classes ? `${item.college_classes.name} (${item.college_classes.grade}-${item.college_classes.section})` : '',
+        class_name: item.college_classes
+          ? `${item.college_classes.name} (${item.college_classes.grade}-${item.college_classes.section})`
+          : '',
         subject_name: item.subject_name,
         status: item.status,
       }));
@@ -253,7 +263,9 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
     // Fetch lecturers
     const { data: lecturers } = await supabase
       .from('college_lecturers')
-      .select('id, first_name, last_name, email, phone, department, designation, employeeId, accountStatus')
+      .select(
+        'id, first_name, last_name, email, phone, department, designation, employeeId, accountStatus'
+      )
       .eq('collegeId', collegeId)
       .order('first_name');
 
@@ -262,13 +274,15 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
     // Fetch leave balances for all lecturers
     const { data: balances } = await supabase
       .from('college_faculty_leave_balances')
-      .select(`
+      .select(
+        `
         faculty_id,
         leave_type_id,
         total_days,
         used_days,
         college_leave_types!leave_type_id(name, code)
-      `)
+      `
+      )
       .eq('college_id', collegeId)
       .eq('academic_year', '2025-2026');
 
@@ -303,14 +317,15 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
   };
 
   const handleDeleteLecturer = async (lecturerId: string, lecturerName: string) => {
-    if (!confirm(`Are you sure you want to delete "${lecturerName}"?\n\nThis will also delete:\n- All leave balance records\n- All leave requests\n- All substitution records\n\nThis action cannot be undone.`)) {
+    if (
+      !confirm(
+        `Are you sure you want to delete "${lecturerName}"?\n\nThis will also delete:\n- All leave balance records\n- All leave requests\n- All substitution records\n\nThis action cannot be undone.`
+      )
+    ) {
       return;
     }
 
-    const { error } = await supabase
-      .from('college_lecturers')
-      .delete()
-      .eq('id', lecturerId);
+    const { error } = await supabase.from('college_lecturers').delete().eq('id', lecturerId);
 
     if (error) {
       alert(`Error deleting lecturer: ${error.message}`);
@@ -323,15 +338,15 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
 
   const handleApproveLeave = async (leaveId: string) => {
     if (!confirm('Approve this leave request?')) return;
-    
-    const leave = leaveRequests.find(l => l.id === leaveId);
+
+    const leave = leaveRequests.find((l) => l.id === leaveId);
     if (!leave) return;
 
     const { error } = await supabase
       .from('college_faculty_leaves')
-      .update({ 
-        status: 'approved', 
-        reviewed_at: new Date().toISOString() 
+      .update({
+        status: 'approved',
+        reviewed_at: new Date().toISOString(),
       })
       .eq('id', leaveId);
 
@@ -348,8 +363,8 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
       if (currentBalance) {
         await supabase
           .from('college_faculty_leave_balances')
-          .update({ 
-            used_days: Number(currentBalance.used_days) + leave.total_days 
+          .update({
+            used_days: Number(currentBalance.used_days) + leave.total_days,
           })
           .eq('faculty_id', leave.faculty_id)
           .eq('leave_type_id', leave.leave_type_id)
@@ -358,7 +373,7 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
 
       // Create substitution entries for approved leave
       await createSubstitutionsForLeave(leave);
-      
+
       await loadLeaveRequests();
       await loadSubstitutions();
     }
@@ -366,13 +381,13 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
 
   const handleRejectLeave = async (leaveId: string) => {
     const reason = prompt('Reason for rejection (optional):');
-    
+
     await supabase
       .from('college_faculty_leaves')
-      .update({ 
-        status: 'rejected', 
+      .update({
+        status: 'rejected',
         reviewed_at: new Date().toISOString(),
-        review_notes: reason 
+        review_notes: reason,
       })
       .eq('id', leaveId);
 
@@ -395,7 +410,7 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
 
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
       const dayOfWeek = d.getDay() === 0 ? 7 : d.getDay(); // 1=Mon, 7=Sun
-      const daySlots = slots.filter(s => s.day_of_week === dayOfWeek);
+      const daySlots = slots.filter((s) => s.day_of_week === dayOfWeek);
 
       for (const slot of daySlots) {
         substitutionEntries.push({
@@ -420,9 +435,9 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
   const handleAssignSubstitute = async (substitutionId: string, substituteId: string) => {
     await supabase
       .from('college_faculty_substitutions')
-      .update({ 
-        substitute_faculty_id: substituteId, 
-        status: 'assigned' 
+      .update({
+        substitute_faculty_id: substituteId,
+        status: 'assigned',
       })
       .eq('id', substitutionId);
 
@@ -433,10 +448,10 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
 
   // Get suggested substitutes based on subject expertise
   const getSuggestedSubstitutes = (subjectName: string, originalFacultyId: string) => {
-    return faculty.filter(f => {
+    return faculty.filter((f) => {
       if (f.id === originalFacultyId) return false;
-      const hasExpertise = f.subject_expertise?.some(
-        (s: any) => s.name?.toLowerCase().includes(subjectName?.toLowerCase())
+      const hasExpertise = f.subject_expertise?.some((s: any) =>
+        s.name?.toLowerCase().includes(subjectName?.toLowerCase())
       );
       return hasExpertise;
     });
@@ -446,16 +461,16 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
   const stats = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
     const todayLeaves = leaveRequests.filter(
-      l => l.status === 'approved' && l.start_date <= today && l.end_date >= today
+      (l) => l.status === 'approved' && l.start_date <= today && l.end_date >= today
     );
-    const pendingRequests = leaveRequests.filter(l => l.status === 'pending');
-    const pendingSubstitutions = substitutions.filter(s => s.status === 'pending');
-    
+    const pendingRequests = leaveRequests.filter((l) => l.status === 'pending');
+    const pendingSubstitutions = substitutions.filter((s) => s.status === 'pending');
+
     return {
       todayAbsent: todayLeaves.length,
       pendingRequests: pendingRequests.length,
       pendingSubstitutions: pendingSubstitutions.length,
-      totalApproved: leaveRequests.filter(l => l.status === 'approved').length,
+      totalApproved: leaveRequests.filter((l) => l.status === 'approved').length,
     };
   }, [leaveRequests, substitutions]);
 
@@ -463,12 +478,12 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
   const filteredRequests = useMemo(() => {
     let result = [...leaveRequests];
     if (searchTerm) {
-      result = result.filter(r => 
+      result = result.filter((r) =>
         r.faculty_name.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
     if (statusFilter !== 'all') {
-      result = result.filter(r => r.status === statusFilter);
+      result = result.filter((r) => r.status === statusFilter);
     }
     return result;
   }, [leaveRequests, searchTerm, statusFilter]);
@@ -476,13 +491,14 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
   const filteredSubstitutions = useMemo(() => {
     let result = [...substitutions];
     if (searchTerm) {
-      result = result.filter(s => 
-        s.original_faculty_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.subject_name?.toLowerCase().includes(searchTerm.toLowerCase())
+      result = result.filter(
+        (s) =>
+          s.original_faculty_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          s.subject_name?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
     if (statusFilter !== 'all') {
-      result = result.filter(s => s.status === statusFilter);
+      result = result.filter((s) => s.status === statusFilter);
     }
     return result;
   }, [substitutions, searchTerm, statusFilter]);
@@ -490,14 +506,15 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
   const filteredLecturers = useMemo(() => {
     let result = [...lecturersWithBalances];
     if (searchTerm) {
-      result = result.filter(l => 
-        `${l.first_name} ${l.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        l.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        l.department?.toLowerCase().includes(searchTerm.toLowerCase())
+      result = result.filter(
+        (l) =>
+          `${l.first_name} ${l.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          l.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          l.department?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
     if (statusFilter !== 'all') {
-      result = result.filter(l => l.accountStatus === statusFilter);
+      result = result.filter((l) => l.accountStatus === statusFilter);
     }
     return result;
   }, [lecturersWithBalances, searchTerm, statusFilter]);
@@ -508,8 +525,8 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
     const month = calendarMonth.getMonth();
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
-    
-    return leaveRequests.filter(l => {
+
+    return leaveRequests.filter((l) => {
       if (l.status !== 'approved') return false;
       const start = new Date(l.start_date);
       const end = new Date(l.end_date);
@@ -621,7 +638,9 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
                       <AlertTriangle className="h-5 w-5 text-purple-600" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-purple-900">{stats.pendingSubstitutions}</p>
+                      <p className="text-2xl font-bold text-purple-900">
+                        {stats.pendingSubstitutions}
+                      </p>
                       <p className="text-xs text-purple-700">Need Substitutes</p>
                     </div>
                   </div>
@@ -648,34 +667,41 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
                     <Clock className="h-5 w-5 text-amber-600" />
                     Pending Leave Requests
                   </h3>
-                  {leaveRequests.filter(l => l.status === 'pending').length === 0 ? (
+                  {leaveRequests.filter((l) => l.status === 'pending').length === 0 ? (
                     <p className="text-gray-500 text-sm">No pending requests</p>
                   ) : (
                     <div className="space-y-3">
-                      {leaveRequests.filter(l => l.status === 'pending').slice(0, 5).map((leave) => (
-                        <div key={leave.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div>
-                            <p className="font-medium text-gray-900">{leave.faculty_name}</p>
-                            <p className="text-xs text-gray-500">
-                              {leave.leave_type_code} • {formatDate(leave.start_date)} - {formatDate(leave.end_date)}
-                            </p>
+                      {leaveRequests
+                        .filter((l) => l.status === 'pending')
+                        .slice(0, 5)
+                        .map((leave) => (
+                          <div
+                            key={leave.id}
+                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                          >
+                            <div>
+                              <p className="font-medium text-gray-900">{leave.faculty_name}</p>
+                              <p className="text-xs text-gray-500">
+                                {leave.leave_type_code} • {formatDate(leave.start_date)} -{' '}
+                                {formatDate(leave.end_date)}
+                              </p>
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleApproveLeave(leave.id)}
+                                className="p-1.5 text-green-600 hover:bg-green-100 rounded-lg"
+                              >
+                                <CheckCircle className="h-5 w-5" />
+                              </button>
+                              <button
+                                onClick={() => handleRejectLeave(leave.id)}
+                                className="p-1.5 text-red-600 hover:bg-red-100 rounded-lg"
+                              >
+                                <XCircle className="h-5 w-5" />
+                              </button>
+                            </div>
                           </div>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleApproveLeave(leave.id)}
-                              className="p-1.5 text-green-600 hover:bg-green-100 rounded-lg"
-                            >
-                              <CheckCircle className="h-5 w-5" />
-                            </button>
-                            <button
-                              onClick={() => handleRejectLeave(leave.id)}
-                              className="p-1.5 text-red-600 hover:bg-red-100 rounded-lg"
-                            >
-                              <XCircle className="h-5 w-5" />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+                        ))}
                     </div>
                   )}
                 </div>
@@ -686,30 +712,39 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
                     <AlertTriangle className="h-5 w-5 text-red-600" />
                     Unassigned Substitutions
                   </h3>
-                  {substitutions.filter(s => s.status === 'pending').length === 0 ? (
+                  {substitutions.filter((s) => s.status === 'pending').length === 0 ? (
                     <p className="text-gray-500 text-sm">All substitutions assigned</p>
                   ) : (
                     <div className="space-y-3">
-                      {substitutions.filter(s => s.status === 'pending').slice(0, 5).map((sub) => (
-                        <div key={sub.id} className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-100">
-                          <div>
-                            <p className="font-medium text-gray-900">{sub.subject_name}</p>
-                            <p className="text-xs text-gray-600">
-                              {formatDate(sub.substitution_date)} • Period {sub.period_number} • {sub.class_name}
-                            </p>
-                            <p className="text-xs text-red-600">For: {sub.original_faculty_name}</p>
-                          </div>
-                          <button
-                            onClick={() => {
-                              setSelectedSubstitution(sub);
-                              setShowAssignSubstituteModal(true);
-                            }}
-                            className="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                      {substitutions
+                        .filter((s) => s.status === 'pending')
+                        .slice(0, 5)
+                        .map((sub) => (
+                          <div
+                            key={sub.id}
+                            className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-100"
                           >
-                            Assign
-                          </button>
-                        </div>
-                      ))}
+                            <div>
+                              <p className="font-medium text-gray-900">{sub.subject_name}</p>
+                              <p className="text-xs text-gray-600">
+                                {formatDate(sub.substitution_date)} • Period {sub.period_number} •{' '}
+                                {sub.class_name}
+                              </p>
+                              <p className="text-xs text-red-600">
+                                For: {sub.original_faculty_name}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => {
+                                setSelectedSubstitution(sub);
+                                setShowAssignSubstituteModal(true);
+                              }}
+                              className="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                            >
+                              Assign
+                            </button>
+                          </div>
+                        ))}
                     </div>
                   )}
                 </div>
@@ -755,13 +790,27 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
                 <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Faculty</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Leave Type</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Duration</th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600">Days</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Reason</th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600">Status</th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600">Actions</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                        Faculty
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                        Leave Type
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                        Duration
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600">
+                        Days
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                        Reason
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600">
+                        Status
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -778,9 +827,12 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <span 
+                          <span
                             className="px-2 py-1 rounded-full text-xs font-medium"
-                            style={{ backgroundColor: `${leave.leave_color}20`, color: leave.leave_color }}
+                            style={{
+                              backgroundColor: `${leave.leave_color}20`,
+                              color: leave.leave_color,
+                            }}
                           >
                             {leave.leave_type_code}
                           </span>
@@ -795,7 +847,9 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
                           {leave.reason || '-'}
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${STATUS_COLORS[leave.status]}`}>
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${STATUS_COLORS[leave.status]}`}
+                          >
                             {leave.status}
                           </span>
                         </td>
@@ -866,19 +920,38 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
                 <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Date</th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600">Period</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Class</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Subject</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Original Faculty</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Substitute</th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600">Status</th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600">Action</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                        Date
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600">
+                        Period
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                        Class
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                        Subject
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                        Original Faculty
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                        Substitute
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600">
+                        Status
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600">
+                        Action
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {filteredSubstitutions.map((sub) => (
-                      <tr key={sub.id} className={`hover:bg-gray-50 ${sub.status === 'pending' ? 'bg-red-50' : ''}`}>
+                      <tr
+                        key={sub.id}
+                        className={`hover:bg-gray-50 ${sub.status === 'pending' ? 'bg-red-50' : ''}`}
+                      >
                         <td className="px-4 py-3 text-sm font-medium text-gray-900">
                           {formatDate(sub.substitution_date)}
                         </td>
@@ -888,17 +961,25 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
                           </span>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-600">{sub.class_name}</td>
-                        <td className="px-4 py-3 text-sm text-gray-900 font-medium">{sub.subject_name}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{sub.original_faculty_name}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900 font-medium">
+                          {sub.subject_name}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          {sub.original_faculty_name}
+                        </td>
                         <td className="px-4 py-3 text-sm">
                           {sub.substitute_faculty_name ? (
-                            <span className="text-green-700 font-medium">{sub.substitute_faculty_name}</span>
+                            <span className="text-green-700 font-medium">
+                              {sub.substitute_faculty_name}
+                            </span>
                           ) : (
                             <span className="text-red-600 italic">Not assigned</span>
                           )}
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${STATUS_COLORS[sub.status]}`}>
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${STATUS_COLORS[sub.status]}`}
+                          >
                             {sub.status}
                           </span>
                         </td>
@@ -936,7 +1017,11 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
               {/* Month Navigation */}
               <div className="flex items-center justify-between">
                 <button
-                  onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1))}
+                  onClick={() =>
+                    setCalendarMonth(
+                      new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1)
+                    )
+                  }
                   className="p-2 hover:bg-gray-100 rounded-lg"
                 >
                   <ChevronLeft className="h-5 w-5" />
@@ -945,7 +1030,11 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
                   {calendarMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                 </h3>
                 <button
-                  onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1))}
+                  onClick={() =>
+                    setCalendarMonth(
+                      new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1)
+                    )
+                  }
                   className="p-2 hover:bg-gray-100 rounded-lg"
                 >
                   <ChevronRight className="h-5 w-5" />
@@ -955,7 +1044,10 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
               {/* Calendar Grid */}
               <div className="grid grid-cols-7 gap-1">
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                  <div key={day} className="p-2 text-center text-xs font-semibold text-gray-600 bg-gray-50">
+                  <div
+                    key={day}
+                    className="p-2 text-center text-xs font-semibold text-gray-600 bg-gray-50"
+                  >
                     {day}
                   </div>
                 ))}
@@ -968,13 +1060,17 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
 
                   // Empty cells before first day
                   for (let i = 0; i < firstDay; i++) {
-                    cells.push(<div key={`empty-${i}`} className="p-2 min-h-[80px] bg-gray-50"></div>);
+                    cells.push(
+                      <div key={`empty-${i}`} className="p-2 min-h-[80px] bg-gray-50"></div>
+                    );
                   }
 
                   // Day cells
                   for (let day = 1; day <= daysInMonth; day++) {
                     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                    const dayLeaves = calendarLeaves.filter(l => l.start_date <= dateStr && l.end_date >= dateStr);
+                    const dayLeaves = calendarLeaves.filter(
+                      (l) => l.start_date <= dateStr && l.end_date >= dateStr
+                    );
                     const isToday = dateStr === new Date().toISOString().split('T')[0];
 
                     cells.push(
@@ -982,7 +1078,9 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
                         key={day}
                         className={`p-2 min-h-[80px] border border-gray-100 ${isToday ? 'bg-indigo-50 border-indigo-200' : 'bg-white'}`}
                       >
-                        <div className={`text-sm font-medium ${isToday ? 'text-indigo-600' : 'text-gray-900'}`}>
+                        <div
+                          className={`text-sm font-medium ${isToday ? 'text-indigo-600' : 'text-gray-900'}`}
+                        >
                           {day}
                         </div>
                         <div className="mt-1 space-y-1">
@@ -990,14 +1088,19 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
                             <div
                               key={leave.id}
                               className="text-xs px-1 py-0.5 rounded truncate"
-                              style={{ backgroundColor: `${leave.leave_color}20`, color: leave.leave_color }}
+                              style={{
+                                backgroundColor: `${leave.leave_color}20`,
+                                color: leave.leave_color,
+                              }}
                               title={`${leave.faculty_name} - ${leave.leave_type_code}`}
                             >
                               {leave.faculty_name.split(' ')[0]}
                             </div>
                           ))}
                           {dayLeaves.length > 3 && (
-                            <div className="text-xs text-gray-500">+{dayLeaves.length - 3} more</div>
+                            <div className="text-xs text-gray-500">
+                              +{dayLeaves.length - 3} more
+                            </div>
                           )}
                         </div>
                       </div>
@@ -1013,7 +1116,9 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
                 {leaveTypes.map((type) => (
                   <div key={type.id} className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded" style={{ backgroundColor: type.color }}></div>
-                    <span className="text-sm text-gray-600">{type.name} ({type.code})</span>
+                    <span className="text-sm text-gray-600">
+                      {type.name} ({type.code})
+                    </span>
                   </div>
                 ))}
               </div>
@@ -1055,8 +1160,9 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
 
               {/* Info Banner */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
-                <strong>Data Consistency:</strong> When you add a faculty member, leave balances are automatically created. 
-                When you delete a faculty member, all their leave balances and requests are automatically removed.
+                <strong>Data Consistency:</strong> When you add a faculty member, leave balances are
+                automatically created. When you delete a faculty member, all their leave balances
+                and requests are automatically removed.
               </div>
 
               {/* Faculty Table */}
@@ -1064,12 +1170,24 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
                 <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Faculty</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Department</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Contact</th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600">Leave Balances</th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600">Status</th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600">Actions</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                        Faculty
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                        Department
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">
+                        Contact
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600">
+                        Leave Balances
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600">
+                        Status
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -1079,16 +1197,24 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
                               <span className="text-sm font-medium text-indigo-600">
-                                {lecturer.first_name.charAt(0)}{lecturer.last_name.charAt(0)}
+                                {lecturer.first_name.charAt(0)}
+                                {lecturer.last_name.charAt(0)}
                               </span>
                             </div>
                             <div>
-                              <p className="font-medium text-gray-900">{lecturer.first_name} {lecturer.last_name}</p>
-                              <p className="text-xs text-gray-500">{lecturer.employeeId || 'No ID'} • {lecturer.designation || 'No designation'}</p>
+                              <p className="font-medium text-gray-900">
+                                {lecturer.first_name} {lecturer.last_name}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {lecturer.employeeId || 'No ID'} •{' '}
+                                {lecturer.designation || 'No designation'}
+                              </p>
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{lecturer.department || '-'}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          {lecturer.department || '-'}
+                        </td>
                         <td className="px-4 py-3">
                           <p className="text-sm text-gray-900">{lecturer.email || '-'}</p>
                           <p className="text-xs text-gray-500">{lecturer.phone || '-'}</p>
@@ -1111,11 +1237,13 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
                           </div>
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${
-                            lecturer.accountStatus === 'active' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-gray-100 text-gray-800'
-                          }`}>
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${
+                              lecturer.accountStatus === 'active'
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}
+                          >
                             {lecturer.accountStatus}
                           </span>
                         </td>
@@ -1132,7 +1260,12 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
                               <Edit className="h-4 w-4" />
                             </button>
                             <button
-                              onClick={() => handleDeleteLecturer(lecturer.id, `${lecturer.first_name} ${lecturer.last_name}`)}
+                              onClick={() =>
+                                handleDeleteLecturer(
+                                  lecturer.id,
+                                  `${lecturer.first_name} ${lecturer.last_name}`
+                                )
+                              }
                               className="p-1.5 text-red-600 hover:bg-red-100 rounded-lg"
                               title="Delete"
                             >
@@ -1156,7 +1289,9 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
               {/* Summary */}
               <div className="flex items-center justify-between text-sm text-gray-500 pt-2 border-t border-gray-200">
                 <span>Total: {filteredLecturers.length} faculty members</span>
-                <span>Active: {filteredLecturers.filter(l => l.accountStatus === 'active').length}</span>
+                <span>
+                  Active: {filteredLecturers.filter((l) => l.accountStatus === 'active').length}
+                </span>
               </div>
             </div>
           )}
@@ -1167,16 +1302,26 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
               <h3 className="text-lg font-semibold text-gray-900">Leave Types Configuration</h3>
               <div className="grid gap-4">
                 {leaveTypes.map((type) => (
-                  <div key={type.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <div
+                    key={type.id}
+                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200"
+                  >
                     <div className="flex items-center gap-4">
-                      <div className="w-4 h-4 rounded" style={{ backgroundColor: type.color }}></div>
+                      <div
+                        className="w-4 h-4 rounded"
+                        style={{ backgroundColor: type.color }}
+                      ></div>
                       <div>
-                        <p className="font-medium text-gray-900">{type.name} ({type.code})</p>
+                        <p className="font-medium text-gray-900">
+                          {type.name} ({type.code})
+                        </p>
                         <p className="text-sm text-gray-500">{type.description}</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-medium text-gray-900">{type.max_days_per_year} days/year</p>
+                      <p className="font-medium text-gray-900">
+                        {type.max_days_per_year} days/year
+                      </p>
                       <p className="text-sm text-gray-500">{type.is_paid ? 'Paid' : 'Unpaid'}</p>
                     </div>
                   </div>
@@ -1206,7 +1351,10 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
         <AssignSubstituteModal
           substitution={selectedSubstitution}
           faculty={faculty}
-          suggestedFaculty={getSuggestedSubstitutes(selectedSubstitution.subject_name, selectedSubstitution.original_faculty_id)}
+          suggestedFaculty={getSuggestedSubstitutes(
+            selectedSubstitution.subject_name,
+            selectedSubstitution.original_faculty_id
+          )}
           collegeId={collegeId}
           onClose={() => {
             setShowAssignSubstituteModal(false);
@@ -1316,7 +1464,9 @@ const AddLeaveModal: React.FC<{
             >
               <option value="">Select Faculty</option>
               {faculty.map((f) => (
-                <option key={f.id} value={f.id}>{f.name}</option>
+                <option key={f.id} value={f.id}>
+                  {f.name}
+                </option>
               ))}
             </select>
           </div>
@@ -1330,7 +1480,9 @@ const AddLeaveModal: React.FC<{
             >
               <option value="">Select Leave Type</option>
               {leaveTypes.map((t) => (
-                <option key={t.id} value={t.id}>{t.name} ({t.code})</option>
+                <option key={t.id} value={t.id}>
+                  {t.name} ({t.code})
+                </option>
               ))}
             </select>
           </div>
@@ -1420,7 +1572,7 @@ const AssignSubstituteModal: React.FC<{
   useEffect(() => {
     const fetchAvailability = async () => {
       if (!collegeId) return;
-      
+
       setLoadingAvailability(true);
       try {
         // Calculate day of week from substitution date
@@ -1431,19 +1583,21 @@ const AssignSubstituteModal: React.FC<{
         // Fetch all timetable slots for this day and period
         const { data: busySlots } = await supabase
           .from('college_timetable_slots')
-          .select(`
+          .select(
+            `
             educator_id,
             subject_name,
             college_classes!class_id(name)
-          `)
+          `
+          )
           .eq('day_of_week', dayOfWeek)
           .eq('period_number', substitution.period_number);
 
         // Build availability map
         const availMap = new Map<string, FacultyAvailability>();
-        
+
         // Mark all faculty as available initially
-        faculty.forEach(f => {
+        faculty.forEach((f) => {
           availMap.set(f.id, { faculty_id: f.id, is_available: true });
         });
 
@@ -1474,15 +1628,15 @@ const AssignSubstituteModal: React.FC<{
     const avail = availability.get(facultyId);
     if (!avail) return { available: true, text: '' };
     if (avail.is_available) return { available: true, text: 'Available' };
-    return { 
-      available: false, 
-      text: `Busy: ${avail.busy_with} at ${avail.busy_class}` 
+    return {
+      available: false,
+      text: `Busy: ${avail.busy_with} at ${avail.busy_class}`,
     };
   };
 
   // Sort faculty: available first, then busy
   const sortedFaculty = [...faculty]
-    .filter(f => f.id !== substitution.original_faculty_id)
+    .filter((f) => f.id !== substitution.original_faculty_id)
     .sort((a, b) => {
       const aAvail = availability.get(a.id)?.is_available ?? true;
       const bAvail = availability.get(b.id)?.is_available ?? true;
@@ -1508,7 +1662,9 @@ const AssignSubstituteModal: React.FC<{
           <div className="grid grid-cols-2 gap-2 text-sm">
             <div>
               <span className="text-gray-500">Date:</span>
-              <span className="ml-2 font-medium">{new Date(substitution.substitution_date).toLocaleDateString()}</span>
+              <span className="ml-2 font-medium">
+                {new Date(substitution.substitution_date).toLocaleDateString()}
+              </span>
             </div>
             <div>
               <span className="text-gray-500">Period:</span>
@@ -1525,7 +1681,9 @@ const AssignSubstituteModal: React.FC<{
           </div>
           <div className="mt-2 pt-2 border-t border-gray-200">
             <span className="text-gray-500 text-sm">Replacing:</span>
-            <span className="ml-2 font-medium text-red-600">{substitution.original_faculty_name}</span>
+            <span className="ml-2 font-medium text-red-600">
+              {substitution.original_faculty_name}
+            </span>
           </div>
         </div>
 
@@ -1593,8 +1751,8 @@ const AssignSubstituteModal: React.FC<{
                 {sortedFaculty.map((f) => {
                   const status = getAvailabilityStatus(f.id);
                   return (
-                    <option 
-                      key={f.id} 
+                    <option
+                      key={f.id}
                       value={f.id}
                       disabled={!status.available}
                       className={!status.available ? 'text-gray-400' : ''}
@@ -1604,7 +1762,7 @@ const AssignSubstituteModal: React.FC<{
                   );
                 })}
               </select>
-              
+
               {/* Availability Legend */}
               <div className="flex gap-4 mt-2 text-xs">
                 <span className="flex items-center gap-1">
@@ -1678,7 +1836,7 @@ const AddLecturerModal: React.FC<{
       });
 
       if (error) throw error;
-      
+
       // Leave balances are automatically created by the database trigger
       onSave();
     } catch (error: any) {
@@ -1945,7 +2103,10 @@ const EditLecturerModal: React.FC<{
               <label className="block text-sm font-medium text-gray-700 mb-2">Leave Balances</label>
               <div className="space-y-2">
                 {lecturer.leave_balances.map((bal) => (
-                  <div key={bal.leave_type_id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                  <div
+                    key={bal.leave_type_id}
+                    className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
+                  >
                     <span className="text-sm text-gray-700">{bal.leave_type_name}</span>
                     <span className="text-sm font-medium">
                       <span className="text-green-600">{bal.remaining_days}</span>

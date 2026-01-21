@@ -1,6 +1,6 @@
 /**
  * Load Tests: Concurrent Seat Assignments
- * 
+ *
  * Tests system performance under high concurrent load for seat assignments.
  * Target: 1000+ concurrent seat assignments
  * Requirements: Performance, Scalability
@@ -26,7 +26,7 @@ describe('Load Tests: Concurrent Seat Assignments', () => {
       organization_id: 'org-load-test',
       allocated_seats: 2000,
       assigned_seats: 0,
-      member_type: 'student'
+      member_type: 'student',
     };
     assignments = new Map();
     metrics = {
@@ -34,7 +34,7 @@ describe('Load Tests: Concurrent Seat Assignments', () => {
       successfulOperations: 0,
       failedOperations: 0,
       totalDuration: 0,
-      operationsPerSecond: 0
+      operationsPerSecond: 0,
     };
     vi.clearAllMocks();
   });
@@ -43,7 +43,7 @@ describe('Load Tests: Concurrent Seat Assignments', () => {
     it('should handle 1000 sequential assignments efficiently', async () => {
       const userCount = 1000;
       const userIds = Array.from({ length: userCount }, (_, i) => `user-${i + 1}`);
-      
+
       const startTime = Date.now();
 
       const assignLicense = async (userId: string) => {
@@ -56,12 +56,12 @@ describe('Load Tests: Concurrent Seat Assignments', () => {
           license_pool_id: licensePool.id,
           user_id: userId,
           status: 'active',
-          assigned_at: new Date().toISOString()
+          assigned_at: new Date().toISOString(),
         };
-        
+
         assignments.set(assignment.id, assignment);
         licensePool.assigned_seats++;
-        
+
         return assignment;
       };
 
@@ -85,10 +85,10 @@ describe('Load Tests: Concurrent Seat Assignments', () => {
       expect(metrics.failedOperations).toBe(0);
       expect(licensePool.assigned_seats).toBe(1000);
       expect(assignments.size).toBe(1000);
-      
+
       // Performance target: Should complete in under 5 seconds for in-memory operations
       expect(metrics.totalDuration).toBeLessThan(5000);
-      
+
       console.log(`Load Test Results - 1000 Sequential Assignments:`);
       console.log(`  Total Duration: ${metrics.totalDuration}ms`);
       console.log(`  Operations/Second: ${metrics.operationsPerSecond.toFixed(2)}`);
@@ -98,7 +98,7 @@ describe('Load Tests: Concurrent Seat Assignments', () => {
       const userCount = 1000;
       const batchSize = 100;
       const userIds = Array.from({ length: userCount }, (_, i) => `user-${i + 1}`);
-      
+
       const startTime = Date.now();
       const batchMetrics: { batchNumber: number; duration: number; count: number }[] = [];
 
@@ -115,9 +115,9 @@ describe('Load Tests: Concurrent Seat Assignments', () => {
             id: `assign-${userId}`,
             license_pool_id: licensePool.id,
             user_id: userId,
-            status: 'active'
+            status: 'active',
           };
-          
+
           assignments.set(assignment.id, assignment);
           licensePool.assigned_seats++;
           results.push(assignment);
@@ -127,7 +127,7 @@ describe('Load Tests: Concurrent Seat Assignments', () => {
         batchMetrics.push({
           batchNumber,
           duration: batchEnd - batchStart,
-          count: results.length
+          count: results.length,
         });
 
         return results;
@@ -146,9 +146,10 @@ describe('Load Tests: Concurrent Seat Assignments', () => {
       // Assertions
       expect(assignments.size).toBe(1000);
       expect(batchMetrics.length).toBe(10); // 1000 / 100 = 10 batches
-      
+
       // Each batch should complete quickly
-      const avgBatchDuration = batchMetrics.reduce((sum, b) => sum + b.duration, 0) / batchMetrics.length;
+      const avgBatchDuration =
+        batchMetrics.reduce((sum, b) => sum + b.duration, 0) / batchMetrics.length;
       expect(avgBatchDuration).toBeLessThan(100); // Each batch under 100ms
 
       console.log(`Load Test Results - 1000 Batched Assignments (batch size: ${batchSize}):`);
@@ -192,12 +193,12 @@ describe('Load Tests: Concurrent Seat Assignments', () => {
           const assignment = {
             id: `assign-${userId}`,
             user_id: userId,
-            status: 'active'
+            status: 'active',
           };
-          
+
           assignments.set(assignment.id, assignment);
           licensePool.assigned_seats++;
-          
+
           return assignment;
         } finally {
           releaseLock();
@@ -207,17 +208,17 @@ describe('Load Tests: Concurrent Seat Assignments', () => {
       const startTime = Date.now();
 
       // Simulate concurrent requests
-      const promises = Array.from({ length: concurrentRequests }, (_, i) => 
+      const promises = Array.from({ length: concurrentRequests }, (_, i) =>
         assignWithLock(`user-${i + 1}`)
       );
 
       const results = await Promise.allSettled(promises);
-      
+
       const endTime = Date.now();
       const duration = endTime - startTime;
 
-      const successful = results.filter(r => r.status === 'fulfilled').length;
-      const failed = results.filter(r => r.status === 'rejected').length;
+      const successful = results.filter((r) => r.status === 'fulfilled').length;
+      const failed = results.filter((r) => r.status === 'rejected').length;
 
       expect(successful).toBe(100);
       expect(failed).toBe(0);
@@ -232,13 +233,13 @@ describe('Load Tests: Concurrent Seat Assignments', () => {
     it('should maintain data integrity under load', async () => {
       const userCount = 500;
       const userIds = Array.from({ length: userCount }, (_, i) => `user-${i + 1}`);
-      
+
       // Track all operations for integrity check
       const operationLog: { userId: string; timestamp: number; success: boolean }[] = [];
 
       const assignLicense = async (userId: string) => {
         const timestamp = Date.now();
-        
+
         try {
           if (licensePool.assigned_seats >= licensePool.allocated_seats) {
             throw new Error('No seats available');
@@ -253,12 +254,12 @@ describe('Load Tests: Concurrent Seat Assignments', () => {
             id: `assign-${userId}`,
             user_id: userId,
             status: 'active',
-            assigned_at: new Date().toISOString()
+            assigned_at: new Date().toISOString(),
           };
-          
+
           assignments.set(assignment.id, assignment);
           licensePool.assigned_seats++;
-          
+
           operationLog.push({ userId, timestamp, success: true });
           return assignment;
         } catch (error) {
@@ -277,8 +278,8 @@ describe('Load Tests: Concurrent Seat Assignments', () => {
       }
 
       // Integrity checks
-      const successfulOps = operationLog.filter(op => op.success).length;
-      const uniqueAssignments = new Set(Array.from(assignments.values()).map(a => a.user_id));
+      const successfulOps = operationLog.filter((op) => op.success).length;
+      const uniqueAssignments = new Set(Array.from(assignments.values()).map((a) => a.user_id));
 
       expect(successfulOps).toBe(assignments.size);
       expect(uniqueAssignments.size).toBe(assignments.size);
@@ -290,8 +291,8 @@ describe('Load Tests: Concurrent Seat Assignments', () => {
         const count = userIdCounts.get(assignment.user_id) || 0;
         userIdCounts.set(assignment.user_id, count + 1);
       }
-      
-      const duplicates = Array.from(userIdCounts.values()).filter(count => count > 1);
+
+      const duplicates = Array.from(userIdCounts.values()).filter((count) => count > 1);
       expect(duplicates.length).toBe(0);
     });
   });
@@ -301,19 +302,19 @@ describe('Load Tests: Concurrent Seat Assignments', () => {
       const targetOpsPerSecond = 100;
       const testDurationMs = 1000; // 1 second test
       const userIds = Array.from({ length: 200 }, (_, i) => `user-${i + 1}`);
-      
+
       const startTime = Date.now();
       let operationsCompleted = 0;
 
       while (Date.now() - startTime < testDurationMs && operationsCompleted < userIds.length) {
         const userId = userIds[operationsCompleted];
-        
+
         const assignment = {
           id: `assign-${userId}`,
           user_id: userId,
-          status: 'active'
+          status: 'active',
         };
-        
+
         assignments.set(assignment.id, assignment);
         licensePool.assigned_seats++;
         operationsCompleted++;
@@ -335,7 +336,7 @@ describe('Load Tests: Concurrent Seat Assignments', () => {
       licensePool.allocated_seats = 100;
       const userCount = 150; // More users than seats
       const userIds = Array.from({ length: userCount }, (_, i) => `user-${i + 1}`);
-      
+
       let successful = 0;
       let failed = 0;
 
@@ -348,7 +349,7 @@ describe('Load Tests: Concurrent Seat Assignments', () => {
           assignments.set(`assign-${userId}`, {
             id: `assign-${userId}`,
             user_id: userId,
-            status: 'active'
+            status: 'active',
           });
           licensePool.assigned_seats++;
           successful++;
@@ -365,7 +366,7 @@ describe('Load Tests: Concurrent Seat Assignments', () => {
     it('should measure memory usage during bulk operations', async () => {
       const userCount = 1000;
       const userIds = Array.from({ length: userCount }, (_, i) => `user-${i + 1}`);
-      
+
       // Baseline memory (simulated)
       const baselineMemory = assignments.size;
 
@@ -374,7 +375,7 @@ describe('Load Tests: Concurrent Seat Assignments', () => {
           id: `assign-${userId}`,
           user_id: userId,
           status: 'active',
-          metadata: { created: new Date().toISOString() }
+          metadata: { created: new Date().toISOString() },
         });
       }
 
@@ -396,7 +397,7 @@ describe('Load Tests: Concurrent Seat Assignments', () => {
       const userCount = 100;
       const failureRate = 0.1; // 10% failure rate
       const userIds = Array.from({ length: userCount }, (_, i) => `user-${i + 1}`);
-      
+
       let successful = 0;
       let failed = 0;
       const retryQueue: string[] = [];
@@ -410,7 +411,7 @@ describe('Load Tests: Concurrent Seat Assignments', () => {
         assignments.set(`assign-${userId}`, {
           id: `assign-${userId}`,
           user_id: userId,
-          status: 'active'
+          status: 'active',
         });
         licensePool.assigned_seats++;
       };
@@ -452,7 +453,7 @@ describe('Load Tests: Concurrent Seat Assignments', () => {
     it('should handle rapid assign/unassign cycles', async () => {
       const cycleCount = 100;
       const userId = 'user-cycle-test';
-      
+
       const startTime = Date.now();
 
       for (let i = 0; i < cycleCount; i++) {
@@ -461,7 +462,7 @@ describe('Load Tests: Concurrent Seat Assignments', () => {
           id: `assign-${userId}`,
           user_id: userId,
           status: 'active',
-          cycle: i
+          cycle: i,
         });
         licensePool.assigned_seats++;
 
@@ -484,7 +485,7 @@ describe('Load Tests: Concurrent Seat Assignments', () => {
       console.log(`Rapid Cycle Test Results:`);
       console.log(`  Cycles: ${cycleCount}`);
       console.log(`  Duration: ${duration}ms`);
-      console.log(`  Cycles/Second: ${((cycleCount * 2) / duration * 1000).toFixed(2)}`);
+      console.log(`  Cycles/Second: ${(((cycleCount * 2) / duration) * 1000).toFixed(2)}`);
     });
   });
 });

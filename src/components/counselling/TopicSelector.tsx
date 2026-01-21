@@ -2,13 +2,7 @@
 
 import React from 'react';
 import { CounsellingTopicType } from '../../types/counselling';
-import { 
-  GraduationCap, 
-  Briefcase, 
-  TrendingUp, 
-  Heart, 
-  MessageSquare 
-} from 'lucide-react';
+import { GraduationCap, Briefcase, TrendingUp, Heart, MessageSquare } from 'lucide-react';
 import { Card, CardContent } from '../ui/card';
 import { cn } from '../../lib/utils';
 
@@ -63,10 +57,7 @@ interface TopicSelectorProps {
   onSelectTopic: (topic: CounsellingTopicType) => void;
 }
 
-export const TopicSelector: React.FC<TopicSelectorProps> = ({
-  selectedTopic,
-  onSelectTopic,
-}) => {
+export const TopicSelector: React.FC<TopicSelectorProps> = ({ selectedTopic, onSelectTopic }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {TOPIC_OPTIONS.map((option) => {
@@ -78,9 +69,7 @@ export const TopicSelector: React.FC<TopicSelectorProps> = ({
             key={option.value}
             className={cn(
               'cursor-pointer transition-all hover:shadow-lg group',
-              isSelected
-                ? 'border-2 border-blue-500 shadow-md'
-                : 'hover:border-gray-300'
+              isSelected ? 'border-2 border-blue-500 shadow-md' : 'hover:border-gray-300'
             )}
             onClick={() => onSelectTopic(option.value)}
           >
@@ -99,12 +88,8 @@ export const TopicSelector: React.FC<TopicSelectorProps> = ({
 
                 {/* Content */}
                 <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 mb-1">
-                    {option.label}
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    {option.description}
-                  </p>
+                  <h3 className="font-semibold text-gray-900 mb-1">{option.label}</h3>
+                  <p className="text-sm text-gray-600">{option.description}</p>
                 </div>
 
                 {/* Selection Indicator */}

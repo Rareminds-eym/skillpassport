@@ -1,33 +1,33 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useRef, useState } from "react";
-import { supabase } from "../lib/supabaseClient";
+import { useEffect, useRef, useState } from 'react';
+import { supabase } from '../lib/supabaseClient';
 
 export type AdminNotificationType =
   // Training notifications
-  | "training_submitted"
-  | "training_approved"
-  | "training_rejected"
+  | 'training_submitted'
+  | 'training_approved'
+  | 'training_rejected'
   // Experience notifications
-  | "experience_submitted"
-  | "experience_approved"
-  | "experience_rejected"
+  | 'experience_submitted'
+  | 'experience_approved'
+  | 'experience_rejected'
   // Project notifications
-  | "project_submitted"
-  | "project_approved"
-  | "project_rejected"
+  | 'project_submitted'
+  | 'project_approved'
+  | 'project_rejected'
   // Assessment notifications
-  | "assessment_completed"
-  | "assessment_submitted"
+  | 'assessment_completed'
+  | 'assessment_submitted'
   // Student notifications
-  | "student_enrolled"
-  | "student_achievement"
-  | "assignment_submitted"
-  | "class_activity_pending"
-  | "attendance_reminder"
+  | 'student_enrolled'
+  | 'student_achievement'
+  | 'assignment_submitted'
+  | 'class_activity_pending'
+  | 'attendance_reminder'
   // System notifications
-  | "system_alert"
-  | "approval_required"
-  | "verification_required"
+  | 'system_alert'
+  | 'approval_required'
+  | 'verification_required'
   | string;
 
 export type AdminNotification = {
@@ -53,26 +53,26 @@ async function resolveAdminContext(identifier: string): Promise<{
   adminType: string | null;
 }> {
   if (!identifier) return { userId: null, schoolId: null, collegeId: null, adminType: null };
-  
+
   let userId = identifier;
   if (!isUUID(identifier)) {
     // Try to resolve email to user ID
     const { data: userData } = await supabase
-      .from("users")
-      .select("id")
-      .ilike("email", identifier)
+      .from('users')
+      .select('id')
+      .ilike('email', identifier)
       .maybeSingle();
-    
+
     if (!userData?.id) return { userId: null, schoolId: null, collegeId: null, adminType: null };
     userId = userData.id;
   }
 
   // Check if user is a school admin
   const { data: schoolAdmin } = await supabase
-    .from("school_educators")
-    .select("school_id, role")
-    .eq("user_id", userId)
-    .eq("role", "admin")
+    .from('school_educators')
+    .select('school_id, role')
+    .eq('user_id', userId)
+    .eq('role', 'admin')
     .maybeSingle();
 
   if (schoolAdmin) {
@@ -80,16 +80,16 @@ async function resolveAdminContext(identifier: string): Promise<{
       userId,
       schoolId: schoolAdmin.school_id,
       collegeId: null,
-      adminType: "school_admin"
+      adminType: 'school_admin',
     };
   }
 
   // Check if user is a college admin
   const { data: collegeAdmin } = await supabase
-    .from("users")
-    .select("id, organizationId")
-    .eq("id", userId)
-    .eq("role", "college_admin")
+    .from('users')
+    .select('id, organizationId')
+    .eq('id', userId)
+    .eq('role', 'college_admin')
     .maybeSingle();
 
   if (collegeAdmin) {
@@ -97,16 +97,16 @@ async function resolveAdminContext(identifier: string): Promise<{
       userId,
       schoolId: null,
       collegeId: collegeAdmin.organizationId,
-      adminType: "college_admin"
+      adminType: 'college_admin',
     };
   }
 
   // Check if user is a university admin
   const { data: universityAdmin } = await supabase
-    .from("users")
-    .select("id")
-    .eq("id", userId)
-    .eq("role", "university_admin")
+    .from('users')
+    .select('id')
+    .eq('id', userId)
+    .eq('role', 'university_admin')
     .maybeSingle();
 
   if (universityAdmin) {
@@ -114,7 +114,7 @@ async function resolveAdminContext(identifier: string): Promise<{
       userId,
       schoolId: null,
       collegeId: null,
-      adminType: "university_admin"
+      adminType: 'university_admin',
     };
   }
 
@@ -141,9 +141,7 @@ type UseAdminNotificationsReturn = {
   refresh: () => Promise<void>;
 };
 
-export function useAdminNotifications(
-  userIdentifier?: string | null
-): UseAdminNotificationsReturn {
+export function useAdminNotifications(userIdentifier?: string | null): UseAdminNotificationsReturn {
   const PAGE_SIZE = 20;
   const [items, setItems] = useState<AdminNotification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -155,7 +153,7 @@ export function useAdminNotifications(
     collegeId: string | null;
     adminType: string | null;
   }>({ userId: null, schoolId: null, collegeId: null, adminType: null });
-  const [connectionStatus, setConnectionStatus] = useState("disconnected");
+  const [connectionStatus, setConnectionStatus] = useState('disconnected');
 
   const lastCursorRef = useRef<string | null>(null);
   const channelRef = useRef<any | null>(null);
@@ -186,14 +184,14 @@ export function useAdminNotifications(
       setError(null);
 
       let query = supabase
-        .from("notifications")
-        .select("*")
-        .eq("recipient_id", adminContext.userId)
-        .order("created_at", { ascending: false })
+        .from('notifications')
+        .select('*')
+        .eq('recipient_id', adminContext.userId)
+        .order('created_at', { ascending: false })
         .limit(PAGE_SIZE);
 
       if (!reset && lastCursorRef.current) {
-        query = query.lt("created_at", lastCursorRef.current);
+        query = query.lt('created_at', lastCursorRef.current);
       }
 
       const { data, error } = await query;
@@ -209,7 +207,7 @@ export function useAdminNotifications(
       }
     } catch (err: any) {
       console.error('❌ [useAdminNotifications] Error:', err);
-      setError(err.message || "Failed to fetch notifications");
+      setError(err.message || 'Failed to fetch notifications');
     } finally {
       setLoading(false);
     }
@@ -237,23 +235,21 @@ export function useAdminNotifications(
       const channel = supabase
         .channel(`admin-notifications-${adminContext.userId}`)
         .on(
-          "postgres_changes",
+          'postgres_changes',
           {
-            event: "*",
-            schema: "public",
-            table: "notifications",
+            event: '*',
+            schema: 'public',
+            table: 'notifications',
             filter: `recipient_id=eq.${adminContext.userId}`,
           },
           (payload) => {
             const row = payload.new as AdminNotification;
 
-            if (payload.eventType === "INSERT") {
+            if (payload.eventType === 'INSERT') {
               setItems((prev) => [row, ...prev]);
-            } else if (payload.eventType === "UPDATE") {
-              setItems((prev) =>
-                prev.map((n) => (n.id === row.id ? row : n))
-              );
-            } else if (payload.eventType === "DELETE") {
+            } else if (payload.eventType === 'UPDATE') {
+              setItems((prev) => prev.map((n) => (n.id === row.id ? row : n)));
+            } else if (payload.eventType === 'DELETE') {
               const oldRow = payload.old as AdminNotification;
               setItems((prev) => prev.filter((n) => n.id !== oldRow.id));
             }
@@ -262,14 +258,14 @@ export function useAdminNotifications(
         .subscribe((status) => {
           setConnectionStatus(status);
 
-          if (status === "CLOSED" || status === "CHANNEL_ERROR") {
+          if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
             if (isSubscribed && retryCount < MAX_RETRIES) {
               retryCount++;
               reconnectTimeoutRef.current = setTimeout(() => {
                 setupSubscription();
               }, 2000 * retryCount);
             }
-          } else if (status === "SUBSCRIBED") {
+          } else if (status === 'SUBSCRIBED') {
             retryCount = 0;
           }
         });
@@ -289,7 +285,7 @@ export function useAdminNotifications(
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }
-      setConnectionStatus("disconnected");
+      setConnectionStatus('disconnected');
     };
   }, [adminContext.userId]);
 
@@ -300,20 +296,20 @@ export function useAdminNotifications(
 
   // ✅ Actions
   const markRead = async (id: string) => {
-    await supabase.from("notifications").update({ read: true }).eq("id", id);
+    await supabase.from('notifications').update({ read: true }).eq('id', id);
     setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
   };
 
   const markAllRead = async () => {
     await supabase
-      .from("notifications")
+      .from('notifications')
       .update({ read: true })
-      .eq("recipient_id", adminContext.userId);
+      .eq('recipient_id', adminContext.userId);
     setItems((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 
   const remove = async (id: string) => {
-    await supabase.from("notifications").delete().eq("id", id);
+    await supabase.from('notifications').delete().eq('id', id);
     setItems((prev) => prev.filter((n) => n.id !== id));
   };
 

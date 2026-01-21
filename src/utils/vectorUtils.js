@@ -7,7 +7,7 @@
 /**
  * Calculate cosine similarity between two vectors
  * Used for local similarity calculations when embeddings are already available
- * 
+ *
  * @param {number[]} vecA - First embedding vector
  * @param {number[]} vecB - Second embedding vector
  * @returns {number} - Cosine similarity (-1 to 1)
@@ -40,7 +40,7 @@ export function cosineSimilarity(vecA, vecB) {
 /**
  * Get the expected embedding dimension
  * OpenRouter text-embedding-3-small produces 1536 dimensions
- * 
+ *
  * @returns {number} - Embedding dimension
  */
 export function getEmbeddingDimension() {
@@ -49,5 +49,5 @@ export function getEmbeddingDimension() {
 
 export default {
   cosineSimilarity,
-  getEmbeddingDimension
+  getEmbeddingDimension,
 };

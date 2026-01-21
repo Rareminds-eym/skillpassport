@@ -88,7 +88,11 @@ export const useInstitutions = () => {
         console.error('❌ Error fetching university colleges:', universityCollegesError);
         setUniversityColleges([]);
       } else {
-        console.log('✅ University Colleges fetched:', universityCollegesData?.length || 0, universityCollegesData);
+        console.log(
+          '✅ University Colleges fetched:',
+          universityCollegesData?.length || 0,
+          universityCollegesData
+        );
         setUniversityColleges(universityCollegesData || []);
       }
 
@@ -134,7 +138,11 @@ export const useInstitutions = () => {
         console.error('❌ Error fetching school classes:', schoolClassesError);
         setSchoolClasses([]);
       } else {
-        console.log('✅ School Classes fetched:', schoolClassesData?.length || 0, schoolClassesData);
+        console.log(
+          '✅ School Classes fetched:',
+          schoolClassesData?.length || 0,
+          schoolClassesData
+        );
         setSchoolClasses(schoolClassesData || []);
       }
 
@@ -150,10 +158,14 @@ export const useInstitutions = () => {
         console.error('❌ Error fetching program sections:', programSectionsError);
         setProgramSections([]);
       } else {
-        console.log('✅ Program Sections fetched:', programSectionsData?.length || 0, programSectionsData);
+        console.log(
+          '✅ Program Sections fetched:',
+          programSectionsData?.length || 0,
+          programSectionsData
+        );
         setProgramSections(programSectionsData || []);
       }
-      
+
       console.log('✨ useInstitutions: Fetch complete!');
     } catch (err) {
       console.error('💥 Error fetching institutions:', err);

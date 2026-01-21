@@ -15,7 +15,7 @@ const ExportSettings: React.FC = () => {
     includeImages: true,
     includeContactDetails: true,
     includeSkillRatings: true,
-    includeSocialLinks: true
+    includeSocialLinks: true,
   });
 
   const handleExport = async (type: string) => {
@@ -32,13 +32,16 @@ const ExportSettings: React.FC = () => {
       // For HTML, PDF exports, first navigate to portfolio in fullscreen mode
       if (type === 'HTML' || type === 'PDF') {
         // Store export intent
-           sessionStorage.setItem('pendingExport', JSON.stringify({ 
-          type, 
-          filename: getFileName(type === 'HTML' ? 'Portfolio.html' : 'Portfolio.pdf'),
-          preferences: exportPreferences,
-          layout: settings.layout
-        }));
-        
+        sessionStorage.setItem(
+          'pendingExport',
+          JSON.stringify({
+            type,
+            filename: getFileName(type === 'HTML' ? 'Portfolio.html' : 'Portfolio.pdf'),
+            preferences: exportPreferences,
+            layout: settings.layout,
+          })
+        );
+
         // Navigate to portfolio
         navigate('/portfolio');
         setIsExporting(false);
@@ -48,6 +51,7 @@ const ExportSettings: React.FC = () => {
       // For JSON and Resume, proceed directly
       switch (type) {
         case 'PDF':
+          // @ts-expect-error - Auto-suppressed for migration
           await exportAsPDF(student, settings, getFileName('Portfolio.pdf'));
           break;
         case 'JSON':
@@ -73,9 +77,9 @@ const ExportSettings: React.FC = () => {
   };
 
   const togglePreference = (key: keyof typeof exportPreferences) => {
-    setExportPreferences(prev => ({
+    setExportPreferences((prev) => ({
       ...prev,
-      [key]: !prev[key]
+      [key]: !prev[key],
     }));
   };
 
@@ -98,7 +102,12 @@ const ExportSettings: React.FC = () => {
       {exportError && (
         <div className="fixed top-4 right-4 bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center space-x-2 animate-slide-in">
           <span>{exportError}</span>
-          <button onClick={() => setExportError(null)} className="ml-2 hover:bg-red-700 rounded px-2">×</button>
+          <button
+            onClick={() => setExportError(null)}
+            className="ml-2 hover:bg-red-700 rounded px-2"
+          >
+            ×
+          </button>
         </div>
       )}
 
@@ -110,8 +119,12 @@ const ExportSettings: React.FC = () => {
               <Download className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Export Your Portfolio</h2>
-              <p className="text-gray-600 dark:text-gray-400">Download or share your portfolio data</p>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                Export Your Portfolio
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400">
+                Download or share your portfolio data
+              </p>
             </div>
           </div>
 
@@ -125,15 +138,24 @@ const ExportSettings: React.FC = () => {
                     <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-red-500 to-orange-600 flex items-center justify-center">
                       <FileText className="w-5 h-5 text-white" />
                     </div>
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Export as PDF</h3>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                      Export as PDF
+                    </h3>
                   </div>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                    Download your complete portfolio as a beautifully formatted PDF document. Perfect for sending to recruiters or printing.
+                    Download your complete portfolio as a beautifully formatted PDF document.
+                    Perfect for sending to recruiters or printing.
                   </p>
                   <div className="flex flex-wrap gap-2 mb-4">
-                    <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs rounded-full">Professional Format</span>
-                    <span className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs rounded-full">Print Ready</span>
-                    <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs rounded-full">ATS Compatible</span>
+                    <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs rounded-full">
+                      Professional Format
+                    </span>
+                    <span className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs rounded-full">
+                      Print Ready
+                    </span>
+                    <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs rounded-full">
+                      ATS Compatible
+                    </span>
                   </div>
                 </div>
                 <button
@@ -141,7 +163,9 @@ const ExportSettings: React.FC = () => {
                   disabled={isExporting}
                   className="ml-4 px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 dark:from-indigo-500 dark:to-blue-500 text-white rounded-lg hover:shadow-lg transition-all font-semibold whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
                 >
-                  <span className="relative z-10">{isExporting && exportType === 'PDF' ? 'Exporting...' : 'Download PDF'}</span>
+                  <span className="relative z-10">
+                    {isExporting && exportType === 'PDF' ? 'Exporting...' : 'Download PDF'}
+                  </span>
                   <span className="absolute top-0 left-[-40px] h-full w-0 bg-gradient-to-r from-blue-700 to-indigo-700 dark:from-blue-600 dark:to-indigo-600 transform skew-x-[45deg] transition-all duration-700 group-hover:w-[160%] -z-0"></span>
                 </button>
               </div>
@@ -155,15 +179,24 @@ const ExportSettings: React.FC = () => {
                     <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
                       <Save className="w-5 h-5 text-white" />
                     </div>
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Export Data (JSON)</h3>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                      Export Data (JSON)
+                    </h3>
                   </div>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                    Download all your portfolio data as a JSON file. Use this to backup your data or import it into other platforms.
+                    Download all your portfolio data as a JSON file. Use this to backup your data or
+                    import it into other platforms.
                   </p>
                   <div className="flex flex-wrap gap-2 mb-4">
-                    <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs rounded-full">Machine Readable</span>
-                    <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs rounded-full">Backup Ready</span>
-                    <span className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs rounded-full">Platform Agnostic</span>
+                    <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs rounded-full">
+                      Machine Readable
+                    </span>
+                    <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs rounded-full">
+                      Backup Ready
+                    </span>
+                    <span className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs rounded-full">
+                      Platform Agnostic
+                    </span>
                   </div>
                 </div>
                 <button
@@ -171,7 +204,9 @@ const ExportSettings: React.FC = () => {
                   disabled={isExporting}
                   className="ml-4 px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 dark:from-indigo-500 dark:to-blue-500 text-white rounded-lg hover:shadow-lg transition-all font-semibold whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
                 >
-                  <span className="relative z-10">{isExporting && exportType === 'JSON' ? 'Exporting...' : 'Download JSON'}</span>
+                  <span className="relative z-10">
+                    {isExporting && exportType === 'JSON' ? 'Exporting...' : 'Download JSON'}
+                  </span>
                   <span className="absolute top-0 left-[-40px] h-full w-0 bg-gradient-to-r from-blue-700 to-indigo-700 dark:from-blue-600 dark:to-indigo-600 transform skew-x-[45deg] transition-all duration-700 group-hover:w-[160%] -z-0"></span>
                 </button>
               </div>
@@ -185,15 +220,24 @@ const ExportSettings: React.FC = () => {
                     <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-green-500 to-teal-600 flex items-center justify-center">
                       <FileText className="w-5 h-5 text-white" />
                     </div>
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Export as HTML</h3>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                      Export as HTML
+                    </h3>
                   </div>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                    Download a standalone HTML version of your portfolio. Host it anywhere or send it via email.
+                    Download a standalone HTML version of your portfolio. Host it anywhere or send
+                    it via email.
                   </p>
                   <div className="flex flex-wrap gap-2 mb-4">
-                    <span className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs rounded-full">Self Contained</span>
-                    <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs rounded-full">Host Anywhere</span>
-                    <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs rounded-full">Offline Ready</span>
+                    <span className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs rounded-full">
+                      Self Contained
+                    </span>
+                    <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs rounded-full">
+                      Host Anywhere
+                    </span>
+                    <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs rounded-full">
+                      Offline Ready
+                    </span>
                   </div>
                 </div>
                 <button
@@ -201,7 +245,9 @@ const ExportSettings: React.FC = () => {
                   disabled={isExporting}
                   className="ml-4 px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 dark:from-indigo-500 dark:to-blue-500 text-white rounded-lg hover:shadow-lg transition-all font-semibold whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
                 >
-                  <span className="relative z-10">{isExporting && exportType === 'HTML' ? 'Exporting...' : 'Download HTML'}</span>
+                  <span className="relative z-10">
+                    {isExporting && exportType === 'HTML' ? 'Exporting...' : 'Download HTML'}
+                  </span>
                   <span className="absolute top-0 left-[-40px] h-full w-0 bg-gradient-to-r from-blue-700 to-indigo-700 dark:from-blue-600 dark:to-indigo-600 transform skew-x-[45deg] transition-all duration-700 group-hover:w-[160%] -z-0"></span>
                 </button>
               </div>
@@ -215,15 +261,24 @@ const ExportSettings: React.FC = () => {
                     <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center">
                       <FileText className="w-5 h-5 text-white" />
                     </div>
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Generate Resume</h3>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                      Generate Resume
+                    </h3>
                   </div>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                    Create a traditional resume from your portfolio data. Choose from multiple professional templates.
+                    Create a traditional resume from your portfolio data. Choose from multiple
+                    professional templates.
                   </p>
                   <div className="flex flex-wrap gap-2 mb-4">
-                    <span className="px-3 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs rounded-full">Multiple Templates</span>
-                    <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs rounded-full">ATS Optimized</span>
-                    <span className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs rounded-full">1-2 Pages</span>
+                    <span className="px-3 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs rounded-full">
+                      Multiple Templates
+                    </span>
+                    <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs rounded-full">
+                      ATS Optimized
+                    </span>
+                    <span className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs rounded-full">
+                      1-2 Pages
+                    </span>
                   </div>
                 </div>
                 <button
@@ -231,7 +286,9 @@ const ExportSettings: React.FC = () => {
                   disabled={isExporting}
                   className="ml-4 px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 dark:from-indigo-500 dark:to-blue-500 text-white rounded-lg hover:shadow-lg transition-all font-semibold whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
                 >
-                  <span className="relative z-10">{isExporting && exportType === 'Resume' ? 'Generating...' : 'Generate Resume'}</span>
+                  <span className="relative z-10">
+                    {isExporting && exportType === 'Resume' ? 'Generating...' : 'Generate Resume'}
+                  </span>
                   <span className="absolute top-0 left-[-40px] h-full w-0 bg-gradient-to-r from-blue-700 to-indigo-700 dark:from-blue-600 dark:to-indigo-600 transform skew-x-[45deg] transition-all duration-700 group-hover:w-[160%] -z-0"></span>
                 </button>
               </div>
@@ -240,7 +297,9 @@ const ExportSettings: React.FC = () => {
 
           {/* Export Settings */}
           <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Export Preferences</h3>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+              Export Preferences
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <label className="flex items-center justify-between p-4 rounded-xl border border-gray-200 dark:border-gray-600 cursor-pointer hover:border-green-300 dark:hover:border-green-500 transition-all">
                 <span className="text-gray-700 dark:text-gray-300">Include project images</span>

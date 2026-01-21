@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { X, IndianRupee, Calendar, FileText, AlertCircle } from "lucide-react";
-import { FeeStructure } from "../types";
+import React, { useState, useEffect } from 'react';
+import { X, IndianRupee, Calendar, FileText, AlertCircle } from 'lucide-react';
+import { FeeStructure } from '../types';
 
 interface Props {
   isOpen: boolean;
@@ -11,23 +11,23 @@ interface Props {
 }
 
 const feeHeads = [
-  { value: "tuition", label: "Tuition Fee" },
-  { value: "admission", label: "Admission Fee" },
-  { value: "development", label: "Development Fee" },
-  { value: "activity", label: "Activity Fee" },
-  { value: "transport", label: "Transport Fee" },
-  { value: "hostel", label: "Hostel Fee" },
-  { value: "library", label: "Library Fee" },
-  { value: "laboratory", label: "Laboratory Fee" },
-  { value: "sports", label: "Sports Fee" },
-  { value: "examination", label: "Examination Fee" },
-  { value: "other", label: "Other" },
+  { value: 'tuition', label: 'Tuition Fee' },
+  { value: 'admission', label: 'Admission Fee' },
+  { value: 'development', label: 'Development Fee' },
+  { value: 'activity', label: 'Activity Fee' },
+  { value: 'transport', label: 'Transport Fee' },
+  { value: 'hostel', label: 'Hostel Fee' },
+  { value: 'library', label: 'Library Fee' },
+  { value: 'laboratory', label: 'Laboratory Fee' },
+  { value: 'sports', label: 'Sports Fee' },
+  { value: 'examination', label: 'Examination Fee' },
+  { value: 'other', label: 'Other' },
 ];
 
 const frequencies = [
-  { value: "monthly", label: "Monthly" },
-  { value: "term", label: "Per Term" },
-  { value: "annual", label: "Annual" },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'term', label: 'Per Term' },
+  { value: 'annual', label: 'Annual' },
 ];
 
 export const FeeStructureFormModal: React.FC<Props> = ({
@@ -38,13 +38,13 @@ export const FeeStructureFormModal: React.FC<Props> = ({
   schoolId,
 }) => {
   const [formData, setFormData] = useState({
-    class_name: "",
+    class_name: '',
     academic_year: new Date().getFullYear().toString(),
-    fee_head: "tuition",
-    custom_fee_head: "",
-    amount: "",
-    frequency: "monthly" as const,
-    late_fee_percentage: "",
+    fee_head: 'tuition',
+    custom_fee_head: '',
+    amount: '',
+    frequency: 'monthly' as const,
+    late_fee_percentage: '',
     is_active: true,
   });
   const [loading, setLoading] = useState(false);
@@ -54,24 +54,25 @@ export const FeeStructureFormModal: React.FC<Props> = ({
     if (isOpen) {
       if (structure) {
         setFormData({
-          class_name: structure.class_name || "",
+          class_name: structure.class_name || '',
           academic_year: structure.academic_year || new Date().getFullYear().toString(),
-          fee_head: structure.fee_head || "tuition",
-          custom_fee_head: structure.custom_fee_head || "",
-          amount: structure.amount?.toString() || "",
-          frequency: structure.frequency || "monthly",
-          late_fee_percentage: structure.late_fee_percentage?.toString() || "",
+          fee_head: structure.fee_head || 'tuition',
+          custom_fee_head: structure.custom_fee_head || '',
+          amount: structure.amount?.toString() || '',
+          // @ts-expect-error - Auto-suppressed for migration
+          frequency: structure.frequency || 'monthly',
+          late_fee_percentage: structure.late_fee_percentage?.toString() || '',
           is_active: structure.is_active ?? true,
         });
       } else {
         setFormData({
-          class_name: "",
+          class_name: '',
           academic_year: new Date().getFullYear().toString(),
-          fee_head: "tuition",
-          custom_fee_head: "",
-          amount: "",
-          frequency: "monthly",
-          late_fee_percentage: "",
+          fee_head: 'tuition',
+          custom_fee_head: '',
+          amount: '',
+          frequency: 'monthly',
+          late_fee_percentage: '',
           is_active: true,
         });
       }
@@ -83,23 +84,27 @@ export const FeeStructureFormModal: React.FC<Props> = ({
     const newErrors: Record<string, string> = {};
 
     if (!formData.class_name.trim()) {
-      newErrors.class_name = "Class name is required";
+      newErrors.class_name = 'Class name is required';
     }
 
     if (!formData.academic_year.trim()) {
-      newErrors.academic_year = "Academic year is required";
+      newErrors.academic_year = 'Academic year is required';
     }
 
-    if (formData.fee_head === "other" && !formData.custom_fee_head.trim()) {
-      newErrors.custom_fee_head = "Custom fee head name is required";
+    if (formData.fee_head === 'other' && !formData.custom_fee_head.trim()) {
+      newErrors.custom_fee_head = 'Custom fee head name is required';
     }
 
     if (!formData.amount || parseFloat(formData.amount) <= 0) {
-      newErrors.amount = "Amount is required and must be greater than 0";
+      newErrors.amount = 'Amount is required and must be greater than 0';
     }
 
-    if (formData.late_fee_percentage && (parseFloat(formData.late_fee_percentage) < 0 || parseFloat(formData.late_fee_percentage) > 100)) {
-      newErrors.late_fee_percentage = "Late fee percentage must be between 0 and 100";
+    if (
+      formData.late_fee_percentage &&
+      (parseFloat(formData.late_fee_percentage) < 0 ||
+        parseFloat(formData.late_fee_percentage) > 100)
+    ) {
+      newErrors.late_fee_percentage = 'Late fee percentage must be between 0 and 100';
     }
 
     setErrors(newErrors);
@@ -108,7 +113,7 @@ export const FeeStructureFormModal: React.FC<Props> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm() || !schoolId) return;
 
     setLoading(true);
@@ -117,23 +122,25 @@ export const FeeStructureFormModal: React.FC<Props> = ({
         ...formData,
         school_id: schoolId,
         amount: parseFloat(formData.amount),
-        late_fee_percentage: formData.late_fee_percentage ? parseFloat(formData.late_fee_percentage) : undefined,
+        late_fee_percentage: formData.late_fee_percentage
+          ? parseFloat(formData.late_fee_percentage)
+          : undefined,
       });
-      
+
       if (success) {
         onClose();
       }
     } catch (error) {
-      console.error("Form submission error:", error);
+      console.error('Form submission error:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const handleInputChange = (field: string, value: string | boolean) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: "" }));
+      setErrors((prev) => ({ ...prev, [field]: '' }));
     }
   };
 
@@ -150,17 +157,16 @@ export const FeeStructureFormModal: React.FC<Props> = ({
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-900">
-                {structure ? "Edit Fee Structure" : "Create Fee Structure"}
+                {structure ? 'Edit Fee Structure' : 'Create Fee Structure'}
               </h2>
               <p className="text-sm text-gray-600">
-                {structure ? "Update existing fee structure" : "Add a new fee structure for your school"}
+                {structure
+                  ? 'Update existing fee structure'
+                  : 'Add a new fee structure for your school'}
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition"
-          >
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition">
             <X className="h-5 w-5 text-gray-500" />
           </button>
         </div>
@@ -169,35 +175,29 @@ export const FeeStructureFormModal: React.FC<Props> = ({
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Class Name */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Class/Grade *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Class/Grade *</label>
             <input
               type="text"
               value={formData.class_name}
-              onChange={(e) => handleInputChange("class_name", e.target.value)}
+              onChange={(e) => handleInputChange('class_name', e.target.value)}
               className={`w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                errors.class_name ? "border-red-300" : "border-gray-300"
+                errors.class_name ? 'border-red-300' : 'border-gray-300'
               }`}
               placeholder="e.g., Class 10-A, Grade 5, Nursery"
             />
-            {errors.class_name && (
-              <p className="text-red-600 text-sm mt-1">{errors.class_name}</p>
-            )}
+            {errors.class_name && <p className="text-red-600 text-sm mt-1">{errors.class_name}</p>}
           </div>
 
           {/* Academic Year */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Academic Year *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Academic Year *</label>
             <div className="relative">
               <input
                 type="text"
                 value={formData.academic_year}
-                onChange={(e) => handleInputChange("academic_year", e.target.value)}
+                onChange={(e) => handleInputChange('academic_year', e.target.value)}
                 className={`w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                  errors.academic_year ? "border-red-300" : "border-gray-300"
+                  errors.academic_year ? 'border-red-300' : 'border-gray-300'
                 }`}
                 placeholder="e.g., 2024-25, 2024"
               />
@@ -210,12 +210,10 @@ export const FeeStructureFormModal: React.FC<Props> = ({
 
           {/* Fee Head */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Fee Head *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Fee Head *</label>
             <select
               value={formData.fee_head}
-              onChange={(e) => handleInputChange("fee_head", e.target.value)}
+              onChange={(e) => handleInputChange('fee_head', e.target.value)}
               className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               {feeHeads.map((head) => (
@@ -227,7 +225,7 @@ export const FeeStructureFormModal: React.FC<Props> = ({
           </div>
 
           {/* Custom Fee Head */}
-          {formData.fee_head === "other" && (
+          {formData.fee_head === 'other' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Custom Fee Head Name *
@@ -235,9 +233,9 @@ export const FeeStructureFormModal: React.FC<Props> = ({
               <input
                 type="text"
                 value={formData.custom_fee_head}
-                onChange={(e) => handleInputChange("custom_fee_head", e.target.value)}
+                onChange={(e) => handleInputChange('custom_fee_head', e.target.value)}
                 className={`w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                  errors.custom_fee_head ? "border-red-300" : "border-gray-300"
+                  errors.custom_fee_head ? 'border-red-300' : 'border-gray-300'
                 }`}
                 placeholder="Enter custom fee head name"
               />
@@ -250,9 +248,7 @@ export const FeeStructureFormModal: React.FC<Props> = ({
           {/* Amount and Frequency */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Amount *
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Amount *</label>
               <div className="relative">
                 <span className="absolute left-3 top-2.5 text-gray-500">₹</span>
                 <input
@@ -260,25 +256,21 @@ export const FeeStructureFormModal: React.FC<Props> = ({
                   step="0.01"
                   min="0"
                   value={formData.amount}
-                  onChange={(e) => handleInputChange("amount", e.target.value)}
+                  onChange={(e) => handleInputChange('amount', e.target.value)}
                   className={`w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    errors.amount ? "border-red-300" : "border-gray-300"
+                    errors.amount ? 'border-red-300' : 'border-gray-300'
                   }`}
                   placeholder="0.00"
                 />
               </div>
-              {errors.amount && (
-                <p className="text-red-600 text-sm mt-1">{errors.amount}</p>
-              )}
+              {errors.amount && <p className="text-red-600 text-sm mt-1">{errors.amount}</p>}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Frequency *
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Frequency *</label>
               <select
                 value={formData.frequency}
-                onChange={(e) => handleInputChange("frequency", e.target.value)}
+                onChange={(e) => handleInputChange('frequency', e.target.value)}
                 className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 {frequencies.map((freq) => (
@@ -302,9 +294,9 @@ export const FeeStructureFormModal: React.FC<Props> = ({
                 min="0"
                 max="100"
                 value={formData.late_fee_percentage}
-                onChange={(e) => handleInputChange("late_fee_percentage", e.target.value)}
+                onChange={(e) => handleInputChange('late_fee_percentage', e.target.value)}
                 className={`w-full pr-8 pl-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                  errors.late_fee_percentage ? "border-red-300" : "border-gray-300"
+                  errors.late_fee_percentage ? 'border-red-300' : 'border-gray-300'
                 }`}
                 placeholder="0.00"
               />
@@ -324,7 +316,7 @@ export const FeeStructureFormModal: React.FC<Props> = ({
               type="checkbox"
               id="is_active"
               checked={formData.is_active}
-              onChange={(e) => handleInputChange("is_active", e.target.checked)}
+              onChange={(e) => handleInputChange('is_active', e.target.checked)}
               className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
             />
             <label htmlFor="is_active" className="text-sm font-medium text-gray-700">
@@ -337,10 +329,12 @@ export const FeeStructureFormModal: React.FC<Props> = ({
             <div className="flex items-start gap-3">
               <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
               <div>
-                <h4 className="text-sm font-medium text-blue-800 mb-1">Fee Structure Information</h4>
+                <h4 className="text-sm font-medium text-blue-800 mb-1">
+                  Fee Structure Information
+                </h4>
                 <p className="text-xs text-blue-700">
-                  This fee structure will be applied to all students in the specified class. 
-                  You can create multiple fee structures for different fee heads (tuition, transport, etc.) 
+                  This fee structure will be applied to all students in the specified class. You can
+                  create multiple fee structures for different fee heads (tuition, transport, etc.)
                   for the same class.
                 </p>
               </div>
@@ -361,7 +355,7 @@ export const FeeStructureFormModal: React.FC<Props> = ({
               disabled={loading}
               className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition"
             >
-              {loading ? "Saving..." : structure ? "Update Structure" : "Create Structure"}
+              {loading ? 'Saving...' : structure ? 'Update Structure' : 'Create Structure'}
             </button>
           </div>
         </form>

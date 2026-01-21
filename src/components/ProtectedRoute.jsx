@@ -41,9 +41,8 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
 
   // Check if user's role (or its category) is in allowed roles
   const roleCategory = getRoleCategory(role);
-  const hasAccess = allowedRoles.length === 0 || 
-    allowedRoles.includes(role) || 
-    allowedRoles.includes(roleCategory);
+  const hasAccess =
+    allowedRoles.length === 0 || allowedRoles.includes(role) || allowedRoles.includes(roleCategory);
 
   if (!hasAccess) {
     return <Navigate to="/" replace />;

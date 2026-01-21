@@ -41,49 +41,68 @@ const StudentSelectionModal: React.FC<StudentSelectionModalProps> = ({
   buttonText,
   initialSelectedStudents = [],
 }) => {
-  const modalTitle = title || "Select Students for Mentor Allocation";
-  const modalDescription = description || "Choose students who need mentor assignment";
-  const modalButtonText = buttonText || "Next: Select Mentor →";
+  const modalTitle = title || 'Select Students for Mentor Allocation';
+  const modalDescription = description || 'Choose students who need mentor assignment';
+  const modalButtonText = buttonText || 'Next: Select Mentor →';
   const [selectedStudents, setSelectedStudents] = useState<number[]>(initialSelectedStudents);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterAtRisk, setFilterAtRisk] = useState<string>("all");
-  const [filterDepartment, setFilterDepartment] = useState<string>("all");
-  const [filterYear, setFilterYear] = useState<string>("all");
-  
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterAtRisk, setFilterAtRisk] = useState<string>('all');
+  const [filterDepartment, setFilterDepartment] = useState<string>('all');
+  const [filterYear, setFilterYear] = useState<string>('all');
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10); // Show 10 students per page
 
   // Get unique departments for filtering - handle different field names
-  const departments = Array.from(new Set(
-    availableStudents.map(s => {
-      // Try different field names that might contain department info
-      const dept = s.department || s.branch_field || s.course_name || s.program_name || s.department_name || '';
-      return dept.trim();
-    }).filter(dept => dept && dept.length > 0)
-  )).sort();
-  
+  const departments = Array.from(
+    new Set(
+      availableStudents
+        .map((s) => {
+          // Try different field names that might contain department info
+          const dept =
+            s.department ||
+            s.branch_field ||
+            s.course_name ||
+            s.program_name ||
+            s.department_name ||
+            '';
+          return dept.trim();
+        })
+        .filter((dept) => dept && dept.length > 0)
+    )
+  ).sort();
+
   // Get unique years from batch (extract starting year from batch like "2021-2025")
-  const years = Array.from(new Set(availableStudents.map(s => {
-    const batchYear = s.batch.split('-')[0];
-    return batchYear;
-  }))).sort();
+  const years = Array.from(
+    new Set(
+      availableStudents.map((s) => {
+        const batchYear = s.batch.split('-')[0];
+        return batchYear;
+      })
+    )
+  ).sort();
 
   const filteredStudents = useMemo(() => {
-    return availableStudents.filter(
-      (s: Student) => {
-        const studentDept = (s.department || s.branch_field || s.course_name || s.program_name || s.department_name || '').trim();
-        return (
-          (s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    return availableStudents.filter((s: Student) => {
+      const studentDept = (
+        s.department ||
+        s.branch_field ||
+        s.course_name ||
+        s.program_name ||
+        s.department_name ||
+        ''
+      ).trim();
+      return (
+        (s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           s.rollNo.toLowerCase().includes(searchTerm.toLowerCase())) &&
-          (filterAtRisk === "all" || 
-           (filterAtRisk === "at-risk" && s.atRisk) ||
-           (filterAtRisk === "not-at-risk" && !s.atRisk)) &&
-          (filterDepartment === "all" || studentDept === filterDepartment) &&
-          (filterYear === "all" || s.batch.startsWith(filterYear))
-        );
-      }
-    );
+        (filterAtRisk === 'all' ||
+          (filterAtRisk === 'at-risk' && s.atRisk) ||
+          (filterAtRisk === 'not-at-risk' && !s.atRisk)) &&
+        (filterDepartment === 'all' || studentDept === filterDepartment) &&
+        (filterYear === 'all' || s.batch.startsWith(filterYear))
+      );
+    });
   }, [availableStudents, searchTerm, filterAtRisk, filterDepartment, filterYear]);
 
   // Pagination calculations
@@ -123,12 +142,8 @@ const StudentSelectionModal: React.FC<StudentSelectionModalProps> = ({
         {/* Header - Fixed */}
         <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-200 flex-shrink-0">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">
-              {modalTitle}
-            </h2>
-            <p className="text-sm text-gray-600 mt-1">
-              {modalDescription}
-            </p>
+            <h2 className="text-xl font-bold text-gray-900">{modalTitle}</h2>
+            <p className="text-sm text-gray-600 mt-1">{modalDescription}</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <XMarkIcon className="h-6 w-6" />
@@ -153,7 +168,7 @@ const StudentSelectionModal: React.FC<StudentSelectionModalProps> = ({
               className="px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm w-auto min-w-[120px] max-w-[160px]"
             >
               <option value="all">All Depts</option>
-              {departments.map(dept => (
+              {departments.map((dept) => (
                 <option key={dept} value={dept} title={dept}>
                   {dept.length > 15 ? `${dept.substring(0, 15)}...` : dept}
                 </option>
@@ -165,8 +180,10 @@ const StudentSelectionModal: React.FC<StudentSelectionModalProps> = ({
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm w-auto min-w-[120px]"
             >
               <option value="all">All Years</option>
-              {years.map(year => (
-                <option key={year} value={year}>Batch {year}</option>
+              {years.map((year) => (
+                <option key={year} value={year}>
+                  Batch {year}
+                </option>
               ))}
             </select>
             <select
@@ -187,12 +204,15 @@ const StudentSelectionModal: React.FC<StudentSelectionModalProps> = ({
                 onClick={handleSelectAll}
                 className="px-3 py-1.5 text-sm border border-indigo-300 text-indigo-700 rounded-lg hover:bg-indigo-50 transition-colors"
               >
-                {selectedStudents.length === filteredStudents.length ? 'Deselect All' : 'Select All'}
+                {selectedStudents.length === filteredStudents.length
+                  ? 'Deselect All'
+                  : 'Select All'}
               </button>
             </div>
-            
+
             <div className="text-sm text-gray-600">
-              Showing {startIndex + 1}–{Math.min(endIndex, filteredStudents.length)} of {filteredStudents.length} students
+              Showing {startIndex + 1}–{Math.min(endIndex, filteredStudents.length)} of{' '}
+              {filteredStudents.length} students
             </div>
           </div>
 
@@ -221,7 +241,9 @@ const StudentSelectionModal: React.FC<StudentSelectionModalProps> = ({
                 <label
                   key={student.id}
                   className={`flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors ${
-                    selectedStudents.includes(student.id) ? 'border-indigo-300 bg-indigo-50' : 'border-gray-200'
+                    selectedStudents.includes(student.id)
+                      ? 'border-indigo-300 bg-indigo-50'
+                      : 'border-gray-200'
                   }`}
                 >
                   <div className="flex items-center gap-4">
@@ -241,7 +263,13 @@ const StudentSelectionModal: React.FC<StudentSelectionModalProps> = ({
                         )}
                       </div>
                       <p className="text-sm text-gray-600">
-                        {student.rollNo} • {student.department || student.branch_field || student.course_name || student.program_name || 'N/A'} • Semester {student.semester} • CGPA: {student.cgpa}
+                        {student.rollNo} •{' '}
+                        {student.department ||
+                          student.branch_field ||
+                          student.course_name ||
+                          student.program_name ||
+                          'N/A'}{' '}
+                        • Semester {student.semester} • CGPA: {student.cgpa}
                       </p>
                       <p className="text-xs text-gray-500 mt-1">
                         {student.batch} • {student.email}
@@ -249,7 +277,10 @@ const StudentSelectionModal: React.FC<StudentSelectionModalProps> = ({
                       {student.riskFactors && student.riskFactors.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-2">
                           {student.riskFactors.map((factor, index) => (
-                            <span key={index} className="px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-full">
+                            <span
+                              key={index}
+                              className="px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-full"
+                            >
                               {factor}
                             </span>
                           ))}

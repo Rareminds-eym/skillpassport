@@ -56,7 +56,7 @@ export const getTalentPoolAlerts = async (): Promise<Alert[]> => {
         message: `${unverifiedCount} candidate${unverifiedCount !== 1 ? 's' : ''} waiting for verification`,
         time: 'Just now',
         urgent: unverifiedCount > 10,
-        source: 'talent_pool'
+        source: 'talent_pool',
       });
     }
 
@@ -67,10 +67,9 @@ export const getTalentPoolAlerts = async (): Promise<Alert[]> => {
       .limit(1000);
 
     if (incompleteProfiles) {
-      const incomplete = incompleteProfiles.filter(student => {
-        const profile = typeof student.profile === 'string' 
-          ? JSON.parse(student.profile) 
-          : student.profile;
+      const incomplete = incompleteProfiles.filter((student) => {
+        const profile =
+          typeof student.profile === 'string' ? JSON.parse(student.profile) : student.profile;
         return !profile?.email || !profile?.contact_number || !profile?.education?.length;
       });
 
@@ -82,11 +81,10 @@ export const getTalentPoolAlerts = async (): Promise<Alert[]> => {
           message: `${incomplete.length} candidate${incomplete.length !== 1 ? 's' : ''} have incomplete profiles`,
           time: formatTimeDiff(new Date(Date.now() - 2 * 60 * 60 * 1000)),
           urgent: false,
-          source: 'talent_pool'
+          source: 'talent_pool',
         });
       }
     }
-
   } catch (error) {
     console.error('Error fetching talent pool alerts:', error);
   }
@@ -107,17 +105,19 @@ export const getShortlistAlerts = async (): Promise<Alert[]> => {
     // Check for empty shortlists
     const { data: shortlists } = await supabase
       .from('shortlists')
-      .select(`
+      .select(
+        `
         id,
         name,
         created_date,
         status,
         shortlist_candidates(count)
-      `)
+      `
+      )
       .eq('status', 'active');
 
     if (shortlists) {
-      const emptyShortlists = shortlists.filter(sl => {
+      const emptyShortlists = shortlists.filter((sl) => {
         const count = sl.shortlist_candidates?.[0]?.count || 0;
         return count === 0;
       });
@@ -137,7 +137,7 @@ export const getShortlistAlerts = async (): Promise<Alert[]> => {
             time: formatTimeDiff(new Date(oldestEmpty.created_date)),
             urgent: false,
             source: 'shortlists',
-            actionData: { shortlistIds: emptyShortlists.map(sl => sl.id) }
+            actionData: { shortlistIds: emptyShortlists.map((sl) => sl.id) },
           });
         }
       }
@@ -158,10 +158,9 @@ export const getShortlistAlerts = async (): Promise<Alert[]> => {
         message: `${sharedCount} shortlist${sharedCount !== 1 ? 's are' : ' is'} currently shared`,
         time: formatTimeDiff(new Date(Date.now() - 30 * 60 * 1000)),
         urgent: false,
-        source: 'shortlists'
+        source: 'shortlists',
       });
     }
-
   } catch (error) {
     console.error('Error fetching shortlist alerts:', error);
   }
@@ -199,7 +198,7 @@ export const getInterviewAlerts = async (): Promise<Alert[]> => {
         time: 'Just now',
         urgent: true,
         source: 'interviews',
-        actionData: { interviews: upcomingInterviews }
+        actionData: { interviews: upcomingInterviews },
       });
     }
 
@@ -219,7 +218,7 @@ export const getInterviewAlerts = async (): Promise<Alert[]> => {
         time: formatTimeDiff(new Date(Date.now() - 3 * 60 * 60 * 1000)),
         urgent: completedInterviews.length > 5,
         source: 'interviews',
-        actionData: { pendingCount: completedInterviews.length }
+        actionData: { pendingCount: completedInterviews.length },
       });
     }
 
@@ -233,7 +232,7 @@ export const getInterviewAlerts = async (): Promise<Alert[]> => {
       .limit(10);
 
     if (recentCompleted && recentCompleted.length > 0) {
-      const positiveInterviews = recentCompleted.filter(interview => {
+      const positiveInterviews = recentCompleted.filter((interview) => {
         const scorecard = interview.scorecard;
         return scorecard?.overall_rating >= 4 || scorecard?.recommendation === 'proceed';
       });
@@ -248,11 +247,10 @@ export const getInterviewAlerts = async (): Promise<Alert[]> => {
           time: formatTimeDiff(new Date(latest.completed_date)),
           urgent: false,
           source: 'interviews',
-          actionData: { interviewId: latest.id, candidateName: latest.candidate_name }
+          actionData: { interviewId: latest.id, candidateName: latest.candidate_name },
         });
       }
     }
-
   } catch (error) {
     console.error('Error fetching interview alerts:', error);
   }
@@ -282,7 +280,7 @@ export const getOffersAlerts = async (): Promise<Alert[]> => {
       .gte('expiry_date', now.toISOString());
 
     if (expiringOffers && expiringOffers.length > 0) {
-      const urgentOffers = expiringOffers.filter(offer => {
+      const urgentOffers = expiringOffers.filter((offer) => {
         const expiryDate = new Date(offer.expiry_date);
         const hoursUntilExpiry = (expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60);
         return hoursUntilExpiry <= 24;
@@ -291,19 +289,22 @@ export const getOffersAlerts = async (): Promise<Alert[]> => {
       if (urgentOffers.length > 0) {
         const offer = urgentOffers[0];
         const expiryDate = new Date(offer.expiry_date);
-        const hoursUntilExpiry = Math.floor((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60));
-        
+        const hoursUntilExpiry = Math.floor(
+          (expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60)
+        );
+
         alerts.push({
           id: 'offers-expiring',
           type: 'error',
           title: 'Expiring Offers',
-          message: urgentOffers.length === 1
-            ? `Offer for ${offer.candidate_name} expires in ${hoursUntilExpiry} hours`
-            : `${urgentOffers.length} offers expiring within 24 hours`,
+          message:
+            urgentOffers.length === 1
+              ? `Offer for ${offer.candidate_name} expires in ${hoursUntilExpiry} hours`
+              : `${urgentOffers.length} offers expiring within 24 hours`,
           time: formatTimeDiff(new Date(Date.now() - 2 * 60 * 60 * 1000)),
           urgent: true,
           source: 'offers',
-          actionData: { offers: urgentOffers }
+          actionData: { offers: urgentOffers },
         });
       } else if (expiringOffers.length > 0) {
         alerts.push({
@@ -314,7 +315,7 @@ export const getOffersAlerts = async (): Promise<Alert[]> => {
           time: formatTimeDiff(new Date(Date.now() - 4 * 60 * 60 * 1000)),
           urgent: false,
           source: 'offers',
-          actionData: { offers: expiringOffers }
+          actionData: { offers: expiringOffers },
         });
       }
     }
@@ -328,7 +329,7 @@ export const getOffersAlerts = async (): Promise<Alert[]> => {
       .limit(5);
 
     if (acceptedOffers && acceptedOffers.length > 0) {
-      const recentAccepted = acceptedOffers.filter(offer => {
+      const recentAccepted = acceptedOffers.filter((offer) => {
         const acceptedDate = new Date(offer.updated_at);
         const daysSinceAccepted = (now.getTime() - acceptedDate.getTime()) / (1000 * 60 * 60 * 24);
         return daysSinceAccepted <= 7;
@@ -343,11 +344,10 @@ export const getOffersAlerts = async (): Promise<Alert[]> => {
           time: formatTimeDiff(new Date(recentAccepted[0].updated_at)),
           urgent: false,
           source: 'offers',
-          actionData: { offers: recentAccepted }
+          actionData: { offers: recentAccepted },
         });
       }
     }
-
   } catch (error) {
     console.error('Error fetching offers alerts:', error);
   }
@@ -384,7 +384,7 @@ export const getPipelineAlerts = async (): Promise<Alert[]> => {
         time: formatTimeDiff(new Date(Date.now() - 6 * 60 * 60 * 1000)),
         urgent: stalledCandidates.length > 10,
         source: 'pipelines',
-        actionData: { count: stalledCandidates.length }
+        actionData: { count: stalledCandidates.length },
       });
     }
 
@@ -405,7 +405,7 @@ export const getPipelineAlerts = async (): Promise<Alert[]> => {
         time: 'Just now',
         urgent: true,
         source: 'pipelines',
-        actionData: { candidates: overdueActions }
+        actionData: { candidates: overdueActions },
       });
     }
 
@@ -416,13 +416,16 @@ export const getPipelineAlerts = async (): Promise<Alert[]> => {
       .eq('status', 'active');
 
     if (allActiveCandidates && allActiveCandidates.length > 0) {
-      const stageCounts = allActiveCandidates.reduce((acc, c) => {
-        acc[c.stage] = (acc[c.stage] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
+      const stageCounts = allActiveCandidates.reduce(
+        (acc, c) => {
+          acc[c.stage] = (acc[c.stage] || 0) + 1;
+          return acc;
+        },
+        {} as Record<string, number>
+      );
 
       const bottleneckStage = Object.entries(stageCounts).find(([_, count]) => count > 20);
-      
+
       if (bottleneckStage) {
         const [stage, count] = bottleneckStage;
         alerts.push({
@@ -433,11 +436,10 @@ export const getPipelineAlerts = async (): Promise<Alert[]> => {
           time: formatTimeDiff(new Date(Date.now() - 12 * 60 * 60 * 1000)),
           urgent: false,
           source: 'pipelines',
-          actionData: { stage, count }
+          actionData: { stage, count },
         });
       }
     }
-
   } catch (error) {
     console.error('Error fetching pipeline alerts:', error);
   }
@@ -450,27 +452,21 @@ export const getPipelineAlerts = async (): Promise<Alert[]> => {
  */
 export const getAllAlerts = async (): Promise<Alert[]> => {
   try {
-    
-    const [
-      talentPoolAlerts,
-      shortlistAlerts,
-      interviewAlerts,
-      offersAlerts,
-      pipelineAlerts
-    ] = await Promise.all([
-      getTalentPoolAlerts(),
-      getShortlistAlerts(),
-      getInterviewAlerts(),
-      getOffersAlerts(),
-      getPipelineAlerts()
-    ]);
+    const [talentPoolAlerts, shortlistAlerts, interviewAlerts, offersAlerts, pipelineAlerts] =
+      await Promise.all([
+        getTalentPoolAlerts(),
+        getShortlistAlerts(),
+        getInterviewAlerts(),
+        getOffersAlerts(),
+        getPipelineAlerts(),
+      ]);
 
     const allAlerts = [
       ...talentPoolAlerts,
       ...shortlistAlerts,
       ...interviewAlerts,
       ...offersAlerts,
-      ...pipelineAlerts
+      ...pipelineAlerts,
     ];
 
     // Sort by urgency first, then by time
@@ -478,7 +474,6 @@ export const getAllAlerts = async (): Promise<Alert[]> => {
       if (a.urgent !== b.urgent) return a.urgent ? -1 : 1;
       return 0;
     });
-
 
     return allAlerts;
   } catch (error) {

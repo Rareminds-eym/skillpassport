@@ -31,10 +31,12 @@ export const lessonPlanService = {
   async getLessonPlans(schoolId: string): Promise<LessonPlan[]> {
     const { data, error } = await supabase
       .from('lesson_plans')
-      .select(`
+      .select(
+        `
         *,
         school_educators!inner(school_id)
-      `)
+      `
+      )
       .eq('school_educators.school_id', schoolId)
       .order('date', { ascending: false });
 
@@ -55,7 +57,9 @@ export const lessonPlanService = {
   },
 
   // Create a new lesson plan
-  async createLessonPlan(lessonPlan: Omit<LessonPlan, 'id' | 'created_at' | 'updated_at'>): Promise<LessonPlan> {
+  async createLessonPlan(
+    lessonPlan: Omit<LessonPlan, 'id' | 'created_at' | 'updated_at'>
+  ): Promise<LessonPlan> {
     const { data, error } = await supabase
       .from('lesson_plans')
       .insert(lessonPlan)
@@ -81,21 +85,14 @@ export const lessonPlanService = {
 
   // Delete a lesson plan
   async deleteLessonPlan(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('lesson_plans')
-      .delete()
-      .eq('id', id);
+    const { error } = await supabase.from('lesson_plans').delete().eq('id', id);
 
     if (error) throw error;
   },
 
   // Get lesson plan by ID
   async getLessonPlanById(id: string): Promise<LessonPlan | null> {
-    const { data, error } = await supabase
-      .from('lesson_plans')
-      .select('*')
-      .eq('id', id)
-      .single();
+    const { data, error } = await supabase.from('lesson_plans').select('*').eq('id', id).single();
 
     if (error) throw error;
     return data;

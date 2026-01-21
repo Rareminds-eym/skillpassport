@@ -20,20 +20,20 @@ const DataMigrationTool = () => {
   const handleCheckExists = async () => {
     setLoading(true);
     setStatus({ type: '', message: '' });
-    
+
     try {
       const result = await checkStudentExists(studentId);
       setExists(result.exists);
       setStatus({
         type: result.exists ? 'info' : 'warning',
-        message: result.exists 
-          ? `Student ${studentId} exists in database` 
-          : `Student ${studentId} not found in database`
+        message: result.exists
+          ? `Student ${studentId} exists in database`
+          : `Student ${studentId} not found in database`,
       });
     } catch (error) {
       setStatus({
         type: 'error',
-        message: `Error checking student: ${error.message}`
+        message: `Error checking student: ${error.message}`,
       });
     } finally {
       setLoading(false);
@@ -45,7 +45,7 @@ const DataMigrationTool = () => {
     if (!studentId.trim()) {
       setStatus({
         type: 'error',
-        message: 'Please enter a student ID'
+        message: 'Please enter a student ID',
       });
       return;
     }
@@ -55,23 +55,23 @@ const DataMigrationTool = () => {
 
     try {
       const result = await runMigration(studentId);
-      
+
       if (result.success) {
         setStatus({
           type: 'success',
-          message: `✅ Migration successful! Student ID: ${result.studentId}`
+          message: `✅ Migration successful! Student ID: ${result.studentId}`,
         });
         setExists(true);
       } else {
         setStatus({
           type: 'error',
-          message: `❌ Migration failed: ${result.error?.message || 'Unknown error'}`
+          message: `❌ Migration failed: ${result.error?.message || 'Unknown error'}`,
         });
       }
     } catch (error) {
       setStatus({
         type: 'error',
-        message: `❌ Migration failed: ${error.message}`
+        message: `❌ Migration failed: ${error.message}`,
       });
     } finally {
       setLoading(false);
@@ -89,23 +89,23 @@ const DataMigrationTool = () => {
 
     try {
       const result = await clearStudentData(studentId);
-      
+
       if (result.success) {
         setStatus({
           type: 'success',
-          message: `✅ Data cleared successfully for student ${studentId}`
+          message: `✅ Data cleared successfully for student ${studentId}`,
         });
         setExists(false);
       } else {
         setStatus({
           type: 'error',
-          message: `❌ Clear failed: ${result.error?.message || 'Unknown error'}`
+          message: `❌ Clear failed: ${result.error?.message || 'Unknown error'}`,
         });
       }
     } catch (error) {
       setStatus({
         type: 'error',
-        message: `❌ Clear failed: ${error.message}`
+        message: `❌ Clear failed: ${error.message}`,
       });
     } finally {
       setLoading(false);
@@ -149,7 +149,6 @@ const DataMigrationTool = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            
             {/* Instructions */}
             <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
               <h4 className="font-semibold text-blue-900 mb-2">Instructions:</h4>
@@ -177,8 +176,12 @@ const DataMigrationTool = () => {
 
             {/* Status Display */}
             {exists !== null && (
-              <div className={`p-3 rounded-md ${exists ? 'bg-green-50 border border-green-200' : 'bg-yellow-50 border border-yellow-200'}`}>
-                <p className={`text-sm font-medium ${exists ? 'text-green-800' : 'text-yellow-800'}`}>
+              <div
+                className={`p-3 rounded-md ${exists ? 'bg-green-50 border border-green-200' : 'bg-yellow-50 border border-yellow-200'}`}
+              >
+                <p
+                  className={`text-sm font-medium ${exists ? 'text-green-800' : 'text-yellow-800'}`}
+                >
                   {exists ? '✅ Student exists in database' : '⚠️ Student not found in database'}
                 </p>
               </div>
@@ -232,9 +235,7 @@ const DataMigrationTool = () => {
             {status.message && (
               <Alert variant={getAlertVariant()}>
                 {getAlertIcon()}
-                <AlertDescription className="ml-2">
-                  {status.message}
-                </AlertDescription>
+                <AlertDescription className="ml-2">{status.message}</AlertDescription>
               </Alert>
             )}
 
@@ -257,11 +258,10 @@ const DataMigrationTool = () => {
             {/* Warning */}
             <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded">
               <p className="text-sm text-red-800">
-                <strong>Warning:</strong> This tool is for development use only. 
-                Remove it before deploying to production.
+                <strong>Warning:</strong> This tool is for development use only. Remove it before
+                deploying to production.
               </p>
             </div>
-
           </CardContent>
         </Card>
 

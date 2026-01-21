@@ -1,7 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { MessageSquare, Send, Loader2 } from 'lucide-react';
-import { useStudentMessages, useStudentUnreadCount, useStudentConversations } from '../../hooks/useStudentMessages';
+import {
+  useStudentMessages,
+  useStudentUnreadCount,
+  useStudentConversations,
+} from '../../hooks/useStudentMessages';
 import { useStudentMessageNotifications } from '../../hooks/useStudentMessageNotifications';
 import { useMessageStore } from '../../stores/useMessageStore';
 
@@ -21,65 +25,69 @@ interface StudentMessagingExampleProps {
 export const StudentMessagingExample: React.FC<StudentMessagingExampleProps> = ({
   studentId,
   recruiterId = 'rec_001',
-  applicationId
+  applicationId,
 }) => {
   const [messageText, setMessageText] = useState('');
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
-  
+
   // Get unread count with realtime updates
   const { unreadCount } = useStudentUnreadCount(studentId);
-  
+
   // Get all conversations
   const { conversations, isLoading: loadingConversations } = useStudentConversations(studentId);
-  
+
   // Get messages for selected conversation
-  const { messages, sendMessage, isSending, isLoading: loadingMessages } = useStudentMessages({
+  const {
+    messages,
+    sendMessage,
+    isSending,
+    isLoading: loadingMessages,
+  } = useStudentMessages({
     studentId,
     conversationId: selectedConversationId,
     enabled: !!selectedConversationId,
-    enableRealtime: true
+    enableRealtime: true,
   });
-  
+
   // Setup hot-toast notifications (exclude current conversation)
   useStudentMessageNotifications({
     studentId,
     enabled: true,
     playSound: true,
     excludeConversationId: selectedConversationId,
-    onMessageReceived: (message) => {
-    }
+    onMessageReceived: (message) => {},
   });
-  
+
   // Auto-select first conversation
   useEffect(() => {
     if (conversations.length > 0 && !selectedConversationId) {
       setSelectedConversationId(conversations[0].id);
     }
   }, [conversations, selectedConversationId]);
-  
+
   const handleSendMessage = () => {
     if (!messageText.trim() || !selectedConversationId) return;
-    
-    const currentConversation = conversations.find(c => c.id === selectedConversationId);
+
+    const currentConversation = conversations.find((c) => c.id === selectedConversationId);
     if (!currentConversation) return;
-    
+
     sendMessage({
       senderId: studentId,
       senderType: 'student',
       receiverId: currentConversation.recruiter_id,
       receiverType: 'recruiter',
       messageText: messageText.trim(),
-      applicationId: currentConversation.application_id
+      applicationId: currentConversation.application_id,
     });
-    
+
     setMessageText('');
   };
-  
+
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       {/* Toaster for notifications */}
       <Toaster position="top-right" />
-      
+
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between">
@@ -87,7 +95,7 @@ export const StudentMessagingExample: React.FC<StudentMessagingExampleProps> = (
             <MessageSquare className="w-6 h-6 text-indigo-600" />
             <h1 className="text-2xl font-bold text-gray-900">Messages</h1>
           </div>
-          
+
           {unreadCount > 0 && (
             <div className="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
               {unreadCount} unread
@@ -95,7 +103,7 @@ export const StudentMessagingExample: React.FC<StudentMessagingExampleProps> = (
           )}
         </div>
       </div>
-      
+
       <div className="flex flex-1 overflow-hidden">
         {/* Conversations Sidebar */}
         <div className="w-80 bg-white border-r border-gray-200 overflow-y-auto">
@@ -103,15 +111,13 @@ export const StudentMessagingExample: React.FC<StudentMessagingExampleProps> = (
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
               Conversations
             </h2>
-            
+
             {loadingConversations ? (
               <div className="flex justify-center py-8">
                 <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
               </div>
             ) : conversations.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center py-8">
-                No conversations yet
-              </p>
+              <p className="text-sm text-gray-500 text-center py-8">No conversations yet</p>
             ) : (
               <div className="space-y-2">
                 {conversations.map((conv) => (
@@ -148,7 +154,7 @@ export const StudentMessagingExample: React.FC<StudentMessagingExampleProps> = (
             )}
           </div>
         </div>
-        
+
         {/* Messages Area */}
         <div className="flex-1 flex flex-col">
           {selectedConversationId ? (
@@ -187,7 +193,7 @@ export const StudentMessagingExample: React.FC<StudentMessagingExampleProps> = (
                           >
                             {new Date(message.created_at).toLocaleTimeString([], {
                               hour: '2-digit',
-                              minute: '2-digit'
+                              minute: '2-digit',
                             })}
                           </p>
                         </div>
@@ -196,7 +202,7 @@ export const StudentMessagingExample: React.FC<StudentMessagingExampleProps> = (
                   })
                 )}
               </div>
-              
+
               {/* Message Input */}
               <div className="bg-white border-t border-gray-200 p-4">
                 <div className="flex gap-3">
@@ -244,4 +250,3 @@ export const StudentMessagingExample: React.FC<StudentMessagingExampleProps> = (
 };
 
 export default StudentMessagingExample;
-

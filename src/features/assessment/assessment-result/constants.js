@@ -4,37 +4,37 @@
  */
 
 export const RIASEC_NAMES = {
-    R: 'Realistic',
-    I: 'Investigative',
-    A: 'Artistic',
-    S: 'Social',
-    E: 'Enterprising',
-    C: 'Conventional'
+  R: 'Realistic',
+  I: 'Investigative',
+  A: 'Artistic',
+  S: 'Social',
+  E: 'Enterprising',
+  C: 'Conventional',
 };
 
 export const RIASEC_COLORS = {
-    R: '#ef4444',
-    I: '#8b5cf6',
-    A: '#f59e0b',
-    S: '#10b981',
-    E: '#3b82f6',
-    C: '#6366f1'
+  R: '#ef4444',
+  I: '#8b5cf6',
+  A: '#f59e0b',
+  S: '#10b981',
+  E: '#3b82f6',
+  C: '#6366f1',
 };
 
 export const TRAIT_NAMES = {
-    O: 'Openness',
-    C: 'Conscientiousness',
-    E: 'Extraversion',
-    A: 'Agreeableness',
-    N: 'Neuroticism'
+  O: 'Openness',
+  C: 'Conscientiousness',
+  E: 'Extraversion',
+  A: 'Agreeableness',
+  N: 'Neuroticism',
 };
 
 export const TRAIT_COLORS = {
-    O: '#8b5cf6',
-    C: '#10b981',
-    E: '#f59e0b',
-    A: '#ec4899',
-    N: '#6366f1'
+  O: '#8b5cf6',
+  C: '#10b981',
+  E: '#f59e0b',
+  A: '#ec4899',
+  N: '#6366f1',
 };
 
 export const PRINT_STYLES = `

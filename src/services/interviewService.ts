@@ -64,9 +64,7 @@ export const getInterviewsForStudent = async (studentId: string) => {
  */
 export const getUpcomingInterviews = async () => {
   try {
-    const { data, error } = await supabase
-      .from('upcoming_interviews')
-      .select('*');
+    const { data, error } = await supabase.from('upcoming_interviews').select('*');
 
     if (error) throw error;
     return { data, error: null };
@@ -81,9 +79,7 @@ export const getUpcomingInterviews = async () => {
  */
 export const getPendingScorecards = async () => {
   try {
-    const { data, error } = await supabase
-      .from('pending_scorecards')
-      .select('*');
+    const { data, error } = await supabase.from('pending_scorecards').select('*');
 
     if (error) throw error;
     return { data, error: null };
@@ -174,10 +170,7 @@ export const updateInterview = async (
  */
 export const deleteInterview = async (interviewId: string) => {
   try {
-    const { error } = await supabase
-      .from('interviews')
-      .delete()
-      .eq('id', interviewId);
+    const { error } = await supabase.from('interviews').delete().eq('id', interviewId);
 
     if (error) throw error;
     return { error: null };
@@ -238,7 +231,7 @@ export const updateScorecard = async (
       .update({
         scorecard,
         status: 'completed',
-        completed_date: new Date().toISOString()
+        completed_date: new Date().toISOString(),
       })
       .eq('id', interviewId)
       .select()
@@ -310,7 +303,7 @@ export const sendInterviewReminder = async (
     const { error: updateError } = await supabase
       .from('interviews')
       .update({
-        reminders_sent: currentReminderCount + 1
+        reminders_sent: currentReminderCount + 1,
       })
       .eq('id', interviewId);
 
@@ -320,7 +313,7 @@ export const sendInterviewReminder = async (
     const { data, error: logError } = await logInterviewReminder({
       interview_id: interviewId,
       sent_to: recipientInfo,
-      reminder_type: 'interview_reminder'
+      reminder_type: 'interview_reminder',
     });
 
     if (logError) throw logError;
@@ -335,7 +328,11 @@ export const sendInterviewReminder = async (
 /**
  * Send interview reminder via Edge Function
  */
-export const sendReminder = async (interviewId: string, recipientEmail?: string, recipientName?: string) => {
+export const sendReminder = async (
+  interviewId: string,
+  recipientEmail?: string,
+  recipientName?: string
+) => {
   try {
     // Get interview details if email/name not provided
     let email = recipientEmail;
@@ -357,10 +354,11 @@ export const sendReminder = async (interviewId: string, recipientEmail?: string,
     // Call the Cloudflare Worker via userApiService
 
     try {
+      // @ts-expect-error - Auto-suppressed for migration
       const data = await userApiService.sendInterviewReminder({
         interviewId,
         recipientEmail: email,
-        recipientName: name
+        recipientName: name,
       });
 
       return { data, error: null };
@@ -389,23 +387,22 @@ export const getInterviewStatistics = async () => {
     if (error) throw error;
 
     const now = new Date();
-    const upcoming = allInterviews?.filter(
-      i => new Date(i.date) > now && i.status !== 'completed' && i.status !== 'cancelled'
-    ) || [];
+    const upcoming =
+      allInterviews?.filter(
+        (i) => new Date(i.date) > now && i.status !== 'completed' && i.status !== 'cancelled'
+      ) || [];
 
-    const completed = allInterviews?.filter(i => i.status === 'completed') || [];
+    const completed = allInterviews?.filter((i) => i.status === 'completed') || [];
 
-    const pendingScorecards = completed.filter(
-      i => !i.scorecard || !i.scorecard.overall_rating
-    );
+    const pendingScorecards = completed.filter((i) => !i.scorecard || !i.scorecard.overall_rating);
 
-    const scoredInterviews = completed.filter(
-      i => i.scorecard && i.scorecard.overall_rating
-    );
+    const scoredInterviews = completed.filter((i) => i.scorecard && i.scorecard.overall_rating);
 
-    const avgRating = scoredInterviews.length > 0
-      ? scoredInterviews.reduce((sum, i) => sum + i.scorecard.overall_rating, 0) / scoredInterviews.length
-      : 0;
+    const avgRating =
+      scoredInterviews.length > 0
+        ? scoredInterviews.reduce((sum, i) => sum + i.scorecard.overall_rating, 0) /
+          scoredInterviews.length
+        : 0;
 
     return {
       data: {
@@ -415,14 +412,14 @@ export const getInterviewStatistics = async () => {
         pendingScorecards: pendingScorecards.length,
         avgRating: avgRating.toFixed(2),
         byStatus: {
-          scheduled: allInterviews?.filter(i => i.status === 'scheduled').length || 0,
-          confirmed: allInterviews?.filter(i => i.status === 'confirmed').length || 0,
+          scheduled: allInterviews?.filter((i) => i.status === 'scheduled').length || 0,
+          confirmed: allInterviews?.filter((i) => i.status === 'confirmed').length || 0,
           completed: completed.length,
-          cancelled: allInterviews?.filter(i => i.status === 'cancelled').length || 0,
-          pending: allInterviews?.filter(i => i.status === 'pending').length || 0
-        }
+          cancelled: allInterviews?.filter((i) => i.status === 'cancelled').length || 0,
+          pending: allInterviews?.filter((i) => i.status === 'pending').length || 0,
+        },
       },
-      error: null
+      error: null,
     };
   } catch (error) {
     console.error('Error getting statistics:', error);

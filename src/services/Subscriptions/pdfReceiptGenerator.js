@@ -15,7 +15,7 @@ async function imageToBase64(imagePath) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.onload = function() {
+    img.onload = function () {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       canvas.width = this.naturalWidth;
@@ -39,7 +39,7 @@ async function imageToBase64(imagePath) {
  */
 export async function generateReceipt(receiptData) {
   const { transaction, subscription, user, company } = receiptData;
-  
+
   const pdf = new jsPDF('p', 'mm', 'a4');
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
@@ -49,14 +49,14 @@ export async function generateReceipt(receiptData) {
   // Load logos
   let companyLogo = null;
   let watermarkLogo = null;
-  
+
   try {
     // Load company logo (top left)
     companyLogo = await imageToBase64('/RareMinds.webp');
   } catch (error) {
     console.warn('Could not load company logo:', error);
   }
-  
+
   try {
     // Load watermark logo
     watermarkLogo = await imageToBase64('/RMLogo.webp');
@@ -69,7 +69,7 @@ export async function generateReceipt(receiptData) {
     const watermarkSize = 80;
     const watermarkX = (pageWidth - watermarkSize) / 2;
     const watermarkY = (pageHeight - watermarkSize) / 2;
-    
+
     // Set transparency for watermark
     pdf.setGState(pdf.GState({ opacity: 0.1 }));
     pdf.addImage(watermarkLogo, 'PNG', watermarkX, watermarkY, watermarkSize, watermarkSize);
@@ -79,11 +79,17 @@ export async function generateReceipt(receiptData) {
 
   // Helper function to add text
   const addText = (text, x, y, options = {}) => {
-    const { fontSize = 10, fontStyle = 'normal', align = 'left', maxWidth, color = [0, 0, 0] } = options;
+    const {
+      fontSize = 10,
+      fontStyle = 'normal',
+      align = 'left',
+      maxWidth,
+      color = [0, 0, 0],
+    } = options;
     pdf.setFontSize(fontSize);
     pdf.setFont('helvetica', fontStyle);
     pdf.setTextColor(color[0], color[1], color[2]);
-    
+
     if (align === 'center') {
       pdf.text(text, x, y, { align: 'center', maxWidth });
     } else if (align === 'right') {
@@ -95,66 +101,66 @@ export async function generateReceipt(receiptData) {
 
   // Header Section with Logo and Company Details
   const headerHeight = 25;
-  
+
   // Company Logo (top left) - increased width to prevent squashing
   if (companyLogo) {
-    const logoWidth = 40;  // Increased width
+    const logoWidth = 40; // Increased width
     const logoHeight = 20; // Maintain aspect ratio
     pdf.addImage(companyLogo, 'PNG', margin, yPosition, logoWidth, logoHeight);
   }
-  
+
   // Company Details (top right) - only address, phone, email
   const companyDetailsX = pageWidth - margin;
   let rightYPosition = yPosition + 2;
-  
+
   // Address (handle multi-line)
   if (company.address) {
     const addressLines = company.address.split('\n');
-    addressLines.forEach(line => {
-      addText(line.trim(), companyDetailsX, rightYPosition, { 
-        fontSize: 8, 
+    addressLines.forEach((line) => {
+      addText(line.trim(), companyDetailsX, rightYPosition, {
+        fontSize: 8,
         align: 'right',
-        color: [75, 85, 99] // Gray color
+        color: [75, 85, 99], // Gray color
       });
       rightYPosition += 4;
     });
   }
-  
+
   // Phone
   if (company.phone) {
-    addText(`Phone: ${company.phone}`, companyDetailsX, rightYPosition, { 
-      fontSize: 8, 
+    addText(`Phone: ${company.phone}`, companyDetailsX, rightYPosition, {
+      fontSize: 8,
       align: 'right',
-      color: [75, 85, 99]
+      color: [75, 85, 99],
     });
     rightYPosition += 4;
   }
-  
+
   // Email
   if (company.email) {
-    addText(`Email: ${company.email}`, companyDetailsX, rightYPosition, { 
-      fontSize: 8, 
+    addText(`Email: ${company.email}`, companyDetailsX, rightYPosition, {
+      fontSize: 8,
       align: 'right',
-      color: [75, 85, 99]
+      color: [75, 85, 99],
     });
   }
 
   yPosition += headerHeight + 10;
 
   // Title with enhanced styling
-  addText('PAYMENT RECEIPT', pageWidth / 2, yPosition, { 
-    fontSize: 18, 
-    fontStyle: 'bold', 
+  addText('PAYMENT RECEIPT', pageWidth / 2, yPosition, {
+    fontSize: 18,
+    fontStyle: 'bold',
     align: 'center',
-    color: [38, 99, 235]
+    color: [38, 99, 235],
   });
   yPosition += 8;
-  
+
   // Subtitle
-  addText('Transaction Confirmation', pageWidth / 2, yPosition, { 
-    fontSize: 10, 
+  addText('Transaction Confirmation', pageWidth / 2, yPosition, {
+    fontSize: 10,
     align: 'center',
-    color: [107, 114, 128]
+    color: [107, 114, 128],
   });
   yPosition += 15;
 
@@ -165,10 +171,10 @@ export async function generateReceipt(receiptData) {
   yPosition += 15;
 
   // Transaction Details Section with enhanced styling
-  addText('Transaction Details', margin, yPosition, { 
-    fontSize: 13, 
+  addText('Transaction Details', margin, yPosition, {
+    fontSize: 13,
     fontStyle: 'bold',
-    color: [31, 41, 55]
+    color: [31, 41, 55],
   });
   yPosition += 10;
 
@@ -178,129 +184,134 @@ export async function generateReceipt(receiptData) {
   const labelWidth = 45;
 
   // Left column
-  addText('Reference Number:', leftCol, yPosition, { 
-    fontSize: 9, 
-    fontStyle: 'bold',
-    color: [75, 85, 99]
-  });
-  addText(transaction.payment_id || 'N/A', leftCol + labelWidth, yPosition, { 
+  addText('Reference Number:', leftCol, yPosition, {
     fontSize: 9,
-    color: [31, 41, 55]
+    fontStyle: 'bold',
+    color: [75, 85, 99],
+  });
+  addText(transaction.payment_id || 'N/A', leftCol + labelWidth, yPosition, {
+    fontSize: 9,
+    color: [31, 41, 55],
   });
   yPosition += 7;
 
-  addText('Payment Date:', leftCol, yPosition, { 
-    fontSize: 9, 
-    fontStyle: 'bold',
-    color: [75, 85, 99]
-  });
-  addText(transaction.payment_timestamp || new Date().toLocaleDateString(), leftCol + labelWidth, yPosition, { 
+  addText('Payment Date:', leftCol, yPosition, {
     fontSize: 9,
-    color: [31, 41, 55]
+    fontStyle: 'bold',
+    color: [75, 85, 99],
   });
+  addText(
+    transaction.payment_timestamp || new Date().toLocaleDateString(),
+    leftCol + labelWidth,
+    yPosition,
+    {
+      fontSize: 9,
+      color: [31, 41, 55],
+    }
+  );
   yPosition += 7;
 
   // Reset y for right column
   yPosition -= 14;
 
   // Right column
-  addText('Payment Method:', rightCol, yPosition, { 
-    fontSize: 9, 
-    fontStyle: 'bold',
-    color: [75, 85, 99]
-  });
-  addText(transaction.payment_method || 'Card', rightCol + labelWidth, yPosition, { 
+  addText('Payment Method:', rightCol, yPosition, {
     fontSize: 9,
-    color: [31, 41, 55]
+    fontStyle: 'bold',
+    color: [75, 85, 99],
+  });
+  addText(transaction.payment_method || 'Card', rightCol + labelWidth, yPosition, {
+    fontSize: 9,
+    color: [31, 41, 55],
   });
   yPosition += 7;
 
-  addText('Status:', rightCol, yPosition, { 
-    fontSize: 9, 
-    fontStyle: 'bold',
-    color: [75, 85, 99]
-  });
-  addText(transaction.status || 'Success', rightCol + labelWidth, yPosition, { 
+  addText('Status:', rightCol, yPosition, {
     fontSize: 9,
-    color: [34, 197, 94] // Success green
+    fontStyle: 'bold',
+    color: [75, 85, 99],
+  });
+  addText(transaction.status || 'Success', rightCol + labelWidth, yPosition, {
+    fontSize: 9,
+    color: [34, 197, 94], // Success green
   });
   yPosition += 20;
 
   // Enhanced Amount Section with transparent background to show watermark
   const amountBoxHeight = 18;
-  
+
   // Set transparent background (much lighter opacity)
   pdf.setGState(pdf.GState({ opacity: 0.3 })); // Reduced opacity for background
   pdf.setFillColor(248, 250, 252); // Light blue background
   pdf.rect(margin, yPosition, pageWidth - 2 * margin, amountBoxHeight, 'F');
-  
+
   // Reset opacity for border
   pdf.setGState(pdf.GState({ opacity: 0.4 })); // Semi-transparent border
   pdf.setDrawColor(226, 232, 240); // Border color
   pdf.setLineWidth(0.3);
   pdf.rect(margin, yPosition, pageWidth - 2 * margin, amountBoxHeight, 'S');
-  
+
   // Reset opacity for text (full opacity)
   pdf.setGState(pdf.GState({ opacity: 1.0 }));
   yPosition += 12;
 
-  addText('Total Amount:', margin + 8, yPosition, { 
-    fontSize: 12, 
+  addText('Total Amount:', margin + 8, yPosition, {
+    fontSize: 12,
     fontStyle: 'bold',
-    color: [31, 41, 55]
+    color: [31, 41, 55],
   });
-  
+
   // Format amount properly for Indian Rupees - simpler approach
   const amount = transaction.amount || 0;
   const formattedAmount = `Rs. ${amount.toLocaleString('en-IN')}`;
-  
-  addText(formattedAmount, pageWidth - margin - 8, yPosition, { 
-    fontSize: 16, 
-    fontStyle: 'bold', 
+
+  addText(formattedAmount, pageWidth - margin - 8, yPosition, {
+    fontSize: 16,
+    fontStyle: 'bold',
     align: 'right',
-    color: [38, 99, 235]
+    color: [38, 99, 235],
   });
   yPosition += 20;
 
   // Customer Details Section with enhanced styling
-  addText('Customer Details', margin, yPosition, { 
-    fontSize: 13, 
+  addText('Customer Details', margin, yPosition, {
+    fontSize: 13,
     fontStyle: 'bold',
-    color: [31, 41, 55]
+    color: [31, 41, 55],
   });
   yPosition += 10;
 
-  addText('Name:', leftCol, yPosition, { 
-    fontSize: 9, 
-    fontStyle: 'bold',
-    color: [75, 85, 99]
-  });
-  addText(user.name || 'N/A', leftCol + labelWidth, yPosition, { 
+  addText('Name:', leftCol, yPosition, {
     fontSize: 9,
-    color: [31, 41, 55]
+    fontStyle: 'bold',
+    color: [75, 85, 99],
+  });
+  addText(user.name || 'N/A', leftCol + labelWidth, yPosition, {
+    fontSize: 9,
+    color: [31, 41, 55],
   });
   yPosition += 7;
 
-  addText('Email:', leftCol, yPosition, { 
-    fontSize: 9, 
-    fontStyle: 'bold',
-    color: [75, 85, 99]
-  });
-  addText(user.email || 'N/A', leftCol + labelWidth, yPosition, { 
+  addText('Email:', leftCol, yPosition, {
     fontSize: 9,
-    color: [31, 41, 55]
+    fontStyle: 'bold',
+    color: [75, 85, 99],
+  });
+  addText(user.email || 'N/A', leftCol + labelWidth, yPosition, {
+    fontSize: 9,
+    color: [31, 41, 55],
   });
   yPosition += 7;
 
   if (user.phone) {
-    addText('Phone:', leftCol, yPosition, { 
-      fontSize: 9, 
-      fontStyle: 'bold',
-      color: [75, 85, 99]
-    });
-    addText(user.phone, leftCol + labelWidth, yPosition, { 
+    addText('Phone:', leftCol, yPosition, {
       fontSize: 9,
-      color: [31, 41, 55]
+      fontStyle: 'bold',
+      color: [75, 85, 99],
+    });
+    addText(user.phone, leftCol + labelWidth, yPosition, {
+      fontSize: 9,
+      color: [31, 41, 55],
     });
     yPosition += 7;
   }
@@ -308,95 +319,100 @@ export async function generateReceipt(receiptData) {
   // Subscription Details Section (if available) with enhanced styling
   if (subscription) {
     yPosition += 15;
-    
+
     // Section divider
     pdf.setDrawColor(226, 232, 240);
     pdf.setLineWidth(0.3);
     pdf.line(margin, yPosition, pageWidth - margin, yPosition);
     yPosition += 15;
 
-    addText('Subscription Details', margin, yPosition, { 
-      fontSize: 13, 
+    addText('Subscription Details', margin, yPosition, {
+      fontSize: 13,
       fontStyle: 'bold',
-      color: [31, 41, 55]
+      color: [31, 41, 55],
     });
     yPosition += 10;
 
-    addText('Plan Type:', leftCol, yPosition, { 
-      fontSize: 9, 
+    addText('Plan Type:', leftCol, yPosition, {
+      fontSize: 9,
       fontStyle: 'bold',
-      color: [75, 85, 99]
+      color: [75, 85, 99],
     });
-    addText(subscription.plan_type || 'N/A', leftCol + labelWidth, yPosition, { 
+    addText(subscription.plan_type || 'N/A', leftCol + labelWidth, yPosition, {
       fontSize: 9,
       color: [38, 99, 235],
-      fontStyle: 'bold'
+      fontStyle: 'bold',
     });
     yPosition += 7;
 
-    addText('Billing Cycle:', leftCol, yPosition, { 
-      fontSize: 9, 
-      fontStyle: 'bold',
-      color: [75, 85, 99]
-    });
-    addText(subscription.billing_cycle || 'N/A', leftCol + labelWidth, yPosition, { 
+    addText('Billing Cycle:', leftCol, yPosition, {
       fontSize: 9,
-      color: [31, 41, 55]
+      fontStyle: 'bold',
+      color: [75, 85, 99],
+    });
+    addText(subscription.billing_cycle || 'N/A', leftCol + labelWidth, yPosition, {
+      fontSize: 9,
+      color: [31, 41, 55],
     });
     yPosition += 7;
 
-    addText('Start Date:', leftCol, yPosition, { 
-      fontSize: 9, 
-      fontStyle: 'bold',
-      color: [75, 85, 99]
-    });
-    addText(subscription.subscription_start_date || 'N/A', leftCol + labelWidth, yPosition, { 
+    addText('Start Date:', leftCol, yPosition, {
       fontSize: 9,
-      color: [31, 41, 55]
+      fontStyle: 'bold',
+      color: [75, 85, 99],
+    });
+    addText(subscription.subscription_start_date || 'N/A', leftCol + labelWidth, yPosition, {
+      fontSize: 9,
+      color: [31, 41, 55],
     });
     yPosition += 7;
 
-    addText('End Date:', leftCol, yPosition, { 
-      fontSize: 9, 
-      fontStyle: 'bold',
-      color: [75, 85, 99]
-    });
-    addText(subscription.subscription_end_date || 'N/A', leftCol + labelWidth, yPosition, { 
+    addText('End Date:', leftCol, yPosition, {
       fontSize: 9,
-      color: [31, 41, 55]
+      fontStyle: 'bold',
+      color: [75, 85, 99],
+    });
+    addText(subscription.subscription_end_date || 'N/A', leftCol + labelWidth, yPosition, {
+      fontSize: 9,
+      color: [31, 41, 55],
     });
     yPosition += 15;
   }
 
   // Enhanced Footer with branding - positioned at bottom with reduced padding
   yPosition = pageHeight - 25; // Reduced from 40 to 25
-  
+
   // Footer divider
   pdf.setDrawColor(38, 99, 235);
   pdf.setLineWidth(0.5);
   pdf.line(margin, yPosition, pageWidth - margin, yPosition);
   yPosition += 6; // Reduced from 10 to 6
 
-  addText('Thank you for your payment!', pageWidth / 2, yPosition, { 
-    fontSize: 12, 
+  addText('Thank you for your payment!', pageWidth / 2, yPosition, {
+    fontSize: 12,
     align: 'center',
     fontStyle: 'bold',
-    color: [38, 99, 235]
+    color: [38, 99, 235],
   });
   yPosition += 5; // Reduced from 8 to 5
 
-  addText('For support, contact us at marketing@rareminds.in', pageWidth / 2, yPosition, { 
-    fontSize: 9, 
+  addText('For support, contact us at marketing@rareminds.in', pageWidth / 2, yPosition, {
+    fontSize: 9,
     align: 'center',
-    color: [107, 114, 128]
+    color: [107, 114, 128],
   });
   yPosition += 4; // Reduced from 6 to 4
 
-  addText(`Generated on: ${receiptData.generatedAt || new Date().toLocaleString()}`, pageWidth / 2, yPosition, { 
-    fontSize: 8, 
-    align: 'center',
-    color: [156, 163, 175]
-  });
+  addText(
+    `Generated on: ${receiptData.generatedAt || new Date().toLocaleString()}`,
+    pageWidth / 2,
+    yPosition,
+    {
+      fontSize: 8,
+      align: 'center',
+      color: [156, 163, 175],
+    }
+  );
 
   // Return as blob
   return pdf.output('blob');
@@ -409,7 +425,7 @@ export async function generateReceipt(receiptData) {
  */
 export async function generateReceiptBase64(receiptData) {
   const { transaction, subscription, user, company } = receiptData;
-  
+
   const pdf = new jsPDF('p', 'mm', 'a4');
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
@@ -421,7 +437,7 @@ export async function generateReceiptBase64(receiptData) {
     const { fontSize = 10, fontStyle = 'normal', align = 'left', maxWidth } = options;
     pdf.setFontSize(fontSize);
     pdf.setFont('helvetica', fontStyle);
-    
+
     if (align === 'center') {
       pdf.text(text, x, y, { align: 'center', maxWidth });
     } else if (align === 'right') {
@@ -432,26 +448,26 @@ export async function generateReceiptBase64(receiptData) {
   };
 
   // Header - Company Info
-  addText(company.name || 'RareMinds', pageWidth / 2, yPosition, { 
-    fontSize: 20, 
-    fontStyle: 'bold', 
-    align: 'center' 
+  addText(company.name || 'RareMinds', pageWidth / 2, yPosition, {
+    fontSize: 20,
+    fontStyle: 'bold',
+    align: 'center',
   });
   yPosition += 10;
 
   if (company.address) {
-    addText(company.address, pageWidth / 2, yPosition, { 
-      fontSize: 9, 
+    addText(company.address, pageWidth / 2, yPosition, {
+      fontSize: 9,
       align: 'center',
-      maxWidth: pageWidth - 2 * margin
+      maxWidth: pageWidth - 2 * margin,
     });
     yPosition += 6;
   }
 
   if (company.taxId) {
-    addText(`Tax ID: ${company.taxId}`, pageWidth / 2, yPosition, { 
-      fontSize: 9, 
-      align: 'center' 
+    addText(`Tax ID: ${company.taxId}`, pageWidth / 2, yPosition, {
+      fontSize: 9,
+      align: 'center',
     });
     yPosition += 6;
   }
@@ -459,10 +475,10 @@ export async function generateReceiptBase64(receiptData) {
   yPosition += 10;
 
   // Title
-  addText('PAYMENT RECEIPT', pageWidth / 2, yPosition, { 
-    fontSize: 16, 
-    fontStyle: 'bold', 
-    align: 'center' 
+  addText('PAYMENT RECEIPT', pageWidth / 2, yPosition, {
+    fontSize: 16,
+    fontStyle: 'bold',
+    align: 'center',
   });
   yPosition += 15;
 
@@ -472,9 +488,9 @@ export async function generateReceiptBase64(receiptData) {
   yPosition += 10;
 
   // Transaction Details Section
-  addText('Transaction Details', margin, yPosition, { 
-    fontSize: 12, 
-    fontStyle: 'bold' 
+  addText('Transaction Details', margin, yPosition, {
+    fontSize: 12,
+    fontStyle: 'bold',
   });
   yPosition += 8;
 
@@ -487,7 +503,12 @@ export async function generateReceiptBase64(receiptData) {
   yPosition += 6;
 
   addText('Payment Date:', leftCol, yPosition, { fontSize: 9, fontStyle: 'bold' });
-  addText(transaction.payment_timestamp || new Date().toLocaleDateString(), leftCol + labelWidth, yPosition, { fontSize: 9 });
+  addText(
+    transaction.payment_timestamp || new Date().toLocaleDateString(),
+    leftCol + labelWidth,
+    yPosition,
+    { fontSize: 9 }
+  );
   yPosition += 6;
 
   yPosition -= 12;
@@ -509,21 +530,21 @@ export async function generateReceiptBase64(receiptData) {
   const formattedAmount = new Intl.NumberFormat('en-IN', {
     style: 'currency',
     currency: transaction.currency || 'INR',
-    minimumFractionDigits: 0
+    minimumFractionDigits: 0,
   }).format(transaction.amount || 0);
-  
-  addText(formattedAmount, pageWidth - margin - 5, yPosition, { 
-    fontSize: 14, 
-    fontStyle: 'bold', 
-    align: 'right' 
+
+  addText(formattedAmount, pageWidth - margin - 5, yPosition, {
+    fontSize: 14,
+    fontStyle: 'bold',
+    align: 'right',
   });
   yPosition += 15;
 
   // Customer Details Section
   yPosition += 5;
-  addText('Customer Details', margin, yPosition, { 
-    fontSize: 12, 
-    fontStyle: 'bold' 
+  addText('Customer Details', margin, yPosition, {
+    fontSize: 12,
+    fontStyle: 'bold',
   });
   yPosition += 8;
 
@@ -547,9 +568,9 @@ export async function generateReceiptBase64(receiptData) {
     pdf.line(margin, yPosition, pageWidth - margin, yPosition);
     yPosition += 10;
 
-    addText('Subscription Details', margin, yPosition, { 
-      fontSize: 12, 
-      fontStyle: 'bold' 
+    addText('Subscription Details', margin, yPosition, {
+      fontSize: 12,
+      fontStyle: 'bold',
     });
     yPosition += 8;
 
@@ -562,11 +583,15 @@ export async function generateReceiptBase64(receiptData) {
     yPosition += 6;
 
     addText('Start Date:', leftCol, yPosition, { fontSize: 9, fontStyle: 'bold' });
-    addText(subscription.subscription_start_date || 'N/A', leftCol + labelWidth, yPosition, { fontSize: 9 });
+    addText(subscription.subscription_start_date || 'N/A', leftCol + labelWidth, yPosition, {
+      fontSize: 9,
+    });
     yPosition += 6;
 
     addText('End Date:', leftCol, yPosition, { fontSize: 9, fontStyle: 'bold' });
-    addText(subscription.subscription_end_date || 'N/A', leftCol + labelWidth, yPosition, { fontSize: 9 });
+    addText(subscription.subscription_end_date || 'N/A', leftCol + labelWidth, yPosition, {
+      fontSize: 9,
+    });
     yPosition += 10;
   }
 
@@ -575,16 +600,21 @@ export async function generateReceiptBase64(receiptData) {
   pdf.line(margin, yPosition, pageWidth - margin, yPosition);
   yPosition += 8;
 
-  addText('Thank you for your payment!', pageWidth / 2, yPosition, { 
-    fontSize: 10, 
-    align: 'center' 
+  addText('Thank you for your payment!', pageWidth / 2, yPosition, {
+    fontSize: 10,
+    align: 'center',
   });
   yPosition += 6;
 
-  addText(`Generated on: ${receiptData.generatedAt || new Date().toLocaleString()}`, pageWidth / 2, yPosition, { 
-    fontSize: 8, 
-    align: 'center' 
-  });
+  addText(
+    `Generated on: ${receiptData.generatedAt || new Date().toLocaleString()}`,
+    pageWidth / 2,
+    yPosition,
+    {
+      fontSize: 8,
+      align: 'center',
+    }
+  );
 
   // Return as base64 string (without data URI prefix)
   const base64 = pdf.output('datauristring');
@@ -601,10 +631,10 @@ export async function generateReceiptBase64(receiptData) {
 export async function downloadReceipt(receiptData, filename) {
   try {
     const blob = await generateReceipt(receiptData);
-    
+
     // Generate filename with timestamp if not provided
     const finalFilename = filename || `receipt-${Date.now()}.pdf`;
-    
+
     // Create download link
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -612,7 +642,7 @@ export async function downloadReceipt(receiptData, filename) {
     link.download = finalFilename;
     document.body.appendChild(link);
     link.click();
-    
+
     // Cleanup
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
@@ -639,15 +669,15 @@ export async function generatePDFFromHTML(elementId, filename = `receipt-${Date.
       scale: 2,
       useCORS: true,
       logging: false,
-      backgroundColor: '#ffffff'
+      backgroundColor: '#ffffff',
     });
-    
+
     const imgData = canvas.toDataURL('image/png');
     const pdf = new jsPDF('p', 'mm', 'a4');
-    
+
     const imgWidth = 210; // A4 width in mm
     const imgHeight = (canvas.height * imgWidth) / canvas.width;
-    
+
     pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
     pdf.save(filename);
   } catch (error) {
@@ -660,5 +690,5 @@ export default {
   generateReceipt,
   generateReceiptBase64,
   downloadReceipt,
-  generatePDFFromHTML
+  generatePDFFromHTML,
 };

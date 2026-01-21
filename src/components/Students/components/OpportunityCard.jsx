@@ -1,19 +1,19 @@
 import React from 'react';
 import { MapPin, Bookmark } from 'lucide-react';
 
-const OpportunityCard = ({ 
-  opportunity, 
-  onClick, 
-  isSelected, 
+const OpportunityCard = ({
+  opportunity,
+  onClick,
+  isSelected,
   isApplied = false,
   isSaved = false,
-  onToggleSave
+  onToggleSave,
 }) => {
   const getInitials = (name) => {
     if (!name) return '??';
     return name
       .split(' ')
-      .map(word => word[0])
+      .map((word) => word[0])
       .join('')
       .toUpperCase()
       .slice(0, 2);
@@ -59,10 +59,10 @@ const OpportunityCard = ({
   };
 
   return (
-    <div 
+    <div
       className={`bg-white rounded-lg sm:rounded-xl p-3 sm:p-6 cursor-pointer transition-all duration-200 relative ${
-        isSelected 
-          ? 'shadow-lg ring-2 ring-blue-500' 
+        isSelected
+          ? 'shadow-lg ring-2 ring-blue-500'
           : 'shadow-sm hover:shadow-md border border-gray-100'
       }`}
       onClick={onClick}
@@ -81,7 +81,7 @@ const OpportunityCard = ({
           />
         </button>
       )}
-      
+
       {/* Applied Badge */}
       {isApplied && (
         <div className="absolute top-2 right-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full z-10">
@@ -90,13 +90,13 @@ const OpportunityCard = ({
       )}
       <div className="flex flex-col items-center text-center space-y-2.5 sm:space-y-4">
         {/* Company Logo */}
-        <div 
+        <div
           className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-white font-bold text-lg sm:text-xl shadow-sm"
           style={{ backgroundColor: opportunity.company_logo ? 'transparent' : logoColor }}
         >
           {opportunity.company_logo ? (
-            <img 
-              src={opportunity.company_logo} 
+            <img
+              src={opportunity.company_logo}
               alt={displayName}
               className="w-full h-full object-cover rounded-2xl"
             />
@@ -114,9 +114,7 @@ const OpportunityCard = ({
 
         {/* Company Name - Only show if exists */}
         {opportunity.company_name && (
-          <p className="text-xs sm:text-sm text-gray-600">
-            {opportunity.company_name}
-          </p>
+          <p className="text-xs sm:text-sm text-gray-600">{opportunity.company_name}</p>
         )}
 
         {/* Location */}
@@ -140,14 +138,13 @@ const OpportunityCard = ({
 
 export default OpportunityCard;
 
-
 // import React from 'react';
 // import { MapPin, Bookmark } from 'lucide-react';
 
-// const OpportunityCard = ({ 
-//   opportunity, 
-//   onClick, 
-//   isSelected, 
+// const OpportunityCard = ({
+//   opportunity,
+//   onClick,
+//   isSelected,
 //   isApplied = false,
 //   isSaved = false,
 //   onToggleSave
@@ -196,10 +193,10 @@ export default OpportunityCard;
 //   };
 
 //   return (
-//     <div 
+//     <div
 //       className={`bg-white rounded-lg sm:rounded-xl p-3 sm:p-6 cursor-pointer transition-all duration-200 relative ${
-//         isSelected 
-//           ? 'shadow-lg ring-2 ring-blue-500' 
+//         isSelected
+//           ? 'shadow-lg ring-2 ring-blue-500'
 //           : 'shadow-sm hover:shadow-md border border-gray-100'
 //       }`}
 //       onClick={onClick}
@@ -218,7 +215,7 @@ export default OpportunityCard;
 //           />
 //         </button>
 //       )}
-      
+
 //       {/* Applied Badge */}
 //       {isApplied && (
 //         <div className="absolute top-2 right-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full z-10">
@@ -227,13 +224,13 @@ export default OpportunityCard;
 //       )}
 //       <div className="flex flex-col items-center text-center space-y-2.5 sm:space-y-4">
 //         {/* Company Logo */}
-//         <div 
+//         <div
 //           className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-white font-bold text-lg sm:text-xl shadow-sm"
 //           style={{ backgroundColor: opportunity.company_logo ? 'transparent' : logoColor }}
 //         >
 //           {opportunity.company_logo ? (
-//             <img 
-//               src={opportunity.company_logo} 
+//             <img
+//               src={opportunity.company_logo}
 //               alt={opportunity.company_name}
 //               className="w-full h-full object-cover rounded-2xl"
 //             />

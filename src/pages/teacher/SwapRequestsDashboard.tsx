@@ -74,7 +74,7 @@ const SwapRequestsDashboard: React.FC = () => {
     setLoading(true);
     try {
       const { data } = await getSwapRequests(educatorId);
-      
+
       if (data) {
         // Load detailed information for each request
         const detailedRequests = await Promise.all(
@@ -87,11 +87,13 @@ const SwapRequestsDashboard: React.FC = () => {
         // Filter based on active tab
         let filtered = detailedRequests;
         if (activeTab === 'received') {
-          filtered = detailedRequests.filter(r => r.target_faculty_id === educatorId && r.status === 'pending');
+          filtered = detailedRequests.filter(
+            (r) => r.target_faculty_id === educatorId && r.status === 'pending'
+          );
         } else if (activeTab === 'sent') {
-          filtered = detailedRequests.filter(r => r.requester_faculty_id === educatorId);
+          filtered = detailedRequests.filter((r) => r.requester_faculty_id === educatorId);
         } else {
-          filtered = detailedRequests.filter(r => r.status !== 'pending');
+          filtered = detailedRequests.filter((r) => r.status !== 'pending');
         }
 
         setRequests(filtered as ClassSwapRequestWithDetails[]);
@@ -160,9 +162,9 @@ const SwapRequestsDashboard: React.FC = () => {
     }
   };
 
-  const filteredRequests = requests.filter(req => {
+  const filteredRequests = requests.filter((req) => {
     if (!searchQuery.trim()) return true;
-    
+
     const query = searchQuery.toLowerCase();
     return (
       req.requester_slot?.subject_name.toLowerCase().includes(query) ||
@@ -213,28 +215,36 @@ const SwapRequestsDashboard: React.FC = () => {
                   <Clock className="h-4 w-4" />
                   <span className="text-xs font-medium">Pending</span>
                 </div>
-                <div className="text-2xl font-bold text-yellow-900">{statistics.pending_requests}</div>
+                <div className="text-2xl font-bold text-yellow-900">
+                  {statistics.pending_requests}
+                </div>
               </div>
               <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border border-green-200">
                 <div className="flex items-center gap-2 text-green-600 mb-1">
                   <CheckCircle className="h-4 w-4" />
                   <span className="text-xs font-medium">Accepted</span>
                 </div>
-                <div className="text-2xl font-bold text-green-900">{statistics.accepted_requests}</div>
+                <div className="text-2xl font-bold text-green-900">
+                  {statistics.accepted_requests}
+                </div>
               </div>
               <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-lg p-4 border border-red-200">
                 <div className="flex items-center gap-2 text-red-600 mb-1">
                   <XCircle className="h-4 w-4" />
                   <span className="text-xs font-medium">Rejected</span>
                 </div>
-                <div className="text-2xl font-bold text-red-900">{statistics.rejected_requests}</div>
+                <div className="text-2xl font-bold text-red-900">
+                  {statistics.rejected_requests}
+                </div>
               </div>
               <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200">
                 <div className="flex items-center gap-2 text-purple-600 mb-1">
                   <CheckCircle className="h-4 w-4" />
                   <span className="text-xs font-medium">Completed</span>
                 </div>
-                <div className="text-2xl font-bold text-purple-900">{statistics.completed_swaps}</div>
+                <div className="text-2xl font-bold text-purple-900">
+                  {statistics.completed_swaps}
+                </div>
               </div>
             </div>
           )}
@@ -310,8 +320,9 @@ const SwapRequestsDashboard: React.FC = () => {
                 <RefreshCw className="h-12 w-12 mx-auto mb-4 text-gray-400" />
                 <p className="text-lg font-medium text-gray-900">No requests found</p>
                 <p className="text-sm text-gray-500 mt-2">
-                  {activeTab === 'received' && 'You have no pending swap requests from other educators.'}
-                  {activeTab === 'sent' && 'You haven\'t sent any swap requests yet.'}
+                  {activeTab === 'received' &&
+                    'You have no pending swap requests from other educators.'}
+                  {activeTab === 'sent' && "You haven't sent any swap requests yet."}
                   {activeTab === 'history' && 'No completed or cancelled requests.'}
                 </p>
               </div>

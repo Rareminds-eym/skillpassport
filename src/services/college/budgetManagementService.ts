@@ -1,10 +1,5 @@
 import { supabase } from '../../lib/supabaseClient';
-import type { 
-  DepartmentBudget, 
-  Expenditure, 
-  BudgetReport, 
-  ApiResponse 
-} from '../../types/college';
+import type { DepartmentBudget, Expenditure, BudgetReport, ApiResponse } from '../../types/college';
 
 /**
  * Budget Management Service
@@ -204,9 +199,7 @@ export const budgetManagementService = {
 
       if (error) throw error;
 
-      const budgetHead = (budget.budget_heads || []).find(
-        (head: any) => head.id === budgetHeadId
-      );
+      const budgetHead = (budget.budget_heads || []).find((head: any) => head.id === budgetHeadId);
 
       if (!budgetHead) {
         return { success: true, data: false };

@@ -1,29 +1,29 @@
 /**
  * BulkPurchaseWizard Component
- * 
+ *
  * A multi-step wizard for organization admins to purchase subscriptions in bulk.
  * Steps:
  * 1. Plan Selection - Choose subscription plan and member type
  * 2. Seat Configuration - Enter seat count, view volume discounts
  * 3. Member Selection - Auto-assign, select specific members, or create pool
  * 4. Review & Payment - Summary and Razorpay integration
- * 
+ *
  * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 2.1, 2.4, 8.1, 8.2, 8.3, 10.3, 11.1, 11.2, 11.3
  */
 
 import {
-    ArrowLeft,
-    ArrowRight,
-    Building2,
-    Check,
-    CheckCircle2,
-    CreditCard,
-    Loader2,
-    Settings,
-    ShoppingCart,
-    UserPlus,
-    Users,
-    X,
+  ArrowLeft,
+  ArrowRight,
+  Building2,
+  Check,
+  CheckCircle2,
+  CreditCard,
+  Loader2,
+  Settings,
+  ShoppingCart,
+  UserPlus,
+  Users,
+  X,
 } from 'lucide-react';
 import { memo, useCallback, useMemo, useState } from 'react';
 import AddStudentModal from '../../educator/modals/Addstudentmodal';
@@ -57,17 +57,17 @@ interface WizardState {
   selectedPlan: Plan | null;
   memberType: MemberType;
   billingCycle: 'monthly' | 'annual';
-  
+
   // Step 2: Seat Configuration
   seatCount: number;
   pricing: PricingBreakdownData | null;
-  
+
   // Step 3: Member Selection
   assignmentMode: AssignmentMode;
   selectedMemberIds: string[];
   poolName: string;
   autoAssignNewMembers: boolean;
-  
+
   // Step 4: Review & Payment
   billingEmail: string;
   billingName: string;
@@ -158,17 +158,18 @@ function BulkPurchaseWizard({
         return state.seatCount > 0 && state.pricing !== null;
       case 3:
         if (state.assignmentMode === 'select-specific') {
-          return state.selectedMemberIds.length > 0 && 
-                 state.selectedMemberIds.length <= state.seatCount;
+          return (
+            state.selectedMemberIds.length > 0 && state.selectedMemberIds.length <= state.seatCount
+          );
         }
         if (state.assignmentMode === 'create-pool') {
           return state.poolName.trim().length > 0;
         }
         return true; // auto-all is always valid
       case 4:
-        return state.billingEmail.trim() !== '' && 
-               state.billingName.trim() !== '' && 
-               state.agreeToTerms;
+        return (
+          state.billingEmail.trim() !== '' && state.billingName.trim() !== '' && state.agreeToTerms
+        );
       default:
         return false;
     }
@@ -191,12 +192,9 @@ function BulkPurchaseWizard({
     setState((prev) => ({ ...prev, selectedPlan: plan }));
   }, []);
 
-  const handleSeatCountChange = useCallback(
-    (count: number, pricing: PricingBreakdownData) => {
-      setState((prev) => ({ ...prev, seatCount: count, pricing }));
-    },
-    []
-  );
+  const handleSeatCountChange = useCallback((count: number, pricing: PricingBreakdownData) => {
+    setState((prev) => ({ ...prev, seatCount: count, pricing }));
+  }, []);
 
   const handleMemberToggle = useCallback((memberId: string) => {
     setState((prev) => {
@@ -294,15 +292,11 @@ function BulkPurchaseWizard({
                         isCompleted
                           ? 'bg-green-500 text-white'
                           : isActive
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-200 text-gray-500'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-200 text-gray-500'
                       }`}
                     >
-                      {isCompleted ? (
-                        <Check className="w-4 h-4" />
-                      ) : (
-                        <Icon className="w-4 h-4" />
-                      )}
+                      {isCompleted ? <Check className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
                     </div>
                     <span
                       className={`text-sm font-medium hidden sm:block ${
@@ -336,7 +330,9 @@ function BulkPurchaseWizard({
               billingCycle={state.billingCycle}
               onPlanSelect={handlePlanSelect}
               onMemberTypeChange={(type) => setState((prev) => ({ ...prev, memberType: type }))}
-              onBillingCycleChange={(cycle) => setState((prev) => ({ ...prev, billingCycle: cycle }))}
+              onBillingCycleChange={(cycle) =>
+                setState((prev) => ({ ...prev, billingCycle: cycle }))
+              }
             />
           )}
 
@@ -361,12 +357,16 @@ function BulkPurchaseWizard({
               poolName={state.poolName}
               autoAssignNewMembers={state.autoAssignNewMembers}
               isLoading={isLoading}
-              onAssignmentModeChange={(mode) => setState((prev) => ({ ...prev, assignmentMode: mode }))}
+              onAssignmentModeChange={(mode) =>
+                setState((prev) => ({ ...prev, assignmentMode: mode }))
+              }
               onMemberToggle={handleMemberToggle}
               onSelectAll={handleSelectAll}
               onClearSelection={handleClearSelection}
               onPoolNameChange={(name) => setState((prev) => ({ ...prev, poolName: name }))}
-              onAutoAssignChange={(auto) => setState((prev) => ({ ...prev, autoAssignNewMembers: auto }))}
+              onAutoAssignChange={(auto) =>
+                setState((prev) => ({ ...prev, autoAssignNewMembers: auto }))
+              }
               onAddStudent={() => setShowAddStudentModal(true)}
             />
           )}
@@ -378,10 +378,14 @@ function BulkPurchaseWizard({
               state={state}
               filteredMembers={filteredMembers}
               organizationName={organizationName}
-              onBillingEmailChange={(email) => setState((prev) => ({ ...prev, billingEmail: email }))}
+              onBillingEmailChange={(email) =>
+                setState((prev) => ({ ...prev, billingEmail: email }))
+              }
               onBillingNameChange={(name) => setState((prev) => ({ ...prev, billingName: name }))}
               onGstNumberChange={(gst) => setState((prev) => ({ ...prev, gstNumber: gst }))}
-              onAgreeToTermsChange={(agree) => setState((prev) => ({ ...prev, agreeToTerms: agree }))}
+              onAgreeToTermsChange={(agree) =>
+                setState((prev) => ({ ...prev, agreeToTerms: agree }))
+              }
             />
           )}
         </div>
@@ -463,9 +467,7 @@ function Step1PlanSelection({
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">
-          Choose a Subscription Plan
-        </h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">Choose a Subscription Plan</h3>
         <p className="text-sm text-gray-500">
           Select the plan that best fits your organization's needs
         </p>
@@ -473,9 +475,7 @@ function Step1PlanSelection({
 
       {/* Billing Cycle Toggle */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Billing Cycle
-        </label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Billing Cycle</label>
         <div className="flex gap-2">
           <button
             type="button"
@@ -517,9 +517,8 @@ function Step1PlanSelection({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {plans.map((plan) => {
           const isSelected = selectedPlan?.id === plan.id;
-          const displayPrice = billingCycle === 'annual' 
-            ? Math.round(plan.price * 0.83) 
-            : plan.price;
+          const displayPrice =
+            billingCycle === 'annual' ? Math.round(plan.price * 0.83) : plan.price;
 
           return (
             <button
@@ -533,19 +532,15 @@ function Step1PlanSelection({
             >
               <div className="flex items-start justify-between mb-3">
                 <h4 className="font-semibold text-gray-900">{plan.name}</h4>
-                {isSelected && (
-                  <CheckCircle2 className="w-5 h-5 text-blue-600" />
-                )}
+                {isSelected && <CheckCircle2 className="w-5 h-5 text-blue-600" />}
               </div>
               <div className="mb-3">
-                <span className="text-2xl font-bold text-gray-900">
-                  ₹{displayPrice}
+                <span className="text-2xl font-bold text-gray-900">₹{displayPrice}</span>
+                <span className="text-sm text-gray-500">
+                  /seat/{billingCycle === 'annual' ? 'year' : 'month'}
                 </span>
-                <span className="text-sm text-gray-500">/seat/{billingCycle === 'annual' ? 'year' : 'month'}</span>
               </div>
-              {plan.description && (
-                <p className="text-sm text-gray-500 mb-3">{plan.description}</p>
-              )}
+              {plan.description && <p className="text-sm text-gray-500 mb-3">{plan.description}</p>}
               <ul className="space-y-1">
                 {plan.features.slice(0, 3).map((feature, idx) => (
                   <li key={idx} className="flex items-center gap-2 text-sm text-gray-600">
@@ -561,7 +556,6 @@ function Step1PlanSelection({
     </div>
   );
 }
-
 
 // Step 2: Seat Configuration Component
 interface Step2Props {
@@ -579,16 +573,12 @@ function Step2SeatConfiguration({
   billingCycle,
   onSeatCountChange,
 }: Step2Props) {
-  const displayPrice = billingCycle === 'annual' 
-    ? Math.round(plan.price * 0.83) 
-    : plan.price;
+  const displayPrice = billingCycle === 'annual' ? Math.round(plan.price * 0.83) : plan.price;
 
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">
-          Configure Seat Count
-        </h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">Configure Seat Count</h3>
         <p className="text-sm text-gray-500">
           Choose how many seats you need. Volume discounts apply automatically.
         </p>
@@ -602,17 +592,13 @@ function Step2SeatConfiguration({
         </div>
         <div className="text-right">
           <p className="text-sm text-blue-600 font-medium">Base Price</p>
-          <p className="text-lg font-semibold text-gray-900">
-            ₹{displayPrice}/seat
-          </p>
+          <p className="text-lg font-semibold text-gray-900">₹{displayPrice}/seat</p>
         </div>
       </div>
 
       {/* Seat Selector */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-3">
-          Number of Seats
-        </label>
+        <label className="block text-sm font-medium text-gray-700 mb-3">Number of Seats</label>
         <SeatSelector
           basePrice={displayPrice}
           initialSeats={seatCount}
@@ -623,28 +609,28 @@ function Step2SeatConfiguration({
 
       {/* Pricing Breakdown */}
       {pricing && (
-        <PricingBreakdown
-          pricing={pricing}
-          billingCycle={billingCycle}
-          showPerSeatPrice={true}
-        />
+        <PricingBreakdown pricing={pricing} billingCycle={billingCycle} showPerSeatPrice={true} />
       )}
 
       {/* Volume Discount Info */}
       <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4">
-        <h4 className="text-sm font-medium text-green-800 mb-2">
-          Volume Discount Tiers
-        </h4>
+        <h4 className="text-sm font-medium text-green-800 mb-2">Volume Discount Tiers</h4>
         <div className="grid grid-cols-3 gap-4 text-center">
-          <div className={`p-2 rounded-lg ${seatCount >= 50 && seatCount < 100 ? 'bg-green-100 ring-2 ring-green-400' : 'bg-white/50'}`}>
+          <div
+            className={`p-2 rounded-lg ${seatCount >= 50 && seatCount < 100 ? 'bg-green-100 ring-2 ring-green-400' : 'bg-white/50'}`}
+          >
             <p className="text-lg font-bold text-green-700">10%</p>
             <p className="text-xs text-green-600">50+ seats</p>
           </div>
-          <div className={`p-2 rounded-lg ${seatCount >= 100 && seatCount < 500 ? 'bg-green-100 ring-2 ring-green-400' : 'bg-white/50'}`}>
+          <div
+            className={`p-2 rounded-lg ${seatCount >= 100 && seatCount < 500 ? 'bg-green-100 ring-2 ring-green-400' : 'bg-white/50'}`}
+          >
             <p className="text-lg font-bold text-green-700">20%</p>
             <p className="text-xs text-green-600">100+ seats</p>
           </div>
-          <div className={`p-2 rounded-lg ${seatCount >= 500 ? 'bg-green-100 ring-2 ring-green-400' : 'bg-white/50'}`}>
+          <div
+            className={`p-2 rounded-lg ${seatCount >= 500 ? 'bg-green-100 ring-2 ring-green-400' : 'bg-white/50'}`}
+          >
             <p className="text-lg font-bold text-green-700">30%</p>
             <p className="text-xs text-green-600">500+ seats</p>
           </div>
@@ -694,9 +680,7 @@ function Step3MemberSelection({
     if (!searchQuery.trim()) return members;
     const query = searchQuery.toLowerCase();
     return members.filter(
-      (m) =>
-        m.name.toLowerCase().includes(query) ||
-        m.email.toLowerCase().includes(query)
+      (m) => m.name.toLowerCase().includes(query) || m.email.toLowerCase().includes(query)
     );
   }, [members, searchQuery]);
 
@@ -751,9 +735,7 @@ function Step3MemberSelection({
             <CheckCircle2 className="w-5 h-5 text-blue-600" />
             <span className="font-medium text-gray-900">Select Specific</span>
           </div>
-          <p className="text-sm text-gray-500">
-            Choose specific members to receive licenses
-          </p>
+          <p className="text-sm text-gray-500">Choose specific members to receive licenses</p>
         </button>
 
         <button
@@ -768,9 +750,7 @@ function Step3MemberSelection({
             <Settings className="w-5 h-5 text-blue-600" />
             <span className="font-medium text-gray-900">Create Pool</span>
           </div>
-          <p className="text-sm text-gray-500">
-            Create a license pool for later assignment
-          </p>
+          <p className="text-sm text-gray-500">Create a license pool for later assignment</p>
         </button>
       </div>
 
@@ -786,7 +766,7 @@ function Step3MemberSelection({
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium text-gray-900">
-                  {members.length === 0 
+                  {members.length === 0
                     ? 'No members available to assign'
                     : `${Math.min(members.length, seatCount)} members will be assigned`}
                 </p>
@@ -794,8 +774,8 @@ function Step3MemberSelection({
                   {members.length === 0
                     ? 'Add students or educators to your organization first'
                     : members.length > seatCount
-                    ? `${members.length - seatCount} members won't receive licenses (not enough seats)`
-                    : 'All current members will receive licenses'}
+                      ? `${members.length - seatCount} members won't receive licenses (not enough seats)`
+                      : 'All current members will receive licenses'}
                 </p>
               </div>
               <label className="flex items-center gap-2 cursor-pointer">
@@ -855,7 +835,7 @@ function Step3MemberSelection({
               <div className="p-4 text-center text-gray-500">
                 <p className="mb-2">No members found</p>
                 <p className="text-xs text-gray-400 mb-3">
-                  {members.length === 0 
+                  {members.length === 0
                     ? 'Add students or educators to your organization first'
                     : 'Try a different search term'}
                 </p>
@@ -911,9 +891,7 @@ function Step3MemberSelection({
       {assignmentMode === 'create-pool' && (
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Pool Name
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Pool Name</label>
             <input
               type="text"
               placeholder="e.g., Computer Science Department, Grade 10"
@@ -937,8 +915,8 @@ function Step3MemberSelection({
 
           <div className="bg-amber-50 rounded-xl p-4">
             <p className="text-sm text-amber-800">
-              <strong>Note:</strong> Licenses will not be assigned immediately. 
-              You can assign them later from the License Pool Manager in your dashboard.
+              <strong>Note:</strong> Licenses will not be assigned immediately. You can assign them
+              later from the License Pool Manager in your dashboard.
             </p>
           </div>
         </div>
@@ -946,7 +924,6 @@ function Step3MemberSelection({
     </div>
   );
 }
-
 
 // Step 4: Review & Payment Component
 interface Step4Props {
@@ -981,14 +958,18 @@ function Step4ReviewPayment({
       default:
         return '';
     }
-  }, [state.assignmentMode, state.selectedMemberIds.length, state.poolName, filteredMembers.length, state.seatCount]);
+  }, [
+    state.assignmentMode,
+    state.selectedMemberIds.length,
+    state.poolName,
+    filteredMembers.length,
+    state.seatCount,
+  ]);
 
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">
-          Review Your Purchase
-        </h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">Review Your Purchase</h3>
         <p className="text-sm text-gray-500">
           Please review the details below before completing your purchase
         </p>
@@ -997,7 +978,7 @@ function Step4ReviewPayment({
       {/* Order Summary */}
       <div className="bg-gray-50 rounded-xl p-5 space-y-4">
         <h4 className="font-medium text-gray-900">Order Summary</h4>
-        
+
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <p className="text-gray-500">Organization</p>
@@ -1030,7 +1011,9 @@ function Step4ReviewPayment({
           <div className="border-t border-gray-200 pt-4 mt-4">
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-500">Subtotal ({state.seatCount} seats × ₹{state.pricing.basePrice})</span>
+                <span className="text-gray-500">
+                  Subtotal ({state.seatCount} seats × ₹{state.pricing.basePrice})
+                </span>
                 <span className="text-gray-900">₹{state.pricing.subtotal.toLocaleString()}</span>
               </div>
               {state.pricing.discountPercentage > 0 && (
@@ -1055,7 +1038,7 @@ function Step4ReviewPayment({
       {/* Billing Information */}
       <div className="space-y-4">
         <h4 className="font-medium text-gray-900">Billing Information</h4>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1117,8 +1100,8 @@ function Step4ReviewPayment({
             <a href="/privacy" className="text-blue-600 hover:underline" target="_blank">
               Privacy Policy
             </a>
-            . I understand that this is a recurring subscription that will auto-renew 
-            unless cancelled.
+            . I understand that this is a recurring subscription that will auto-renew unless
+            cancelled.
           </span>
         </label>
       </div>
@@ -1126,7 +1109,11 @@ function Step4ReviewPayment({
       {/* Payment Security Notice */}
       <div className="flex items-center gap-2 text-sm text-gray-500">
         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-          <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+          <path
+            fillRule="evenodd"
+            d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+            clipRule="evenodd"
+          />
         </svg>
         <span>
           Secure payment powered by Razorpay. Your payment information is encrypted and secure.

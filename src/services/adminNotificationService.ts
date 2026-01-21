@@ -28,7 +28,7 @@ export class AdminNotificationService {
           type,
           title,
           message,
-          read: false
+          read: false,
         })
         .select()
         .single();
@@ -172,12 +172,7 @@ export class AdminNotificationService {
         return;
       }
 
-      await this.createNotification(
-        collegeAdmin.id,
-        type,
-        title,
-        message
-      );
+      await this.createNotification(collegeAdmin.id, type, title, message);
     } catch (error) {
       console.error('Failed to notify college admin:', error);
     }
@@ -188,7 +183,13 @@ export class AdminNotificationService {
    */
   static async notifyApprovalStatus(
     studentId: string,
-    type: 'training_approved' | 'training_rejected' | 'experience_approved' | 'experience_rejected' | 'project_approved' | 'project_rejected',
+    type:
+      | 'training_approved'
+      | 'training_rejected'
+      | 'experience_approved'
+      | 'experience_rejected'
+      | 'project_approved'
+      | 'project_rejected',
     itemTitle: string,
     itemId: string,
     notes?: string
@@ -207,10 +208,13 @@ export class AdminNotificationService {
       }
 
       const isApproved = type.includes('approved');
-      const itemType = type.includes('training') ? 'training' : 
-                      type.includes('experience') ? 'experience' : 'project';
+      const itemType = type.includes('training')
+        ? 'training'
+        : type.includes('experience')
+          ? 'experience'
+          : 'project';
 
-      const title = isApproved 
+      const title = isApproved
         ? `${itemType.charAt(0).toUpperCase() + itemType.slice(1)} Approved`
         : `${itemType.charAt(0).toUpperCase() + itemType.slice(1)} Rejected`;
 
@@ -218,12 +222,7 @@ export class AdminNotificationService {
         ? `Your ${itemType} "${itemTitle}" has been approved`
         : `Your ${itemType} "${itemTitle}" was rejected${notes ? `: ${notes}` : ''}`;
 
-      await this.createNotification(
-        student.user_id,
-        type,
-        title,
-        message
-      );
+      await this.createNotification(student.user_id, type, title, message);
     } catch (error) {
       console.error('Failed to notify approval status:', error);
     }
@@ -238,7 +237,7 @@ export class AdminNotificationService {
     adminType?: 'school_admin' | 'college_admin' | 'university_admin'
   ) {
     try {
-      let adminUsers: any[] = [];
+      const adminUsers: any[] = [];
 
       if (!adminType || adminType === 'school_admin') {
         const { data: schoolAdmins } = await supabase
@@ -265,18 +264,16 @@ export class AdminNotificationService {
       }
 
       // Create notifications for all admin users
-      const notifications = adminUsers.map(admin => ({
+      const notifications = adminUsers.map((admin) => ({
         recipient_id: admin.user_id,
         type: 'system_alert' as AdminNotificationType,
         title,
         message,
-        read: false
+        read: false,
       }));
 
       if (notifications.length > 0) {
-        const { error } = await supabase
-          .from('notifications')
-          .insert(notifications);
+        const { error } = await supabase.from('notifications').insert(notifications);
 
         if (error) {
           console.error('Error creating system alerts:', error);

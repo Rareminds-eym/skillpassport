@@ -1,36 +1,36 @@
 import {
-    BookOpen,
-    Brain,
-    Check,
-    ChevronDown,
-    Download,
-    FileText,
-    Lightbulb,
-    List,
-    MessageSquare,
-    Mic,
-    Pin,
-    Play,
-    RefreshCw,
-    RotateCcw,
-    Shuffle,
-    Sparkles,
-    Tag,
-    Target,
-    Trophy,
-    X,
-    Zap,
-    type LucideIcon
+  BookOpen,
+  Brain,
+  Check,
+  ChevronDown,
+  Download,
+  FileText,
+  Lightbulb,
+  List,
+  MessageSquare,
+  Mic,
+  Pin,
+  Play,
+  RefreshCw,
+  RotateCcw,
+  Shuffle,
+  Sparkles,
+  Tag,
+  Target,
+  Trophy,
+  X,
+  Zap,
+  type LucideIcon,
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import {
-    VideoSummary,
-    downloadSRT,
-    downloadVTT,
-    formatTimestamp,
-    getSentimentEmoji,
-    getVideoSummaryRobust,
-    processVideo
+  VideoSummary,
+  downloadSRT,
+  downloadVTT,
+  formatTimestamp,
+  getSentimentEmoji,
+  getVideoSummaryRobust,
+  processVideo,
 } from '../../services/videoSummarizerService';
 
 interface VideoLearningPanelProps {
@@ -56,15 +56,31 @@ const PROCESSING_STEPS = [
 // Error handler
 const getUserFriendlyError = (error: string) => {
   if (error.includes('504') || error.includes('timeout')) {
-    return { message: 'Video too long! 😅', tips: ['Try a shorter video (under 5 min)', 'Break long videos into parts'], emoji: '⏱️' };
+    return {
+      message: 'Video too long! 😅',
+      tips: ['Try a shorter video (under 5 min)', 'Break long videos into parts'],
+      emoji: '⏱️',
+    };
   }
   if (error.includes('No speech')) {
-    return { message: 'No talking detected! 🔇', tips: ['This video needs spoken content', 'Music-only videos won\'t work'], emoji: '🎵' };
+    return {
+      message: 'No talking detected! 🔇',
+      tips: ['This video needs spoken content', "Music-only videos won't work"],
+      emoji: '🎵',
+    };
   }
   if (error.includes('network') || error.includes('fetch')) {
-    return { message: 'Connection lost! 📡', tips: ['Check your internet', 'Try again in a moment'], emoji: '🌐' };
+    return {
+      message: 'Connection lost! 📡',
+      tips: ['Check your internet', 'Try again in a moment'],
+      emoji: '🌐',
+    };
   }
-  return { message: 'Something went wrong 😕', tips: ['Try refreshing', 'Try a different video'], emoji: '🔧' };
+  return {
+    message: 'Something went wrong 😕',
+    tips: ['Try refreshing', 'Try a different video'],
+    emoji: '🔧',
+  };
 };
 
 // Tab configuration with icons
@@ -93,20 +109,24 @@ const ErrorDisplay: React.FC<{
       <h3 className="text-xl font-bold text-slate-800 mb-2">{err.message}</h3>
       <div className="max-w-xs mx-auto mb-4">
         {err.tips.map((tip, i) => (
-          <p key={i} className="text-slate-500 text-sm">• {tip}</p>
+          <p key={i} className="text-slate-500 text-sm">
+            • {tip}
+          </p>
         ))}
       </div>
-      
+
       {/* Collapsible Technical Details */}
       <div className="max-w-md mx-auto mb-6">
         <button
           onClick={() => setShowDetails(!showDetails)}
           className="text-sm text-slate-400 hover:text-slate-600 flex items-center gap-1 mx-auto"
         >
-          <ChevronDown className={`w-4 h-4 transition-transform ${showDetails ? 'rotate-180' : ''}`} />
+          <ChevronDown
+            className={`w-4 h-4 transition-transform ${showDetails ? 'rotate-180' : ''}`}
+          />
           {showDetails ? 'Hide' : 'Show'} technical details
         </button>
-        
+
         {showDetails && (
           <div className="mt-3 p-4 bg-slate-900 rounded-xl text-left overflow-x-auto">
             <p className="text-slate-400 text-xs mb-1">Error Message:</p>
@@ -116,7 +136,7 @@ const ErrorDisplay: React.FC<{
           </div>
         )}
       </div>
-      
+
       <div className="flex gap-3 justify-center">
         <button
           onClick={onRetry}
@@ -168,23 +188,23 @@ const QuizTab: React.FC<{
     if (selectedAnswer !== null) return;
     setSelectedAnswer(index);
     setShowResult(true);
-    
+
     const correct = index === currentQ.correctAnswer;
     if (correct) {
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 1500);
     }
-    
-    setScore(prev => ({
+
+    setScore((prev) => ({
       correct: prev.correct + (correct ? 1 : 0),
       total: prev.total + 1,
-      xp: prev.xp + (correct ? 10 : 2)
+      xp: prev.xp + (correct ? 10 : 2),
     }));
   };
 
   const nextQuestion = () => {
     if (currentIndex < questions.length - 1) {
-      setCurrentIndex(prev => prev + 1);
+      setCurrentIndex((prev) => prev + 1);
       setSelectedAnswer(null);
       setShowResult(false);
     }
@@ -211,7 +231,7 @@ const QuizTab: React.FC<{
                 top: `${Math.random() * 50}%`,
                 backgroundColor: ['#6366f1', '#8b5cf6', '#34d399', '#fbbf24'][i % 4],
                 animationDelay: `${Math.random() * 0.5}s`,
-                animationDuration: `${0.5 + Math.random() * 0.5}s`
+                animationDuration: `${0.5 + Math.random() * 0.5}s`,
               }}
             />
           ))}
@@ -229,7 +249,7 @@ const QuizTab: React.FC<{
             {score.correct}/{score.total} correct
           </span>
         </div>
-        <button 
+        <button
           onClick={resetQuiz}
           className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
         >
@@ -240,11 +260,13 @@ const QuizTab: React.FC<{
       {/* Progress */}
       <div className="mb-6">
         <div className="flex items-center justify-between text-sm mb-2">
-          <span className="font-medium text-slate-700">Question {currentIndex + 1} of {questions.length}</span>
+          <span className="font-medium text-slate-700">
+            Question {currentIndex + 1} of {questions.length}
+          </span>
           <span className="text-indigo-600 font-semibold">+10 XP</span>
         </div>
         <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-          <div 
+          <div
             className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full transition-all duration-500 ease-out"
             style={{ width: `${progress}%` }}
           />
@@ -253,11 +275,9 @@ const QuizTab: React.FC<{
 
       {/* Question Card */}
       <div className="bg-gradient-to-br from-slate-50 to-indigo-50/50 rounded-2xl p-6 mb-6 border border-slate-100">
-        <p className="text-lg font-medium text-slate-800 leading-relaxed">
-          {currentQ.question}
-        </p>
+        <p className="text-lg font-medium text-slate-800 leading-relaxed">{currentQ.question}</p>
         {currentQ.timestamp && (
-          <button 
+          <button
             onClick={() => onSeekTo?.(currentQ.timestamp!)}
             className="mt-3 text-sm text-indigo-500 hover:text-indigo-600 flex items-center gap-1"
           >
@@ -272,8 +292,9 @@ const QuizTab: React.FC<{
           const letter = String.fromCharCode(65 + index);
           const isSelected = selectedAnswer === index;
           const isCorrectOption = index === currentQ.correctAnswer;
-          
-          let styles = 'border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 hover:shadow-md hover:shadow-indigo-500/10';
+
+          let styles =
+            'border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 hover:shadow-md hover:shadow-indigo-500/10';
           if (showResult) {
             if (isCorrectOption) {
               styles = 'border-emerald-400 bg-emerald-50 shadow-lg shadow-emerald-500/20';
@@ -292,13 +313,22 @@ const QuizTab: React.FC<{
               className={`w-full text-left p-4 rounded-2xl border-2 transition-all duration-200 ${styles}`}
             >
               <div className="flex items-center gap-4">
-                <span className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold transition-all ${
-                  showResult && isCorrectOption ? 'bg-emerald-500 text-white' :
-                  showResult && isSelected ? 'bg-rose-500 text-white' :
-                  'bg-slate-100 text-slate-600'
-                }`}>
-                  {showResult && isCorrectOption ? <Check className="w-5 h-5" /> :
-                   showResult && isSelected ? <X className="w-5 h-5" /> : letter}
+                <span
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold transition-all ${
+                    showResult && isCorrectOption
+                      ? 'bg-emerald-500 text-white'
+                      : showResult && isSelected
+                        ? 'bg-rose-500 text-white'
+                        : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  {showResult && isCorrectOption ? (
+                    <Check className="w-5 h-5" />
+                  ) : showResult && isSelected ? (
+                    <X className="w-5 h-5" />
+                  ) : (
+                    letter
+                  )}
                 </span>
                 <span className="text-slate-700 flex-1">{option}</span>
               </div>
@@ -309,9 +339,15 @@ const QuizTab: React.FC<{
 
       {/* Explanation */}
       {showResult && (
-        <div className={`p-4 rounded-2xl mb-6 ${isCorrect ? 'bg-emerald-50 border border-emerald-200' : 'bg-amber-50 border border-amber-200'}`}>
+        <div
+          className={`p-4 rounded-2xl mb-6 ${isCorrect ? 'bg-emerald-50 border border-emerald-200' : 'bg-amber-50 border border-amber-200'}`}
+        >
           <div className="flex items-start gap-3">
-            {isCorrect ? <Trophy className="w-6 h-6 text-emerald-500" /> : <Lightbulb className="w-6 h-6 text-amber-500" />}
+            {isCorrect ? (
+              <Trophy className="w-6 h-6 text-emerald-500" />
+            ) : (
+              <Lightbulb className="w-6 h-6 text-amber-500" />
+            )}
             <div>
               <p className={`font-semibold ${isCorrect ? 'text-emerald-700' : 'text-amber-700'}`}>
                 {isCorrect ? 'Awesome! +10 XP' : 'Good try! +2 XP'}
@@ -325,7 +361,11 @@ const QuizTab: React.FC<{
       {/* Navigation */}
       <div className="flex justify-between">
         <button
-          onClick={() => { setCurrentIndex(prev => Math.max(0, prev - 1)); setSelectedAnswer(null); setShowResult(false); }}
+          onClick={() => {
+            setCurrentIndex((prev) => Math.max(0, prev - 1));
+            setSelectedAnswer(null);
+            setShowResult(false);
+          }}
           disabled={currentIndex === 0}
           className="px-5 py-2.5 text-slate-600 hover:bg-slate-100 rounded-xl disabled:opacity-40 transition-all"
         >
@@ -339,17 +379,18 @@ const QuizTab: React.FC<{
           >
             Next →
           </button>
-        ) : showResult && (
-          <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-400 to-orange-400 rounded-xl text-white font-medium">
-            <Trophy className="w-5 h-5" />
-            Complete! {score.xp} XP earned
-          </div>
+        ) : (
+          showResult && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-400 to-orange-400 rounded-xl text-white font-medium">
+              <Trophy className="w-5 h-5" />
+              Complete! {score.xp} XP earned
+            </div>
+          )
         )}
       </div>
     </div>
   );
 };
-
 
 // ============ FLASHCARDS COMPONENT (Modern Stack) ============
 const FlashcardsTab: React.FC<{
@@ -377,18 +418,21 @@ const FlashcardsTab: React.FC<{
   const progress = (mastered.size / flashcards.length) * 100;
 
   const handleMastered = () => {
-    setMastered(prev => new Set([...prev, currentIndex]));
+    setMastered((prev) => new Set([...prev, currentIndex]));
     nextCard();
   };
 
   const nextCard = () => {
     setIsFlipped(false);
-    setTimeout(() => setCurrentIndex(prev => (prev + 1) % flashcards.length), 200);
+    setTimeout(() => setCurrentIndex((prev) => (prev + 1) % flashcards.length), 200);
   };
 
   const prevCard = () => {
     setIsFlipped(false);
-    setTimeout(() => setCurrentIndex(prev => (prev - 1 + flashcards.length) % flashcards.length), 200);
+    setTimeout(
+      () => setCurrentIndex((prev) => (prev - 1 + flashcards.length) % flashcards.length),
+      200
+    );
   };
 
   return (
@@ -406,12 +450,21 @@ const FlashcardsTab: React.FC<{
           )}
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => setCurrentIndex(Math.floor(Math.random() * flashcards.length))} 
-            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all" title="Shuffle">
+          <button
+            onClick={() => setCurrentIndex(Math.floor(Math.random() * flashcards.length))}
+            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
+            title="Shuffle"
+          >
             <Shuffle className="w-4 h-4" />
           </button>
-          <button onClick={() => { setMastered(new Set()); setCurrentIndex(0); }} 
-            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all" title="Reset">
+          <button
+            onClick={() => {
+              setMastered(new Set());
+              setCurrentIndex(0);
+            }}
+            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
+            title="Reset"
+          >
             <RotateCcw className="w-4 h-4" />
           </button>
         </div>
@@ -420,11 +473,13 @@ const FlashcardsTab: React.FC<{
       {/* Progress */}
       <div className="mb-6">
         <div className="flex items-center justify-between text-sm mb-2">
-          <span className="text-slate-500">Mastered: {mastered.size}/{flashcards.length}</span>
+          <span className="text-slate-500">
+            Mastered: {mastered.size}/{flashcards.length}
+          </span>
           <span className="text-emerald-600 font-medium">{Math.round(progress)}%</span>
         </div>
         <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-          <div 
+          <div
             className="h-full bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full transition-all duration-500"
             style={{ width: `${progress}%` }}
           />
@@ -432,24 +487,24 @@ const FlashcardsTab: React.FC<{
       </div>
 
       {/* Flashcard */}
-      <div 
+      <div
         onClick={() => setIsFlipped(!isFlipped)}
         className="relative cursor-pointer mb-6 perspective-1000"
         style={{ perspective: '1000px' }}
       >
-        <div 
+        <div
           className="relative w-full min-h-[220px] transition-transform duration-500"
-          style={{ 
+          style={{
             transformStyle: 'preserve-3d',
-            transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)'
+            transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
           }}
         >
           {/* Front */}
-          <div 
+          <div
             className="absolute inset-0 w-full h-full rounded-3xl p-8 flex flex-col items-center justify-center text-center shadow-2xl"
-            style={{ 
+            style={{
               backfaceVisibility: 'hidden',
-              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%)'
+              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%)',
             }}
           >
             <p className="text-xl font-semibold text-white leading-relaxed">{card.front}</p>
@@ -457,9 +512,9 @@ const FlashcardsTab: React.FC<{
               <span>👆</span> Tap to flip
             </div>
           </div>
-          
+
           {/* Back */}
-          <div 
+          <div
             className="absolute inset-0 w-full h-full bg-white rounded-3xl p-8 flex flex-col items-center justify-center text-center border-2 border-indigo-100 shadow-2xl"
             style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
           >
@@ -475,10 +530,13 @@ const FlashcardsTab: React.FC<{
 
       {/* Actions */}
       <div className="flex items-center justify-between gap-3">
-        <button onClick={prevCard} className="px-4 py-2.5 text-slate-600 hover:bg-slate-100 rounded-xl transition-all">
+        <button
+          onClick={prevCard}
+          className="px-4 py-2.5 text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
+        >
           ← Prev
         </button>
-        
+
         <div className="flex gap-2">
           <button
             onClick={nextCard}
@@ -493,8 +551,11 @@ const FlashcardsTab: React.FC<{
             <Check className="w-4 h-4" /> Got it!
           </button>
         </div>
-        
-        <button onClick={nextCard} className="px-4 py-2.5 text-slate-600 hover:bg-slate-100 rounded-xl transition-all">
+
+        <button
+          onClick={nextCard}
+          className="px-4 py-2.5 text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
+        >
           Next →
         </button>
       </div>
@@ -502,14 +563,13 @@ const FlashcardsTab: React.FC<{
   );
 };
 
-
 // ============ MAIN COMPONENT ============
 const VideoLearningPanel: React.FC<VideoLearningPanelProps> = ({
   videoUrl,
   lessonId,
   courseId,
   lessonTitle = 'Lesson',
-  onSeekTo
+  onSeekTo,
 }) => {
   const [summary, setSummary] = useState<VideoSummary | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -544,14 +604,14 @@ const VideoLearningPanel: React.FC<VideoLearningPanelProps> = ({
     try {
       // Use robust video summary lookup with fallback strategies
       const existing = await getVideoSummaryRobust(lessonId, videoUrl || undefined);
-      
+
       // If completed, show the summary
       if (existing?.processingStatus === 'completed') {
         setSummary(existing);
         setIsProcessing(false);
         return;
       }
-      
+
       // If failed, show the database error_message
       if (existing?.processingStatus === 'failed') {
         const dbErrorMsg = existing.errorMessage || 'Unknown error';
@@ -577,7 +637,10 @@ const VideoLearningPanel: React.FC<VideoLearningPanelProps> = ({
     if (onSeekTo) onSeekTo(time);
     else {
       const video = document.querySelector('video');
-      if (video) { video.currentTime = time; video.play(); }
+      if (video) {
+        video.currentTime = time;
+        video.play();
+      }
     }
   };
 
@@ -599,7 +662,7 @@ const VideoLearningPanel: React.FC<VideoLearningPanelProps> = ({
         >
           {/* Animated background */}
           <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity" />
-          
+
           <div className="relative flex items-center gap-4">
             <div className="w-12 h-12 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
               <Sparkles className="w-6 h-6" />
@@ -607,23 +670,26 @@ const VideoLearningPanel: React.FC<VideoLearningPanelProps> = ({
             <div className="text-left">
               <span className="font-bold text-lg block">✨ AI Study Buddy</span>
               <span className="text-indigo-100 text-sm">
-                {summary ? 'Click to expand • Summary ready' : 'Notes • Quiz • Flashcards • Transcript'}
+                {summary
+                  ? 'Click to expand • Summary ready'
+                  : 'Notes • Quiz • Flashcards • Transcript'}
               </span>
             </div>
           </div>
-          
+
           <div className="relative ml-auto flex items-center gap-2 px-3 py-1.5 bg-white/20 rounded-full text-sm font-medium">
             {summary ? (
               <>✓ Ready</>
             ) : (
-              <><Zap className="w-4 h-4" /> Start Learning</>
+              <>
+                <Zap className="w-4 h-4" /> Start Learning
+              </>
             )}
           </div>
         </button>
       </div>
     );
   }
-
 
   // Get badge counts
   const quizCount = summary?.quizQuestions?.length || 0;
@@ -636,7 +702,7 @@ const VideoLearningPanel: React.FC<VideoLearningPanelProps> = ({
         {/* Decorative elements */}
         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
         <div className="absolute bottom-0 left-20 w-20 h-20 bg-white/5 rounded-full translate-y-1/2" />
-        
+
         <div className="relative flex items-center justify-between">
           <div className="flex items-center gap-3">
             {/* AI Badge */}
@@ -644,7 +710,7 @@ const VideoLearningPanel: React.FC<VideoLearningPanelProps> = ({
               <Sparkles className="w-5 h-5 text-white animate-pulse" />
               <span className="font-bold text-white">AI Study Buddy</span>
             </div>
-            
+
             {/* Status badges */}
             {summary && (
               <>
@@ -653,13 +719,14 @@ const VideoLearningPanel: React.FC<VideoLearningPanelProps> = ({
                 </span>
                 {summary.sentimentData?.overall && (
                   <span className="px-2.5 py-1 bg-white/20 backdrop-blur-sm text-white text-xs font-medium rounded-full">
-                    {getSentimentEmoji(summary.sentimentData.overall)} {summary.sentimentData.overall}
+                    {getSentimentEmoji(summary.sentimentData.overall)}{' '}
+                    {summary.sentimentData.overall}
                   </span>
                 )}
               </>
             )}
           </div>
-          
+
           <div className="flex items-center gap-2">
             {/* Downloads dropdown */}
             {summary?.srtContent && (
@@ -670,20 +737,28 @@ const VideoLearningPanel: React.FC<VideoLearningPanelProps> = ({
                 >
                   <Download className="w-4 h-4" />
                   Subtitles
-                  <ChevronDown className={`w-3 h-3 transition-transform ${showDownloads ? 'rotate-180' : ''}`} />
+                  <ChevronDown
+                    className={`w-3 h-3 transition-transform ${showDownloads ? 'rotate-180' : ''}`}
+                  />
                 </button>
-                
+
                 {showDownloads && (
                   <div className="absolute right-0 top-full mt-2 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden z-10">
                     <button
-                      onClick={() => { downloadSRT(summary.srtContent!, `${lessonTitle}.srt`); setShowDownloads(false); }}
+                      onClick={() => {
+                        downloadSRT(summary.srtContent!, `${lessonTitle}.srt`);
+                        setShowDownloads(false);
+                      }}
                       className="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-indigo-50 flex items-center gap-2"
                     >
                       📄 Download SRT
                     </button>
                     {summary.vttContent && (
                       <button
-                        onClick={() => { downloadVTT(summary.vttContent!, `${lessonTitle}.vtt`); setShowDownloads(false); }}
+                        onClick={() => {
+                          downloadVTT(summary.vttContent!, `${lessonTitle}.vtt`);
+                          setShowDownloads(false);
+                        }}
                         className="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-indigo-50 flex items-center gap-2 border-t border-slate-100"
                       >
                         📄 Download VTT
@@ -693,7 +768,7 @@ const VideoLearningPanel: React.FC<VideoLearningPanelProps> = ({
                 )}
               </div>
             )}
-            
+
             <button
               onClick={() => setIsExpanded(false)}
               className="px-3 py-1.5 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-xl text-white text-sm transition-all"
@@ -707,26 +782,28 @@ const VideoLearningPanel: React.FC<VideoLearningPanelProps> = ({
       {/* ===== TAB BAR (Pill Style) ===== */}
       <div className="px-4 py-3 bg-slate-50 border-b border-slate-200">
         <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-2xl">
-          {TABS.map(tab => {
+          {TABS.map((tab) => {
             const isActive = activeTab === tab.id;
             const count = tab.id === 'quiz' ? quizCount : tab.id === 'flashcards' ? cardCount : 0;
-            
+
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
-                  isActive 
-                    ? 'bg-white text-indigo-600 shadow-md shadow-slate-200/50' 
+                  isActive
+                    ? 'bg-white text-indigo-600 shadow-md shadow-slate-200/50'
                     : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
                 }`}
               >
                 <tab.icon className="w-4 h-4" />
                 <span className="hidden sm:inline">{tab.label}</span>
                 {count > 0 && (
-                  <span className={`ml-1 px-1.5 py-0.5 text-xs rounded-full ${
-                    isActive ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-200 text-slate-500'
-                  }`}>
+                  <span
+                    className={`ml-1 px-1.5 py-0.5 text-xs rounded-full ${
+                      isActive ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-200 text-slate-500'
+                    }`}
+                  >
                     {count}
                   </span>
                 )}
@@ -736,14 +813,16 @@ const VideoLearningPanel: React.FC<VideoLearningPanelProps> = ({
         </div>
       </div>
 
-
       {/* ===== CONTENT AREA ===== */}
       <div className="max-h-[500px] overflow-y-auto">
         {/* Error State */}
         {error ? (
-          <ErrorDisplay 
-            error={error} 
-            onRetry={() => { setError(null); loadOrProcessVideo(); }}
+          <ErrorDisplay
+            error={error}
+            onRetry={() => {
+              setError(null);
+              loadOrProcessVideo();
+            }}
             onClose={() => setIsExpanded(false)}
           />
         ) : isProcessing ? (
@@ -752,7 +831,7 @@ const VideoLearningPanel: React.FC<VideoLearningPanelProps> = ({
             <div className="relative w-24 h-24 mx-auto mb-6">
               {/* Spinning ring */}
               <div className="absolute inset-0 rounded-full border-4 border-slate-100" />
-              <div 
+              <div
                 className="absolute inset-0 rounded-full border-4 border-transparent border-t-indigo-500 animate-spin"
                 style={{ animationDuration: '1s' }}
               />
@@ -761,13 +840,13 @@ const VideoLearningPanel: React.FC<VideoLearningPanelProps> = ({
                 {currentStep.emoji}
               </div>
             </div>
-            
+
             <p className="text-lg font-semibold text-slate-800 mb-2">{currentStep.label}</p>
-            
+
             {/* Progress bar */}
             <div className="w-64 mx-auto mb-4">
               <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div 
+                <div
                   className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full transition-all duration-700"
                   style={{ width: `${currentStep.progress}%` }}
                 />
@@ -777,11 +856,14 @@ const VideoLearningPanel: React.FC<VideoLearningPanelProps> = ({
                 {processingStartTime && <span>{getElapsedTime()}</span>}
               </div>
             </div>
-            
+
             <p className="text-slate-400 text-sm">This usually takes 1-2 minutes ☕</p>
-            
+
             <button
-              onClick={() => { setIsProcessing(false); setIsExpanded(false); }}
+              onClick={() => {
+                setIsProcessing(false);
+                setIsExpanded(false);
+              }}
               className="mt-4 text-sm text-slate-400 hover:text-slate-600 underline"
             >
               Cancel
@@ -800,7 +882,10 @@ const VideoLearningPanel: React.FC<VideoLearningPanelProps> = ({
                     </h4>
                     <div className="space-y-2">
                       {summary.keyPoints.map((point, i) => (
-                        <div key={i} className="flex items-start gap-3 p-4 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">
+                        <div
+                          key={i}
+                          className="flex items-start gap-3 p-4 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
+                        >
                           <span className="w-7 h-7 bg-slate-200 text-slate-600 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0">
                             {i + 1}
                           </span>
@@ -830,7 +915,10 @@ const VideoLearningPanel: React.FC<VideoLearningPanelProps> = ({
                     </h4>
                     <div className="flex flex-wrap gap-2">
                       {summary.topics.map((topic, i) => (
-                        <span key={i} className="px-3 py-1.5 bg-slate-100 text-slate-600 text-sm font-medium rounded-full">
+                        <span
+                          key={i}
+                          className="px-3 py-1.5 bg-slate-100 text-slate-600 text-sm font-medium rounded-full"
+                        >
                           {topic}
                         </span>
                       ))}
@@ -846,7 +934,10 @@ const VideoLearningPanel: React.FC<VideoLearningPanelProps> = ({
                     </h4>
                     <div className="space-y-3">
                       {summary.notableQuotes.map((quote, i) => (
-                        <div key={i} className="p-4 bg-slate-50 rounded-xl border-l-4 border-slate-300">
+                        <div
+                          key={i}
+                          className="p-4 bg-slate-50 rounded-xl border-l-4 border-slate-300"
+                        >
                           <p className="text-slate-600 italic">"{quote.text}"</p>
                           {quote.timestamp !== undefined && (
                             <button
@@ -881,10 +972,14 @@ const VideoLearningPanel: React.FC<VideoLearningPanelProps> = ({
                               {formatTimestamp(seg.start)}
                             </span>
                             {seg.speaker !== undefined && (
-                              <span className="mt-1 text-xs text-slate-400">🎤 {seg.speaker + 1}</span>
+                              <span className="mt-1 text-xs text-slate-400">
+                                🎤 {seg.speaker + 1}
+                              </span>
                             )}
                           </div>
-                          <p className="text-slate-600 text-sm leading-relaxed flex-1">{seg.text}</p>
+                          <p className="text-slate-600 text-sm leading-relaxed flex-1">
+                            {seg.text}
+                          </p>
                           <Play className="w-4 h-4 text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
                         </div>
                       </button>
@@ -938,14 +1033,18 @@ const VideoLearningPanel: React.FC<VideoLearningPanelProps> = ({
                       <List className="w-8 h-8 text-slate-400" />
                     </div>
                     <p className="text-slate-500">No chapters detected</p>
-                    <p className="text-slate-400 text-sm mt-1">Chapters work best with longer videos</p>
+                    <p className="text-slate-400 text-sm mt-1">
+                      Chapters work best with longer videos
+                    </p>
                   </div>
                 )}
               </div>
             )}
 
             {/* ===== QUIZ TAB ===== */}
-            {activeTab === 'quiz' && <QuizTab questions={summary.quizQuestions} onSeekTo={handleSeekTo} />}
+            {activeTab === 'quiz' && (
+              <QuizTab questions={summary.quizQuestions} onSeekTo={handleSeekTo} />
+            )}
 
             {/* ===== FLASHCARDS TAB ===== */}
             {activeTab === 'flashcards' && <FlashcardsTab flashcards={summary.flashcards} />}

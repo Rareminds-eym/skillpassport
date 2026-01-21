@@ -89,7 +89,7 @@ async function handleCareerChat(request: Request, env: Env): Promise<Response> {
   console.log(`[REQUEST] studentId: ${studentId}, convId: ${conversationId || 'new'}, msg: "${processedMessage.slice(0, 50)}..."`);
 
   // Fetch existing conversation
-  let currentConversationId = conversationId;
+  const currentConversationId = conversationId;
   let existingMessages: StoredMessage[] = [];
 
   if (conversationId) {
@@ -627,7 +627,7 @@ async function handleRecommendOpportunities(request: Request, env: Env): Promise
     return await getPopularFallback(supabase, studentId, safeLimit, startTime, 'no_matches');
   }
 
-  let finalRecommendations = recommendations;
+  const finalRecommendations = recommendations;
   
   // If we have fewer matches than requested, DON'T pad with popular opportunities
   // This ensures only quality AI matches are shown

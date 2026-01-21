@@ -1,5 +1,10 @@
-import React from "react";
-import { CalendarIcon, ClockIcon, CheckCircleIcon, CalendarDaysIcon } from "@heroicons/react/24/outline";
+import React from 'react';
+import {
+  CalendarIcon,
+  ClockIcon,
+  CheckCircleIcon,
+  CalendarDaysIcon,
+} from '@heroicons/react/24/outline';
 
 interface Props {
   total: number;

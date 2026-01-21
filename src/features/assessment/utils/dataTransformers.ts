@@ -26,7 +26,7 @@ export const normalizeCourseRecommendations = (
   const courses = results.platformCourses || results.courseRecommendations;
   if (!courses || courses.length === 0) return [];
 
-  return courses.map(course => ({
+  return courses.map((course) => ({
     courseId: course.courseId || course.code || course.title,
     title: course.title || course.name || course.courseName || '',
     name: course.name || course.title,
@@ -53,10 +53,7 @@ export const getMatchLevel = (score: number): 'Excellent' | 'Good' | 'Fair' | 'L
 /**
  * Get top N RIASEC types
  */
-export const getTopRIASECTypes = (
-  scores: RIASECScores,
-  count: number = 3
-): string[] => {
+export const getTopRIASECTypes = (scores: RIASECScores, count: number = 3): string[] => {
   return Object.entries(scores)
     .filter(([_, score]) => score !== undefined)
     .sort(([, a], [, b]) => (b || 0) - (a || 0))
@@ -67,10 +64,7 @@ export const getTopRIASECTypes = (
 /**
  * Get top aptitude strengths
  */
-export const getTopAptitudeStrengths = (
-  scores: AptitudeScores,
-  count: number = 3
-): string[] => {
+export const getTopAptitudeStrengths = (scores: AptitudeScores, count: number = 3): string[] => {
   return Object.entries(scores)
     .filter(([_, data]) => data?.percentage !== undefined)
     .sort(([, a], [, b]) => (b?.percentage || 0) - (a?.percentage || 0))
@@ -98,7 +92,7 @@ export const calculateCourseMatchScore = (
   if (course.riasec && course.riasec.length > 0) {
     let riasecMatchPoints = 0;
 
-    course.riasec.forEach(type => {
+    course.riasec.forEach((type) => {
       const typeUpper = type.toUpperCase();
       const score = riasecScores[typeUpper as keyof RIASECScores] || 0;
       const percentage = (score / riasecMaxScore) * 100;
@@ -113,7 +107,7 @@ export const calculateCourseMatchScore = (
     const avgRiasecMatch = riasecMatchPoints / course.riasec.length;
     matchScore += avgRiasecMatch * 0.4;
 
-    const matchingTopTypes = course.riasec.filter(type =>
+    const matchingTopTypes = course.riasec.filter((type) =>
       riasecTopThree.includes(type.toUpperCase())
     );
     if (matchingTopTypes.length > 0) {
@@ -125,13 +119,13 @@ export const calculateCourseMatchScore = (
   if (course.aptitudeStrengths && course.aptitudeStrengths.length > 0) {
     let aptitudeMatchPoints = 0;
 
-    course.aptitudeStrengths.forEach(strength => {
+    course.aptitudeStrengths.forEach((strength) => {
       const strengthLower = strength.toLowerCase();
       const scoreData = aptitudeScores[strengthLower];
       const percentage = scoreData?.percentage || 0;
 
       const isTopStrength = aptitudeTopStrengths.some(
-        s => s.toLowerCase().includes(strengthLower) || strengthLower.includes(s.toLowerCase())
+        (s) => s.toLowerCase().includes(strengthLower) || strengthLower.includes(s.toLowerCase())
       );
 
       if (isTopStrength) {
@@ -184,7 +178,7 @@ export const calculatePersonalityFit = (
 
   // Course-specific personality mappings
   const mapping = COURSE_PERSONALITY_MAPPINGS[courseId];
-  
+
   if (mapping) {
     const traitScores: Record<string, number> = { O, C, E, A, N: 100 - N };
     personalityFit = mapping.traits.reduce((sum, trait, idx) => {
@@ -228,7 +222,7 @@ export const generateCourseRecommendations = (
     ];
 
     // Calculate match scores for each course
-    const courseMatches = allCourses.map(course => {
+    const courseMatches = allCourses.map((course) => {
       const { score, reasons } = calculateCourseMatchScore(
         course,
         riasecScores,
@@ -237,11 +231,11 @@ export const generateCourseRecommendations = (
       );
 
       // Determine category
-      const category = STREAMS_BY_CATEGORY.science.find(s => s.id === course.id)
+      const category = STREAMS_BY_CATEGORY.science.find((s) => s.id === course.id)
         ? 'Science'
-        : STREAMS_BY_CATEGORY.commerce.find(s => s.id === course.id)
-        ? 'Commerce'
-        : 'Arts';
+        : STREAMS_BY_CATEGORY.commerce.find((s) => s.id === course.id)
+          ? 'Commerce'
+          : 'Arts';
 
       return {
         courseId: course.id,
@@ -256,9 +250,7 @@ export const generateCourseRecommendations = (
     });
 
     // Sort by match score and return top 5
-    return courseMatches
-      .sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0))
-      .slice(0, 5);
+    return courseMatches.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0)).slice(0, 5);
   } catch (error) {
     console.error('Error generating course recommendations:', error);
     return [];

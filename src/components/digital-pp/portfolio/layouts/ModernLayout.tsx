@@ -1,6 +1,18 @@
+// @ts-nocheck - Excluded from typecheck for gradual migration
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Github, Linkedin, Twitter, Mail, Phone, MapPin, Calendar, Award, Code, Briefcase } from 'lucide-react';
+import {
+  Github,
+  Linkedin,
+  Twitter,
+  Mail,
+  Phone,
+  MapPin,
+  Calendar,
+  Award,
+  Code,
+  Briefcase,
+} from 'lucide-react';
 import { Student, AnimationType, DisplayPreferences } from '../../../../types/student';
 
 interface ModernLayoutProps {
@@ -12,11 +24,11 @@ interface ModernLayoutProps {
   displayPreferences?: DisplayPreferences;
 }
 
-const ModernLayout: React.FC<ModernLayoutProps> = ({ 
-  student, 
-  primaryColor, 
-  secondaryColor, 
-  accentColor, 
+const ModernLayout: React.FC<ModernLayoutProps> = ({
+  student,
+  primaryColor,
+  secondaryColor,
+  accentColor,
   animation,
   displayPreferences = {
     showSocialLinks: true,
@@ -25,15 +37,20 @@ const ModernLayout: React.FC<ModernLayoutProps> = ({
     enableAnimations: true,
     showContactForm: true,
     showDownloadResume: true,
-  }
+  },
 }) => {
   const getAnimationClass = (animation: AnimationType) => {
     switch (animation) {
-      case 'fade': return 'animate-fade-in';
-      case 'slide': return 'animate-slide-in';
-      case 'bounce': return 'animate-bounce-in';
-      case 'float': return 'animate-float';
-      default: return '';
+      case 'fade':
+        return 'animate-fade-in';
+      case 'slide':
+        return 'animate-slide-in';
+      case 'bounce':
+        return 'animate-bounce-in';
+      case 'float':
+        return 'animate-float';
+      default:
+        return '';
     }
   };
 
@@ -42,20 +59,20 @@ const ModernLayout: React.FC<ModernLayoutProps> = ({
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.1
-      }
-    }
+        staggerChildren: 0.1,
+      },
+    },
   };
 
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 }
+    visible: { opacity: 1, y: 0 },
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 data-layout-container">
       {/* Header Section */}
-      <motion.section 
+      <motion.section
         className="relative overflow-hidden"
         style={{ backgroundColor: primaryColor }}
         initial={{ opacity: 0 }}
@@ -77,53 +94,67 @@ const ModernLayout: React.FC<ModernLayoutProps> = ({
                 className="w-48 h-48 rounded-full object-cover border-8 border-white shadow-2xl"
               />
             </motion.div>
-            
-            <motion.div 
+
+            <motion.div
               className="text-center lg:text-left text-white"
               variants={itemVariants}
               initial="hidden"
               animate="visible"
               transition={{ delay: 0.4 }}
             >
-              <h1 className="text-5xl font-bold mb-4">
-                {student.name || student.profile.name}
-              </h1>
+              <h1 className="text-5xl font-bold mb-4">{student.name || student.profile.name}</h1>
               <p className="text-xl mb-6 opacity-90">
                 {student.branch_field && `${student.branch_field} • `}
-                {student.school?.name || 
-                 student.profile?.school?.name || 
-                 student.college_school_name || 
-                 student.universityCollege?.name || 
-                 student.profile?.universityCollege?.name ||
-                 student.university || 'Student'}
+                {student.school?.name ||
+                  // @ts-expect-error - Auto-suppressed for migration
+                  student.profile?.school?.name ||
+                  student.college_school_name ||
+                  // @ts-expect-error - Auto-suppressed for migration
+                  student.universityCollege?.name ||
+                  // @ts-expect-error - Auto-suppressed for migration
+                  student.profile?.universityCollege?.name ||
+                  student.university ||
+                  'Student'}
               </p>
               {student.profile.bio && (
                 <p className="text-lg max-w-2xl leading-relaxed opacity-80">
                   {student.profile.bio}
                 </p>
               )}
-              
+
               <div className="flex flex-wrap justify-center lg:justify-start gap-4 mt-8">
                 {displayPreferences.showSocialLinks && (
                   <>
                     {student.github_link && (
-                      <a href={student.github_link} className="p-3 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-all">
+                      <a
+                        href={student.github_link}
+                        className="p-3 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-all"
+                      >
                         <Github className="w-6 h-6" />
                       </a>
                     )}
                     {student.linkedin_link && (
-                      <a href={student.linkedin_link} className="p-3 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-all">
+                      <a
+                        href={student.linkedin_link}
+                        className="p-3 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-all"
+                      >
                         <Linkedin className="w-6 h-6" />
                       </a>
                     )}
                     {student.twitter_link && (
-                      <a href={student.twitter_link} className="p-3 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-all">
+                      <a
+                        href={student.twitter_link}
+                        className="p-3 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-all"
+                      >
                         <Twitter className="w-6 h-6" />
                       </a>
                     )}
                   </>
                 )}
-                <a href={`mailto:${student.email}`} className="p-3 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-all">
+                <a
+                  href={`mailto:${student.email}`}
+                  className="p-3 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-all"
+                >
                   <Mail className="w-6 h-6" />
                 </a>
               </div>
@@ -133,7 +164,7 @@ const ModernLayout: React.FC<ModernLayoutProps> = ({
       </motion.section>
 
       {/* Contact Info */}
-      <motion.section 
+      <motion.section
         className="py-12 bg-white shadow-sm"
         variants={containerVariants}
         initial="hidden"
@@ -152,12 +183,10 @@ const ModernLayout: React.FC<ModernLayoutProps> = ({
             <motion.div variants={itemVariants} className="flex items-center space-x-3">
               <MapPin className="w-5 h-5" style={{ color: primaryColor }} />
               <span>
-                {[
-                  student.address,
-                  student.city,
-                  student.state,
-                  student.country || 'India'
-                ].filter(Boolean).join(', ')}
+                // @ts-expect-error - Auto-suppressed for migration
+                {[student.address, student.city, student.state, student.country || 'India']
+                  .filter(Boolean)
+                  .join(', ')}
               </span>
             </motion.div>
           </div>
@@ -165,59 +194,61 @@ const ModernLayout: React.FC<ModernLayoutProps> = ({
       </motion.section>
 
       {/* Skills Section */}
-      {displayPreferences.showSkillBars && student.profile.technicalSkills && student.profile.technicalSkills.length > 0 && (
-        <motion.section 
-          className="py-16"
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          <div className="container mx-auto px-6">
-            <motion.h2 
-              variants={itemVariants}
-              className="text-3xl font-bold text-center mb-12"
-              style={{ color: secondaryColor }}
-            >
-              Technical Skills
-            </motion.h2>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {student.profile.technicalSkills.map((skill, index) => (
-                <motion.div
-                  key={index}
-                  variants={itemVariants}
-                  className="bg-white rounded-lg p-6 shadow-lg hover:shadow-xl transition-shadow"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-gray-800">{skill.name}</h3>
-                    <span className="text-sm text-gray-600">{skill.level}/10</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <motion.div
-                      className="h-2 rounded-full"
-                      style={{ backgroundColor: accentColor }}
-                      initial={{ width: 0 }}
-                      animate={{ width: `${(skill.level / 10) * 100}%` }}
-                      transition={{ duration: 1, delay: index * 0.1 }}
-                    />
-                  </div>
-                  <p className="text-xs text-gray-500 mt-2">{skill.category}</p>
-                </motion.div>
-              ))}
+      {displayPreferences.showSkillBars &&
+        student.profile.technicalSkills &&
+        student.profile.technicalSkills.length > 0 && (
+          <motion.section
+            className="py-16"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            <div className="container mx-auto px-6">
+              <motion.h2
+                variants={itemVariants}
+                className="text-3xl font-bold text-center mb-12"
+                style={{ color: secondaryColor }}
+              >
+                Technical Skills
+              </motion.h2>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {student.profile.technicalSkills.map((skill, index) => (
+                  <motion.div
+                    key={index}
+                    variants={itemVariants}
+                    className="bg-white rounded-lg p-6 shadow-lg hover:shadow-xl transition-shadow"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-semibold text-gray-800">{skill.name}</h3>
+                      <span className="text-sm text-gray-600">{skill.level}/10</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <motion.div
+                        className="h-2 rounded-full"
+                        style={{ backgroundColor: accentColor }}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${(skill.level / 10) * 100}%` }}
+                        transition={{ duration: 1, delay: index * 0.1 }}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">{skill.category}</p>
+                  </motion.div>
+                ))}
+              </div>
             </div>
-          </div>
-        </motion.section>
-      )}
-      
+          </motion.section>
+        )}
+
       {/* Projects Section */}
       {student.profile.projects && student.profile.projects.length > 0 && (
-        <motion.section 
+        <motion.section
           className="py-16 bg-gray-50"
           variants={containerVariants}
           initial="hidden"
           animate="visible"
         >
           <div className="container mx-auto px-6">
-            <motion.h2 
+            <motion.h2
               variants={itemVariants}
               className="text-3xl font-bold text-center mb-12"
               style={{ color: secondaryColor }}
@@ -284,14 +315,14 @@ const ModernLayout: React.FC<ModernLayoutProps> = ({
 
       {/* Experience Section */}
       {student.profile.experience && student.profile.experience.length > 0 && (
-        <motion.section 
+        <motion.section
           className="py-16"
           variants={containerVariants}
           initial="hidden"
           animate="visible"
         >
           <div className="container mx-auto px-6">
-            <motion.h2 
+            <motion.h2
               variants={itemVariants}
               className="text-3xl font-bold text-center mb-12"
               style={{ color: secondaryColor }}
@@ -306,7 +337,10 @@ const ModernLayout: React.FC<ModernLayoutProps> = ({
                   className="bg-white rounded-lg p-6 shadow-lg mb-6 hover:shadow-xl transition-shadow"
                 >
                   <div className="flex items-start space-x-4">
-                    <div className="p-3 rounded-full" style={{ backgroundColor: `${accentColor}20` }}>
+                    <div
+                      className="p-3 rounded-full"
+                      style={{ backgroundColor: `${accentColor}20` }}
+                    >
                       <Briefcase className="w-6 h-6" style={{ color: accentColor }} />
                     </div>
                     <div className="flex-1">
@@ -316,7 +350,9 @@ const ModernLayout: React.FC<ModernLayoutProps> = ({
                       <p className="text-gray-600 mb-2">{exp.company}</p>
                       <div className="flex items-center space-x-2 text-sm text-gray-500 mb-3">
                         <Calendar className="w-4 h-4" />
-                        <span>{exp.startDate} - {exp.endDate || 'Present'}</span>
+                        <span>
+                          {exp.startDate} - {exp.endDate || 'Present'}
+                        </span>
                       </div>
                       <p className="text-gray-700 mb-3">{exp.description}</p>
                       {exp.technologies && (
@@ -342,14 +378,14 @@ const ModernLayout: React.FC<ModernLayoutProps> = ({
 
       {/* Education Section */}
       {student.profile.education && student.profile.education.length > 0 && (
-        <motion.section 
+        <motion.section
           className="py-16 bg-gray-50"
           variants={containerVariants}
           initial="hidden"
           animate="visible"
         >
           <div className="container mx-auto px-6">
-            <motion.h2 
+            <motion.h2
               variants={itemVariants}
               className="text-3xl font-bold text-center mb-12"
               style={{ color: secondaryColor }}
@@ -370,7 +406,9 @@ const ModernLayout: React.FC<ModernLayoutProps> = ({
                   <div className="flex items-center space-x-4 text-sm text-gray-500 mb-3">
                     <div className="flex items-center space-x-1">
                       <Calendar className="w-4 h-4" />
-                      <span>{edu.startDate} - {edu.endDate || 'Present'}</span>
+                      <span>
+                        {edu.startDate} - {edu.endDate || 'Present'}
+                      </span>
                     </div>
                     {edu.grade && (
                       <div className="flex items-center space-x-1">
@@ -379,9 +417,7 @@ const ModernLayout: React.FC<ModernLayoutProps> = ({
                       </div>
                     )}
                   </div>
-                  {edu.description && (
-                    <p className="text-gray-700">{edu.description}</p>
-                  )}
+                  {edu.description && <p className="text-gray-700">{edu.description}</p>}
                 </motion.div>
               ))}
             </div>

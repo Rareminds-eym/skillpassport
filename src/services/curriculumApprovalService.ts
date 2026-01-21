@@ -48,7 +48,14 @@ export interface CurriculumApprovalDashboard {
   request_date: string;
   published_date?: string;
   request_message?: string;
-  request_status: 'draft' | 'submitted' | 'pending_approval' | 'approved' | 'published' | 'archived' | 'rejected';
+  request_status:
+    | 'draft'
+    | 'submitted'
+    | 'pending_approval'
+    | 'approved'
+    | 'published'
+    | 'archived'
+    | 'rejected';
   review_notes?: string;
   review_date?: string;
   reviewer_name?: string;
@@ -67,12 +74,19 @@ class CurriculumApprovalService {
    * Check if the current user's college is affiliated with a university
    * Simple logic: If college_id exists in university_colleges table with active status, then it's affiliated
    */
-  async checkCollegeAffiliation(): Promise<{ success: boolean; data?: CollegeAffiliation; error?: string }> {
+  async checkCollegeAffiliation(): Promise<{
+    success: boolean;
+    data?: CollegeAffiliation;
+    error?: string;
+  }> {
     try {
       console.log('🔍 Checking college affiliation with direct query...');
-      
+
       // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
       if (userError || !user) {
         console.log('❌ No authenticated user found', userError);
         return {
@@ -82,10 +96,10 @@ class CurriculumApprovalService {
             collegeId: null,
             universityId: null,
             universityName: null,
-          }
+          },
         };
       }
-      
+
       console.log('✅ User authenticated:', user.email);
 
       // Get user's organization (college)
@@ -106,7 +120,7 @@ class CurriculumApprovalService {
             collegeId: null,
             universityId: null,
             universityName: null,
-          }
+          },
         };
       }
 
@@ -121,11 +135,12 @@ class CurriculumApprovalService {
         .eq('account_status', 'active')
         .limit(1);
 
-      console.log('📊 Affiliation query result:', { 
-        affiliationData, 
+      console.log('📊 Affiliation query result:', {
+        affiliationData,
         error: affiliationError,
         collegeId: collegeId,
-        query: 'university_colleges where college_id = ' + collegeId + ' and account_status = active'
+        query:
+          'university_colleges where college_id = ' + collegeId + ' and account_status = active',
       });
 
       if (affiliationError) {
@@ -147,14 +162,14 @@ class CurriculumApprovalService {
             collegeId: collegeId,
             universityId: null,
             universityName: null,
-          }
+          },
         };
       }
 
       // College is affiliated! Now get university name
       const affiliation = affiliationData[0];
       console.log('✅ College is affiliated with university:', affiliation.university_id);
-      
+
       // Get university name in a separate query
       let universityName = 'University';
       if (affiliation.university_id) {
@@ -163,21 +178,21 @@ class CurriculumApprovalService {
           .select('name')
           .eq('id', affiliation.university_id)
           .single();
-        
+
         console.log('📊 University name query result:', { universityData, error: universityError });
-        
+
         if (universityData) {
           universityName = universityData.name;
         }
       }
-      
+
       console.log('✅ Final affiliation result:', {
         isAffiliated: true,
         collegeId: collegeId,
         universityId: affiliation.university_id,
-        universityName: universityName
+        universityName: universityName,
       });
-      
+
       return {
         success: true,
         data: {
@@ -185,9 +200,8 @@ class CurriculumApprovalService {
           collegeId: collegeId,
           universityId: affiliation.university_id,
           universityName: universityName,
-        }
+        },
       };
-
     } catch (error: any) {
       console.error('❌ Error in checkCollegeAffiliation:', error);
       return { success: false, error: error.message };
@@ -197,13 +211,16 @@ class CurriculumApprovalService {
   /**
    * Submit curriculum for approval (for affiliated colleges)
    */
-  async submitForApproval(curriculumId: string, message?: string): Promise<{ success: boolean; error?: string }> {
+  async submitForApproval(
+    curriculumId: string,
+    message?: string
+  ): Promise<{ success: boolean; error?: string }> {
     try {
       const { data, error } = await supabase.rpc('submit_curriculum_for_approval', {
         p_curriculum_id: curriculumId,
-        p_message: message || null
+        p_message: message || null,
       });
-      
+
       if (error) {
         console.error('Error submitting curriculum for approval:', error);
         return { success: false, error: error.message };
@@ -223,18 +240,22 @@ class CurriculumApprovalService {
   /**
    * Review curriculum (approve/reject) - University Admin only
    */
-  async reviewCurriculum(curriculumId: string, decision: 'approved' | 'rejected', notes?: string): Promise<{ success: boolean; error?: string }> {
+  async reviewCurriculum(
+    curriculumId: string,
+    decision: 'approved' | 'rejected',
+    notes?: string
+  ): Promise<{ success: boolean; error?: string }> {
     try {
       // First, try to update the curriculum directly if the RPC function fails
       const { data, error } = await supabase.rpc('review_curriculum', {
         p_curriculum_id: curriculumId,
         p_decision: decision,
-        p_notes: notes || null
+        p_notes: notes || null,
       });
-      
+
       if (error) {
         console.error('RPC function failed, trying direct update:', error);
-        
+
         // Fallback: Update curriculum directly
         const newStatus = decision === 'approved' ? 'published' : 'rejected';
         const { error: updateError } = await supabase
@@ -243,16 +264,16 @@ class CurriculumApprovalService {
             status: newStatus,
             review_notes: notes,
             review_date: new Date().toISOString(),
-            published_date: decision === 'approved' ? new Date().toISOString() : null
+            published_date: decision === 'approved' ? new Date().toISOString() : null,
           })
           .eq('id', curriculumId)
           .eq('status', 'pending_approval');
-        
+
         if (updateError) {
           console.error('Direct update also failed:', updateError);
           return { success: false, error: updateError.message };
         }
-        
+
         console.log('✅ Curriculum updated successfully via direct update');
         return { success: true };
       }
@@ -271,29 +292,38 @@ class CurriculumApprovalService {
   /**
    * Approve curriculum - University Admin only
    */
-  async approveCurriculum(requestId: string, notes?: string): Promise<{ success: boolean; error?: string }> {
+  async approveCurriculum(
+    requestId: string,
+    notes?: string
+  ): Promise<{ success: boolean; error?: string }> {
     return this.reviewCurriculum(requestId, 'approved', notes);
   }
 
   /**
    * Reject curriculum - University Admin only
    */
-  async rejectCurriculum(requestId: string, notes?: string): Promise<{ success: boolean; error?: string }> {
+  async rejectCurriculum(
+    requestId: string,
+    notes?: string
+  ): Promise<{ success: boolean; error?: string }> {
     return this.reviewCurriculum(requestId, 'rejected', notes);
   }
 
   /**
    * Get approval requests for university admin
    */
-  async getApprovalRequests(universityId: string, filters?: {
-    status?: string;
-    collegeId?: string;
-    departmentId?: string;
-    limit?: number;
-  }): Promise<{ success: boolean; data?: CurriculumApprovalDashboard[]; error?: string }> {
+  async getApprovalRequests(
+    universityId: string,
+    filters?: {
+      status?: string;
+      collegeId?: string;
+      departmentId?: string;
+      limit?: number;
+    }
+  ): Promise<{ success: boolean; data?: CurriculumApprovalDashboard[]; error?: string }> {
     try {
       console.log('🔍 Fetching approval requests for university:', universityId);
-      
+
       let query = supabase
         .from('curriculum_approval_dashboard')
         .select('*')
@@ -317,7 +347,7 @@ class CurriculumApprovalService {
       console.log('📊 Query filters:', { universityId, filters });
 
       const { data, error } = await query;
-      
+
       if (error) {
         console.error('❌ Error fetching approval requests:', error);
         return { success: false, error: error.message };
@@ -325,7 +355,7 @@ class CurriculumApprovalService {
 
       console.log('✅ Raw data from database:', data);
 
-      const approvalRequests: CurriculumApprovalDashboard[] = (data || []).map(item => ({
+      const approvalRequests: CurriculumApprovalDashboard[] = (data || []).map((item) => ({
         request_id: item.curriculum_id,
         curriculum_id: item.curriculum_id,
         academic_year: item.academic_year || '',
@@ -357,15 +387,17 @@ class CurriculumApprovalService {
   /**
    * Get approval statistics for university admin
    */
-  async getApprovalStatistics(universityId: string): Promise<{ success: boolean; data?: ApprovalStatistics; error?: string }> {
+  async getApprovalStatistics(
+    universityId: string
+  ): Promise<{ success: boolean; data?: ApprovalStatistics; error?: string }> {
     try {
       console.log('📊 Fetching approval statistics for university:', universityId);
-      
+
       const { data, error } = await supabase
         .from('curriculum_approval_dashboard')
         .select('status')
         .eq('university_id', universityId);
-      
+
       if (error) {
         console.error('❌ Error fetching approval statistics:', error);
         return { success: false, error: error.message };
@@ -373,24 +405,27 @@ class CurriculumApprovalService {
 
       console.log('✅ Raw statistics data:', data);
 
-      const stats = (data || []).reduce((acc, item) => {
-        acc.total++;
-        switch (item.status) {
-          case 'pending_approval':
-            acc.pending++;
-            break;
-          case 'approved':
-            acc.approved++;
-            break;
-          case 'rejected':
-            acc.rejected++;
-            break;
-          case 'published':
-            acc.published++;
-            break;
-        }
-        return acc;
-      }, { total: 0, pending: 0, approved: 0, rejected: 0, published: 0 });
+      const stats = (data || []).reduce(
+        (acc, item) => {
+          acc.total++;
+          switch (item.status) {
+            case 'pending_approval':
+              acc.pending++;
+              break;
+            case 'approved':
+              acc.approved++;
+              break;
+            case 'rejected':
+              acc.rejected++;
+              break;
+            case 'published':
+              acc.published++;
+              break;
+          }
+          return acc;
+        },
+        { total: 0, pending: 0, approved: 0, rejected: 0, published: 0 }
+      );
 
       console.log('✅ Processed statistics:', stats);
       return { success: true, data: stats };
@@ -403,20 +438,24 @@ class CurriculumApprovalService {
   /**
    * Get pending approvals for university admin
    */
-  async getPendingApprovals(): Promise<{ success: boolean; data?: PendingApproval[]; error?: string }> {
+  async getPendingApprovals(): Promise<{
+    success: boolean;
+    data?: PendingApproval[];
+    error?: string;
+  }> {
     try {
       const { data, error } = await supabase
         .from('curriculum_approval_dashboard')
         .select('*')
         .eq('status', 'pending_approval') // Use existing status column
         .order('request_date', { ascending: false });
-      
+
       if (error) {
         console.error('Error fetching pending approvals:', error);
         return { success: false, error: error.message };
       }
 
-      const pendingApprovals: PendingApproval[] = (data || []).map(item => ({
+      const pendingApprovals: PendingApproval[] = (data || []).map((item) => ({
         curriculumId: item.curriculum_id,
         academicYear: item.academic_year,
         courseName: item.course_name,
@@ -441,7 +480,9 @@ class CurriculumApprovalService {
   /**
    * Get curriculum approval history
    */
-  async getApprovalHistory(limit = 50): Promise<{ success: boolean; data?: any[]; error?: string }> {
+  async getApprovalHistory(
+    limit = 50
+  ): Promise<{ success: boolean; data?: any[]; error?: string }> {
     try {
       const { data, error } = await supabase
         .from('curriculum_approval_dashboard')
@@ -449,7 +490,7 @@ class CurriculumApprovalService {
         .in('status', ['approved', 'rejected', 'published']) // Use existing status column
         .order('review_date', { ascending: false })
         .limit(limit);
-      
+
       if (error) {
         console.error('Error fetching approval history:', error);
         return { success: false, error: error.message };
@@ -465,14 +506,16 @@ class CurriculumApprovalService {
   /**
    * Get curriculum status for college admin
    */
-  async getCurriculumStatus(curriculumId: string): Promise<{ success: boolean; data?: any; error?: string }> {
+  async getCurriculumStatus(
+    curriculumId: string
+  ): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
       const { data, error } = await supabase
         .from('college_curriculum_status')
         .select('*')
         .eq('curriculum_id', curriculumId)
         .single();
-      
+
       if (error) {
         console.error('Error fetching curriculum status:', error);
         return { success: false, error: error.message };

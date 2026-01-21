@@ -1,39 +1,43 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useAuth } from '@/context/AuthContext';
-import { departmentService, DepartmentWithStats, Faculty } from '@/services/college/departmentService';
 import {
-    AcademicCapIcon,
-    BookOpenIcon,
-    BuildingOffice2Icon,
-    ChevronDownIcon,
-    ChevronUpIcon,
-    EllipsisVerticalIcon,
-    EnvelopeIcon,
-    EyeIcon,
-    FunnelIcon,
-    PencilSquareIcon,
-    PlusCircleIcon,
-    Squares2X2Icon,
-    TableCellsIcon,
-    TrashIcon,
-    UserGroupIcon,
-    UserIcon,
-    XMarkIcon,
-} from "@heroicons/react/24/outline";
+  departmentService,
+  DepartmentWithStats,
+  Faculty,
+} from '@/services/college/departmentService';
+import {
+  AcademicCapIcon,
+  BookOpenIcon,
+  BuildingOffice2Icon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  EllipsisVerticalIcon,
+  EnvelopeIcon,
+  EyeIcon,
+  FunnelIcon,
+  PencilSquareIcon,
+  PlusCircleIcon,
+  Squares2X2Icon,
+  TableCellsIcon,
+  TrashIcon,
+  UserGroupIcon,
+  UserIcon,
+  XMarkIcon,
+} from '@heroicons/react/24/outline';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import Pagination from "../../../components/admin/Pagination";
-import SearchBar from "../../../components/common/SearchBar";
+import Pagination from '../../../components/admin/Pagination';
+import SearchBar from '../../../components/common/SearchBar';
 import { supabase } from '../../../lib/supabaseClient';
 
 // Import modal components
-import AddDepartmentModal from "../../../components/admin/collegeAdmin/AddDepartmentModal";
-import DepartmentDetailsDrawer from "../../../components/admin/collegeAdmin/DepartmentDetailsDrawer";
-import EditDepartmentModal from "../../../components/admin/collegeAdmin/EditDepartmentModal";
-import FacultyAssignmentModal from "../../../components/admin/collegeAdmin/FacultyAssignmentModal";
-import HODAssignmentModal from "../../../components/admin/collegeAdmin/HODAssignmentModal";
-import ConfirmationModal from "../../../components/ui/ConfirmationModal";
+import AddDepartmentModal from '../../../components/admin/collegeAdmin/AddDepartmentModal';
+import DepartmentDetailsDrawer from '../../../components/admin/collegeAdmin/DepartmentDetailsDrawer';
+import EditDepartmentModal from '../../../components/admin/collegeAdmin/EditDepartmentModal';
+import FacultyAssignmentModal from '../../../components/admin/collegeAdmin/FacultyAssignmentModal';
+import HODAssignmentModal from '../../../components/admin/collegeAdmin/HODAssignmentModal';
+import ConfirmationModal from '../../../components/ui/ConfirmationModal';
 
 // Types
 interface Course {
@@ -80,10 +84,7 @@ const FilterSection = ({ title, children, defaultOpen = false }: any) => {
         aria-expanded={isOpen}
       >
         <span className="text-sm font-medium text-gray-900">{title}</span>
-        <ChevronDownIcon
-          className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""
-            }`}
-        />
+        <ChevronDownIcon className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {isOpen && <div className="mt-3 space-y-2">{children}</div>}
     </div>
@@ -98,8 +99,7 @@ const CheckboxGroup = ({ options, selectedValues, onChange }: any) => (
           type="checkbox"
           checked={selectedValues.includes(opt.value)}
           onChange={(e) => {
-            if (e.target.checked)
-              onChange([...selectedValues, opt.value]);
+            if (e.target.checked) onChange([...selectedValues, opt.value]);
             else onChange(selectedValues.filter((v: string) => v !== opt.value));
           }}
           className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
@@ -115,14 +115,15 @@ const CheckboxGroup = ({ options, selectedValues, onChange }: any) => (
 
 const StatusBadge = ({ status }: { status: string }) => {
   const config: Record<string, string> = {
-    Active: "bg-emerald-100 text-emerald-700",
-    Inactive: "bg-gray-100 text-gray-600",
+    Active: 'bg-emerald-100 text-emerald-700',
+    Inactive: 'bg-gray-100 text-gray-600',
   };
 
   return (
     <span
-      className={`inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium ${config[status] || "bg-gray-100 text-gray-600"
-        }`}
+      className={`inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium ${
+        config[status] || 'bg-gray-100 text-gray-600'
+      }`}
     >
       {status}
     </span>
@@ -135,12 +136,10 @@ const EmptyState = ({ onCreate }: { onCreate: () => void }) => {
       <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
         <BuildingOffice2Icon className="h-8 w-8" />
       </div>
-      <h2 className="mt-4 text-lg font-semibold text-gray-900">
-        No departments yet
-      </h2>
+      <h2 className="mt-4 text-lg font-semibold text-gray-900">No departments yet</h2>
       <p className="mt-2 text-sm text-gray-500 max-w-sm">
-        No departments found. Create a new department to get started with your
-        institution management.
+        No departments found. Create a new department to get started with your institution
+        management.
       </p>
       <div className="mt-6">
         <button
@@ -159,7 +158,7 @@ const EmptyState = ({ onCreate }: { onCreate: () => void }) => {
 const DepartmentManagement: React.FC = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  
+
   // Fetch college ID from organizations table using admin_id
   const { data: collegeData, error: collegeError } = useQuery({
     queryKey: ['userCollege', user?.id],
@@ -171,30 +170,30 @@ const DepartmentManagement: React.FC = () => {
         .eq('organization_type', 'college')
         .or(`admin_id.eq.${user?.id},email.eq.${user?.email}`)
         .maybeSingle();
-      
+
       if (error) {
         console.error('Error fetching college from organizations:', error);
         throw error;
       }
-      
+
       console.log('College data fetched from organizations:', data);
       return data;
     },
     enabled: !!user?.id,
     retry: 1,
   });
-  
+
   const collegeId = collegeData?.id;
-  
+
   useEffect(() => {
     console.log('College ID updated:', collegeId);
     console.log('College data:', collegeData);
     console.log('College error:', collegeError);
   }, [collegeId, collegeData, collegeError]);
 
-  const [viewMode, setViewMode] = useState("grid");
+  const [viewMode, setViewMode] = useState('grid');
   const [showFilters, setShowFilters] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(25);
   const [detailDepartment, setDetailDepartment] = useState<Department | null>(null);
@@ -212,30 +211,34 @@ const DepartmentManagement: React.FC = () => {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      
+
       // Don't close if clicking inside dropdown or modal
-      if (target.closest('.dropdown-container') || 
-          target.closest('[role="dialog"]') || 
-          target.closest('.modal-backdrop')) {
+      if (
+        target.closest('.dropdown-container') ||
+        target.closest('[role="dialog"]') ||
+        target.closest('.modal-backdrop')
+      ) {
         return;
       }
-      
+
       setOpenDropdownId(null);
     };
 
     if (openDropdownId) {
       document.addEventListener('click', handleClickOutside);
-      
+
       return () => {
         document.removeEventListener('click', handleClickOutside);
       };
     }
   }, [openDropdownId]);
 
-
-
   // Fetch departments from database
-  const { data: departmentsData = [], isLoading, error } = useQuery({
+  const {
+    data: departmentsData = [],
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['departments', collegeId],
     queryFn: () => departmentService.getDepartments(collegeId!),
     enabled: !!collegeId,
@@ -243,7 +246,7 @@ const DepartmentManagement: React.FC = () => {
 
   // Transform database departments to match UI expectations
   const departments: Department[] = useMemo(() => {
-    return departmentsData.map(dept => ({
+    return departmentsData.map((dept) => ({
       ...dept,
       id: dept.id as any, // Keep as string but cast for compatibility
       facultyCount: dept.faculty_count || 0,
@@ -263,11 +266,11 @@ const DepartmentManagement: React.FC = () => {
       console.log('Creating department with collegeId:', collegeId);
       console.log('User ID:', user?.id);
       console.log('Form data:', data);
-      
+
       if (!collegeId) {
         throw new Error('College ID not found. Please refresh the page and try again.');
       }
-      
+
       return departmentService.createDepartment({
         school_id: null,
         college_id: collegeId,
@@ -324,14 +327,14 @@ const DepartmentManagement: React.FC = () => {
 
   // Sample data for courses and faculty (these would also come from API in production)
   const [allCourses] = useState<Course[]>([
-    { id: 1, code: "CS101", name: "Introduction to Programming", credits: 4, semester: 1 },
-    { id: 2, code: "CS102", name: "Data Structures", credits: 4, semester: 2 },
-    { id: 3, code: "CS201", name: "Algorithms", credits: 4, semester: 3 },
-    { id: 4, code: "CS202", name: "Database Systems", credits: 3, semester: 4 },
-    { id: 5, code: "EC101", name: "Circuit Theory", credits: 4, semester: 1 },
-    { id: 6, code: "EC102", name: "Digital Electronics", credits: 4, semester: 2 },
-    { id: 7, code: "ME101", name: "Engineering Mechanics", credits: 4, semester: 1 },
-    { id: 8, code: "ME102", name: "Thermodynamics", credits: 4, semester: 2 },
+    { id: 1, code: 'CS101', name: 'Introduction to Programming', credits: 4, semester: 1 },
+    { id: 2, code: 'CS102', name: 'Data Structures', credits: 4, semester: 2 },
+    { id: 3, code: 'CS201', name: 'Algorithms', credits: 4, semester: 3 },
+    { id: 4, code: 'CS202', name: 'Database Systems', credits: 3, semester: 4 },
+    { id: 5, code: 'EC101', name: 'Circuit Theory', credits: 4, semester: 1 },
+    { id: 6, code: 'EC102', name: 'Digital Electronics', credits: 4, semester: 2 },
+    { id: 7, code: 'ME101', name: 'Engineering Mechanics', credits: 4, semester: 1 },
+    { id: 8, code: 'ME102', name: 'Thermodynamics', credits: 4, semester: 2 },
   ]);
 
   // Fetch all faculty for the college dynamically
@@ -341,7 +344,7 @@ const DepartmentManagement: React.FC = () => {
     enabled: !!collegeId,
   });
 
-  const [filters, setFilters] = useState({ 
+  const [filters, setFilters] = useState({
     status: [] as string[],
     hodAssigned: [] as string[],
     facultyRange: [] as string[],
@@ -378,16 +381,16 @@ const DepartmentManagement: React.FC = () => {
     const filtered = departments.filter((dept) => {
       // Search filter
       const matchesSearch =
-        searchQuery.trim() === "" ||
+        searchQuery.trim() === '' ||
         dept.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         dept.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (dept.hod || '').toLowerCase().includes(searchQuery.toLowerCase());
-      
+
       // Status filter
       const matchesStatus =
         filters.status.length === 0 ||
         filters.status.includes((dept.status || 'active').toLowerCase());
-      
+
       // HOD Assigned filter
       const hodName = dept.hod || dept.metadata?.hod || '';
       const hasHod = hodName && hodName !== 'Not Assigned' && hodName.trim() !== '';
@@ -395,7 +398,7 @@ const DepartmentManagement: React.FC = () => {
         filters.hodAssigned.length === 0 ||
         (filters.hodAssigned.includes('yes') && hasHod) ||
         (filters.hodAssigned.includes('no') && !hasHod);
-      
+
       // Faculty Range filter
       const facultyCount = dept.facultyCount || dept.faculty_count || 0;
       const matchesFacultyRange =
@@ -404,7 +407,7 @@ const DepartmentManagement: React.FC = () => {
         (filters.facultyRange.includes('1-5') && facultyCount >= 1 && facultyCount <= 5) ||
         (filters.facultyRange.includes('6-10') && facultyCount >= 6 && facultyCount <= 10) ||
         (filters.facultyRange.includes('10+') && facultyCount > 10);
-      
+
       // Has Programs filter
       const programCount = dept.programs_offered?.length || 0;
       const matchesHasPrograms =
@@ -412,13 +415,19 @@ const DepartmentManagement: React.FC = () => {
         (filters.hasPrograms.includes('yes') && programCount > 0) ||
         (filters.hasPrograms.includes('no') && programCount === 0);
 
-      return matchesSearch && matchesStatus && matchesHodAssigned && matchesFacultyRange && matchesHasPrograms;
+      return (
+        matchesSearch &&
+        matchesStatus &&
+        matchesHodAssigned &&
+        matchesFacultyRange &&
+        matchesHasPrograms
+      );
     });
 
     // Then sort
     return filtered.sort((a, b) => {
       let comparison = 0;
-      
+
       switch (sortField) {
         case 'name':
           comparison = a.name.localeCompare(b.name);
@@ -427,21 +436,24 @@ const DepartmentManagement: React.FC = () => {
           comparison = a.code.localeCompare(b.code);
           break;
         case 'facultyCount':
-          comparison = (a.facultyCount || a.faculty_count || 0) - (b.facultyCount || b.faculty_count || 0);
+          comparison =
+            (a.facultyCount || a.faculty_count || 0) - (b.facultyCount || b.faculty_count || 0);
           break;
         case 'studentCount':
-          comparison = (a.studentCount || a.student_count || 0) - (b.studentCount || b.student_count || 0);
+          comparison =
+            (a.studentCount || a.student_count || 0) - (b.studentCount || b.student_count || 0);
           break;
         case 'programCount':
           comparison = (a.programs_offered?.length || 0) - (b.programs_offered?.length || 0);
           break;
         case 'createdAt':
-          comparison = new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
+          comparison =
+            new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
           break;
         default:
           comparison = 0;
       }
-      
+
       return sortDirection === 'asc' ? comparison : -comparison;
     });
   }, [departments, searchQuery, filters, sortField, sortDirection]);
@@ -483,7 +495,10 @@ const DepartmentManagement: React.FC = () => {
 
   // Faculty Range options with counts
   const facultyRangeOptions = useMemo(() => {
-    let none = 0, small = 0, medium = 0, large = 0;
+    let none = 0,
+      small = 0,
+      medium = 0,
+      large = 0;
     departments.forEach((d) => {
       const count = d.facultyCount || d.faculty_count || 0;
       if (count === 0) none++;
@@ -496,7 +511,7 @@ const DepartmentManagement: React.FC = () => {
       { value: '1-5', label: '1-5 Faculty', count: small },
       { value: '6-10', label: '6-10 Faculty', count: medium },
       { value: '10+', label: '10+ Faculty', count: large },
-    ].filter(opt => opt.count > 0);
+    ].filter((opt) => opt.count > 0);
   }, [departments]);
 
   // Has Programs options with counts
@@ -516,7 +531,11 @@ const DepartmentManagement: React.FC = () => {
     ];
   }, [departments]);
 
-  const totalFilters = filters.status.length + filters.hodAssigned.length + filters.facultyRange.length + filters.hasPrograms.length;
+  const totalFilters =
+    filters.status.length +
+    filters.hodAssigned.length +
+    filters.facultyRange.length +
+    filters.hasPrograms.length;
   const totalItems = filteredDepartments.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -525,15 +544,15 @@ const DepartmentManagement: React.FC = () => {
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleClearFilters = () => {
-    setFilters({ 
-      status: [], 
-      hodAssigned: [], 
-      facultyRange: [], 
-      hasPrograms: [] 
+    setFilters({
+      status: [],
+      hodAssigned: [],
+      facultyRange: [],
+      hasPrograms: [],
     });
   };
 
@@ -548,7 +567,7 @@ const DepartmentManagement: React.FC = () => {
 
   const handleAssignHOD = async (dept: Department) => {
     setSelectedDepartment(dept);
-    
+
     // Load assigned faculty for this department
     try {
       const faculty = await departmentService.getDepartmentFaculty(dept.id);
@@ -557,7 +576,7 @@ const DepartmentManagement: React.FC = () => {
       console.error('Error loading department faculty:', error);
       setAssignedFaculty([]);
     }
-    
+
     setShowHODAssignmentModal(true);
   };
 
@@ -581,20 +600,25 @@ const DepartmentManagement: React.FC = () => {
     facultyAssignmentMutation.mutate({ departmentId: deptId, facultyIds });
   };
 
-  const handleSaveHODAssignment = async (deptId: string, hodId: string, hodName: string, hodEmail: string) => {
+  const handleSaveHODAssignment = async (
+    deptId: string,
+    hodId: string,
+    hodName: string,
+    hodEmail: string
+  ) => {
     try {
       // Use the dedicated service method for HOD assignment
       await departmentService.assignHODToDepartment(deptId, hodId);
 
       // Update department metadata with HOD info including email
       await departmentService.updateDepartment(deptId, {
-        metadata: { hod: hodName, hod_id: hodId, email: hodEmail }
+        metadata: { hod: hodName, hod_id: hodId, email: hodEmail },
       });
 
       // Refresh data
       queryClient.invalidateQueries({ queryKey: ['departments'] });
       toast.success('HOD assigned successfully');
-      
+
       setShowHODAssignmentModal(false);
       setSelectedDepartment(null);
       setAssignedFaculty([]);
@@ -606,8 +630,11 @@ const DepartmentManagement: React.FC = () => {
 
   // Add students mutation
   const addStudentsMutation = useMutation({
-    mutationFn: ({ departmentId, students }: { 
-      departmentId: string; 
+    mutationFn: ({
+      departmentId,
+      students,
+    }: {
+      departmentId: string;
       students: Array<{
         rollNumber: string;
         firstName: string;
@@ -616,7 +643,7 @@ const DepartmentManagement: React.FC = () => {
         phone?: string;
         semester?: number;
         program?: string;
-      }> 
+      }>;
     }) => departmentService.addStudentsToDepartment(departmentId, students),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['departments'] });
@@ -687,9 +714,7 @@ const DepartmentManagement: React.FC = () => {
     <div className="flex flex-col min-h-full">
       {/* Header */}
       <div className="p-4 sm:p-6 lg:p-8 mb-2">
-        <h1 className="text-xl md:text-3xl font-bold text-gray-900">
-          Department Management
-        </h1>
+        <h1 className="text-xl md:text-3xl font-bold text-gray-900">Department Management</h1>
         <p className="text-base md:text-lg mt-2 text-gray-600">
           Manage departments, courses, faculty assignments, and HOD appointments.
         </p>
@@ -700,9 +725,7 @@ const DepartmentManagement: React.FC = () => {
         <div className="w-80 flex-shrink-0 pr-4 text-left">
           <div className="inline-flex items-baseline">
             <h1 className="text-xl font-semibold text-gray-900">Departments</h1>
-            <span className="ml-2 text-sm text-gray-500">
-              ({departments.length} total)
-            </span>
+            <span className="ml-2 text-sm text-gray-500">({departments.length} total)</span>
           </div>
         </div>
 
@@ -762,21 +785,23 @@ const DepartmentManagement: React.FC = () => {
           </button>
           <div className="flex rounded-md shadow-sm">
             <button
-              onClick={() => setViewMode("grid")}
-              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${viewMode === "grid"
-                  ? "bg-indigo-50 border-indigo-300 text-indigo-700"
-                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
-                }`}
+              onClick={() => setViewMode('grid')}
+              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${
+                viewMode === 'grid'
+                  ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
               type="button"
             >
               <Squares2X2Icon className="h-4 w-4" />
             </button>
             <button
-              onClick={() => setViewMode("table")}
-              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${viewMode === "table"
-                  ? "bg-indigo-50 border-indigo-300 text-indigo-700"
-                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
-                }`}
+              onClick={() => setViewMode('table')}
+              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${
+                viewMode === 'table'
+                  ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
               type="button"
             >
               <TableCellsIcon className="h-4 w-4" />
@@ -789,9 +814,7 @@ const DepartmentManagement: React.FC = () => {
       <div className="lg:hidden p-4 bg-white border-b border-gray-200 space-y-4">
         <div className="text-left">
           <h1 className="text-xl font-semibold text-gray-900">Departments</h1>
-          <span className="text-sm text-gray-500">
-            {filteredDepartments.length} results
-          </span>
+          <span className="text-sm text-gray-500">{filteredDepartments.length} results</span>
         </div>
 
         <div>
@@ -850,21 +873,23 @@ const DepartmentManagement: React.FC = () => {
           </button>
           <div className="flex rounded-md shadow-sm">
             <button
-              onClick={() => setViewMode("grid")}
-              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${viewMode === "grid"
-                  ? "bg-indigo-50 border-indigo-300 text-indigo-700"
-                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
-                }`}
+              onClick={() => setViewMode('grid')}
+              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${
+                viewMode === 'grid'
+                  ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
               type="button"
             >
               <Squares2X2Icon className="h-4 w-4" />
             </button>
             <button
-              onClick={() => setViewMode("table")}
-              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${viewMode === "table"
-                  ? "bg-indigo-50 border-indigo-300 text-indigo-700"
-                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
-                }`}
+              onClick={() => setViewMode('table')}
+              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${
+                viewMode === 'table'
+                  ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
               type="button"
             >
               <TableCellsIcon className="h-4 w-4" />
@@ -955,11 +980,9 @@ const DepartmentManagement: React.FC = () => {
         <div className="flex-1 flex flex-col">
           <div className="px-4 sm:px-6 lg:px-8 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
             <p className="text-sm text-gray-700">
-              Showing <span className="font-medium">{filteredDepartments.length}</span>{" "}
-              result{filteredDepartments.length === 1 ? "" : "s"}
-              {searchQuery && (
-                <span className="text-gray-500"> for "{searchQuery}"</span>
-              )}
+              Showing <span className="font-medium">{filteredDepartments.length}</span> result
+              {filteredDepartments.length === 1 ? '' : 's'}
+              {searchQuery && <span className="text-gray-500"> for "{searchQuery}"</span>}
             </p>
             <div className="flex items-center gap-2">
               <button
@@ -976,7 +999,7 @@ const DepartmentManagement: React.FC = () => {
           <div className="px-4 sm:px-6 lg:px-8 p-4 pb-20">
             {isEmpty && <EmptyState onCreate={() => setShowAddModal(true)} />}
 
-            {!isEmpty && viewMode === "grid" && paginatedDepartments.length > 0 && (
+            {!isEmpty && viewMode === 'grid' && paginatedDepartments.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {paginatedDepartments.map((dept) => (
                   <div
@@ -995,12 +1018,12 @@ const DepartmentManagement: React.FC = () => {
                           >
                             <EllipsisVerticalIcon className="h-4 w-4" />
                           </button>
-                          
+
                           {/* Dropdown Menu */}
                           {openDropdownId === dept.id && (
-                            <div 
+                            <div
                               className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50"
-                              style={{ 
+                              style={{
                                 position: 'absolute',
                                 right: 0,
                                 top: '100%',
@@ -1009,7 +1032,8 @@ const DepartmentManagement: React.FC = () => {
                                 backgroundColor: 'white',
                                 border: '1px solid #e5e7eb',
                                 borderRadius: '8px',
-                                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'
+                                boxShadow:
+                                  '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
                               }}
                             >
                               <button
@@ -1061,7 +1085,7 @@ const DepartmentManagement: React.FC = () => {
                           )}
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center gap-3 mb-3">
                         <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
                           <BuildingOffice2Icon className="h-8 w-8 text-white" />
@@ -1080,7 +1104,12 @@ const DepartmentManagement: React.FC = () => {
                         <div className="flex items-start gap-3">
                           <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
                             <span className="text-sm font-semibold text-gray-700">
-                              {(dept.hod || 'NA').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                              {(dept.hod || 'NA')
+                                .split(' ')
+                                .map((n) => n[0])
+                                .join('')
+                                .slice(0, 2)
+                                .toUpperCase()}
                             </span>
                           </div>
                           <div className="flex-1 min-w-0">
@@ -1177,7 +1206,7 @@ const DepartmentManagement: React.FC = () => {
               </div>
             )}
 
-            {!isEmpty && viewMode === "table" && paginatedDepartments.length > 0 && (
+            {!isEmpty && viewMode === 'table' && paginatedDepartments.length > 0 && (
               <div className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
@@ -1213,9 +1242,7 @@ const DepartmentManagement: React.FC = () => {
                       {paginatedDepartments.map((dept) => (
                         <tr key={dept.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">
-                              {dept.name}
-                            </div>
+                            <div className="text-sm font-medium text-gray-900">{dept.name}</div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                             {dept.code}
@@ -1283,23 +1310,20 @@ const DepartmentManagement: React.FC = () => {
               </div>
             )}
 
-            {!isEmpty &&
-              paginatedDepartments.length === 0 &&
-              (searchQuery || totalFilters > 0) && (
-                <div className="text-center py-10 text-sm text-gray-500">
-                  No departments match your current filters. Try adjusting
-                  filters or clearing them.
-                  <div className="mt-3">
-                    <button
-                      onClick={handleClearFilters}
-                      className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
-                      type="button"
-                    >
-                      Clear all filters
-                    </button>
-                  </div>
+            {!isEmpty && paginatedDepartments.length === 0 && (searchQuery || totalFilters > 0) && (
+              <div className="text-center py-10 text-sm text-gray-500">
+                No departments match your current filters. Try adjusting filters or clearing them.
+                <div className="mt-3">
+                  <button
+                    onClick={handleClearFilters}
+                    className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                    type="button"
+                  >
+                    Clear all filters
+                  </button>
                 </div>
-              )}
+              </div>
+            )}
           </div>
 
           {/* Pagination */}
@@ -1340,7 +1364,7 @@ const DepartmentManagement: React.FC = () => {
           if (selectedDepartment) {
             updateDepartmentMutation.mutate({
               id: selectedDepartment.id.toString(),
-              updates: updated
+              updates: updated,
             });
           }
         }}

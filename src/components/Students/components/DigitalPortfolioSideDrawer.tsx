@@ -1,15 +1,15 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-    BookOpen,
-    Download,
-    Layout,
-    Menu,
-    Moon,
-    Palette,
-    Share2,
-    Sun,
-    User,
-    Video
+  BookOpen,
+  Download,
+  Layout,
+  Menu,
+  Moon,
+  Palette,
+  Share2,
+  Sun,
+  User,
+  Video,
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -25,17 +25,47 @@ interface SideDrawerMenuItem {
 
 // Main menu items
 const mainMenuItems: SideDrawerMenuItem[] = [
-  { id: 'portfolio', label: 'Portfolio Mode', icon: User, path: '/student/digital-portfolio/portfolio' },
-  { id: 'passport', label: 'Passport Mode', icon: BookOpen, path: '/student/digital-portfolio/passport' },
+  {
+    id: 'portfolio',
+    label: 'Portfolio Mode',
+    icon: User,
+    path: '/student/digital-portfolio/portfolio',
+  },
+  {
+    id: 'passport',
+    label: 'Passport Mode',
+    icon: BookOpen,
+    path: '/student/digital-portfolio/passport',
+  },
   { id: 'video', label: 'Video Portfolio', icon: Video, path: '/student/digital-portfolio/video' },
 ];
 
 // Settings menu items
 const settingsMenuItems: SideDrawerMenuItem[] = [
-  { id: 'theme', label: 'Theme Settings', icon: Palette, path: '/student/digital-portfolio/settings/theme' },
-  { id: 'layout', label: 'Portfolio Layout', icon: Layout, path: '/student/digital-portfolio/settings/layout' },
-  { id: 'export', label: 'Export', icon: Download, path: '/student/digital-portfolio/settings/export' },
-  { id: 'sharing', label: 'Sharing', icon: Share2, path: '/student/digital-portfolio/settings/sharing' },
+  {
+    id: 'theme',
+    label: 'Theme Settings',
+    icon: Palette,
+    path: '/student/digital-portfolio/settings/theme',
+  },
+  {
+    id: 'layout',
+    label: 'Portfolio Layout',
+    icon: Layout,
+    path: '/student/digital-portfolio/settings/layout',
+  },
+  {
+    id: 'export',
+    label: 'Export',
+    icon: Download,
+    path: '/student/digital-portfolio/settings/export',
+  },
+  {
+    id: 'sharing',
+    label: 'Sharing',
+    icon: Share2,
+    path: '/student/digital-portfolio/settings/sharing',
+  },
 ];
 
 interface DigitalPortfolioSideDrawerProps {
@@ -51,7 +81,7 @@ const DigitalPortfolioSideDrawer: React.FC<DigitalPortfolioSideDrawerProps> = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   // Local dark mode state (synced with document class)
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -72,7 +102,6 @@ const DigitalPortfolioSideDrawer: React.FC<DigitalPortfolioSideDrawerProps> = ({
       localStorage.setItem('theme', 'light');
     }
   };
-
 
   // Check if a path is active
   const isActive = (path: string) => {
@@ -109,9 +138,7 @@ const DigitalPortfolioSideDrawer: React.FC<DigitalPortfolioSideDrawerProps> = ({
         key={item.id}
         onClick={() => handleNavigate(item.path)}
         className={`flex items-center w-full px-4 py-3 text-sm rounded-lg transition-colors ${
-          isItemActive
-            ? 'bg-indigo-50 text-indigo-600'
-            : 'text-gray-700 hover:bg-gray-50'
+          isItemActive ? 'bg-indigo-50 text-indigo-600' : 'text-gray-700 hover:bg-gray-50'
         }`}
       >
         <Icon className="w-5 h-5 mr-3 flex-shrink-0" />
@@ -128,7 +155,7 @@ const DigitalPortfolioSideDrawer: React.FC<DigitalPortfolioSideDrawerProps> = ({
         className="fixed right-4 top-20 z-[101] p-3 bg-white hover:bg-gray-50 text-gray-700 rounded-full shadow-lg border border-gray-200 transition-colors"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        aria-label={isOpen ? "Close Menu" : "Open Digital Portfolio Menu"}
+        aria-label={isOpen ? 'Close Menu' : 'Open Digital Portfolio Menu'}
       >
         <Menu className="w-5 h-5" />
       </motion.button>
@@ -172,9 +199,7 @@ const DigitalPortfolioSideDrawer: React.FC<DigitalPortfolioSideDrawerProps> = ({
             {/* Menu Items */}
             <div className="flex-1 overflow-y-auto px-3 py-4">
               {/* Main Menu Items */}
-              <div className="space-y-1">
-                {mainMenuItems.map((item) => renderMenuItem(item))}
-              </div>
+              <div className="space-y-1">{mainMenuItems.map((item) => renderMenuItem(item))}</div>
 
               {/* Settings Section */}
               <div className="mt-6">
@@ -230,4 +255,3 @@ export default DigitalPortfolioSideDrawer;
 // Export menu items for testing
 export { mainMenuItems, settingsMenuItems };
 export type { SideDrawerMenuItem };
-

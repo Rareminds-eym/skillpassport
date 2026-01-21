@@ -47,23 +47,23 @@ export const shouldSendNotification = async (studentEmail, notificationType) => 
     switch (notificationType) {
       case NOTIFICATION_TYPES.APPLICATION_UPDATE:
         return settings.applicationUpdates !== false;
-      
+
       case NOTIFICATION_TYPES.NEW_OPPORTUNITY:
         return settings.newOpportunities !== false;
-      
+
       case NOTIFICATION_TYPES.RECRUITER_MESSAGE:
         return settings.recruitingMessages !== false;
-      
+
       case NOTIFICATION_TYPES.SHORTLIST:
       case NOTIFICATION_TYPES.INTERVIEW:
       case NOTIFICATION_TYPES.OFFER:
         // These are important, check applicationUpdates setting
         return settings.applicationUpdates !== false;
-      
+
       case NOTIFICATION_TYPES.SYSTEM:
         // System notifications always send (unless master switch is off)
         return true;
-      
+
       default:
         return true; // Unknown type, send by default
     }
@@ -87,13 +87,13 @@ export const sendNotification = async ({ recipientEmail, type, title, message })
   try {
     // First, check if student wants this type of notification
     const shouldSend = await shouldSendNotification(recipientEmail, type);
-    
+
     if (!shouldSend) {
       console.log(`📭 Notification not sent - user preferences: ${recipientEmail}`);
-      return { 
-        success: true, 
-        sent: false, 
-        reason: 'User preferences - notification disabled' 
+      return {
+        success: true,
+        sent: false,
+        reason: 'User preferences - notification disabled',
       };
     }
 
@@ -106,9 +106,9 @@ export const sendNotification = async ({ recipientEmail, type, title, message })
 
     if (studentError || !student?.user_id) {
       console.error('Student not found:', studentError);
-      return { 
-        success: false, 
-        error: 'Student not found' 
+      return {
+        success: false,
+        error: 'Student not found',
       };
     }
 
@@ -128,23 +128,23 @@ export const sendNotification = async ({ recipientEmail, type, title, message })
 
     if (error) {
       console.error('Error creating notification:', error);
-      return { 
-        success: false, 
-        error: error.message 
+      return {
+        success: false,
+        error: error.message,
       };
     }
 
     console.log(`✅ Notification sent to ${recipientEmail}: ${title}`);
-    return { 
-      success: true, 
-      sent: true, 
-      data 
+    return {
+      success: true,
+      sent: true,
+      data,
     };
   } catch (err) {
     console.error('Error sending notification:', err);
-    return { 
-      success: false, 
-      error: err.message 
+    return {
+      success: false,
+      error: err.message,
     };
   }
 };
@@ -270,11 +270,7 @@ export const markAllAsRead = async (userId) => {
  */
 export const getNotifications = async (userId, options = {}) => {
   try {
-    const {
-      limit = 50,
-      offset = 0,
-      unreadOnly = false,
-    } = options;
+    const { limit = 50, offset = 0, unreadOnly = false } = options;
 
     let query = supabase
       .from('notifications')
@@ -346,7 +342,7 @@ export const notificationHelpers = {
     return sendNotification({
       recipientEmail: studentEmail,
       type: NOTIFICATION_TYPES.SHORTLIST,
-      title: 'You\'ve Been Shortlisted!',
+      title: "You've Been Shortlisted!",
       message: `Congratulations! You've been shortlisted for ${jobTitle} at ${company}`,
     });
   },

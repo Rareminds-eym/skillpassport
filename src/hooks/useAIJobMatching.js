@@ -7,7 +7,7 @@ import { matchJobsWithAI, refreshJobMatches } from '../services/aiJobMatchingSer
  * - Vector similarity search against opportunities
  * - Database-level caching (24-hour TTL)
  * - Automatic cache invalidation
- * 
+ *
  * @param {Object} studentProfile - Student profile data
  * @param {boolean} enabled - Whether to run matching (default: true)
  * @param {number} topN - Number of matches to return (default: 3)
@@ -35,7 +35,7 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
         console.log('[useAIJobMatching] Fetching matches for student:', {
           id: studentProfile?.id,
           email: studentProfile?.email,
-          name: studentProfile?.name
+          name: studentProfile?.name,
         });
 
         // Call the API - it handles opportunities fetching internally
@@ -45,13 +45,12 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
         if (matches.length > 0) {
           setCacheInfo({
             cached: matches[0].cached,
-            computedAt: matches[0].computed_at
+            computedAt: matches[0].computed_at,
           });
         }
 
         setMatchedJobs(matches);
         console.log('[useAIJobMatching] Got matches:', matches.length);
-
       } catch (err) {
         console.error('❌ Error in AI job matching:', err);
         setError(err.message || 'Failed to match jobs');
@@ -63,13 +62,13 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
 
     fetchMatches();
   }, [
-    studentProfile?.id, 
+    studentProfile?.id,
     studentProfile?.email,
     studentProfile?.department,
     studentProfile?.profile?.department,
     studentProfile?.profile?.branch_field,
-    enabled, 
-    topN
+    enabled,
+    topN,
   ]);
 
   /**
@@ -84,11 +83,11 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
 
       // Force refresh bypasses cache
       const matches = await refreshJobMatches(studentProfile, topN);
-      
+
       if (matches.length > 0) {
         setCacheInfo({
           cached: false,
-          computedAt: new Date().toISOString()
+          computedAt: new Date().toISOString(),
         });
       }
 
@@ -106,7 +105,7 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
     loading,
     error,
     cacheInfo,
-    refreshMatches
+    refreshMatches,
   };
 };
 

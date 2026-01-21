@@ -13,10 +13,10 @@ export const PromotionalEventProvider = ({ children }) => {
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+
   // Modal dismissed state - persisted in sessionStorage
   const [isModalDismissed, setIsModalDismissed] = useState(false);
-  
+
   // Banner dismissed state - persisted in sessionStorage
   const [isBannerDismissed, setIsBannerDismissed] = useState(false);
 
@@ -25,7 +25,7 @@ export const PromotionalEventProvider = ({ children }) => {
     const fetchEvent = async () => {
       try {
         const now = new Date().toISOString();
-        
+
         const { data, error: fetchError } = await supabase
           .from('promotional_events')
           .select('*')
@@ -63,7 +63,6 @@ export const PromotionalEventProvider = ({ children }) => {
     fetchEvent();
   }, []);
 
-
   // Dismiss modal handler - banner will show after this
   const dismissModal = useCallback(() => {
     if (event) {
@@ -83,24 +82,24 @@ export const PromotionalEventProvider = ({ children }) => {
   // Calculate time remaining
   const getTimeRemaining = useCallback(() => {
     if (!event?.end_date) return null;
-    
+
     const end = new Date(event.end_date);
     const now = new Date();
     const diff = end - now;
-    
+
     if (diff <= 0) return null;
-    
+
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
     const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-    
+
     return { days, hours, minutes, seconds, total: diff };
   }, [event]);
 
   // Show modal if event exists and modal not dismissed
   const showModal = event && !isModalDismissed;
-  
+
   // Show banner if event exists, modal is dismissed, and banner not dismissed
   const showBanner = event && isModalDismissed && !isBannerDismissed;
 
@@ -118,9 +117,7 @@ export const PromotionalEventProvider = ({ children }) => {
   };
 
   return (
-    <PromotionalEventContext.Provider value={value}>
-      {children}
-    </PromotionalEventContext.Provider>
+    <PromotionalEventContext.Provider value={value}>{children}</PromotionalEventContext.Provider>
   );
 };
 

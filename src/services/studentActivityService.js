@@ -40,8 +40,8 @@ export const addCourseEnrollmentActivity = async (studentEmail, courseDetails) =
         courseId: courseDetails.course_id,
         courseCode: courseDetails.code,
         courseTitle: courseDetails.title,
-        educatorName: courseDetails.educator_name
-      }
+        educatorName: courseDetails.educator_name,
+      },
     };
 
     // Store in recent_updates table
@@ -63,14 +63,15 @@ export const addCourseEnrollmentActivity = async (studentEmail, courseDetails) =
     const trimmedUpdates = updatedUpdates.slice(0, 20);
 
     // Upsert the updates
-    const { error: upsertError } = await supabase
-      .from('recent_updates')
-      .upsert({
+    const { error: upsertError } = await supabase.from('recent_updates').upsert(
+      {
         student_id: student.id,
-        updates: { updates: trimmedUpdates }
-      }, {
-        onConflict: 'student_id'
-      });
+        updates: { updates: trimmedUpdates },
+      },
+      {
+        onConflict: 'student_id',
+      }
+    );
 
     if (upsertError) {
       return { success: false, error: upsertError.message };
@@ -126,8 +127,8 @@ export const notifyAllStudentsNewCourse = async (courseDetails) => {
         courseId: courseDetails.course_id,
         courseCode: courseDetails.code,
         courseTitle: courseDetails.title,
-        educatorName: courseDetails.educator_name
-      }
+        educatorName: courseDetails.educator_name,
+      },
     };
 
     console.log('📝 Activity object created:', activity);
@@ -160,14 +161,15 @@ export const notifyAllStudentsNewCourse = async (courseDetails) => {
       console.log(`    ✏️  Adding new update (total will be ${trimmedUpdates.length})`);
 
       // Upsert
-      const result = await supabase
-        .from('recent_updates')
-        .upsert({
+      const result = await supabase.from('recent_updates').upsert(
+        {
           student_id: student.id,
-          updates: { updates: trimmedUpdates }
-        }, {
-          onConflict: 'student_id'
-        });
+          updates: { updates: trimmedUpdates },
+        },
+        {
+          onConflict: 'student_id',
+        }
+      );
 
       if (result.error) {
         console.error(`    ❌ Error updating student ${student.email}:`, result.error);
@@ -181,8 +183,8 @@ export const notifyAllStudentsNewCourse = async (courseDetails) => {
     console.log('⏳ Waiting for all updates to complete...');
     const results = await Promise.all(updatePromises);
 
-    const successCount = results.filter(r => !r.error).length;
-    const errorCount = results.filter(r => r.error).length;
+    const successCount = results.filter((r) => !r.error).length;
+    const errorCount = results.filter((r) => r.error).length;
 
     console.log(`✅ Notification complete: ${successCount} succeeded, ${errorCount} failed`);
     console.log('🔔 ========== NEW COURSE NOTIFICATION ENDED ==========');
@@ -200,7 +202,6 @@ export const notifyAllStudentsNewCourse = async (courseDetails) => {
  * @param {number} limit - Number of activities to fetch (default: 10)
  */
 export const getStudentRecentActivity = async (studentEmail, limit = 10) => {
-  
   if (!studentEmail) {
     return { data: [], error: 'Student email required' };
   }
@@ -222,21 +223,22 @@ export const getStudentRecentActivity = async (studentEmail, limit = 10) => {
     const studentId = student.id;
     const studentName = student.name || `Student ${studentId}`;
 
-
     // 1. Shortlist Activities - When student gets shortlisted
     try {
       const { data: shortlistCandidates } = await supabase
         .from('shortlist_candidates')
-        .select(`
+        .select(
+          `
           *,
           shortlists(name, created_by)
-        `)
+        `
+        )
         .eq('student_id', studentId)
         .order('added_at', { ascending: false })
         .limit(limit);
 
       if (shortlistCandidates?.length > 0) {
-        shortlistCandidates.forEach(sc => {
+        shortlistCandidates.forEach((sc) => {
           allActivities.push({
             id: `shortlist-${sc.id}`,
             user: sc.added_by || 'Recruiter',
@@ -248,13 +250,12 @@ export const getStudentRecentActivity = async (studentEmail, limit = 10) => {
             icon: 'bookmark',
             metadata: {
               shortlistName: sc.shortlists?.name,
-              notes: sc.notes
-            }
+              notes: sc.notes,
+            },
           });
         });
       }
-    } catch (error) {
-    }
+    } catch (error) {}
 
     // 2. Pipeline Activities - Student's recruitment journey
     try {
@@ -266,7 +267,7 @@ export const getStudentRecentActivity = async (studentEmail, limit = 10) => {
         .limit(limit);
 
       if (pipelineActivities?.length > 0) {
-        pipelineActivities.forEach(pa => {
+        pipelineActivities.forEach((pa) => {
           let action = 'updated your status';
           let details = pa.activity_type;
 
@@ -284,12 +285,11 @@ export const getStudentRecentActivity = async (studentEmail, limit = 10) => {
             timestamp: pa.created_at,
             type: 'pipeline_update',
             icon: 'arrow-right',
-            metadata: pa.activity_details
+            metadata: pa.activity_details,
           });
         });
       }
-    } catch (error) {
-    }
+    } catch (error) {}
 
     // 3. Pipeline Candidates - Stage changes
     try {
@@ -301,10 +301,12 @@ export const getStudentRecentActivity = async (studentEmail, limit = 10) => {
         .limit(limit);
 
       if (pipelineCandidates?.length > 0) {
-        pipelineCandidates.forEach(pc => {
+        pipelineCandidates.forEach((pc) => {
           const isNew = new Date(pc.created_at).getTime() === new Date(pc.updated_at).getTime();
-          let action = isNew ? 'added you to the recruitment pipeline' : `moved you to ${pc.stage} stage`;
-          
+          let action = isNew
+            ? 'added you to the recruitment pipeline'
+            : `moved you to ${pc.stage} stage`;
+
           if (pc.status === 'rejected') {
             action = 'updated your application status';
           }
@@ -321,13 +323,12 @@ export const getStudentRecentActivity = async (studentEmail, limit = 10) => {
             metadata: {
               stage: pc.stage,
               status: pc.status,
-              opportunityId: pc.opportunity_id
-            }
+              opportunityId: pc.opportunity_id,
+            },
           });
         });
       }
-    } catch (error) {
-    }
+    } catch (error) {}
 
     // 4. Offers - Job offers for the student
     try {
@@ -339,10 +340,13 @@ export const getStudentRecentActivity = async (studentEmail, limit = 10) => {
         .limit(limit);
 
       if (offers?.length > 0) {
-        offers.forEach(offer => {
-          const isNew = new Date(offer.inserted_at).getTime() === new Date(offer.updated_at).getTime();
-          let action = isNew ? 'extended an offer to you' : `updated your offer status to ${offer.status}`;
-          
+        offers.forEach((offer) => {
+          const isNew =
+            new Date(offer.inserted_at).getTime() === new Date(offer.updated_at).getTime();
+          const action = isNew
+            ? 'extended an offer to you'
+            : `updated your offer status to ${offer.status}`;
+
           allActivities.push({
             id: `offer-${offer.id}`,
             user: 'HR Team',
@@ -350,21 +354,28 @@ export const getStudentRecentActivity = async (studentEmail, limit = 10) => {
             candidate: offer.job_title,
             details: `${offer.job_title}${offer.offered_ctc ? ` - ${offer.offered_ctc}` : ''}`,
             timestamp: offer.updated_at,
-            type: offer.status === 'accepted' ? 'offer_accepted' : 
-                  offer.status === 'rejected' ? 'offer_rejected' : 'offer_extended',
-            icon: offer.status === 'accepted' ? 'check-circle' : 
-                  offer.status === 'rejected' ? 'x-circle' : 'document-text',
+            type:
+              offer.status === 'accepted'
+                ? 'offer_accepted'
+                : offer.status === 'rejected'
+                  ? 'offer_rejected'
+                  : 'offer_extended',
+            icon:
+              offer.status === 'accepted'
+                ? 'check-circle'
+                : offer.status === 'rejected'
+                  ? 'x-circle'
+                  : 'document-text',
             metadata: {
               status: offer.status,
               ctc: offer.offered_ctc,
               expiryDate: offer.expiry_date,
-              offerDate: offer.offer_date
-            }
+              offerDate: offer.offer_date,
+            },
           });
         });
       }
-    } catch (error) {
-    }
+    } catch (error) {}
 
     // 5. Placements - Final hiring/placement updates
     try {
@@ -376,7 +387,7 @@ export const getStudentRecentActivity = async (studentEmail, limit = 10) => {
         .limit(limit);
 
       if (placements?.length > 0) {
-        placements.forEach(placement => {
+        placements.forEach((placement) => {
           let action = 'updated your placement status';
           if (placement.placementStatus === 'hired') action = 'hired you';
           if (placement.placementStatus === 'applied') action = 'processed your application';
@@ -393,13 +404,12 @@ export const getStudentRecentActivity = async (studentEmail, limit = 10) => {
             metadata: {
               status: placement.placementStatus,
               salary: placement.salaryOffered,
-              metadata: placement.metadata
-            }
+              metadata: placement.metadata,
+            },
           });
         });
       }
-    } catch (error) {
-    }
+    } catch (error) {}
 
     // 6. Profile Updates - Track when student updates their own profile
     // Note: This would require a new table to track profile changes
@@ -411,17 +421,15 @@ export const getStudentRecentActivity = async (studentEmail, limit = 10) => {
     // Take only the requested limit
     const recentActivities = allActivities.slice(0, limit);
 
-    
     return {
       data: recentActivities,
-      error: null
+      error: null,
     };
-
   } catch (error) {
     console.error('❌ Error fetching student activities:', error);
-    return { 
-      data: [], 
-      error: error.message || 'Failed to fetch activities' 
+    return {
+      data: [],
+      error: error.message || 'Failed to fetch activities',
     };
   }
 };
@@ -431,15 +439,14 @@ export const getStudentRecentActivity = async (studentEmail, limit = 10) => {
  * This can be called when student updates their profile
  */
 export const logProfileUpdate = async (studentEmail, section, action, details) => {
-  
   // For now, just log to console
   // In the future, we can create a profile_updates table
   const activity = {
     studentEmail,
     section, // 'education', 'skills', 'experience'
-    action,  // 'added', 'updated', 'removed'
+    action, // 'added', 'updated', 'removed'
     details,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   };
 
   return { success: true, activity };

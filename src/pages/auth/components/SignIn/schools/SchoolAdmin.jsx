@@ -34,7 +34,7 @@ const SchoolAdmin = () => {
     websiteUrl: '',
     areasOfInterest: [],
     otherAreaOfInterest: '',
-    
+
     // Admin Account Details
     firstName: '',
     lastName: '',
@@ -51,11 +51,11 @@ const SchoolAdmin = () => {
     role: 'admin',
     otp: '',
     otpVerified: false,
-    
+
     // Security
-    agreeToTerms: false
+    agreeToTerms: false,
   });
-  
+
   const [errors, setErrors] = useState({});
   const [success, setSuccess] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -85,7 +85,7 @@ const SchoolAdmin = () => {
     city: useRef(null),
     pincode: useRef(null),
     websiteUrl: useRef(null),
-    
+
     // Admin Details
     firstName: useRef(null),
     lastName: useRef(null),
@@ -93,7 +93,7 @@ const SchoolAdmin = () => {
     email: useRef(null),
     phoneNumber: useRef(null),
     password: useRef(null),
-    confirmPassword: useRef(null)
+    confirmPassword: useRef(null),
   };
 
   const schoolTypes = [
@@ -119,7 +119,7 @@ const SchoolAdmin = () => {
     'Research',
     'Vocational Studies',
     'Distance Education',
-    'Other'
+    'Other',
   ];
 
   const designationOptions = [
@@ -130,7 +130,7 @@ const SchoolAdmin = () => {
     'Registrar',
     'Administrator',
     'Head of Department',
-    'Other'
+    'Other',
   ];
 
   // Generate school code based on name and type
@@ -139,13 +139,11 @@ const SchoolAdmin = () => {
       .replace(/[^a-zA-Z0-9]/g, '')
       .substring(0, 3)
       .toUpperCase();
-    
-    const typePart = formData.schoolType
-      .substring(0, 3)
-      .toUpperCase();
-    
+
+    const typePart = formData.schoolType.substring(0, 3).toUpperCase();
+
     const randomPart = Math.random().toString(36).substring(2, 6).toUpperCase();
-    
+
     return `${namePart}${typePart}${randomPart}`;
   };
 
@@ -304,7 +302,8 @@ const SchoolAdmin = () => {
           newErrors.password = 'Password must be at least 8 characters long';
           newSuccess.password = false;
         } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/.test(value)) {
-          newErrors.password = 'Password must contain uppercase, lowercase, number and special character';
+          newErrors.password =
+            'Password must contain uppercase, lowercase, number and special character';
           newSuccess.password = false;
         } else {
           newErrors.password = '';
@@ -335,25 +334,25 @@ const SchoolAdmin = () => {
 
   const handleChange = (e) => {
     const { name, value, type, files, checked } = e.target;
-    
+
     if (type === 'checkbox') {
       // Handle areas of interest checkboxes
       if (name === 'areasOfInterest') {
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
-          areasOfInterest: checked 
+          areasOfInterest: checked
             ? [...prev.areasOfInterest, value]
-            : prev.areasOfInterest.filter(item => item !== value)
+            : prev.areasOfInterest.filter((item) => item !== value),
         }));
       }
       // Handle terms and conditions checkbox
       else if (name === 'agreeToTerms') {
         const newValue = checked;
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
-          [name]: newValue
+          [name]: newValue,
         }));
-        
+
         // Show captcha when terms are checked
         if (newValue) {
           setShowCaptcha(true);
@@ -363,9 +362,9 @@ const SchoolAdmin = () => {
         }
       }
     } else if (type === 'file') {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
-        [name]: files[0]
+        [name]: files[0],
       }));
       validateField(name, files[0]);
     } else {
@@ -374,23 +373,23 @@ const SchoolAdmin = () => {
       if (name === 'phoneNumber' || name === 'schoolPhone') {
         processedValue = formatPhoneNumber(value);
       }
-      
-      setFormData(prev => ({
+
+      setFormData((prev) => ({
         ...prev,
-        [name]: processedValue
+        [name]: processedValue,
       }));
-      
+
       validateField(name, processedValue);
       animateBlob(name);
     }
   };
-  
+
   const animateBlob = (fieldName) => {
     const blob = blobRefs[fieldName]?.current;
     if (blob) {
       blob.style.transform = 'scale(1.1)';
       blob.style.transition = 'transform 0.3s ease';
-      
+
       setTimeout(() => {
         if (blob) {
           blob.style.transform = 'scale(1)';
@@ -410,13 +409,21 @@ const SchoolAdmin = () => {
   const validateStep = (step) => {
     const stepFields = {
       1: ['schoolName', 'schoolType', 'schoolEmail', 'schoolPhone', 'schoolAddress', 'websiteUrl'],
-      2: ['firstName', 'lastName', 'designation', 'email', 'phoneNumber', 'password', 'confirmPassword']
+      2: [
+        'firstName',
+        'lastName',
+        'designation',
+        'email',
+        'phoneNumber',
+        'password',
+        'confirmPassword',
+      ],
     };
 
     const fieldsToValidate = stepFields[step] || [];
     let isValid = true;
 
-    fieldsToValidate.forEach(field => {
+    fieldsToValidate.forEach((field) => {
       validateField(field, formData[field]);
       if (errors[field] || !formData[field]) {
         isValid = false;
@@ -428,12 +435,12 @@ const SchoolAdmin = () => {
 
   const nextStep = () => {
     if (validateStep(currentStep)) {
-      setCurrentStep(prev => prev + 1);
+      setCurrentStep((prev) => prev + 1);
     }
   };
 
   const prevStep = () => {
-    setCurrentStep(prev => prev - 1);
+    setCurrentStep((prev) => prev - 1);
   };
 
   const openTermsModal = () => {
@@ -447,19 +454,19 @@ const SchoolAdmin = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Capitalize names
     const firstName = capitalizeFirstLetter(formData.firstName);
     const lastName = capitalizeFirstLetter(formData.lastName);
     const fullName = `${firstName} ${lastName}`.trim();
-    
+
     // Auto-generate school code before submission if not provided
     const finalFormData = {
       ...formData,
       firstName: firstName,
       lastName: lastName,
       fullName: fullName,
-      schoolCode: formData.schoolCode || generateSchoolCode()
+      schoolCode: formData.schoolCode || generateSchoolCode(),
     };
 
     if (!validateStep(2) || !formData.agreeToTerms || !recaptchaVerified) {
@@ -473,11 +480,11 @@ const SchoolAdmin = () => {
     }
 
     setIsSubmitting(true);
-    
+
     try {
       // TODO: Add actual database saving logic here
       // The finalFormData contains firstName and lastName separately with proper capitalization
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
       console.log('School admin account created:', finalFormData);
       alert('School admin account created successfully!');
       // Reset form
@@ -503,7 +510,7 @@ const SchoolAdmin = () => {
         password: '',
         confirmPassword: '',
         role: 'admin',
-        agreeToTerms: false
+        agreeToTerms: false,
       });
       setCurrentStep(1);
       setRecaptchaVerified(false);
@@ -528,7 +535,7 @@ const SchoolAdmin = () => {
   // Load admin cities when admin state changes
   useEffect(() => {
     if (formData.adminState) {
-      const stateObj = INDIAN_STATES.find(s => s.name === formData.adminState);
+      const stateObj = INDIAN_STATES.find((s) => s.name === formData.adminState);
       if (stateObj) {
         const cityList = City.getCitiesOfState('IN', stateObj.isoCode);
         setAdminCities(cityList);
@@ -545,12 +552,12 @@ const SchoolAdmin = () => {
       const result = await sendOtp(formData.phoneNumber);
       if (result.success) {
         setOtpSent(true);
-        setErrors(prev => ({ ...prev, phoneNumber: '' }));
+        setErrors((prev) => ({ ...prev, phoneNumber: '' }));
       } else {
-        setErrors(prev => ({ ...prev, phoneNumber: result.error || 'Failed to send OTP.' }));
+        setErrors((prev) => ({ ...prev, phoneNumber: result.error || 'Failed to send OTP.' }));
       }
     } catch {
-      setErrors(prev => ({ ...prev, phoneNumber: 'Failed to send OTP.' }));
+      setErrors((prev) => ({ ...prev, phoneNumber: 'Failed to send OTP.' }));
     } finally {
       setSendingOtp(false);
     }
@@ -562,13 +569,13 @@ const SchoolAdmin = () => {
     try {
       const result = await verifyOtpApi(formData.phoneNumber, formData.otp);
       if (result.success) {
-        setFormData(prev => ({ ...prev, otpVerified: true }));
-        setErrors(prev => ({ ...prev, otp: '' }));
+        setFormData((prev) => ({ ...prev, otpVerified: true }));
+        setErrors((prev) => ({ ...prev, otp: '' }));
       } else {
-        setErrors(prev => ({ ...prev, otp: result.error || 'Invalid OTP.' }));
+        setErrors((prev) => ({ ...prev, otp: result.error || 'Invalid OTP.' }));
       }
     } catch {
-      setErrors(prev => ({ ...prev, otp: 'Invalid OTP.' }));
+      setErrors((prev) => ({ ...prev, otp: 'Invalid OTP.' }));
     } finally {
       setVerifyingOtp(false);
     }
@@ -603,20 +610,18 @@ const SchoolAdmin = () => {
   // Handle state change to load cities
   const handleStateChange = (e) => {
     const selectedState = e.target.value;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       state: selectedState,
       city: '',
-      pincode: ''
+      pincode: '',
     }));
 
     // Find ISO code for the selected state and load cities
-    const stateObj = State.getStatesOfCountry("IN").find(
-      (s) => s.name === selectedState
-    );
+    const stateObj = State.getStatesOfCountry('IN').find((s) => s.name === selectedState);
 
     if (stateObj) {
-      const cityList = City.getCitiesOfState("IN", stateObj.isoCode);
+      const cityList = City.getCitiesOfState('IN', stateObj.isoCode);
       setCities(cityList);
     }
 
@@ -627,10 +632,10 @@ const SchoolAdmin = () => {
   // Handle city change to fetch pincode
   const handleCityChange = async (e) => {
     const cityName = e.target.value;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       city: cityName,
-      pincode: ''
+      pincode: '',
     }));
 
     // Auto-fetch pincode
@@ -638,15 +643,15 @@ const SchoolAdmin = () => {
       try {
         const res = await fetch(`https://api.postalpincode.in/postoffice/${cityName}`);
         const data = await res.json();
-        if (data[0]?.Status === "Success") {
+        if (data[0]?.Status === 'Success') {
           const pin = data[0].PostOffice?.[0]?.Pincode;
-          setFormData(prev => ({
+          setFormData((prev) => ({
             ...prev,
-            pincode: pin || ""
+            pincode: pin || '',
           }));
         }
       } catch (error) {
-        console.error("Error fetching pincode:", error);
+        console.error('Error fetching pincode:', error);
       }
     }
 
@@ -659,34 +664,46 @@ const SchoolAdmin = () => {
     <div className="flex justify-center mb-8">
       <div className="flex items-center space-x-4">
         {/* Step 1 */}
-        <div className={`flex flex-col items-center ${currentStep >= 1 ? 'text-blue-600' : 'text-gray-400'}`}>
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${
-            currentStep >= 1 ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300'
-          }`}>
+        <div
+          className={`flex flex-col items-center ${currentStep >= 1 ? 'text-blue-600' : 'text-gray-400'}`}
+        >
+          <div
+            className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${
+              currentStep >= 1 ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300'
+            }`}
+          >
             1
           </div>
           <span className="text-sm mt-1">School</span>
         </div>
-        
+
         <div className={`w-16 h-1 ${currentStep >= 2 ? 'bg-blue-600' : 'bg-gray-300'}`}></div>
-        
+
         {/* Step 2 */}
-        <div className={`flex flex-col items-center ${currentStep >= 2 ? 'text-blue-600' : 'text-gray-400'}`}>
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${
-            currentStep >= 2 ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300'
-          }`}>
+        <div
+          className={`flex flex-col items-center ${currentStep >= 2 ? 'text-blue-600' : 'text-gray-400'}`}
+        >
+          <div
+            className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${
+              currentStep >= 2 ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300'
+            }`}
+          >
             2
           </div>
           <span className="text-sm mt-1">Admin</span>
         </div>
-        
+
         <div className={`w-16 h-1 ${currentStep >= 3 ? 'bg-blue-600' : 'bg-gray-300'}`}></div>
-        
+
         {/* Step 3 */}
-        <div className={`flex flex-col items-center ${currentStep >= 3 ? 'text-blue-600' : 'text-gray-400'}`}>
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${
-            currentStep >= 3 ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300'
-          }`}>
+        <div
+          className={`flex flex-col items-center ${currentStep >= 3 ? 'text-blue-600' : 'text-gray-400'}`}
+        >
+          <div
+            className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${
+              currentStep >= 3 ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300'
+            }`}
+          >
             3
           </div>
           <span className="text-sm mt-1">Security</span>
@@ -709,53 +726,81 @@ const SchoolAdmin = () => {
               ×
             </button>
           </div>
-          
+
           <div className="space-y-4 text-gray-700">
-            <p><strong>Last Updated: {new Date().toLocaleDateString()}</strong></p>
-            
+            <p>
+              <strong>Last Updated: {new Date().toLocaleDateString()}</strong>
+            </p>
+
             <section>
               <h3 className="font-semibold text-lg mb-2">1. Acceptance of Terms</h3>
-              <p>By accessing and using this educational school platform, you accept and agree to be bound by the terms and provision of this agreement.</p>
+              <p>
+                By accessing and using this educational school platform, you accept and agree to be
+                bound by the terms and provision of this agreement.
+              </p>
             </section>
 
             <section>
               <h3 className="font-semibold text-lg mb-2">2. School Responsibilities</h3>
-              <p>As an school administrator, you are responsible for maintaining the accuracy of schoolal information and ensuring proper use of the platform.</p>
+              <p>
+                As an school administrator, you are responsible for maintaining the accuracy of
+                schoolal information and ensuring proper use of the platform.
+              </p>
             </section>
 
             <section>
               <h3 className="font-semibold text-lg mb-2">3. Account Responsibilities</h3>
-              <p>You are responsible for maintaining the confidentiality of your admin account and password and for restricting access to authorized personnel only.</p>
+              <p>
+                You are responsible for maintaining the confidentiality of your admin account and
+                password and for restricting access to authorized personnel only.
+              </p>
             </section>
 
             <section>
               <h3 className="font-semibold text-lg mb-2">4. Data Privacy</h3>
-              <p>We collect and process schoolal and student data in accordance with our Privacy Policy and educational data protection regulations.</p>
+              <p>
+                We collect and process schoolal and student data in accordance with our Privacy
+                Policy and educational data protection regulations.
+              </p>
             </section>
 
             <section>
               <h3 className="font-semibold text-lg mb-2">5. Schoolal Data</h3>
-              <p>You agree to handle student and schoolal data responsibly and in compliance with applicable educational data protection laws.</p>
+              <p>
+                You agree to handle student and schoolal data responsibly and in compliance with
+                applicable educational data protection laws.
+              </p>
             </section>
 
             <section>
               <h3 className="font-semibold text-lg mb-2">6. Prohibited Uses</h3>
-              <p>You may not use our platform for any illegal or unauthorized purpose nor may you violate any laws in your jurisdiction.</p>
+              <p>
+                You may not use our platform for any illegal or unauthorized purpose nor may you
+                violate any laws in your jurisdiction.
+              </p>
             </section>
 
             <section>
               <h3 className="font-semibold text-lg mb-2">7. Termination</h3>
-              <p>We may terminate or suspend access to our service immediately, without prior notice, for any breach of these Terms.</p>
+              <p>
+                We may terminate or suspend access to our service immediately, without prior notice,
+                for any breach of these Terms.
+              </p>
             </section>
 
             <section>
               <h3 className="font-semibold text-lg mb-2">8. Changes to Terms</h3>
-              <p>We reserve the right to modify these terms at any time. We will provide notice of significant changes.</p>
+              <p>
+                We reserve the right to modify these terms at any time. We will provide notice of
+                significant changes.
+              </p>
             </section>
 
             <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mt-6">
               <p className="text-sm text-yellow-700">
-                <strong>Note:</strong> These are sample terms and conditions for educational schools. Please consult with legal counsel to create appropriate terms for your specific use case.
+                <strong>Note:</strong> These are sample terms and conditions for educational
+                schools. Please consult with legal counsel to create appropriate terms for your
+                specific use case.
               </p>
             </div>
           </div>
@@ -778,15 +823,15 @@ const SchoolAdmin = () => {
       {/* Bulb Logo */}
       <div className="flex justify-center mb-4">
         <div className="relative group">
-          <img 
-            src="/RMLogo.webp" 
-            alt="Bulb Logo" 
+          <img
+            src="/RMLogo.webp"
+            alt="Bulb Logo"
             className="w-20 h-20 transition-all duration-1000 group-hover:scale-110 group-hover:brightness-125 filter drop-shadow-lg group-hover:drop-shadow-[0_0_30px_rgba(255,255,0,0.7)]"
           />
           <div className="absolute inset-0 bg-blue-400 rounded-full opacity-0 group-hover:opacity-40 blur-2xl transition-all duration-1000 group-hover:animate-pulse"></div>
         </div>
       </div>
-      
+
       <h1 className="text-2xl font-semibold text-center mb-2 text-blue-600 uppercase">
         School Admin Signup
       </h1>
@@ -813,9 +858,9 @@ const SchoolAdmin = () => {
                   onChange={handleChange}
                   onFocus={() => animateBlob('schoolName')}
                   className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                    errors.schoolName 
-                      ? 'border-red-500 focus:border-red-500' 
-                      : success.schoolName 
+                    errors.schoolName
+                      ? 'border-red-500 focus:border-red-500'
+                      : success.schoolName
                         ? 'border-green-500 focus:border-green-500'
                         : 'border-blue-200 focus:border-blue-100'
                   }`}
@@ -844,16 +889,18 @@ const SchoolAdmin = () => {
                     onChange={handleChange}
                     onFocus={() => animateBlob('schoolType')}
                     className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                      errors.schoolType 
-                        ? 'border-red-500 focus:border-red-500' 
-                        : success.schoolType 
+                      errors.schoolType
+                        ? 'border-red-500 focus:border-red-500'
+                        : success.schoolType
                           ? 'border-green-500 focus:border-green-500'
                           : 'border-blue-200 focus:border-blue-100'
                     }`}
                   >
                     <option value="">School Type *</option>
-                    {schoolTypes.map(type => (
-                      <option key={type} value={type}>{type}</option>
+                    {schoolTypes.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
                     ))}
                   </select>
                   <div
@@ -900,9 +947,9 @@ const SchoolAdmin = () => {
                     onChange={handleChange}
                     onFocus={() => animateBlob('schoolEmail')}
                     className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                      errors.schoolEmail 
-                        ? 'border-red-500 focus:border-red-500' 
-                        : success.schoolEmail 
+                      errors.schoolEmail
+                        ? 'border-red-500 focus:border-red-500'
+                        : success.schoolEmail
                           ? 'border-green-500 focus:border-green-500'
                           : 'border-blue-200 focus:border-blue-100'
                     }`}
@@ -930,9 +977,9 @@ const SchoolAdmin = () => {
                     onChange={handleChange}
                     onFocus={() => animateBlob('schoolPhone')}
                     className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                      errors.schoolPhone 
-                        ? 'border-red-500 focus:border-red-500' 
-                        : success.schoolPhone 
+                      errors.schoolPhone
+                        ? 'border-red-500 focus:border-red-500'
+                        : success.schoolPhone
                           ? 'border-green-500 focus:border-green-500'
                           : 'border-blue-200 focus:border-blue-100'
                     }`}
@@ -963,9 +1010,9 @@ const SchoolAdmin = () => {
                   onFocus={() => animateBlob('schoolAddress')}
                   rows="3"
                   className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                    errors.schoolAddress 
-                      ? 'border-red-500 focus:border-red-500' 
-                      : success.schoolAddress 
+                    errors.schoolAddress
+                      ? 'border-red-500 focus:border-red-500'
+                      : success.schoolAddress
                         ? 'border-green-500 focus:border-green-500'
                         : 'border-blue-200 focus:border-blue-100'
                   }`}
@@ -995,15 +1042,15 @@ const SchoolAdmin = () => {
                     onChange={handleStateChange}
                     onFocus={() => animateBlob('state')}
                     className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                      errors.state 
-                        ? 'border-red-500 focus:border-red-500' 
-                        : success.state 
+                      errors.state
+                        ? 'border-red-500 focus:border-red-500'
+                        : success.state
                           ? 'border-green-500 focus:border-green-500'
                           : 'border-blue-200 focus:border-blue-100'
                     }`}
                   >
                     <option value="">State *</option>
-                    {State.getStatesOfCountry("IN").map((s) => (
+                    {State.getStatesOfCountry('IN').map((s) => (
                       <option key={s.isoCode} value={s.name}>
                         {s.name}
                       </option>
@@ -1032,9 +1079,9 @@ const SchoolAdmin = () => {
                     onFocus={() => animateBlob('city')}
                     disabled={!formData.state}
                     className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                      errors.city 
-                        ? 'border-red-500 focus:border-red-500' 
-                        : success.city 
+                      errors.city
+                        ? 'border-red-500 focus:border-red-500'
+                        : success.city
                           ? 'border-green-500 focus:border-green-500'
                           : 'border-blue-200 focus:border-blue-100'
                     } ${!formData.state ? 'bg-gray-100 cursor-not-allowed' : ''}`}
@@ -1070,9 +1117,9 @@ const SchoolAdmin = () => {
                     onFocus={() => animateBlob('pincode')}
                     readOnly
                     className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                      errors.pincode 
-                        ? 'border-red-500 focus:border-red-500' 
-                        : success.pincode 
+                      errors.pincode
+                        ? 'border-red-500 focus:border-red-500'
+                        : success.pincode
                           ? 'border-green-500 focus:border-green-500'
                           : 'border-blue-200 focus:border-blue-100'
                     } bg-gray-50`}
@@ -1117,9 +1164,9 @@ const SchoolAdmin = () => {
                   onChange={handleChange}
                   onFocus={() => animateBlob('websiteUrl')}
                   className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                    errors.websiteUrl 
-                      ? 'border-red-500 focus:border-red-500' 
-                      : success.websiteUrl 
+                    errors.websiteUrl
+                      ? 'border-red-500 focus:border-red-500'
+                      : success.websiteUrl
                         ? 'border-green-500 focus:border-green-500'
                         : 'border-blue-200 focus:border-blue-100'
                   }`}
@@ -1144,7 +1191,7 @@ const SchoolAdmin = () => {
                 Areas of Interest
               </label>
               <div className="grid grid-cols-3 gap-2">
-                {areaOfInterestOptions.map(area => (
+                {areaOfInterestOptions.map((area) => (
                   <label key={area} className="flex items-center space-x-2">
                     <input
                       type="checkbox"
@@ -1158,7 +1205,7 @@ const SchoolAdmin = () => {
                   </label>
                 ))}
               </div>
-              
+
               {/* Other Area of Interest Textbox */}
               {formData.areasOfInterest.includes('Other') && (
                 <div className="mt-3">
@@ -1203,9 +1250,9 @@ const SchoolAdmin = () => {
                     onChange={handleChange}
                     onFocus={() => animateBlob('firstName')}
                     className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                      errors.firstName 
-                        ? 'border-red-500 focus:border-red-500' 
-                        : success.firstName 
+                      errors.firstName
+                        ? 'border-red-500 focus:border-red-500'
+                        : success.firstName
                           ? 'border-green-500 focus:border-green-500'
                           : 'border-blue-200 focus:border-blue-100'
                     }`}
@@ -1233,9 +1280,9 @@ const SchoolAdmin = () => {
                     onChange={handleChange}
                     onFocus={() => animateBlob('lastName')}
                     className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                      errors.lastName 
-                        ? 'border-red-500 focus:border-red-500' 
-                        : success.lastName 
+                      errors.lastName
+                        ? 'border-red-500 focus:border-red-500'
+                        : success.lastName
                           ? 'border-green-500 focus:border-green-500'
                           : 'border-blue-200 focus:border-blue-100'
                     }`}
@@ -1264,16 +1311,18 @@ const SchoolAdmin = () => {
                   onChange={handleChange}
                   onFocus={() => animateBlob('designation')}
                   className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                    errors.designation 
-                      ? 'border-red-500 focus:border-red-500' 
-                      : success.designation 
+                    errors.designation
+                      ? 'border-red-500 focus:border-red-500'
+                      : success.designation
                         ? 'border-green-500 focus:border-green-500'
                         : 'border-blue-200 focus:border-blue-100'
                   }`}
                 >
                   <option value="">Select Designation *</option>
-                  {designationOptions.map(designation => (
-                    <option key={designation} value={designation}>{designation}</option>
+                  {designationOptions.map((designation) => (
+                    <option key={designation} value={designation}>
+                      {designation}
+                    </option>
                   ))}
                 </select>
                 <div
@@ -1299,9 +1348,9 @@ const SchoolAdmin = () => {
                   onChange={handleChange}
                   onFocus={() => animateBlob('email')}
                   className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                    errors.email 
-                      ? 'border-red-500 focus:border-red-500' 
-                      : success.email 
+                    errors.email
+                      ? 'border-red-500 focus:border-red-500'
+                      : success.email
                         ? 'border-green-500 focus:border-green-500'
                         : 'border-blue-200 focus:border-blue-100'
                   }`}
@@ -1330,9 +1379,9 @@ const SchoolAdmin = () => {
                   onChange={handleChange}
                   onFocus={() => animateBlob('phoneNumber')}
                   className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                    errors.phoneNumber 
-                      ? 'border-red-500 focus:border-red-500' 
-                      : success.phoneNumber 
+                    errors.phoneNumber
+                      ? 'border-red-500 focus:border-red-500'
+                      : success.phoneNumber
                         ? 'border-green-500 focus:border-green-500'
                         : 'border-blue-200 focus:border-blue-100'
                   }`}
@@ -1357,15 +1406,15 @@ const SchoolAdmin = () => {
               <div className="relative">
                 <div className="relative">
                   <input
-                    type={showPassword ? "text" : "password"}
+                    type={showPassword ? 'text' : 'password'}
                     name="password"
                     value={formData.password}
                     onChange={handleChange}
                     onFocus={() => animateBlob('password')}
                     className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                      errors.password 
-                        ? 'border-red-500 focus:border-red-500' 
-                        : success.password 
+                      errors.password
+                        ? 'border-red-500 focus:border-red-500'
+                        : success.password
                           ? 'border-green-500 focus:border-green-500'
                           : 'border-blue-200 focus:border-blue-100'
                     }`}
@@ -1377,13 +1426,38 @@ const SchoolAdmin = () => {
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
                   >
                     {showPassword ? (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                        />
                       </svg>
                     ) : (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                        />
                       </svg>
                     )}
                   </button>
@@ -1403,15 +1477,15 @@ const SchoolAdmin = () => {
               <div className="relative">
                 <div className="relative">
                   <input
-                    type={showConfirmPassword ? "text" : "password"}
+                    type={showConfirmPassword ? 'text' : 'password'}
                     name="confirmPassword"
                     value={formData.confirmPassword}
                     onChange={handleChange}
                     onFocus={() => animateBlob('confirmPassword')}
                     className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                      errors.confirmPassword 
-                        ? 'border-red-500 focus:border-red-500' 
-                        : success.confirmPassword 
+                      errors.confirmPassword
+                        ? 'border-red-500 focus:border-red-500'
+                        : success.confirmPassword
                           ? 'border-green-500 focus:border-green-500'
                           : 'border-blue-200 focus:border-blue-100'
                     }`}
@@ -1423,13 +1497,38 @@ const SchoolAdmin = () => {
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
                   >
                     {showConfirmPassword ? (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                        />
                       </svg>
                     ) : (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                        />
                       </svg>
                     )}
                   </button>
@@ -1495,8 +1594,8 @@ const SchoolAdmin = () => {
                 onChange={handleChange}
                 disabled={!termsViewed}
                 className={`mt-1 w-4 h-4 rounded focus:ring-blue-500 ${
-                  !termsViewed 
-                    ? 'bg-gray-100 border-gray-300 cursor-not-allowed' 
+                  !termsViewed
+                    ? 'bg-gray-100 border-gray-300 cursor-not-allowed'
                     : 'text-blue-600 bg-gray-100 border-gray-300'
                 }`}
               />
@@ -1528,7 +1627,12 @@ const SchoolAdmin = () => {
               </button>
               <button
                 type="submit"
-                disabled={isSubmitting || !recaptchaVerified || !formData.agreeToTerms || !formData.otpVerified}
+                disabled={
+                  isSubmitting ||
+                  !recaptchaVerified ||
+                  !formData.agreeToTerms ||
+                  !formData.otpVerified
+                }
                 className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105"
               >
                 {isSubmitting ? (
@@ -1541,7 +1645,7 @@ const SchoolAdmin = () => {
                 )}
               </button>
             </div>
-            
+
             {/* OTP Verification Warning */}
             {!formData.otpVerified && (
               <p className="text-sm text-amber-600 text-center mt-2">

@@ -1,5 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, Users, Calendar, MapPin, Clock, Award, Star, Target, BookOpen, Activity } from 'lucide-react';
+import {
+  Trophy,
+  Users,
+  Calendar,
+  MapPin,
+  Clock,
+  Award,
+  Star,
+  Target,
+  BookOpen,
+  Activity,
+} from 'lucide-react';
 import { supabase } from '../../../../lib/supabaseClient';
 
 interface Club {
@@ -67,7 +78,15 @@ interface CollegeEvent {
   college_id: string;
   title: string;
   description?: string;
-  event_type: 'seminar' | 'workshop' | 'cultural' | 'sports' | 'placement' | 'guest_lecture' | 'orientation' | 'other';
+  event_type:
+    | 'seminar'
+    | 'workshop'
+    | 'cultural'
+    | 'sports'
+    | 'placement'
+    | 'guest_lecture'
+    | 'orientation'
+    | 'other';
   start_date: string;
   end_date: string;
   venue?: string;
@@ -92,21 +111,27 @@ interface ClubsCompetitionsTabProps {
 const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ student, loading }) => {
   // Better student type detection
   const isSchoolStudent = Boolean(student?.school_id);
-  const isCollegeStudent = Boolean(student?.college_id) || 
-    (student?.email && (
-      student.email.includes('.college.') || 
-      student.email.includes('.university.') ||
-      student.email.includes('.edu') ||
-      (!student?.school_id && student?.id) // Has ID but no school_id, likely college
-    ));
-  
+  const isCollegeStudent =
+    Boolean(student?.college_id) ||
+    (student?.email &&
+      (student.email.includes('.college.') ||
+        student.email.includes('.university.') ||
+        student.email.includes('.edu') ||
+        (!student?.school_id && student?.id))); // Has ID but no school_id, likely college
+
   const [activeSection, setActiveSection] = useState<'clubs' | 'competitions' | 'events'>(
     isCollegeStudent ? 'events' : 'clubs'
   );
   const [clubMemberships, setClubMemberships] = useState<(ClubMembership & { club: Club })[]>([]);
-  const [competitionRegistrations, setCompetitionRegistrations] = useState<(CompetitionRegistration & { competition: Competition })[]>([]);
-  const [competitionResults, setCompetitionResults] = useState<(CompetitionResult & { competition: Competition })[]>([]);
-  const [eventRegistrations, setEventRegistrations] = useState<(EventRegistration & { event: CollegeEvent })[]>([]);
+  const [competitionRegistrations, setCompetitionRegistrations] = useState<
+    (CompetitionRegistration & { competition: Competition })[]
+  >([]);
+  const [competitionResults, setCompetitionResults] = useState<
+    (CompetitionResult & { competition: Competition })[]
+  >([]);
+  const [eventRegistrations, setEventRegistrations] = useState<
+    (EventRegistration & { event: CollegeEvent })[]
+  >([]);
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
@@ -118,14 +143,11 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ student, lo
   const fetchStudentActivities = async () => {
     try {
       setDataLoading(true);
-      
+
       if (isSchoolStudent) {
-        await Promise.all([
-          fetchClubMemberships(),
-          fetchCompetitionData()
-        ]);
+        await Promise.all([fetchClubMemberships(), fetchCompetitionData()]);
       }
-      
+
       if (isCollegeStudent) {
         await fetchEventRegistrations();
       }
@@ -140,10 +162,12 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ student, lo
     try {
       const { data, error } = await supabase
         .from('club_memberships')
-        .select(`
+        .select(
+          `
           *,
           club:clubs(*)
-        `)
+        `
+        )
         .eq('student_email', student.email)
         .eq('status', 'active');
 
@@ -159,10 +183,12 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ student, lo
       // Fetch registrations
       const { data: registrations, error: regError } = await supabase
         .from('competition_registrations')
-        .select(`
+        .select(
+          `
           *,
           competition:competitions(*)
-        `)
+        `
+        )
         .eq('student_email', student.email);
 
       if (regError) throw regError;
@@ -171,10 +197,12 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ student, lo
       // Fetch results
       const { data: results, error: resultError } = await supabase
         .from('competition_results')
-        .select(`
+        .select(
+          `
           *,
           competition:competitions(*)
-        `)
+        `
+        )
         .eq('student_email', student.email);
 
       if (resultError) throw resultError;
@@ -187,7 +215,7 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ student, lo
   const fetchEventRegistrations = async () => {
     try {
       let studentId = student.id;
-      
+
       // If we don't have student.id but have email, try to find the student ID
       if (!studentId && student.email) {
         // Try students table first
@@ -196,7 +224,7 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ student, lo
           .select('id')
           .eq('email', student.email)
           .single();
-          
+
         if (studentData?.id) {
           studentId = studentData.id;
         } else {
@@ -206,30 +234,32 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ student, lo
             .select('id')
             .eq('email', student.email)
             .single();
-            
+
           if (collegeStudentData?.id) {
             studentId = collegeStudentData.id;
           }
         }
       }
-      
+
       if (!studentId) {
         return;
       }
-      
+
       const { data, error } = await supabase
         .from('college_event_registrations')
-        .select(`
+        .select(
+          `
           *,
           event:college_events(*)
-        `)
+        `
+        )
         .eq('student_id', studentId);
 
       if (error) {
         console.error('Error in event registrations query:', error);
         return;
       }
-      
+
       setEventRegistrations(data || []);
     } catch (error) {
       console.error('Error fetching event registrations:', error);
@@ -238,35 +268,54 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ student, lo
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
-      case 'arts': return <BookOpen className="h-4 w-4" />;
-      case 'sports': return <Trophy className="h-4 w-4" />;
-      case 'robotics': return <Activity className="h-4 w-4" />;
-      case 'science': return <Target className="h-4 w-4" />;
-      case 'literature': return <BookOpen className="h-4 w-4" />;
-      default: return <Users className="h-4 w-4" />;
+      case 'arts':
+        return <BookOpen className="h-4 w-4" />;
+      case 'sports':
+        return <Trophy className="h-4 w-4" />;
+      case 'robotics':
+        return <Activity className="h-4 w-4" />;
+      case 'science':
+        return <Target className="h-4 w-4" />;
+      case 'literature':
+        return <BookOpen className="h-4 w-4" />;
+      default:
+        return <Users className="h-4 w-4" />;
     }
   };
 
   const getLevelBadgeColor = (level: string) => {
     switch (level) {
-      case 'intraschool': return 'bg-blue-100 text-blue-800';
-      case 'interschool': return 'bg-green-100 text-green-800';
-      case 'district': return 'bg-yellow-100 text-yellow-800';
-      case 'state': return 'bg-orange-100 text-orange-800';
-      case 'national': return 'bg-red-100 text-red-800';
-      case 'international': return 'bg-purple-100 text-purple-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'intraschool':
+        return 'bg-blue-100 text-blue-800';
+      case 'interschool':
+        return 'bg-green-100 text-green-800';
+      case 'district':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'state':
+        return 'bg-orange-100 text-orange-800';
+      case 'national':
+        return 'bg-red-100 text-red-800';
+      case 'international':
+        return 'bg-purple-100 text-purple-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getEventTypeIcon = (type: string) => {
     switch (type) {
-      case 'seminar': return <BookOpen className="h-4 w-4" />;
-      case 'workshop': return <Activity className="h-4 w-4" />;
-      case 'cultural': return <Star className="h-4 w-4" />;
-      case 'sports': return <Trophy className="h-4 w-4" />;
-      case 'placement': return <Target className="h-4 w-4" />;
-      default: return <Calendar className="h-4 w-4" />;
+      case 'seminar':
+        return <BookOpen className="h-4 w-4" />;
+      case 'workshop':
+        return <Activity className="h-4 w-4" />;
+      case 'cultural':
+        return <Star className="h-4 w-4" />;
+      case 'sports':
+        return <Trophy className="h-4 w-4" />;
+      case 'placement':
+        return <Target className="h-4 w-4" />;
+      default:
+        return <Calendar className="h-4 w-4" />;
     }
   };
 
@@ -288,7 +337,15 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ student, lo
     );
   }
 
-  const EmptyState = ({ title, description, icon: Icon }: { title: string; description: string; icon: any }) => (
+  const EmptyState = ({
+    title,
+    description,
+    icon: Icon,
+  }: {
+    title: string;
+    description: string;
+    icon: any;
+  }) => (
     <div className="text-center py-16">
       <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-gray-50 mb-4">
         <Icon className="h-6 w-6 text-gray-400" />
@@ -310,10 +367,9 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ student, lo
             {isSchoolStudent ? 'Clubs & Competitions' : 'Events & Activities'}
           </h3>
           <p className="text-sm text-gray-500">
-            {isSchoolStudent 
+            {isSchoolStudent
               ? 'Student participation in school activities'
-              : 'Student participation in college events'
-            }
+              : 'Student participation in college events'}
           </p>
         </div>
       </div>
@@ -372,28 +428,43 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ student, lo
             ) : (
               <div className="space-y-3">
                 {clubMemberships.map((membership) => (
-                  <div key={membership.membership_id} className="bg-white border border-gray-100 rounded-xl p-4">
+                  <div
+                    key={membership.membership_id}
+                    className="bg-white border border-gray-100 rounded-xl p-4"
+                  >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3">
-                        <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
-                          membership.club.category === 'sports' ? 'bg-green-50' :
-                          membership.club.category === 'arts' ? 'bg-purple-50' :
-                          membership.club.category === 'science' ? 'bg-blue-50' :
-                          membership.club.category === 'robotics' ? 'bg-orange-50' :
-                          'bg-gray-50'
-                        }`}>
+                        <div
+                          className={`h-10 w-10 rounded-lg flex items-center justify-center ${
+                            membership.club.category === 'sports'
+                              ? 'bg-green-50'
+                              : membership.club.category === 'arts'
+                                ? 'bg-purple-50'
+                                : membership.club.category === 'science'
+                                  ? 'bg-blue-50'
+                                  : membership.club.category === 'robotics'
+                                    ? 'bg-orange-50'
+                                    : 'bg-gray-50'
+                          }`}
+                        >
                           {getCategoryIcon(membership.club.category)}
                         </div>
                         <div>
                           <h4 className="font-semibold text-gray-900">{membership.club.name}</h4>
                           <div className="flex items-center gap-2 mt-1">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                              membership.club.category === 'sports' ? 'bg-green-100 text-green-700' :
-                              membership.club.category === 'arts' ? 'bg-purple-100 text-purple-700' :
-                              membership.club.category === 'science' ? 'bg-blue-100 text-blue-700' :
-                              membership.club.category === 'robotics' ? 'bg-orange-100 text-orange-700' :
-                              'bg-gray-100 text-gray-700'
-                            }`}>
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                membership.club.category === 'sports'
+                                  ? 'bg-green-100 text-green-700'
+                                  : membership.club.category === 'arts'
+                                    ? 'bg-purple-100 text-purple-700'
+                                    : membership.club.category === 'science'
+                                      ? 'bg-blue-100 text-blue-700'
+                                      : membership.club.category === 'robotics'
+                                        ? 'bg-orange-100 text-orange-700'
+                                        : 'bg-gray-100 text-gray-700'
+                              }`}
+                            >
                               {membership.club.category}
                             </span>
                             <span className="text-xs text-gray-500">
@@ -402,26 +473,32 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ student, lo
                           </div>
                         </div>
                       </div>
-                      
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        membership.status === 'active' ? 'bg-green-50 text-green-700' :
-                        membership.status === 'suspended' ? 'bg-red-50 text-red-700' :
-                        'bg-gray-50 text-gray-700'
-                      }`}>
+
+                      <span
+                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          membership.status === 'active'
+                            ? 'bg-green-50 text-green-700'
+                            : membership.status === 'suspended'
+                              ? 'bg-red-50 text-red-700'
+                              : 'bg-gray-50 text-gray-700'
+                        }`}
+                      >
                         {membership.status}
                       </span>
                     </div>
-                    
+
                     {membership.club.description && (
                       <p className="text-sm text-gray-600 mb-3">{membership.club.description}</p>
                     )}
-                    
+
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         {membership.club.meeting_day && membership.club.meeting_time && (
                           <div className="flex items-center gap-2 text-sm text-gray-600">
                             <Clock className="h-4 w-4" />
-                            <span>{membership.club.meeting_day} at {membership.club.meeting_time}</span>
+                            <span>
+                              {membership.club.meeting_day} at {membership.club.meeting_time}
+                            </span>
                           </div>
                         )}
                         {membership.club.location && (
@@ -431,7 +508,7 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ student, lo
                           </div>
                         )}
                       </div>
-                      
+
                       <div className="space-y-2">
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-gray-600">Attendance</span>
@@ -440,13 +517,14 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ student, lo
                           </span>
                         </div>
                         <div className="w-full bg-gray-100 rounded-full h-1.5">
-                          <div 
-                            className="bg-blue-500 h-1.5 rounded-full" 
+                          <div
+                            className="bg-blue-500 h-1.5 rounded-full"
                             style={{ width: `${membership.attendance_percentage}%` }}
                           ></div>
                         </div>
                         <div className="text-xs text-gray-500">
-                          {membership.total_sessions_attended}/{membership.total_sessions_held} sessions
+                          {membership.total_sessions_attended}/{membership.total_sessions_held}{' '}
+                          sessions
                         </div>
                       </div>
                     </div>
@@ -473,41 +551,56 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ student, lo
                   <div>
                     <div className="flex items-center gap-2 mb-4">
                       <Award className="h-4 w-4 text-yellow-600" />
-                      <h4 className="font-semibold text-gray-900">Results ({competitionResults.length})</h4>
+                      <h4 className="font-semibold text-gray-900">
+                        Results ({competitionResults.length})
+                      </h4>
                     </div>
                     <div className="space-y-3">
                       {competitionResults.map((result) => (
-                        <div key={result.result_id} className="bg-white border border-gray-100 rounded-xl p-4">
+                        <div
+                          key={result.result_id}
+                          className="bg-white border border-gray-100 rounded-xl p-4"
+                        >
                           <div className="flex items-start justify-between mb-3">
                             <div className="flex items-center gap-3">
                               <div className="h-10 w-10 rounded-lg bg-yellow-50 flex items-center justify-center">
                                 <Trophy className="h-5 w-5 text-yellow-600" />
                               </div>
                               <div>
-                                <h5 className="font-semibold text-gray-900">{result.competition.name}</h5>
+                                <h5 className="font-semibold text-gray-900">
+                                  {result.competition.name}
+                                </h5>
                                 <div className="flex items-center gap-2 mt-1">
-                                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getLevelBadgeColor(result.competition.level)}`}>
+                                  <span
+                                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getLevelBadgeColor(result.competition.level)}`}
+                                  >
                                     {result.competition.level}
                                   </span>
                                   <span className="text-xs text-gray-500">
-                                    {new Date(result.competition.competition_date).toLocaleDateString()}
+                                    {new Date(
+                                      result.competition.competition_date
+                                    ).toLocaleDateString()}
                                   </span>
                                 </div>
                               </div>
                             </div>
-                            
+
                             {result.rank && (
                               <div className="text-right">
-                                <div className="text-2xl font-bold text-yellow-600">#{result.rank}</div>
+                                <div className="text-2xl font-bold text-yellow-600">
+                                  #{result.rank}
+                                </div>
                                 <div className="text-xs text-gray-500">Rank</div>
                               </div>
                             )}
                           </div>
-                          
+
                           {result.competition.description && (
-                            <p className="text-sm text-gray-600 mb-3">{result.competition.description}</p>
+                            <p className="text-sm text-gray-600 mb-3">
+                              {result.competition.description}
+                            </p>
                           )}
-                          
+
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4 text-sm text-gray-600">
                               {result.competition.venue && (
@@ -523,7 +616,7 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ student, lo
                                 </div>
                               )}
                             </div>
-                            
+
                             <div className="flex items-center gap-2">
                               {result.award && (
                                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-50 text-yellow-700">
@@ -548,48 +641,69 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ student, lo
                   <div>
                     <div className="flex items-center gap-2 mb-4">
                       <Trophy className="h-4 w-4 text-blue-600" />
-                      <h4 className="font-semibold text-gray-900">Registrations ({competitionRegistrations.length})</h4>
+                      <h4 className="font-semibold text-gray-900">
+                        Registrations ({competitionRegistrations.length})
+                      </h4>
                     </div>
                     <div className="space-y-3">
                       {competitionRegistrations.map((registration) => (
-                        <div key={registration.registration_id} className="bg-white border border-gray-100 rounded-xl p-4">
+                        <div
+                          key={registration.registration_id}
+                          className="bg-white border border-gray-100 rounded-xl p-4"
+                        >
                           <div className="flex items-start justify-between mb-3">
                             <div className="flex items-center gap-3">
                               <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center">
                                 <Trophy className="h-5 w-5 text-blue-600" />
                               </div>
                               <div>
-                                <h5 className="font-semibold text-gray-900">{registration.competition.name}</h5>
+                                <h5 className="font-semibold text-gray-900">
+                                  {registration.competition.name}
+                                </h5>
                                 <div className="flex items-center gap-2 mt-1">
-                                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getLevelBadgeColor(registration.competition.level)}`}>
+                                  <span
+                                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getLevelBadgeColor(registration.competition.level)}`}
+                                  >
                                     {registration.competition.level}
                                   </span>
                                   <span className="text-xs text-gray-500">
-                                    {new Date(registration.competition.competition_date).toLocaleDateString()}
+                                    {new Date(
+                                      registration.competition.competition_date
+                                    ).toLocaleDateString()}
                                   </span>
                                 </div>
                               </div>
                             </div>
-                            
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                              registration.status === 'confirmed' ? 'bg-green-50 text-green-700' :
-                              registration.status === 'registered' ? 'bg-blue-50 text-blue-700' :
-                              registration.status === 'withdrawn' ? 'bg-red-50 text-red-700' :
-                              'bg-gray-50 text-gray-700'
-                            }`}>
+
+                            <span
+                              className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                registration.status === 'confirmed'
+                                  ? 'bg-green-50 text-green-700'
+                                  : registration.status === 'registered'
+                                    ? 'bg-blue-50 text-blue-700'
+                                    : registration.status === 'withdrawn'
+                                      ? 'bg-red-50 text-red-700'
+                                      : 'bg-gray-50 text-gray-700'
+                              }`}
+                            >
                               {registration.status}
                             </span>
                           </div>
-                          
+
                           {registration.competition.description && (
-                            <p className="text-sm text-gray-600 mb-3">{registration.competition.description}</p>
+                            <p className="text-sm text-gray-600 mb-3">
+                              {registration.competition.description}
+                            </p>
                           )}
-                          
+
                           <div className="flex items-center justify-between text-sm text-gray-600">
                             <div className="flex items-center gap-4">
                               <div className="flex items-center gap-1">
                                 <Calendar className="h-4 w-4" />
-                                <span>Registered: {new Date(registration.registration_date).toLocaleDateString()}</span>
+                                <span>
+                                  Registered:{' '}
+                                  {new Date(registration.registration_date).toLocaleDateString()}
+                                </span>
                               </div>
                               {registration.competition.venue && (
                                 <div className="flex items-center gap-1">
@@ -598,7 +712,7 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ student, lo
                                 </div>
                               )}
                             </div>
-                            
+
                             {registration.team_name && (
                               <span className="text-xs bg-gray-50 text-gray-700 px-2 py-1 rounded-full">
                                 Team: {registration.team_name}
@@ -627,30 +741,49 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ student, lo
             ) : (
               <div className="space-y-3">
                 {eventRegistrations.map((registration) => (
-                  <div key={registration.id} className="bg-white border border-gray-100 rounded-xl p-4">
+                  <div
+                    key={registration.id}
+                    className="bg-white border border-gray-100 rounded-xl p-4"
+                  >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3">
-                        <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
-                          registration.event.event_type === 'seminar' ? 'bg-blue-50' :
-                          registration.event.event_type === 'workshop' ? 'bg-green-50' :
-                          registration.event.event_type === 'cultural' ? 'bg-purple-50' :
-                          registration.event.event_type === 'sports' ? 'bg-orange-50' :
-                          registration.event.event_type === 'placement' ? 'bg-red-50' :
-                          'bg-gray-50'
-                        }`}>
+                        <div
+                          className={`h-10 w-10 rounded-lg flex items-center justify-center ${
+                            registration.event.event_type === 'seminar'
+                              ? 'bg-blue-50'
+                              : registration.event.event_type === 'workshop'
+                                ? 'bg-green-50'
+                                : registration.event.event_type === 'cultural'
+                                  ? 'bg-purple-50'
+                                  : registration.event.event_type === 'sports'
+                                    ? 'bg-orange-50'
+                                    : registration.event.event_type === 'placement'
+                                      ? 'bg-red-50'
+                                      : 'bg-gray-50'
+                          }`}
+                        >
                           {getEventTypeIcon(registration.event.event_type)}
                         </div>
                         <div>
-                          <h4 className="font-semibold text-gray-900">{registration.event.title}</h4>
+                          <h4 className="font-semibold text-gray-900">
+                            {registration.event.title}
+                          </h4>
                           <div className="flex items-center gap-2 mt-1">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                              registration.event.event_type === 'seminar' ? 'bg-blue-100 text-blue-700' :
-                              registration.event.event_type === 'workshop' ? 'bg-green-100 text-green-700' :
-                              registration.event.event_type === 'cultural' ? 'bg-purple-100 text-purple-700' :
-                              registration.event.event_type === 'sports' ? 'bg-orange-100 text-orange-700' :
-                              registration.event.event_type === 'placement' ? 'bg-red-100 text-red-700' :
-                              'bg-gray-100 text-gray-700'
-                            }`}>
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                registration.event.event_type === 'seminar'
+                                  ? 'bg-blue-100 text-blue-700'
+                                  : registration.event.event_type === 'workshop'
+                                    ? 'bg-green-100 text-green-700'
+                                    : registration.event.event_type === 'cultural'
+                                      ? 'bg-purple-100 text-purple-700'
+                                      : registration.event.event_type === 'sports'
+                                        ? 'bg-orange-100 text-orange-700'
+                                        : registration.event.event_type === 'placement'
+                                          ? 'bg-red-100 text-red-700'
+                                          : 'bg-gray-100 text-gray-700'
+                              }`}
+                            >
                               {registration.event.event_type}
                             </span>
                             <span className="text-xs text-gray-500">
@@ -659,17 +792,22 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ student, lo
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center gap-2">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          registration.event.status === 'published' ? 'bg-green-50 text-green-700' :
-                          registration.event.status === 'completed' ? 'bg-blue-50 text-blue-700' :
-                          registration.event.status === 'cancelled' ? 'bg-red-50 text-red-700' :
-                          'bg-gray-50 text-gray-700'
-                        }`}>
+                        <span
+                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                            registration.event.status === 'published'
+                              ? 'bg-green-50 text-green-700'
+                              : registration.event.status === 'completed'
+                                ? 'bg-blue-50 text-blue-700'
+                                : registration.event.status === 'cancelled'
+                                  ? 'bg-red-50 text-red-700'
+                                  : 'bg-gray-50 text-gray-700'
+                          }`}
+                        >
                           {registration.event.status}
                         </span>
-                        
+
                         {registration.attended && (
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700">
                             Attended
@@ -677,17 +815,18 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ student, lo
                         )}
                       </div>
                     </div>
-                    
+
                     {registration.event.description && (
                       <p className="text-sm text-gray-600 mb-3">{registration.event.description}</p>
                     )}
-                    
+
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4 text-sm text-gray-600">
                         <div className="flex items-center gap-1">
                           <Calendar className="h-4 w-4" />
                           <span>
-                            {new Date(registration.event.start_date).toLocaleDateString()} - {new Date(registration.event.end_date).toLocaleDateString()}
+                            {new Date(registration.event.start_date).toLocaleDateString()} -{' '}
+                            {new Date(registration.event.end_date).toLocaleDateString()}
                           </span>
                         </div>
                         {registration.event.venue && (
@@ -697,7 +836,7 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ student, lo
                           </div>
                         )}
                       </div>
-                      
+
                       <div className="flex items-center gap-3 text-sm">
                         <div className="text-right">
                           <div className="text-xs text-gray-500">Registered</div>
@@ -705,10 +844,12 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ student, lo
                             {new Date(registration.registered_at).toLocaleDateString()}
                           </div>
                         </div>
-                        
-                        <div className={`h-2 w-2 rounded-full ${
-                          registration.attended ? 'bg-green-500' : 'bg-gray-300'
-                        }`}></div>
+
+                        <div
+                          className={`h-2 w-2 rounded-full ${
+                            registration.attended ? 'bg-green-500' : 'bg-gray-300'
+                          }`}
+                        ></div>
                       </div>
                     </div>
                   </div>

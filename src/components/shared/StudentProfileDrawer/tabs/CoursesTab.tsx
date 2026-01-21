@@ -1,16 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Course } from '../types';
 import { StatusBadge } from '../components';
-import { 
-  BookOpenIcon, 
-  AcademicCapIcon, 
-  StarIcon,
-  ClockIcon
-} from '@heroicons/react/24/outline';
-import { 
-  IconSparkles, 
-  IconBrain
-} from '@tabler/icons-react';
+import { BookOpenIcon, AcademicCapIcon, StarIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { IconSparkles, IconBrain } from '@tabler/icons-react';
 import { supabase } from '@/lib/supabaseClient';
 
 interface CoursesTabProps {
@@ -39,7 +31,7 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ courses, loading, studentId }) 
   useEffect(() => {
     const fetchRecommendations = async () => {
       if (!studentId) return;
-      
+
       setLoadingRecommendations(true);
       try {
         const { data, error } = await supabase
@@ -56,18 +48,18 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ courses, loading, studentId }) 
 
         if (data && data.length > 0 && data[0].gemini_results) {
           const geminiResults = data[0].gemini_results;
-          
+
           // Extract top 3 courses from coursesByType based on relevance_score
           const allCourses = [
             ...(geminiResults.coursesByType?.technical || []),
-            ...(geminiResults.coursesByType?.soft || [])
+            ...(geminiResults.coursesByType?.soft || []),
           ];
-          
+
           // Sort by relevance_score and take top 3
           const topCourses = allCourses
             .sort((a, b) => (b.relevance_score || 0) - (a.relevance_score || 0))
             .slice(0, 3)
-            .map(course => ({
+            .map((course) => ({
               course_id: course.course_id,
               title: course.title,
               description: course.description,
@@ -76,7 +68,7 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ courses, loading, studentId }) 
               skill_type: course.skill_type,
               skills: course.skills || [],
               match_reasons: course.match_reasons || [],
-              target_outcomes: course.target_outcomes || []
+              target_outcomes: course.target_outcomes || [],
             }));
 
           setRecommendedCourses(topCourses);
@@ -104,7 +96,7 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ courses, loading, studentId }) 
               ))}
             </div>
           </div>
-          
+
           {/* Enrolled courses skeleton */}
           <div className="space-y-3">
             <div className="h-6 bg-gray-200 rounded w-1/4"></div>
@@ -117,10 +109,14 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ courses, loading, studentId }) 
     );
   }
 
-  const EmptyState = ({ title, description, icon: Icon }: { 
-    title: string; 
-    description: string; 
-    icon: React.ComponentType<any> 
+  const EmptyState = ({
+    title,
+    description,
+    icon: Icon,
+  }: {
+    title: string;
+    description: string;
+    icon: React.ComponentType<any>;
   }) => (
     <div className="text-center py-12">
       <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-gray-100 mb-4">
@@ -167,8 +163,8 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ courses, loading, studentId }) 
             <span className="text-xs font-medium text-gray-900">{course.progress}%</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
-              className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+            <div
+              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
               style={{ width: `${course.progress}%` }}
             ></div>
           </div>
@@ -179,7 +175,9 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ courses, loading, studentId }) 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs text-gray-600 mb-3">
         {course.completed_modules !== undefined && course.total_modules !== undefined && (
           <div>
-            <span className="block font-medium text-gray-900">{course.completed_modules}/{course.total_modules}</span>
+            <span className="block font-medium text-gray-900">
+              {course.completed_modules}/{course.total_modules}
+            </span>
             <span>Modules</span>
           </div>
         )}
@@ -209,12 +207,17 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ courses, loading, studentId }) 
           <span className="text-xs text-gray-600 block mb-1">Skills Acquired:</span>
           <div className="flex flex-wrap gap-1">
             {course.skills_acquired.slice(0, 3).map((skill, idx) => (
-              <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
+              <span
+                key={idx}
+                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700"
+              >
                 {skill}
               </span>
             ))}
             {course.skills_acquired.length > 3 && (
-              <span className="text-xs text-gray-500">+{course.skills_acquired.length - 3} more</span>
+              <span className="text-xs text-gray-500">
+                +{course.skills_acquired.length - 3} more
+              </span>
             )}
           </div>
         </div>
@@ -244,11 +247,15 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ courses, loading, studentId }) 
         </div>
         <div>
           {course.status && (
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-              course.status === 'completed' ? 'bg-green-100 text-green-800' :
-              course.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-              'bg-gray-100 text-gray-800'
-            }`}>
+            <span
+              className={`px-2 py-1 rounded-full text-xs font-medium ${
+                course.status === 'completed'
+                  ? 'bg-green-100 text-green-800'
+                  : course.status === 'in_progress'
+                    ? 'bg-blue-100 text-blue-800'
+                    : 'bg-gray-100 text-gray-800'
+              }`}
+            >
               {course.status.replace('_', ' ').toUpperCase()}
             </span>
           )}
@@ -263,11 +270,13 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ courses, loading, studentId }) 
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
             <h4 className="text-sm font-semibold text-gray-900">{course.title}</h4>
-            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-              course.skill_type === 'technical' 
-                ? 'bg-green-100 text-green-700' 
-                : 'bg-orange-100 text-orange-700'
-            }`}>
+            <span
+              className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                course.skill_type === 'technical'
+                  ? 'bg-green-100 text-green-700'
+                  : 'bg-orange-100 text-orange-700'
+              }`}
+            >
               {course.skill_type === 'technical' ? 'Technical' : 'Soft Skills'}
             </span>
           </div>
@@ -286,7 +295,10 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ courses, loading, studentId }) 
           <span className="text-xs text-gray-600 block mb-1">Skills:</span>
           <div className="flex flex-wrap gap-1">
             {course.skills.slice(0, 3).map((skill, idx) => (
-              <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
+              <span
+                key={idx}
+                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700"
+              >
                 {skill}
               </span>
             ))}
@@ -351,7 +363,9 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ courses, loading, studentId }) 
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-6">
             <div className="text-center">
               <IconBrain className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-              <p className="text-sm text-gray-600">Complete your assessment to get personalized course recommendations</p>
+              <p className="text-sm text-gray-600">
+                Complete your assessment to get personalized course recommendations
+              </p>
             </div>
           </div>
         )}
@@ -368,17 +382,17 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ courses, loading, studentId }) 
         </div>
 
         {courses.length === 0 ? (
-          <EmptyState 
-            title="No courses found" 
+          <EmptyState
+            title="No courses found"
             description="Start your learning journey by enrolling in courses"
             icon={BookOpenIcon}
           />
         ) : (
           <div className="space-y-4">
             {courses.map((course) => (
-              <CourseCard 
-                key={course.id} 
-                course={course} 
+              <CourseCard
+                key={course.id}
+                course={course}
                 isPlatform={!!(course.source === 'platform' || course.course_id)}
               />
             ))}

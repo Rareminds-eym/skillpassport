@@ -1,21 +1,14 @@
 /**
  * MemberSubscriptionView Component
- * 
+ *
  * Main view for members to see their subscription status.
  * Combines organization-provided features and personal add-ons.
  * Includes expiration warnings and countdown timers.
- * 
+ *
  * Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 9.4
  */
 
-import {
-    AlertTriangle,
-    Bell,
-    Calendar,
-    Clock,
-    RefreshCw,
-    X,
-} from 'lucide-react';
+import { AlertTriangle, Bell, Calendar, Clock, RefreshCw, X } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import OrganizationProvidedFeatures from './OrganizationProvidedFeatures';
 import PersonalAddOns from './PersonalAddOns';
@@ -71,17 +64,17 @@ interface MemberSubscriptionViewProps {
   organization?: OrganizationInfo;
   subscription?: SubscriptionInfo;
   organizationFeatures?: OrganizationFeature[];
-  
+
   // Personal add-ons
   purchasedAddOns: PurchasedAddOn[];
   availableAddOns: AvailableAddOn[];
-  
+
   // Callbacks
   onPurchaseAddOn: (addOnId: string) => void;
   onManageAddOn: (addOnId: string) => void;
   onContactAdmin?: () => void;
   onDismissWarning?: () => void;
-  
+
   // Loading state
   isLoading?: boolean;
 }
@@ -140,10 +133,10 @@ function MemberSubscriptionView({
     return <LoadingSkeleton />;
   }
 
-  const showOrgExpirationWarning = 
-    showExpirationBanner && 
-    hasOrganizationSubscription && 
-    expirationDetails && 
+  const showOrgExpirationWarning =
+    showExpirationBanner &&
+    hasOrganizationSubscription &&
+    expirationDetails &&
     (expirationDetails.isExpiringSoon || expirationDetails.isGracePeriod);
 
   return (
@@ -160,9 +153,7 @@ function MemberSubscriptionView({
       )}
 
       {/* Add-on Expiration Warnings */}
-      {expiringAddOns.length > 0 && (
-        <AddOnExpirationWarning addOns={expiringAddOns} />
-      )}
+      {expiringAddOns.length > 0 && <AddOnExpirationWarning addOns={expiringAddOns} />}
 
       {/* Organization Provided Features */}
       {hasOrganizationSubscription && organization && subscription && (
@@ -174,9 +165,7 @@ function MemberSubscriptionView({
       )}
 
       {/* No Organization Subscription Notice */}
-      {!hasOrganizationSubscription && (
-        <NoOrganizationSubscription />
-      )}
+      {!hasOrganizationSubscription && <NoOrganizationSubscription />}
 
       {/* Personal Add-Ons Section */}
       <PersonalAddOns
@@ -212,9 +201,9 @@ function ExpirationWarningBanner({
       const now = new Date();
       const targetDate = new Date();
       targetDate.setDate(targetDate.getDate() + daysRemaining);
-      
+
       const diff = targetDate.getTime() - now.getTime();
-      
+
       setCountdown({
         days: Math.floor(diff / (1000 * 60 * 60 * 24)),
         hours: Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
@@ -264,9 +253,7 @@ function ExpirationWarningBanner({
           <div className="mt-3 flex items-center gap-4">
             <div className="flex items-center gap-2">
               <Clock className={`w-4 h-4 ${iconColor}`} />
-              <span className={`text-sm font-medium ${textColor}`}>
-                Time remaining:
-              </span>
+              <span className={`text-sm font-medium ${textColor}`}>Time remaining:</span>
             </div>
             <div className="flex gap-2">
               <CountdownUnit value={countdown.days} label="days" />
@@ -342,7 +329,9 @@ function AddOnExpirationWarning({ addOns }: AddOnExpirationWarningProps) {
                 <li key={addOn.id} className="text-sm text-purple-600 flex items-center gap-2">
                   <Calendar className="w-3 h-3" />
                   <span className="font-medium">{addOn.name}</span>
-                  <span>expires in {daysLeft} day{daysLeft !== 1 ? 's' : ''}</span>
+                  <span>
+                    expires in {daysLeft} day{daysLeft !== 1 ? 's' : ''}
+                  </span>
                 </li>
               );
             })}
@@ -360,13 +349,10 @@ function NoOrganizationSubscription() {
       <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
         <RefreshCw className="w-8 h-8 text-gray-400" />
       </div>
-      <h4 className="text-lg font-medium text-gray-900 mb-2">
-        No Organization Subscription
-      </h4>
+      <h4 className="text-lg font-medium text-gray-900 mb-2">No Organization Subscription</h4>
       <p className="text-sm text-gray-500 max-w-md mx-auto">
-        You don't have an active subscription from your organization. 
-        Contact your organization admin if you believe this is an error, 
-        or explore personal add-ons below.
+        You don't have an active subscription from your organization. Contact your organization
+        admin if you believe this is an error, or explore personal add-ons below.
       </p>
     </div>
   );

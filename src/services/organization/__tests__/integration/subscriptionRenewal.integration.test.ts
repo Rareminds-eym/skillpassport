@@ -1,6 +1,6 @@
 /**
  * Integration Tests: Subscription Renewal Process
- * 
+ *
  * Tests the subscription renewal workflow including auto-renewal,
  * manual renewal, grace periods, and expiration handling.
  * Requirements: 9.1, 9.2, 9.3, 9.4, 9.5
@@ -26,7 +26,7 @@ describe('Subscription Renewal Integration Tests', () => {
         auto_renew: true,
         end_date: new Date(Date.now() + 86400000).toISOString(), // Tomorrow
         total_seats: 50,
-        final_amount: 53100
+        final_amount: 53100,
       };
       subscriptions.set(subscription.id, subscription);
 
@@ -55,7 +55,7 @@ describe('Subscription Renewal Integration Tests', () => {
         id: 'sub-123',
         status: 'active',
         auto_renew: false,
-        end_date: new Date(Date.now() + 86400000).toISOString()
+        end_date: new Date(Date.now() + 86400000).toISOString(),
       };
       subscriptions.set(subscription.id, subscription);
 
@@ -77,7 +77,7 @@ describe('Subscription Renewal Integration Tests', () => {
         status: 'active',
         total_seats: 50,
         end_date: new Date().toISOString(),
-        price_per_seat: 1062
+        price_per_seat: 1062,
       };
       subscriptions.set(subscription.id, subscription);
 
@@ -110,7 +110,7 @@ describe('Subscription Renewal Integration Tests', () => {
         status: 'active',
         total_seats: 50,
         assigned_seats: 30,
-        end_date: new Date().toISOString()
+        end_date: new Date().toISOString(),
       };
       subscriptions.set(subscription.id, subscription);
 
@@ -135,7 +135,7 @@ describe('Subscription Renewal Integration Tests', () => {
       const subscription = {
         id: 'sub-123',
         total_seats: 50,
-        assigned_seats: 40
+        assigned_seats: 40,
       };
       subscriptions.set(subscription.id, subscription);
 
@@ -161,7 +161,7 @@ describe('Subscription Renewal Integration Tests', () => {
         id: 'sub-123',
         status: 'active',
         end_date: new Date(Date.now() - 86400000).toISOString(), // Yesterday
-        auto_renew: false
+        auto_renew: false,
       };
       subscriptions.set(subscription.id, subscription);
 
@@ -175,7 +175,7 @@ describe('Subscription Renewal Integration Tests', () => {
         if (now > endDate && sub.status === 'active') {
           sub.status = 'grace_period';
           sub.grace_period_start = now.toISOString();
-          
+
           const graceEnd = new Date(now);
           graceEnd.setDate(graceEnd.getDate() + 7);
           sub.grace_period_end = graceEnd.toISOString();
@@ -194,7 +194,7 @@ describe('Subscription Renewal Integration Tests', () => {
       const subscription = {
         id: 'sub-123',
         status: 'grace_period',
-        grace_period_end: new Date(Date.now() + 86400000 * 3).toISOString()
+        grace_period_end: new Date(Date.now() + 86400000 * 3).toISOString(),
       };
       subscriptions.set(subscription.id, subscription);
 
@@ -213,7 +213,7 @@ describe('Subscription Renewal Integration Tests', () => {
       const subscription = {
         id: 'sub-123',
         status: 'grace_period',
-        grace_period_end: new Date(Date.now() - 86400000).toISOString() // Yesterday
+        grace_period_end: new Date(Date.now() - 86400000).toISOString(), // Yesterday
       };
       subscriptions.set(subscription.id, subscription);
 
@@ -243,7 +243,7 @@ describe('Subscription Renewal Integration Tests', () => {
     it('should revoke all assignments when subscription expires', async () => {
       const subscription = {
         id: 'sub-123',
-        status: 'expired'
+        status: 'expired',
       };
       subscriptions.set(subscription.id, subscription);
 
@@ -251,13 +251,13 @@ describe('Subscription Renewal Integration Tests', () => {
       const testAssignments = [
         { id: 'assign-1', organization_subscription_id: 'sub-123', status: 'active' },
         { id: 'assign-2', organization_subscription_id: 'sub-123', status: 'active' },
-        { id: 'assign-3', organization_subscription_id: 'sub-123', status: 'active' }
+        { id: 'assign-3', organization_subscription_id: 'sub-123', status: 'active' },
       ];
-      testAssignments.forEach(a => assignments.set(a.id, a));
+      testAssignments.forEach((a) => assignments.set(a.id, a));
 
       const revokeAllAssignments = async (subId: string) => {
         const revoked: string[] = [];
-        
+
         for (const [id, assignment] of assignments) {
           if (assignment.organization_subscription_id === subId && assignment.status === 'active') {
             assignment.status = 'expired';
@@ -281,13 +281,15 @@ describe('Subscription Renewal Integration Tests', () => {
       const subscription = {
         id: 'sub-123',
         status: 'active',
-        end_date: new Date(Date.now() + 86400000 * 7).toISOString() // 7 days from now
+        end_date: new Date(Date.now() + 86400000 * 7).toISOString(), // 7 days from now
       };
 
       const checkExpirationWarnings = (sub: any) => {
         const now = new Date();
         const endDate = new Date(sub.end_date);
-        const daysUntilExpiry = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        const daysUntilExpiry = Math.ceil(
+          (endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+        );
 
         const warnings: string[] = [];
         if (daysUntilExpiry <= 30) warnings.push('30_day_warning');
@@ -310,7 +312,7 @@ describe('Subscription Renewal Integration Tests', () => {
       const subscription = {
         id: 'sub-123',
         status: 'active',
-        end_date: new Date(Date.now() + 86400000 * 30).toISOString()
+        end_date: new Date(Date.now() + 86400000 * 30).toISOString(),
       };
       subscriptions.set(subscription.id, subscription);
 
@@ -343,7 +345,7 @@ describe('Subscription Renewal Integration Tests', () => {
       const subscription = {
         id: 'sub-123',
         status: 'active',
-        end_date: originalEndDate
+        end_date: originalEndDate,
       };
       subscriptions.set(subscription.id, subscription);
 

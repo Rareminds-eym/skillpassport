@@ -10,7 +10,7 @@ import {
   AcademicCapIcon,
   CheckCircleIcon,
   ClockIcon,
-  BookOpenIcon
+  BookOpenIcon,
 } from '@heroicons/react/24/outline';
 import { Course } from '../../../types/educator/course';
 
@@ -28,10 +28,12 @@ const StatusBadge = ({ status }: { status: string }) => {
     Active: 'bg-emerald-100 text-emerald-700 border-emerald-300',
     Draft: 'bg-gray-100 text-gray-700 border-gray-300',
     Upcoming: 'bg-blue-100 text-blue-700 border-blue-300',
-    Archived: 'bg-amber-100 text-amber-700 border-amber-300'
+    Archived: 'bg-amber-100 text-amber-700 border-amber-300',
   };
   return (
-    <span className={`px-2 py-1 text-xs font-medium rounded-full border ${colors[status] || colors.Draft}`}>
+    <span
+      className={`px-2 py-1 text-xs font-medium rounded-full border ${colors[status] || colors.Draft}`}
+    >
       {status}
     </span>
   );
@@ -43,12 +45,11 @@ const CourseCard: React.FC<CourseCardProps> = ({
   onEdit,
   onArchive,
   onViewAnalytics,
-  onAssignEducator
+  onAssignEducator,
 }) => {
   const [showActions, setShowActions] = useState(false);
-  const skillCoverage = course.totalSkills > 0
-    ? Math.round((course.skillsMapped / course.totalSkills) * 100)
-    : 0;
+  const skillCoverage =
+    course.totalSkills > 0 ? Math.round((course.skillsMapped / course.totalSkills) * 100) : 0;
 
   const handleCardClick = (e: React.MouseEvent) => {
     // Don't trigger if clicking on the actions menu or its children
@@ -65,7 +66,7 @@ const CourseCard: React.FC<CourseCardProps> = ({
       transition={{ duration: 0.3 }}
       whileHover={{
         y: -8,
-        transition: { duration: 0.2 }
+        transition: { duration: 0.2 },
       }}
       onClick={handleCardClick}
     >
@@ -76,7 +77,7 @@ const CourseCard: React.FC<CourseCardProps> = ({
           whileHover={{ scale: 1.02 }}
           transition={{ duration: 0.2 }}
         >
-          {(course.thumbnail.startsWith('http') || course.thumbnail.startsWith('data:')) ? (
+          {course.thumbnail.startsWith('http') || course.thumbnail.startsWith('data:') ? (
             <>
               <motion.img
                 src={course.thumbnail}
@@ -117,12 +118,12 @@ const CourseCard: React.FC<CourseCardProps> = ({
               <motion.div
                 animate={{
                   rotate: [0, 5, -5, 0],
-                  scale: [1, 1.05, 1.05, 1]
+                  scale: [1, 1.05, 1.05, 1],
                 }}
                 transition={{
                   duration: 2,
                   repeat: Infinity,
-                  repeatDelay: 3
+                  repeatDelay: 3,
                 }}
               >
                 <BookOpenIcon className="h-16 w-16 text-white opacity-90" />
@@ -136,17 +137,13 @@ const CourseCard: React.FC<CourseCardProps> = ({
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-2">
-            <h3 className="text-base font-semibold text-gray-900 line-clamp-1">
-              {course.title}
-            </h3>
+            <h3 className="text-base font-semibold text-gray-900 line-clamp-1">{course.title}</h3>
             <StatusBadge status={course.status} />
           </div>
           <p className="text-xs text-gray-500 mb-1">
             <span className="font-medium text-gray-700">{course.code}</span> • {course.duration}
           </p>
-          <p className="text-sm text-gray-600 line-clamp-2 mb-3">
-            {course.description}
-          </p>
+          <p className="text-sm text-gray-600 line-clamp-2 mb-3">{course.description}</p>
         </div>
         <div className="relative">
           <button
@@ -158,14 +155,20 @@ const CourseCard: React.FC<CourseCardProps> = ({
           {showActions && (
             <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
               <button
-                onClick={() => { onView(course); setShowActions(false); }}
+                onClick={() => {
+                  onView(course);
+                  setShowActions(false);
+                }}
                 className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
               >
                 <EyeIcon className="h-4 w-4" /> View Course
               </button>
               {onEdit && (
                 <button
-                  onClick={() => { onEdit(course); setShowActions(false); }}
+                  onClick={() => {
+                    onEdit(course);
+                    setShowActions(false);
+                  }}
                   className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                 >
                   <PencilIcon className="h-4 w-4" /> Edit Course
@@ -173,27 +176,36 @@ const CourseCard: React.FC<CourseCardProps> = ({
               )}
               {onAssignEducator && (
                 <button
-                  onClick={() => { onAssignEducator(course); setShowActions(false); }}
+                  onClick={() => {
+                    onAssignEducator(course);
+                    setShowActions(false);
+                  }}
                   className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                 >
                   <UsersIcon className="h-4 w-4" /> Assign Educator
                 </button>
               )}
               <button
-                onClick={() => { onViewAnalytics(course); setShowActions(false); }}
+                onClick={() => {
+                  onViewAnalytics(course);
+                  setShowActions(false);
+                }}
                 className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
               >
                 <ChartBarIcon className="h-4 w-4" /> View Analytics
               </button>
               {onArchive && (
                 <button
-                  onClick={() => { onArchive(course); setShowActions(false); }}
+                  onClick={() => {
+                    onArchive(course);
+                    setShowActions(false);
+                  }}
                   className="w-full text-left px-4 py-2 text-sm text-amber-600 hover:bg-amber-50 flex items-center gap-2"
                 >
-                  <ArchiveBoxIcon className="h-4 w-4" /> {course.status === 'Archived' ? 'Unarchive' : 'Archive'}
+                  <ArchiveBoxIcon className="h-4 w-4" />{' '}
+                  {course.status === 'Archived' ? 'Unarchive' : 'Archive'}
                 </button>
               )}
-            
             </div>
           )}
         </div>

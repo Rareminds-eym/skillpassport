@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 import {
   Briefcase,
   Plus,
@@ -10,23 +10,22 @@ import {
   Download,
   X,
   CheckCircle,
-} from "lucide-react";
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import { opportunitiesService } from '@/services/opportunitiesService';
 import type { Opportunity } from '@/services/opportunitiesService';
 
-
 const JobPostings: React.FC = () => {
-  const [jobSearchTerm, setJobSearchTerm] = useState("");
-  const [selectedJobStatus, setSelectedJobStatus] = useState("");
-  const [selectedEmploymentType, setSelectedEmploymentType] = useState("");
-  const [selectedJobMode, setSelectedJobMode] = useState("");
+  const [jobSearchTerm, setJobSearchTerm] = useState('');
+  const [selectedJobStatus, setSelectedJobStatus] = useState('');
+  const [selectedEmploymentType, setSelectedEmploymentType] = useState('');
+  const [selectedJobMode, setSelectedJobMode] = useState('');
   const [showJobFilterModal, setShowJobFilterModal] = useState(false);
   const [showAddJobModal, setShowAddJobModal] = useState(false);
   const [showJobDetailsModal, setShowJobDetailsModal] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Opportunity | null>(null);
   const [editingJob, setEditingJob] = useState<Opportunity | null>(null);
-  
+
   // Opportunities data from database
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [filteredOpportunities, setFilteredOpportunities] = useState<Opportunity[]>([]);
@@ -37,7 +36,7 @@ const JobPostings: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
-  
+
   // Company data from database (kept for future use)
   // const [companies, setCompanies] = useState<Company[]>([]);
 
@@ -99,10 +98,10 @@ const JobPostings: React.FC = () => {
     try {
       setIsLoadingOpportunities(true);
       setHasError(false);
-      
+
       // Load all opportunities without filters (we'll filter client-side)
       const opportunitiesData = await opportunitiesService.getAllOpportunities({
-        is_active: true // Only show active opportunities
+        is_active: true, // Only show active opportunities
       });
       setOpportunities(opportunitiesData);
     } catch (error) {
@@ -121,27 +120,28 @@ const JobPostings: React.FC = () => {
     // Search filter
     if (jobSearchTerm) {
       const search = jobSearchTerm.toLowerCase();
-      filtered = filtered.filter(job => 
-        job.title?.toLowerCase().includes(search) ||
-        job.company_name?.toLowerCase().includes(search) ||
-        job.department?.toLowerCase().includes(search) ||
-        job.location?.toLowerCase().includes(search)
+      filtered = filtered.filter(
+        (job) =>
+          job.title?.toLowerCase().includes(search) ||
+          job.company_name?.toLowerCase().includes(search) ||
+          job.department?.toLowerCase().includes(search) ||
+          job.location?.toLowerCase().includes(search)
       );
     }
 
     // Status filter
     if (selectedJobStatus) {
-      filtered = filtered.filter(job => job.status === selectedJobStatus);
+      filtered = filtered.filter((job) => job.status === selectedJobStatus);
     }
 
     // Employment type filter
     if (selectedEmploymentType) {
-      filtered = filtered.filter(job => job.employment_type === selectedEmploymentType);
+      filtered = filtered.filter((job) => job.employment_type === selectedEmploymentType);
     }
 
     // Mode filter
     if (selectedJobMode) {
-      filtered = filtered.filter(job => job.mode === selectedJobMode);
+      filtered = filtered.filter((job) => job.mode === selectedJobMode);
     }
 
     setTotalItems(filtered.length);
@@ -229,10 +229,16 @@ const JobPostings: React.FC = () => {
   const getJobStatusBadge = (status?: string) => {
     const statusLower = status?.toLowerCase() || 'draft';
     const colorClass = opportunitiesService.getStatusBadgeColor(status);
-    const displayStatus = statusLower === 'open' ? 'Active' : 
-                         statusLower.charAt(0).toUpperCase() + statusLower.slice(1);
-    
-    return <span className={`px-2 py-1 text-xs font-medium rounded-full ${colorClass}`}>{displayStatus}</span>;
+    const displayStatus =
+      statusLower === 'open'
+        ? 'Active'
+        : statusLower.charAt(0).toUpperCase() + statusLower.slice(1);
+
+    return (
+      <span className={`px-2 py-1 text-xs font-medium rounded-full ${colorClass}`}>
+        {displayStatus}
+      </span>
+    );
   };
 
   const viewJobDetails = async (jobId: number) => {
@@ -295,27 +301,27 @@ const JobPostings: React.FC = () => {
   };
 
   const publishJobPost = (jobId: number) => {
-    const job = opportunities.find(j => j.id === jobId);
+    const job = opportunities.find((j) => j.id === jobId);
     if (job) {
       toast.success(`Job "${job.title}" published and students auto-listed successfully!`);
     }
   };
 
   const exportShortlist = (jobId: number) => {
-    const job = opportunities.find(j => j.id === jobId);
+    const job = opportunities.find((j) => j.id === jobId);
     if (job) {
       const shortlistData = {
         'Job ID': job.id,
         'Job Title': job.title,
-        'Company': job.company_name,
-        'Department': job.department,
+        Company: job.company_name,
+        Department: job.department,
         'Employment Type': job.employment_type,
-        'Location': job.location,
-        'Applications': job.applications_count,
-        'Views': job.views_count,
-        'Status': job.status,
+        Location: job.location,
+        Applications: job.applications_count,
+        Views: job.views_count,
+        Status: job.status,
         'Created Date': new Date(job.created_at).toLocaleDateString(),
-        'Deadline': job.deadline ? new Date(job.deadline).toLocaleDateString() : 'Not specified'
+        Deadline: job.deadline ? new Date(job.deadline).toLocaleDateString() : 'Not specified',
       };
 
       const jsonContent = JSON.stringify(shortlistData, null, 2);
@@ -328,32 +334,38 @@ const JobPostings: React.FC = () => {
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-      
+
       toast.success(`Shortlist exported for ${job.title}`);
     }
   };
 
   const exportJobDetails = (jobId: number) => {
-    const job = opportunities.find(j => j.id === jobId);
+    const job = opportunities.find((j) => j.id === jobId);
     if (job) {
       const jobDetails = {
         'Job Title': job.title,
-        'Company': job.company_name,
-        'Department': job.department,
+        Company: job.company_name,
+        Department: job.department,
         'Employment Type': job.employment_type,
         'Work Mode': job.mode,
-        'Location': job.location,
+        Location: job.location,
         'Salary Range': opportunitiesService.formatSalary(job),
         'Experience Required': job.experience_required,
-        'Description': job.description,
+        Description: job.description,
         'Skills Required': opportunitiesService.formatSkills(job.skills_required).join(', '),
-        'Requirements': Array.isArray(job.requirements) ? job.requirements.join('; ') : job.requirements,
-        'Responsibilities': Array.isArray(job.responsibilities) ? job.responsibilities.join('; ') : job.responsibilities,
-        'Benefits': Array.isArray(job.benefits) ? job.benefits.join('; ') : job.benefits,
-        'Application Deadline': job.deadline ? new Date(job.deadline).toLocaleDateString() : 'Not specified',
-        'Status': job.status,
+        Requirements: Array.isArray(job.requirements)
+          ? job.requirements.join('; ')
+          : job.requirements,
+        Responsibilities: Array.isArray(job.responsibilities)
+          ? job.responsibilities.join('; ')
+          : job.responsibilities,
+        Benefits: Array.isArray(job.benefits) ? job.benefits.join('; ') : job.benefits,
+        'Application Deadline': job.deadline
+          ? new Date(job.deadline).toLocaleDateString()
+          : 'Not specified',
+        Status: job.status,
         'Applications Count': job.applications_count,
-        'Views Count': job.views_count
+        'Views Count': job.views_count,
       };
 
       const jsonContent = JSON.stringify(jobDetails, null, 2);
@@ -366,15 +378,15 @@ const JobPostings: React.FC = () => {
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-      
+
       toast.success(`Job details exported for ${job.title}`);
     }
   };
 
   const clearJobFilters = () => {
-    setSelectedJobStatus("");
-    setSelectedEmploymentType("");
-    setSelectedJobMode("");
+    setSelectedJobStatus('');
+    setSelectedEmploymentType('');
+    setSelectedJobMode('');
     setShowJobFilterModal(false);
   };
 
@@ -414,17 +426,21 @@ const JobPostings: React.FC = () => {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold text-gray-900">Job Posting & Application Tracking</h2>
-        <button 
-          onClick={() => setShowAddJobModal(true)} disabled
+        <button
+          onClick={() => setShowAddJobModal(true)}
+          disabled
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
         >
           <Plus className="h-4 w-4" />
           Create Job Posting
         </button>
       </div>
-      
-      <p className="text-gray-600 mb-4">Manage job roles, eligibility rules, rounds scheduling, student allocation, and application stage updates.</p>
-      
+
+      <p className="text-gray-600 mb-4">
+        Manage job roles, eligibility rules, rounds scheduling, student allocation, and application
+        stage updates.
+      </p>
+
       <div className="flex gap-2 mb-6">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -436,7 +452,7 @@ const JobPostings: React.FC = () => {
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
-        <button 
+        <button
           onClick={() => setShowJobFilterModal(true)}
           className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
         >
@@ -458,8 +474,12 @@ const JobPostings: React.FC = () => {
               <div className="text-red-500 mb-4">
                 <X className="h-12 w-12 mx-auto" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Opportunities</h3>
-              <p className="text-gray-500 mb-4">There was an error loading job opportunities. Please try again.</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Error Loading Opportunities
+              </h3>
+              <p className="text-gray-500 mb-4">
+                There was an error loading job opportunities. Please try again.
+              </p>
               <button
                 onClick={() => loadOpportunities()}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
@@ -514,13 +534,19 @@ const JobPostings: React.FC = () => {
                           </div>
                           <div className="ml-4">
                             <div className="text-sm font-medium text-gray-900">{job.title}</div>
-                            <div className="text-sm text-gray-500">{job.department} • {job.location}</div>
+                            <div className="text-sm text-gray-500">
+                              {job.department} • {job.location}
+                            </div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{job.company_name || 'Not specified'}</div>
-                        <div className="text-sm text-gray-500">Posted {new Date(job.created_at).toLocaleDateString()}</div>
+                        <div className="text-sm text-gray-900">
+                          {job.company_name || 'Not specified'}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          Posted {new Date(job.created_at).toLocaleDateString()}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">{job.employment_type}</div>
@@ -530,11 +556,15 @@ const JobPostings: React.FC = () => {
                         <div className="text-sm text-gray-900">
                           {opportunitiesService.formatSalary(job)}
                         </div>
-                        <div className="text-sm text-gray-500">{job.experience_required || 'Not specified'}</div>
+                        <div className="text-sm text-gray-500">
+                          {job.experience_required || 'Not specified'}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2">
-                          <div className="text-sm font-medium text-gray-900">{job.applications_count}</div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {job.applications_count}
+                          </div>
                           <div className="text-sm text-gray-500">applications</div>
                         </div>
                         <div className="flex items-center gap-1 text-sm text-gray-500">
@@ -547,28 +577,28 @@ const JobPostings: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex items-center gap-2">
-                          <button 
+                          <button
                             onClick={() => viewJobDetails(job.id)}
                             className="text-blue-600 hover:text-blue-900"
                             title="View Details"
                           >
                             <Eye className="h-4 w-4" />
                           </button>
-                          <button 
+                          <button
                             onClick={() => editJob(job.id)}
                             className="text-green-600 hover:text-green-900"
                             title="Edit Job"
                           >
                             <Edit className="h-4 w-4" />
                           </button>
-                          <button 
+                          <button
                             onClick={() => publishJobPost(job.id)}
                             className="text-purple-600 hover:text-purple-900"
                             title="Publish & Auto-list Students"
                           >
                             <UserCheck className="h-4 w-4" />
                           </button>
-                          <button 
+                          <button
                             onClick={() => exportShortlist(job.id)}
                             className="text-orange-600 hover:text-orange-900"
                             title="Export Shortlist"
@@ -584,14 +614,24 @@ const JobPostings: React.FC = () => {
                     <td colSpan={7} className="px-6 py-12 text-center">
                       <div className="flex flex-col items-center">
                         <Briefcase className="h-12 w-12 text-gray-400 mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">No job opportunities found</h3>
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">
+                          No job opportunities found
+                        </h3>
                         <p className="text-gray-500 mb-4">
-                          {jobSearchTerm || selectedJobStatus || selectedEmploymentType || selectedJobMode
-                            ? "Try adjusting your search or filters"
-                            : "No job opportunities are currently available in the system"}
+                          {jobSearchTerm ||
+                          selectedJobStatus ||
+                          selectedEmploymentType ||
+                          selectedJobMode
+                            ? 'Try adjusting your search or filters'
+                            : 'No job opportunities are currently available in the system'}
                         </p>
-                        {!(jobSearchTerm || selectedJobStatus || selectedEmploymentType || selectedJobMode) && (
-                          <button 
+                        {!(
+                          jobSearchTerm ||
+                          selectedJobStatus ||
+                          selectedEmploymentType ||
+                          selectedJobMode
+                        ) && (
+                          <button
                             onClick={() => setShowAddJobModal(true)}
                             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
                           >
@@ -629,7 +669,8 @@ const JobPostings: React.FC = () => {
                 <span>entries</span>
               </div>
               <div>
-                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} job postings
+                Showing {(currentPage - 1) * itemsPerPage + 1} to{' '}
+                {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} job postings
               </div>
             </div>
 
@@ -644,7 +685,7 @@ const JobPostings: React.FC = () => {
                   >
                     Previous
                   </button>
-                  
+
                   {/* Page numbers */}
                   <div className="flex items-center gap-1">
                     {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
@@ -658,7 +699,7 @@ const JobPostings: React.FC = () => {
                       } else {
                         pageNum = currentPage - 2 + i;
                       }
-                      
+
                       return (
                         <button
                           key={pageNum}
@@ -674,7 +715,7 @@ const JobPostings: React.FC = () => {
                       );
                     })}
                   </div>
-                  
+
                   <button
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
@@ -692,13 +733,11 @@ const JobPostings: React.FC = () => {
       {/* Job Results Summary */}
       {opportunities.length > 0 && (
         <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
-          <div>
-            Showing {opportunities.length} job opportunities
-          </div>
+          <div>Showing {opportunities.length} job opportunities</div>
           <div className="flex items-center gap-4">
-            <span>Active: {opportunities.filter(j => j.status === 'open').length}</span>
-            <span>Draft: {opportunities.filter(j => j.status === 'draft').length}</span>
-            <span>Closed: {opportunities.filter(j => j.status === 'closed').length}</span>
+            <span>Active: {opportunities.filter((j) => j.status === 'open').length}</span>
+            <span>Draft: {opportunities.filter((j) => j.status === 'draft').length}</span>
+            <span>Closed: {opportunities.filter((j) => j.status === 'closed').length}</span>
           </div>
         </div>
       )}
@@ -708,7 +747,7 @@ const JobPostings: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Filter Job Postings</h3>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
@@ -726,7 +765,9 @@ const JobPostings: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Employment Type</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Employment Type
+                </label>
                 <select
                   value={selectedEmploymentType}
                   onChange={(e) => setSelectedEmploymentType(e.target.value)}
@@ -793,11 +834,11 @@ const JobPostings: React.FC = () => {
                   className="border border-gray-300 rounded-lg px-3 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   defaultValue={selectedJob.id}
                   onChange={(e) => {
-                    const job = opportunities.find(j => j.id === parseInt(e.target.value));
+                    const job = opportunities.find((j) => j.id === parseInt(e.target.value));
                     if (job) setSelectedJob(job);
                   }}
                 >
-                  {opportunities.map(job => (
+                  {opportunities.map((job) => (
                     <option key={job.id} value={job.id}>
                       {job.title} - {job.company_name}
                     </option>
@@ -820,7 +861,9 @@ const JobPostings: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div>
                     <p className="text-sm text-gray-600">Company:</p>
-                    <p className="font-medium text-gray-900">{selectedJob.company_name || 'Not specified'}</p>
+                    <p className="font-medium text-gray-900">
+                      {selectedJob.company_name || 'Not specified'}
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Department:</p>
@@ -832,7 +875,9 @@ const JobPostings: React.FC = () => {
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Mode:</p>
-                    <p className="font-medium text-gray-900">{selectedJob.mode || 'Not specified'}</p>
+                    <p className="font-medium text-gray-900">
+                      {selectedJob.mode || 'Not specified'}
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Salary:</p>
@@ -842,7 +887,9 @@ const JobPostings: React.FC = () => {
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Experience:</p>
-                    <p className="font-medium text-gray-900">{selectedJob.experience_required || 'Not specified'}</p>
+                    <p className="font-medium text-gray-900">
+                      {selectedJob.experience_required || 'Not specified'}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -860,11 +907,16 @@ const JobPostings: React.FC = () => {
                 <div>
                   <h4 className="text-lg font-semibold text-gray-900 mb-3">Skills Required</h4>
                   <div className="flex flex-wrap gap-2">
-                    {opportunitiesService.formatSkills(selectedJob.skills_required).map((skill, index) => (
-                      <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
-                        {skill}
-                      </span>
-                    ))}
+                    {opportunitiesService
+                      .formatSkills(selectedJob.skills_required)
+                      .map((skill, index) => (
+                        <span
+                          key={index}
+                          className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                        >
+                          {skill}
+                        </span>
+                      ))}
                   </div>
                 </div>
               )}
@@ -927,7 +979,8 @@ const JobPostings: React.FC = () => {
             {/* Modal Footer */}
             <div className="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50 rounded-b-lg">
               <div className="text-sm text-gray-600">
-                Applications: {selectedJob.applications_count} • Views: {selectedJob.views_count} • Messages: {selectedJob.messages_count}
+                Applications: {selectedJob.applications_count} • Views: {selectedJob.views_count} •
+                Messages: {selectedJob.messages_count}
               </div>
               <div className="flex items-center gap-3">
                 <button
@@ -976,13 +1029,14 @@ const JobPostings: React.FC = () => {
                 <X className="h-5 w-5 text-gray-500" />
               </button>
             </div>
-            
+
             <div className="p-6">
               <div className="text-center py-8">
                 <Briefcase className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">Job Creation Form</h3>
                 <p className="text-gray-500 mb-4">
-                  This feature is currently under development. Job postings are displayed from the opportunities table.
+                  This feature is currently under development. Job postings are displayed from the
+                  opportunities table.
                 </p>
                 <button
                   onClick={() => {

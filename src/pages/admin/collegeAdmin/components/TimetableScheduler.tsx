@@ -7,7 +7,9 @@ interface TimetableSchedulerProps {
   isOpen: boolean;
   onClose: () => void;
   assessmentId: string;
-  onSchedule: (slots: Partial<ExamSlot>[]) => Promise<{ success: boolean; error?: string; conflicts?: Conflict[] }>;
+  onSchedule: (
+    slots: Partial<ExamSlot>[]
+  ) => Promise<{ success: boolean; error?: string; conflicts?: Conflict[] }>;
   existingSlots?: ExamSlot[];
 }
 
@@ -28,7 +30,25 @@ const TimetableScheduler: React.FC<TimetableSchedulerProps> = ({
       setSlots(existingSlots);
     } else {
       // Initialize with one empty slot
-      setSlots([{
+      setSlots([
+        {
+          assessment_id: assessmentId,
+          course_id: '',
+          exam_date: '',
+          start_time: '09:00',
+          end_time: '12:00',
+          room: '',
+          batch_section: '',
+          invigilators: [],
+        },
+      ]);
+    }
+  }, [existingSlots, assessmentId]);
+
+  const addSlot = () => {
+    setSlots([
+      ...slots,
+      {
         assessment_id: assessmentId,
         course_id: '',
         exam_date: '',
@@ -37,21 +57,8 @@ const TimetableScheduler: React.FC<TimetableSchedulerProps> = ({
         room: '',
         batch_section: '',
         invigilators: [],
-      }]);
-    }
-  }, [existingSlots, assessmentId]);
-
-  const addSlot = () => {
-    setSlots([...slots, {
-      assessment_id: assessmentId,
-      course_id: '',
-      exam_date: '',
-      start_time: '09:00',
-      end_time: '12:00',
-      room: '',
-      batch_section: '',
-      invigilators: [],
-    }]);
+      },
+    ]);
   };
 
   const removeSlot = (index: number) => {
@@ -100,7 +107,7 @@ const TimetableScheduler: React.FC<TimetableSchedulerProps> = ({
     // Simple auto-generation logic
     const baseDate = new Date();
     baseDate.setDate(baseDate.getDate() + 7); // Start from next week
-    
+
     const generatedSlots: Partial<ExamSlot>[] = [
       {
         assessment_id: assessmentId,
@@ -134,10 +141,7 @@ const TimetableScheduler: React.FC<TimetableSchedulerProps> = ({
       <div className="bg-white rounded-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
           <h2 className="text-xl font-bold text-gray-900">Schedule Exam Timetable</h2>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition"
-          >
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition">
             <XMarkIcon className="h-5 w-5 text-gray-500" />
           </button>
         </div>

@@ -1,5 +1,19 @@
 import { City, State } from 'country-state-city';
-import { AlertCircle, Building2, CheckCircle2, Eye, EyeOff, Gift, Globe, Languages, Loader2, MapPin, Phone, Shield, User } from 'lucide-react';
+import {
+  AlertCircle,
+  Building2,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  Gift,
+  Globe,
+  Languages,
+  Loader2,
+  MapPin,
+  Phone,
+  Shield,
+  User,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { capitalizeFirstLetter } from '../../../../../components/Subscription/shared/signupValidation';
@@ -20,13 +34,26 @@ const LANGUAGES = [
 ];
 
 // Input Field Component - Defined OUTSIDE to prevent re-creation
-const InputField = ({ label, name, type = 'text', required = false, placeholder, icon: Icon, value, onChange, error, ...props }) => (
+const InputField = ({
+  label,
+  name,
+  type = 'text',
+  required = false,
+  placeholder,
+  icon: Icon,
+  value,
+  onChange,
+  error,
+  ...props
+}) => (
   <div className="space-y-2">
     <label className="block text-sm font-medium text-gray-700">
       {label} {required && <span className="text-red-500">*</span>}
     </label>
     <div className="relative">
-      {Icon && <Icon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />}
+      {Icon && (
+        <Icon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+      )}
       <input
         type={type}
         name={name}
@@ -49,13 +76,24 @@ const InputField = ({ label, name, type = 'text', required = false, placeholder,
 );
 
 // Select Field Component - Defined OUTSIDE to prevent re-creation
-const SelectField = ({ label, name, options, required = false, icon: Icon, value, onChange, error }) => (
+const SelectField = ({
+  label,
+  name,
+  options,
+  required = false,
+  icon: Icon,
+  value,
+  onChange,
+  error,
+}) => (
   <div className="space-y-2">
     <label className="block text-sm font-medium text-gray-700">
       {label} {required && <span className="text-red-500">*</span>}
     </label>
     <div className="relative">
-      {Icon && <Icon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />}
+      {Icon && (
+        <Icon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+      )}
       <select
         name={name}
         value={value}
@@ -65,8 +103,10 @@ const SelectField = ({ label, name, options, required = false, icon: Icon, value
         }`}
       >
         <option value="">Select {label}</option>
-        {options.map(opt => (
-          <option key={opt} value={opt}>{opt}</option>
+        {options.map((opt) => (
+          <option key={opt} value={opt}>
+            {opt}
+          </option>
         ))}
       </select>
     </div>
@@ -84,36 +124,36 @@ const SignupAdmin = () => {
   const location = useLocation();
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 5;
-  
+
   // Get plan data from navigation state (if coming from subscription page)
   const { plan, studentType, returnToPayment } = location.state || {};
-  
+
   const [formData, setFormData] = useState({
     // Company Details (Step 1)
     name: '',
     code: '',
     industry: '',
     companySize: '',
-    
+
     // HQ Address (Step 2)
     hqAddress: '',
     hqCity: '',
     hqState: '',
     hqCountry: 'India',
     hqPincode: '',
-    
+
     // Contact Info (Step 3)
     phone: '',
     email: '',
     website: '',
     establishedYear: '',
-    
+
     // Contact Person (Step 4)
     contactPersonName: '',
     contactPersonDesignation: '',
     contactPersonEmail: '',
     contactPersonPhone: '',
-    
+
     // Admin Account (Step 5)
     adminFirstName: '',
     adminLastName: '',
@@ -128,9 +168,9 @@ const SignupAdmin = () => {
     confirmPassword: '',
     agreeToTerms: false,
     otp: '',
-    otpVerified: false
+    otpVerified: false,
   });
-  
+
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -144,33 +184,77 @@ const SignupAdmin = () => {
   const INDIAN_STATES = State.getStatesOfCountry('IN');
 
   const companySizes = ['1-10', '11-50', '51-200', '201-500', '501-1000', '1000+'];
-  
+
   const industries = [
-    'IT & Software', 'Education', 'Manufacturing', 'Healthcare', 'Finance & Banking',
-    'Retail & E-commerce', 'Construction', 'Hospitality', 'Transportation & Logistics',
-    'Consulting', 'Media & Entertainment', 'Telecommunications', 'Real Estate',
-    'Agriculture', 'Energy & Utilities', 'Other'
+    'IT & Software',
+    'Education',
+    'Manufacturing',
+    'Healthcare',
+    'Finance & Banking',
+    'Retail & E-commerce',
+    'Construction',
+    'Hospitality',
+    'Transportation & Logistics',
+    'Consulting',
+    'Media & Entertainment',
+    'Telecommunications',
+    'Real Estate',
+    'Agriculture',
+    'Energy & Utilities',
+    'Other',
   ];
 
   const indianStates = [
-    'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
-    'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
-    'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram',
-    'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
-    'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
-    'Delhi', 'Puducherry', 'Chandigarh', 'Jammu and Kashmir', 'Ladakh'
+    'Andhra Pradesh',
+    'Arunachal Pradesh',
+    'Assam',
+    'Bihar',
+    'Chhattisgarh',
+    'Goa',
+    'Gujarat',
+    'Haryana',
+    'Himachal Pradesh',
+    'Jharkhand',
+    'Karnataka',
+    'Kerala',
+    'Madhya Pradesh',
+    'Maharashtra',
+    'Manipur',
+    'Meghalaya',
+    'Mizoram',
+    'Nagaland',
+    'Odisha',
+    'Punjab',
+    'Rajasthan',
+    'Sikkim',
+    'Tamil Nadu',
+    'Telangana',
+    'Tripura',
+    'Uttar Pradesh',
+    'Uttarakhand',
+    'West Bengal',
+    'Delhi',
+    'Puducherry',
+    'Chandigarh',
+    'Jammu and Kashmir',
+    'Ladakh',
   ];
 
   const designations = [
-    'HR Manager', 'Recruitment Manager', 'Talent Acquisition Head',
-    'HR Director', 'Chief People Officer', 'Recruitment Lead',
-    'HR Business Partner', 'Other'
+    'HR Manager',
+    'Recruitment Manager',
+    'Talent Acquisition Head',
+    'HR Director',
+    'Chief People Officer',
+    'Recruitment Lead',
+    'HR Business Partner',
+    'Other',
   ];
 
   // Load admin cities when admin state changes
   useEffect(() => {
     if (formData.adminState && formData.adminCountry === 'IN') {
-      const stateObj = INDIAN_STATES.find(s => s.name === formData.adminState);
+      const stateObj = INDIAN_STATES.find((s) => s.name === formData.adminState);
       if (stateObj) {
         const cityList = City.getCitiesOfState('IN', stateObj.isoCode);
         setAdminCities(cityList);
@@ -187,12 +271,12 @@ const SignupAdmin = () => {
       const result = await sendOtp(formData.adminPhone);
       if (result.success) {
         setOtpSent(true);
-        setErrors(prev => ({ ...prev, adminPhone: '' }));
+        setErrors((prev) => ({ ...prev, adminPhone: '' }));
       } else {
-        setErrors(prev => ({ ...prev, adminPhone: result.error || 'Failed to send OTP.' }));
+        setErrors((prev) => ({ ...prev, adminPhone: result.error || 'Failed to send OTP.' }));
       }
     } catch {
-      setErrors(prev => ({ ...prev, adminPhone: 'Failed to send OTP.' }));
+      setErrors((prev) => ({ ...prev, adminPhone: 'Failed to send OTP.' }));
     } finally {
       setSendingOtp(false);
     }
@@ -204,13 +288,13 @@ const SignupAdmin = () => {
     try {
       const result = await verifyOtpApi(formData.adminPhone, formData.otp);
       if (result.success) {
-        setFormData(prev => ({ ...prev, otpVerified: true }));
-        setErrors(prev => ({ ...prev, otp: '' }));
+        setFormData((prev) => ({ ...prev, otpVerified: true }));
+        setErrors((prev) => ({ ...prev, otp: '' }));
       } else {
-        setErrors(prev => ({ ...prev, otp: result.error || 'Invalid OTP.' }));
+        setErrors((prev) => ({ ...prev, otp: result.error || 'Invalid OTP.' }));
       }
     } catch {
-      setErrors(prev => ({ ...prev, otp: 'Invalid OTP.' }));
+      setErrors((prev) => ({ ...prev, otp: 'Invalid OTP.' }));
     } finally {
       setVerifyingOtp(false);
     }
@@ -218,7 +302,7 @@ const SignupAdmin = () => {
 
   const validateField = (name, value) => {
     let error = '';
-    
+
     switch (name) {
       case 'name':
         if (!value) error = 'Company name is required';
@@ -254,15 +338,17 @@ const SignupAdmin = () => {
       case 'hqPincode':
         if (value && !/^\d{6}$/.test(value)) error = 'Pincode must be 6 digits';
         break;
-      case 'establishedYear':
+      case 'establishedYear': {
         const year = parseInt(value);
         const currentYear = new Date().getFullYear();
-        if (value && (year < 1800 || year > currentYear)) error = `Year must be between 1800 and ${currentYear}`;
+        if (value && (year < 1800 || year > currentYear))
+          error = `Year must be between 1800 and ${currentYear}`;
         break;
+      }
       case 'password':
         if (!value) error = 'Password is required';
         else if (value.length < 8) error = 'Password must be at least 8 characters';
-        else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(value)) 
+        else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(value))
           error = 'Password must contain uppercase, lowercase, and number';
         break;
       case 'confirmPassword':
@@ -272,25 +358,25 @@ const SignupAdmin = () => {
       default:
         break;
     }
-    
+
     return error;
   };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     const newValue = type === 'checkbox' ? checked : value;
-    
+
     // Format phone numbers
     let processedValue = newValue;
     if (['phone', 'adminPhone', 'contactPersonPhone'].includes(name) && type !== 'checkbox') {
       processedValue = value.replace(/\D/g, '').slice(0, 10);
     }
-    
-    setFormData(prev => ({ ...prev, [name]: processedValue }));
-    
+
+    setFormData((prev) => ({ ...prev, [name]: processedValue }));
+
     // Clear error when user starts typing
     if (errors[name]) {
-      setErrors(prev => {
+      setErrors((prev) => {
         const newErrors = { ...prev };
         delete newErrors[name];
         return newErrors;
@@ -300,16 +386,16 @@ const SignupAdmin = () => {
 
   const validateStep = (step) => {
     const newErrors = {};
-    
+
     switch (step) {
       case 1:
-        ['name', 'code', 'industry', 'companySize'].forEach(field => {
+        ['name', 'code', 'industry', 'companySize'].forEach((field) => {
           const error = validateField(field, formData[field]);
           if (error) newErrors[field] = error;
         });
         break;
       case 2:
-        ['hqAddress', 'hqCity', 'hqState', 'hqCountry'].forEach(field => {
+        ['hqAddress', 'hqCity', 'hqState', 'hqCountry'].forEach((field) => {
           if (!formData[field]) newErrors[field] = 'This field is required';
         });
         if (formData.hqPincode) {
@@ -318,7 +404,7 @@ const SignupAdmin = () => {
         }
         break;
       case 3:
-        ['phone', 'email'].forEach(field => {
+        ['phone', 'email'].forEach((field) => {
           const error = validateField(field, formData[field]);
           if (error) newErrors[field] = error;
         });
@@ -332,13 +418,25 @@ const SignupAdmin = () => {
         }
         break;
       case 4:
-        ['contactPersonName', 'contactPersonDesignation', 'contactPersonEmail', 'contactPersonPhone'].forEach(field => {
+        [
+          'contactPersonName',
+          'contactPersonDesignation',
+          'contactPersonEmail',
+          'contactPersonPhone',
+        ].forEach((field) => {
           const error = validateField(field, formData[field]);
           if (error || !formData[field]) newErrors[field] = error || 'This field is required';
         });
         break;
       case 5:
-        ['adminFirstName', 'adminLastName', 'adminEmail', 'adminPhone', 'password', 'confirmPassword'].forEach(field => {
+        [
+          'adminFirstName',
+          'adminLastName',
+          'adminEmail',
+          'adminPhone',
+          'password',
+          'confirmPassword',
+        ].forEach((field) => {
           const error = validateField(field, formData[field]);
           if (error) newErrors[field] = error;
         });
@@ -349,36 +447,37 @@ const SignupAdmin = () => {
       default:
         break;
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const nextStep = () => {
     if (validateStep(currentStep)) {
-      setCurrentStep(prev => Math.min(prev + 1, totalSteps));
+      setCurrentStep((prev) => Math.min(prev + 1, totalSteps));
     }
   };
 
   const prevStep = () => {
-    setCurrentStep(prev => Math.max(prev - 1, 1));
+    setCurrentStep((prev) => Math.max(prev - 1, 1));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    
+
     if (!validateStep(5)) return;
-    
+
     setIsSubmitting(true);
-    
+
     try {
       const firstName = capitalizeFirstLetter(formData.adminFirstName);
       const lastName = capitalizeFirstLetter(formData.adminLastName);
-      
+
       // Use the worker API for signup with proper rollback support
-      const USER_API_URL = import.meta.env.VITE_USER_API_URL || 'https://user-api.dark-mode-d021.workers.dev';
-      
+      const USER_API_URL =
+        import.meta.env.VITE_USER_API_URL || 'https://user-api.dark-mode-d021.workers.dev';
+
       const response = await fetch(`${USER_API_URL}/signup/recruiter-admin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -396,7 +495,9 @@ const SignupAdmin = () => {
           hqState: formData.hqState,
           hqCountry: formData.hqCountry,
           hqPincode: formData.hqPincode || undefined,
-          establishedYear: formData.establishedYear ? parseInt(formData.establishedYear) : undefined,
+          establishedYear: formData.establishedYear
+            ? parseInt(formData.establishedYear)
+            : undefined,
           contactPersonName: formData.contactPersonName,
           contactPersonDesignation: formData.contactPersonDesignation,
           contactPersonEmail: formData.contactPersonEmail,
@@ -431,20 +532,23 @@ const SignupAdmin = () => {
       // Success!
       if (returnToPayment && plan) {
         // If coming from subscription page, redirect to payment
-        alert(`Workspace created successfully! Your Workspace ID is: ${companyCode}\n\nProceeding to payment...`);
-        navigate('/subscription/payment', { 
-          state: { 
-            plan, 
+        alert(
+          `Workspace created successfully! Your Workspace ID is: ${companyCode}\n\nProceeding to payment...`
+        );
+        navigate('/subscription/payment', {
+          state: {
+            plan,
             studentType: studentType || 'recruitment-admin',
-            isUpgrade: false 
-          } 
+            isUpgrade: false,
+          },
         });
       } else {
         // Otherwise, show success message and go to login
-        alert(`Workspace created successfully! Your Workspace ID is: ${companyCode}\n\nYour account is pending approval. We'll notify you once it's activated.`);
+        alert(
+          `Workspace created successfully! Your Workspace ID is: ${companyCode}\n\nYour account is pending approval. We'll notify you once it's activated.`
+        );
         navigate('/login/recruiter');
       }
-      
     } catch (err) {
       console.error('Signup error:', err);
       setError(err.message || 'Failed to create workspace. Please try again.');
@@ -459,23 +563,25 @@ const SignupAdmin = () => {
       <div className="flex items-center space-x-2">
         {[1, 2, 3, 4, 5].map((step, idx) => (
           <div key={step} className="flex items-center">
-            <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all ${
-              currentStep >= step 
-                ? 'bg-blue-600 border-blue-600 text-white' 
-                : 'border-gray-300 text-gray-400'
-            }`}>
+            <div
+              className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all ${
+                currentStep >= step
+                  ? 'bg-blue-600 border-blue-600 text-white'
+                  : 'border-gray-300 text-gray-400'
+              }`}
+            >
               {step}
             </div>
             {idx < 4 && (
-              <div className={`w-8 h-1 mx-1 ${currentStep > step ? 'bg-blue-600' : 'bg-gray-300'}`} />
+              <div
+                className={`w-8 h-1 mx-1 ${currentStep > step ? 'bg-blue-600' : 'bg-gray-300'}`}
+              />
             )}
           </div>
         ))}
       </div>
     </div>
   );
-
-
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
@@ -509,7 +615,7 @@ const SignupAdmin = () => {
                   <Building2 className="w-6 h-6 text-blue-600" />
                   <h2 className="text-xl font-semibold text-gray-900">Company Details</h2>
                 </div>
-                
+
                 <InputField
                   label="Company Name"
                   name="name"
@@ -520,7 +626,7 @@ const SignupAdmin = () => {
                   onChange={handleChange}
                   error={errors.name}
                 />
-                
+
                 <InputField
                   label="Company Code"
                   name="code"
@@ -531,7 +637,7 @@ const SignupAdmin = () => {
                   onChange={handleChange}
                   error={errors.code}
                 />
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <SelectField
                     label="Industry"
@@ -542,7 +648,7 @@ const SignupAdmin = () => {
                     onChange={handleChange}
                     error={errors.industry}
                   />
-                  
+
                   <SelectField
                     label="Company Size"
                     name="companySize"
@@ -563,7 +669,7 @@ const SignupAdmin = () => {
                   <MapPin className="w-6 h-6 text-blue-600" />
                   <h2 className="text-xl font-semibold text-gray-900">Headquarters Address</h2>
                 </div>
-                
+
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700">
                     Address <span className="text-red-500">*</span>
@@ -585,7 +691,7 @@ const SignupAdmin = () => {
                     </p>
                   )}
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <InputField
                     label="City"
@@ -596,7 +702,7 @@ const SignupAdmin = () => {
                     onChange={handleChange}
                     error={errors.hqCity}
                   />
-                  
+
                   <SelectField
                     label="State"
                     name="hqState"
@@ -607,7 +713,7 @@ const SignupAdmin = () => {
                     error={errors.hqState}
                   />
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <InputField
                     label="Country"
@@ -618,7 +724,7 @@ const SignupAdmin = () => {
                     onChange={handleChange}
                     error={errors.hqCountry}
                   />
-                  
+
                   <InputField
                     label="Pincode"
                     name="hqPincode"
@@ -639,7 +745,7 @@ const SignupAdmin = () => {
                   <Phone className="w-6 h-6 text-blue-600" />
                   <h2 className="text-xl font-semibold text-gray-900">Contact Information</h2>
                 </div>
-                
+
                 <InputField
                   label="Company Phone"
                   name="phone"
@@ -652,7 +758,7 @@ const SignupAdmin = () => {
                   onChange={handleChange}
                   error={errors.phone}
                 />
-                
+
                 <InputField
                   label="Company Email"
                   name="email"
@@ -663,7 +769,7 @@ const SignupAdmin = () => {
                   onChange={handleChange}
                   error={errors.email}
                 />
-                
+
                 <InputField
                   label="Website"
                   name="website"
@@ -673,7 +779,7 @@ const SignupAdmin = () => {
                   onChange={handleChange}
                   error={errors.website}
                 />
-                
+
                 <InputField
                   label="Established Year"
                   name="establishedYear"
@@ -695,7 +801,7 @@ const SignupAdmin = () => {
                   <User className="w-6 h-6 text-blue-600" />
                   <h2 className="text-xl font-semibold text-gray-900">Primary Contact Person</h2>
                 </div>
-                
+
                 <InputField
                   label="Full Name"
                   name="contactPersonName"
@@ -706,7 +812,7 @@ const SignupAdmin = () => {
                   onChange={handleChange}
                   error={errors.contactPersonName}
                 />
-                
+
                 <SelectField
                   label="Designation"
                   name="contactPersonDesignation"
@@ -716,7 +822,7 @@ const SignupAdmin = () => {
                   onChange={handleChange}
                   error={errors.contactPersonDesignation}
                 />
-                
+
                 <InputField
                   label="Email"
                   name="contactPersonEmail"
@@ -727,7 +833,7 @@ const SignupAdmin = () => {
                   onChange={handleChange}
                   error={errors.contactPersonEmail}
                 />
-                
+
                 <InputField
                   label="Phone"
                   name="contactPersonPhone"
@@ -750,7 +856,7 @@ const SignupAdmin = () => {
                   <Shield className="w-6 h-6 text-blue-600" />
                   <h2 className="text-xl font-semibold text-gray-900">Admin Account</h2>
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <InputField
                     label="First Name"
@@ -773,7 +879,7 @@ const SignupAdmin = () => {
                     error={errors.adminLastName}
                   />
                 </div>
-                
+
                 <InputField
                   label="Your Email"
                   name="adminEmail"
@@ -784,7 +890,7 @@ const SignupAdmin = () => {
                   onChange={handleChange}
                   error={errors.adminEmail}
                 />
-                
+
                 <InputField
                   label="Your Phone"
                   name="adminPhone"
@@ -873,13 +979,15 @@ const SignupAdmin = () => {
                       value={formData.adminState}
                       onChange={(e) => {
                         handleChange(e);
-                        setFormData(prev => ({ ...prev, adminCity: '' }));
+                        setFormData((prev) => ({ ...prev, adminCity: '' }));
                       }}
                       className={`w-full pl-10 pr-4 py-3 border-2 rounded-lg ${errors.adminState ? 'border-red-500' : 'border-gray-200'}`}
                     >
                       <option value="">Select State / UT</option>
-                      {INDIAN_STATES.map(state => (
-                        <option key={state.isoCode} value={state.name}>{state.name}</option>
+                      {INDIAN_STATES.map((state) => (
+                        <option key={state.isoCode} value={state.name}>
+                          {state.name}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -905,9 +1013,13 @@ const SignupAdmin = () => {
                       disabled={!formData.adminState}
                       className={`w-full pl-10 pr-4 py-3 border-2 rounded-lg disabled:bg-gray-100 ${errors.adminCity ? 'border-red-500' : 'border-gray-200'}`}
                     >
-                      <option value="">{!formData.adminState ? 'Select state first' : 'Select City / District'}</option>
-                      {adminCities.map(city => (
-                        <option key={city.name} value={city.name}>{city.name}</option>
+                      <option value="">
+                        {!formData.adminState ? 'Select state first' : 'Select City / District'}
+                      </option>
+                      {adminCities.map((city) => (
+                        <option key={city.name} value={city.name}>
+                          {city.name}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -921,7 +1033,9 @@ const SignupAdmin = () => {
 
                 {/* Preferred Language */}
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">Preferred Language</label>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Preferred Language
+                  </label>
                   <div className="relative">
                     <Languages className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <select
@@ -930,8 +1044,10 @@ const SignupAdmin = () => {
                       onChange={handleChange}
                       className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-lg"
                     >
-                      {LANGUAGES.map(lang => (
-                        <option key={lang.code} value={lang.code}>{lang.name}</option>
+                      {LANGUAGES.map((lang) => (
+                        <option key={lang.code} value={lang.code}>
+                          {lang.name}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -939,7 +1055,9 @@ const SignupAdmin = () => {
 
                 {/* Referral Code */}
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">Referral Code / Partner ID</label>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Referral Code / Partner ID
+                  </label>
                   <div className="relative">
                     <Gift className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
@@ -952,7 +1070,7 @@ const SignupAdmin = () => {
                     />
                   </div>
                 </div>
-                
+
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700">
                     Password <span className="text-red-500">*</span>
@@ -983,7 +1101,7 @@ const SignupAdmin = () => {
                     </p>
                   )}
                 </div>
-                
+
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700">
                     Confirm Password <span className="text-red-500">*</span>
@@ -1004,7 +1122,11 @@ const SignupAdmin = () => {
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                       className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                     >
-                      {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      {showConfirmPassword ? (
+                        <EyeOff className="w-5 h-5" />
+                      ) : (
+                        <Eye className="w-5 h-5" />
+                      )}
                     </button>
                   </div>
                   {errors.confirmPassword && (
@@ -1014,7 +1136,7 @@ const SignupAdmin = () => {
                     </p>
                   )}
                 </div>
-                
+
                 <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-lg">
                   <input
                     type="checkbox"
@@ -1025,9 +1147,13 @@ const SignupAdmin = () => {
                   />
                   <label className="text-sm text-gray-700">
                     I agree to the{' '}
-                    <a href="/terms" target="_blank" className="text-blue-600 hover:underline">Terms of Service</a>
-                    {' '}and{' '}
-                    <a href="/privacy" target="_blank" className="text-blue-600 hover:underline">Privacy Policy</a>
+                    <a href="/terms" target="_blank" className="text-blue-600 hover:underline">
+                      Terms of Service
+                    </a>{' '}
+                    and{' '}
+                    <a href="/privacy" target="_blank" className="text-blue-600 hover:underline">
+                      Privacy Policy
+                    </a>
                     <span className="text-red-500"> *</span>
                   </label>
                 </div>
@@ -1051,7 +1177,7 @@ const SignupAdmin = () => {
                   Back
                 </button>
               )}
-              
+
               {currentStep < totalSteps ? (
                 <button
                   type="button"

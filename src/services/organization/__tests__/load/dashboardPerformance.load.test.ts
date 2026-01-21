@@ -1,6 +1,6 @@
 /**
  * Load Tests: Dashboard Performance
- * 
+ *
  * Tests dashboard loading performance with large datasets.
  * Target: 100+ subscriptions, <2s load time
  * Requirements: Performance, User Experience
@@ -38,7 +38,7 @@ describe('Load Tests: Dashboard Performance', () => {
         price_per_seat: 1000 + (i % 500),
         start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
         end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
       });
 
       // Generate license pools for each subscription
@@ -50,7 +50,7 @@ describe('Load Tests: Dashboard Performance', () => {
           pool_name: `Pool ${j + 1}`,
           member_type: j === 0 ? 'student' : 'educator',
           allocated_seats: 25 + (i % 25),
-          assigned_seats: 15 + (i % 15)
+          assigned_seats: 15 + (i % 15),
         });
       }
 
@@ -61,7 +61,7 @@ describe('Load Tests: Dashboard Performance', () => {
           id: `assign-${i}-${k}`,
           organization_subscription_id: subId,
           user_id: `user-${i}-${k}`,
-          status: 'active'
+          status: 'active',
         });
       }
 
@@ -72,7 +72,7 @@ describe('Load Tests: Dashboard Performance', () => {
           subscription_id: subId,
           amount: (1000 + (i % 500)) * (50 + (i % 100)),
           status: 'completed',
-          created_at: new Date(Date.now() - p * 30 * 24 * 60 * 60 * 1000).toISOString()
+          created_at: new Date(Date.now() - p * 30 * 24 * 60 * 60 * 1000).toISOString(),
         });
       }
     }
@@ -90,18 +90,22 @@ describe('Load Tests: Dashboard Performance', () => {
       // Simulate dashboard data aggregation
       const loadDashboardData = async () => {
         // Get active subscriptions
-        const activeSubscriptions = Array.from(subscriptions.values())
-          .filter(s => s.status === 'active');
+        const activeSubscriptions = Array.from(subscriptions.values()).filter(
+          (s) => s.status === 'active'
+        );
 
         // Calculate totals
         const totalSeats = activeSubscriptions.reduce((sum, s) => sum + s.total_seats, 0);
         const assignedSeats = activeSubscriptions.reduce((sum, s) => sum + s.assigned_seats, 0);
-        const totalCost = activeSubscriptions.reduce((sum, s) => sum + (s.price_per_seat * s.total_seats), 0);
+        const totalCost = activeSubscriptions.reduce(
+          (sum, s) => sum + s.price_per_seat * s.total_seats,
+          0
+        );
 
         // Get upcoming renewals (next 30 days)
         const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-        const upcomingRenewals = activeSubscriptions.filter(s => 
-          new Date(s.end_date) <= thirtyDaysFromNow
+        const upcomingRenewals = activeSubscriptions.filter(
+          (s) => new Date(s.end_date) <= thirtyDaysFromNow
         );
 
         // Get recent payments
@@ -116,7 +120,7 @@ describe('Load Tests: Dashboard Performance', () => {
           utilizationRate: (assignedSeats / totalSeats) * 100,
           totalMonthlyCost: totalCost,
           upcomingRenewals: upcomingRenewals.length,
-          recentPayments: recentPayments.length
+          recentPayments: recentPayments.length,
         };
       };
 
@@ -142,8 +146,9 @@ describe('Load Tests: Dashboard Performance', () => {
       const startTime = Date.now();
 
       const loadDashboardData = async () => {
-        const activeSubscriptions = Array.from(subscriptions.values())
-          .filter(s => s.status === 'active');
+        const activeSubscriptions = Array.from(subscriptions.values()).filter(
+          (s) => s.status === 'active'
+        );
 
         const poolData = Array.from(licensePools.values());
         const assignmentData = Array.from(assignments.values());
@@ -151,7 +156,7 @@ describe('Load Tests: Dashboard Performance', () => {
         return {
           subscriptions: activeSubscriptions.length,
           pools: poolData.length,
-          assignments: assignmentData.length
+          assignments: assignmentData.length,
         };
       };
 
@@ -176,22 +181,23 @@ describe('Load Tests: Dashboard Performance', () => {
 
       const loadPage = async (page: number) => {
         const startTime = Date.now();
-        
-        const allSubscriptions = Array.from(subscriptions.values())
-          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-        
+
+        const allSubscriptions = Array.from(subscriptions.values()).sort(
+          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+
         const startIndex = (page - 1) * pageSize;
         const pageData = allSubscriptions.slice(startIndex, startIndex + pageSize);
-        
+
         const loadTime = Date.now() - startTime;
         loadTimes.push(loadTime);
-        
+
         return {
           data: pageData,
           total: allSubscriptions.length,
           page,
           pageSize,
-          totalPages: Math.ceil(allSubscriptions.length / pageSize)
+          totalPages: Math.ceil(allSubscriptions.length / pageSize),
         };
       };
 
@@ -218,8 +224,9 @@ describe('Load Tests: Dashboard Performance', () => {
       const startTime = Date.now();
 
       const getSubscriptions = async (organizationId: string) => {
-        return Array.from(subscriptions.values())
-          .filter(s => s.organization_id === organizationId);
+        return Array.from(subscriptions.values()).filter(
+          (s) => s.organization_id === organizationId
+        );
       };
 
       const result = await getSubscriptions('org-load-test');
@@ -239,8 +246,9 @@ describe('Load Tests: Dashboard Performance', () => {
       const startTime = Date.now();
 
       const getLicensePools = async (subscriptionId: string) => {
-        return Array.from(licensePools.values())
-          .filter(p => p.organization_subscription_id === subscriptionId);
+        return Array.from(licensePools.values()).filter(
+          (p) => p.organization_subscription_id === subscriptionId
+        );
       };
 
       // Get pools for first subscription
@@ -260,21 +268,24 @@ describe('Load Tests: Dashboard Performance', () => {
       const startTime = Date.now();
 
       const getBillingSummary = async (organizationId: string) => {
-        const orgSubscriptions = Array.from(subscriptions.values())
-          .filter(s => s.organization_id === organizationId && s.status === 'active');
-
-        const totalCost = orgSubscriptions.reduce((sum, s) => 
-          sum + (s.price_per_seat * s.total_seats), 0
+        const orgSubscriptions = Array.from(subscriptions.values()).filter(
+          (s) => s.organization_id === organizationId && s.status === 'active'
         );
 
-        const orgPayments = Array.from(payments.values())
-          .filter(p => orgSubscriptions.some(s => s.id === p.subscription_id));
+        const totalCost = orgSubscriptions.reduce(
+          (sum, s) => sum + s.price_per_seat * s.total_seats,
+          0
+        );
+
+        const orgPayments = Array.from(payments.values()).filter((p) =>
+          orgSubscriptions.some((s) => s.id === p.subscription_id)
+        );
 
         return {
           totalMonthlyCost: totalCost,
           activeSubscriptions: orgSubscriptions.length,
           totalPayments: orgPayments.length,
-          totalPaid: orgPayments.reduce((sum, p) => sum + p.amount, 0)
+          totalPaid: orgPayments.reduce((sum, p) => sum + p.amount, 0),
         };
       };
 
@@ -296,8 +307,9 @@ describe('Load Tests: Dashboard Performance', () => {
       const startTime = Date.now();
 
       const calculateUtilization = () => {
-        const activeSubscriptions = Array.from(subscriptions.values())
-          .filter(s => s.status === 'active');
+        const activeSubscriptions = Array.from(subscriptions.values()).filter(
+          (s) => s.status === 'active'
+        );
 
         const byPlan: Record<string, { total: number; assigned: number }> = {};
 
@@ -313,7 +325,7 @@ describe('Load Tests: Dashboard Performance', () => {
           planId,
           totalSeats: data.total,
           assignedSeats: data.assigned,
-          utilizationRate: (data.assigned / data.total) * 100
+          utilizationRate: (data.assigned / data.total) * 100,
         }));
       };
 
@@ -334,14 +346,16 @@ describe('Load Tests: Dashboard Performance', () => {
       const startTime = Date.now();
 
       const projectCosts = (months: number) => {
-        const activeSubscriptions = Array.from(subscriptions.values())
-          .filter(s => s.status === 'active');
+        const activeSubscriptions = Array.from(subscriptions.values()).filter(
+          (s) => s.status === 'active'
+        );
 
         const projections: { month: number; cost: number }[] = [];
 
         for (let m = 1; m <= months; m++) {
-          const monthlyCost = activeSubscriptions.reduce((sum, s) => 
-            sum + (s.price_per_seat * s.total_seats), 0
+          const monthlyCost = activeSubscriptions.reduce(
+            (sum, s) => sum + s.price_per_seat * s.total_seats,
+            0
           );
           projections.push({ month: m, cost: monthlyCost });
         }
@@ -368,8 +382,9 @@ describe('Load Tests: Dashboard Performance', () => {
       const startTime = Date.now();
 
       const searchSubscriptions = (query: string) => {
-        return Array.from(subscriptions.values())
-          .filter(s => s.subscription_plan_id.toLowerCase().includes(query.toLowerCase()));
+        return Array.from(subscriptions.values()).filter((s) =>
+          s.subscription_plan_id.toLowerCase().includes(query.toLowerCase())
+        );
       };
 
       const result = searchSubscriptions('plan-1');
@@ -388,8 +403,7 @@ describe('Load Tests: Dashboard Performance', () => {
       const startTime = Date.now();
 
       const filterByStatus = (status: string) => {
-        return Array.from(subscriptions.values())
-          .filter(s => s.status === status);
+        return Array.from(subscriptions.values()).filter((s) => s.status === status);
       };
 
       const activeResult = filterByStatus('active');
@@ -412,7 +426,7 @@ describe('Load Tests: Dashboard Performance', () => {
       const sortSubscriptions = (sortBy: string, order: 'asc' | 'desc') => {
         const sorted = Array.from(subscriptions.values()).sort((a, b) => {
           let comparison = 0;
-          
+
           switch (sortBy) {
             case 'created_at':
               comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
@@ -426,7 +440,7 @@ describe('Load Tests: Dashboard Performance', () => {
             default:
               comparison = 0;
           }
-          
+
           return order === 'desc' ? -comparison : comparison;
         });
 

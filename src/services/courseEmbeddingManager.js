@@ -2,7 +2,7 @@
  * Course Embedding Manager
  * Manages the generation and storage of vector embeddings for courses
  * to enable semantic similarity search in course recommendations.
- * 
+ *
  * Feature: rag-course-recommendations
  * Requirements: 1.1, 1.4, 1.5
  */
@@ -25,7 +25,7 @@ async function generateEmbedding(text) {
   const response = await fetch(`${EMBEDDING_API_URL}/generate-embedding`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text, returnEmbedding: true })
+    body: JSON.stringify({ text, returnEmbedding: true }),
   });
 
   if (!response.ok) {
@@ -50,20 +50,20 @@ const BATCH_DELAY_MS = 2000; // 2 second delay between batches
  * @param {number} ms - Milliseconds to sleep
  * @returns {Promise<void>}
  */
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * Build embeddable text from course data
  * Combines title, description, skills, and target outcomes into a single
  * text representation suitable for embedding generation.
- * 
+ *
  * @param {Object} course - Course object with title, description, skills, and outcomes
  * @param {string} course.title - Course title
  * @param {string} [course.description] - Course description
  * @param {string[]} [course.skills] - Array of skill names
  * @param {string[]} [course.target_outcomes] - Array of target outcomes
  * @returns {string} - Combined text for embedding
- * 
+ *
  * Requirements: 1.1
  */
 export const buildCourseText = (course) => {
@@ -84,7 +84,7 @@ export const buildCourseText = (course) => {
   // Add skills if available
   const skills = course.skills || course.skillsCovered || [];
   if (Array.isArray(skills) && skills.length > 0) {
-    const skillsText = skills.filter(s => s && s.trim()).join(', ');
+    const skillsText = skills.filter((s) => s && s.trim()).join(', ');
     if (skillsText) {
       parts.push(`Skills: ${skillsText}`);
     }
@@ -93,7 +93,7 @@ export const buildCourseText = (course) => {
   // Add target outcomes if available
   const outcomes = course.target_outcomes || course.targetOutcomes || [];
   if (Array.isArray(outcomes) && outcomes.length > 0) {
-    const outcomesText = outcomes.filter(o => o && o.trim()).join('; ');
+    const outcomesText = outcomes.filter((o) => o && o.trim()).join('; ');
     if (outcomesText) {
       parts.push(`Target Outcomes: ${outcomesText}`);
     }
@@ -101,7 +101,6 @@ export const buildCourseText = (course) => {
 
   return parts.join('\n\n');
 };
-
 
 /**
  * Fetch a course with its skills from the database
@@ -133,17 +132,17 @@ const fetchCourseWithSkills = async (courseId) => {
 
   return {
     ...course,
-    skills: (skillsData || []).map(s => s.skill_name)
+    skills: (skillsData || []).map((s) => s.skill_name),
   };
 };
 
 /**
  * Generate and store embedding for a single course
  * Uses the backend API to generate and store the embedding.
- * 
+ *
  * @param {string} courseId - Course ID to embed
  * @returns {Promise<{ success: boolean, courseId: string, error?: string }>}
- * 
+ *
  * Requirements: 1.1, 1.3
  */
 export const embedCourse = async (courseId) => {
@@ -151,7 +150,7 @@ export const embedCourse = async (courseId) => {
     // Try using the backend API first (preferred - handles everything server-side)
     const response = await fetch(`${EMBEDDING_API_URL}/regenerate?table=courses&id=${courseId}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' },
     });
 
     if (response.ok) {
@@ -162,24 +161,24 @@ export const embedCourse = async (courseId) => {
 
     // Fallback: Generate locally if API doesn't support courses
     const course = await fetchCourseWithSkills(courseId);
-    
+
     if (!course) {
       return {
         success: false,
         courseId,
-        error: 'Course not found'
+        error: 'Course not found',
       };
     }
 
     // Build text for embedding
     const courseText = buildCourseText(course);
-    
+
     // Generate embedding via API
     const embedding = await generateEmbedding(courseText);
-    
+
     // Store embedding in database
     const embeddingString = `[${embedding.join(',')}]`;
-    
+
     const { error: updateError } = await supabase
       .from('courses')
       .update({ embedding: embeddingString })
@@ -190,40 +189,39 @@ export const embedCourse = async (courseId) => {
       return {
         success: false,
         courseId,
-        error: `Database update failed: ${updateError.message}`
+        error: `Database update failed: ${updateError.message}`,
       };
     }
 
     console.log(`✅ Successfully embedded course: ${course.title} (${courseId})`);
     return {
       success: true,
-      courseId
+      courseId,
     };
   } catch (error) {
     console.error(`Failed to embed course ${courseId}:`, error.message);
     return {
       success: false,
       courseId,
-      error: error.message
+      error: error.message,
     };
   }
 };
-
 
 /**
  * Batch embed all courses that don't have embeddings
  * Processes courses in batches to avoid rate limiting.
  * Continues processing even if individual courses fail.
- * 
+ *
  * @returns {Promise<{ success: number, failed: number, errors: Array<{ courseId: string, error: string }> }>}
- * 
+ *
  * Requirements: 1.4, 1.5
  */
 export const embedAllCourses = async () => {
   const results = {
     success: 0,
     failed: 0,
-    errors: []
+    errors: [],
   };
 
   try {
@@ -252,20 +250,20 @@ export const embedAllCourses = async () => {
       const batch = courses.slice(i, i + BATCH_SIZE);
       const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
       const totalBatches = Math.ceil(courses.length / BATCH_SIZE);
-      
+
       console.log(`\n📦 Processing batch ${batchNumber}/${totalBatches} (${batch.length} courses)`);
 
       // Process each course in the batch
       for (const course of batch) {
         const result = await embedCourse(course.course_id);
-        
+
         if (result.success) {
           results.success++;
         } else {
           results.failed++;
           results.errors.push({
             courseId: course.course_id,
-            error: result.error || 'Unknown error'
+            error: result.error || 'Unknown error',
           });
         }
       }
@@ -278,10 +276,10 @@ export const embedAllCourses = async () => {
     }
 
     console.log(`\n✅ Embedding complete: ${results.success} success, ${results.failed} failed`);
-    
+
     if (results.errors.length > 0) {
       console.log('❌ Failed courses:');
-      results.errors.forEach(e => console.log(`  - ${e.courseId}: ${e.error}`));
+      results.errors.forEach((e) => console.log(`  - ${e.courseId}: ${e.error}`));
     }
 
     return results;
@@ -341,7 +339,7 @@ export const getEmbeddingStats = async () => {
   return {
     total: total || 0,
     withEmbedding: withEmbedding || 0,
-    withoutEmbedding: (total || 0) - (withEmbedding || 0)
+    withoutEmbedding: (total || 0) - (withEmbedding || 0),
   };
 };
 
@@ -351,5 +349,5 @@ export default {
   embedCourse,
   embedAllCourses,
   hasEmbedding,
-  getEmbeddingStats
+  getEmbeddingStats,
 };

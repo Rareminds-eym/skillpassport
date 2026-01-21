@@ -14,7 +14,7 @@ const SubscriptionPurchaseHeader = ({ userEmail, hasBanner = false }) => {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      
+
       toast.success('Logged out successfully');
       navigate('/login');
     } catch (error) {
@@ -24,7 +24,7 @@ const SubscriptionPurchaseHeader = ({ userEmail, hasBanner = false }) => {
   };
 
   return (
-    <header 
+    <header
       className={`bg-white/80 backdrop-blur-md border-b border-gray-100 sticky z-50 shadow-sm ${
         hasBanner ? 'top-[36px] sm:top-[40px]' : 'top-0'
       }`}
@@ -34,9 +34,9 @@ const SubscriptionPurchaseHeader = ({ userEmail, hasBanner = false }) => {
           {/* Logo Section */}
           <div className="flex items-center flex-shrink-0">
             <Link to="/" className="flex items-center group">
-              <img 
-                src="/RareMinds.webp" 
-                alt="RareMinds Logo" 
+              <img
+                src="/RareMinds.webp"
+                alt="RareMinds Logo"
                 className="h-14 w-auto transition-all duration-300 group-hover:scale-110 origin-left"
               />
             </Link>

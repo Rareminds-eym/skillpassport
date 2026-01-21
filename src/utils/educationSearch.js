@@ -16,7 +16,7 @@ export const searchUniversities = async (searchTerm) => {
     }
 
     // Add type field for consistency
-    return (data || []).map(item => ({ ...item, type: 'University' }));
+    return (data || []).map((item) => ({ ...item, type: 'University' }));
   } catch (error) {
     console.error('Error in searchUniversities:', error);
     return [];
@@ -39,7 +39,7 @@ export const searchColleges = async (searchTerm) => {
     }
 
     // Add type field for consistency
-    return (data || []).map(item => ({ ...item, type: 'College' }));
+    return (data || []).map((item) => ({ ...item, type: 'College' }));
   } catch (error) {
     console.error('Error in searchColleges:', error);
     return [];
@@ -62,7 +62,7 @@ export const searchSchools = async (searchTerm) => {
     }
 
     // Add type field for consistency
-    return (data || []).map(item => ({ ...item, type: 'School' }));
+    return (data || []).map((item) => ({ ...item, type: 'School' }));
   } catch (error) {
     console.error('Error in searchSchools:', error);
     return [];
@@ -74,15 +74,16 @@ export const searchCollegesAndSchools = async (searchTerm) => {
   try {
     const [colleges, schools] = await Promise.all([
       searchColleges(searchTerm),
-      searchSchools(searchTerm)
+      searchSchools(searchTerm),
     ]);
 
     // Combine results (colleges and schools already have type field)
     const allResults = [...colleges, ...schools];
 
     // Remove duplicates based on name
-    const uniqueResults = allResults.filter((item, index, self) => 
-      index === self.findIndex(t => t.name.toLowerCase() === item.name.toLowerCase())
+    const uniqueResults = allResults.filter(
+      (item, index, self) =>
+        index === self.findIndex((t) => t.name.toLowerCase() === item.name.toLowerCase())
     );
 
     return uniqueResults.slice(0, 10);
@@ -98,15 +99,16 @@ export const searchEducationalInstitutions = async (searchTerm) => {
     const [universities, colleges, schools] = await Promise.all([
       searchUniversities(searchTerm),
       searchColleges(searchTerm),
-      searchSchools(searchTerm)
+      searchSchools(searchTerm),
     ]);
 
     // Combine results (all functions now return items with type field)
     const allResults = [...universities, ...colleges, ...schools];
 
     // Remove duplicates based on name
-    const uniqueResults = allResults.filter((item, index, self) => 
-      index === self.findIndex(t => t.name.toLowerCase() === item.name.toLowerCase())
+    const uniqueResults = allResults.filter(
+      (item, index, self) =>
+        index === self.findIndex((t) => t.name.toLowerCase() === item.name.toLowerCase())
     );
 
     return uniqueResults.slice(0, 10);

@@ -34,7 +34,7 @@ const Breadcrumb: React.FC<BreadcrumbProps> = ({ items, showHome = true }) => {
         {items.map((item, index) => (
           <li key={index} className="flex items-center">
             <ChevronRightIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
-            
+
             {item.current ? (
               <span className="ml-2 text-sm font-medium text-gray-900" aria-current="page">
                 {item.label}
@@ -57,9 +57,9 @@ const Breadcrumb: React.FC<BreadcrumbProps> = ({ items, showHome = true }) => {
 export default Breadcrumb;
 
 // Compact Breadcrumb for mobile
-export const CompactBreadcrumb: React.FC<{ currentPage: string; onBack: () => void }> = ({ 
-  currentPage, 
-  onBack 
+export const CompactBreadcrumb: React.FC<{ currentPage: string; onBack: () => void }> = ({
+  currentPage,
+  onBack,
 }) => {
   return (
     <div className="flex items-center gap-2 mb-4 md:hidden">
@@ -74,4 +74,3 @@ export const CompactBreadcrumb: React.FC<{ currentPage: string; onBack: () => vo
     </div>
   );
 };
-

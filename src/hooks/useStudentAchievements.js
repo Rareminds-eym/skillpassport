@@ -43,20 +43,25 @@ export const useStudentAchievements = (studentId, email) => {
       }
 
       // Fetch from separate tables in parallel
-      const [educationRes, trainingRes, experienceRes, techSkillsRes, softSkillsRes] = await Promise.all([
-        supabase.from('education').select('*').eq('student_id', actualStudentId),
-        supabase.from('trainings').select('*').eq('student_id', actualStudentId),
-        supabase.from('experience').select('*').eq('student_id', actualStudentId),
-        supabase.from('skills').select('*').eq('student_id', actualStudentId).eq('type', 'technical'),
-        supabase.from('skills').select('*').eq('student_id', actualStudentId).eq('type', 'soft'),
-      ]);
+      const [educationRes, trainingRes, experienceRes, techSkillsRes, softSkillsRes] =
+        await Promise.all([
+          supabase.from('education').select('*').eq('student_id', actualStudentId),
+          supabase.from('trainings').select('*').eq('student_id', actualStudentId),
+          supabase.from('experience').select('*').eq('student_id', actualStudentId),
+          supabase
+            .from('skills')
+            .select('*')
+            .eq('student_id', actualStudentId)
+            .eq('type', 'technical'),
+          supabase.from('skills').select('*').eq('student_id', actualStudentId).eq('type', 'soft'),
+        ]);
 
       // Process and combine achievements
       const allAchievements = [];
 
       // Add education achievements
       if (educationRes.data) {
-        educationRes.data.forEach(edu => {
+        educationRes.data.forEach((edu) => {
           allAchievements.push({
             id: `edu-${edu.id}`,
             type: 'education',
@@ -66,14 +71,14 @@ export const useStudentAchievements = (studentId, email) => {
             date: edu.year_of_passing || edu.created_at,
             status: edu.status,
             verified: false,
-            source: 'education_table'
+            source: 'education_table',
           });
         });
       }
 
       // Add training achievements
       if (trainingRes.data) {
-        trainingRes.data.forEach(training => {
+        trainingRes.data.forEach((training) => {
           allAchievements.push({
             id: `training-${training.id}`,
             type: 'training',
@@ -85,14 +90,14 @@ export const useStudentAchievements = (studentId, email) => {
             progress: training.progress,
             certificateUrl: training.certificate_url,
             verified: training.progress === 100,
-            source: 'training_table'
+            source: 'training_table',
           });
         });
       }
 
       // Add experience achievements
       if (experienceRes.data) {
-        experienceRes.data.forEach(exp => {
+        experienceRes.data.forEach((exp) => {
           allAchievements.push({
             id: `exp-${exp.id}`,
             type: 'experience',
@@ -103,15 +108,16 @@ export const useStudentAchievements = (studentId, email) => {
             duration: exp.duration,
             verified: exp.verified,
             isCurrent: exp.is_current,
-            source: 'experience_table'
+            source: 'experience_table',
           });
         });
       }
 
       // Add skill achievements (milestone-based)
       if (techSkillsRes.data) {
-        techSkillsRes.data.forEach(skill => {
-          if (skill.level >= 4) { // Only show advanced skills as achievements
+        techSkillsRes.data.forEach((skill) => {
+          if (skill.level >= 4) {
+            // Only show advanced skills as achievements
             allAchievements.push({
               id: `skill-${skill.id}`,
               type: 'skill',
@@ -121,7 +127,7 @@ export const useStudentAchievements = (studentId, email) => {
               date: skill.updated_at || skill.created_at,
               level: skill.level,
               verified: skill.verified,
-              source: 'skills_table'
+              source: 'skills_table',
             });
           }
         });
@@ -138,10 +144,9 @@ export const useStudentAchievements = (studentId, email) => {
         softSkills: softSkillsRes.data || [],
         education: educationRes.data || [],
         training: trainingRes.data || [],
-        experience: experienceRes.data || []
+        experience: experienceRes.data || [],
       });
       setBadges(generatedBadges);
-
     } catch (err) {
       console.error('Error fetching achievements:', err);
       setError(err.message);
@@ -159,7 +164,7 @@ export const useStudentAchievements = (studentId, email) => {
     badges,
     loading,
     error,
-    refresh
+    refresh,
   };
 };
 
@@ -177,8 +182,8 @@ const generateAIBadges = ({ techSkills, softSkills, education, training, experie
   const badges = [];
 
   // Skill-based badges
-  const expertSkills = techSkills.filter(s => s.level >= 5);
-  const advancedSkills = techSkills.filter(s => s.level >= 4);
+  const expertSkills = techSkills.filter((s) => s.level >= 5);
+  const advancedSkills = techSkills.filter((s) => s.level >= 4);
 
   if (expertSkills.length >= 3) {
     badges.push({
@@ -188,13 +193,14 @@ const generateAIBadges = ({ techSkills, softSkills, education, training, experie
       icon: '🏆',
       color: 'gold',
       rarity: 'legendary',
-      earnedDate: new Date().toISOString()
+      earnedDate: new Date().toISOString(),
     });
   }
 
   if (expertSkills.length >= 1) {
     expertSkills.forEach((skill, idx) => {
-      if (idx < 3) { // Limit to 3 badges
+      if (idx < 3) {
+        // Limit to 3 badges
         badges.push({
           id: `badge-expert-${skill.id}`,
           name: `${skill.name} Expert`,
@@ -202,24 +208,30 @@ const generateAIBadges = ({ techSkills, softSkills, education, training, experie
           icon: '⭐',
           color: 'purple',
           rarity: 'rare',
-          earnedDate: skill.updated_at
+          earnedDate: skill.updated_at,
         });
       }
     });
   }
 
   // Full Stack Developer badge
-  const hasFrontend = techSkills.some(s => 
-    ['React', 'Vue', 'Angular', 'JavaScript', 'HTML', 'CSS'].some(tech => 
-      s.name.toLowerCase().includes(tech.toLowerCase())) && s.level >= 3
+  const hasFrontend = techSkills.some(
+    (s) =>
+      ['React', 'Vue', 'Angular', 'JavaScript', 'HTML', 'CSS'].some((tech) =>
+        s.name.toLowerCase().includes(tech.toLowerCase())
+      ) && s.level >= 3
   );
-  const hasBackend = techSkills.some(s => 
-    ['Node', 'Python', 'Java', 'PHP', 'Ruby', 'Django', 'Flask', 'Express'].some(tech => 
-      s.name.toLowerCase().includes(tech.toLowerCase())) && s.level >= 3
+  const hasBackend = techSkills.some(
+    (s) =>
+      ['Node', 'Python', 'Java', 'PHP', 'Ruby', 'Django', 'Flask', 'Express'].some((tech) =>
+        s.name.toLowerCase().includes(tech.toLowerCase())
+      ) && s.level >= 3
   );
-  const hasDatabase = techSkills.some(s => 
-    ['SQL', 'MongoDB', 'PostgreSQL', 'MySQL', 'Database'].some(tech => 
-      s.name.toLowerCase().includes(tech.toLowerCase())) && s.level >= 3
+  const hasDatabase = techSkills.some(
+    (s) =>
+      ['SQL', 'MongoDB', 'PostgreSQL', 'MySQL', 'Database'].some((tech) =>
+        s.name.toLowerCase().includes(tech.toLowerCase())
+      ) && s.level >= 3
   );
 
   if (hasFrontend && hasBackend && hasDatabase) {
@@ -230,38 +242,38 @@ const generateAIBadges = ({ techSkills, softSkills, education, training, experie
       icon: '💻',
       color: 'blue',
       rarity: 'epic',
-      earnedDate: new Date().toISOString()
+      earnedDate: new Date().toISOString(),
     });
   }
 
   // Education badges
-  const bachelor = education.find(e => e.level?.toLowerCase().includes('bachelor'));
-  const master = education.find(e => e.level?.toLowerCase().includes('master'));
-  
+  const bachelor = education.find((e) => e.level?.toLowerCase().includes('bachelor'));
+  const master = education.find((e) => e.level?.toLowerCase().includes('master'));
+
   if (master) {
     badges.push({
       id: 'badge-masters',
       name: 'Master Scholar',
-      description: 'Completed Master\'s degree',
+      description: "Completed Master's degree",
       icon: '🎓',
       color: 'indigo',
       rarity: 'rare',
-      earnedDate: master.updated_at
+      earnedDate: master.updated_at,
     });
   } else if (bachelor) {
     badges.push({
       id: 'badge-bachelor',
       name: 'Graduate',
-      description: 'Completed Bachelor\'s degree',
+      description: "Completed Bachelor's degree",
       icon: '📚',
       color: 'green',
       rarity: 'common',
-      earnedDate: bachelor.updated_at
+      earnedDate: bachelor.updated_at,
     });
   }
 
   // Training badges
-  const completedTraining = training.filter(t => t.status === 'completed' || t.progress === 100);
+  const completedTraining = training.filter((t) => t.status === 'completed' || t.progress === 100);
   if (completedTraining.length >= 5) {
     badges.push({
       id: 'badge-lifelong-learner',
@@ -270,7 +282,7 @@ const generateAIBadges = ({ techSkills, softSkills, education, training, experie
       icon: '📖',
       color: 'teal',
       rarity: 'rare',
-      earnedDate: new Date().toISOString()
+      earnedDate: new Date().toISOString(),
     });
   }
 
@@ -283,14 +295,16 @@ const generateAIBadges = ({ techSkills, softSkills, education, training, experie
       icon: '💼',
       color: 'amber',
       rarity: 'epic',
-      earnedDate: new Date().toISOString()
+      earnedDate: new Date().toISOString(),
     });
   }
 
   // Communication badge (soft skills)
-  const communicationSkills = softSkills.filter(s => 
-    ['communication', 'presentation', 'writing', 'speaking'].some(skill => 
-      s.name.toLowerCase().includes(skill)) && s.level >= 4
+  const communicationSkills = softSkills.filter(
+    (s) =>
+      ['communication', 'presentation', 'writing', 'speaking'].some((skill) =>
+        s.name.toLowerCase().includes(skill)
+      ) && s.level >= 4
   );
   if (communicationSkills.length >= 2) {
     badges.push({
@@ -300,14 +314,15 @@ const generateAIBadges = ({ techSkills, softSkills, education, training, experie
       icon: '🗣️',
       color: 'pink',
       rarity: 'rare',
-      earnedDate: new Date().toISOString()
+      earnedDate: new Date().toISOString(),
     });
   }
 
   // Leadership badge
-  const leadershipSkills = softSkills.filter(s => 
-    ['leadership', 'management', 'team'].some(skill => 
-      s.name.toLowerCase().includes(skill)) && s.level >= 4
+  const leadershipSkills = softSkills.filter(
+    (s) =>
+      ['leadership', 'management', 'team'].some((skill) => s.name.toLowerCase().includes(skill)) &&
+      s.level >= 4
   );
   if (leadershipSkills.length >= 1) {
     badges.push({
@@ -317,7 +332,7 @@ const generateAIBadges = ({ techSkills, softSkills, education, training, experie
       icon: '👑',
       color: 'yellow',
       rarity: 'epic',
-      earnedDate: new Date().toISOString()
+      earnedDate: new Date().toISOString(),
     });
   }
 
@@ -330,7 +345,7 @@ const generateAIBadges = ({ techSkills, softSkills, education, training, experie
       icon: '🧠',
       color: 'cyan',
       rarity: 'legendary',
-      earnedDate: new Date().toISOString()
+      earnedDate: new Date().toISOString(),
     });
   }
 

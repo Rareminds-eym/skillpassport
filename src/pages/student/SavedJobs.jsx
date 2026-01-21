@@ -1,13 +1,13 @@
 import {
-    Bookmark,
-    BookmarkCheck,
-    CheckCircle,
-    ChevronDown,
-    Grid3x3,
-    List,
-    MapPin,
-    Search,
-    Trash2
+  Bookmark,
+  BookmarkCheck,
+  CheckCircle,
+  ChevronDown,
+  Grid3x3,
+  List,
+  MapPin,
+  Search,
+  Trash2,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import OpportunityCard from '../../components/Students/components/OpportunityCard';
@@ -44,17 +44,15 @@ const SavedJobs = () => {
 
       try {
         setLoading(true);
-        
+
         const jobs = await SavedJobsService.getSavedJobsWithAppliedStatus(studentId);
-        
+
         setSavedJobs(jobs);
-        
+
         // Set applied jobs
-        const appliedSet = new Set(
-          jobs.filter(job => job.has_applied).map(job => job.id)
-        );
+        const appliedSet = new Set(jobs.filter((job) => job.has_applied).map((job) => job.id));
         setAppliedJobs(appliedSet);
-        
+
         setError(null);
       } catch (err) {
         console.error('❌ Error loading saved jobs:', err);
@@ -70,8 +68,8 @@ const SavedJobs = () => {
   // Filter and sort saved jobs
   const filteredAndSortedJobs = useMemo(() => {
     // First filter
-    let filtered = savedJobs.filter(job => {
-      const matchesSearch = 
+    const filtered = savedJobs.filter((job) => {
+      const matchesSearch =
         job.job_title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         job.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         job.company_name?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -88,10 +86,11 @@ const SavedJobs = () => {
           return new Date(b.saved_at) - new Date(a.saved_at);
         case 'oldest':
           return new Date(a.saved_at) - new Date(b.saved_at);
-        case 'deadline':
+        case 'deadline': {
           const aDeadline = a.deadline || '9999-12-31';
           const bDeadline = b.deadline || '9999-12-31';
           return new Date(aDeadline) - new Date(bDeadline);
+        }
         default:
           return 0;
       }
@@ -115,10 +114,10 @@ const SavedJobs = () => {
 
     try {
       const result = await SavedJobsService.unsaveJob(studentId, opportunity.id);
-      
+
       if (result.success) {
         // Remove from local state
-        setSavedJobs(prev => prev.filter(job => job.id !== opportunity.id));
+        setSavedJobs((prev) => prev.filter((job) => job.id !== opportunity.id));
         alert('Job removed from saved list');
       } else {
         alert(result.message);
@@ -146,28 +145,30 @@ const SavedJobs = () => {
       const confirmExternal = window.confirm(
         'This will open an external application page. Would you also like to save this application to your profile?'
       );
-      
+
       if (confirmExternal) {
         setIsApplying(true);
         const result = await AppliedJobsService.applyToJob(studentId, opportunity.id);
         setIsApplying(false);
-        
+
         if (result.success) {
-          setAppliedJobs(prev => new Set([...prev, opportunity.id]));
-          
+          setAppliedJobs((prev) => new Set([...prev, opportunity.id]));
+
           // Update local state to show applied
-          setSavedJobs(prev => prev.map(job => 
-            job.id === opportunity.id 
-              ? { ...job, has_applied: true, application_status: 'applied' }
-              : job
-          ));
-          
+          setSavedJobs((prev) =>
+            prev.map((job) =>
+              job.id === opportunity.id
+                ? { ...job, has_applied: true, application_status: 'applied' }
+                : job
+            )
+          );
+
           alert(result.message);
         } else {
           alert(result.message);
         }
       }
-      
+
       window.open(opportunity.application_link, '_blank');
       return;
     }
@@ -184,15 +185,17 @@ const SavedJobs = () => {
     setIsApplying(false);
 
     if (result.success) {
-      setAppliedJobs(prev => new Set([...prev, opportunity.id]));
-      
+      setAppliedJobs((prev) => new Set([...prev, opportunity.id]));
+
       // Update local state
-      setSavedJobs(prev => prev.map(job => 
-        job.id === opportunity.id 
-          ? { ...job, has_applied: true, application_status: 'applied' }
-          : job
-      ));
-      
+      setSavedJobs((prev) =>
+        prev.map((job) =>
+          job.id === opportunity.id
+            ? { ...job, has_applied: true, application_status: 'applied' }
+            : job
+        )
+      );
+
       alert(result.message);
     } else {
       alert(result.message);
@@ -203,8 +206,8 @@ const SavedJobs = () => {
   const handleClearInactive = async () => {
     if (!studentId) return;
 
-    const inactiveCount = savedJobs.filter(job => !job.is_active).length;
-    
+    const inactiveCount = savedJobs.filter((job) => !job.is_active).length;
+
     if (inactiveCount === 0) {
       alert('No inactive saved jobs to remove');
       return;
@@ -218,9 +221,9 @@ const SavedJobs = () => {
 
     try {
       const result = await SavedJobsService.removeInactiveSavedJobs(studentId);
-      
+
       if (result.success) {
-        setSavedJobs(prev => prev.filter(job => job.is_active));
+        setSavedJobs((prev) => prev.filter((job) => job.is_active));
         alert(result.message);
       } else {
         alert(result.message);
@@ -246,9 +249,9 @@ const SavedJobs = () => {
                 <p className="text-gray-600 mt-1">Jobs you've bookmarked for later</p>
               </div>
             </div>
-            
+
             {/* Clear inactive button */}
-            {savedJobs.some(job => !job.is_active) && (
+            {savedJobs.some((job) => !job.is_active) && (
               <button
                 onClick={handleClearInactive}
                 className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
@@ -285,10 +288,10 @@ const SavedJobs = () => {
               <p className="text-xs sm:text-sm font-semibold text-gray-900">
                 Showing {filteredAndSortedJobs.length} of {savedJobs.length} Saved Jobs
               </p>
-              {savedJobs.filter(job => job.has_applied).length > 0 && (
+              {savedJobs.filter((job) => job.has_applied).length > 0 && (
                 <span className="text-xs sm:text-sm text-green-600 flex items-center gap-1">
                   <CheckCircle className="w-4 h-4" />
-                  {savedJobs.filter(job => job.has_applied).length} already applied
+                  {savedJobs.filter((job) => job.has_applied).length} already applied
                 </span>
               )}
             </div>
@@ -305,13 +308,13 @@ const SavedJobs = () => {
                 />
                 <span className="text-sm font-medium text-gray-700">Active Jobs Only</span>
               </label>
-              
+
               <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
                 <button
                   onClick={() => setViewMode('grid')}
                   className={`p-2 rounded transition-colors ${
-                    viewMode === 'grid' 
-                      ? 'bg-gray-900 text-white' 
+                    viewMode === 'grid'
+                      ? 'bg-gray-900 text-white'
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
@@ -320,8 +323,8 @@ const SavedJobs = () => {
                 <button
                   onClick={() => setViewMode('list')}
                   className={`p-2 rounded transition-colors ${
-                    viewMode === 'list' 
-                      ? 'bg-gray-900 text-white' 
+                    viewMode === 'list'
+                      ? 'bg-gray-900 text-white'
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
@@ -331,7 +334,7 @@ const SavedJobs = () => {
 
               {/* Sort Dropdown */}
               <div className="relative flex-1 sm:flex-initial">
-                <select 
+                <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
                   className="w-full sm:w-auto px-3 sm:px-4 py-2 pr-10 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 appearance-none bg-white text-sm font-medium"
@@ -434,9 +437,7 @@ const SavedJobs = () => {
           <div className="text-center py-20 bg-white rounded-2xl border border-gray-200">
             <MapPin className="w-16 h-16 mx-auto text-gray-300 mb-4" />
             <h3 className="text-xl font-semibold text-gray-600 mb-2">No jobs match your filters</h3>
-            <p className="text-gray-500">
-              Try adjusting your search or filters
-            </p>
+            <p className="text-gray-500">Try adjusting your search or filters</p>
           </div>
         )}
       </div>

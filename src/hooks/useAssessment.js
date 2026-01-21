@@ -1,7 +1,7 @@
 /**
  * useAssessment Hook
  * Provides assessment functionality with database integration
- * 
+ *
  * OPTIMIZED: All initial data is loaded in parallel for faster startup
  */
 
@@ -20,7 +20,7 @@ export const useAssessment = () => {
   const [questions, setQuestions] = useState({});
   const [responses, setResponses] = useState({});
   const [studentRecordId, setStudentRecordId] = useState(null);
-  
+
   // Track if initial load is complete
   const initialLoadComplete = useRef(false);
 
@@ -32,12 +32,12 @@ export const useAssessment = () => {
         if (!user?.id) setLoading(false);
         return;
       }
-      
+
       try {
         setLoading(true);
         console.log('🚀 useAssessment: Loading all initial data in parallel...');
         const startTime = performance.now();
-        
+
         // Run ALL queries in parallel for maximum speed
         const [sectionsData, streamsData, studentData] = await Promise.all([
           // 1. Fetch sections
@@ -49,23 +49,23 @@ export const useAssessment = () => {
             .from('students')
             .select('id')
             .or(`user_id.eq.${user.id},id.eq.${user.id}`)
-            .maybeSingle()
+            .maybeSingle(),
         ]);
-        
+
         const endTime = performance.now();
         console.log(`✅ useAssessment: All data loaded in ${Math.round(endTime - startTime)}ms`);
-        
+
         // Set all state at once
         setSections(sectionsData || []);
         setStreams(streamsData || []);
-        
+
         if (studentData.data?.id) {
           console.log('useAssessment: Found student record:', studentData.data.id);
           setStudentRecordId(studentData.data.id);
         } else {
           console.log('useAssessment: No student record found for user:', user.id);
         }
-        
+
         initialLoadComplete.current = true;
       } catch (err) {
         console.error('Error loading assessment data:', err);
@@ -81,36 +81,40 @@ export const useAssessment = () => {
   // Check for in-progress attempt
   const checkInProgressAttempt = useCallback(async () => {
     if (!studentRecordId) return null;
-    
+
     try {
       const attempt = await assessmentService.getInProgressAttempt(studentRecordId);
       if (attempt) {
         setCurrentAttempt(attempt);
         // Restore responses from the attempt
         const restoredResponses = {};
-        
+
         // IMPORTANT: First restore all_responses (RIASEC, BigFive, Values, Employability, etc.)
         // These are stored directly in the attempt record, not in personal_assessment_responses
         if (attempt.all_responses && typeof attempt.all_responses === 'object') {
           Object.entries(attempt.all_responses).forEach(([key, value]) => {
             restoredResponses[key] = value;
           });
-          console.log('✅ Restored', Object.keys(attempt.all_responses).length, 'responses from all_responses');
+          console.log(
+            '✅ Restored',
+            Object.keys(attempt.all_responses).length,
+            'responses from all_responses'
+          );
         }
-        
+
         // Get sections to map IDs to names (for regular database questions)
-        let sectionIdToName = {};
+        const sectionIdToName = {};
         try {
           const sectionsData = await assessmentService.fetchSections();
-          sectionsData.forEach(s => {
+          sectionsData.forEach((s) => {
             sectionIdToName[s.id] = s.name;
           });
         } catch (e) {
           console.warn('Could not fetch sections for response restoration:', e);
         }
-        
+
         // Then restore AI-generated question responses from personal_assessment_responses table
-        attempt.responses?.forEach(r => {
+        attempt.responses?.forEach((r) => {
           if (r.question_id && r.response_value !== null) {
             // For regular questions with section info, use sectionName_questionId format
             // For AI questions (no section info), just use the question_id
@@ -119,7 +123,7 @@ export const useAssessment = () => {
           }
         });
         setResponses(restoredResponses);
-        
+
         // Return attempt with restored responses for the component
         return { ...attempt, restoredResponses };
       }
@@ -131,158 +135,190 @@ export const useAssessment = () => {
   }, [studentRecordId]);
 
   // Start a new assessment
-  const startAssessment = useCallback(async (streamId, gradeLevel) => {
-    console.log('useAssessment.startAssessment called with:', { streamId, gradeLevel, studentRecordId });
-    
-    if (!studentRecordId) throw new Error('Student record not found');
+  const startAssessment = useCallback(
+    async (streamId, gradeLevel) => {
+      console.log('useAssessment.startAssessment called with:', {
+        streamId,
+        gradeLevel,
+        studentRecordId,
+      });
 
-    try {
-      setLoading(true);
-      setError(null);
+      if (!studentRecordId) throw new Error('Student record not found');
 
-      // Create new attempt using student record ID (not auth user ID)
-      console.log('Creating attempt with studentRecordId:', studentRecordId);
-      const attempt = await assessmentService.createAttempt(studentRecordId, streamId, gradeLevel);
-      console.log('Attempt created:', attempt);
-      setCurrentAttempt(attempt);
+      try {
+        setLoading(true);
+        setError(null);
 
-      // Load all questions for this stream and grade level
-      const allQuestions = await assessmentService.fetchAllQuestions(streamId, gradeLevel);
-      setQuestions(allQuestions);
-      setResponses({});
+        // Create new attempt using student record ID (not auth user ID)
+        console.log('Creating attempt with studentRecordId:', studentRecordId);
+        const attempt = await assessmentService.createAttempt(
+          studentRecordId,
+          streamId,
+          gradeLevel
+        );
+        console.log('Attempt created:', attempt);
+        setCurrentAttempt(attempt);
 
-      return attempt;
-    } catch (err) {
-      console.error('Error starting assessment:', err);
-      setError(err.message);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [studentRecordId]);
+        // Load all questions for this stream and grade level
+        const allQuestions = await assessmentService.fetchAllQuestions(streamId, gradeLevel);
+        setQuestions(allQuestions);
+        setResponses({});
+
+        return attempt;
+      } catch (err) {
+        console.error('Error starting assessment:', err);
+        setError(err.message);
+        throw err;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [studentRecordId]
+  );
 
   // Resume an existing attempt
-  const resumeAssessment = useCallback(async (attemptId) => {
-    try {
-      setLoading(true);
-      const attempt = await assessmentService.getAttemptWithResults(attemptId);
-      setCurrentAttempt(attempt);
+  const resumeAssessment = useCallback(
+    async (attemptId) => {
+      try {
+        setLoading(true);
+        const attempt = await assessmentService.getAttemptWithResults(attemptId);
+        setCurrentAttempt(attempt);
 
-      // Load questions for this stream and grade level
-      const allQuestions = await assessmentService.fetchAllQuestions(attempt.stream_id, attempt.grade_level);
-      setQuestions(allQuestions);
+        // Load questions for this stream and grade level
+        const allQuestions = await assessmentService.fetchAllQuestions(
+          attempt.stream_id,
+          attempt.grade_level
+        );
+        setQuestions(allQuestions);
 
-      // Restore responses
-      const restoredResponses = {};
-      attempt.responses?.forEach(r => {
-        // Create a key that matches the frontend format
-        const section = sections.find(s => s.id === r.question?.section_id);
-        if (section) {
-          restoredResponses[`${section.name}_${r.question_id}`] = r.response_value;
-        }
-      });
-      
-      // CRITICAL FIX: Also restore from all_responses column (RIASEC, BigFive, Values, etc.)
-      if (attempt.all_responses) {
-        console.log('🔄 Restoring answers from all_responses column:', Object.keys(attempt.all_responses).length);
-        Object.entries(attempt.all_responses).forEach(([key, value]) => {
-          restoredResponses[key] = value;
+        // Restore responses
+        const restoredResponses = {};
+        attempt.responses?.forEach((r) => {
+          // Create a key that matches the frontend format
+          const section = sections.find((s) => s.id === r.question?.section_id);
+          if (section) {
+            restoredResponses[`${section.name}_${r.question_id}`] = r.response_value;
+          }
         });
-        console.log('✅ Total restored responses:', Object.keys(restoredResponses).length);
-      }
-      
-      setResponses(restoredResponses);
 
-      return attempt;
-    } catch (err) {
-      console.error('Error resuming assessment:', err);
-      setError(err.message);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [sections]);
+        // CRITICAL FIX: Also restore from all_responses column (RIASEC, BigFive, Values, etc.)
+        if (attempt.all_responses) {
+          console.log(
+            '🔄 Restoring answers from all_responses column:',
+            Object.keys(attempt.all_responses).length
+          );
+          Object.entries(attempt.all_responses).forEach(([key, value]) => {
+            restoredResponses[key] = value;
+          });
+          console.log('✅ Total restored responses:', Object.keys(restoredResponses).length);
+        }
+
+        setResponses(restoredResponses);
+
+        return attempt;
+      } catch (err) {
+        console.error('Error resuming assessment:', err);
+        setError(err.message);
+        throw err;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [sections]
+  );
 
   // Save a response
-  const saveResponse = useCallback(async (sectionName, questionId, value, isCorrect = null) => {
-    if (!currentAttempt?.id) return { success: false, error: 'No active attempt' };
+  const saveResponse = useCallback(
+    async (sectionName, questionId, value, isCorrect = null) => {
+      if (!currentAttempt?.id) return { success: false, error: 'No active attempt' };
 
-    const responseKey = `${sectionName}_${questionId}`;
-    
-    // Update local state immediately
-    setResponses(prev => ({
-      ...prev,
-      [responseKey]: value
-    }));
+      const responseKey = `${sectionName}_${questionId}`;
 
-    // Save to database
-    try {
-      await assessmentService.saveResponse(
-        currentAttempt.id,
-        questionId,
-        value,
-        isCorrect
-      );
-      return { success: true };
-    } catch (err) {
-      console.error('Error saving response:', err);
-      return { success: false, error: err.message };
-    }
-  }, [currentAttempt?.id]);
-
-  // Update progress
-  const updateProgress = useCallback(async (sectionIndex, questionIndex, sectionTimings, timerRemaining = null, elapsedTime = null, allResponses = null, aptitudeQuestionTimer = null) => {
-    if (!currentAttempt?.id) return { success: false, error: 'No active attempt' };
-
-    try {
-      await assessmentService.updateAttemptProgress(currentAttempt.id, {
-        sectionIndex,
-        questionIndex,
-        sectionTimings,
-        timerRemaining,
-        elapsedTime,
-        allResponses,
-        aptitudeQuestionTimer
-      });
-      return { success: true };
-    } catch (err) {
-      console.error('Error updating progress:', err);
-      return { success: false, error: err.message };
-    }
-  }, [currentAttempt?.id]);
-
-  // Complete the assessment
-  const completeAssessment = useCallback(async (geminiResults, sectionTimings) => {
-    if (!currentAttempt?.id || !studentRecordId) {
-      throw new Error('No active attempt or student record');
-    }
-
-    try {
-      setLoading(true);
-      const results = await assessmentService.completeAttempt(
-        currentAttempt.id,
-        studentRecordId,
-        currentAttempt.stream_id,
-        currentAttempt.grade_level,
-        geminiResults,
-        sectionTimings
-      );
-
-      setCurrentAttempt(prev => ({
+      // Update local state immediately
+      setResponses((prev) => ({
         ...prev,
-        status: 'completed',
-        results: [results]
+        [responseKey]: value,
       }));
 
-      return results;
-    } catch (err) {
-      console.error('Error completing assessment:', err);
-      setError(err.message);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [currentAttempt, studentRecordId]);
+      // Save to database
+      try {
+        await assessmentService.saveResponse(currentAttempt.id, questionId, value, isCorrect);
+        return { success: true };
+      } catch (err) {
+        console.error('Error saving response:', err);
+        return { success: false, error: err.message };
+      }
+    },
+    [currentAttempt?.id]
+  );
+
+  // Update progress
+  const updateProgress = useCallback(
+    async (
+      sectionIndex,
+      questionIndex,
+      sectionTimings,
+      timerRemaining = null,
+      elapsedTime = null,
+      allResponses = null,
+      aptitudeQuestionTimer = null
+    ) => {
+      if (!currentAttempt?.id) return { success: false, error: 'No active attempt' };
+
+      try {
+        await assessmentService.updateAttemptProgress(currentAttempt.id, {
+          sectionIndex,
+          questionIndex,
+          sectionTimings,
+          timerRemaining,
+          elapsedTime,
+          allResponses,
+          aptitudeQuestionTimer,
+        });
+        return { success: true };
+      } catch (err) {
+        console.error('Error updating progress:', err);
+        return { success: false, error: err.message };
+      }
+    },
+    [currentAttempt?.id]
+  );
+
+  // Complete the assessment
+  const completeAssessment = useCallback(
+    async (geminiResults, sectionTimings) => {
+      if (!currentAttempt?.id || !studentRecordId) {
+        throw new Error('No active attempt or student record');
+      }
+
+      try {
+        setLoading(true);
+        const results = await assessmentService.completeAttempt(
+          currentAttempt.id,
+          studentRecordId,
+          currentAttempt.stream_id,
+          currentAttempt.grade_level,
+          geminiResults,
+          sectionTimings
+        );
+
+        setCurrentAttempt((prev) => ({
+          ...prev,
+          status: 'completed',
+          results: [results],
+        }));
+
+        return results;
+      } catch (err) {
+        console.error('Error completing assessment:', err);
+        setError(err.message);
+        throw err;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [currentAttempt, studentRecordId]
+  );
 
   // Abandon current attempt
   const abandonAssessment = useCallback(async () => {
@@ -332,7 +368,7 @@ export const useAssessment = () => {
     questions,
     responses,
     studentRecordId,
-    
+
     // Actions
     checkInProgressAttempt,
     startAssessment,
@@ -343,9 +379,9 @@ export const useAssessment = () => {
     abandonAssessment,
     getHistory,
     getLatestResult,
-    
+
     // Utilities
-    transformQuestionsForUI: assessmentService.transformQuestionsForUI
+    transformQuestionsForUI: assessmentService.transformQuestionsForUI,
   };
 };
 

@@ -20,11 +20,11 @@ const formatSubscriptionData = (data) => {
 
   // Map plan_type to plan ID - now matches database plan_code
   const planTypeMap = {
-    'basic': 'basic',
-    'professional': 'professional',
-    'pro': 'professional',
-    'enterprise': 'enterprise',
-    'ecosystem': 'ecosystem'
+    basic: 'basic',
+    professional: 'professional',
+    pro: 'professional',
+    enterprise: 'enterprise',
+    ecosystem: 'ecosystem',
   };
 
   const planType = data.plan_type?.toLowerCase() || data.plan_code?.toLowerCase() || 'basic';
@@ -113,7 +113,7 @@ export const useSubscriptionQuery = () => {
   // Prefetch subscription data (useful for navigation)
   const prefetchSubscription = async () => {
     if (!user?.id) return;
-    
+
     await queryClient.prefetchQuery({
       queryKey: [SUBSCRIPTION_QUERY_KEY, user.id],
       queryFn: () => fetchSubscription(user.id),
@@ -124,14 +124,14 @@ export const useSubscriptionQuery = () => {
   // Invalidate and refetch subscription
   const refreshSubscription = () => {
     return queryClient.invalidateQueries({
-      queryKey: [SUBSCRIPTION_QUERY_KEY, user?.id]
+      queryKey: [SUBSCRIPTION_QUERY_KEY, user?.id],
     });
   };
 
   // Clear subscription cache
   const clearSubscriptionCache = () => {
     queryClient.removeQueries({
-      queryKey: [SUBSCRIPTION_QUERY_KEY]
+      queryKey: [SUBSCRIPTION_QUERY_KEY],
     });
   };
 
@@ -206,4 +206,3 @@ export const useSubscriptionCache = () => {
     isCached: !!cachedData,
   };
 };
-

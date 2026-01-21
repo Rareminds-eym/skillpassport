@@ -7,7 +7,9 @@ function getOpenAIClient(): OpenAI {
   if (!openaiInstance) {
     const apiKey = import.meta.env.VITE_OPENAI_API_KEY || import.meta.env.VITE_OPENROUTER_API_KEY;
     if (!apiKey) {
-      throw new Error('OpenAI/OpenRouter API key is not configured. Please add VITE_OPENAI_API_KEY or VITE_OPENROUTER_API_KEY to your .env file.');
+      throw new Error(
+        'OpenAI/OpenRouter API key is not configured. Please add VITE_OPENAI_API_KEY or VITE_OPENROUTER_API_KEY to your .env file.'
+      );
     }
     openaiInstance = new OpenAI({
       apiKey,
@@ -101,66 +103,66 @@ function buildStudentProfileContext(student: StudentProfile): string {
   context += `Email: ${student.email}\n`;
   context += `Department/Field: ${student.dept}\n`;
   context += `College/University: ${student.college}\n`;
-  
+
   if (student.currentCgpa) {
     context += `Current CGPA: ${student.currentCgpa}/4.0\n`;
   }
-  
+
   if (student.ai_score_overall !== undefined) {
     context += `AI Assessment Score: ${student.ai_score_overall}%\n`;
   }
-  
+
   if (student.skills && student.skills.length > 0) {
     context += `\nSkills:\n`;
-    student.skills.forEach(skill => {
+    student.skills.forEach((skill) => {
       context += `  • ${skill}\n`;
     });
   }
-  
+
   if (student.certificates && student.certificates.length > 0) {
     context += `\nCertificates & Credentials (${student.certificates.length} total):\n`;
-    student.certificates.forEach(cert => {
+    student.certificates.forEach((cert) => {
       context += `  • ${cert}\n`;
     });
   } else {
     context += `\nCertificates & Credentials: None listed\n`;
   }
-  
+
   if (student.experience && student.experience.length > 0) {
     context += `\nExperience:\n`;
-    student.experience.forEach(exp => {
+    student.experience.forEach((exp) => {
       context += `  • ${exp}\n`;
     });
   }
-  
+
   if (student.trainings && student.trainings.length > 0) {
     context += `\nTrainings & Courses:\n`;
-    student.trainings.forEach(training => {
+    student.trainings.forEach((training) => {
       context += `  • ${training}\n`;
     });
   }
-  
+
   if (student.projects && student.projects.length > 0) {
     context += `\nProjects:\n`;
-    student.projects.forEach(project => {
+    student.projects.forEach((project) => {
       context += `  • ${project}\n`;
     });
   }
-  
+
   if (student.education && student.education.length > 0) {
     context += `\nEducation:\n`;
-    student.education.forEach(edu => {
+    student.education.forEach((edu) => {
       context += `  • ${edu}\n`;
     });
   }
-  
+
   if (student.interests && student.interests.length > 0) {
     context += `\nInterests & Goals:\n`;
-    student.interests.forEach(interest => {
+    student.interests.forEach((interest) => {
       context += `  • ${interest}\n`;
     });
   }
-  
+
   context += `\n==================\n`;
   return context;
 }
@@ -170,9 +172,9 @@ function parseCareerPathResponse(content: string): CareerPathResponse {
   if (!jsonMatch) {
     throw new Error('Failed to extract JSON from response');
   }
-  
+
   const parsed = JSON.parse(jsonMatch[0]);
-  
+
   return {
     studentName: parsed.studentName || '',
     currentRole: parsed.currentRole || 'Entry Level',
@@ -180,18 +182,24 @@ function parseCareerPathResponse(content: string): CareerPathResponse {
     overallScore: Math.min(100, Math.max(0, parsed.overallScore || 65)),
     strengths: Array.isArray(parsed.strengths) ? parsed.strengths : [],
     gaps: Array.isArray(parsed.gaps) ? parsed.gaps : [],
-    recommendedPath: Array.isArray(parsed.recommendedPath) ? parsed.recommendedPath.map((step: any) => ({
-      roleTitle: step.roleTitle || 'Role',
-      level: ['entry', 'junior', 'mid', 'senior', 'lead'].includes(step.level) ? step.level : 'entry',
-      timeline: step.timeline || '1-2 years',
-      estimatedTimeline: step.estimatedTimeline || 'Based on skill development',
-      description: step.description || '',
-      skillsNeeded: Array.isArray(step.skillsNeeded) ? step.skillsNeeded : [],
-      skillsToGain: Array.isArray(step.skillsToGain) ? step.skillsToGain : [],
-      learningResources: Array.isArray(step.learningResources) ? step.learningResources : [],
-      salaryRange: step.salaryRange || 'Market rate',
-      keyResponsibilities: Array.isArray(step.keyResponsibilities) ? step.keyResponsibilities : [],
-    })) : [],
+    recommendedPath: Array.isArray(parsed.recommendedPath)
+      ? parsed.recommendedPath.map((step: any) => ({
+          roleTitle: step.roleTitle || 'Role',
+          level: ['entry', 'junior', 'mid', 'senior', 'lead'].includes(step.level)
+            ? step.level
+            : 'entry',
+          timeline: step.timeline || '1-2 years',
+          estimatedTimeline: step.estimatedTimeline || 'Based on skill development',
+          description: step.description || '',
+          skillsNeeded: Array.isArray(step.skillsNeeded) ? step.skillsNeeded : [],
+          skillsToGain: Array.isArray(step.skillsToGain) ? step.skillsToGain : [],
+          learningResources: Array.isArray(step.learningResources) ? step.learningResources : [],
+          salaryRange: step.salaryRange || 'Market rate',
+          keyResponsibilities: Array.isArray(step.keyResponsibilities)
+            ? step.keyResponsibilities
+            : [],
+        }))
+      : [],
     alternativePaths: Array.isArray(parsed.alternativePaths) ? parsed.alternativePaths : [],
     actionItems: Array.isArray(parsed.actionItems) ? parsed.actionItems : [],
     nextSteps: Array.isArray(parsed.nextSteps) ? parsed.nextSteps : [],
@@ -205,7 +213,7 @@ export async function generateCareerPath(student: StudentProfile): Promise<Caree
     const client = getOpenAIClient();
 
     const profileContext = buildStudentProfileContext(student);
-    
+
     const userPrompt = `Based on the following student profile, generate a comprehensive career development path with focus on:
 1. Skill-based job/role recommendations
 2. Interest-aligned career paths
@@ -240,36 +248,38 @@ Be specific with Indian job market context if the college is in India. Include r
 Ensure all arrays are properly formatted and the JSON is valid.`;
 
     console.log('Calling OpenRouter API...');
-    const completion = await client.chat.completions.create({
-      model: 'openai/gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: CAREER_PATH_SYSTEM_PROMPT,
-        },
-        {
-          role: 'user',
-          content: userPrompt,
-        },
-      ],
-      max_tokens: 1500,
-      temperature: 0.7,
-    }).catch((err) => {
-      console.error('OpenRouter API call failed:', err);
-      throw err;
-    });
-    
+    const completion = await client.chat.completions
+      .create({
+        model: 'openai/gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: CAREER_PATH_SYSTEM_PROMPT,
+          },
+          {
+            role: 'user',
+            content: userPrompt,
+          },
+        ],
+        max_tokens: 1500,
+        temperature: 0.7,
+      })
+      .catch((err) => {
+        console.error('OpenRouter API call failed:', err);
+        throw err;
+      });
+
     console.log('API response received');
 
     const responseContent = completion.choices[0]?.message?.content || '';
-    
+
     if (!responseContent) {
       throw new Error('Empty response from OpenAI');
     }
 
     const careerPath = parseCareerPathResponse(responseContent);
     careerPath.studentName = student.name;
-    
+
     // Store original student data for chat context
     careerPath.studentData = {
       skills: student.skills,
@@ -280,29 +290,31 @@ Ensure all arrays are properly formatted and the JSON is valid.`;
       projects: student.projects,
       education: student.education,
     };
-    
+
     return careerPath;
   } catch (error) {
     console.error('Error generating career path:', error);
-    
+
     if (error instanceof OpenAI.APIError) {
       if (error.status === 402) {
-        throw new Error('Insufficient credits. Please add credits at https://openrouter.ai/settings/credits');
+        throw new Error(
+          'Insufficient credits. Please add credits at https://openrouter.ai/settings/credits'
+        );
       }
       if (error.status === 401) {
         throw new Error('Invalid API key. Please check your VITE_OPENAI_API_KEY in .env file.');
       }
       throw new Error(`API Error: ${error.message}`);
     }
-    
+
     if (error instanceof TypeError && error.message.includes('fetch')) {
       throw new Error('Network error. Please check your internet connection and try again.');
     }
-    
+
     if (error instanceof SyntaxError) {
       throw new Error('Failed to parse career path response. Please try again.');
     }
-    
+
     throw error;
   }
 }
@@ -311,10 +323,31 @@ Ensure all arrays are properly formatted and the JSON is valid.`;
  * List of common action verbs for job responsibilities
  */
 const ACTION_VERBS = [
-  'Analyze', 'Build', 'Collaborate', 'Create', 'Design', 'Develop', 'Drive',
-  'Evaluate', 'Execute', 'Facilitate', 'Guide', 'Implement', 'Lead', 'Manage',
-  'Monitor', 'Optimize', 'Oversee', 'Plan', 'Research', 'Review', 'Support',
-  'Test', 'Train', 'Transform', 'Write'
+  'Analyze',
+  'Build',
+  'Collaborate',
+  'Create',
+  'Design',
+  'Develop',
+  'Drive',
+  'Evaluate',
+  'Execute',
+  'Facilitate',
+  'Guide',
+  'Implement',
+  'Lead',
+  'Manage',
+  'Monitor',
+  'Optimize',
+  'Oversee',
+  'Plan',
+  'Research',
+  'Review',
+  'Support',
+  'Test',
+  'Train',
+  'Transform',
+  'Write',
 ];
 
 /**
@@ -322,9 +355,10 @@ const ACTION_VERBS = [
  */
 function startsWithActionVerb(text: string): boolean {
   const firstWord = text.trim().split(/\s+/)[0];
-  return ACTION_VERBS.some(verb => 
-    firstWord.toLowerCase() === verb.toLowerCase() ||
-    firstWord.toLowerCase().startsWith(verb.toLowerCase())
+  return ACTION_VERBS.some(
+    (verb) =>
+      firstWord.toLowerCase() === verb.toLowerCase() ||
+      firstWord.toLowerCase().startsWith(verb.toLowerCase())
   );
 }
 
@@ -353,7 +387,7 @@ function parseResponsibilitiesResponse(content: string, roleName: string): strin
         const responsibilities = parsed
           .slice(0, 3)
           .map((item: string) => ensureActionVerb(String(item)));
-        
+
         // Pad with fallback if less than 3
         while (responsibilities.length < 3) {
           responsibilities.push(getFallbackResponsibilities(roleName)[responsibilities.length]);
@@ -366,12 +400,13 @@ function parseResponsibilitiesResponse(content: string, roleName: string): strin
   }
 
   // Try to parse numbered or bulleted list
-  const lines = content.split('\n')
-    .map(line => line.replace(/^[\d\.\-\*\•]+\s*/, '').trim())
-    .filter(line => line.length > 10 && line.length < 200);
+  const lines = content
+    .split('\n')
+    .map((line) => line.replace(/^[\d\.\-\*\•]+\s*/, '').trim())
+    .filter((line) => line.length > 10 && line.length < 200);
 
   if (lines.length >= 3) {
-    return lines.slice(0, 3).map(line => ensureActionVerb(line));
+    return lines.slice(0, 3).map((line) => ensureActionVerb(line));
   }
 
   // Return fallback if parsing fails
@@ -387,7 +422,7 @@ export function getFallbackResponsibilities(roleName: string): string[] {
   return [
     `Design and develop solutions in the ${roleName} domain`,
     `Collaborate with cross-functional teams on projects`,
-    `Continuously learn and apply new skills in your field`
+    `Continuously learn and apply new skills in your field`,
   ];
 }
 
@@ -426,7 +461,8 @@ Return ONLY a JSON array of 3 strings, nothing else. Example format:
       messages: [
         {
           role: 'system',
-          content: 'You are a career advisor that generates concise, action-oriented job responsibilities. Always respond with a valid JSON array of exactly 3 strings.',
+          content:
+            'You are a career advisor that generates concise, action-oriented job responsibilities. Always respond with a valid JSON array of exactly 3 strings.',
         },
         {
           role: 'user',
@@ -438,7 +474,7 @@ Return ONLY a JSON array of 3 strings, nothing else. Example format:
     });
 
     const responseContent = completion.choices[0]?.message?.content || '';
-    
+
     if (!responseContent) {
       return getFallbackResponsibilities(roleName);
     }
@@ -455,7 +491,7 @@ export async function generateCareerPathStreaming(
 ): Promise<AsyncGenerator<string, void, unknown>> {
   const client = getOpenAIClient();
   const profileContext = buildStudentProfileContext(student);
-  
+
   const userPrompt = `Based on the following student profile, generate a comprehensive career development path. Consider their skills, interests, background, and market demands.
 
 ${profileContext}
@@ -525,11 +561,11 @@ export function getFallbackIndustryDemand(roleName: string): IndustryDemandData 
     { level: 'Medium', percentage: 60 },
   ];
   const selected = levels[hash % levels.length];
-  
+
   return {
     description: `${roleName} roles show ${selected.level.toLowerCase()} market demand with steady opportunities.`,
     demandLevel: selected.level,
-    demandPercentage: selected.percentage
+    demandPercentage: selected.percentage,
   };
 }
 
@@ -542,35 +578,35 @@ function parseIndustryDemandResponse(content: string, roleName: string): Industr
     const jsonMatch = content.match(/\{[\s\S]*?\}/);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
-      
+
       // Validate and normalize demand level
       const validLevels = ['Low', 'Medium', 'High', 'Very High'];
       let demandLevel = parsed.demandLevel || 'Medium';
       if (!validLevels.includes(demandLevel)) {
         demandLevel = 'Medium';
       }
-      
+
       // Validate percentage (0-100)
       let demandPercentage = parseInt(parsed.demandPercentage) || 65;
       demandPercentage = Math.min(100, Math.max(0, demandPercentage));
-      
+
       // Truncate description to max 2 sentences
       let description = parsed.description || getFallbackIndustryDemand(roleName).description;
       const sentences = description.match(/[^.!?]+[.!?]+/g) || [description];
       if (sentences.length > 2) {
         description = sentences.slice(0, 2).join(' ').trim();
       }
-      
+
       return {
         description,
         demandLevel: demandLevel as IndustryDemandData['demandLevel'],
-        demandPercentage
+        demandPercentage,
       };
     }
   } catch (e) {
     // Fall through to fallback
   }
-  
+
   return getFallbackIndustryDemand(roleName);
 }
 
@@ -616,7 +652,8 @@ Return ONLY a JSON object with these exact keys:
       messages: [
         {
           role: 'system',
-          content: 'You are a job market analyst providing accurate demand assessments. Base your analysis on real 2024-2025 market trends. Vary your responses - use the full range from Low to Very High based on actual demand.',
+          content:
+            'You are a job market analyst providing accurate demand assessments. Base your analysis on real 2024-2025 market trends. Vary your responses - use the full range from Low to Very High based on actual demand.',
         },
         {
           role: 'user',
@@ -628,7 +665,7 @@ Return ONLY a JSON object with these exact keys:
     });
 
     const responseContent = completion.choices[0]?.message?.content || '';
-    
+
     if (!responseContent) {
       return getFallbackIndustryDemand(roleName);
     }
@@ -721,7 +758,7 @@ export function getFallbackCareerProgression(roleName: string): CareerStage[] {
     { title: `Junior ${roleName}`, yearsExperience: '0-2 yrs' },
     { title: `${roleName}`, yearsExperience: '2-5 yrs' },
     { title: `Senior ${roleName}`, yearsExperience: '5-8 yrs' },
-    { title: `Lead ${roleName}`, yearsExperience: '8+ yrs' }
+    { title: `Lead ${roleName}`, yearsExperience: '8+ yrs' },
   ];
 }
 
@@ -738,9 +775,9 @@ export function getFallbackLearningRoadmap(roleName: string): RoadmapPhase[] {
         `Learn essential ${roleName} concepts and terminology`,
         `Set up your ${roleName} development environment`,
         `Complete beginner tutorials and exercises`,
-        `Study industry best practices for ${roleName}`
+        `Study industry best practices for ${roleName}`,
       ],
-      color: '#22c55e'
+      color: '#22c55e',
     },
     {
       month: 'Month 3-4',
@@ -750,9 +787,9 @@ export function getFallbackLearningRoadmap(roleName: string): RoadmapPhase[] {
         `Build 2-3 guided ${roleName} projects`,
         `Practice solving real-world ${roleName} problems`,
         `Learn advanced ${roleName} tools and techniques`,
-        `Get feedback from ${roleName} mentors or peers`
+        `Get feedback from ${roleName} mentors or peers`,
       ],
-      color: '#3b82f6'
+      color: '#3b82f6',
     },
     {
       month: 'Month 5-6',
@@ -762,10 +799,10 @@ export function getFallbackLearningRoadmap(roleName: string): RoadmapPhase[] {
         `Complete 2-3 portfolio-worthy ${roleName} projects`,
         `Optimize resume with ${roleName} keywords and achievements`,
         `Apply for ${roleName} internships or entry-level positions`,
-        `Practice ${roleName} interview questions and scenarios`
+        `Practice ${roleName} interview questions and scenarios`,
       ],
-      color: '#a855f7'
-    }
+      color: '#a855f7',
+    },
   ];
 }
 
@@ -779,29 +816,29 @@ export function getFallbackRecommendedCourses(roleName: string): RecommendedCour
       description: `Master the core concepts and skills needed for ${roleName} roles`,
       duration: '4 weeks',
       level: 'Beginner',
-      skills: ['Core Concepts', 'Best Practices', 'Tools']
+      skills: ['Core Concepts', 'Best Practices', 'Tools'],
     },
     {
       title: `Advanced ${roleName} Skills`,
       description: 'Take your skills to the next level with advanced techniques',
       duration: '6 weeks',
       level: 'Intermediate',
-      skills: ['Advanced Techniques', 'Problem Solving', 'Optimization']
+      skills: ['Advanced Techniques', 'Problem Solving', 'Optimization'],
     },
     {
       title: 'Project-Based Learning',
       description: 'Build real-world projects to strengthen your portfolio',
       duration: '8 weeks',
       level: 'Advanced',
-      skills: ['Project Management', 'Implementation', 'Deployment']
+      skills: ['Project Management', 'Implementation', 'Deployment'],
     },
     {
       title: 'Industry Certification Prep',
       description: 'Prepare for industry-recognized certifications',
       duration: '4 weeks',
       level: 'Professional',
-      skills: ['Certification', 'Industry Standards', 'Best Practices']
-    }
+      skills: ['Certification', 'Industry Standards', 'Best Practices'],
+    },
   ];
 }
 
@@ -815,20 +852,20 @@ export function getFallbackFreeResources(roleName: string): FreeResource[] {
       title: 'YouTube Tutorials',
       description: `Free video tutorials from industry experts on ${roleName} topics`,
       type: 'YouTube',
-      url: `https://www.youtube.com/results?search_query=${searchQuery}`
+      url: `https://www.youtube.com/results?search_query=${searchQuery}`,
     },
     {
       title: 'Official Documentation',
       description: 'Comprehensive guides and references for tools and frameworks',
       type: 'Documentation',
-      url: `https://www.google.com/search?q=${encodeURIComponent(roleName + ' documentation')}`
+      url: `https://www.google.com/search?q=${encodeURIComponent(roleName + ' documentation')}`,
     },
     {
       title: 'Industry Certifications',
       description: 'Free certification programs to validate your skills',
       type: 'Certification',
-      url: `https://www.google.com/search?q=${encodeURIComponent(roleName + ' free certification')}`
-    }
+      url: `https://www.google.com/search?q=${encodeURIComponent(roleName + ' free certification')}`,
+    },
   ];
 }
 
@@ -840,7 +877,7 @@ export function getFallbackActionItems(roleName: string): ActionItem[] {
     { title: 'Start Learning', description: `Enroll in a ${roleName} foundational course` },
     { title: 'Build Daily Habits', description: 'Dedicate 1-2 hours daily to practice' },
     { title: 'Join Communities', description: `Connect with ${roleName} professionals online` },
-    { title: 'Track Progress', description: 'Set weekly goals and review your growth' }
+    { title: 'Track Progress', description: 'Set weekly goals and review your growth' },
   ];
 }
 
@@ -894,12 +931,12 @@ export function getFallbackRoleOverview(roleName: string): RoleOverviewData {
  */
 function parseRoleOverviewResponse(content: string, roleName: string): RoleOverviewData {
   const colors = ['#22c55e', '#3b82f6', '#a855f7'];
-  
+
   try {
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
-      
+
       // Parse responsibilities
       let responsibilities: string[] = [];
       if (Array.isArray(parsed.responsibilities) && parsed.responsibilities.length > 0) {
@@ -910,35 +947,35 @@ function parseRoleOverviewResponse(content: string, roleName: string): RoleOverv
       while (responsibilities.length < 3) {
         responsibilities.push(getFallbackResponsibilities(roleName)[responsibilities.length]);
       }
-      
+
       // Parse industry demand
       const validLevels = ['Low', 'Medium', 'High', 'Very High'];
       let demandLevel = parsed.demandLevel || 'High';
       if (!validLevels.includes(demandLevel)) {
         demandLevel = 'High';
       }
-      
+
       let demandPercentage = parseInt(parsed.demandPercentage) || 75;
       demandPercentage = Math.min(100, Math.max(0, demandPercentage));
-      
+
       let description = parsed.demandDescription || getFallbackIndustryDemand(roleName).description;
       const sentences = description.match(/[^.!?]+[.!?]+/g) || [description];
       if (sentences.length > 2) {
         description = sentences.slice(0, 2).join(' ').trim();
       }
-      
+
       // Parse career progression
       let careerProgression: CareerStage[] = [];
       if (Array.isArray(parsed.careerProgression) && parsed.careerProgression.length >= 4) {
         careerProgression = parsed.careerProgression.slice(0, 4).map((stage: any) => ({
           title: stage.title || 'Role',
-          yearsExperience: stage.yearsExperience || stage.years || '0+ yrs'
+          yearsExperience: stage.yearsExperience || stage.years || '0+ yrs',
         }));
       }
       if (careerProgression.length < 4) {
         careerProgression = getFallbackCareerProgression(roleName);
       }
-      
+
       // Parse learning roadmap
       let learningRoadmap: RoadmapPhase[] = [];
       if (Array.isArray(parsed.learningRoadmap) && parsed.learningRoadmap.length >= 3) {
@@ -947,13 +984,13 @@ function parseRoleOverviewResponse(content: string, roleName: string): RoleOverv
           title: phase.title || 'Learning Phase',
           description: phase.description || 'Build skills and knowledge',
           tasks: Array.isArray(phase.tasks) ? phase.tasks.slice(0, 4) : [],
-          color: colors[idx] || '#3b82f6'
+          color: colors[idx] || '#3b82f6',
         }));
       }
       if (learningRoadmap.length < 3) {
         learningRoadmap = getFallbackLearningRoadmap(roleName);
       }
-      
+
       // Parse recommended courses
       const validCourseLevels = ['Beginner', 'Intermediate', 'Advanced', 'Professional'];
       let recommendedCourses: RecommendedCourse[] = [];
@@ -968,14 +1005,14 @@ function parseRoleOverviewResponse(content: string, roleName: string): RoleOverv
             description: course.description || 'Learn essential skills',
             duration: course.duration || '4 weeks',
             level: level as RecommendedCourse['level'],
-            skills: Array.isArray(course.skills) ? course.skills.slice(0, 3) : []
+            skills: Array.isArray(course.skills) ? course.skills.slice(0, 3) : [],
           };
         });
       }
       if (recommendedCourses.length < 4) {
         recommendedCourses = getFallbackRecommendedCourses(roleName);
       }
-      
+
       // Parse free resources
       const validResourceTypes = ['YouTube', 'Documentation', 'Certification', 'Community', 'Tool'];
       let freeResources: FreeResource[] = [];
@@ -989,26 +1026,26 @@ function parseRoleOverviewResponse(content: string, roleName: string): RoleOverv
             title: resource.title || 'Resource',
             description: resource.description || 'Helpful learning resource',
             type: type as FreeResource['type'],
-            url: resource.url || ''
+            url: resource.url || '',
           };
         });
       }
       if (freeResources.length < 3) {
         freeResources = getFallbackFreeResources(roleName);
       }
-      
+
       // Parse action items
       let actionItems: ActionItem[] = [];
       if (Array.isArray(parsed.actionItems) && parsed.actionItems.length >= 4) {
         actionItems = parsed.actionItems.slice(0, 4).map((item: any) => ({
           title: item.title || 'Action',
-          description: item.description || 'Take action to progress'
+          description: item.description || 'Take action to progress',
         }));
       }
       if (actionItems.length < 4) {
         actionItems = getFallbackActionItems(roleName);
       }
-      
+
       // Parse suggested projects
       const validDifficulties = ['Beginner', 'Intermediate', 'Advanced'];
       let suggestedProjects: SuggestedProject[] = [];
@@ -1023,38 +1060,39 @@ function parseRoleOverviewResponse(content: string, roleName: string): RoleOverv
             description: project.description || 'Build something amazing',
             difficulty: difficulty as SuggestedProject['difficulty'],
             skills: Array.isArray(project.skills) ? project.skills.slice(0, 4) : [],
-            estimatedTime: project.estimatedTime || '1-2 weeks'
+            estimatedTime: project.estimatedTime || '1-2 weeks',
           };
         });
       }
       if (suggestedProjects.length < 3) {
         suggestedProjects = getFallbackSuggestedProjects(roleName);
       }
-      
+
       return {
         responsibilities,
         industryDemand: {
           description,
           demandLevel: demandLevel as IndustryDemandData['demandLevel'],
-          demandPercentage
+          demandPercentage,
         },
         careerProgression,
         learningRoadmap,
         recommendedCourses,
         freeResources,
         actionItems,
-        suggestedProjects
+        suggestedProjects,
       };
     }
   } catch (e) {
     console.error('Error parsing role overview response:', e);
   }
-  
+
   return getFallbackRoleOverview(roleName);
 }
 
 // Worker API URL for role overview
-const ROLE_OVERVIEW_API_URL = import.meta.env.VITE_ROLE_OVERVIEW_API_URL || 
+const ROLE_OVERVIEW_API_URL =
+  import.meta.env.VITE_ROLE_OVERVIEW_API_URL ||
   'https://role-overview-api.dark-mode-d021.workers.dev';
 
 /**
@@ -1093,7 +1131,7 @@ export async function generateRoleOverview(
       throw new Error(`Worker API error: ${response.status}`);
     }
 
-    const result = await response.json() as {
+    const result = (await response.json()) as {
       success: boolean;
       data?: RoleOverviewData;
       source?: string;
@@ -1109,7 +1147,7 @@ export async function generateRoleOverview(
     return result.data;
   } catch (error: any) {
     console.error('[RoleOverview] Worker API call failed:', error.message);
-    
+
     // Fallback to local static data if worker is unavailable
     console.log(`[RoleOverview] Using local fallback for: ${roleName}`);
     return getFallbackRoleOverview(roleName);
@@ -1138,7 +1176,7 @@ export interface CourseMatchingResult {
 /**
  * Match platform courses to a role using AI
  * Calls the /match-courses endpoint on the role-overview-api worker
- * 
+ *
  * @param roleName - The job role name (e.g., "Software Engineer")
  * @param clusterTitle - The career cluster (e.g., "Technology")
  * @param courses - Array of available platform courses
@@ -1171,7 +1209,7 @@ export async function matchCoursesForRole(
       body: JSON.stringify({
         roleName: roleName.trim(),
         clusterTitle: (clusterTitle || '').trim(),
-        courses: courses.slice(0, 20).map(c => ({
+        courses: courses.slice(0, 20).map((c) => ({
           id: c.id,
           title: c.title,
           description: c.description || '',
@@ -1187,7 +1225,7 @@ export async function matchCoursesForRole(
       throw new Error(`Worker API error: ${response.status}`);
     }
 
-    const result = await response.json() as {
+    const result = (await response.json()) as {
       success: boolean;
       data?: CourseMatchingResult;
       source?: string;
@@ -1203,11 +1241,11 @@ export async function matchCoursesForRole(
     return result.data;
   } catch (error: any) {
     console.error('[CourseMatching] Worker API call failed:', error.message);
-    
+
     // Return empty result on failure - let the UI handle fallback
-    return { 
-      matchedCourseIds: [], 
-      reasoning: 'AI matching unavailable' 
+    return {
+      matchedCourseIds: [],
+      reasoning: 'AI matching unavailable',
     };
   }
 }

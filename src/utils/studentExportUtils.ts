@@ -18,55 +18,57 @@ function flattenStudentForCSV(student: UICandidate): Record<string, any> {
   return {
     // Basic Info
     'Student ID': student.id,
-    'Name': student.name,
-    'Email': student.email || '',
-    'Phone': student.phone || '',
-    'Age': student.age || '',
+    Name: student.name,
+    Email: student.email || '',
+    Phone: student.phone || '',
+    Age: student.age || '',
     'Date of Birth': student.date_of_birth || '',
-    
+
     // Academic Info
-    'College': student.college || '',
-    'Department': student.dept || '',
-    'University': student.university || '',
+    College: student.college || '',
+    Department: student.dept || '',
+    University: student.university || '',
     'Registration Number': student.registration_number || '',
-    'Location': student.location || '',
-    'District': student.district_name || '',
-    
+    Location: student.location || '',
+    District: student.district_name || '',
+
     // Profile Info
-    'Bio': student.bio || '',
+    Bio: student.bio || '',
     'NM ID': student.nm_id || '',
     'Trainer Name': student.trainer_name || '',
-    
+
     // Social Links
-    'GitHub': student.github_link || '',
-    'LinkedIn': student.linkedin_link || '',
-    'Twitter': student.twitter_link || '',
-    'Facebook': student.facebook_link || '',
-    'Instagram': student.instagram_link || '',
-    'Portfolio': student.portfolio_link || '',
-    
+    GitHub: student.github_link || '',
+    LinkedIn: student.linkedin_link || '',
+    Twitter: student.twitter_link || '',
+    Facebook: student.facebook_link || '',
+    Instagram: student.instagram_link || '',
+    Portfolio: student.portfolio_link || '',
+
     // Skills (comma-separated)
-    'Skills': student.skills.map(s => typeof s === 'string' ? s : s.name).join(', '),
+    Skills: student.skills.map((s) => (typeof s === 'string' ? s : s.name)).join(', '),
     'Skills Count': student.skills.length,
-    
+
     // Projects (comma-separated titles)
-    'Projects': student.projects.map(p => p.title).join(', '),
+    Projects: student.projects.map((p) => p.title).join(', '),
     'Projects Count': student.projects.length,
-    
+
     // Certificates (comma-separated titles)
-    'Certificates': student.certificates.map(c => c.title).join(', '),
+    Certificates: student.certificates.map((c) => c.title).join(', '),
     'Certificates Count': student.certificates.length,
-    
+
     // Experience (comma-separated roles)
-    'Experience': student.experience.map(e => `${e.role || 'Role'} at ${e.organization || 'Organization'}`).join(', '),
+    Experience: student.experience
+      .map((e) => `${e.role || 'Role'} at ${e.organization || 'Organization'}`)
+      .join(', '),
     'Experience Count': student.experience.length,
-    
+
     // Trainings (comma-separated titles)
-    'Trainings': student.trainings.map(t => t.title).join(', '),
+    Trainings: student.trainings.map((t) => t.title).join(', '),
     'Trainings Count': student.trainings.length,
-    
+
     // Metadata
-    'Badges': student.badges.join(', '),
+    Badges: student.badges.join(', '),
     'AI Score': student.ai_score_overall,
     'Last Updated': student.last_updated || '',
     'Created At': student.imported_at || '',
@@ -76,7 +78,10 @@ function flattenStudentForCSV(student: UICandidate): Record<string, any> {
 /**
  * Export students data as CSV
  */
-export function exportStudentsAsCSV(students: UICandidate[], filename: string = 'students_export'): void {
+export function exportStudentsAsCSV(
+  students: UICandidate[],
+  filename: string = 'students_export'
+): void {
   try {
     if (students.length === 0) {
       alert('No students to export');
@@ -106,7 +111,10 @@ export function exportStudentsAsCSV(students: UICandidate[], filename: string = 
 /**
  * Export students data as JSON
  */
-export function exportStudentsAsJSON(students: UICandidate[], filename: string = 'students_export'): void {
+export function exportStudentsAsJSON(
+  students: UICandidate[],
+  filename: string = 'students_export'
+): void {
   try {
     if (students.length === 0) {
       alert('No students to export');
@@ -131,7 +139,10 @@ export function exportStudentsAsJSON(students: UICandidate[], filename: string =
 /**
  * Export students data as PDF
  */
-export function exportStudentsAsPDF(students: UICandidate[], filename: string = 'students_export'): void {
+export function exportStudentsAsPDF(
+  students: UICandidate[],
+  filename: string = 'students_export'
+): void {
   try {
     if (students.length === 0) {
       alert('No students to export');
@@ -151,8 +162,12 @@ export function exportStudentsAsPDF(students: UICandidate[], filename: string = 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100);
-    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, pageWidth / 2, yPosition, { align: 'center' });
-    doc.text(`Total Students: ${students.length}`, pageWidth / 2, yPosition + 5, { align: 'center' });
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, pageWidth / 2, yPosition, {
+      align: 'center',
+    });
+    doc.text(`Total Students: ${students.length}`, pageWidth / 2, yPosition + 5, {
+      align: 'center',
+    });
 
     yPosition += 15;
 
@@ -219,7 +234,7 @@ export function exportStudentsAsPDF(students: UICandidate[], filename: string = 
         `Location: ${student.location || 'N/A'}`,
       ];
 
-      details.forEach(detail => {
+      details.forEach((detail) => {
         if (yPosition > 280) {
           doc.addPage();
           yPosition = 20;
@@ -236,17 +251,19 @@ export function exportStudentsAsPDF(students: UICandidate[], filename: string = 
           doc.addPage();
           yPosition = 20;
         }
-        
+
         doc.setFont('helvetica', 'bold');
         doc.text('Skills:', 14, yPosition);
         yPosition += 5;
 
-        const skillsData = student.skills.slice(0, 10).map((skill, index) => [
-          (index + 1).toString(),
-          typeof skill === 'string' ? skill : skill.name || 'N/A',
-          typeof skill === 'object' && skill.level ? skill.level.toString() : 'N/A',
-          typeof skill === 'object' && skill.verified ? 'Yes' : 'No',
-        ]);
+        const skillsData = student.skills
+          .slice(0, 10)
+          .map((skill, index) => [
+            (index + 1).toString(),
+            typeof skill === 'string' ? skill : skill.name || 'N/A',
+            typeof skill === 'object' && skill.level ? skill.level.toString() : 'N/A',
+            typeof skill === 'object' && skill.verified ? 'Yes' : 'No',
+          ]);
 
         autoTable(doc, {
           startY: yPosition,
@@ -267,7 +284,7 @@ export function exportStudentsAsPDF(students: UICandidate[], filename: string = 
         });
 
         yPosition = (doc as any).lastAutoTable.finalY + 5;
-        
+
         if (student.skills.length > 10) {
           doc.setFont('helvetica', 'italic');
           doc.setFontSize(7);
@@ -288,12 +305,14 @@ export function exportStudentsAsPDF(students: UICandidate[], filename: string = 
         doc.text('Projects:', 14, yPosition);
         yPosition += 5;
 
-        const projectsData = student.projects.slice(0, 5).map((project, index) => [
-          (index + 1).toString(),
-          project.title || 'N/A',
-          project.status || 'N/A',
-          project.organization || 'N/A',
-        ]);
+        const projectsData = student.projects
+          .slice(0, 5)
+          .map((project, index) => [
+            (index + 1).toString(),
+            project.title || 'N/A',
+            project.status || 'N/A',
+            project.organization || 'N/A',
+          ]);
 
         autoTable(doc, {
           startY: yPosition,
@@ -314,7 +333,7 @@ export function exportStudentsAsPDF(students: UICandidate[], filename: string = 
         });
 
         yPosition = (doc as any).lastAutoTable.finalY + 5;
-        
+
         if (student.projects.length > 5) {
           doc.setFont('helvetica', 'italic');
           doc.setFontSize(7);
@@ -335,12 +354,14 @@ export function exportStudentsAsPDF(students: UICandidate[], filename: string = 
         doc.text('Certificates:', 14, yPosition);
         yPosition += 5;
 
-        const certificatesData = student.certificates.slice(0, 5).map((cert, index) => [
-          (index + 1).toString(),
-          cert.title || 'N/A',
-          cert.issuer || 'N/A',
-          cert.issued_on || 'N/A',
-        ]);
+        const certificatesData = student.certificates
+          .slice(0, 5)
+          .map((cert, index) => [
+            (index + 1).toString(),
+            cert.title || 'N/A',
+            cert.issuer || 'N/A',
+            cert.issued_on || 'N/A',
+          ]);
 
         autoTable(doc, {
           startY: yPosition,
@@ -361,7 +382,7 @@ export function exportStudentsAsPDF(students: UICandidate[], filename: string = 
         });
 
         yPosition = (doc as any).lastAutoTable.finalY + 5;
-        
+
         if (student.certificates.length > 5) {
           doc.setFont('helvetica', 'italic');
           doc.setFontSize(7);
@@ -379,12 +400,9 @@ export function exportStudentsAsPDF(students: UICandidate[], filename: string = 
       doc.setPage(i);
       doc.setFontSize(8);
       doc.setTextColor(150);
-      doc.text(
-        `Page ${i} of ${pageCount}`,
-        pageWidth / 2,
-        doc.internal.pageSize.getHeight() - 10,
-        { align: 'center' }
-      );
+      doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, {
+        align: 'center',
+      });
     }
 
     // Save the PDF
@@ -398,7 +416,10 @@ export function exportStudentsAsPDF(students: UICandidate[], filename: string = 
 /**
  * Export detailed student data as separate CSV files (one for each category)
  */
-export function exportStudentsAsDetailedCSV(students: UICandidate[], filename: string = 'students_detailed_export'): void {
+export function exportStudentsAsDetailedCSV(
+  students: UICandidate[],
+  filename: string = 'students_detailed_export'
+): void {
   try {
     if (students.length === 0) {
       alert('No students to export');
@@ -408,14 +429,14 @@ export function exportStudentsAsDetailedCSV(students: UICandidate[], filename: s
     const timestamp = new Date().toISOString().split('T')[0];
 
     // 1. Basic Info CSV
-    const basicInfo = students.map(s => ({
+    const basicInfo = students.map((s) => ({
       'Student ID': s.id,
-      'Name': s.name,
-      'Email': s.email || '',
-      'Phone': s.phone || '',
-      'College': s.college || '',
-      'Department': s.dept || '',
-      'Location': s.location || '',
+      Name: s.name,
+      Email: s.email || '',
+      Phone: s.phone || '',
+      College: s.college || '',
+      Department: s.dept || '',
+      Location: s.location || '',
       'AI Score': s.ai_score_overall,
     }));
     const basicCSV = Papa.unparse(basicInfo, { quotes: true, header: true });
@@ -423,15 +444,15 @@ export function exportStudentsAsDetailedCSV(students: UICandidate[], filename: s
 
     // 2. Skills CSV
     const skills: any[] = [];
-    students.forEach(student => {
-      student.skills.forEach(skill => {
+    students.forEach((student) => {
+      student.skills.forEach((skill) => {
         skills.push({
           'Student ID': student.id,
           'Student Name': student.name,
           'Skill Name': typeof skill === 'string' ? skill : skill.name,
           'Skill Type': typeof skill === 'object' ? skill.type || '' : '',
-          'Level': typeof skill === 'object' ? skill.level || '' : '',
-          'Verified': typeof skill === 'object' ? (skill.verified ? 'Yes' : 'No') : '',
+          Level: typeof skill === 'object' ? skill.level || '' : '',
+          Verified: typeof skill === 'object' ? (skill.verified ? 'Yes' : 'No') : '',
         });
       });
     });
@@ -442,18 +463,18 @@ export function exportStudentsAsDetailedCSV(students: UICandidate[], filename: s
 
     // 3. Projects CSV
     const projects: any[] = [];
-    students.forEach(student => {
-      student.projects.forEach(project => {
+    students.forEach((student) => {
+      student.projects.forEach((project) => {
         projects.push({
           'Student ID': student.id,
           'Student Name': student.name,
           'Project Title': project.title,
-          'Description': project.description || '',
-          'Status': project.status || '',
-          'Organization': project.organization || '',
+          Description: project.description || '',
+          Status: project.status || '',
+          Organization: project.organization || '',
           'Start Date': project.start_date || '',
           'End Date': project.end_date || '',
-          'Duration': project.duration || '',
+          Duration: project.duration || '',
           'Tech Stack': Array.isArray(project.tech_stack) ? project.tech_stack.join(', ') : '',
           'Demo Link': project.demo_link || '',
           'GitHub Link': project.github_link || '',
@@ -462,81 +483,97 @@ export function exportStudentsAsDetailedCSV(students: UICandidate[], filename: s
     });
     if (projects.length > 0) {
       const projectsCSV = Papa.unparse(projects, { quotes: true, header: true });
-      saveAs(new Blob([projectsCSV], { type: 'text/csv' }), `${filename}_projects_${timestamp}.csv`);
+      saveAs(
+        new Blob([projectsCSV], { type: 'text/csv' }),
+        `${filename}_projects_${timestamp}.csv`
+      );
     }
 
     // 4. Certificates CSV
     const certificates: any[] = [];
-    students.forEach(student => {
-      student.certificates.forEach(cert => {
+    students.forEach((student) => {
+      student.certificates.forEach((cert) => {
         certificates.push({
           'Student ID': student.id,
           'Student Name': student.name,
           'Certificate Title': cert.title,
-          'Issuer': cert.issuer || '',
-          'Level': cert.level || '',
+          Issuer: cert.issuer || '',
+          Level: cert.level || '',
           'Credential ID': cert.credential_id || '',
           'Issued On': cert.issued_on || '',
-          'Link': cert.link || '',
-          'Status': cert.status || '',
+          Link: cert.link || '',
+          Status: cert.status || '',
         });
       });
     });
     if (certificates.length > 0) {
       const certificatesCSV = Papa.unparse(certificates, { quotes: true, header: true });
-      saveAs(new Blob([certificatesCSV], { type: 'text/csv' }), `${filename}_certificates_${timestamp}.csv`);
+      saveAs(
+        new Blob([certificatesCSV], { type: 'text/csv' }),
+        `${filename}_certificates_${timestamp}.csv`
+      );
     }
 
     // 5. Experience CSV
     const experience: any[] = [];
-    students.forEach(student => {
-      student.experience.forEach(exp => {
+    students.forEach((student) => {
+      student.experience.forEach((exp) => {
         experience.push({
           'Student ID': student.id,
           'Student Name': student.name,
-          'Organization': exp.organization || '',
-          'Role': exp.role || '',
+          Organization: exp.organization || '',
+          Role: exp.role || '',
           'Start Date': exp.start_date || '',
           'End Date': exp.end_date || '',
-          'Duration': exp.duration || '',
-          'Verified': exp.verified ? 'Yes' : 'No',
+          Duration: exp.duration || '',
+          Verified: exp.verified ? 'Yes' : 'No',
         });
       });
     });
     if (experience.length > 0) {
       const experienceCSV = Papa.unparse(experience, { quotes: true, header: true });
-      saveAs(new Blob([experienceCSV], { type: 'text/csv' }), `${filename}_experience_${timestamp}.csv`);
+      saveAs(
+        new Blob([experienceCSV], { type: 'text/csv' }),
+        `${filename}_experience_${timestamp}.csv`
+      );
     }
 
     // 6. Trainings CSV
     const trainings: any[] = [];
-    students.forEach(student => {
-      student.trainings.forEach(training => {
+    students.forEach((student) => {
+      student.trainings.forEach((training) => {
         trainings.push({
           'Student ID': student.id,
           'Student Name': student.name,
           'Training Title': training.title,
-          'Organization': training.organization || '',
+          Organization: training.organization || '',
           'Start Date': training.start_date || '',
           'End Date': training.end_date || '',
-          'Duration': training.duration || '',
-          'Description': training.description || '',
+          Duration: training.duration || '',
+          Description: training.description || '',
         });
       });
     });
     if (trainings.length > 0) {
       const trainingsCSV = Papa.unparse(trainings, { quotes: true, header: true });
-      saveAs(new Blob([trainingsCSV], { type: 'text/csv' }), `${filename}_trainings_${timestamp}.csv`);
+      saveAs(
+        new Blob([trainingsCSV], { type: 'text/csv' }),
+        `${filename}_trainings_${timestamp}.csv`
+      );
     }
 
-    alert(`Export complete! ${[
-      'basic info',
-      skills.length > 0 ? 'skills' : null,
-      projects.length > 0 ? 'projects' : null,
-      certificates.length > 0 ? 'certificates' : null,
-      experience.length > 0 ? 'experience' : null,
-      trainings.length > 0 ? 'trainings' : null,
-    ].filter(Boolean).join(', ')} files downloaded.`);
+    alert(
+      `Export complete! ${[
+        'basic info',
+        skills.length > 0 ? 'skills' : null,
+        projects.length > 0 ? 'projects' : null,
+        certificates.length > 0 ? 'certificates' : null,
+        experience.length > 0 ? 'experience' : null,
+        trainings.length > 0 ? 'trainings' : null,
+      ]
+        .filter(Boolean)
+        .join(', ')} files downloaded.`
+    );
   } catch (error) {
     console.error('Error exporting detailed CSV:', error);
     alert('Failed to export detailed CSV. Please check the console for details.');

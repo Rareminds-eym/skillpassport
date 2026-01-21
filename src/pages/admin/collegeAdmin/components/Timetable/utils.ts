@@ -1,5 +1,5 @@
-import { Faculty, CollegeClass, Break, ScheduleSlot } from "./types";
-import { FACULTY_COLORS } from "./constants";
+import { Faculty, CollegeClass, Break, ScheduleSlot } from './types';
+import { FACULTY_COLORS } from './constants';
 
 // Get faculty color based on index
 export const getFacultyColor = (facultyId: string, faculty: Faculty[]) => {
@@ -10,13 +10,13 @@ export const getFacultyColor = (facultyId: string, faculty: Faculty[]) => {
 // Get faculty name by ID
 export const getFacultyName = (id: string, faculty: Faculty[]) => {
   const f = faculty.find((f) => f.id === id);
-  return f ? `${f.first_name} ${f.last_name}` : "";
+  return f ? `${f.first_name} ${f.last_name}` : '';
 };
 
 // Get class name by ID
 export const getClassName = (id: string, classes: CollegeClass[]) => {
   const c = classes.find((c) => c.id === id);
-  return c ? `${c.grade}-${c.section}` : "";
+  return c ? `${c.grade}-${c.section}` : '';
 };
 
 // Get subjects for a faculty
@@ -30,15 +30,15 @@ export const getSubjectsForFaculty = (facultyId: string, faculty: Faculty[]): st
 
 // Format date for display
 export const formatDate = (date: Date) => {
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
 // Check if date is a holiday/event/exam
 export const isHoliday = (date: Date, breaks: Break[]) => {
-  const dateStr = date.toISOString().split("T")[0];
+  const dateStr = date.toISOString().split('T')[0];
   return breaks.some(
     (b) =>
-      (b.break_type === "holiday" || b.break_type === "event" || b.break_type === "exam") &&
+      (b.break_type === 'holiday' || b.break_type === 'event' || b.break_type === 'exam') &&
       b.start_date &&
       b.end_date &&
       dateStr >= b.start_date &&
@@ -48,10 +48,10 @@ export const isHoliday = (date: Date, breaks: Break[]) => {
 
 // Get holiday/event/exam info for a date
 export const getBreakInfo = (date: Date, breaks: Break[]) => {
-  const dateStr = date.toISOString().split("T")[0];
+  const dateStr = date.toISOString().split('T')[0];
   return breaks.find(
     (b) =>
-      (b.break_type === "holiday" || b.break_type === "event" || b.break_type === "exam") &&
+      (b.break_type === 'holiday' || b.break_type === 'event' || b.break_type === 'exam') &&
       b.start_date &&
       b.end_date &&
       dateStr >= b.start_date &&
@@ -62,13 +62,13 @@ export const getBreakInfo = (date: Date, breaks: Break[]) => {
 // Get holiday name
 export const getHolidayName = (date: Date, breaks: Break[]) => {
   const breakInfo = getBreakInfo(date, breaks);
-  return breakInfo?.name || "";
+  return breakInfo?.name || '';
 };
 
 // Get break type for styling
 export const getBreakType = (date: Date, breaks: Break[]) => {
   const breakInfo = getBreakInfo(date, breaks);
-  return breakInfo?.break_type || "holiday";
+  return breakInfo?.break_type || 'holiday';
 };
 
 // Get slot for cell - considers both recurring and date-specific slots
@@ -80,7 +80,7 @@ export const getSlotForCell = (
   selectedClassFilter: string,
   selectedFacultyFilter: string
 ) => {
-  const dateStr = date.toISOString().split("T")[0];
+  const dateStr = date.toISOString().split('T')[0];
   const dayOfWeek = dayIndex + 1;
 
   // Filter slots by class if class filter is applied
@@ -95,19 +95,13 @@ export const getSlotForCell = (
 
   // First, check for a date-specific (non-recurring) slot - higher priority
   const dateSpecificSlot = doubleFilteredSlots.find(
-    (s) =>
-      s.period_number === periodNum &&
-      !s.is_recurring &&
-      s.schedule_date === dateStr
+    (s) => s.period_number === periodNum && !s.is_recurring && s.schedule_date === dateStr
   );
   if (dateSpecificSlot) return dateSpecificSlot;
 
   // Then, check for a recurring slot matching day_of_week
   const recurringSlot = doubleFilteredSlots.find(
-    (s) =>
-      s.day_of_week === dayOfWeek &&
-      s.period_number === periodNum &&
-      s.is_recurring === true
+    (s) => s.day_of_week === dayOfWeek && s.period_number === periodNum && s.is_recurring === true
   );
   return recurringSlot || null;
 };
@@ -120,7 +114,7 @@ export const checkDateOverlap = (
   editingBreakId: string | null
 ): string => {
   if (!startDate || !endDate) {
-    return "";
+    return '';
   }
 
   const overlappingBreak = breaks.find((b) => {
@@ -134,7 +128,7 @@ export const checkDateOverlap = (
   if (overlappingBreak) {
     return `Date range overlaps with existing ${overlappingBreak.break_type}: "${overlappingBreak.name}" (${overlappingBreak.start_date} to ${overlappingBreak.end_date})`;
   }
-  return "";
+  return '';
 };
 
 // Get week start date (Monday)

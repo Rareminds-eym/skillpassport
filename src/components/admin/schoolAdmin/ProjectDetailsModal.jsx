@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
-import { 
-  X, 
-  CheckCircle, 
-  XCircle, 
-  Calendar, 
-  Building, 
-  User, 
+import {
+  X,
+  CheckCircle,
+  XCircle,
+  Calendar,
+  Building,
+  User,
   Clock,
   ExternalLink,
   Github,
   FileText,
   Video,
   Presentation,
-  Code
+  Code,
 } from 'lucide-react';
 import { SchoolAdminNotificationService } from '../../../services/schoolAdminNotificationService';
 import { toast } from 'react-hot-toast';
@@ -33,12 +33,8 @@ const ProjectDetailsModal = ({ project, isOpen, onClose, onAction, currentUserId
 
     setIsProcessing(true);
     try {
-      await SchoolAdminNotificationService.approveProject(
-        project.project_id, 
-        currentUserId, 
-        notes
-      );
-      
+      await SchoolAdminNotificationService.approveProject(project.project_id, currentUserId, notes);
+
       toast.success('Project approved successfully!');
       onAction('approved', project);
       onClose();
@@ -65,12 +61,8 @@ const ProjectDetailsModal = ({ project, isOpen, onClose, onAction, currentUserId
 
     setIsProcessing(true);
     try {
-      await SchoolAdminNotificationService.rejectProject(
-        project.project_id, 
-        currentUserId, 
-        notes
-      );
-      
+      await SchoolAdminNotificationService.rejectProject(project.project_id, currentUserId, notes);
+
       toast.success('Project rejected successfully!');
       onAction('rejected', project);
       onClose();
@@ -108,10 +100,7 @@ const ProjectDetailsModal = ({ project, isOpen, onClose, onAction, currentUserId
               <p className="text-sm text-gray-600">Submitted by {project.student_name}</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
             <X className="h-5 w-5 text-gray-500" />
           </button>
         </div>
@@ -121,14 +110,14 @@ const ProjectDetailsModal = ({ project, isOpen, onClose, onAction, currentUserId
           {/* Project Info */}
           <div className="bg-gray-50 rounded-xl p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">{project.title}</h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div className="flex items-center gap-2 text-sm">
                 <User className="h-4 w-4 text-gray-500" />
                 <span className="text-gray-600">Student:</span>
                 <span className="font-medium">{project.student_name}</span>
               </div>
-              
+
               {project.organization && (
                 <div className="flex items-center gap-2 text-sm">
                   <Building className="h-4 w-4 text-gray-500" />
@@ -136,7 +125,7 @@ const ProjectDetailsModal = ({ project, isOpen, onClose, onAction, currentUserId
                   <span className="font-medium">{project.organization}</span>
                 </div>
               )}
-              
+
               {project.status && (
                 <div className="flex items-center gap-2 text-sm">
                   <Clock className="h-4 w-4 text-gray-500" />
@@ -144,7 +133,7 @@ const ProjectDetailsModal = ({ project, isOpen, onClose, onAction, currentUserId
                   <span className="font-medium">{project.status}</span>
                 </div>
               )}
-              
+
               <div className="flex items-center gap-2 text-sm">
                 <Calendar className="h-4 w-4 text-gray-500" />
                 <span className="text-gray-600">Duration:</span>
@@ -167,7 +156,7 @@ const ProjectDetailsModal = ({ project, isOpen, onClose, onAction, currentUserId
                 <h4 className="font-medium text-gray-900 mb-2">Technologies Used</h4>
                 <div className="flex flex-wrap gap-2">
                   {project.tech_stack.map((tech, index) => (
-                    <span 
+                    <span
                       key={index}
                       className="px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full flex items-center gap-1"
                     >
@@ -192,7 +181,7 @@ const ProjectDetailsModal = ({ project, isOpen, onClose, onAction, currentUserId
                   Live Demo
                 </a>
               )}
-              
+
               {project.github_link && (
                 <a
                   href={project.github_link}
@@ -204,7 +193,7 @@ const ProjectDetailsModal = ({ project, isOpen, onClose, onAction, currentUserId
                   Source Code
                 </a>
               )}
-              
+
               {project.certificate_url && (
                 <a
                   href={project.certificate_url}
@@ -216,7 +205,7 @@ const ProjectDetailsModal = ({ project, isOpen, onClose, onAction, currentUserId
                   Certificate
                 </a>
               )}
-              
+
               {project.video_url && (
                 <a
                   href={project.video_url}
@@ -228,7 +217,7 @@ const ProjectDetailsModal = ({ project, isOpen, onClose, onAction, currentUserId
                   Video Demo
                 </a>
               )}
-              
+
               {project.ppt_url && (
                 <a
                   href={project.ppt_url}
@@ -247,14 +236,16 @@ const ProjectDetailsModal = ({ project, isOpen, onClose, onAction, currentUserId
           {showNotesInput && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
               <h4 className="font-medium text-gray-900 mb-2">
-                {actionType === 'approve' ? 'Approval Notes (Optional)' : 'Rejection Reason (Required)'}
+                {actionType === 'approve'
+                  ? 'Approval Notes (Optional)'
+                  : 'Rejection Reason (Required)'}
               </h4>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder={
-                  actionType === 'approve' 
-                    ? 'Add any notes about the approval...' 
+                  actionType === 'approve'
+                    ? 'Add any notes about the approval...'
                     : 'Please provide a reason for rejection...'
                 }
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
@@ -266,10 +257,8 @@ const ProjectDetailsModal = ({ project, isOpen, onClose, onAction, currentUserId
 
         {/* Footer */}
         <div className="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
-          <div className="text-sm text-gray-600">
-            Submitted on {formatDate(project.created_at)}
-          </div>
-          
+          <div className="text-sm text-gray-600">Submitted on {formatDate(project.created_at)}</div>
+
           <div className="flex items-center gap-3">
             {!showNotesInput ? (
               <>
@@ -281,7 +270,7 @@ const ProjectDetailsModal = ({ project, isOpen, onClose, onAction, currentUserId
                   <XCircle className="h-4 w-4" />
                   Reject
                 </button>
-                
+
                 <button
                   onClick={() => handleActionClick('approve')}
                   className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg transition-colors"
@@ -304,7 +293,7 @@ const ProjectDetailsModal = ({ project, isOpen, onClose, onAction, currentUserId
                 >
                   Cancel
                 </button>
-                
+
                 <button
                   onClick={actionType === 'approve' ? handleApprove : handleReject}
                   disabled={isProcessing || (actionType === 'reject' && !notes.trim())}

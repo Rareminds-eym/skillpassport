@@ -3,7 +3,7 @@ import { supabase } from '../utils/api';
 /**
  * Student Service - ADAPTED for existing Supabase schema
  * Works with existing students table that uses JSONB profile column
- * 
+ *
  * Table structure:
  * - userId: UUID (FK to auth.users)
  * - universityId: TEXT
@@ -25,14 +25,14 @@ export const getStudentProfile = async (userId) => {
       .single();
 
     if (error) throw error;
-    
+
     // Return the profile JSONB with additional metadata
-    return { 
+    return {
       data: {
         ...data,
-        profile: data.profile || {}
-      }, 
-      error: null 
+        profile: data.profile || {},
+      },
+      error: null,
     };
   } catch (error) {
     console.error('Error fetching student profile:', error);
@@ -47,7 +47,7 @@ export const updateStudentProfile = async (userId, updates) => {
   try {
     // Get current data
     const { data: current } = await getStudentProfile(userId);
-    
+
     if (!current) {
       throw new Error('Student not found');
     }
@@ -55,7 +55,7 @@ export const updateStudentProfile = async (userId, updates) => {
     // Merge updates into profile
     const updatedProfile = {
       ...current.profile,
-      ...updates
+      ...updates,
     };
 
     const { data, error } = await supabase
@@ -80,30 +80,32 @@ export const createStudentProfile = async (userId, studentData) => {
   try {
     const { data, error } = await supabase
       .from('students')
-      .insert([{
-        userId: userId,
-        universityId: studentData.universityId || null,
-        profile: {
-          name: studentData.name,
-          email: studentData.email,
-          department: studentData.department,
-          photo: studentData.photo || null,
-          verified: false,
-          employabilityScore: 0,
-          cgpa: studentData.cgpa || '',
-          yearOfPassing: studentData.yearOfPassing || '',
-          passportId: studentData.passportId || '',
-          phone: studentData.phone || '',
-          education: [],
-          training: [],
-          experience: [],
-          technicalSkills: [],
-          softSkills: [],
-          opportunities: [],
-          recentUpdates: [],
-          suggestions: []
-        }
-      }])
+      .insert([
+        {
+          userId: userId,
+          universityId: studentData.universityId || null,
+          profile: {
+            name: studentData.name,
+            email: studentData.email,
+            department: studentData.department,
+            photo: studentData.photo || null,
+            verified: false,
+            employabilityScore: 0,
+            cgpa: studentData.cgpa || '',
+            yearOfPassing: studentData.yearOfPassing || '',
+            passportId: studentData.passportId || '',
+            phone: studentData.phone || '',
+            education: [],
+            training: [],
+            experience: [],
+            technicalSkills: [],
+            softSkills: [],
+            opportunities: [],
+            recentUpdates: [],
+            suggestions: [],
+          },
+        },
+      ])
       .select()
       .single();
 
@@ -129,7 +131,7 @@ const getProfileArray = (profile, arrayName) => {
  */
 const getNextId = (array) => {
   if (!array || array.length === 0) return 1;
-  const maxId = Math.max(...array.map(item => item.id || 0));
+  const maxId = Math.max(...array.map((item) => item.id || 0));
   return maxId + 1;
 };
 
@@ -143,7 +145,7 @@ const updateProfileArray = async (userId, arrayName, newArray) => {
 
     const updatedProfile = {
       ...current.profile,
-      [arrayName]: newArray
+      [arrayName]: newArray,
     };
 
     const { data, error } = await supabase
@@ -176,16 +178,16 @@ export const addEducation = async (userId, educationData) => {
   try {
     const { data } = await getStudentProfile(userId);
     const education = getProfileArray(data?.profile, 'education');
-    
+
     const newEducation = {
       id: getNextId(education),
       ...educationData,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
     };
 
     const updatedArray = [...education, newEducation];
     await updateProfileArray(userId, 'education', updatedArray);
-    
+
     return { data: newEducation, error: null };
   } catch (error) {
     return { data: null, error };
@@ -196,14 +198,14 @@ export const updateEducation = async (userId, educationId, updates) => {
   try {
     const { data } = await getStudentProfile(userId);
     const education = getProfileArray(data?.profile, 'education');
-    
-    const updatedArray = education.map(item =>
+
+    const updatedArray = education.map((item) =>
       item.id === educationId ? { ...item, ...updates } : item
     );
 
     await updateProfileArray(userId, 'education', updatedArray);
-    const updated = updatedArray.find(item => item.id === educationId);
-    
+    const updated = updatedArray.find((item) => item.id === educationId);
+
     return { data: updated, error: null };
   } catch (error) {
     return { data: null, error };
@@ -214,10 +216,10 @@ export const deleteEducation = async (userId, educationId) => {
   try {
     const { data } = await getStudentProfile(userId);
     const education = getProfileArray(data?.profile, 'education');
-    
-    const updatedArray = education.filter(item => item.id !== educationId);
+
+    const updatedArray = education.filter((item) => item.id !== educationId);
     await updateProfileArray(userId, 'education', updatedArray);
-    
+
     return { error: null };
   } catch (error) {
     return { error };
@@ -239,16 +241,16 @@ export const addTraining = async (userId, trainingData) => {
   try {
     const { data } = await getStudentProfile(userId);
     const training = getProfileArray(data?.profile, 'training');
-    
+
     const newTraining = {
       id: getNextId(training),
       ...trainingData,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
     };
 
     const updatedArray = [...training, newTraining];
     await updateProfileArray(userId, 'training', updatedArray);
-    
+
     return { data: newTraining, error: null };
   } catch (error) {
     return { data: null, error };
@@ -259,14 +261,14 @@ export const updateTraining = async (userId, trainingId, updates) => {
   try {
     const { data } = await getStudentProfile(userId);
     const training = getProfileArray(data?.profile, 'training');
-    
-    const updatedArray = training.map(item =>
+
+    const updatedArray = training.map((item) =>
       item.id === trainingId ? { ...item, ...updates } : item
     );
 
     await updateProfileArray(userId, 'training', updatedArray);
-    const updated = updatedArray.find(item => item.id === trainingId);
-    
+    const updated = updatedArray.find((item) => item.id === trainingId);
+
     return { data: updated, error: null };
   } catch (error) {
     return { data: null, error };
@@ -277,10 +279,10 @@ export const deleteTraining = async (userId, trainingId) => {
   try {
     const { data } = await getStudentProfile(userId);
     const training = getProfileArray(data?.profile, 'training');
-    
-    const updatedArray = training.filter(item => item.id !== trainingId);
+
+    const updatedArray = training.filter((item) => item.id !== trainingId);
     await updateProfileArray(userId, 'training', updatedArray);
-    
+
     return { error: null };
   } catch (error) {
     return { error };
@@ -302,16 +304,16 @@ export const addExperience = async (userId, experienceData) => {
   try {
     const { data } = await getStudentProfile(userId);
     const experience = getProfileArray(data?.profile, 'experience');
-    
+
     const newExperience = {
       id: getNextId(experience),
       ...experienceData,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
     };
 
     const updatedArray = [...experience, newExperience];
     await updateProfileArray(userId, 'experience', updatedArray);
-    
+
     return { data: newExperience, error: null };
   } catch (error) {
     return { data: null, error };
@@ -322,14 +324,14 @@ export const updateExperience = async (userId, experienceId, updates) => {
   try {
     const { data } = await getStudentProfile(userId);
     const experience = getProfileArray(data?.profile, 'experience');
-    
-    const updatedArray = experience.map(item =>
+
+    const updatedArray = experience.map((item) =>
       item.id === experienceId ? { ...item, ...updates } : item
     );
 
     await updateProfileArray(userId, 'experience', updatedArray);
-    const updated = updatedArray.find(item => item.id === experienceId);
-    
+    const updated = updatedArray.find((item) => item.id === experienceId);
+
     return { data: updated, error: null };
   } catch (error) {
     return { data: null, error };
@@ -340,10 +342,10 @@ export const deleteExperience = async (userId, experienceId) => {
   try {
     const { data } = await getStudentProfile(userId);
     const experience = getProfileArray(data?.profile, 'experience');
-    
-    const updatedArray = experience.filter(item => item.id !== experienceId);
+
+    const updatedArray = experience.filter((item) => item.id !== experienceId);
     await updateProfileArray(userId, 'experience', updatedArray);
-    
+
     return { error: null };
   } catch (error) {
     return { error };
@@ -365,15 +367,15 @@ export const addTechnicalSkill = async (userId, skillData) => {
   try {
     const { data } = await getStudentProfile(userId);
     const skills = getProfileArray(data?.profile, 'technicalSkills');
-    
+
     const newSkill = {
       id: getNextId(skills),
-      ...skillData
+      ...skillData,
     };
 
     const updatedArray = [...skills, newSkill];
     await updateProfileArray(userId, 'technicalSkills', updatedArray);
-    
+
     return { data: newSkill, error: null };
   } catch (error) {
     return { data: null, error };
@@ -384,14 +386,14 @@ export const updateTechnicalSkill = async (userId, skillId, updates) => {
   try {
     const { data } = await getStudentProfile(userId);
     const skills = getProfileArray(data?.profile, 'technicalSkills');
-    
-    const updatedArray = skills.map(item =>
+
+    const updatedArray = skills.map((item) =>
       item.id === skillId ? { ...item, ...updates } : item
     );
 
     await updateProfileArray(userId, 'technicalSkills', updatedArray);
-    const updated = updatedArray.find(item => item.id === skillId);
-    
+    const updated = updatedArray.find((item) => item.id === skillId);
+
     return { data: updated, error: null };
   } catch (error) {
     return { data: null, error };
@@ -402,10 +404,10 @@ export const deleteTechnicalSkill = async (userId, skillId) => {
   try {
     const { data } = await getStudentProfile(userId);
     const skills = getProfileArray(data?.profile, 'technicalSkills');
-    
-    const updatedArray = skills.filter(item => item.id !== skillId);
+
+    const updatedArray = skills.filter((item) => item.id !== skillId);
     await updateProfileArray(userId, 'technicalSkills', updatedArray);
-    
+
     return { error: null };
   } catch (error) {
     return { error };
@@ -427,15 +429,15 @@ export const addSoftSkill = async (userId, skillData) => {
   try {
     const { data } = await getStudentProfile(userId);
     const skills = getProfileArray(data?.profile, 'softSkills');
-    
+
     const newSkill = {
       id: getNextId(skills),
-      ...skillData
+      ...skillData,
     };
 
     const updatedArray = [...skills, newSkill];
     await updateProfileArray(userId, 'softSkills', updatedArray);
-    
+
     return { data: newSkill, error: null };
   } catch (error) {
     return { data: null, error };
@@ -446,14 +448,14 @@ export const updateSoftSkill = async (userId, skillId, updates) => {
   try {
     const { data } = await getStudentProfile(userId);
     const skills = getProfileArray(data?.profile, 'softSkills');
-    
-    const updatedArray = skills.map(item =>
+
+    const updatedArray = skills.map((item) =>
       item.id === skillId ? { ...item, ...updates } : item
     );
 
     await updateProfileArray(userId, 'softSkills', updatedArray);
-    const updated = updatedArray.find(item => item.id === skillId);
-    
+    const updated = updatedArray.find((item) => item.id === skillId);
+
     return { data: updated, error: null };
   } catch (error) {
     return { data: null, error };
@@ -464,10 +466,10 @@ export const deleteSoftSkill = async (userId, skillId) => {
   try {
     const { data } = await getStudentProfile(userId);
     const skills = getProfileArray(data?.profile, 'softSkills');
-    
-    const updatedArray = skills.filter(item => item.id !== skillId);
+
+    const updatedArray = skills.filter((item) => item.id !== skillId);
     await updateProfileArray(userId, 'softSkills', updatedArray);
-    
+
     return { error: null };
   } catch (error) {
     return { error };
@@ -482,7 +484,7 @@ export const deleteSoftSkill = async (userId, skillId) => {
 export const getCompleteStudentData = async (userId) => {
   try {
     const { data, error } = await getStudentProfile(userId);
-    
+
     if (error) throw error;
 
     const profile = data?.profile || {};
@@ -501,7 +503,7 @@ export const getCompleteStudentData = async (userId) => {
         softSkills: undefined,
         opportunities: undefined,
         recentUpdates: undefined,
-        suggestions: undefined
+        suggestions: undefined,
       },
       education: profile.education || [],
       training: profile.training || [],
@@ -511,7 +513,7 @@ export const getCompleteStudentData = async (userId) => {
       opportunities: profile.opportunities || [],
       recentUpdates: profile.recentUpdates || [],
       suggestions: profile.suggestions || [],
-      errors: null
+      errors: null,
     };
   } catch (error) {
     console.error('Error fetching complete student data:', error);
@@ -525,7 +527,7 @@ export const getCompleteStudentData = async (userId) => {
       opportunities: [],
       recentUpdates: [],
       suggestions: [],
-      errors: [error]
+      errors: [error],
     };
   }
 };

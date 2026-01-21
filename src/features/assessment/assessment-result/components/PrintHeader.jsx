@@ -17,7 +17,7 @@ const PrintHeader = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        background: 'white'
+        background: 'white',
       }}
     >
       {/* Left side - Orange/Gold gradient bar with slanted edge */}
@@ -28,7 +28,7 @@ const PrintHeader = () => {
           display: 'flex',
           alignItems: 'center',
           flex: '0 0 auto',
-          maxWidth: '75%'
+          maxWidth: '75%',
         }}
       >
         {/* SVG for slanted bar */}
@@ -39,7 +39,7 @@ const PrintHeader = () => {
           style={{
             position: 'absolute',
             left: 0,
-            top: 0
+            top: 0,
           }}
         >
           <defs>
@@ -49,10 +49,7 @@ const PrintHeader = () => {
             </linearGradient>
           </defs>
           {/* Polygon with slanted right edge */}
-          <polygon
-            points="0,0 500,0 520,36 0,36"
-            fill="url(#barGradient)"
-          />
+          <polygon points="0,0 500,0 520,36 0,36" fill="url(#barGradient)" />
         </svg>
         {/* Text overlay */}
         <span
@@ -65,7 +62,7 @@ const PrintHeader = () => {
             fontFamily: 'Arial, Helvetica, sans-serif',
             whiteSpace: 'nowrap',
             paddingLeft: '20px',
-            paddingRight: '50px'
+            paddingRight: '50px',
           }}
         >
           RAREMINDS SkillPassport • AI-Powered Career Assessment
@@ -77,7 +74,7 @@ const PrintHeader = () => {
         style={{
           display: 'flex',
           alignItems: 'center',
-          paddingRight: '20px'
+          paddingRight: '20px',
         }}
       >
         <img
@@ -86,7 +83,7 @@ const PrintHeader = () => {
           style={{
             height: '40px',
             width: 'auto',
-            objectFit: 'contain'
+            objectFit: 'contain',
           }}
         />
       </div>

@@ -1,7 +1,17 @@
-import { AlertCircle, BookOpen, CheckCircle, Clock, Edit, Eye, Plus, Trash2, XCircle } from "lucide-react";
-import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "../../lib/supabaseClient";
+import {
+  AlertCircle,
+  BookOpen,
+  CheckCircle,
+  Clock,
+  Edit,
+  Eye,
+  Plus,
+  Trash2,
+  XCircle,
+} from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '../../lib/supabaseClient';
 
 interface LessonPlan {
   id: string;
@@ -20,7 +30,7 @@ const LessonPlansList: React.FC = () => {
   const navigate = useNavigate();
   const [lessonPlans, setLessonPlans] = useState<LessonPlan[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<string>("all");
+  const [filter, setFilter] = useState<string>('all');
 
   useEffect(() => {
     loadLessonPlans();
@@ -31,57 +41,57 @@ const LessonPlansList: React.FC = () => {
     try {
       // Get current teacher from AuthContext
       const userEmail = localStorage.getItem('userEmail');
-      
+
       const { data: teacherData } = await supabase
-        .from("school_educators")
-        .select("id")
-        .eq("email", userEmail)
+        .from('school_educators')
+        .select('id')
+        .eq('email', userEmail)
         .maybeSingle();
 
       if (!teacherData) {
-        throw new Error("Teacher not found");
+        throw new Error('Teacher not found');
       }
 
       const { data, error } = await supabase
-        .from("lesson_plans")
-        .select("*")
-        .eq("teacher_id", teacherData.id)
-        .order("date", { ascending: false });
+        .from('lesson_plans')
+        .select('*')
+        .eq('teacher_id', teacherData.id)
+        .order('date', { ascending: false });
 
       if (error) throw error;
 
       setLessonPlans(data || []);
     } catch (error: any) {
-      console.error("Error loading lesson plans:", error);
+      console.error('Error loading lesson plans:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const deleteLessonPlan = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this lesson plan?")) return;
+    if (!confirm('Are you sure you want to delete this lesson plan?')) return;
 
     try {
-      const { error } = await supabase.from("lesson_plans").delete().eq("id", id);
+      const { error } = await supabase.from('lesson_plans').delete().eq('id', id);
 
       if (error) throw error;
 
       setLessonPlans(lessonPlans.filter((lp) => lp.id !== id));
     } catch (error: any) {
-      alert("Error deleting lesson plan: " + error.message);
+      alert('Error deleting lesson plan: ' + error.message);
     }
   };
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { color: string; icon: any; label: string }> = {
-      draft: { color: "bg-gray-100 text-gray-800", icon: Clock, label: "Draft" },
-      submitted: { color: "bg-blue-100 text-blue-800", icon: Clock, label: "Submitted" },
-      approved: { color: "bg-green-100 text-green-800", icon: CheckCircle, label: "Approved" },
-      rejected: { color: "bg-red-100 text-red-800", icon: XCircle, label: "Rejected" },
+      draft: { color: 'bg-gray-100 text-gray-800', icon: Clock, label: 'Draft' },
+      submitted: { color: 'bg-blue-100 text-blue-800', icon: Clock, label: 'Submitted' },
+      approved: { color: 'bg-green-100 text-green-800', icon: CheckCircle, label: 'Approved' },
+      rejected: { color: 'bg-red-100 text-red-800', icon: XCircle, label: 'Rejected' },
       revision_required: {
-        color: "bg-yellow-100 text-yellow-800",
+        color: 'bg-yellow-100 text-yellow-800',
         icon: AlertCircle,
-        label: "Needs Revision",
+        label: 'Needs Revision',
       },
     };
 
@@ -99,7 +109,7 @@ const LessonPlansList: React.FC = () => {
   };
 
   const filteredPlans = lessonPlans.filter((lp) => {
-    if (filter === "all") return true;
+    if (filter === 'all') return true;
     return lp.status === filter;
   });
 
@@ -118,12 +128,10 @@ const LessonPlansList: React.FC = () => {
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">My Lesson Plans</h1>
-            <p className="text-gray-600 text-sm sm:text-base">
-              Manage and track your lesson plans
-            </p>
+            <p className="text-gray-600 text-sm sm:text-base">Manage and track your lesson plans</p>
           </div>
           <button
-            onClick={() => navigate("/educator/lesson-plans/create")}
+            onClick={() => navigate('/educator/lesson-plans/create')}
             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium"
           >
             <Plus className="h-4 w-4" />
@@ -134,9 +142,9 @@ const LessonPlansList: React.FC = () => {
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        {["all", "draft", "submitted", "approved", "rejected"].map((status) => {
+        {['all', 'draft', 'submitted', 'approved', 'rejected'].map((status) => {
           const count =
-            status === "all"
+            status === 'all'
               ? lessonPlans.length
               : lessonPlans.filter((lp) => lp.status === status).length;
           return (
@@ -145,11 +153,11 @@ const LessonPlansList: React.FC = () => {
               onClick={() => setFilter(status)}
               className={`p-4 rounded-xl border-2 transition ${
                 filter === status
-                  ? "border-indigo-600 bg-indigo-50"
-                  : "border-gray-200 bg-white hover:border-gray-300"
+                  ? 'border-indigo-600 bg-indigo-50'
+                  : 'border-gray-200 bg-white hover:border-gray-300'
               }`}
             >
-              <p className="text-sm text-gray-600 capitalize">{status.replace(/_/g, " ")}</p>
+              <p className="text-sm text-gray-600 capitalize">{status.replace(/_/g, ' ')}</p>
               <p className="text-2xl font-bold text-gray-900">{count}</p>
             </button>
           );
@@ -163,7 +171,7 @@ const LessonPlansList: React.FC = () => {
             <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-3" />
             <p className="text-gray-500">No lesson plans found</p>
             <button
-              onClick={() => navigate("/educator/lesson-plans/create")}
+              onClick={() => navigate('/educator/lesson-plans/create')}
               className="mt-4 text-indigo-600 hover:text-indigo-700 font-medium"
             >
               Create your first lesson plan
@@ -219,7 +227,7 @@ const LessonPlansList: React.FC = () => {
                         >
                           <Eye className="h-4 w-4" />
                         </button>
-                        {plan.status === "draft" && (
+                        {plan.status === 'draft' && (
                           <>
                             <button
                               onClick={() => navigate(`/educator/lesson-plans/${plan.id}/edit`)}

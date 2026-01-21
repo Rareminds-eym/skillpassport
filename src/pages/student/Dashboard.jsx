@@ -1,87 +1,84 @@
+import { ChartBarIcon, RectangleStackIcon } from '@heroicons/react/24/outline';
 import {
-    ChartBarIcon,
-    RectangleStackIcon,
-} from "@heroicons/react/24/outline";
-import {
-    Award,
-    BookOpen,
-    Briefcase,
-    Building2,
-    Calendar,
-    CheckCircle,
-    ChevronRight,
-    ClipboardList,
-    Clock,
-    Cpu,
-    ExternalLink,
-    Eye,
-    FileText,
-    Github,
-    GraduationCap,
-    Lightbulb,
-    MapPin,
-    Medal,
-    MoreVertical,
-    PresentationIcon,
-    Rocket,
-    Sparkles,
-    Star,
-    Target,
-    Trash2,
-    TrendingUp,
-    Users2
-} from "lucide-react";
+  Award,
+  BookOpen,
+  Briefcase,
+  Building2,
+  Calendar,
+  CheckCircle,
+  ChevronRight,
+  ClipboardList,
+  Clock,
+  Cpu,
+  ExternalLink,
+  Eye,
+  FileText,
+  Github,
+  GraduationCap,
+  Lightbulb,
+  MapPin,
+  Medal,
+  MoreVertical,
+  PresentationIcon,
+  Rocket,
+  Sparkles,
+  Star,
+  Target,
+  Trash2,
+  TrendingUp,
+  Users2,
+} from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import { motion } from "motion/react";
-import React, { useEffect, useMemo, useState } from "react";
-import { Toaster } from "react-hot-toast";
-import { useLocation, useNavigate } from "react-router-dom";
-import AchievementsTimeline from "../../components/Students/components/AchievementsTimeline";
-import AnalyticsView from "../../components/Students/components/AnalyticsView";
+import { motion } from 'motion/react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Toaster } from 'react-hot-toast';
+import { useLocation, useNavigate } from 'react-router-dom';
+import AchievementsTimeline from '../../components/Students/components/AchievementsTimeline';
+import AnalyticsView from '../../components/Students/components/AnalyticsView';
 import {
-    CertificatesEditModal,
-    EducationEditModal,
-    ExperienceEditModal,
-    ProjectsEditModal,
-    SkillsEditModal,
-    TrainingEditModal,
-} from "../../components/Students/components/ProfileEditModals";
-import TrainingRecommendations from "../../components/Students/components/TrainingRecommendations";
-import { Badge } from "../../components/Students/components/ui/badge";
-import { Button } from "../../components/Students/components/ui/button";
+  CertificatesEditModal,
+  EducationEditModal,
+  ExperienceEditModal,
+  ProjectsEditModal,
+  SkillsEditModal,
+  TrainingEditModal,
+} from '../../components/Students/components/ProfileEditModals';
+import TrainingRecommendations from '../../components/Students/components/TrainingRecommendations';
+import { Badge } from '../../components/Students/components/ui/badge';
+import { Button } from '../../components/Students/components/ui/button';
 import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from "../../components/Students/components/ui/card";
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '../../components/Students/components/ui/card';
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "../../components/Students/components/ui/dropdown-menu";
-import { LampContainer } from "../../components/Students/components/ui/lamp";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../../components/Students/components/ui/dropdown-menu';
+import { LampContainer } from '../../components/Students/components/ui/lamp';
 import {
-    educationData,
-    experienceData,
-    softSkills,
-    suggestions,
-    technicalSkills,
-    trainingData,
-} from "../../components/Students/data/mockData";
-import { useAIRecommendations } from "../../hooks/useAIRecommendations";
-import { useAssessmentRecommendations } from "../../hooks/useAssessmentRecommendations";
-import { useOpportunities } from "../../hooks/useOpportunities";
-import { useStudentAchievements } from "../../hooks/useStudentAchievements";
-import { useStudentCertificates } from "../../hooks/useStudentCertificates";
-import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
-import { useStudentLearning } from "../../hooks/useStudentLearning";
-import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNotifications";
-import { useStudentUnreadCount } from "../../hooks/useStudentMessages";
-import { useStudentProjects } from "../../hooks/useStudentProjects";
-import { useStudentRealtimeActivities } from "../../hooks/useStudentRealtimeActivities";
-import { supabase } from "../../lib/supabaseClient";
+  educationData,
+  experienceData,
+  softSkills,
+  suggestions,
+  technicalSkills,
+  trainingData,
+} from '../../components/Students/data/mockData';
+import { useAIRecommendations } from '../../hooks/useAIRecommendations';
+import { useAssessmentRecommendations } from '../../hooks/useAssessmentRecommendations';
+import { useOpportunities } from '../../hooks/useOpportunities';
+import { useStudentAchievements } from '../../hooks/useStudentAchievements';
+import { useStudentCertificates } from '../../hooks/useStudentCertificates';
+import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
+import { useStudentLearning } from '../../hooks/useStudentLearning';
+import { useStudentMessageNotifications } from '../../hooks/useStudentMessageNotifications';
+import { useStudentUnreadCount } from '../../hooks/useStudentMessages';
+import { useStudentProjects } from '../../hooks/useStudentProjects';
+import { useStudentRealtimeActivities } from '../../hooks/useStudentRealtimeActivities';
+import { supabase } from '../../lib/supabaseClient';
 // Debug utilities removed for production cleanliness
 
 const StudentDashboard = () => {
@@ -92,8 +89,7 @@ const StudentDashboard = () => {
   const [activeView, setActiveView] = useState('dashboard'); // 'dashboard' or 'analytics'
 
   // Check if viewing someone else's profile (from QR scan)
-  const isViewingOthersProfile =
-    location.pathname.includes("/student/profile/");
+  const isViewingOthersProfile = location.pathname.includes('/student/profile/');
 
   // For sticky Recent Updates: show only one when Suggested Next Steps touches it
   const [showAllRecentUpdates, setShowAllRecentUpdates] = useState(false);
@@ -109,8 +105,7 @@ const StudentDashboard = () => {
     if (!recentUpdatesRef.current || !suggestedNextStepsRef.current) return;
     const handleScroll = () => {
       const recentRect = recentUpdatesRef.current.getBoundingClientRect();
-      const suggestedRect =
-        suggestedNextStepsRef.current.getBoundingClientRect();
+      const suggestedRect = suggestedNextStepsRef.current.getBoundingClientRect();
       // If bottom of Recent Updates is below top of Suggested Next Steps (they touch/overlap)
       if (recentRect.bottom >= suggestedRect.top) {
         setRecentUpdatesCollapsed(true);
@@ -118,26 +113,26 @@ const StudentDashboard = () => {
         setRecentUpdatesCollapsed(false);
       }
     };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
   // Navigation state for card ordering
   const [activeNavItem, setActiveNavItem] = useState(() => {
     // Check if coming from Header nav
-    const storedNav = localStorage.getItem("dashboardActiveNav");
-    return storedNav || "opportunities";
+    const storedNav = localStorage.getItem('dashboardActiveNav');
+    return storedNav || 'opportunities';
   }); // Default to opportunities
 
   // Clear dashboardActiveNav after using it (so future visits default to opportunities)
   useEffect(() => {
-    if (localStorage.getItem("dashboardActiveNav")) {
-      localStorage.removeItem("dashboardActiveNav");
+    if (localStorage.getItem('dashboardActiveNav')) {
+      localStorage.removeItem('dashboardActiveNav');
     }
   }, []);
 
   // Use authenticated student data instead of localStorage
   // Get user email from localStorage or context (customize as needed)
-  const userEmail = localStorage.getItem("userEmail");
+  const userEmail = localStorage.getItem('userEmail');
 
   // Use the same hook as ProfileEditSection for fetching and updating
   const {
@@ -163,21 +158,21 @@ const StudentDashboard = () => {
     learning: tableTraining, // Renamed from training to learning in hook
     loading: trainingLoading,
     error: trainingError,
-    refresh: refreshTraining
+    refresh: refreshTraining,
   } = useStudentLearning(studentId, !!studentId && !isViewingOthersProfile);
 
   const {
     certificates: tableCertificates,
     loading: certificatesLoading,
     error: certificatesError,
-    refresh: refreshCertificates
+    refresh: refreshCertificates,
   } = useStudentCertificates(studentId, !!studentId && !isViewingOthersProfile);
 
   const {
     projects: tableProjects,
     loading: projectsLoading,
     error: projectsError,
-    refresh: refreshProjects
+    refresh: refreshProjects,
   } = useStudentProjects(studentId, !!studentId && !isViewingOthersProfile);
 
   // Setup message notifications with hot-toast
@@ -194,10 +189,7 @@ const StudentDashboard = () => {
   });
 
   // Get unread message count with realtime updates
-  const { unreadCount } = useStudentUnreadCount(
-    studentId,
-    !!studentId && !isViewingOthersProfile
-  );
+  const { unreadCount } = useStudentUnreadCount(studentId, !!studentId && !isViewingOthersProfile);
 
   // Fetch achievements and badges from separate tables
   const {
@@ -206,7 +198,7 @@ const StudentDashboard = () => {
     loading: achievementsLoading,
   } = useStudentAchievements(studentId, userEmail);
 
-    const {
+  const {
     recommendations: assessmentRecommendations,
     loading: recommendationsLoading,
     hasAssessment,
@@ -236,31 +228,29 @@ const StudentDashboard = () => {
 
   // Generate QR code value once and keep it constant
   const qrCodeValue = React.useMemo(() => {
-    const studentId = studentData?.id || "student";
+    const studentId = studentData?.id || 'student';
     return `${window.location.origin}/student/profile/${studentId}`;
   }, [studentData?.id]);
 
   // Memoize studentSkills to prevent infinite re-renders
   const studentSkills = useMemo(() => {
-    return (
-      studentData?.profile?.technicalSkills?.map((skill) => skill.name) || []
-    );
+    return studentData?.profile?.technicalSkills?.map((skill) => skill.name) || [];
   }, [studentData?.profile?.technicalSkills]);
 
   const enabledProjects = useMemo(() => {
     // Prioritize table data over profile data
-    const projectsData = Array.isArray(tableProjects) && tableProjects.length > 0
-      ? tableProjects
-      : userData.projects;
+    const projectsData =
+      Array.isArray(tableProjects) && tableProjects.length > 0 ? tableProjects : userData.projects;
     if (!Array.isArray(projectsData)) return [];
     return projectsData.filter((project) => project && project.enabled !== false);
   }, [tableProjects, userData.projects]);
 
   const enabledCertificates = useMemo(() => {
     // Prioritize table data over profile data
-    const certificatesData = Array.isArray(tableCertificates) && tableCertificates.length > 0
-      ? tableCertificates
-      : userData.certificates;
+    const certificatesData =
+      Array.isArray(tableCertificates) && tableCertificates.length > 0
+        ? tableCertificates
+        : userData.certificates;
     if (!Array.isArray(certificatesData)) return [];
     return certificatesData.filter((cert) => cert && cert.enabled !== false);
   }, [tableCertificates, userData.certificates]);
@@ -292,7 +282,7 @@ const StudentDashboard = () => {
     studentId: studentData?.id,
     enabled: !isViewingOthersProfile,
     autoFetch: true,
-    limit: 4
+    limit: 4,
   });
 
   // Fetch recent updates data from recruitment tables (student-specific)
@@ -325,13 +315,13 @@ const StudentDashboard = () => {
 
     // Subscribe to real-time changes in opportunities table
     const channel = supabase
-      .channel("opportunities-changes")
+      .channel('opportunities-changes')
       .on(
-        "postgres_changes",
+        'postgres_changes',
         {
-          event: "INSERT",
-          schema: "public",
-          table: "opportunities",
+          event: 'INSERT',
+          schema: 'public',
+          table: 'opportunities',
         },
         (payload) => {
           // Refresh opportunities list
@@ -344,11 +334,11 @@ const StudentDashboard = () => {
         }
       )
       .on(
-        "postgres_changes",
+        'postgres_changes',
         {
-          event: "UPDATE",
-          schema: "public",
-          table: "opportunities",
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'opportunities',
         },
         (payload) => {
           refreshOpportunities();
@@ -367,8 +357,8 @@ const StudentDashboard = () => {
     const testSupabaseDirectly = async () => {
       try {
         const { data, error, count } = await supabase
-          .from("opportunities")
-          .select("*", { count: "exact" });
+          .from('opportunities')
+          .select('*', { count: 'exact' });
 
         // Run debug for recent updates (commented out to prevent automatic execution)
         // await debugRecentUpdates();
@@ -385,37 +375,34 @@ const StudentDashboard = () => {
   useEffect(() => {
     if (studentData) {
       setUserData({
-        education: Array.isArray(studentData.education)
-          ? studentData.education
-          : [],
-        training: Array.isArray(tableTraining) && tableTraining.length > 0
-          ? tableTraining
-          : Array.isArray(studentData.training)
-            ? studentData.training
-            : [],
-        experience: Array.isArray(studentData.experience)
-          ? studentData.experience
-          : [],
+        education: Array.isArray(studentData.education) ? studentData.education : [],
+        training:
+          Array.isArray(tableTraining) && tableTraining.length > 0
+            ? tableTraining
+            : Array.isArray(studentData.training)
+              ? studentData.training
+              : [],
+        experience: Array.isArray(studentData.experience) ? studentData.experience : [],
         technicalSkills: Array.isArray(studentData.technicalSkills)
           ? studentData.technicalSkills
           : [],
-        softSkills: Array.isArray(studentData.softSkills)
-          ? studentData.softSkills
-          : [],
-        projects: Array.isArray(tableProjects) && tableProjects.length > 0
-          ? tableProjects
-          : Array.isArray(studentData.projects)
-            ? studentData.projects
-            : Array.isArray(studentData.profile?.projects)
-              ? studentData.profile.projects
-              : [],
-        certificates: Array.isArray(tableCertificates) && tableCertificates.length > 0
-          ? tableCertificates
-          : Array.isArray(studentData.certificates)
-            ? studentData.certificates
-            : Array.isArray(studentData.profile?.certificates)
-              ? studentData.profile.certificates
-              : [],
+        softSkills: Array.isArray(studentData.softSkills) ? studentData.softSkills : [],
+        projects:
+          Array.isArray(tableProjects) && tableProjects.length > 0
+            ? tableProjects
+            : Array.isArray(studentData.projects)
+              ? studentData.projects
+              : Array.isArray(studentData.profile?.projects)
+                ? studentData.profile.projects
+                : [],
+        certificates:
+          Array.isArray(tableCertificates) && tableCertificates.length > 0
+            ? tableCertificates
+            : Array.isArray(studentData.certificates)
+              ? studentData.certificates
+              : Array.isArray(studentData.profile?.certificates)
+                ? studentData.profile.certificates
+                : [],
       });
     }
   }, [studentData, tableTraining, tableCertificates, tableProjects]);
@@ -433,28 +420,28 @@ const StudentDashboard = () => {
       try {
         let result;
         switch (section) {
-          case "education":
+          case 'education':
             result = await updateEducation(data);
             break;
-          case "training":
+          case 'training':
             result = await updateTraining(data);
             break;
-          case "experience":
+          case 'experience':
             result = await updateExperience(data);
             break;
-          case "technicalSkills":
+          case 'technicalSkills':
             result = await updateTechnicalSkills(data);
             break;
-          case "softSkills":
+          case 'softSkills':
             result = await updateSoftSkills(data);
             break;
-          case "projects":
+          case 'projects':
             result = await updateProjects(data); // Use dedicated function
             break;
-          case "certificates":
+          case 'certificates':
             result = await updateCertificates(data);
             break;
-          case "personalInfo":
+          case 'personalInfo':
             result = await updateProfile(data);
             break;
           default:
@@ -477,7 +464,7 @@ const StudentDashboard = () => {
           refreshRecentUpdates();
         }
       } catch (err) {
-        console.error("Error saving:", err);
+        console.error('Error saving:', err);
       }
     }
   };
@@ -486,28 +473,27 @@ const StudentDashboard = () => {
     return [...Array(5)].map((_, i) => (
       <Star
         key={i}
-        className={`w-4 h-4 ${i < level ? "fill-[#FFD700] text-[#FFD700]" : "text-gray-300"
-          }`}
+        className={`w-4 h-4 ${i < level ? 'fill-[#FFD700] text-[#FFD700]' : 'text-gray-300'}`}
       />
     ));
   };
 
   // Helper function to get skill level text
   const getSkillLevelText = (level) => {
-    if (level >= 5) return "Expert";
-    if (level >= 4) return "Advanced";
-    if (level >= 3) return "Intermediate";
-    if (level >= 1) return "Beginner";
-    return "Beginner";
+    if (level >= 5) return 'Expert';
+    if (level >= 4) return 'Advanced';
+    if (level >= 3) return 'Intermediate';
+    if (level >= 1) return 'Beginner';
+    return 'Beginner';
   };
 
   // Helper function to get skill level badge color
   const getSkillLevelColor = (level) => {
-    if (level >= 5) return "bg-purple-100 text-purple-700 border-purple-300";
-    if (level >= 4) return "bg-blue-100 text-blue-700 border-blue-300";
-    if (level >= 3) return "bg-green-100 text-green-700 border-green-300";
-    if (level >= 1) return "bg-yellow-100 text-yellow-700 border-yellow-300";
-    return "bg-gray-100 text-gray-700 border-gray-300";
+    if (level >= 5) return 'bg-purple-100 text-purple-700 border-purple-300';
+    if (level >= 4) return 'bg-blue-100 text-blue-700 border-blue-300';
+    if (level >= 3) return 'bg-green-100 text-green-700 border-green-300';
+    if (level >= 1) return 'bg-yellow-100 text-yellow-700 border-yellow-300';
+    return 'bg-gray-100 text-gray-700 border-gray-300';
   };
 
   const TruncatedText = ({ text, maxLength = 120 }) => {
@@ -519,7 +505,7 @@ const StudentDashboard = () => {
       return <p className="text-sm text-gray-700 leading-relaxed">{text}</p>;
     }
 
-    const truncated = text.slice(0, maxLength) + "...";
+    const truncated = text.slice(0, maxLength) + '...';
 
     return (
       <div className="text-sm text-gray-700 leading-relaxed">
@@ -528,7 +514,7 @@ const StudentDashboard = () => {
           onClick={() => setExpanded((v) => !v)}
           className="text-blue-600 ml-1 hover:underline font-medium text-xs"
         >
-          {expanded ? "Show Less" : "Read More"}
+          {expanded ? 'Show Less' : 'Read More'}
         </button>
       </div>
     );
@@ -591,7 +577,9 @@ const StudentDashboard = () => {
     }
 
     if (studentData?.college_id && !studentData?.college) {
-      console.error('⚠️ College ID exists but college data is null. College may have been deleted.');
+      console.error(
+        '⚠️ College ID exists but college data is null. College may have been deleted.'
+      );
       return {
         type: 'College',
         name: 'College Not Found',
@@ -618,9 +606,7 @@ const StudentDashboard = () => {
               <div className="p-2 rounded-lg bg-blue-600">
                 <ClipboardList className="w-6 h-6 text-white" />
               </div>
-              <span className="text-lg font-bold text-gray-800">
-                Assessment
-              </span>
+              <span className="text-lg font-bold text-gray-800">Assessment</span>
             </CardTitle>
             <div className="flex items-center gap-2">
               <div className="w-10 h-10">
@@ -639,30 +625,38 @@ const StudentDashboard = () => {
                       <MoreVertical className="w-5 h-5 text-gray-500" />
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48 bg-white border border-gray-200 shadow-lg">
+                  <DropdownMenuContent
+                    align="end"
+                    className="w-48 bg-white border border-gray-200 shadow-lg"
+                  >
                     <DropdownMenuItem
                       onClick={async () => {
                         if (!studentId) return;
-                        if (!window.confirm('DEV: Are you sure you want to clear your assessment data? This will delete all your assessment results.')) return;
-                        
+                        if (
+                          !window.confirm(
+                            'DEV: Are you sure you want to clear your assessment data? This will delete all your assessment results.'
+                          )
+                        )
+                          return;
+
                         try {
                           const { error: resultsError } = await supabase
                             .from('personal_assessment_results')
                             .delete()
                             .eq('student_id', studentId);
-                          
+
                           if (resultsError) throw resultsError;
 
                           const { error: attemptsError } = await supabase
                             .from('personal_assessment_attempts')
                             .delete()
                             .eq('student_id', studentId);
-                          
+
                           if (attemptsError) throw attemptsError;
 
                           localStorage.removeItem('assessment_gemini_results');
                           localStorage.removeItem('assessment_section_timings');
-                          
+
                           alert('Assessment data cleared! Refreshing page...');
                           window.location.reload();
                         } catch (err) {
@@ -683,12 +677,11 @@ const StudentDashboard = () => {
         </CardHeader>
         <CardContent className="p-8 space-y-4">
           <p className="text-gray-900 text-base leading-normal font-medium">
-            {hasAssessment 
+            {hasAssessment
               ? "You've completed your assessment! View your personalized career insights and recommendations."
               : hasInProgressAssessment
-              ? "You have an assessment in progress. Continue where you left off to get your personalized career roadmap."
-              : "Take our comprehensive assessment to discover your strengths and get a personalized career roadmap."
-            }
+                ? 'You have an assessment in progress. Continue where you left off to get your personalized career roadmap.'
+                : 'Take our comprehensive assessment to discover your strengths and get a personalized career roadmap.'}
           </p>
 
           {/*<div className="flex items-center gap-4 text-xs text-gray-900 font-medium">
@@ -701,7 +694,13 @@ const StudentDashboard = () => {
           <div className="flex justify-center py-4">
             {hasAssessment ? (
               <Button
-                onClick={() => navigate(latestAttemptId ? `/student/assessment/result?attemptId=${latestAttemptId}` : "/student/assessment/result")}
+                onClick={() =>
+                  navigate(
+                    latestAttemptId
+                      ? `/student/assessment/result?attemptId=${latestAttemptId}`
+                      : '/student/assessment/result'
+                  )
+                }
                 className="w-auto bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-4"
               >
                 <Eye className="w-5 h-5 mr-2" />
@@ -709,7 +708,7 @@ const StudentDashboard = () => {
               </Button>
             ) : hasInProgressAssessment ? (
               <Button
-                onClick={() => navigate("/student/assessment/test")}
+                onClick={() => navigate('/student/assessment/test')}
                 className="w-auto bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-4"
               >
                 <Clock className="w-5 h-5 mr-2" />
@@ -718,7 +717,7 @@ const StudentDashboard = () => {
               </Button>
             ) : (
               <Button
-                onClick={() => navigate("/student/assessment/test")}
+                onClick={() => navigate('/student/assessment/test')}
                 className="w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-4"
               >
                 Start Assessment
@@ -732,7 +731,9 @@ const StudentDashboard = () => {
             // Show detailed assessment info when NOT completed
             <div className="mt-6 pt-6 border-t-2 border-gray-200">
               <p className="text-gray-900 text-sm leading-relaxed mb-4 font-medium">
-                Take this comprehensive assessment to uncover your strengths, identify areas for growth, and explore potential opportunities tailored to you. Gain insights that can help guide your learning, career, or personal development journey.
+                Take this comprehensive assessment to uncover your strengths, identify areas for
+                growth, and explore potential opportunities tailored to you. Gain insights that can
+                help guide your learning, career, or personal development journey.
               </p>
 
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-l-blue-500 rounded-lg p-5 mb-4 shadow-sm">
@@ -747,11 +748,15 @@ const StudentDashboard = () => {
                   </li>
                   <li className="flex items-start gap-3">
                     <CheckCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                    <span className="font-medium">Identify opportunities for growth and improvement</span>
+                    <span className="font-medium">
+                      Identify opportunities for growth and improvement
+                    </span>
                   </li>
                   <li className="flex items-start gap-3">
                     <CheckCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                    <span className="font-medium">Get insights that can help guide your career or personal goals</span>
+                    <span className="font-medium">
+                      Get insights that can help guide your career or personal goals
+                    </span>
                   </li>
                 </ul>
               </div>
@@ -763,99 +768,131 @@ const StudentDashboard = () => {
           ) : (
             // Show Career AI Tools when assessment completed
             <div className="mt-6 pt-6 border-t-2 border-gray-200">
-            <h3 className="text-base font-bold text-gray-900 mb-6 flex items-center gap-2">
-              <Rocket className="w-5 h-5 text-blue-600" />
-              Career AI Tools
-            </h3>
-            <div className="grid grid-cols-2 gap-4">
-              <button
-                onClick={() => navigate("/student/career-ai", { state: { query: 'What jobs match my skills and experience?' } })}
-                className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
-              >
-                <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                  <Briefcase className="w-5 h-5" />
-                </div>
-                <span className="font-semibold text-sm flex-1">Find Jobs</span>
-                <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-              </button>
+              <h3 className="text-base font-bold text-gray-900 mb-6 flex items-center gap-2">
+                <Rocket className="w-5 h-5 text-blue-600" />
+                Career AI Tools
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  onClick={() =>
+                    navigate('/student/career-ai', {
+                      state: { query: 'What jobs match my skills and experience?' },
+                    })
+                  }
+                  className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+                >
+                  <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <Briefcase className="w-5 h-5" />
+                  </div>
+                  <span className="font-semibold text-sm flex-1">Find Jobs</span>
+                  <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                </button>
 
-              <button
-                onClick={() => navigate("/student/career-ai", { state: { query: 'Analyze my skill gaps for my target career' } })}
-                className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
-              >
-                <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                  <Target className="w-5 h-5" />
-                </div>
-                <span className="font-semibold text-sm flex-1">Skill Gap Analysis</span>
-                <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-              </button>
+                <button
+                  onClick={() =>
+                    navigate('/student/career-ai', {
+                      state: { query: 'Analyze my skill gaps for my target career' },
+                    })
+                  }
+                  className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+                >
+                  <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <Target className="w-5 h-5" />
+                  </div>
+                  <span className="font-semibold text-sm flex-1">Skill Gap Analysis</span>
+                  <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                </button>
 
-              <button
-                onClick={() => navigate("/student/career-ai", { state: { query: 'Help me prepare for upcoming interviews' } })}
-                className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
-              >
-                <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                  <BookOpen className="w-5 h-5" />
-                </div>
-                <span className="font-semibold text-sm flex-1">Interview Prep</span>
-                <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-              </button>
+                <button
+                  onClick={() =>
+                    navigate('/student/career-ai', {
+                      state: { query: 'Help me prepare for upcoming interviews' },
+                    })
+                  }
+                  className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+                >
+                  <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <BookOpen className="w-5 h-5" />
+                  </div>
+                  <span className="font-semibold text-sm flex-1">Interview Prep</span>
+                  <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                </button>
 
-              <button
-                onClick={() => navigate("/student/career-ai", { state: { query: 'Review my resume and suggest improvements?' } })}
-                className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
-              >
-                <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                  <FileText className="w-5 h-5" />
-                </div>
-                <span className="font-semibold text-sm flex-1">Resume Review</span>
-                <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-              </button>
+                <button
+                  onClick={() =>
+                    navigate('/student/career-ai', {
+                      state: { query: 'Review my resume and suggest improvements?' },
+                    })
+                  }
+                  className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+                >
+                  <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <span className="font-semibold text-sm flex-1">Resume Review</span>
+                  <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                </button>
 
-              <button
-                onClick={() => navigate("/student/career-ai", { state: { query: 'Create a learning roadmap for my career goals' } })}
-                className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
-              >
-                <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                  <GraduationCap className="w-5 h-5" />
-                </div>
-                <span className="font-semibold text-sm flex-1">Learning Path</span>
-                <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-              </button>
+                <button
+                  onClick={() =>
+                    navigate('/student/career-ai', {
+                      state: { query: 'Create a learning roadmap for my career goals' },
+                    })
+                  }
+                  className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+                >
+                  <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <GraduationCap className="w-5 h-5" />
+                  </div>
+                  <span className="font-semibold text-sm flex-1">Learning Path</span>
+                  <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                </button>
 
-              <button
-                onClick={() => navigate("/student/career-ai", { state: { query: 'What career paths are best suited for me?' } })}
-                className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
-              >
-                <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                  <TrendingUp className="w-5 h-5" />
-                </div>
-                <span className="font-semibold text-sm flex-1">Career Guidance</span>
-                <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-              </button>
+                <button
+                  onClick={() =>
+                    navigate('/student/career-ai', {
+                      state: { query: 'What career paths are best suited for me?' },
+                    })
+                  }
+                  className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+                >
+                  <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <TrendingUp className="w-5 h-5" />
+                  </div>
+                  <span className="font-semibold text-sm flex-1">Career Guidance</span>
+                  <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                </button>
 
-              <button
-                onClick={() => navigate("/student/career-ai", { state: { query: 'Give me networking strategies for my field' } })}
-                className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
-              >
-                <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                  <Users2 className="w-5 h-5" />
-                </div>
-                <span className="font-semibold text-sm flex-1">Networking Tips</span>
-                <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-              </button>
+                <button
+                  onClick={() =>
+                    navigate('/student/career-ai', {
+                      state: { query: 'Give me networking strategies for my field' },
+                    })
+                  }
+                  className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+                >
+                  <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <Users2 className="w-5 h-5" />
+                  </div>
+                  <span className="font-semibold text-sm flex-1">Networking Tips</span>
+                  <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                </button>
 
-              <button
-                onClick={() => navigate("/student/career-ai", { state: { query: 'I need career advice and guidance' } })}
-                className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
-              >
-                <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                  <Lightbulb className="w-5 h-5" />
-                </div>
-                <span className="font-semibold text-sm flex-1">Career Advice</span>
-                <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-              </button>
-            </div>
+                <button
+                  onClick={() =>
+                    navigate('/student/career-ai', {
+                      state: { query: 'I need career advice and guidance' },
+                    })
+                  }
+                  className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+                >
+                  <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <Lightbulb className="w-5 h-5" />
+                  </div>
+                  <span className="font-semibold text-sm flex-1">Career Advice</span>
+                  <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                </button>
+              </div>
             </div>
           )}
         </CardContent>
@@ -872,9 +909,7 @@ const StudentDashboard = () => {
               <div className="p-2 rounded-lg bg-blue-600">
                 <Briefcase className="w-6 h-6 text-white" />
               </div>
-              <span className="text-lg font-bold text-gray-800">
-                Opportunities
-              </span>
+              <span className="text-lg font-bold text-gray-800">Opportunities</span>
             </CardTitle>
             <button
               className="p-2 rounded-md hover:bg-blue-100 transition-colors"
@@ -900,7 +935,7 @@ const StudentDashboard = () => {
               </p>
             </div>
           )} */}
-          
+
           {/* Info message for college students */}
           {/* {(studentData?.university_college_id || studentData?.universityId) && (
             <div className="bg-green-50 rounded-lg p-3 mb-4">
@@ -916,9 +951,7 @@ const StudentDashboard = () => {
             </div>
           ) : opportunitiesError ? (
             <div className="text-center py-8">
-              <p className="text-red-600 mb-3 font-medium">
-                Failed to load opportunities
-              </p>
+              <p className="text-red-600 mb-3 font-medium">Failed to load opportunities</p>
               <Button
                 onClick={refreshOpportunities}
                 size="sm"
@@ -929,103 +962,116 @@ const StudentDashboard = () => {
             </div>
           ) : opportunities.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-slate-500 font-medium">
-                No opportunities available at the moment
-              </p>
+              <p className="text-slate-500 font-medium">No opportunities available at the moment</p>
             </div>
-          ) : (() => {
-            // Filter opportunities based on student type and grade
-            const isSchoolStudent = studentData?.school_id || studentData?.school_class_id;
-            const isUniversityStudent = studentData?.university_college_id || studentData?.universityId;
-            const studentGrade = studentData?.grade;
+          ) : (
+            (() => {
+              // Filter opportunities based on student type and grade
+              const isSchoolStudent = studentData?.school_id || studentData?.school_class_id;
+              const isUniversityStudent =
+                studentData?.university_college_id || studentData?.universityId;
+              const studentGrade = studentData?.grade;
 
-            // Fallback: Check education level if database fields are not available
-            const hasHighSchoolOnly = userData.education.length > 0 &&
-              userData.education.every(edu =>
-                edu.level && edu.level.toLowerCase().includes('high school')
-              );
+              // Fallback: Check education level if database fields are not available
+              const hasHighSchoolOnly =
+                userData.education.length > 0 &&
+                userData.education.every(
+                  (edu) => edu.level && edu.level.toLowerCase().includes('high school')
+                );
 
-            let filteredOpportunities = opportunities;
+              let filteredOpportunities = opportunities;
 
-            if (isSchoolStudent || hasHighSchoolOnly) {
-              // School students: Filter based on grade level
-              filteredOpportunities = opportunities.filter(opp => {
-                const isInternship = opp.employment_type && opp.employment_type.toLowerCase() === 'internship';
-                
-                // For grades 6-8: Show ONLY internships
-                if (studentGrade && parseInt(studentGrade) >= 6 && parseInt(studentGrade) <= 8) {
+              if (isSchoolStudent || hasHighSchoolOnly) {
+                // School students: Filter based on grade level
+                filteredOpportunities = opportunities.filter((opp) => {
+                  const isInternship =
+                    opp.employment_type && opp.employment_type.toLowerCase() === 'internship';
+
+                  // For grades 6-8: Show ONLY internships
+                  if (studentGrade && parseInt(studentGrade) >= 6 && parseInt(studentGrade) <= 8) {
+                    return isInternship;
+                  }
+
+                  // For grade 9+: Show ALL opportunities (internships + full-time + part-time, etc.)
+                  if (studentGrade && parseInt(studentGrade) >= 9) {
+                    return true; // Show all opportunities
+                  }
+
+                  // Fallback for students without grade info: show only internships
                   return isInternship;
-                }
-                
-                // For grade 9+: Show ALL opportunities (internships + full-time + part-time, etc.)
-                if (studentGrade && parseInt(studentGrade) >= 9) {
-                  return true; // Show all opportunities
-                }
-                
-                // Fallback for students without grade info: show only internships
-                return isInternship;
-              });
-            } else if (isUniversityStudent) {
-              // University/College students: Show ALL opportunities (internships + jobs)
-              filteredOpportunities = opportunities; // Show everything
-            }
+                });
+              } else if (isUniversityStudent) {
+                // University/College students: Show ALL opportunities (internships + jobs)
+                filteredOpportunities = opportunities; // Show everything
+              }
 
-            return (
-              <>
-                <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 blue-scrollbar">
-                  {filteredOpportunities.map((opp, idx) => {
-                    // Determine mode display text
-                    const modeDisplay = opp.mode === 'Onsite' ? 'Offline' : opp.mode === 'Remote' ? 'Online' : opp.mode;
+              return (
+                <>
+                  <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 blue-scrollbar">
+                    {filteredOpportunities.map((opp, idx) => {
+                      // Determine mode display text
+                      const modeDisplay =
+                        opp.mode === 'Onsite'
+                          ? 'Offline'
+                          : opp.mode === 'Remote'
+                            ? 'Online'
+                            : opp.mode;
 
-                    return (
-                      <div
-                        key={opp.id || `${opp.title}-${opp.company_name}-${idx}`}
-                        className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
-                      >
-                        <h4 className="text-base font-bold text-gray-900 mb-2">
-                          {opp.title}
-                        </h4>
+                      return (
+                        <div
+                          key={opp.id || `${opp.title}-${opp.company_name}-${idx}`}
+                          className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
+                        >
+                          <h4 className="text-base font-bold text-gray-900 mb-2">{opp.title}</h4>
 
-                        <div className="flex items-center justify-between gap-3 mb-3">
-                          <p className="text-blue-600 text-sm leading-relaxed font-medium">
-                            {opp.company_name || opp.department || opp.sector || 'Learning Opportunity'}
-                          </p>
-                          <Badge className="bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 text-xs px-2.5 py-0.5 rounded-full font-medium">
-                            {opp.employment_type}
-                          </Badge>
+                          <div className="flex items-center justify-between gap-3 mb-3">
+                            <p className="text-blue-600 text-sm leading-relaxed font-medium">
+                              {opp.company_name ||
+                                opp.department ||
+                                opp.sector ||
+                                'Learning Opportunity'}
+                            </p>
+                            <Badge className="bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 text-xs px-2.5 py-0.5 rounded-full font-medium">
+                              {opp.employment_type}
+                            </Badge>
+                          </div>
+
+                          {/* Mode, Location and Apply Button */}
+                          <div className="flex items-center justify-between gap-3">
+                            {(opp.mode || opp.location) && (
+                              <div className="flex items-center gap-3 text-sm text-gray-900 leading-relaxed font-medium">
+                                {opp.mode && (
+                                  <div className="flex items-center gap-1.5">
+                                    <MapPin className="w-4 h-4 text-blue-600" />
+                                    <span className="font-medium">{modeDisplay}</span>
+                                  </div>
+                                )}
+                                {opp.location && opp.mode !== 'Remote' && (
+                                  <span>• {opp.location}</span>
+                                )}
+                              </div>
+                            )}
+
+                            <Button
+                              size="sm"
+                              onClick={() =>
+                                navigate('/student/opportunities', {
+                                  state: { selectedOpportunityId: opp.id },
+                                })
+                              }
+                              className="w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold px-5 py-2 text-sm rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all"
+                            >
+                              Apply
+                            </Button>
+                          </div>
                         </div>
-
-                        {/* Mode, Location and Apply Button */}
-                        <div className="flex items-center justify-between gap-3">
-                          {(opp.mode || opp.location) && (
-                            <div className="flex items-center gap-3 text-sm text-gray-900 leading-relaxed font-medium">
-                              {opp.mode && (
-                                <div className="flex items-center gap-1.5">
-                                  <MapPin className="w-4 h-4 text-blue-600" />
-                                  <span className="font-medium">{modeDisplay}</span>
-                                </div>
-                              )}
-                              {opp.location && opp.mode !== 'Remote' && (
-                                <span>• {opp.location}</span>
-                              )}
-                            </div>
-                          )}
-
-                          <Button
-                            size="sm"
-                            onClick={() => navigate('/student/opportunities', { state: { selectedOpportunityId: opp.id } })}
-                            className="w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold px-5 py-2 text-sm rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all"
-                          >
-                            Apply
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            );
-          })()}
+                      );
+                    })}
+                  </div>
+                </>
+              );
+            })()
+          )}
         </CardContent>
       </Card>
     ),
@@ -1040,15 +1086,13 @@ const StudentDashboard = () => {
               <div className="p-2 rounded-lg bg-blue-600">
                 <Cpu className="w-6 h-6 text-white" />
               </div>
-              <span className="text-lg font-bold text-gray-800">
-                Technical Skills
-              </span>
+              <span className="text-lg font-bold text-gray-800">Technical Skills</span>
             </CardTitle>
             <div className="flex items-center gap-2">
               <button
                 className="p-2 rounded-md hover:bg-blue-100 transition-colors"
                 title="View All Technical Skills"
-                onClick={() => setActiveModal("technicalSkills")}
+                onClick={() => setActiveModal('technicalSkills')}
               >
                 <Eye className="w-5 h-5 text-blue-600" />
               </button>
@@ -1057,7 +1101,9 @@ const StudentDashboard = () => {
         </CardHeader>
         <CardContent className="p-8">
           {userData.technicalSkills.filter(
-            (skill) => skill.enabled !== false && (skill.approval_status === 'approved' || skill.approval_status === 'verified')
+            (skill) =>
+              skill.enabled !== false &&
+              (skill.approval_status === 'approved' || skill.approval_status === 'verified')
           ).length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-900 text-base leading-normal font-medium">
@@ -1067,7 +1113,11 @@ const StudentDashboard = () => {
           ) : (
             <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
               {userData.technicalSkills
-                .filter((skill) => skill.enabled !== false && (skill.approval_status === 'approved' || skill.approval_status === 'verified'))
+                .filter(
+                  (skill) =>
+                    skill.enabled !== false &&
+                    (skill.approval_status === 'approved' || skill.approval_status === 'verified')
+                )
                 .map((skill, idx) => (
                   <div
                     key={skill.id || `tech-skill-${idx}`}
@@ -1075,9 +1125,7 @@ const StudentDashboard = () => {
                   >
                     {/* Skill Name + Level Badge */}
                     <div className="flex items-center justify-between gap-3 mb-3">
-                      <h4 className="text-base font-bold text-gray-900">
-                        {skill.name}
-                      </h4>
+                      <h4 className="text-base font-bold text-gray-900">{skill.name}</h4>
                       <Badge
                         className={`px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm border ${getSkillLevelColor(
                           skill.level
@@ -1090,16 +1138,12 @@ const StudentDashboard = () => {
                     {/* Category */}
                     {skill.category && (
                       <div className="flex items-center gap-2 mb-3">
-                        <span className="text-sm text-blue-600 font-medium">
-                          {skill.category}
-                        </span>
+                        <span className="text-sm text-blue-600 font-medium">{skill.category}</span>
                       </div>
                     )}
 
                     {/* Star Rating */}
-                    <div className="flex gap-0.5">
-                      {renderStars(skill.level)}
-                    </div>
+                    <div className="flex gap-0.5">{renderStars(skill.level)}</div>
                   </div>
                 ))}
             </div>
@@ -1118,14 +1162,12 @@ const StudentDashboard = () => {
               <div className="p-2 rounded-lg bg-blue-600">
                 <Rocket className="w-6 h-6 text-white" />
               </div>
-              <span className="text-lg font-bold text-gray-800">
-                Projects/Internships
-              </span>
+              <span className="text-lg font-bold text-gray-800">Projects/Internships</span>
             </CardTitle>
             <button
               className="p-2 rounded-md hover:bg-blue-100 transition-colors"
               title="View All Projects & Internships"
-              onClick={() => setActiveModal("projects")}
+              onClick={() => setActiveModal('projects')}
             >
               <Eye className="w-5 h-5 text-blue-600" />
             </button>
@@ -1144,25 +1186,28 @@ const StudentDashboard = () => {
                 return (
                   <div
                     key={project.id || `project-${idx}`}
-                    className={`p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200 ${project.enabled ? "" : "opacity-75"
-                      }`}
+                    className={`p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200 ${
+                      project.enabled ? '' : 'opacity-75'
+                    }`}
                   >
                     {/* Title */}
                     <h4 className="text-base font-bold text-gray-900 mb-2">
-                      {project.title || project.name || "Untitled Project"}
+                      {project.title || project.name || 'Untitled Project'}
                     </h4>
 
                     {/* Date + Status Badge */}
                     <div className="flex items-center justify-between gap-3 mb-3">
                       <p className="text-sm text-gray-900 leading-relaxed font-medium">
-                        {project.duration || project.timeline || project.period || ""}
+                        {project.duration || project.timeline || project.period || ''}
                       </p>
                       {project.status && (
-                        <Badge className={`px-1 py-1 text-xs font-semibold rounded-full shadow-sm whitespace-nowrap ${
-                          project.status.toLowerCase() === "completed"
-                            ? "bg-green-100 text-green-600"
-                            : "bg-blue-100 text-blue-600"
-                        }`}>
+                        <Badge
+                          className={`px-1 py-1 text-xs font-semibold rounded-full shadow-sm whitespace-nowrap ${
+                            project.status.toLowerCase() === 'completed'
+                              ? 'bg-green-100 text-green-600'
+                              : 'bg-blue-100 text-blue-600'
+                          }`}
+                        >
                           {project.status}
                         </Badge>
                       )}
@@ -1182,7 +1227,12 @@ const StudentDashboard = () => {
                       {(project.github_link || project.github_url || project.github) && (
                         <Button
                           size="sm"
-                          onClick={() => window.open(project.github_url || project.github_link || project.github, '_blank')}
+                          onClick={() =>
+                            window.open(
+                              project.github_url || project.github_link || project.github,
+                              '_blank'
+                            )
+                          }
                           className="w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold px-2 py-2 text-sm rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all"
                         >
                           <Github className="w-4 h-4" />
@@ -1209,15 +1259,13 @@ const StudentDashboard = () => {
               <div className="p-2 rounded-lg bg-blue-600">
                 <GraduationCap className="w-6 h-6 text-white" />
               </div>
-              <span className="text-lg font-bold text-gray-800">
-                Education
-              </span>
+              <span className="text-lg font-bold text-gray-800">Education</span>
             </CardTitle>
             <div className="flex items-center gap-2">
               <button
                 className="p-2 rounded-md hover:bg-blue-100 transition-colors"
                 title="View All Education"
-                onClick={() => setActiveModal("education")}
+                onClick={() => setActiveModal('education')}
               >
                 <Eye className="w-5 h-5 text-blue-600" />
               </button>
@@ -1228,7 +1276,7 @@ const StudentDashboard = () => {
           {userData.education.filter(
             (education) =>
               education.enabled !== false &&
-              (education.approval_status === "verified" || education.approval_status === "approved")
+              (education.approval_status === 'verified' || education.approval_status === 'approved')
           ).length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-900 text-base leading-normal font-medium">
@@ -1238,9 +1286,11 @@ const StudentDashboard = () => {
           ) : (
             <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
               {userData.education
-                .filter((education) =>
-                  education.enabled !== false &&
-                  (education.approval_status === "verified" || education.approval_status === "approved")
+                .filter(
+                  (education) =>
+                    education.enabled !== false &&
+                    (education.approval_status === 'verified' ||
+                      education.approval_status === 'approved')
                 )
                 .map((education, idx) => (
                   <div
@@ -1250,14 +1300,14 @@ const StudentDashboard = () => {
                     {/* Degree + Status Badge */}
                     <div className="flex items-center justify-between gap-3 mb-3">
                       <h4 className="text-base font-bold text-gray-900">
-                        {education.degree || "N/A"}
+                        {education.degree || 'N/A'}
                       </h4>
                       {education.status && (
                         <Badge
                           className={`px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm ${
-                            education.status === "ongoing"
-                              ? "bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700"
-                              : "bg-gradient-to-r from-green-100 to-emerald-100 text-green-700"
+                            education.status === 'ongoing'
+                              ? 'bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700'
+                              : 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-700'
                           }`}
                         >
                           {education.status}
@@ -1269,7 +1319,7 @@ const StudentDashboard = () => {
                     <div className="flex items-center gap-2 mb-3">
                       <Building2 className="w-4 h-4 text-blue-600" />
                       <p className="text-sm text-blue-600 font-medium">
-                        {education.university || education.institution || "N/A"}
+                        {education.university || education.institution || 'N/A'}
                       </p>
                     </div>
 
@@ -1316,34 +1366,40 @@ const StudentDashboard = () => {
             <button
               className="p-2 rounded-md hover:bg-blue-100 transition-colors"
               title="View All Courses"
-              onClick={() => setActiveModal("training")}
+              onClick={() => setActiveModal('training')}
             >
               <Eye className="w-5 h-5 text-blue-600" />
             </button>
           </div>
         </CardHeader>
-<CardContent className="pt-4 p-8 space-y-4">
+        <CardContent className="pt-4 p-8 space-y-4">
           {/* No Assessment CTA - TOP (only show when not expanded) */}
           {!hasAssessment && !recommendationsLoading && !showAllTraining && (
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-5 border-2 border-dashed border-blue-300 mb-4 shadow-sm">
               <div className="flex items-start gap-3">
-                <div 
+                <div
                   className="w-16 h-16 rounded-lg bg-blue-50 flex items-center justify-center shrink-0 overflow-hidden border border-white/50"
                   style={{
-                    boxShadow: '0 0 15px rgba(255, 255, 255, 0.5), 0 0 30px rgba(255, 255, 255, 0.3), inset 0 0 10px rgba(255, 255, 255, 0.1)'
+                    boxShadow:
+                      '0 0 15px rgba(255, 255, 255, 0.5), 0 0 30px rgba(255, 255, 255, 0.3), inset 0 0 10px rgba(255, 255, 255, 0.1)',
                   }}
                 >
-                  <img src="/assets/HomePage/Ai Logo.png" alt="AI" className="w-16 h-16 object-contain" />
+                  <img
+                    src="/assets/HomePage/Ai Logo.png"
+                    alt="AI"
+                    className="w-16 h-16 object-contain"
+                  />
                 </div>
                 <div className="flex-1">
                   <h4 className="text-base font-bold text-gray-900 mb-2">
                     Get Personalized Recommendations
                   </h4>
                   <p className="text-sm text-gray-900 mb-3 font-medium">
-                    Take our assessment to receive AI-powered course recommendations tailored to your career goals and skills.
+                    Take our assessment to receive AI-powered course recommendations tailored to
+                    your career goals and skills.
                   </p>
                   <Button
-                    onClick={() => navigate("/student/assessment/test")}
+                    onClick={() => navigate('/student/assessment/test')}
                     size="sm"
                     className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-semibold shadow-md hover:shadow-lg transform hover:scale-105 transition-all"
                   >
@@ -1368,7 +1424,11 @@ const StudentDashboard = () => {
           )}
 
           {/* My Courses Section */}
-          {userData.training.filter((t) => t.enabled !== false && (t.approval_status === "verified" || t.approval_status === "approved")).length > 0 && (
+          {userData.training.filter(
+            (t) =>
+              t.enabled !== false &&
+              (t.approval_status === 'verified' || t.approval_status === 'approved')
+          ).length > 0 && (
             <div>
               <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
                 <BookOpen className="w-5 h-5 text-blue-600" />
@@ -1376,121 +1436,139 @@ const StudentDashboard = () => {
               </h3>
               <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2 blue-scrollbar">
                 {userData.training
-                  .filter((t) => t.enabled !== false && (t.approval_status === "verified" || t.approval_status === "approved"))
+                  .filter(
+                    (t) =>
+                      t.enabled !== false &&
+                      (t.approval_status === 'verified' || t.approval_status === 'approved')
+                  )
                   .map((training, idx) => {
-            // Calculate progress
-            const statusLower = (training.status || "").toLowerCase();
-            let progressValue = 0;
-            if (statusLower === "completed") {
-              progressValue = 100;
-            } else if (training.total_modules > 0) {
-              const completed = Math.min(training.completed_modules, training.total_modules);
-              progressValue = Math.round((completed / training.total_modules) * 100);
-            }
+                    // Calculate progress
+                    const statusLower = (training.status || '').toLowerCase();
+                    let progressValue = 0;
+                    if (statusLower === 'completed') {
+                      progressValue = 100;
+                    } else if (training.total_modules > 0) {
+                      const completed = Math.min(
+                        training.completed_modules,
+                        training.total_modules
+                      );
+                      progressValue = Math.round((completed / training.total_modules) * 100);
+                    }
 
-            return (
-              <div
-                key={training.id || `training-${training.course}-${idx}`}
-                className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
-              >
-                {/* Header */}
-                <div className="flex items-center justify-between gap-3 mb-3">
-                  <h4 className="text-base font-bold text-gray-900 truncate flex-1">
-                    {training.course}
-                  </h4>
-                  <Badge
-                    className={`px-1 py-1 text-xs font-semibold rounded-full shadow-sm whitespace-nowrap ${training.status === "completed"
-                      ? "bg-green-100 text-green-600"
-                      : "bg-blue-100 text-blue-600"
-                      }`}
-                  >
-                    {training.status === "completed" ? "Completed" : "Ongoing"}
-                  </Badge>
-                </div>
-
-                {/* Meta info */}
-                <div className="flex items-center gap-4 mb-3 text-sm text-gray-900 font-medium flex-wrap">
-                  {training.provider && (
-                    <div className="flex items-center gap-2">
-                      <BookOpen className="w-4 h-4 text-blue-600" />
-                      <span className="font-medium">{training.provider}</span>
-                    </div>
-                  )}
-                  {training.duration && (
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-blue-600" />
-                      <span className="font-medium">{training.duration}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Progress bar */}
-                {(training.total_modules > 0 || training.completed_modules > 0 || training.hours_spent > 0) && (
-                  <div className="mt-3">
-                    {/* Progress Header */}
-                    <div className="flex justify-between items-center text-sm text-gray-900 font-medium mb-2">
-                      <span>Progress</span>
-                      <span className="text-blue-600 font-semibold">{progressValue}%</span>
-                    </div>
-
-                    {/* Progress Bar */}
-                    <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden shadow-inner">
+                    return (
                       <div
-                        className="h-2 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-500 ease-out"
-                        style={{ width: `${progressValue}%` }}
-                      />
-                    </div>
-
-                    {/* Modules & Hours Info */}
-                    <div className="text-xs text-gray-900 font-medium mt-2 space-x-3">
-                      {training.completed_modules != null && training.total_modules != null && (
-                        <span>
-                          Modules: {training.completed_modules}/{training.total_modules}
-                        </span>
-                      )}
-                      {training.hours_spent != null && <span>Hours: {training.hours_spent}</span>}
-                    </div>
-                  </div>
-                )}
-
-                {/* Skills */}
-                {Array.isArray(training.skills) && training.skills.length > 0 && (
-                  <div className="mt-4">
-                    <p className="text-sm text-gray-900 font-medium mb-2">Skills Covered:</p>
-                    <div className="flex flex-wrap gap-2">
-                      {(training.showAllSkills ? training.skills : training.skills.slice(0, 4)).map(
-                        (skill, i) => (
-                          <span
-                            key={`skill-${training.id}-${i}`}
-                            className="px-3 py-1.5 text-xs rounded-full bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 font-medium border border-blue-200 shadow-sm"
-                          >
-                            {skill}
-                          </span>
-                        )
-                      )}
-                    </div>
-                    {training.skills.length > 4 && (
-                      <button
-                        onClick={() =>
-                          setUserData((prev) => ({
-                            ...prev,
-                            training: prev.training.map((t) =>
-                              t.id === training.id ? { ...t, showAllSkills: !t.showAllSkills } : t
-                            ),
-                          }))
-                        }
-                        className="text-xs text-blue-600 hover:text-blue-800 mt-1"
+                        key={training.id || `training-${training.course}-${idx}`}
+                        className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
                       >
-                        {training.showAllSkills
-                          ? "Show Less"
-                          : `Show All (${training.skills.length})`}
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                        {/* Header */}
+                        <div className="flex items-center justify-between gap-3 mb-3">
+                          <h4 className="text-base font-bold text-gray-900 truncate flex-1">
+                            {training.course}
+                          </h4>
+                          <Badge
+                            className={`px-1 py-1 text-xs font-semibold rounded-full shadow-sm whitespace-nowrap ${
+                              training.status === 'completed'
+                                ? 'bg-green-100 text-green-600'
+                                : 'bg-blue-100 text-blue-600'
+                            }`}
+                          >
+                            {training.status === 'completed' ? 'Completed' : 'Ongoing'}
+                          </Badge>
+                        </div>
+
+                        {/* Meta info */}
+                        <div className="flex items-center gap-4 mb-3 text-sm text-gray-900 font-medium flex-wrap">
+                          {training.provider && (
+                            <div className="flex items-center gap-2">
+                              <BookOpen className="w-4 h-4 text-blue-600" />
+                              <span className="font-medium">{training.provider}</span>
+                            </div>
+                          )}
+                          {training.duration && (
+                            <div className="flex items-center gap-2">
+                              <Calendar className="w-4 h-4 text-blue-600" />
+                              <span className="font-medium">{training.duration}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Progress bar */}
+                        {(training.total_modules > 0 ||
+                          training.completed_modules > 0 ||
+                          training.hours_spent > 0) && (
+                          <div className="mt-3">
+                            {/* Progress Header */}
+                            <div className="flex justify-between items-center text-sm text-gray-900 font-medium mb-2">
+                              <span>Progress</span>
+                              <span className="text-blue-600 font-semibold">{progressValue}%</span>
+                            </div>
+
+                            {/* Progress Bar */}
+                            <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden shadow-inner">
+                              <div
+                                className="h-2 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-500 ease-out"
+                                style={{ width: `${progressValue}%` }}
+                              />
+                            </div>
+
+                            {/* Modules & Hours Info */}
+                            <div className="text-xs text-gray-900 font-medium mt-2 space-x-3">
+                              {training.completed_modules != null &&
+                                training.total_modules != null && (
+                                  <span>
+                                    Modules: {training.completed_modules}/{training.total_modules}
+                                  </span>
+                                )}
+                              {training.hours_spent != null && (
+                                <span>Hours: {training.hours_spent}</span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Skills */}
+                        {Array.isArray(training.skills) && training.skills.length > 0 && (
+                          <div className="mt-4">
+                            <p className="text-sm text-gray-900 font-medium mb-2">
+                              Skills Covered:
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {(training.showAllSkills
+                                ? training.skills
+                                : training.skills.slice(0, 4)
+                              ).map((skill, i) => (
+                                <span
+                                  key={`skill-${training.id}-${i}`}
+                                  className="px-3 py-1.5 text-xs rounded-full bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 font-medium border border-blue-200 shadow-sm"
+                                >
+                                  {skill}
+                                </span>
+                              ))}
+                            </div>
+                            {training.skills.length > 4 && (
+                              <button
+                                onClick={() =>
+                                  setUserData((prev) => ({
+                                    ...prev,
+                                    training: prev.training.map((t) =>
+                                      t.id === training.id
+                                        ? { ...t, showAllSkills: !t.showAllSkills }
+                                        : t
+                                    ),
+                                  }))
+                                }
+                                className="text-xs text-blue-600 hover:text-blue-800 mt-1"
+                              >
+                                {training.showAllSkills
+                                  ? 'Show Less'
+                                  : `Show All (${training.skills.length})`}
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
               </div>
             </div>
           )}
@@ -1502,201 +1580,194 @@ const StudentDashboard = () => {
         key="certificates"
         className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
       >
-         <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
-      <div className="flex items-center w-full justify-between">
-        <CardTitle className="flex items-center gap-3 m-0 p-0">
-          <div className="p-2 rounded-lg bg-blue-600">
-            <Medal className="w-6 h-6 text-white" />
+        <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
+          <div className="flex items-center w-full justify-between">
+            <CardTitle className="flex items-center gap-3 m-0 p-0">
+              <div className="p-2 rounded-lg bg-blue-600">
+                <Medal className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-lg font-bold text-gray-800">Certificates</span>
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <button
+                className="p-2 rounded-md hover:bg-blue-100 transition-colors"
+                title="View All Certificates"
+                onClick={() => setActiveModal('certificates')}
+              >
+                <Eye className="w-5 h-5 text-blue-600" />
+              </button>
+            </div>
           </div>
-          <span className="text-lg font-bold text-gray-800">
-            Certificates
-          </span>
-        </CardTitle>
-        <div className="flex items-center gap-2">
-          <button
-            className="p-2 rounded-md hover:bg-blue-100 transition-colors"
-            title="View All Certificates"
-            onClick={() => setActiveModal("certificates")}
-          >
-            <Eye className="w-5 h-5 text-blue-600" />
-          </button>
-        </div>
-      </div>
-    </CardHeader>
+        </CardHeader>
         <CardContent className="p-8">
-  {enabledCertificates.length === 0 ? (
-    <div className="text-center py-8">
-      <p className="text-gray-900 text-base leading-normal font-medium">
-        No certificates uploaded yet
-      </p>
-    </div>
-  ) : (
-    <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
-      {enabledCertificates.map((cert, idx) => {
-        const certificateLink =
-          cert.link ||
-          cert.url ||
-          cert.certificateUrl ||
-          cert.credentialUrl ||
-          cert.viewUrl;
-        const issuedOn =
-          cert.year || cert.date || cert.issueDate || cert.issuedOn;
-        return (
-          <div
-            key={cert.id || `certificate-${idx}`}
-            className={`p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200 ${cert.enabled ? "" : "opacity-75"
-              }`}
-          >
-            {/* Certificate Name */}
-            <h4 className="text-base font-bold text-gray-900 mb-3">
-              {cert.title ||
-                cert.name ||
-                cert.certificate ||
-                "Certificate"}
-            </h4>
-
-            {/* Credential ID + Date */}
-            <div className="flex items-center justify-between gap-3 mb-3">
-              <div className="text-xs text-gray-600 font-medium">
-                {cert.credentialId ? (
-                  <span>{cert.credentialId}</span>
-                ) : (
-                  <span className="text-gray-400">No credential ID</span>
-                )}
-              </div>
-              {issuedOn && (
-                <Badge className="px-3 py-1 text-xs font-semibold bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 rounded-full shadow-sm">
-                  {issuedOn}
-                </Badge>
-              )}
+          {enabledCertificates.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-900 text-base leading-normal font-medium">
+                No certificates uploaded yet
+              </p>
             </div>
+          ) : (
+            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
+              {enabledCertificates.map((cert, idx) => {
+                const certificateLink =
+                  cert.link ||
+                  cert.url ||
+                  cert.certificateUrl ||
+                  cert.credentialUrl ||
+                  cert.viewUrl;
+                const issuedOn = cert.year || cert.date || cert.issueDate || cert.issuedOn;
+                return (
+                  <div
+                    key={cert.id || `certificate-${idx}`}
+                    className={`p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200 ${
+                      cert.enabled ? '' : 'opacity-75'
+                    }`}
+                  >
+                    {/* Certificate Name */}
+                    <h4 className="text-base font-bold text-gray-900 mb-3">
+                      {cert.title || cert.name || cert.certificate || 'Certificate'}
+                    </h4>
 
-            {/* Icon + Organization + View Button */}
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-blue-600" />
-                <p className="text-blue-600 text-sm leading-relaxed font-medium">
-                  {cert.issuer ||
-                    cert.organization ||
-                    cert.institution ||
-                    "Organization"}
-                </p>
-              </div>
+                    {/* Credential ID + Date */}
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                      <div className="text-xs text-gray-600 font-medium">
+                        {cert.credentialId ? (
+                          <span>{cert.credentialId}</span>
+                        ) : (
+                          <span className="text-gray-400">No credential ID</span>
+                        )}
+                      </div>
+                      {issuedOn && (
+                        <Badge className="px-3 py-1 text-xs font-semibold bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 rounded-full shadow-sm">
+                          {issuedOn}
+                        </Badge>
+                      )}
+                    </div>
 
-              {/* View Button */}
-              {certificateLink && (
-                <Button
-                  size="sm"
-                  onClick={() => window.open(certificateLink, '_blank')}
-                  className="w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold px-4 py-2 text-sm rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all"
-                >
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  View
-                </Button>
-              )}
+                    {/* Icon + Organization + View Button */}
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="w-4 h-4 text-blue-600" />
+                        <p className="text-blue-600 text-sm leading-relaxed font-medium">
+                          {cert.issuer || cert.organization || cert.institution || 'Organization'}
+                        </p>
+                      </div>
+
+                      {/* View Button */}
+                      {certificateLink && (
+                        <Button
+                          size="sm"
+                          onClick={() => window.open(certificateLink, '_blank')}
+                          className="w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold px-4 py-2 text-sm rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all"
+                        >
+                          <ExternalLink className="w-4 h-4 mr-2" />
+                          View
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          </div>
-        );
-      })}
-    </div>
-  )}
-</CardContent>
+          )}
+        </CardContent>
       </Card>
     ),
-       experience: (
-  <Card
-    key="experience"
-    className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
-  >
-    <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
-      <div className="flex items-center w-full justify-between">
-        <CardTitle className="flex items-center gap-3 m-0 p-0">
-          <div className="p-2 rounded-lg bg-blue-600">
-            <Building2 className="w-6 h-6 text-white" />
-          </div>
-          <span className="text-lg font-bold text-gray-800">
-            My Experience
-          </span>
-        </CardTitle>
-        <div className="flex items-center gap-2">
-          <button
-            className="p-2 rounded-md hover:bg-blue-100 transition-colors"
-            title="View All Experience"
-            onClick={() => setActiveModal("experience")}
-          >
-            <Eye className="w-5 h-5 text-blue-600" />
-          </button>
-        </div>
-      </div>
-    </CardHeader>
-        <CardContent className="p-8">
-  {userData.experience?.filter(exp =>
-    exp.enabled !== false &&
-    (exp.approval_status === "verified" || exp.approval_status === "approved")
-  ).length === 0 ? (
-    <div className="text-center py-8">
-      <p className="text-gray-900 text-base leading-normal font-medium">
-        No experience added yet
-      </p>
-    </div>
-  ) : (
-    <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
-      {userData.experience
-        .filter(exp =>
-          exp.enabled !== false &&
-          (exp.approval_status === "verified" || exp.approval_status === "approved")
-        )
-        .map((exp, idx) => (
-          <div
-          key={exp.id || `exp-${idx}`}
-          className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
-        >
-          {/* Title + Status Badge */}
-          <div className="flex items-center justify-between gap-3 mb-3">
-            <h4 className="text-base font-bold text-gray-900">
-              {exp.role || "Experience Role"}
-            </h4>
-            {(exp.approval_status === "verified" || exp.approval_status === "approved") && (
-              <Badge className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm flex items-center gap-1.5">
-                <CheckCircle className="w-3.5 h-3.5" />
-                Verified
-              </Badge>
-            )}
-          </div>
-
-          {/* Type */}
-          {exp.type && (
-            <div className="flex items-center gap-2 mb-3">
-              <Briefcase className="w-4 h-4 text-blue-600" />
-              <span className="text-sm text-gray-700 font-medium">{exp.type}</span>
-            </div>
-          )}
-
-          {/* Icon + Location */}
-          {(exp.organization || exp.company || exp.location) && (
-            <div className="flex items-center gap-2 mb-3">
-              <Building2 className="w-4 h-4 text-blue-600" />
-              <span className="text-sm text-blue-600 font-medium">
-                {exp.organization || exp.company || "Organization"}
-                {exp.location && `, ${exp.location}`}
-              </span>
-            </div>
-          )}
-
-          {/* Date */}
-          {(exp.duration || exp.period) && (
+    experience: (
+      <Card
+        key="experience"
+        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
+      >
+        <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
+          <div className="flex items-center w-full justify-between">
+            <CardTitle className="flex items-center gap-3 m-0 p-0">
+              <div className="p-2 rounded-lg bg-blue-600">
+                <Building2 className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-lg font-bold text-gray-800">My Experience</span>
+            </CardTitle>
             <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-gray-600" />
-              <span className="text-sm text-gray-600 font-medium">
-                {exp.duration || exp.period}
-              </span>
+              <button
+                className="p-2 rounded-md hover:bg-blue-100 transition-colors"
+                title="View All Experience"
+                onClick={() => setActiveModal('experience')}
+              >
+                <Eye className="w-5 h-5 text-blue-600" />
+              </button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-8">
+          {userData.experience?.filter(
+            (exp) =>
+              exp.enabled !== false &&
+              (exp.approval_status === 'verified' || exp.approval_status === 'approved')
+          ).length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-900 text-base leading-normal font-medium">
+                No experience added yet
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
+              {userData.experience
+                .filter(
+                  (exp) =>
+                    exp.enabled !== false &&
+                    (exp.approval_status === 'verified' || exp.approval_status === 'approved')
+                )
+                .map((exp, idx) => (
+                  <div
+                    key={exp.id || `exp-${idx}`}
+                    className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
+                  >
+                    {/* Title + Status Badge */}
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                      <h4 className="text-base font-bold text-gray-900">
+                        {exp.role || 'Experience Role'}
+                      </h4>
+                      {(exp.approval_status === 'verified' ||
+                        exp.approval_status === 'approved') && (
+                        <Badge className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm flex items-center gap-1.5">
+                          <CheckCircle className="w-3.5 h-3.5" />
+                          Verified
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Type */}
+                    {exp.type && (
+                      <div className="flex items-center gap-2 mb-3">
+                        <Briefcase className="w-4 h-4 text-blue-600" />
+                        <span className="text-sm text-gray-700 font-medium">{exp.type}</span>
+                      </div>
+                    )}
+
+                    {/* Icon + Location */}
+                    {(exp.organization || exp.company || exp.location) && (
+                      <div className="flex items-center gap-2 mb-3">
+                        <Building2 className="w-4 h-4 text-blue-600" />
+                        <span className="text-sm text-blue-600 font-medium">
+                          {exp.organization || exp.company || 'Organization'}
+                          {exp.location && `, ${exp.location}`}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Date */}
+                    {(exp.duration || exp.period) && (
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-gray-600" />
+                        <span className="text-sm text-gray-600 font-medium">
+                          {exp.duration || exp.period}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ))}
             </div>
           )}
-        </div>
-      ))}
-    </div>
-  )}
-</CardContent>
+        </CardContent>
       </Card>
     ),
     softSkills: (
@@ -1710,15 +1781,13 @@ const StudentDashboard = () => {
               <div className="p-2 rounded-lg bg-blue-600">
                 <Users2 className="w-6 h-6 text-white" />
               </div>
-              <span className="text-lg font-bold text-gray-800">
-                Soft Skills
-              </span>
+              <span className="text-lg font-bold text-gray-800">Soft Skills</span>
             </CardTitle>
             <div className="flex items-center gap-2">
               <button
                 className="p-2 rounded-md hover:bg-blue-100 transition-colors"
                 title="View All Soft Skills"
-                onClick={() => setActiveModal("softSkills")}
+                onClick={() => setActiveModal('softSkills')}
               >
                 <Eye className="w-5 h-5 text-blue-600" />
               </button>
@@ -1727,7 +1796,9 @@ const StudentDashboard = () => {
         </CardHeader>
         <CardContent className="p-8">
           {userData.softSkills.filter(
-            (skill) => skill.enabled !== false && (skill.approval_status === 'approved' || skill.approval_status === 'verified')
+            (skill) =>
+              skill.enabled !== false &&
+              (skill.approval_status === 'approved' || skill.approval_status === 'verified')
           ).length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-900 text-base leading-normal font-medium">
@@ -1737,7 +1808,11 @@ const StudentDashboard = () => {
           ) : (
             <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
               {userData.softSkills
-                .filter((skill) => skill.enabled !== false && (skill.approval_status === 'approved' || skill.approval_status === 'verified'))
+                .filter(
+                  (skill) =>
+                    skill.enabled !== false &&
+                    (skill.approval_status === 'approved' || skill.approval_status === 'verified')
+                )
                 .map((skill, idx) => (
                   <div
                     key={skill.id || `soft-skill-${idx}`}
@@ -1745,9 +1820,7 @@ const StudentDashboard = () => {
                   >
                     {/* Skill Name + Level Badge */}
                     <div className="flex items-center justify-between gap-3 mb-3">
-                      <h4 className="text-base font-bold text-gray-900">
-                        {skill.name}
-                      </h4>
+                      <h4 className="text-base font-bold text-gray-900">{skill.name}</h4>
                       <Badge
                         className={`px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm border ${getSkillLevelColor(
                           skill.level
@@ -1760,16 +1833,12 @@ const StudentDashboard = () => {
                     {/* Description */}
                     {skill.description && (
                       <div className="mb-3">
-                        <p className="text-sm text-gray-600 font-medium">
-                          {skill.description}
-                        </p>
+                        <p className="text-sm text-gray-600 font-medium">{skill.description}</p>
                       </div>
                     )}
 
                     {/* Star Rating */}
-                    <div className="flex gap-0.5">
-                      {renderStars(skill.level)}
-                    </div>
+                    <div className="flex gap-0.5">{renderStars(skill.level)}</div>
                   </div>
                 ))}
             </div>
@@ -1777,35 +1846,33 @@ const StudentDashboard = () => {
         </CardContent>
       </Card>
     ),
-    achievements: (
-      <></>
-    ),
+    achievements: <></>,
   };
 
   // Define 3x3 grid layout
   const threeByThreeCards = [
-    "assessment",
-    "trainings", 
-    "opportunities",
-    "Projects", 
-    "Certificates", 
-    "My experience",
-    "Education", 
-    "technicalSkills", 
-    "softSkills"
+    'assessment',
+    'trainings',
+    'opportunities',
+    'Projects',
+    'Certificates',
+    'My experience',
+    'Education',
+    'technicalSkills',
+    'softSkills',
   ];
 
   // Map the display names to actual card keys
   const cardNameMapping = {
-    "assessment": "assessment",
-    "trainings": "training",
-    "opportunities": "opportunities",
-    "Projects": "projects",
-    "Certificates": "certificates",
-    "My experience": "experience",
-    "Education": "education",
-    "technicalSkills": "technicalSkills",
-    "softSkills": "softSkills"
+    assessment: 'assessment',
+    trainings: 'training',
+    opportunities: 'opportunities',
+    Projects: 'projects',
+    Certificates: 'certificates',
+    'My experience': 'experience',
+    Education: 'education',
+    technicalSkills: 'technicalSkills',
+    softSkills: 'softSkills',
   };
 
   const render3x3Grid = () => {
@@ -1815,7 +1882,7 @@ const StudentDashboard = () => {
           const cardKey = cardNameMapping[cardName];
           const card = allCards[cardKey];
           if (!card) return null;
-          
+
           return (
             <div key={cardName} className="h-full">
               {card}
@@ -1861,17 +1928,23 @@ const StudentDashboard = () => {
                   }`}
                 >
                   <div className="flex items-start gap-3">
-                    <div className={`p-2 rounded-lg ${
-                      activeView === 'dashboard' ? 'bg-blue-600' : 'bg-gray-100'
-                    }`}>
-                      <RectangleStackIcon className={`w-6 h-6 ${
-                        activeView === 'dashboard' ? 'text-white' : 'text-gray-600'
-                      }`} />
+                    <div
+                      className={`p-2 rounded-lg ${
+                        activeView === 'dashboard' ? 'bg-blue-600' : 'bg-gray-100'
+                      }`}
+                    >
+                      <RectangleStackIcon
+                        className={`w-6 h-6 ${
+                          activeView === 'dashboard' ? 'text-white' : 'text-gray-600'
+                        }`}
+                      />
                     </div>
                     <div className="flex-1">
-                      <h1 className={`font-bold text-lg ${
-                        activeView === 'dashboard' ? 'text-blue-600' : 'text-gray-900'
-                      }`}>
+                      <h1
+                        className={`font-bold text-lg ${
+                          activeView === 'dashboard' ? 'text-blue-600' : 'text-gray-900'
+                        }`}
+                      >
                         Dashboard
                       </h1>
                       <p className="text-sm text-gray-600 mt-1 whitespace-nowrap">
@@ -1891,17 +1964,23 @@ const StudentDashboard = () => {
                   }`}
                 >
                   <div className="flex items-start gap-3">
-                    <div className={`p-2 rounded-lg ${
-                      activeView === 'analytics' ? 'bg-blue-600' : 'bg-gray-100'
-                    }`}>
-                      <ChartBarIcon className={`w-6 h-6 ${
-                        activeView === 'analytics' ? 'text-white' : 'text-gray-600'
-                      }`} />
+                    <div
+                      className={`p-2 rounded-lg ${
+                        activeView === 'analytics' ? 'bg-blue-600' : 'bg-gray-100'
+                      }`}
+                    >
+                      <ChartBarIcon
+                        className={`w-6 h-6 ${
+                          activeView === 'analytics' ? 'text-white' : 'text-gray-600'
+                        }`}
+                      />
                     </div>
                     <div className="flex-1">
-                      <h1 className={`font-bold text-lg ${
-                        activeView === 'analytics' ? 'text-blue-600' : 'text-gray-900'
-                      }`}>
+                      <h1
+                        className={`font-bold text-lg ${
+                          activeView === 'analytics' ? 'text-blue-600' : 'text-gray-900'
+                        }`}
+                      >
                         Analytics
                       </h1>
                       <p className="text-sm text-gray-600 mt-1 whitespace-nowrap">
@@ -1927,14 +2006,19 @@ const StudentDashboard = () => {
                 transition={{
                   delay: 0.3,
                   duration: 0.8,
-                  ease: "easeInOut",
+                  ease: 'easeInOut',
                 }}
                 className="bg-gradient-to-br from-slate-900 to-slate-900  bg-clip-text text-center text-xl font-bold tracking-tight text-transparent md:text-xl"
               >
-                Welcome to your profile dashboard, {(() => {
-                  const firstName = studentData?.profile?.firstName || studentData?.rawData?.firstName || (userEmail ? userEmail.split('@')[0] : "Student");
+                Welcome to your profile dashboard,{' '}
+                {(() => {
+                  const firstName =
+                    studentData?.profile?.firstName ||
+                    studentData?.rawData?.firstName ||
+                    (userEmail ? userEmail.split('@')[0] : 'Student');
                   return firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
-                })()}!
+                })()}
+                !
               </motion.h1>
             </LampContainer>
 
@@ -1988,204 +2072,195 @@ const StudentDashboard = () => {
               transition={{
                 delay: 0.3,
                 duration: 0.8,
-                ease: "easeInOut",
+                ease: 'easeInOut',
               }}
               className="-mt-48 relative z-50"
             >
               {render3x3Grid()}
             </motion.div>
-            
+
             {/* Separate Section: Achievement Timeline */}
             <div className="grid grid-cols-1 gap-6">
               {/* Suggested Steps - Commented Out */}
               {false && (
-              <div className="lg:col-span-1 lg:sticky lg:top-16 lg:self-start">
-                <Card
-                  ref={suggestedNextStepsRef}
-                  className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
-                  data-testid="suggested-next-steps-card"
-                >
-                  <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
-                    <div className="flex items-center w-full justify-between">
-                      <CardTitle className="flex items-center gap-3 m-0 p-0">
-                        <div className="p-2 rounded-lg bg-blue-600">
-                          <Lightbulb className="w-6 h-6 text-white" />
-                        </div>
-                        <span className="text-lg font-bold text-gray-800">Suggested Steps</span>
-                      </CardTitle>
-                      <button
-                        className="p-2 rounded-md hover:bg-blue-100 transition-colors"
-                        title="View All Suggested Steps"
-                        onClick={() => navigate("/student/suggested-steps")}
-                      >
-                        <Eye className="w-5 h-5 text-blue-600" />
-                      </button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-8">
-                    <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
-                    {matchingLoading ? (
-                      <div className="flex items-center justify-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
-                        <p className="ml-3 text-sm text-gray-500">
-                          Finding best job matches for you...
-                        </p>
+                <div className="lg:col-span-1 lg:sticky lg:top-16 lg:self-start">
+                  <Card
+                    ref={suggestedNextStepsRef}
+                    className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
+                    data-testid="suggested-next-steps-card"
+                  >
+                    <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
+                      <div className="flex items-center w-full justify-between">
+                        <CardTitle className="flex items-center gap-3 m-0 p-0">
+                          <div className="p-2 rounded-lg bg-blue-600">
+                            <Lightbulb className="w-6 h-6 text-white" />
+                          </div>
+                          <span className="text-lg font-bold text-gray-800">Suggested Steps</span>
+                        </CardTitle>
+                        <button
+                          className="p-2 rounded-md hover:bg-blue-100 transition-colors"
+                          title="View All Suggested Steps"
+                          onClick={() => navigate('/student/suggested-steps')}
+                        >
+                          <Eye className="w-5 h-5 text-blue-600" />
+                        </button>
                       </div>
-                    ) : matchingError ? (
-                      <div className="p-4 rounded-lg bg-red-50 border border-red-200">
-                        <p className="text-sm text-red-700">
-                          ⚠️ {matchingError}
-                        </p>
-                      </div>
-                    ) : matchedJobs.length > 0 ? (
-                      <>
-                        {matchedJobs.slice(0, 4).map((match, idx) => (
-                          <div
-                            key={match.job_id || `job-match-${idx}`}
-                            className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer group"
-                            data-testid={`matched-job-${idx}`}
-                            onClick={() => {
-                              // Navigate to opportunities page or show details
-                              if (match.opportunity?.application_link) {
-                                window.open(
-                                  match.opportunity.application_link,
-                                  "_blank"
-                                );
-                              }
-                            }}
-                          >
-                            {/* Match Score Badge */}
-                            <div className="flex items-start justify-between mb-2">
-                              <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0 text-xs font-semibold">
-                                {match.match_score}% Match
-                              </Badge>
-                              <ExternalLink className="w-4 h-4 text-amber-600 opacity-0 group-hover:opacity-100 transition-opacity" />
-                            </div>
+                    </CardHeader>
+                    <CardContent className="p-8">
+                      <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
+                        {matchingLoading ? (
+                          <div className="flex items-center justify-center py-8">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
+                            <p className="ml-3 text-sm text-gray-500">
+                              Finding best job matches for you...
+                            </p>
+                          </div>
+                        ) : matchingError ? (
+                          <div className="p-4 rounded-lg bg-red-50 border border-red-200">
+                            <p className="text-sm text-red-700">⚠️ {matchingError}</p>
+                          </div>
+                        ) : matchedJobs.length > 0 ? (
+                          <>
+                            {matchedJobs.slice(0, 4).map((match, idx) => (
+                              <div
+                                key={match.job_id || `job-match-${idx}`}
+                                className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer group"
+                                data-testid={`matched-job-${idx}`}
+                                onClick={() => {
+                                  // Navigate to opportunities page or show details
+                                  if (match.opportunity?.application_link) {
+                                    window.open(match.opportunity.application_link, '_blank');
+                                  }
+                                }}
+                              >
+                                {/* Match Score Badge */}
+                                <div className="flex items-start justify-between mb-2">
+                                  <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0 text-xs font-semibold">
+                                    {match.match_score}% Match
+                                  </Badge>
+                                  <ExternalLink className="w-4 h-4 text-amber-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </div>
 
-                            {/* Job Title & Company */}
-                            <div className="mb-3">
-                              <h4 className="text-base font-bold text-gray-900 mb-1 group-hover:text-amber-700 transition-colors">
-                                {match.job_title ||
-                                  match.opportunity?.job_title}
-                              </h4>
-                              <div className="flex items-center gap-2 text-sm text-gray-600">
-                                <Building2 className="w-4 h-4" />
-                                <span className="font-medium">
-                                  {match.company_name ||
-                                    match.opportunity?.company_name}
-                                </span>
-                              </div>
+                                {/* Job Title & Company */}
+                                <div className="mb-3">
+                                  <h4 className="text-base font-bold text-gray-900 mb-1 group-hover:text-amber-700 transition-colors">
+                                    {match.job_title || match.opportunity?.job_title}
+                                  </h4>
+                                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                                    <Building2 className="w-4 h-4" />
+                                    <span className="font-medium">
+                                      {match.company_name || match.opportunity?.company_name}
+                                    </span>
+                                  </div>
 
-                              {/* Job Details */}
-                              {match.opportunity && (
-                                <div className="flex flex-wrap items-center gap-3 mb-3 text-xs text-gray-600">
-                                  {match.opportunity.employment_type && (
-                                    <div className="flex items-center gap-1">
-                                      <Briefcase className="w-3.5 h-3.5" />
-                                      <span>
-                                        {match.opportunity.employment_type}
-                                      </span>
+                                  {/* Job Details */}
+                                  {match.opportunity && (
+                                    <div className="flex flex-wrap items-center gap-3 mb-3 text-xs text-gray-600">
+                                      {match.opportunity.employment_type && (
+                                        <div className="flex items-center gap-1">
+                                          <Briefcase className="w-3.5 h-3.5" />
+                                          <span>{match.opportunity.employment_type}</span>
+                                        </div>
+                                      )}
+                                      {match.opportunity.location && (
+                                        <div className="flex items-center gap-1">
+                                          <MapPin className="w-3.5 h-3.5" />
+                                          <span>{match.opportunity.location}</span>
+                                        </div>
+                                      )}
+                                      {match.opportunity.deadline && (
+                                        <div className="flex items-center gap-1 text-orange-600">
+                                          <Clock className="w-3.5 h-3.5" />
+                                          <span>
+                                            Deadline:{' '}
+                                            {new Date(
+                                              match.opportunity.deadline
+                                            ).toLocaleDateString()}
+                                          </span>
+                                        </div>
+                                      )}
                                     </div>
                                   )}
-                                  {match.opportunity.location && (
-                                    <div className="flex items-center gap-1">
-                                      <MapPin className="w-3.5 h-3.5" />
-                                      <span>{match.opportunity.location}</span>
-                                    </div>
-                                  )}
-                                  {match.opportunity.deadline && (
-                                    <div className="flex items-center gap-1 text-orange-600">
-                                      <Clock className="w-3.5 h-3.5" />
-                                      <span>
-                                        Deadline:{" "}
-                                        {new Date(
-                                          match.opportunity.deadline
-                                        ).toLocaleDateString()}
+
+                                  {/* Match Reason */}
+                                  <div className="mb-3 p-3 bg-white/60 rounded-lg border border-amber-100">
+                                    <p className="text-xs text-gray-700 leading-relaxed">
+                                      <span className="font-semibold text-amber-700">
+                                        Why this matches:{' '}
                                       </span>
+                                      {match.match_reason}
+                                    </p>
+                                  </div>
+
+                                  {/* Key Matching Skills */}
+                                  {match.key_matching_skills &&
+                                    match.key_matching_skills.length > 0 && (
+                                      <div className="flex flex-wrap gap-1.5 mb-3">
+                                        {match.key_matching_skills
+                                          .slice(0, 4)
+                                          .map((skill, skillIdx) => (
+                                            <Badge
+                                              key={skillIdx}
+                                              variant="secondary"
+                                              className="text-xs bg-white/80 text-gray-700 border border-amber-200"
+                                            >
+                                              {skill}
+                                            </Badge>
+                                          ))}
+                                      </div>
+                                    )}
+
+                                  {/* Recommendation */}
+                                  {match.recommendation && (
+                                    <div className="pt-3 border-t border-amber-200/50">
+                                      <p className="text-xs text-gray-600 italic">
+                                        💡 {match.recommendation}
+                                      </p>
                                     </div>
                                   )}
                                 </div>
-                              )}
+                              </div>
+                            ))}
 
-                              {/* Match Reason */}
-                              <div className="mb-3 p-3 bg-white/60 rounded-lg border border-amber-100">
-                                <p className="text-xs text-gray-700 leading-relaxed">
-                                  <span className="font-semibold text-amber-700">
-                                    Why this matches:{" "}
-                                  </span>
-                                  {match.match_reason}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={refreshMatches}
+                              className="w-full mt-2 text-blue-600 border-blue-300 hover:bg-blue-50"
+                              data-testid="refresh-matches-button"
+                            >
+                              <Sparkles className="w-4 h-4 mr-2" />
+                              Refresh Job Matches
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            {suggestions.map((suggestion, idx) => (
+                              <div
+                                key={suggestion.id || `suggestion-${idx}`}
+                                className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:border-blue-300 transition-all"
+                              >
+                                <p className="text-sm font-medium text-gray-900">
+                                  {typeof suggestion === 'string'
+                                    ? suggestion
+                                    : suggestion.message || suggestion}
                                 </p>
                               </div>
-
-                              {/* Key Matching Skills */}
-                              {match.key_matching_skills &&
-                                match.key_matching_skills.length > 0 && (
-                                  <div className="flex flex-wrap gap-1.5 mb-3">
-                                    {match.key_matching_skills
-                                      .slice(0, 4)
-                                      .map((skill, skillIdx) => (
-                                        <Badge
-                                          key={skillIdx}
-                                          variant="secondary"
-                                          className="text-xs bg-white/80 text-gray-700 border border-amber-200"
-                                        >
-                                          {skill}
-                                        </Badge>
-                                      ))}
-                                  </div>
-                                )}
-
-                              {/* Recommendation */}
-                              {match.recommendation && (
-                                <div className="pt-3 border-t border-amber-200/50">
-                                  <p className="text-xs text-gray-600 italic">
-                                    💡 {match.recommendation}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={refreshMatches}
-                          className="w-full mt-2 text-blue-600 border-blue-300 hover:bg-blue-50"
-                          data-testid="refresh-matches-button"
-                        >
-                          <Sparkles className="w-4 h-4 mr-2" />
-                          Refresh Job Matches
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        {suggestions.map((suggestion, idx) => (
-                          <div
-                            key={suggestion.id || `suggestion-${idx}`}
-                            className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:border-blue-300 transition-all"
-                          >
-                            <p className="text-sm font-medium text-gray-900">
-                              {typeof suggestion === "string"
-                                ? suggestion
-                                : suggestion.message || suggestion}
-                            </p>
-                          </div>
-                        ))}
-                        {!matchingLoading && (
-                          <div className="text-center py-4">
-                            <p className="text-sm text-gray-500">
-                              No job matches found at the moment. Complete your
-                              profile to get better matches!
-                            </p>
-                          </div>
+                            ))}
+                            {!matchingLoading && (
+                              <div className="text-center py-4">
+                                <p className="text-sm text-gray-500">
+                                  No job matches found at the moment. Complete your profile to get
+                                  better matches!
+                                </p>
+                              </div>
+                            )}
+                          </>
                         )}
-                      </>
-                    )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
               )}
 
               {/* Achievement Timeline - 1 column */}
@@ -2198,68 +2273,68 @@ const StudentDashboard = () => {
       </div>
 
       {/* Modals for editing sections */}
-      {activeModal === "education" && (
+      {activeModal === 'education' && (
         <EducationEditModal
           isOpen
           onClose={() => setActiveModal(null)}
           data={userData.education}
-          onSave={(data) => handleSave("education", data)}
+          onSave={(data) => handleSave('education', data)}
         />
       )}
 
-      {activeModal === "training" && (
+      {activeModal === 'training' && (
         <TrainingEditModal
           isOpen
           onClose={() => setActiveModal(null)}
           data={userData.training}
-          onSave={(data) => handleSave("training", data)}
+          onSave={(data) => handleSave('training', data)}
         />
       )}
 
-      {activeModal === "experience" && (
+      {activeModal === 'experience' && (
         <ExperienceEditModal
           isOpen
           onClose={() => setActiveModal(null)}
           data={userData.experience}
-          onSave={(data) => handleSave("experience", data)}
+          onSave={(data) => handleSave('experience', data)}
         />
       )}
 
-      {activeModal === "softSkills" && (
+      {activeModal === 'softSkills' && (
         <SkillsEditModal
           isOpen
           onClose={() => setActiveModal(null)}
           data={userData.softSkills}
-          onSave={(data) => handleSave("softSkills", data)}
+          onSave={(data) => handleSave('softSkills', data)}
           title="Soft Skills"
         />
       )}
 
-      {activeModal === "technicalSkills" && (
+      {activeModal === 'technicalSkills' && (
         <SkillsEditModal
           isOpen
           onClose={() => setActiveModal(null)}
           data={userData.technicalSkills}
-          onSave={(data) => handleSave("technicalSkills", data)}
+          onSave={(data) => handleSave('technicalSkills', data)}
           title="Technical Skills"
         />
       )}
 
-      {activeModal === "projects" && (
+      {activeModal === 'projects' && (
         <ProjectsEditModal
           isOpen
           onClose={() => setActiveModal(null)}
           data={userData.projects}
-          onSave={(data) => handleSave("projects", data)}
+          onSave={(data) => handleSave('projects', data)}
         />
       )}
 
-      {activeModal === "certificates" && (
+      {activeModal === 'certificates' && (
         <CertificatesEditModal
           isOpen
           onClose={() => setActiveModal(null)}
           data={userData.certificates}
-          onSave={(data) => handleSave("certificates", data)}
+          onSave={(data) => handleSave('certificates', data)}
         />
       )}
     </div>

@@ -16,7 +16,7 @@ export class SchoolAdminNotificationService {
     try {
       const { data, error } = await supabase.rpc('get_school_admin_notifications', {
         admin_school_id: schoolId,
-        unread_only: options.unreadOnly || false
+        unread_only: options.unreadOnly || false,
       });
 
       if (error) {
@@ -40,7 +40,7 @@ export class SchoolAdminNotificationService {
     try {
       const { data, error } = await supabase.rpc('get_unread_notification_count', {
         admin_school_id: schoolId,
-        admin_type: 'school_admin'
+        admin_type: 'school_admin',
       });
 
       if (error) {
@@ -63,11 +63,12 @@ export class SchoolAdminNotificationService {
   static async getPendingTrainings(schoolId) {
     try {
       console.log('🏫 Fetching trainings for school admin using approval_authority:', schoolId);
-      
+
       // First try: Get trainings where approval_authority = 'school_admin'
       const { data, error } = await supabase
         .from('trainings')
-        .select(`
+        .select(
+          `
           *,
           student:students!trainings_student_id_fkey (
             id,
@@ -77,7 +78,8 @@ export class SchoolAdminNotificationService {
             school_id,
             university_college_id
           )
-        `)
+        `
+        )
         .eq('approval_status', 'pending')
         .eq('approval_authority', 'school_admin')
         .order('created_at', { ascending: false });
@@ -88,20 +90,26 @@ export class SchoolAdminNotificationService {
       }
 
       // Filter by school_id to ensure security
-      const filteredTrainings = (data || []).filter(training => {
+      const filteredTrainings = (data || []).filter((training) => {
         const studentSchoolId = training.student?.school_id;
         return studentSchoolId === schoolId;
       });
 
-      console.log('📊 Found trainings with approval_authority=school_admin:', filteredTrainings.length);
+      console.log(
+        '📊 Found trainings with approval_authority=school_admin:',
+        filteredTrainings.length
+      );
 
       // FALLBACK: If no trainings found, check for Rareminds trainings that should be school_admin
       if (filteredTrainings.length === 0) {
-        console.log('🔄 No trainings found with approval_authority=school_admin, checking fallback...');
-        
+        console.log(
+          '🔄 No trainings found with approval_authority=school_admin, checking fallback...'
+        );
+
         const { data: fallbackData, error: fallbackError } = await supabase
           .from('trainings')
-          .select(`
+          .select(
+            `
             *,
             student:students!trainings_student_id_fkey (
               id,
@@ -111,7 +119,8 @@ export class SchoolAdminNotificationService {
               school_id,
               university_college_id
             )
-          `)
+          `
+          )
           .eq('approval_status', 'pending')
           .order('created_at', { ascending: false });
 
@@ -121,31 +130,33 @@ export class SchoolAdminNotificationService {
         }
 
         // Manual filtering for Rareminds trainings from school students
-        const fallbackTrainings = (fallbackData || []).filter(training => {
+        const fallbackTrainings = (fallbackData || []).filter((training) => {
           const provider = (training.organization || '').toLowerCase();
           const studentSchoolId = training.student?.school_id;
           const studentType = training.student?.student_type;
-          
+
           // Show Rareminds trainings from non-college students in this school
-          return provider === 'rareminds' && 
-                 studentSchoolId === schoolId && 
-                 studentType !== 'college_student';
+          return (
+            provider === 'rareminds' &&
+            studentSchoolId === schoolId &&
+            studentType !== 'college_student'
+          );
         });
 
         console.log('📊 Found trainings via fallback logic:', fallbackTrainings.length);
-        
+
         if (fallbackTrainings.length > 0) {
           console.log('⚠️ IMPORTANT: These trainings should have approval_authority=school_admin');
           console.log('💡 Run the SQL fix to update approval_authority for existing records');
-          
+
           // Format fallback trainings
-          const formattedFallback = fallbackTrainings.map(training => ({
+          const formattedFallback = fallbackTrainings.map((training) => ({
             ...training,
             student_name: training.student?.name || 'Unknown Student',
             student_email: training.student?.email || 'No email',
             student_school_id: training.student?.school_id,
             student_college_id: training.student?.university_college_id,
-            _needsApprovalAuthorityFix: true // Flag for debugging
+            _needsApprovalAuthorityFix: true, // Flag for debugging
           }));
 
           return formattedFallback;
@@ -153,12 +164,12 @@ export class SchoolAdminNotificationService {
       }
 
       // Format for UI
-      const formattedTrainings = filteredTrainings.map(training => ({
+      const formattedTrainings = filteredTrainings.map((training) => ({
         ...training,
         student_name: training.student?.name || 'Unknown Student',
         student_email: training.student?.email || 'No email',
         student_school_id: training.student?.school_id,
-        student_college_id: training.student?.university_college_id
+        student_college_id: training.student?.university_college_id,
       }));
 
       console.log('✅ Final trainings for school admin:', formattedTrainings.length);
@@ -178,11 +189,12 @@ export class SchoolAdminNotificationService {
   static async getPendingExperiences(schoolId) {
     try {
       console.log('🏫 Fetching experiences for school admin using approval_authority:', schoolId);
-      
+
       // Get experiences where approval_authority = 'school_admin' and student belongs to this school
       const { data, error } = await supabase
         .from('experience')
-        .select(`
+        .select(
+          `
           *,
           student:students!experience_student_id_fkey (
             id,
@@ -192,7 +204,8 @@ export class SchoolAdminNotificationService {
             school_id,
             university_college_id
           )
-        `)
+        `
+        )
         .eq('approval_status', 'pending')
         .eq('approval_authority', 'school_admin')
         .order('created_at', { ascending: false });
@@ -203,19 +216,19 @@ export class SchoolAdminNotificationService {
       }
 
       // Filter by school_id to ensure security
-      const filteredExperiences = (data || []).filter(experience => {
+      const filteredExperiences = (data || []).filter((experience) => {
         const studentSchoolId = experience.student?.school_id;
         return studentSchoolId === schoolId;
       });
 
       // Format for UI
-      const formattedExperiences = filteredExperiences.map(experience => ({
+      const formattedExperiences = filteredExperiences.map((experience) => ({
         ...experience,
         student_name: experience.student?.name || 'Unknown Student',
         student_email: experience.student?.email || 'No email',
         student_school_id: experience.student?.school_id,
         student_college_id: experience.student?.university_college_id,
-        student_type: experience.student?.student_type
+        student_type: experience.student?.student_type,
       }));
 
       console.log('✅ Found experiences for school admin:', formattedExperiences.length);
@@ -235,7 +248,7 @@ export class SchoolAdminNotificationService {
   static async markAsRead(notificationId) {
     try {
       const { data, error } = await supabase.rpc('mark_notification_read', {
-        notification_id: notificationId
+        notification_id: notificationId,
       });
 
       if (error) {
@@ -267,7 +280,7 @@ export class SchoolAdminNotificationService {
           approved_by: approverId,
           approved_at: new Date().toISOString(),
           approval_notes: notes,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', trainingId)
         .eq('approval_status', 'pending')
@@ -286,7 +299,7 @@ export class SchoolAdminNotificationService {
       return {
         success: true,
         message: 'Training approved successfully',
-        training_id: trainingId
+        training_id: trainingId,
       };
     } catch (error) {
       console.error('Error approving training:', error);
@@ -315,7 +328,7 @@ export class SchoolAdminNotificationService {
           rejected_by: rejectorId,
           rejected_at: new Date().toISOString(),
           approval_notes: notes,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', trainingId)
         .eq('approval_status', 'pending')
@@ -335,7 +348,7 @@ export class SchoolAdminNotificationService {
         success: true,
         message: 'Training rejected successfully',
         training_id: trainingId,
-        reason: notes
+        reason: notes,
       };
     } catch (error) {
       console.error('Error rejecting training:', error);
@@ -361,7 +374,7 @@ export class SchoolAdminNotificationService {
           approved_by: approverId,
           approved_at: new Date().toISOString(),
           approval_notes: notes,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', experienceId)
         .eq('approval_status', 'pending')
@@ -380,7 +393,7 @@ export class SchoolAdminNotificationService {
       return {
         success: true,
         message: 'Experience approved successfully',
-        experience_id: experienceId
+        experience_id: experienceId,
       };
     } catch (error) {
       console.error('Error approving experience:', error);
@@ -400,7 +413,7 @@ export class SchoolAdminNotificationService {
       const { data, error } = await supabase.rpc('reject_experience', {
         experience_id: experienceId,
         rejector_id: rejectorId,
-        notes: notes
+        notes: notes,
       });
 
       if (error) {
@@ -410,7 +423,7 @@ export class SchoolAdminNotificationService {
 
       // The function returns a JSON object, data should contain the result
       const result = data;
-      
+
       if (!result || !result.success) {
         const errorMessage = result?.error || 'Unknown error occurred';
         console.error('Experience rejection failed:', errorMessage);
@@ -432,11 +445,12 @@ export class SchoolAdminNotificationService {
   static async getPendingProjects(schoolId) {
     try {
       console.log('🏫 Fetching projects for school admin using approval_authority:', schoolId);
-      
+
       // First try: Get projects where approval_authority = 'school_admin'
       const { data, error } = await supabase
         .from('projects')
-        .select(`
+        .select(
+          `
           *,
           student:students!projects_student_id_fkey (
             id,
@@ -446,7 +460,8 @@ export class SchoolAdminNotificationService {
             school_id,
             university_college_id
           )
-        `)
+        `
+        )
         .eq('approval_status', 'pending')
         .eq('approval_authority', 'school_admin')
         .order('created_at', { ascending: false });
@@ -457,20 +472,26 @@ export class SchoolAdminNotificationService {
       }
 
       // Filter by school_id to ensure security
-      const filteredProjects = (data || []).filter(project => {
+      const filteredProjects = (data || []).filter((project) => {
         const studentSchoolId = project.student?.school_id;
         return studentSchoolId === schoolId;
       });
 
-      console.log('📊 Found projects with approval_authority=school_admin:', filteredProjects.length);
+      console.log(
+        '📊 Found projects with approval_authority=school_admin:',
+        filteredProjects.length
+      );
 
       // FALLBACK: If no projects found, check for projects that should be school_admin
       if (filteredProjects.length === 0) {
-        console.log('🔄 No projects found with approval_authority=school_admin, checking fallback...');
-        
+        console.log(
+          '🔄 No projects found with approval_authority=school_admin, checking fallback...'
+        );
+
         const { data: fallbackData, error: fallbackError } = await supabase
           .from('projects')
-          .select(`
+          .select(
+            `
             *,
             student:students!projects_student_id_fkey (
               id,
@@ -480,7 +501,8 @@ export class SchoolAdminNotificationService {
               school_id,
               university_college_id
             )
-          `)
+          `
+          )
           .eq('approval_status', 'pending')
           .order('created_at', { ascending: false });
 
@@ -490,29 +512,28 @@ export class SchoolAdminNotificationService {
         }
 
         // Manual filtering for projects from school students
-        const fallbackProjects = (fallbackData || []).filter(project => {
+        const fallbackProjects = (fallbackData || []).filter((project) => {
           const studentSchoolId = project.student?.school_id;
           const studentType = project.student?.student_type;
-          
+
           // Show projects from non-college students in this school
-          return studentSchoolId === schoolId && 
-                 studentType !== 'college_student';
+          return studentSchoolId === schoolId && studentType !== 'college_student';
         });
 
         console.log('📊 Found projects via fallback logic:', fallbackProjects.length);
-        
+
         if (fallbackProjects.length > 0) {
           console.log('⚠️ IMPORTANT: These projects should have approval_authority=school_admin');
           console.log('💡 Run the SQL fix to update approval_authority for existing records');
-          
+
           // Format fallback projects
-          const formattedFallback = fallbackProjects.map(project => ({
+          const formattedFallback = fallbackProjects.map((project) => ({
             ...project,
             student_name: project.student?.name || 'Unknown Student',
             student_email: project.student?.email || 'No email',
             student_school_id: project.student?.school_id,
             student_college_id: project.student?.university_college_id,
-            _needsApprovalAuthorityFix: true // Flag for debugging
+            _needsApprovalAuthorityFix: true, // Flag for debugging
           }));
 
           return formattedFallback;
@@ -520,12 +541,12 @@ export class SchoolAdminNotificationService {
       }
 
       // Format for UI
-      const formattedProjects = filteredProjects.map(project => ({
+      const formattedProjects = filteredProjects.map((project) => ({
         ...project,
         student_name: project.student?.name || 'Unknown Student',
         student_email: project.student?.email || 'No email',
         student_school_id: project.student?.school_id,
-        student_college_id: project.student?.university_college_id
+        student_college_id: project.student?.university_college_id,
       }));
 
       console.log('✅ Final projects for school admin:', formattedProjects.length);
@@ -554,7 +575,7 @@ export class SchoolAdminNotificationService {
           approved_by: approverId,
           approved_at: new Date().toISOString(),
           approval_notes: notes,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', projectId)
         .eq('approval_status', 'pending')
@@ -573,7 +594,7 @@ export class SchoolAdminNotificationService {
       return {
         success: true,
         message: 'Project approved successfully',
-        project_id: projectId
+        project_id: projectId,
       };
     } catch (error) {
       console.error('Error approving project:', error);
@@ -602,7 +623,7 @@ export class SchoolAdminNotificationService {
           rejected_by: rejectorId,
           rejected_at: new Date().toISOString(),
           approval_notes: notes,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', projectId)
         .eq('approval_status', 'pending')
@@ -622,7 +643,7 @@ export class SchoolAdminNotificationService {
         success: true,
         message: 'Project rejected successfully',
         project_id: projectId,
-        reason: notes
+        reason: notes,
       };
     } catch (error) {
       console.error('Error rejecting project:', error);
@@ -639,18 +660,26 @@ export class SchoolAdminNotificationService {
   static subscribeToNotifications(schoolId, callback) {
     const subscription = supabase
       .channel('unified_notifications')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'training_notifications',
-        filter: `school_id=eq.${schoolId}`
-      }, (payload) => {
-        const notificationType = payload.new.training_id ? 'training' : 
-                               payload.new.experience_id ? 'experience' : 
-                               payload.new.project_id ? 'project' : 'unknown';
-        console.log(`🔔 New ${notificationType} notification received:`, payload.new);
-        callback(payload.new);
-      })
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'training_notifications',
+          filter: `school_id=eq.${schoolId}`,
+        },
+        (payload) => {
+          const notificationType = payload.new.training_id
+            ? 'training'
+            : payload.new.experience_id
+              ? 'experience'
+              : payload.new.project_id
+                ? 'project'
+                : 'unknown';
+          console.log(`🔔 New ${notificationType} notification received:`, payload.new);
+          callback(payload.new);
+        }
+      )
       .subscribe();
 
     return subscription;

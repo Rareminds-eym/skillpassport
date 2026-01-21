@@ -1,11 +1,11 @@
 import {
-    ChevronDownIcon,
-    ClipboardDocumentListIcon,
-    EyeIcon,
-    FunnelIcon,
-    SparklesIcon,
-    Squares2X2Icon,
-    TableCellsIcon
+  ChevronDownIcon,
+  ClipboardDocumentListIcon,
+  EyeIcon,
+  FunnelIcon,
+  SparklesIcon,
+  Squares2X2Icon,
+  TableCellsIcon,
 } from '@heroicons/react/24/outline';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -45,9 +45,7 @@ const FilterSection = ({ title, children, defaultOpen = false }: any) => {
         className="flex items-center justify-between w-full text-left"
       >
         <span className="text-sm font-medium text-gray-900">{title}</span>
-        <ChevronDownIcon
-          className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-        />
+        <ChevronDownIcon className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {isOpen && <div className="mt-3">{children}</div>}
     </div>
@@ -94,9 +92,7 @@ const ScoreBadge = ({ score, label }: { score: number | null; label: string }) =
 
   return (
     <div className="flex flex-col items-center">
-      <span
-        className={`px-2 py-1 rounded-full text-xs font-semibold ${getScoreColor(score)}`}
-      >
+      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getScoreColor(score)}`}>
         {score !== null ? `${score}%` : 'N/A'}
       </span>
       <span className="text-xs text-gray-500 mt-1">{label}</span>
@@ -128,15 +124,8 @@ const ReadinessBadge = ({ readiness }: { readiness: string | null }) => {
   );
 };
 
-
 // Assessment Card Component
-const AssessmentCard = ({
-  result,
-  onView,
-}: {
-  result: AssessmentResult;
-  onView: () => void;
-}) => {
+const AssessmentCard = ({ result, onView }: { result: AssessmentResult; onView: () => void }) => {
   return (
     <div
       className="bg-white border border-gray-200 rounded-lg p-5 hover:shadow-md transition-all duration-200 cursor-pointer group"
@@ -228,7 +217,6 @@ const AssessmentCard = ({
   );
 };
 
-
 /* OLD Detail Modal Component - Commented out, replaced with AssessmentReportDrawer
 const AssessmentDetailModal = ({
   result,
@@ -276,7 +264,6 @@ const AssessmentDetailModal = ({
   );
 };
 END OF OLD Detail Modal Component */
-
 
 // Main Component
 const CollegeAdminAssessmentResults: React.FC = () => {
@@ -336,7 +323,7 @@ const CollegeAdminAssessmentResults: React.FC = () => {
       }
 
       const collegeId = org.id;
-      
+
       // Set college name from the already fetched organization data
       setCollegeName(org.name);
 
@@ -356,7 +343,7 @@ const CollegeAdminAssessmentResults: React.FC = () => {
 
       // Filter out students with null user_id to avoid UUID parsing errors
       const validStudents = studentsData.filter((s) => s.user_id != null);
-      
+
       if (validStudents.length === 0) {
         setResults([]);
         setLoading(false);
@@ -369,7 +356,8 @@ const CollegeAdminAssessmentResults: React.FC = () => {
       // Fetch assessment results for these students
       const { data, error: fetchError } = await supabase
         .from('personal_assessment_results')
-        .select(`
+        .select(
+          `
           id,
           student_id,
           stream_id,
@@ -382,7 +370,8 @@ const CollegeAdminAssessmentResults: React.FC = () => {
           career_fit,
           skill_gap,
           gemini_results
-        `)
+        `
+        )
         .in('student_id', studentIds)
         .order('created_at', { ascending: false });
 
@@ -490,17 +479,13 @@ const CollegeAdminAssessmentResults: React.FC = () => {
 
     // Status filter
     if (filters.statuses.length > 0) {
-      filtered = filtered.filter(
-        (r) => r.status && filters.statuses.includes(r.status)
-      );
+      filtered = filtered.filter((r) => r.status && filters.statuses.includes(r.status));
     }
 
     // Readiness filter
     if (filters.readiness.length > 0) {
       filtered = filtered.filter(
-        (r) =>
-          r.employability_readiness &&
-          filters.readiness.includes(r.employability_readiness)
+        (r) => r.employability_readiness && filters.readiness.includes(r.employability_readiness)
       );
     }
 
@@ -508,25 +493,16 @@ const CollegeAdminAssessmentResults: React.FC = () => {
     const sorted = [...filtered];
     switch (sortBy) {
       case 'date':
-        sorted.sort(
-          (a, b) =>
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
+        sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         break;
       case 'name':
-        sorted.sort((a, b) =>
-          (a.student_name || '').localeCompare(b.student_name || '')
-        );
+        sorted.sort((a, b) => (a.student_name || '').localeCompare(b.student_name || ''));
         break;
       case 'aptitude':
-        sorted.sort(
-          (a, b) => (b.aptitude_overall || 0) - (a.aptitude_overall || 0)
-        );
+        sorted.sort((a, b) => (b.aptitude_overall || 0) - (a.aptitude_overall || 0));
         break;
       case 'knowledge':
-        sorted.sort(
-          (a, b) => (b.knowledge_score || 0) - (a.knowledge_score || 0)
-        );
+        sorted.sort((a, b) => (b.knowledge_score || 0) - (a.knowledge_score || 0));
         break;
       default:
         break;
@@ -563,16 +539,12 @@ const CollegeAdminAssessmentResults: React.FC = () => {
     const avgAptitude =
       results.length > 0
         ? Math.round(
-            results.reduce((sum, r) => sum + (r.aptitude_overall || 0), 0) /
-              results.length
+            results.reduce((sum, r) => sum + (r.aptitude_overall || 0), 0) / results.length
           )
         : 0;
     const avgKnowledge =
       results.length > 0
-        ? Math.round(
-            results.reduce((sum, r) => sum + (r.knowledge_score || 0), 0) /
-              results.length
-          )
+        ? Math.round(results.reduce((sum, r) => sum + (r.knowledge_score || 0), 0) / results.length)
         : 0;
     return { total: results.length, completed, avgAptitude, avgKnowledge };
   }, [results]);
@@ -594,9 +566,7 @@ const CollegeAdminAssessmentResults: React.FC = () => {
       <div className="p-6 bg-white border-b border-gray-200">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Student Assessment Results
-            </h1>
+            <h1 className="text-2xl font-bold text-gray-900">Student Assessment Results</h1>
             <p className="text-sm text-gray-600 mt-1">
               View personal assessment results for {collegeName || 'your college'}
             </p>
@@ -702,9 +672,7 @@ const CollegeAdminAssessmentResults: React.FC = () => {
                 <CheckboxGroup
                   options={streamOptions}
                   selectedValues={filters.streams}
-                  onChange={(values: string[]) =>
-                    setFilters({ ...filters, streams: values })
-                  }
+                  onChange={(values: string[]) => setFilters({ ...filters, streams: values })}
                 />
               </FilterSection>
 
@@ -712,9 +680,7 @@ const CollegeAdminAssessmentResults: React.FC = () => {
                 <CheckboxGroup
                   options={statusOptions}
                   selectedValues={filters.statuses}
-                  onChange={(values: string[]) =>
-                    setFilters({ ...filters, statuses: values })
-                  }
+                  onChange={(values: string[]) => setFilters({ ...filters, statuses: values })}
                 />
               </FilterSection>
 
@@ -722,9 +688,7 @@ const CollegeAdminAssessmentResults: React.FC = () => {
                 <CheckboxGroup
                   options={readinessOptions}
                   selectedValues={filters.readiness}
-                  onChange={(values: string[]) =>
-                    setFilters({ ...filters, readiness: values })
-                  }
+                  onChange={(values: string[]) => setFilters({ ...filters, readiness: values })}
                 />
               </FilterSection>
             </div>
@@ -760,8 +724,7 @@ const CollegeAdminAssessmentResults: React.FC = () => {
           ) : (
             <>
               <div className="mb-4 text-sm text-gray-600">
-                Showing {startIndex + 1}-
-                {Math.min(endIndex, filteredResults.length)} of{' '}
+                Showing {startIndex + 1}-{Math.min(endIndex, filteredResults.length)} of{' '}
                 {filteredResults.length} results
               </div>
 
@@ -813,17 +776,14 @@ const CollegeAdminAssessmentResults: React.FC = () => {
                             <div className="flex items-center">
                               <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
                                 <span className="text-white font-semibold text-sm">
-                                  {result.student_name?.charAt(0)?.toUpperCase() ||
-                                    '?'}
+                                  {result.student_name?.charAt(0)?.toUpperCase() || '?'}
                                 </span>
                               </div>
                               <div className="ml-4">
                                 <div className="text-sm font-medium text-gray-900">
                                   {result.student_name || 'Unknown'}
                                 </div>
-                                <div className="text-sm text-gray-500">
-                                  {result.student_email}
-                                </div>
+                                <div className="text-sm text-gray-500">{result.student_email}</div>
                               </div>
                             </div>
                           </td>
@@ -836,19 +796,13 @@ const CollegeAdminAssessmentResults: React.FC = () => {
                             {result.riasec_code || '-'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            {result.aptitude_overall !== null
-                              ? `${result.aptitude_overall}%`
-                              : '-'}
+                            {result.aptitude_overall !== null ? `${result.aptitude_overall}%` : '-'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            {result.knowledge_score !== null
-                              ? `${result.knowledge_score}%`
-                              : '-'}
+                            {result.knowledge_score !== null ? `${result.knowledge_score}%` : '-'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <ReadinessBadge
-                              readiness={result.employability_readiness}
-                            />
+                            <ReadinessBadge readiness={result.employability_readiness} />
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {new Date(result.created_at).toLocaleDateString()}
@@ -882,9 +836,7 @@ const CollegeAdminAssessmentResults: React.FC = () => {
                     Page {currentPage} of {totalPages}
                   </span>
                   <button
-                    onClick={() =>
-                      setCurrentPage((p) => Math.min(totalPages, p + 1))
-                    }
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages}
                     className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50"
                   >
@@ -911,14 +863,18 @@ const CollegeAdminAssessmentResults: React.FC = () => {
 
       {/* NEW: Assessment Report Drawer - Uses the same design as student assessment result page */}
       <AssessmentReportDrawer
-        student={selectedResult ? {
-          id: selectedResult.student_id,
-          user_id: selectedResult.student_id,
-          name: selectedResult.student_name,
-          email: selectedResult.student_email,
-          college: selectedResult.college_name,
-          college_name: selectedResult.college_name,
-        } : null}
+        student={
+          selectedResult
+            ? {
+                id: selectedResult.student_id,
+                user_id: selectedResult.student_id,
+                name: selectedResult.student_name,
+                email: selectedResult.student_email,
+                college: selectedResult.college_name,
+                college_name: selectedResult.college_name,
+              }
+            : null
+        }
         assessmentResult={selectedResult}
         isOpen={showDetailModal}
         onClose={() => {

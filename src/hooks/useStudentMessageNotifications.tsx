@@ -26,7 +26,7 @@ export const useStudentMessageNotifications = ({
   enabled = true,
   playSound = true,
   onMessageReceived,
-  excludeConversationId = null
+  excludeConversationId = null,
 }: UseStudentMessageNotificationsProps) => {
   const { incrementUnreadCount, addMessage } = useMessageStore();
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -44,7 +44,8 @@ export const useStudentMessageNotifications = ({
     const enableAudio = () => {
       if (audioRef.current) {
         // Play and immediately pause to prime the audio
-        audioRef.current.play()
+        audioRef.current
+          .play()
           .then(() => {
             audioRef.current?.pause();
             audioRef.current!.currentTime = 0;
@@ -80,7 +81,7 @@ export const useStudentMessageNotifications = ({
           event: 'INSERT',
           schema: 'public',
           table: 'messages',
-          filter: `receiver_id=eq.${studentId}`
+          filter: `receiver_id=eq.${studentId}`,
         },
         (payload) => {
           const message = payload.new as Message;
@@ -97,7 +98,7 @@ export const useStudentMessageNotifications = ({
 
           // Increment unread count in store
           incrementUnreadCount();
-          
+
           // Add message to store
           addMessage(message);
 
@@ -115,7 +116,15 @@ export const useStudentMessageNotifications = ({
     return () => {
       channel.unsubscribe();
     };
-  }, [studentId, enabled, onMessageReceived, excludeConversationId, playSound, incrementUnreadCount, addMessage]);
+  }, [
+    studentId,
+    enabled,
+    onMessageReceived,
+    excludeConversationId,
+    playSound,
+    incrementUnreadCount,
+    addMessage,
+  ]);
 };
 
 /**
@@ -124,7 +133,7 @@ export const useStudentMessageNotifications = ({
 const showMessageToast = (message: Message, audio: HTMLAudioElement | null) => {
   const senderType = message.sender_type === 'recruiter' ? 'Recruiter' : 'Student';
   const senderIcon = message.sender_type === 'recruiter' ? Briefcase : User;
-  
+
   toast.custom(
     (t) => (
       <div
@@ -132,10 +141,8 @@ const showMessageToast = (message: Message, audio: HTMLAudioElement | null) => {
           t.visible ? 'animate-enter' : 'animate-leave'
         } max-w-md w-full bg-white shadow-xl rounded-xl pointer-events-auto flex ring-1 ring-black ring-opacity-5 transform transition-all duration-300 hover:scale-105`}
         style={{
-          animation: t.visible 
-            ? 'slideInRight 0.3s ease-out' 
-            : 'slideOutRight 0.3s ease-in',
-          zIndex: 9999
+          animation: t.visible ? 'slideInRight 0.3s ease-out' : 'slideOutRight 0.3s ease-in',
+          zIndex: 9999,
         }}
       >
         <div className="flex-1 w-0 p-4">
@@ -146,30 +153,26 @@ const showMessageToast = (message: Message, audio: HTMLAudioElement | null) => {
                 <MessageSquare className="w-6 h-6 text-white" />
               </div>
             </div>
-            
+
             {/* Content */}
             <div className="ml-3 flex-1">
               <div className="flex items-center gap-2">
-                {React.createElement(senderIcon, { 
-                  className: "w-4 h-4 text-gray-500" 
+                {React.createElement(senderIcon, {
+                  className: 'w-4 h-4 text-gray-500',
                 })}
-                <p className="text-sm font-semibold text-gray-900">
-                  New Message from {senderType}
-                </p>
+                <p className="text-sm font-semibold text-gray-900">New Message from {senderType}</p>
               </div>
-              
+
               <p className="mt-1 text-sm text-gray-600 line-clamp-2 leading-relaxed">
                 {message.message_text}
               </p>
-              
+
               {/* Timestamp */}
-              <p className="mt-1 text-xs text-gray-400">
-                Just now
-              </p>
+              <p className="mt-1 text-xs text-gray-400">Just now</p>
             </div>
           </div>
         </div>
-        
+
         {/* Close button */}
         <div className="flex border-l border-gray-100">
           <button
@@ -238,4 +241,3 @@ if (typeof document !== 'undefined' && !document.getElementById('message-toast-s
 }
 
 export default useStudentMessageNotifications;
-

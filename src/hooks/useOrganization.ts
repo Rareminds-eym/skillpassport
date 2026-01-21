@@ -1,6 +1,6 @@
 /**
  * useOrganization Hook
- * 
+ *
  * A React hook for fetching and managing organization data.
  * Uses the centralized organizationService for all queries.
  */
@@ -9,12 +9,12 @@ import { useCallback, useEffect, useState } from 'react';
 // @ts-ignore - AuthContext is a JS file
 import { useAuth } from '../context/AuthContext';
 import {
-    getOrganizationByAdminId,
-    getOrganizationById,
-    getOrganizations,
-    Organization,
-    OrganizationFilters,
-    OrganizationType,
+  getOrganizationByAdminId,
+  getOrganizationById,
+  getOrganizations,
+  Organization,
+  OrganizationFilters,
+  OrganizationType,
 } from '../services/organizationService';
 
 interface UseOrganizationResult {
@@ -34,9 +34,7 @@ interface UseOrganizationsResult {
 /**
  * Hook to get the current user's organization
  */
-export function useCurrentOrganization(
-  organizationType?: OrganizationType
-): UseOrganizationResult {
+export function useCurrentOrganization(organizationType?: OrganizationType): UseOrganizationResult {
   const { user } = useAuth();
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
@@ -52,10 +50,7 @@ export function useCurrentOrganization(
     setLoading(true);
     setError(null);
 
-    const { data, error: fetchError } = await getOrganizationByAdminId(
-      user.id,
-      organizationType
-    );
+    const { data, error: fetchError } = await getOrganizationByAdminId(user.id, organizationType);
 
     if (fetchError) {
       setError(fetchError);
@@ -126,9 +121,7 @@ export function useOrganizationById(
 /**
  * Hook to get a list of organizations with filters
  */
-export function useOrganizations(
-  filters?: OrganizationFilters
-): UseOrganizationsResult {
+export function useOrganizations(filters?: OrganizationFilters): UseOrganizationsResult {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

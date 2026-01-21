@@ -45,13 +45,13 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     } else {
       root.classList.remove('dark');
     }
-    
+
     // Save theme preference
     localStorage.setItem('theme', theme);
   }, [theme]);
 
   const toggleTheme = () => {
-    setThemeState(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
+    setThemeState((prevTheme) => (prevTheme === 'light' ? 'dark' : 'light'));
   };
 
   const setTheme = (newTheme: Theme) => {

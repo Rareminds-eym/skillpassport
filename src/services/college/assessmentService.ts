@@ -15,8 +15,15 @@ export const assessmentService = {
     try {
       // Validate mandatory fields
       const requiredFields = [
-        'type', 'academic_year', 'department_id', 'program_id', 
-        'semester', 'course_id', 'duration_minutes', 'total_marks', 'pass_marks'
+        'type',
+        'academic_year',
+        'department_id',
+        'program_id',
+        'semester',
+        'course_id',
+        'duration_minutes',
+        'total_marks',
+        'pass_marks',
       ];
 
       for (const field of requiredFields) {
@@ -55,7 +62,10 @@ export const assessmentService = {
   /**
    * Update assessment
    */
-  async updateAssessment(id: string, updates: Partial<Assessment>): Promise<ApiResponse<Assessment>> {
+  async updateAssessment(
+    id: string,
+    updates: Partial<Assessment>
+  ): Promise<ApiResponse<Assessment>> {
     try {
       const { data, error } = await supabase
         .from('assessments')
@@ -212,7 +222,7 @@ export const timetableService = {
           const start2 = new Date(`${slot2.exam_date}T${slot2.start_time}`);
           const end2 = new Date(`${slot2.exam_date}T${slot2.end_time}`);
 
-          const hasTimeOverlap = (start1 < end2 && end1 > start2);
+          const hasTimeOverlap = start1 < end2 && end1 > start2;
 
           if (!hasTimeOverlap) continue;
 
@@ -227,7 +237,11 @@ export const timetableService = {
           }
 
           // Check batch conflict
-          if (slot1.batch_section && slot2.batch_section && slot1.batch_section === slot2.batch_section) {
+          if (
+            slot1.batch_section &&
+            slot2.batch_section &&
+            slot1.batch_section === slot2.batch_section
+          ) {
             conflicts.push({
               type: 'student_batch',
               slot1,
@@ -237,7 +251,7 @@ export const timetableService = {
           }
 
           // Check faculty conflict
-          const commonInvigilators = slot1.invigilators?.filter(inv => 
+          const commonInvigilators = slot1.invigilators?.filter((inv) =>
             slot2.invigilators?.includes(inv)
           );
           if (commonInvigilators && commonInvigilators.length > 0) {

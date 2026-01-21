@@ -1,13 +1,13 @@
 import { motion } from 'framer-motion';
 import {
-    Activity,
-    Award,
-    ChevronLeft,
-    Clock,
-    Download,
-    Search,
-    TrendingUp,
-    Users
+  Activity,
+  Award,
+  ChevronLeft,
+  Clock,
+  Download,
+  Search,
+  TrendingUp,
+  Users,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -60,7 +60,7 @@ const CourseAnalytics = () => {
   };
 
   // Filter enrollments
-  const filteredEnrollments = enrollments.filter(enrollment => {
+  const filteredEnrollments = enrollments.filter((enrollment) => {
     const matchesSearch =
       enrollment.student_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       enrollment.student_email?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -73,17 +73,20 @@ const CourseAnalytics = () => {
   // Calculate statistics
   const stats = {
     total: enrollments.length,
-    active: enrollments.filter(e => e.status === 'active').length,
-    completed: enrollments.filter(e => e.status === 'completed').length,
-    averageProgress: enrollments.length > 0
-      ? Math.round(enrollments.reduce((acc, e) => acc + (e.progress || 0), 0) / enrollments.length)
-      : 0,
-    recentEnrollments: enrollments.filter(e => {
+    active: enrollments.filter((e) => e.status === 'active').length,
+    completed: enrollments.filter((e) => e.status === 'completed').length,
+    averageProgress:
+      enrollments.length > 0
+        ? Math.round(
+            enrollments.reduce((acc, e) => acc + (e.progress || 0), 0) / enrollments.length
+          )
+        : 0,
+    recentEnrollments: enrollments.filter((e) => {
       const enrollDate = new Date(e.enrolled_at);
       const weekAgo = new Date();
       weekAgo.setDate(weekAgo.getDate() - 7);
       return enrollDate >= weekAgo;
-    }).length
+    }).length,
   };
 
   const getStatusColor = (status) => {
@@ -111,7 +114,7 @@ const CourseAnalytics = () => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
-      day: 'numeric'
+      day: 'numeric',
     });
   };
 
@@ -122,22 +125,29 @@ const CourseAnalytics = () => {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
     });
   };
 
   const exportToCSV = () => {
-    const headers = ['Student Name', 'Email', 'Enrolled Date', 'Progress %', 'Status', 'Last Accessed'];
-    const rows = filteredEnrollments.map(e => [
+    const headers = [
+      'Student Name',
+      'Email',
+      'Enrolled Date',
+      'Progress %',
+      'Status',
+      'Last Accessed',
+    ];
+    const rows = filteredEnrollments.map((e) => [
       e.student_name,
       e.student_email,
       formatDate(e.enrolled_at),
       e.progress,
       e.status,
-      formatDateTime(e.last_accessed)
+      formatDateTime(e.last_accessed),
     ]);
 
-    const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+    const csv = [headers, ...rows].map((row) => row.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -176,9 +186,7 @@ const CourseAnalytics = () => {
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
                 {course?.title || 'Course'} Analytics
               </h1>
-              <p className="text-gray-600">
-                Track student enrollments and progress
-              </p>
+              <p className="text-gray-600">Track student enrollments and progress</p>
             </div>
             <Badge className="bg-indigo-100 text-indigo-700 border-indigo-200">
               {course?.code}
@@ -318,13 +326,27 @@ const CourseAnalytics = () => {
                 <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Student</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Email</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Enrolled</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Progress</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Last Accessed</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Completed</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
+                        Student
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
+                        Email
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
+                        Enrolled
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
+                        Progress
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
+                        Status
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
+                        Last Accessed
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
+                        Completed
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
@@ -341,11 +363,17 @@ const CourseAnalytics = () => {
                             <div className="w-8 h-8 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center text-white font-semibold text-sm">
                               {enrollment.student_name?.charAt(0).toUpperCase() || 'S'}
                             </div>
-                            <span className="font-medium text-gray-900">{enrollment.student_name || 'Unknown'}</span>
+                            <span className="font-medium text-gray-900">
+                              {enrollment.student_name || 'Unknown'}
+                            </span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{enrollment.student_email}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{formatDate(enrollment.enrolled_at)}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          {enrollment.student_email}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          {formatDate(enrollment.enrolled_at)}
+                        </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
                             <div className="flex-1 max-w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -354,18 +382,25 @@ const CourseAnalytics = () => {
                                 style={{ width: `${enrollment.progress}%` }}
                               />
                             </div>
-                            <span className="text-sm font-medium text-gray-700">{enrollment.progress}%</span>
+                            <span className="text-sm font-medium text-gray-700">
+                              {enrollment.progress}%
+                            </span>
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <Badge className={`${getStatusColor(enrollment.status)} border capitalize`}>
+                          <Badge
+                            className={`${getStatusColor(enrollment.status)} border capitalize`}
+                          >
                             {enrollment.status}
                           </Badge>
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{formatDateTime(enrollment.last_accessed)}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          {formatDateTime(enrollment.last_accessed)}
+                        </td>
                         <td className="px-4 py-3">
                           <div className="text-sm text-gray-600">
-                            {enrollment.completed_lessons?.length || 0} / {enrollment.total_lessons || 0}
+                            {enrollment.completed_lessons?.length || 0} /{' '}
+                            {enrollment.total_lessons || 0}
                           </div>
                         </td>
                       </motion.tr>

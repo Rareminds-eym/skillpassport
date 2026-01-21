@@ -9,7 +9,7 @@ interface UseRealtimePresenceProps {
 
 /**
  * Hook for tracking online/offline users using Supabase Presence
- * 
+ *
  * @example
  * ```tsx
  * const { onlineUsers, isUserOnline, updateStatus } = useRealtimePresence({
@@ -27,14 +27,13 @@ interface UseRealtimePresenceProps {
 export const useRealtimePresence = ({
   channelName,
   userPresence,
-  enabled = true
+  enabled = true,
 }: UseRealtimePresenceProps) => {
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
     if (!enabled || !channelName || !userPresence.userId) return;
-
 
     let channel: any;
 
@@ -47,7 +46,7 @@ export const useRealtimePresence = ({
           (user) => {
             setOnlineUsers((prev) => {
               // Avoid duplicates
-              if (prev.some(u => u.userId === user.userId)) {
+              if (prev.some((u) => u.userId === user.userId)) {
                 return prev;
               }
               return [...prev, user];
@@ -55,7 +54,7 @@ export const useRealtimePresence = ({
           },
           // On user leave
           (user) => {
-            setOnlineUsers((prev) => prev.filter(u => u.userId !== user.userId));
+            setOnlineUsers((prev) => prev.filter((u) => u.userId !== user.userId));
           },
           // On sync
           (users) => {
@@ -84,11 +83,7 @@ export const useRealtimePresence = ({
   const updateStatus = useCallback(
     async (status: 'online' | 'away' | 'busy') => {
       try {
-        await RealtimeService.updatePresenceStatus(
-          channelName,
-          userPresence.userId,
-          status
-        );
+        await RealtimeService.updatePresenceStatus(channelName, userPresence.userId, status);
       } catch (error) {
         console.error('❌ Error updating status:', error);
       }
@@ -101,7 +96,7 @@ export const useRealtimePresence = ({
    */
   const isUserOnline = useCallback(
     (userId: string): boolean => {
-      return onlineUsers.some(user => user.userId === userId && user.status === 'online');
+      return onlineUsers.some((user) => user.userId === userId && user.status === 'online');
     },
     [onlineUsers]
   );
@@ -111,7 +106,7 @@ export const useRealtimePresence = ({
    */
   const getUserStatus = useCallback(
     (userId: string): 'online' | 'away' | 'busy' | 'offline' => {
-      const user = onlineUsers.find(u => u.userId === userId);
+      const user = onlineUsers.find((u) => u.userId === userId);
       return user?.status || 'offline';
     },
     [onlineUsers]
@@ -123,7 +118,7 @@ export const useRealtimePresence = ({
     updateStatus,
     isUserOnline,
     getUserStatus,
-    onlineCount: onlineUsers.length
+    onlineCount: onlineUsers.length,
   };
 };
 

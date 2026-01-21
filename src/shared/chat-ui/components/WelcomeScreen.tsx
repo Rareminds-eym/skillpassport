@@ -17,7 +17,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ config, onQuickAct
     >
       {/* Header */}
       <div className="text-center mb-12">
-        <motion.h1 
+        <motion.h1
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
@@ -25,7 +25,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ config, onQuickAct
         >
           {config.title}
         </motion.h1>
-        <motion.p 
+        <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
@@ -36,7 +36,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ config, onQuickAct
       </div>
 
       {/* Quick Action Cards */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.3 }}
@@ -44,7 +44,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ config, onQuickAct
       >
         {config.quickActions.map((action, index) => {
           const IconComponent = action.icon as any;
-          
+
           return (
             <motion.button
               key={action.id}

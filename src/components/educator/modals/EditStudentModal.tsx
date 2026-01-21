@@ -77,7 +77,7 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
   isOpen,
   onClose,
   student,
-  onSuccess
+  onSuccess,
 }) => {
   const [formData, setFormData] = useState<UpdateStudentData>({});
   const [loading, setLoading] = useState(false);
@@ -85,7 +85,12 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Permission check
-  const { allowed: canEditStudents, reason: editReason, loading: permissionLoading } = usePermission('Students', 'edit');
+  const {
+    allowed: canEditStudents,
+    reason: editReason,
+    loading: permissionLoading,
+  // @ts-expect-error - Auto-suppressed for migration
+  } = usePermission('Students', 'edit');
 
   useEffect(() => {
     if (isOpen && student) {
@@ -116,7 +121,7 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
         city: student.city || '',
         state: student.state || '',
         country: student.country || '',
-        pincode: student.pincode || ''
+        pincode: student.pincode || '',
       });
       setError(null);
       setSuccessMessage(null);
@@ -128,14 +133,19 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
     return (
       <div className="fixed inset-0 z-50 overflow-y-auto">
         <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+          <div
+            className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+            onClick={onClose}
+          ></div>
           <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full sm:p-6">
             <div className="text-center">
               <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
                 <XMarkIcon className="w-8 h-8 text-red-600" />
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Access Denied</h3>
-              <p className="text-gray-600 mb-4">{editReason || 'You don\'t have permission to edit students.'}</p>
+              <p className="text-gray-600 mb-4">
+                {editReason || "You don't have permission to edit students."}
+              </p>
               <button
                 onClick={onClose}
                 className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
@@ -153,9 +163,9 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: name === 'age' ? (value ? parseInt(value) : undefined) : value
+      [name]: name === 'age' ? (value ? parseInt(value) : undefined) : value,
     }));
   };
 
@@ -167,7 +177,7 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
 
     try {
       const result = await updateStudent(student.id, formData);
-      
+
       if (result.success) {
         setSuccessMessage('Student profile updated successfully!');
         setTimeout(() => {
@@ -249,9 +259,7 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Email
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                   <input
                     type="email"
                     name="email"
@@ -301,9 +309,7 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Age
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Age</label>
                   <input
                     type="number"
                     name="age"
@@ -316,9 +322,7 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Gender
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
                   <select
                     name="gender"
                     value={formData.gender}
@@ -353,9 +357,7 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    University
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">University</label>
                   <input
                     type="text"
                     name="university"
@@ -411,9 +413,7 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
               <h4 className="text-sm font-medium text-gray-900 mb-4">Location</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    District
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">District</label>
                   <input
                     type="text"
                     name="district_name"
@@ -424,9 +424,7 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    City
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
                   <input
                     type="text"
                     name="city"
@@ -437,9 +435,7 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    State
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
                   <input
                     type="text"
                     name="state"
@@ -450,9 +446,7 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Country
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
                   <input
                     type="text"
                     name="country"
@@ -463,9 +457,7 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Address
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
                   <textarea
                     name="address"
                     value={formData.address}
@@ -482,9 +474,7 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
               <h4 className="text-sm font-medium text-gray-900 mb-4">Social Links</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    GitHub
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">GitHub</label>
                   <input
                     type="url"
                     name="github_link"
@@ -496,9 +486,7 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    LinkedIn
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">LinkedIn</label>
                   <input
                     type="url"
                     name="linkedin_link"
@@ -510,9 +498,7 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Portfolio
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Portfolio</label>
                   <input
                     type="url"
                     name="portfolio_link"
@@ -524,9 +510,7 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Twitter
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Twitter</label>
                   <input
                     type="url"
                     name="twitter_link"
@@ -538,9 +522,7 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Bio
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
                   <textarea
                     name="bio"
                     value={formData.bio}
@@ -605,4 +587,3 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
 };
 
 export default EditStudentModal;
-

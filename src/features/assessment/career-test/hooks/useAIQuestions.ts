@@ -1,13 +1,13 @@
 /**
  * useAIQuestions Hook
- * 
+ *
  * Loads AI-generated questions for aptitude and knowledge sections.
- * 
+ *
  * Grade Level Behavior:
  * - after10: Loads ONLY aptitude questions (stream-agnostic, no knowledge)
  * - after12, college, higher_secondary: Loads BOTH aptitude AND knowledge questions
  * - middle, highschool: Does not load AI questions (uses hardcoded questions)
- * 
+ *
  * @module features/assessment/career-test/hooks/useAIQuestions
  */
 
@@ -71,7 +71,7 @@ const normalizeAIQuestion = (q: any): AIQuestion => {
     ...q,
     text: q.question || q.text,
     correct: q.correct_answer || q.correct,
-    options: normalizedOptions || []
+    options: normalizedOptions || [],
   };
 };
 
@@ -82,11 +82,11 @@ export const useAIQuestions = ({
   gradeLevel,
   studentStream,
   studentId,
-  attemptId
+  attemptId,
 }: UseAIQuestionsOptions): UseAIQuestionsResult => {
   const [aiQuestions, setAiQuestions] = useState<AIQuestionsState>({
     aptitude: null,
-    knowledge: null
+    knowledge: null,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -95,7 +95,7 @@ export const useAIQuestions = ({
     aptitudeProgress: 0,
     knowledgeProgress: 0,
     estimatedTimeRemaining: 0,
-    message: ''
+    message: '',
   });
 
   // Use ref to track loading state synchronously to prevent race conditions
@@ -113,7 +113,7 @@ export const useAIQuestions = ({
         aptitudeProgress: 0,
         knowledgeProgress: 0,
         estimatedTimeRemaining: 0,
-        message: ''
+        message: '',
       });
     };
   }, []);
@@ -126,7 +126,8 @@ export const useAIQuestions = ({
     }
 
     // Only load for grade levels that use AI questions (stream-based assessments)
-    const usesAI = gradeLevel && ['higher_secondary', 'after10', 'after12', 'college'].includes(gradeLevel);
+    const usesAI =
+      gradeLevel && ['higher_secondary', 'after10', 'after12', 'college'].includes(gradeLevel);
 
     // For after10, we use 'general' stream if no specific stream is set
     const effectiveStream = studentStream || (gradeLevel === 'after10' ? 'general' : null);
@@ -136,7 +137,7 @@ export const useAIQuestions = ({
       studentStream,
       effectiveStream,
       usesAI,
-      willLoad: usesAI && !!effectiveStream
+      willLoad: usesAI && !!effectiveStream,
     });
 
     if (!usesAI || !effectiveStream) {
@@ -145,7 +146,7 @@ export const useAIQuestions = ({
         effectiveStream,
         gradeLevel,
         studentStream,
-        reason: !usesAI ? 'Grade level does not use AI' : 'No stream selected yet'
+        reason: !usesAI ? 'Grade level does not use AI' : 'No stream selected yet',
       });
       return;
     }
@@ -170,12 +171,12 @@ export const useAIQuestions = ({
         aptitudeProgress: 0,
         knowledgeProgress: 0,
         estimatedTimeRemaining: TOTAL_TIME,
-        message: 'Generating aptitude questions...'
+        message: 'Generating aptitude questions...',
       });
 
       // Simulate progress updates for aptitude (every 500ms)
       const aptitudeProgressInterval = setInterval(() => {
-        setProgress(prev => {
+        setProgress((prev) => {
           if (prev.stage !== 'aptitude') return prev;
           const elapsed = (Date.now() - startTime) / 1000;
           const aptitudeProgress = Math.min(95, (elapsed / TYPICAL_APTITUDE_TIME) * 100);
@@ -184,7 +185,7 @@ export const useAIQuestions = ({
             ...prev,
             aptitudeProgress,
             estimatedTimeRemaining: Math.ceil(remaining),
-            message: `Generating aptitude questions... ${Math.round(aptitudeProgress)}%`
+            message: `Generating aptitude questions... ${Math.round(aptitudeProgress)}%`,
           };
         });
       }, 500);
@@ -206,12 +207,12 @@ export const useAIQuestions = ({
         aptitudeProgress: 100,
         knowledgeProgress: 0,
         estimatedTimeRemaining: TYPICAL_KNOWLEDGE_TIME,
-        message: 'Generating knowledge questions...'
+        message: 'Generating knowledge questions...',
       });
 
       // Simulate progress updates for knowledge (every 500ms)
       const knowledgeProgressInterval = setInterval(() => {
-        setProgress(prev => {
+        setProgress((prev) => {
           if (prev.stage !== 'knowledge') return prev;
           const elapsed = (Date.now() - aptitudeCompleteTime) / 1000;
           const knowledgeProgress = Math.min(95, (elapsed / TYPICAL_KNOWLEDGE_TIME) * 100);
@@ -220,13 +221,13 @@ export const useAIQuestions = ({
             ...prev,
             knowledgeProgress,
             estimatedTimeRemaining: Math.ceil(remaining),
-            message: `Generating knowledge questions... ${Math.round(knowledgeProgress)}%`
+            message: `Generating knowledge questions... ${Math.round(knowledgeProgress)}%`,
           };
         });
       }, 500);
 
       // Wait a bit to show knowledge progress (questions are already loaded)
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       // Clear knowledge progress interval
       clearInterval(knowledgeProgressInterval);
@@ -234,7 +235,7 @@ export const useAIQuestions = ({
       // Normalize questions to match UI format
       const normalizedQuestions: AIQuestionsState = {
         aptitude: questions.aptitude?.map(normalizeAIQuestion) || null,
-        knowledge: questions.knowledge?.map(normalizeAIQuestion) || null
+        knowledge: questions.knowledge?.map(normalizeAIQuestion) || null,
       };
 
       setAiQuestions(normalizedQuestions);
@@ -245,12 +246,12 @@ export const useAIQuestions = ({
         aptitudeProgress: 100,
         knowledgeProgress: 100,
         estimatedTimeRemaining: 0,
-        message: 'Questions loaded successfully!'
+        message: 'Questions loaded successfully!',
       });
 
       console.log('✅ AI questions loaded:', {
         aptitude: normalizedQuestions.aptitude?.length || 0,
-        knowledge: normalizedQuestions.knowledge?.length || 0
+        knowledge: normalizedQuestions.knowledge?.length || 0,
       });
     } catch (err) {
       console.warn('Failed to load AI questions:', err);
@@ -266,7 +267,8 @@ export const useAIQuestions = ({
         } else if (err.message.includes('rate limit')) {
           userMessage = 'Too many requests. Please wait a moment and try again.';
         } else if (err.message.includes('API')) {
-          userMessage = 'Question generation service is temporarily unavailable. Please try again later.';
+          userMessage =
+            'Question generation service is temporarily unavailable. Please try again later.';
         }
       }
 
@@ -278,7 +280,7 @@ export const useAIQuestions = ({
         aptitudeProgress: 0,
         knowledgeProgress: 0,
         estimatedTimeRemaining: 0,
-        message: ''
+        message: '',
       });
     } finally {
       // Set loading state to false when generation completes
@@ -296,7 +298,7 @@ export const useAIQuestions = ({
     loading,
     error,
     progress,
-    reload: loadQuestions
+    reload: loadQuestions,
   };
 };
 

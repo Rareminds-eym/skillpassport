@@ -14,18 +14,18 @@ export const TrendLineChart: React.FC<TrendLineChartProps> = ({
   labels = [],
   color = '#3B82F6',
   height = 200,
-  showDots = true
+  showDots = true,
 }) => {
   const [activePoint, setActivePoint] = React.useState<number | null>(null);
   const [clickedPoint, setClickedPoint] = React.useState<number | null>(null);
-  
+
   if (!data || data.length === 0) return null;
 
   const padding = { top: 20, right: 20, bottom: 35, left: 40 };
   const width = 800;
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
-  
+
   const max = Math.max(...data);
   const min = Math.min(...data);
   const range = max - min || 1;
@@ -39,18 +39,18 @@ export const TrendLineChart: React.FC<TrendLineChartProps> = ({
   // Create smooth curved path
   const createSmoothPath = (points: Array<{ x: number; y: number; value: number }>) => {
     if (points.length < 2) return '';
-    
+
     let path = `M ${points[0].x} ${points[0].y}`;
-    
+
     for (let i = 0; i < points.length - 1; i++) {
       const current = points[i];
       const next = points[i + 1];
       const controlPointX = (current.x + next.x) / 2;
-      
+
       path += ` Q ${controlPointX} ${current.y}, ${controlPointX} ${(current.y + next.y) / 2}`;
       path += ` Q ${controlPointX} ${next.y}, ${next.x} ${next.y}`;
     }
-    
+
     return path;
   };
 
@@ -61,7 +61,13 @@ export const TrendLineChart: React.FC<TrendLineChartProps> = ({
 
   return (
     <div className="w-full">
-      <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet" className="overflow-visible">
+      <svg
+        width="100%"
+        height={height}
+        viewBox={`0 0 ${width} ${height}`}
+        preserveAspectRatio="xMidYMid meet"
+        className="overflow-visible"
+      >
         {/* Gradient definitions */}
         <defs>
           {/* Area gradient */}
@@ -69,26 +75,26 @@ export const TrendLineChart: React.FC<TrendLineChartProps> = ({
             <stop offset="0%" stopColor={color} stopOpacity="0.2" />
             <stop offset="100%" stopColor={color} stopOpacity="0.02" />
           </linearGradient>
-          
+
           {/* Glow effect */}
           <filter id="glow">
-            <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+            <feGaussianBlur stdDeviation="2" result="coloredBlur" />
             <feMerge>
-              <feMergeNode in="coloredBlur"/>
-              <feMergeNode in="SourceGraphic"/>
+              <feMergeNode in="coloredBlur" />
+              <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
-          
+
           {/* Shadow for dots */}
           <filter id="dotShadow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="1.5"/>
-            <feOffset dx="0" dy="1" result="offsetblur"/>
+            <feGaussianBlur in="SourceAlpha" stdDeviation="1.5" />
+            <feOffset dx="0" dy="1" result="offsetblur" />
             <feComponentTransfer>
-              <feFuncA type="linear" slope="0.3"/>
+              <feFuncA type="linear" slope="0.3" />
             </feComponentTransfer>
             <feMerge>
-              <feMergeNode/>
-              <feMergeNode in="SourceGraphic"/>
+              <feMergeNode />
+              <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
         </defs>
@@ -115,7 +121,7 @@ export const TrendLineChart: React.FC<TrendLineChartProps> = ({
         {/* Y-axis labels */}
         {[0, 0.25, 0.5, 0.75, 1].map((ratio, idx) => {
           const y = padding.top + ratio * chartHeight;
-          const value = Math.round(max - (ratio * range));
+          const value = Math.round(max - ratio * range);
           return (
             <text
               key={`y-label-${idx}`}
@@ -135,131 +141,133 @@ export const TrendLineChart: React.FC<TrendLineChartProps> = ({
         <path d={areaD} fill="url(#modernAreaGradient)" />
 
         {/* Main line with glow effect */}
-        <path 
-          d={pathD} 
-          fill="none" 
-          stroke={color} 
-          strokeWidth="3" 
-          strokeLinecap="round" 
+        <path
+          d={pathD}
+          fill="none"
+          stroke={color}
+          strokeWidth="3"
+          strokeLinecap="round"
           strokeLinejoin="round"
           filter="url(#glow)"
         />
 
         {/* Data points with enhanced styling */}
-        {showDots && points.map((p, i) => {
-          const isActive = activePoint === i || clickedPoint === i;
-          return (
-            <g key={i} className="transition-all duration-200">
-              {/* Outer glow ring */}
-              <circle 
-                cx={p.x} 
-                cy={p.y} 
-                r={isActive ? "12" : "8"} 
-                fill={color} 
-                opacity={isActive ? "0.25" : "0.15"}
-                className="transition-all duration-200"
-              />
-              
-              {/* Interactive hit area */}
-              <circle 
-                cx={p.x} 
-                cy={p.y} 
-                r="15" 
-                fill="transparent"
-                className="cursor-pointer"
-                onMouseEnter={() => setActivePoint(i)}
-                onMouseLeave={() => setActivePoint(null)}
-                onClick={() => setClickedPoint(clickedPoint === i ? null : i)}
-              />
-              
-              {/* Main dot */}
-              <circle 
-                cx={p.x} 
-                cy={p.y} 
-                r={isActive ? "6" : "5"} 
-                fill="white" 
-                stroke={color} 
-                strokeWidth={isActive ? "3" : "2.5"}
-                filter="url(#dotShadow)"
-                className="pointer-events-none transition-all duration-200"
-              />
-              
-              {/* Inner dot */}
-              <circle 
-                cx={p.x} 
-                cy={p.y} 
-                r={isActive ? "3" : "2.5"} 
-                fill={color}
-                className="pointer-events-none transition-all duration-200"
-              />
-              
-              {/* Interactive tooltip */}
-              {isActive && (
-                <g className="animate-fadeIn">
-                  {/* Tooltip background */}
-                  <rect
-                    x={p.x - 40}
-                    y={p.y - 55}
-                    width="80"
-                    height="40"
-                    rx="6"
-                    fill="#1F2937"
-                    opacity="0.95"
-                    filter="url(#dotShadow)"
-                  />
-                  
-                  {/* Label */}
-                  {labels[i] && (
+        {showDots &&
+          points.map((p, i) => {
+            const isActive = activePoint === i || clickedPoint === i;
+            return (
+              <g key={i} className="transition-all duration-200">
+                {/* Outer glow ring */}
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={isActive ? '12' : '8'}
+                  fill={color}
+                  opacity={isActive ? '0.25' : '0.15'}
+                  className="transition-all duration-200"
+                />
+
+                {/* Interactive hit area */}
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r="15"
+                  fill="transparent"
+                  className="cursor-pointer"
+                  onMouseEnter={() => setActivePoint(i)}
+                  onMouseLeave={() => setActivePoint(null)}
+                  onClick={() => setClickedPoint(clickedPoint === i ? null : i)}
+                />
+
+                {/* Main dot */}
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={isActive ? '6' : '5'}
+                  fill="white"
+                  stroke={color}
+                  strokeWidth={isActive ? '3' : '2.5'}
+                  filter="url(#dotShadow)"
+                  className="pointer-events-none transition-all duration-200"
+                />
+
+                {/* Inner dot */}
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={isActive ? '3' : '2.5'}
+                  fill={color}
+                  className="pointer-events-none transition-all duration-200"
+                />
+
+                {/* Interactive tooltip */}
+                {isActive && (
+                  <g className="animate-fadeIn">
+                    {/* Tooltip background */}
+                    <rect
+                      x={p.x - 40}
+                      y={p.y - 55}
+                      width="80"
+                      height="40"
+                      rx="6"
+                      fill="#1F2937"
+                      opacity="0.95"
+                      filter="url(#dotShadow)"
+                    />
+
+                    {/* Label */}
+                    {labels[i] && (
+                      <text
+                        x={p.x}
+                        y={p.y - 38}
+                        textAnchor="middle"
+                        fontSize="10"
+                        fill="#9CA3AF"
+                        fontWeight="500"
+                      >
+                        {labels[i]}
+                      </text>
+                    )}
+
+                    {/* Value */}
                     <text
                       x={p.x}
-                      y={p.y - 38}
+                      y={p.y - 23}
                       textAnchor="middle"
-                      fontSize="10"
-                      fill="#9CA3AF"
-                      fontWeight="500"
+                      fontSize="14"
+                      fill="white"
+                      fontWeight="700"
                     >
-                      {labels[i]}
+                      {p.value}
                     </text>
-                  )}
-                  
-                  {/* Value */}
-                  <text
-                    x={p.x}
-                    y={p.y - 23}
-                    textAnchor="middle"
-                    fontSize="14"
-                    fill="white"
-                    fontWeight="700"
-                  >
-                    {p.value}
-                  </text>
-                  
-                  {/* Tooltip arrow */}
-                  <path
-                    d={`M ${p.x - 5} ${p.y - 15} L ${p.x} ${p.y - 10} L ${p.x + 5} ${p.y - 15}`}
-                    fill="#1F2937"
-                    opacity="0.95"
-                  />
-                </g>
-              )}
-            </g>
-          );
-        })}
+
+                    {/* Tooltip arrow */}
+                    <path
+                      d={`M ${p.x - 5} ${p.y - 15} L ${p.x} ${p.y - 10} L ${p.x + 5} ${p.y - 15}`}
+                      fill="#1F2937"
+                      opacity="0.95"
+                    />
+                  </g>
+                )}
+              </g>
+            );
+          })}
 
         {/* X-axis labels */}
-        {labels.length > 0 && labels.map((label, i) => (
-          <text
-            key={`x-label-${i}`}
-            x={points[i].x}
-            y={height - padding.bottom + 20}
-            textAnchor="middle"
-            fontSize="11"
-            fill="#6B7280"
-            fontWeight="500"
-          >
-            {label}
-          </text>
-        ))}
+        {labels.length > 0 &&
+          labels.map((label, i) => (
+            <text
+              key={`x-label-${i}`}
+              x={points[i].x}
+              y={height - padding.bottom + 20}
+              textAnchor="middle"
+              fontSize="11"
+              fill="#6B7280"
+              fontWeight="500"
+            >
+              {label}
+            </text>
+          ))}
       </svg>
     </div>
   );
@@ -277,18 +285,18 @@ export const AreaChart: React.FC<AreaChartProps> = ({
   data,
   labels = [],
   color = '#3B82F6',
-  height = 200
+  height = 200,
 }) => {
   const [activePoint, setActivePoint] = React.useState<number | null>(null);
   const [clickedPoint, setClickedPoint] = React.useState<number | null>(null);
-  
+
   if (!data || data.length === 0) return null;
 
   const padding = { top: 20, right: 20, bottom: 35, left: 40 };
   const width = 800;
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
-  
+
   const max = Math.max(...data);
   const min = Math.min(...data);
   const range = max - min || 1;
@@ -304,22 +312,28 @@ export const AreaChart: React.FC<AreaChartProps> = ({
 
   return (
     <div className="w-full">
-      <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet" className="overflow-visible">
+      <svg
+        width="100%"
+        height={height}
+        viewBox={`0 0 ${width} ${height}`}
+        preserveAspectRatio="xMidYMid meet"
+        className="overflow-visible"
+      >
         <defs>
           <linearGradient id="fullAreaGradient" x1="0" x2="0" y1="0" y2="1">
             <stop offset="0%" stopColor={color} stopOpacity="0.6" />
             <stop offset="100%" stopColor={color} stopOpacity="0.1" />
           </linearGradient>
-          
+
           <filter id="areaShadow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
-            <feOffset dx="0" dy="2" result="offsetblur"/>
+            <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
+            <feOffset dx="0" dy="2" result="offsetblur" />
             <feComponentTransfer>
-              <feFuncA type="linear" slope="0.2"/>
+              <feFuncA type="linear" slope="0.2" />
             </feComponentTransfer>
             <feMerge>
-              <feMergeNode/>
-              <feMergeNode in="SourceGraphic"/>
+              <feMergeNode />
+              <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
         </defs>
@@ -346,7 +360,7 @@ export const AreaChart: React.FC<AreaChartProps> = ({
         {/* Y-axis labels */}
         {[0, 0.25, 0.5, 0.75, 1].map((ratio, idx) => {
           const y = padding.top + ratio * chartHeight;
-          const value = Math.round(max - (ratio * range));
+          const value = Math.round(max - ratio * range);
           return (
             <text
               key={`y-${idx}`}
@@ -364,9 +378,16 @@ export const AreaChart: React.FC<AreaChartProps> = ({
 
         {/* Area fill */}
         <path d={areaD} fill="url(#fullAreaGradient)" filter="url(#areaShadow)" />
-        
+
         {/* Top border line */}
-        <path d={pathD} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        <path
+          d={pathD}
+          fill="none"
+          stroke={color}
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
 
         {/* Interactive data points */}
         {points.map((p, i) => {
@@ -374,17 +395,17 @@ export const AreaChart: React.FC<AreaChartProps> = ({
           return (
             <g key={`point-${i}`}>
               {/* Interactive hit area */}
-              <circle 
-                cx={p.x} 
-                cy={p.y} 
-                r="12" 
+              <circle
+                cx={p.x}
+                cy={p.y}
+                r="12"
                 fill="transparent"
                 className="cursor-pointer"
                 onMouseEnter={() => setActivePoint(i)}
                 onMouseLeave={() => setActivePoint(null)}
                 onClick={() => setClickedPoint(clickedPoint === i ? null : i)}
               />
-              
+
               {isActive && (
                 <>
                   {/* Vertical indicator line */}
@@ -398,11 +419,11 @@ export const AreaChart: React.FC<AreaChartProps> = ({
                     strokeDasharray="4 4"
                     opacity="0.5"
                   />
-                  
+
                   {/* Data point */}
                   <circle cx={p.x} cy={p.y} r="5" fill="white" stroke={color} strokeWidth="2.5" />
                   <circle cx={p.x} cy={p.y} r="2" fill={color} />
-                  
+
                   {/* Tooltip */}
                   <g>
                     <rect
@@ -450,19 +471,20 @@ export const AreaChart: React.FC<AreaChartProps> = ({
         })}
 
         {/* X-axis labels */}
-        {labels.length > 0 && labels.map((label, i) => (
-          <text
-            key={`x-${i}`}
-            x={points[i].x}
-            y={height - padding.bottom + 20}
-            textAnchor="middle"
-            fontSize="11"
-            fill="#6B7280"
-            fontWeight="500"
-          >
-            {label}
-          </text>
-        ))}
+        {labels.length > 0 &&
+          labels.map((label, i) => (
+            <text
+              key={`x-${i}`}
+              x={points[i].x}
+              y={height - padding.bottom + 20}
+              textAnchor="middle"
+              fontSize="11"
+              fill="#6B7280"
+              fontWeight="500"
+            >
+              {label}
+            </text>
+          ))}
       </svg>
     </div>
   );
@@ -480,43 +502,49 @@ export const ColumnChart: React.FC<ColumnChartProps> = ({
   data,
   labels = [],
   color = '#3B82F6',
-  height = 200
+  height = 200,
 }) => {
   const [activeBar, setActiveBar] = React.useState<number | null>(null);
   const [clickedBar, setClickedBar] = React.useState<number | null>(null);
-  
+
   if (!data || data.length === 0) return null;
 
   const padding = { top: 20, right: 20, bottom: 35, left: 40 };
   const width = 800;
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
-  
+
   const max = Math.max(...data);
   const min = 0; // Bar charts typically start from 0
   const range = max - min || 1;
-  
+
   const barWidth = chartWidth / (data.length * 1.5);
   const barSpacing = barWidth * 0.5;
 
   return (
     <div className="w-full">
-      <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet" className="overflow-visible">
+      <svg
+        width="100%"
+        height={height}
+        viewBox={`0 0 ${width} ${height}`}
+        preserveAspectRatio="xMidYMid meet"
+        className="overflow-visible"
+      >
         <defs>
           <linearGradient id="barGradient" x1="0" x2="0" y1="0" y2="1">
             <stop offset="0%" stopColor={color} stopOpacity="1" />
             <stop offset="100%" stopColor={color} stopOpacity="0.7" />
           </linearGradient>
-          
+
           <filter id="barShadow">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="1.5"/>
-            <feOffset dx="0" dy="1" result="offsetblur"/>
+            <feGaussianBlur in="SourceAlpha" stdDeviation="1.5" />
+            <feOffset dx="0" dy="1" result="offsetblur" />
             <feComponentTransfer>
-              <feFuncA type="linear" slope="0.3"/>
+              <feFuncA type="linear" slope="0.3" />
             </feComponentTransfer>
             <feMerge>
-              <feMergeNode/>
-              <feMergeNode in="SourceGraphic"/>
+              <feMergeNode />
+              <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
         </defs>
@@ -543,7 +571,7 @@ export const ColumnChart: React.FC<ColumnChartProps> = ({
         {/* Y-axis labels */}
         {[0, 0.25, 0.5, 0.75, 1].map((ratio, idx) => {
           const y = padding.top + ratio * chartHeight;
-          const value = Math.round(max - (ratio * range));
+          const value = Math.round(max - ratio * range);
           return (
             <text
               key={`y-${idx}`}
@@ -561,11 +589,11 @@ export const ColumnChart: React.FC<ColumnChartProps> = ({
 
         {/* Bars */}
         {data.map((value, index) => {
-          const x = padding.left + (index * (barWidth + barSpacing)) + barSpacing;
+          const x = padding.left + index * (barWidth + barSpacing) + barSpacing;
           const barHeight = ((value - min) / range) * chartHeight;
           const y = padding.top + chartHeight - barHeight;
           const isActive = activeBar === index || clickedBar === index;
-          
+
           return (
             <g key={index}>
               <rect
@@ -583,7 +611,7 @@ export const ColumnChart: React.FC<ColumnChartProps> = ({
                 onMouseLeave={() => setActiveBar(null)}
                 onClick={() => setClickedBar(clickedBar === index ? null : index)}
               />
-              
+
               {/* Value on top of bar */}
               <text
                 x={x + barWidth / 2}
@@ -596,7 +624,7 @@ export const ColumnChart: React.FC<ColumnChartProps> = ({
               >
                 {value}
               </text>
-              
+
               {/* Interactive tooltip */}
               {isActive && (
                 <g>
@@ -644,22 +672,23 @@ export const ColumnChart: React.FC<ColumnChartProps> = ({
         })}
 
         {/* X-axis labels */}
-        {labels.length > 0 && labels.map((label, i) => {
-          const x = padding.left + (i * (barWidth + barSpacing)) + barSpacing + barWidth / 2;
-          return (
-            <text
-              key={`x-${i}`}
-              x={x}
-              y={height - padding.bottom + 20}
-              textAnchor="middle"
-              fontSize="11"
-              fill="#6B7280"
-              fontWeight="500"
-            >
-              {label}
-            </text>
-          );
-        })}
+        {labels.length > 0 &&
+          labels.map((label, i) => {
+            const x = padding.left + i * (barWidth + barSpacing) + barSpacing + barWidth / 2;
+            return (
+              <text
+                key={`x-${i}`}
+                x={x}
+                y={height - padding.bottom + 20}
+                textAnchor="middle"
+                fontSize="11"
+                fill="#6B7280"
+                fontWeight="500"
+              >
+                {label}
+              </text>
+            );
+          })}
       </svg>
     </div>
   );
@@ -677,7 +706,7 @@ export const Sparkline: React.FC<SparklineProps> = ({
   data,
   color = '#3B82F6',
   width = 100,
-  height = 30
+  height = 30,
 }) => {
   if (!data || data.length === 0) return null;
 
@@ -685,20 +714,17 @@ export const Sparkline: React.FC<SparklineProps> = ({
   const min = Math.min(...data);
   const range = max - min || 1;
 
-  const points = data.map((value, index) => {
-    const x = (index * width) / (data.length - 1);
-    const y = height - ((value - min) / range) * height;
-    return `${x},${y}`;
-  }).join(' ');
+  const points = data
+    .map((value, index) => {
+      const x = (index * width) / (data.length - 1);
+      const y = height - ((value - min) / range) * height;
+      return `${x},${y}`;
+    })
+    .join(' ');
 
   return (
     <svg width={width} height={height} className="inline-block">
-      <polyline
-        fill="none"
-        stroke={color}
-        strokeWidth="2"
-        points={points}
-      />
+      <polyline fill="none" stroke={color} strokeWidth="2" points={points} />
     </svg>
   );
 };
@@ -710,14 +736,10 @@ interface BarChartProps {
   showValues?: boolean;
 }
 
-export const BarChart: React.FC<BarChartProps> = ({
-  data,
-  height = 300,
-  showValues = true
-}) => {
+export const BarChart: React.FC<BarChartProps> = ({ data, height = 300, showValues = true }) => {
   if (!data || data.length === 0) return null;
 
-  const max = Math.max(...data.map(d => d.value));
+  const max = Math.max(...data.map((d) => d.value));
   const barWidth = `${90 / data.length}%`;
 
   return (
@@ -727,11 +749,12 @@ export const BarChart: React.FC<BarChartProps> = ({
           const barHeight = (item.value / max) * 100;
           return (
             <div key={index} className="flex-1 flex flex-col items-center gap-2">
-              <div className="w-full flex flex-col items-center justify-end" style={{ height: '85%' }}>
+              <div
+                className="w-full flex flex-col items-center justify-end"
+                style={{ height: '85%' }}
+              >
                 {showValues && (
-                  <span className="text-xs font-semibold text-gray-700 mb-1">
-                    {item.value}
-                  </span>
+                  <span className="text-xs font-semibold text-gray-700 mb-1">{item.value}</span>
                 )}
                 <div
                   className={`w-full rounded-t-md transition-all duration-500 ${
@@ -740,9 +763,7 @@ export const BarChart: React.FC<BarChartProps> = ({
                   style={{ height: `${barHeight}%` }}
                 />
               </div>
-              <span className="text-xs text-gray-600 text-center line-clamp-2">
-                {item.label}
-              </span>
+              <span className="text-xs text-gray-600 text-center line-clamp-2">{item.label}</span>
             </div>
           );
         })}
@@ -763,7 +784,7 @@ export const DonutChart: React.FC<DonutChartProps> = ({
   data,
   size = 200,
   centerText,
-  centerSubtext
+  centerSubtext,
 }) => {
   if (!data || data.length === 0) return null;
 
@@ -815,12 +836,8 @@ export const DonutChart: React.FC<DonutChartProps> = ({
       {/* Center text */}
       {(centerText || centerSubtext) && (
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          {centerText && (
-            <div className="text-2xl font-bold text-gray-900">{centerText}</div>
-          )}
-          {centerSubtext && (
-            <div className="text-xs text-gray-600 mt-1">{centerSubtext}</div>
-          )}
+          {centerText && <div className="text-2xl font-bold text-gray-900">{centerText}</div>}
+          {centerSubtext && <div className="text-xs text-gray-600 mt-1">{centerSubtext}</div>}
         </div>
       )}
     </div>
@@ -841,7 +858,7 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
   size = 120,
   strokeWidth = 8,
   color = '#3B82F6',
-  label
+  label,
 }) => {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -892,11 +909,11 @@ interface HeatmapProps {
 
 export const Heatmap: React.FC<HeatmapProps> = ({
   data,
-  colorScale = ['#EFF6FF', '#DBEAFE', '#BFDBFE', '#93C5FD', '#60A5FA', '#3B82F6', '#2563EB']
+  colorScale = ['#EFF6FF', '#DBEAFE', '#BFDBFE', '#93C5FD', '#60A5FA', '#3B82F6', '#2563EB'],
 }) => {
   if (!data || data.length === 0) return null;
 
-  const allValues = data.flat().map(d => d.value);
+  const allValues = data.flat().map((d) => d.value);
   const max = Math.max(...allValues);
   const min = Math.min(...allValues);
 
@@ -907,7 +924,10 @@ export const Heatmap: React.FC<HeatmapProps> = ({
   };
 
   return (
-    <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${data[0].length}, minmax(0, 1fr))` }}>
+    <div
+      className="grid gap-1"
+      style={{ gridTemplateColumns: `repeat(${data[0].length}, minmax(0, 1fr))` }}
+    >
       {data.map((row, rowIndex) =>
         row.map((cell, colIndex) => (
           <div

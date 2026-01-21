@@ -1,6 +1,6 @@
 /**
  * PricingBreakdown Component
- * 
+ *
  * Displays a detailed breakdown of organization subscription pricing including:
  * - Base price per seat
  * - Subtotal
@@ -48,11 +48,11 @@ function PricingBreakdown({
   className = '',
 }: PricingBreakdownProps) {
   const hasDiscount = pricing.discountPercentage > 0;
-  
+
   const annualSavings = useMemo(() => {
     if (billingCycle === 'annual') {
       // Assume 2 months free for annual billing
-      return pricing.subtotal * 2 / 12;
+      return (pricing.subtotal * 2) / 12;
     }
     return 0;
   }, [billingCycle, pricing.subtotal]);
@@ -64,9 +64,7 @@ function PricingBreakdown({
           <span className="text-gray-600">
             {pricing.seatCount} seat{pricing.seatCount !== 1 ? 's' : ''}
           </span>
-          <span className="font-bold text-gray-900">
-            {formatCurrency(pricing.finalAmount)}
-          </span>
+          <span className="font-bold text-gray-900">{formatCurrency(pricing.finalAmount)}</span>
         </div>
         {hasDiscount && (
           <div className="flex items-center gap-1 text-green-600 text-sm">
@@ -76,7 +74,8 @@ function PricingBreakdown({
         )}
         {showPerSeatPrice && (
           <div className="text-xs text-gray-500 mt-1">
-            {formatCurrency(pricing.pricePerSeat)}/seat/{billingCycle === 'annual' ? 'year' : 'month'}
+            {formatCurrency(pricing.pricePerSeat)}/seat/
+            {billingCycle === 'annual' ? 'year' : 'month'}
           </div>
         )}
       </div>

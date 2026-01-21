@@ -13,7 +13,7 @@ const RestoreProgressModal = ({
   onRestore,
   onStartFresh,
   onClose,
-  lastAccessedText
+  lastAccessedText,
 }) => {
   // Handle escape key
   useEffect(() => {
@@ -83,7 +83,7 @@ const RestoreProgressModal = ({
               >
                 <X className="w-5 h-5" />
               </button>
-              
+
               <div className="flex items-center gap-3 mb-4">
                 <div className="p-3 bg-white/20 rounded-xl">
                   <BookOpen className="w-6 h-6" />
@@ -92,9 +92,7 @@ const RestoreProgressModal = ({
                   <h2 id="restore-modal-title" className="text-xl font-bold">
                     Welcome Back!
                   </h2>
-                  <p className="text-indigo-100 text-sm">
-                    Continue your learning journey
-                  </p>
+                  <p className="text-indigo-100 text-sm">Continue your learning journey</p>
                 </div>
               </div>
 
@@ -152,7 +150,7 @@ const RestoreProgressModal = ({
                   <Play className="w-5 h-5" />
                   Continue Where I Left Off
                 </button>
-                
+
                 <button
                   onClick={onStartFresh}
                   className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"

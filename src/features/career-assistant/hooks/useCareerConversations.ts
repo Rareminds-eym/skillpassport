@@ -73,35 +73,38 @@ export function useCareerConversations(): UseCareerConversationsReturn {
   }, [user?.id]);
 
   // Load a specific conversation
-  const loadConversation = useCallback(async (id: string) => {
-    if (!user?.id) return;
+  const loadConversation = useCallback(
+    async (id: string) => {
+      if (!user?.id) return;
 
-    setLoading(true);
-    setError(null);
+      setLoading(true);
+      setError(null);
 
-    try {
-      const { data, error: fetchError } = await supabase
-        .from('career_ai_conversations')
-        .select('*')
-        .eq('id', id)
-        .eq('student_id', user.id)
-        .single();
+      try {
+        const { data, error: fetchError } = await supabase
+          .from('career_ai_conversations')
+          .select('*')
+          .eq('id', id)
+          .eq('student_id', user.id)
+          .single();
 
-      if (fetchError) {
-        console.error('Error loading conversation:', fetchError);
+        if (fetchError) {
+          console.error('Error loading conversation:', fetchError);
+          setError('Failed to load conversation');
+          return;
+        }
+
+        setCurrentConversation(data);
+        setCurrentConversationId(id);
+      } catch (err) {
+        console.error('Error in loadConversation:', err);
         setError('Failed to load conversation');
-        return;
+      } finally {
+        setLoading(false);
       }
-
-      setCurrentConversation(data);
-      setCurrentConversationId(id);
-    } catch (err) {
-      console.error('Error in loadConversation:', err);
-      setError('Failed to load conversation');
-    } finally {
-      setLoading(false);
-    }
-  }, [user?.id]);
+    },
+    [user?.id]
+  );
 
   // Create a new conversation (just resets state, actual creation happens on first message)
   const createNewConversation = useCallback(() => {
@@ -110,35 +113,38 @@ export function useCareerConversations(): UseCareerConversationsReturn {
   }, []);
 
   // Delete a conversation
-  const deleteConversation = useCallback(async (id: string) => {
-    if (!user?.id) return;
+  const deleteConversation = useCallback(
+    async (id: string) => {
+      if (!user?.id) return;
 
-    try {
-      const { error: deleteError } = await supabase
-        .from('career_ai_conversations')
-        .delete()
-        .eq('id', id)
-        .eq('student_id', user.id);
+      try {
+        const { error: deleteError } = await supabase
+          .from('career_ai_conversations')
+          .delete()
+          .eq('id', id)
+          .eq('student_id', user.id);
 
-      if (deleteError) {
-        console.error('Error deleting conversation:', deleteError);
+        if (deleteError) {
+          console.error('Error deleting conversation:', deleteError);
+          setError('Failed to delete conversation');
+          return;
+        }
+
+        // Remove from local state
+        setConversations((prev) => prev.filter((c) => c.id !== id));
+
+        // If deleted conversation was current, reset
+        if (currentConversationId === id) {
+          setCurrentConversation(null);
+          setCurrentConversationId(null);
+        }
+      } catch (err) {
+        console.error('Error in deleteConversation:', err);
         setError('Failed to delete conversation');
-        return;
       }
-
-      // Remove from local state
-      setConversations(prev => prev.filter(c => c.id !== id));
-
-      // If deleted conversation was current, reset
-      if (currentConversationId === id) {
-        setCurrentConversation(null);
-        setCurrentConversationId(null);
-      }
-    } catch (err) {
-      console.error('Error in deleteConversation:', err);
-      setError('Failed to delete conversation');
-    }
-  }, [user?.id, currentConversationId]);
+    },
+    [user?.id, currentConversationId]
+  );
 
   // Fetch conversations on mount
   useEffect(() => {

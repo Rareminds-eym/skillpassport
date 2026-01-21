@@ -1,6 +1,6 @@
 /**
  * AssignToPoolModal Component
- * 
+ *
  * Modal for selecting which license pool to assign members to.
  */
 
@@ -45,8 +45,8 @@ function AssignToPoolModal({
   const [error, setError] = useState('');
 
   // Filter pools that have available seats and match member types
-  const memberTypes = new Set(membersToAssign.map(m => m.memberType));
-  const availablePools = pools.filter(p => {
+  const memberTypes = new Set(membersToAssign.map((m) => m.memberType));
+  const availablePools = pools.filter((p) => {
     if (!p.isActive || p.availableSeats < membersToAssign.length) return false;
     // If assigning students, pool must be for students
     // If assigning educators, pool must be for educators
@@ -64,20 +64,25 @@ function AssignToPoolModal({
       return;
     }
 
-    const selectedPool = pools.find(p => p.id === selectedPoolId);
+    const selectedPool = pools.find((p) => p.id === selectedPoolId);
     if (!selectedPool) {
       setError('Selected pool not found');
       return;
     }
 
     if (selectedPool.availableSeats < membersToAssign.length) {
-      setError(`Not enough seats. Pool has ${selectedPool.availableSeats} available, need ${membersToAssign.length}`);
+      setError(
+        `Not enough seats. Pool has ${selectedPool.availableSeats} available, need ${membersToAssign.length}`
+      );
       return;
     }
 
     try {
       setError('');
-      await onConfirm(selectedPoolId, membersToAssign.map(m => m.id));
+      await onConfirm(
+        selectedPoolId,
+        membersToAssign.map((m) => m.id)
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to assign licenses');
     }
@@ -94,7 +99,7 @@ function AssignToPoolModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleClose} />
-      
+
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-blue-600 to-blue-700">
@@ -121,14 +126,16 @@ function AssignToPoolModal({
             <h4 className="text-sm font-medium text-gray-700 mb-2">Members to assign:</h4>
             <div className="bg-gray-50 rounded-lg p-3 max-h-32 overflow-y-auto">
               <div className="flex flex-wrap gap-2">
-                {membersToAssign.slice(0, 5).map(member => (
+                {membersToAssign.slice(0, 5).map((member) => (
                   <span
                     key={member.id}
                     className="inline-flex items-center gap-1.5 px-2 py-1 bg-white border border-gray-200 rounded-md text-sm"
                   >
-                    <span className={`w-2 h-2 rounded-full ${
-                      member.memberType === 'educator' ? 'bg-blue-500' : 'bg-green-500'
-                    }`} />
+                    <span
+                      className={`w-2 h-2 rounded-full ${
+                        member.memberType === 'educator' ? 'bg-blue-500' : 'bg-green-500'
+                      }`}
+                    />
                     {member.name}
                   </span>
                 ))}
@@ -144,20 +151,20 @@ function AssignToPoolModal({
           {/* Pool Selection */}
           <div>
             <h4 className="text-sm font-medium text-gray-700 mb-2">Select license pool:</h4>
-            
+
             {availablePools.length === 0 ? (
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-center">
                 <Layers className="w-8 h-8 text-amber-500 mx-auto mb-2" />
                 <p className="text-sm text-amber-800 font-medium">No suitable pools available</p>
                 <p className="text-xs text-amber-600 mt-1">
-                  {pools.length === 0 
+                  {pools.length === 0
                     ? 'Create a license pool first'
                     : 'No pools have enough available seats or match the member type'}
                 </p>
               </div>
             ) : (
               <div className="space-y-2 max-h-48 overflow-y-auto">
-                {availablePools.map(pool => (
+                {availablePools.map((pool) => (
                   <button
                     key={pool.id}
                     onClick={() => {
@@ -172,30 +179,44 @@ function AssignToPoolModal({
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                          selectedPoolId === pool.id ? 'bg-blue-100' : 'bg-gray-100'
-                        }`}>
-                          <Users className={`w-5 h-5 ${
-                            selectedPoolId === pool.id ? 'text-blue-600' : 'text-gray-500'
-                          }`} />
+                        <div
+                          className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                            selectedPoolId === pool.id ? 'bg-blue-100' : 'bg-gray-100'
+                          }`}
+                        >
+                          <Users
+                            className={`w-5 h-5 ${
+                              selectedPoolId === pool.id ? 'text-blue-600' : 'text-gray-500'
+                            }`}
+                          />
                         </div>
                         <div>
                           <h5 className="font-medium text-gray-900">{pool.poolName}</h5>
                           <p className="text-xs text-gray-500">
-                            {pool.memberType === 'educator' ? 'Educators' : 'Students'} • 
+                            {pool.memberType === 'educator' ? 'Educators' : 'Students'} •
                             {pool.availableSeats} seats available
                           </p>
                         </div>
                       </div>
                       {selectedPoolId === pool.id && (
                         <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
-                          <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          <svg
+                            className="w-4 h-4 text-white"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M5 13l4 4L19 7"
+                            />
                           </svg>
                         </div>
                       )}
                     </div>
-                    
+
                     {/* Seat usage bar */}
                     <div className="mt-3">
                       <div className="flex justify-between text-xs text-gray-500 mb-1">

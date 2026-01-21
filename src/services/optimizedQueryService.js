@@ -7,7 +7,8 @@ import { supabase } from '../lib/supabaseClient';
 
 // In-memory cache with TTL
 class QueryCache {
-  constructor(ttl = 5 * 60 * 1000) { // 5 minutes default
+  constructor(ttl = 5 * 60 * 1000) {
+    // 5 minutes default
     this.cache = new Map();
     this.ttl = ttl;
   }
@@ -15,19 +16,19 @@ class QueryCache {
   set(key, value) {
     this.cache.set(key, {
       value,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     });
   }
 
   get(key) {
     const item = this.cache.get(key);
     if (!item) return null;
-    
+
     if (Date.now() - item.timestamp > this.ttl) {
       this.cache.delete(key);
       return null;
     }
-    
+
     return item.value;
   }
 
@@ -54,7 +55,7 @@ const subscriptionCache = new QueryCache(2 * 60 * 1000); // 2 min
  */
 export const checkEmailExistsOptimized = async (email) => {
   const cacheKey = `email:${email.toLowerCase()}`;
-  
+
   // Check cache first
   const cached = emailCheckCache.get(cacheKey);
   if (cached !== null) {
@@ -63,8 +64,7 @@ export const checkEmailExistsOptimized = async (email) => {
 
   try {
     // Use optimized database function
-    const { data, error } = await supabase
-      .rpc('check_email_exists', { email_to_check: email });
+    const { data, error } = await supabase.rpc('check_email_exists', { email_to_check: email });
 
     if (error) throw error;
 
@@ -78,7 +78,7 @@ export const checkEmailExistsOptimized = async (email) => {
       .select('email')
       .eq('email', email.toLowerCase())
       .maybeSingle();
-    
+
     const exists = !!data;
     emailCheckCache.set(cacheKey, exists);
     return exists;
@@ -90,7 +90,7 @@ export const checkEmailExistsOptimized = async (email) => {
  */
 export const getStudentByIdOptimized = async (studentId) => {
   const cacheKey = `student:${studentId}`;
-  
+
   // Check cache
   const cached = studentCache.get(cacheKey);
   if (cached) {
@@ -99,8 +99,7 @@ export const getStudentByIdOptimized = async (studentId) => {
 
   try {
     // Use database function for optimized query
-    const { data, error } = await supabase
-      .rpc('get_student_by_id', { student_id: studentId });
+    const { data, error } = await supabase.rpc('get_student_by_id', { student_id: studentId });
 
     if (error) throw error;
 
@@ -108,7 +107,7 @@ export const getStudentByIdOptimized = async (studentId) => {
     if (student) {
       studentCache.set(cacheKey, student);
     }
-    
+
     return student;
   } catch (error) {
     console.error('Student lookup error:', error);
@@ -118,7 +117,7 @@ export const getStudentByIdOptimized = async (studentId) => {
       .select('id, email, name, profile, createdAt')
       .eq('id', studentId)
       .single();
-    
+
     if (data) {
       studentCache.set(cacheKey, data);
     }
@@ -151,7 +150,7 @@ export const getStudentsBatch = async (studentIds) => {
       .in('id', uncachedIds);
 
     if (!error && data) {
-      data.forEach(student => {
+      data.forEach((student) => {
         studentCache.set(`student:${student.id}`, student);
         results.push(student);
       });
@@ -166,7 +165,7 @@ export const getStudentsBatch = async (studentIds) => {
  */
 export const getActiveSubscriptionOptimized = async (userId) => {
   const cacheKey = `subscription:${userId}`;
-  
+
   const cached = subscriptionCache.get(cacheKey);
   if (cached) {
     return cached;
@@ -193,10 +192,7 @@ export const getActiveSubscriptionOptimized = async (userId) => {
  */
 export const prefetchUserData = async (userId) => {
   // Prefetch in parallel
-  const promises = [
-    getStudentByIdOptimized(userId),
-    getActiveSubscriptionOptimized(userId)
-  ];
+  const promises = [getStudentByIdOptimized(userId), getActiveSubscriptionOptimized(userId)];
 
   try {
     await Promise.all(promises);
@@ -210,7 +206,7 @@ export const prefetchUserData = async (userId) => {
  */
 export const quickEmailCheck = async (email) => {
   const cacheKey = `email:${email.toLowerCase()}`;
-  
+
   const cached = emailCheckCache.get(cacheKey);
   if (cached !== null) {
     return { exists: cached.exists, name: cached.name };
@@ -225,7 +221,7 @@ export const quickEmailCheck = async (email) => {
 
   const result = {
     exists: !!data,
-    name: data?.name || null
+    name: data?.name || null,
   };
 
   emailCheckCache.set(cacheKey, result);
@@ -243,7 +239,7 @@ export const invalidateCache = {
     studentCache.invalidate();
     emailCheckCache.invalidate();
     subscriptionCache.invalidate();
-  }
+  },
 };
 
 /**
@@ -252,7 +248,7 @@ export const invalidateCache = {
 export const getCacheStats = () => ({
   students: studentCache.size(),
   emails: emailCheckCache.size(),
-  subscriptions: subscriptionCache.size()
+  subscriptions: subscriptionCache.size(),
 });
 
 /**
@@ -294,7 +290,7 @@ export class OptimizedQuery {
 
     // Build query
     let query = supabase.from(this.table).select(this.selectFields);
-    
+
     this.filters.forEach(({ column, operator, value }) => {
       query = query[operator](column, value);
     });
@@ -314,4 +310,3 @@ export class OptimizedQuery {
 
 // Export optimized query builder
 export const optimizedQuery = (table) => new OptimizedQuery(table);
-

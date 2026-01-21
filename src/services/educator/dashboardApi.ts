@@ -2,9 +2,11 @@ import { supabase } from '../../lib/supabaseClient';
 
 // Shared function to get authenticated educator data with class assignments
 async function getAuthenticatedEducator() {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (!session?.user) throw new Error('No authenticated user');
-  
+
   const user = session.user;
 
   // First check if they are a school educator
@@ -21,7 +23,7 @@ async function getAuthenticatedEducator() {
   if (schoolEducatorData?.school_id) {
     // Get assigned class IDs for this educator (if not admin)
     let assignedClassIds: string[] = [];
-    
+
     if (schoolEducatorData.role !== 'admin') {
       const { data: classAssignments, error: classError } = await supabase
         .from('school_educator_class_assignments')
@@ -29,15 +31,15 @@ async function getAuthenticatedEducator() {
         .eq('educator_id', schoolEducatorData.id);
 
       if (!classError && classAssignments) {
-        assignedClassIds = classAssignments.map(assignment => assignment.class_id);
+        assignedClassIds = classAssignments.map((assignment) => assignment.class_id);
       }
     }
 
-    return { 
-      user, 
-      educatorData: schoolEducatorData, 
+    return {
+      user,
+      educatorData: schoolEducatorData,
       educatorType: 'school' as const,
-      assignedClassIds 
+      assignedClassIds,
     };
   }
 
@@ -55,10 +57,10 @@ async function getAuthenticatedEducator() {
   if (collegeLecturerData?.collegeId) {
     // Check if lecturer is an admin (department = 'Administration')
     const isCollegeAdmin = collegeLecturerData.department === 'Administration';
-    
+
     // Get assigned course IDs for this lecturer (if not admin)
     let assignedCourseIds: string[] = [];
-    
+
     if (!isCollegeAdmin) {
       const { data: courseAssignments, error: courseError } = await supabase
         .from('college_lecturer_course_assignments')
@@ -66,19 +68,19 @@ async function getAuthenticatedEducator() {
         .eq('lecturerId', collegeLecturerData.id);
 
       if (!courseError && courseAssignments) {
-        assignedCourseIds = courseAssignments.map(assignment => assignment.courseId);
+        assignedCourseIds = courseAssignments.map((assignment) => assignment.courseId);
       }
     }
 
-    return { 
-      user, 
-      educatorData: { 
-        id: collegeLecturerData.id, 
+    return {
+      user,
+      educatorData: {
+        id: collegeLecturerData.id,
         school_id: collegeLecturerData.collegeId,
-        role: isCollegeAdmin ? 'admin' : 'lecturer'
-      }, 
+        role: isCollegeAdmin ? 'admin' : 'lecturer',
+      },
       educatorType: 'college' as const,
-      assignedClassIds: assignedCourseIds // For college, this represents course IDs
+      assignedClassIds: assignedCourseIds, // For college, this represents course IDs
     };
   }
 
@@ -91,37 +93,39 @@ async function getAuthenticatedEducator() {
 
   if (!userError && userData && userData.role) {
     const userRole = userData.role as string;
-    
+
     // Handle college_educator role
     if (userRole === 'college_educator') {
-      return { 
-        user, 
-        educatorData: { 
-          id: userData.id, 
+      return {
+        user,
+        educatorData: {
+          id: userData.id,
           school_id: userData.organizationId, // Use organizationId as college/school ID
-          role: 'educator'
-        }, 
+          role: 'educator',
+        },
         educatorType: 'college' as const,
-        assignedClassIds: [] // College educators see all college students
+        assignedClassIds: [], // College educators see all college students
       };
     }
-    
+
     // Handle school_educator role
     if (userRole === 'school_educator') {
-      return { 
-        user, 
-        educatorData: { 
-          id: userData.id, 
+      return {
+        user,
+        educatorData: {
+          id: userData.id,
           school_id: userData.organizationId, // Use organizationId as school ID
-          role: 'educator'
-        }, 
+          role: 'educator',
+        },
         educatorType: 'school' as const,
-        assignedClassIds: [] // For now, let them see all school students
+        assignedClassIds: [], // For now, let them see all school students
       };
     }
   }
 
-  throw new Error('Educator not registered with any school or college. Please contact your administrator.');
+  throw new Error(
+    'Educator not registered with any school or college. Please contact your administrator.'
+  );
 }
 
 export interface DashboardKPIs {
@@ -159,10 +163,15 @@ export interface Announcement {
 export const dashboardApi = {
   async getKPIs(): Promise<DashboardKPIs> {
     try {
-      const { user, educatorData, educatorType, assignedClassIds } = await getAuthenticatedEducator();
+      const { user, educatorData, educatorType, assignedClassIds } =
+        await getAuthenticatedEducator();
 
       // Check if educator has no class assignments (and is not admin)
-      if (educatorType === 'school' && educatorData.role !== 'admin' && assignedClassIds.length === 0) {
+      if (
+        educatorType === 'school' &&
+        educatorData.role !== 'admin' &&
+        assignedClassIds.length === 0
+      ) {
         // School educators with no class assignments should see no students
         return {
           totalStudents: 0,
@@ -177,7 +186,11 @@ export const dashboardApi = {
       }
 
       // Check if college lecturer has no course assignments (and is not admin)
-      if (educatorType === 'college' && educatorData.role !== 'admin' && assignedClassIds.length === 0) {
+      if (
+        educatorType === 'college' &&
+        educatorData.role !== 'admin' &&
+        assignedClassIds.length === 0
+      ) {
         // College lecturers with no course assignments should see no students
         return {
           totalStudents: 0,
@@ -191,10 +204,7 @@ export const dashboardApi = {
         };
       }
 
-      let studentsQuery = supabase
-        .from('students')
-        .select('id, user_id')
-        .eq('is_deleted', false);
+      let studentsQuery = supabase.from('students').select('id, user_id').eq('is_deleted', false);
 
       // Apply filtering based on educator type and role
       if (educatorType === 'school') {
@@ -224,8 +234,8 @@ export const dashboardApi = {
 
       if (studentsError) throw studentsError;
 
-      const studentUserIds = studentsData?.map(s => s.user_id) || [];
-      const studentIds = studentsData?.map(s => s.id) || [];
+      const studentUserIds = studentsData?.map((s) => s.user_id) || [];
+      const studentIds = studentsData?.map((s) => s.id) || [];
       const totalStudents = studentsData?.length || 0;
 
       if (studentUserIds.length === 0) {
@@ -243,44 +253,59 @@ export const dashboardApi = {
 
       // Get activities from all relevant tables
       const [
-        projectsData, 
-        trainingsData, 
+        projectsData,
+        trainingsData,
         certificatesData,
         attendanceData,
         assessmentData,
         assignmentData,
-        mentorNotesData
+        mentorNotesData,
       ] = await Promise.all([
         supabase.from('projects').select('approval_status').in('student_id', studentUserIds),
         supabase.from('trainings').select('approval_status').in('student_id', studentUserIds),
         supabase.from('certificates').select('approval_status').in('student_id', studentUserIds),
         supabase.from('attendance_records').select('status').in('student_id', studentIds),
-        supabase.from('personal_assessment_results').select('status').in('student_id', studentUserIds).eq('status', 'completed'),
-        supabase.from('student_assignments').select('status').in('student_id', studentIds).in('status', ['submitted', 'graded']),
-        supabase.from('mentor_notes').select('id').eq('educator_id', user.id).in('student_id', studentIds)
+        supabase
+          .from('personal_assessment_results')
+          .select('status')
+          .in('student_id', studentUserIds)
+          .eq('status', 'completed'),
+        supabase
+          .from('student_assignments')
+          .select('status')
+          .in('student_id', studentIds)
+          .in('status', ['submitted', 'graded']),
+        supabase
+          .from('mentor_notes')
+          .select('id')
+          .eq('educator_id', user.id)
+          .in('student_id', studentIds),
       ]);
 
       // Combine all activities for verification metrics (excluding assignments - they have separate grading workflow)
       const verifiableActivities = [
-        ...(projectsData.data || []).map(p => ({ status: p.approval_status })),
-        ...(trainingsData.data || []).map(t => ({ status: t.approval_status })),
-        ...(certificatesData.data || []).map(c => ({ status: c.approval_status }))
+        ...(projectsData.data || []).map((p) => ({ status: p.approval_status })),
+        ...(trainingsData.data || []).map((t) => ({ status: t.approval_status })),
+        ...(certificatesData.data || []).map((c) => ({ status: c.approval_status })),
         // Note: Assignments excluded - they use separate grading system (submitted → graded)
       ];
 
       // Count all activities including non-verifiable ones
-      const totalActivities = verifiableActivities.length + 
-                             (attendanceData.data?.length || 0) + 
-                             (assessmentData.data?.length || 0) + 
-                             (assignmentData.data?.length || 0) + 
-                             (mentorNotesData.data?.length || 0);
+      const totalActivities =
+        verifiableActivities.length +
+        (attendanceData.data?.length || 0) +
+        (assessmentData.data?.length || 0) +
+        (assignmentData.data?.length || 0) +
+        (mentorNotesData.data?.length || 0);
 
-      const pendingActivities = verifiableActivities.filter(a => a.status === 'pending').length;
-      const verifiedActivities = verifiableActivities.filter(a => 
-        a.status === 'approved' || a.status === 'sent_to_admin'
+      const pendingActivities = verifiableActivities.filter((a) => a.status === 'pending').length;
+      const verifiedActivities = verifiableActivities.filter(
+        (a) => a.status === 'approved' || a.status === 'sent_to_admin'
       ).length;
-      const verificationRate = verifiableActivities.length > 0 ? 
-        Math.round((verifiedActivities / verifiableActivities.length) * 100) : 0;
+      const verificationRate =
+        verifiableActivities.length > 0
+          ? Math.round((verifiedActivities / verifiableActivities.length) * 100)
+          : 0;
 
       return {
         totalStudents,
@@ -309,10 +334,15 @@ export const dashboardApi = {
 
   async getRecentActivities(limit: number = 10): Promise<RecentActivity[]> {
     try {
-      const { user, educatorData, educatorType, assignedClassIds } = await getAuthenticatedEducator();
+      const { user, educatorData, educatorType, assignedClassIds } =
+        await getAuthenticatedEducator();
 
       // Check if educator has no class assignments (and is not admin)
-      if (educatorType === 'school' && educatorData.role !== 'admin' && assignedClassIds.length === 0) {
+      if (
+        educatorType === 'school' &&
+        educatorData.role !== 'admin' &&
+        assignedClassIds.length === 0
+      ) {
         // Educators with no class assignments should see no students
         return [];
       }
@@ -340,15 +370,15 @@ export const dashboardApi = {
 
       const { data: studentsData } = await studentsQuery;
 
-      const studentUserIds = studentsData?.map(s => s.user_id) || [];
-      const studentIds = studentsData?.map(s => s.id) || [];
+      const studentUserIds = studentsData?.map((s) => s.user_id) || [];
+      const studentIds = studentsData?.map((s) => s.id) || [];
       const studentMap: { [key: string]: string } = {};
       const studentIdMap: { [key: string]: string } = {};
-      
+
       console.log('🎓 Found students:', studentsData?.length || 0);
       console.log('📋 Student IDs for assignment query:', studentIds);
-      
-      studentsData?.forEach(student => {
+
+      studentsData?.forEach((student) => {
         const studentName = student.name || `Student ${student.id.substring(0, 8)}`;
         studentMap[student.user_id] = studentName;
         studentIdMap[student.id] = studentName;
@@ -365,8 +395,8 @@ export const dashboardApi = {
       const dateFilter = thirtyDaysAgo.toISOString();
 
       const [
-        projectsData, 
-        trainingsData, 
+        projectsData,
+        trainingsData,
         certificatesData,
         attendanceData,
         assessmentData,
@@ -375,7 +405,7 @@ export const dashboardApi = {
         timetablesData,
         clubsData,
         competitionsData,
-        coursesData
+        coursesData,
       ] = await Promise.all([
         // Projects
         supabase
@@ -385,7 +415,7 @@ export const dashboardApi = {
           .gte('created_at', dateFilter)
           .order('created_at', { ascending: false })
           .limit(Math.ceil(limit / 7)),
-        
+
         // Trainings
         supabase
           .from('trainings')
@@ -394,7 +424,7 @@ export const dashboardApi = {
           .gte('created_at', dateFilter)
           .order('created_at', { ascending: false })
           .limit(Math.ceil(limit / 7)),
-        
+
         // Certificates
         supabase
           .from('certificates')
@@ -403,48 +433,54 @@ export const dashboardApi = {
           .gte('created_at', dateFilter)
           .order('created_at', { ascending: false })
           .limit(Math.ceil(limit / 7)),
-        
+
         // Attendance Records with detailed slot information
         supabase
           .from('attendance_records')
-          .select(`
+          .select(
+            `
             id, date, status, remarks, created_at, student_id, slot_id,
             timetable_slots!inner(
               period_number, subject_name, class_id,
               school_classes!inner(name, grade, section)
             )
-          `)
+          `
+          )
           .in('student_id', studentIds)
           .gte('created_at', dateFilter)
           .order('created_at', { ascending: false })
           .limit(Math.ceil(limit / 7)),
-        
+
         // Personal Assessment Results
         supabase
           .from('personal_assessment_results')
-          .select(`
+          .select(
+            `
             id, stream_id, status, employability_readiness, knowledge_score, 
             created_at, student_id, grade_level
-          `)
+          `
+          )
           .in('student_id', studentUserIds)
           .eq('status', 'completed')
           .gte('created_at', dateFilter)
           .order('created_at', { ascending: false })
           .limit(Math.ceil(limit / 7)),
-        
+
         // Student Assignments (only submitted ones)
         supabase
           .from('student_assignments')
-          .select(`
+          .select(
+            `
             student_assignment_id, status, grade_received, submission_date, updated_date, student_id,
             assignments!inner(title, description, assignment_type)
-          `)
+          `
+          )
           .in('student_id', studentIds)
           .in('status', ['submitted', 'graded'])
           .gte('updated_date', dateFilter)
           .order('updated_date', { ascending: false })
           .limit(Math.ceil(limit / 7)),
-        
+
         // Mentor Notes
         supabase
           .from('mentor_notes')
@@ -454,50 +490,60 @@ export const dashboardApi = {
           .gte('created_at', dateFilter)
           .order('created_at', { ascending: false })
           .limit(Math.ceil(limit / 7)),
-        
+
         // Timetable slots (period assignments) for this educator
         supabase
           .from('timetable_slots')
-          .select(`
+          .select(
+            `
             id, educator_id, day_of_week, period_number, start_time, end_time,
             subject_name, room_number, created_at,
             school_classes!inner(name, grade, section)
-          `)
+          `
+          )
           .eq('educator_id', educatorData.id)
           .gte('created_at', dateFilter)
           .order('created_at', { ascending: false })
           .limit(Math.ceil(limit / 11)),
-        
+
         // Clubs where this educator is mentor or created by them
         supabase
           .from('clubs')
-          .select('club_id, name, category, description, is_active, created_at, mentor_educator_id, created_by_educator_id')
+          .select(
+            'club_id, name, category, description, is_active, created_at, mentor_educator_id, created_by_educator_id'
+          )
           .eq('school_id', educatorData.school_id)
-          .or(`mentor_educator_id.eq.${educatorData.id},created_by_educator_id.eq.${educatorData.id}`)
+          .or(
+            `mentor_educator_id.eq.${educatorData.id},created_by_educator_id.eq.${educatorData.id}`
+          )
           .eq('is_active', true)
           .gte('created_at', dateFilter)
           .order('created_at', { ascending: false })
           .limit(Math.ceil(limit / 11)),
-        
+
         // Competitions created by this educator or in their school
         supabase
           .from('competitions')
-          .select('comp_id, name, description, level, category, competition_date, status, created_at, created_by_educator_id')
+          .select(
+            'comp_id, name, description, level, category, competition_date, status, created_at, created_by_educator_id'
+          )
           .eq('school_id', educatorData.school_id)
           .in('status', ['active', 'upcoming', 'completed'])
           .gte('created_at', dateFilter)
           .order('created_at', { ascending: false })
           .limit(Math.ceil(limit / 11)),
-        
+
         // Courses created by this educator (exclude drafts)
         supabase
           .from('courses')
-          .select('course_id, title, code, description, status, enrollment_count, created_at, educator_id')
+          .select(
+            'course_id, title, code, description, status, enrollment_count, created_at, educator_id'
+          )
           .eq('educator_id', educatorData.id)
           .in('status', ['active', 'published'])
           .gte('created_at', dateFilter)
           .order('created_at', { ascending: false })
-          .limit(Math.ceil(limit / 11))
+          .limit(Math.ceil(limit / 11)),
       ]);
 
       const activities: RecentActivity[] = [];
@@ -542,26 +588,28 @@ export const dashboardApi = {
       });
 
       // Add attendance records (grouped by date and slot for better detail)
-      const attendanceBySlot: { [key: string]: { 
-        date: string,
-        period_number: number,
-        subject_name: string,
-        class_name: string,
-        grade: string,
-        section: string,
-        present: number, 
-        absent: number, 
-        late: number, 
-        excused: number,
-        total: number,
-        created_at: string,
-        slot_id: string
-      } } = {};
-      
+      const attendanceBySlot: {
+        [key: string]: {
+          date: string;
+          period_number: number;
+          subject_name: string;
+          class_name: string;
+          grade: string;
+          section: string;
+          present: number;
+          absent: number;
+          late: number;
+          excused: number;
+          total: number;
+          created_at: string;
+          slot_id: string;
+        };
+      } = {};
+
       attendanceData.data?.forEach((attendance: any) => {
         // Create unique key for each slot session
         const slotKey = `${attendance.date}-${attendance.slot_id}`;
-        
+
         if (!attendanceBySlot[slotKey]) {
           attendanceBySlot[slotKey] = {
             date: attendance.date,
@@ -576,10 +624,10 @@ export const dashboardApi = {
             excused: 0,
             total: 0,
             created_at: attendance.created_at,
-            slot_id: attendance.slot_id
+            slot_id: attendance.slot_id,
           };
         }
-        
+
         // Count attendance status
         if (attendance.status === 'present') {
           attendanceBySlot[slotKey].present++;
@@ -590,21 +638,22 @@ export const dashboardApi = {
         } else if (attendance.status === 'excused') {
           attendanceBySlot[slotKey].excused++;
         }
-        
+
         attendanceBySlot[slotKey].total++;
       });
-      
+
       // Convert grouped attendance to activities with detailed information
       Object.values(attendanceBySlot).forEach((slotAttendance) => {
-        
         // Format period display
-        const periodText = slotAttendance.period_number > 0 ? `Period ${slotAttendance.period_number}` : 'Period';
-        
+        const periodText =
+          slotAttendance.period_number > 0 ? `Period ${slotAttendance.period_number}` : 'Period';
+
         // Format class display
-        const classDisplay = slotAttendance.grade && slotAttendance.section 
-          ? `Grade ${slotAttendance.grade} - ${slotAttendance.section}`
-          : slotAttendance.class_name;
-        
+        const classDisplay =
+          slotAttendance.grade && slotAttendance.section
+            ? `Grade ${slotAttendance.grade} - ${slotAttendance.section}`
+            : slotAttendance.class_name;
+
         activities.push({
           id: `attendance-${slotAttendance.slot_id}-${slotAttendance.date}`,
           title: `${periodText} - ${slotAttendance.subject_name}`,
@@ -620,8 +669,10 @@ export const dashboardApi = {
       assessmentData.data?.forEach((assessment: any) => {
         const streamName = assessment.stream_id?.toUpperCase() || 'General';
         const readinessLevel = assessment.employability_readiness || 'Not Available';
-        const knowledgeScore = assessment.knowledge_score ? `${assessment.knowledge_score}%` : 'Not Available';
-        
+        const knowledgeScore = assessment.knowledge_score
+          ? `${assessment.knowledge_score}%`
+          : 'Not Available';
+
         activities.push({
           id: `assessment-${assessment.id}`,
           title: `${streamName} Personal Assessment`,
@@ -636,20 +687,28 @@ export const dashboardApi = {
       // Add assignments (only submitted ones - already filtered by query)
       console.log('🔍 Assignment data received:', assignmentData.data?.length || 0, 'assignments');
       assignmentData.data?.forEach((assignment: any) => {
-        console.log('📝 Processing assignment:', assignment.assignments?.title, 'by student ID:', assignment.student_id);
-        
-        const statusMap: { [key: string]: 'pending' | 'sent_to_admin' | 'approved' | 'rejected' } = {
-          'submitted': 'sent_to_admin', // Keep blue badge but change display text in UI
-          'graded': 'approved'
-        };
-        
+        console.log(
+          '📝 Processing assignment:',
+          assignment.assignments?.title,
+          'by student ID:',
+          assignment.student_id
+        );
+
+        const statusMap: { [key: string]: 'pending' | 'sent_to_admin' | 'approved' | 'rejected' } =
+          {
+            submitted: 'sent_to_admin', // Keep blue badge but change display text in UI
+            graded: 'approved',
+          };
+
         const studentName = studentIdMap[assignment.student_id] || 'Unknown Student';
         console.log('👤 Student name resolved:', studentName);
-        
+
         activities.push({
           id: `assignment-${assignment.student_assignment_id}`,
           title: assignment.assignments?.title || 'Assignment',
-          description: assignment.assignments?.description || `${assignment.assignments?.assignment_type || 'Assignment'} submission`,
+          description:
+            assignment.assignments?.description ||
+            `${assignment.assignments?.assignment_type || 'Assignment'} submission`,
           studentName: studentName,
           category: 'Assignment',
           status: statusMap[assignment.status] || 'sent_to_admin',
@@ -672,11 +731,21 @@ export const dashboardApi = {
 
       // Add timetable slots (period assignments)
       timetablesData.data?.forEach((slot: any) => {
-        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const dayNames = [
+          'Sunday',
+          'Monday',
+          'Tuesday',
+          'Wednesday',
+          'Thursday',
+          'Friday',
+          'Saturday',
+        ];
         const dayName = dayNames[slot.day_of_week] || 'Unknown Day';
         const timeRange = `${slot.start_time?.slice(0, 5)} - ${slot.end_time?.slice(0, 5)}`;
-        const className = slot.school_classes?.name || `Grade ${slot.school_classes?.grade} - ${slot.school_classes?.section}`;
-        
+        const className =
+          slot.school_classes?.name ||
+          `Grade ${slot.school_classes?.grade} - ${slot.school_classes?.section}`;
+
         activities.push({
           id: `timetable-slot-${slot.id}`,
           title: `Period ${slot.period_number} - ${slot.subject_name}`,
@@ -693,7 +762,7 @@ export const dashboardApi = {
         const isMentor = club.mentor_educator_id === educatorData.id;
         const isCreator = club.created_by_educator_id === educatorData.id;
         const role = isMentor && isCreator ? 'Mentor & Creator' : isMentor ? 'Mentor' : 'Creator';
-        
+
         activities.push({
           id: `club-${club.club_id}`,
           title: `Club: ${club.name}`,
@@ -707,12 +776,13 @@ export const dashboardApi = {
 
       // Add competitions
       competitionsData.data?.forEach((competition: any) => {
-        const statusMap: { [key: string]: 'pending' | 'sent_to_admin' | 'approved' | 'rejected' } = {
-          'upcoming': 'pending',
-          'active': 'sent_to_admin',
-          'completed': 'approved'
-        };
-        
+        const statusMap: { [key: string]: 'pending' | 'sent_to_admin' | 'approved' | 'rejected' } =
+          {
+            upcoming: 'pending',
+            active: 'sent_to_admin',
+            completed: 'approved',
+          };
+
         activities.push({
           id: `competition-${competition.comp_id}`,
           title: `Competition: ${competition.name}`,
@@ -726,12 +796,13 @@ export const dashboardApi = {
 
       // Add courses
       coursesData.data?.forEach((course: any) => {
-        const statusMap: { [key: string]: 'pending' | 'sent_to_admin' | 'approved' | 'rejected' } = {
-          'draft': 'pending',
-          'active': 'sent_to_admin',
-          'published': 'approved'
-        };
-        
+        const statusMap: { [key: string]: 'pending' | 'sent_to_admin' | 'approved' | 'rejected' } =
+          {
+            draft: 'pending',
+            active: 'sent_to_admin',
+            published: 'approved',
+          };
+
         activities.push({
           id: `course-${course.course_id}`,
           title: `Course: ${course.title}`,
@@ -747,7 +818,6 @@ export const dashboardApi = {
       return activities
         .sort((a, b) => new Date(b.submittedDate).getTime() - new Date(a.submittedDate).getTime())
         .slice(0, limit);
-
     } catch (error) {
       console.error('Error fetching recent activities:', error);
       return [];
@@ -759,7 +829,11 @@ export const dashboardApi = {
       const { educatorData, educatorType, assignedClassIds } = await getAuthenticatedEducator();
 
       // Check if educator has no class assignments (and is not admin)
-      if (educatorType === 'school' && educatorData.role !== 'admin' && assignedClassIds.length === 0) {
+      if (
+        educatorType === 'school' &&
+        educatorData.role !== 'admin' &&
+        assignedClassIds.length === 0
+      ) {
         // Educators with no class assignments should see no students
         return {
           skillParticipation: [],
@@ -767,10 +841,7 @@ export const dashboardApi = {
         };
       }
 
-      let studentsQuery = supabase
-        .from('students')
-        .select('id, user_id')
-        .eq('is_deleted', false);
+      let studentsQuery = supabase.from('students').select('id, user_id').eq('is_deleted', false);
 
       // Apply filtering based on educator type and role
       if (educatorType === 'school') {
@@ -790,7 +861,7 @@ export const dashboardApi = {
 
       const { data: studentsData } = await studentsQuery;
 
-      const studentUserIds = studentsData?.map(s => s.user_id) || [];
+      const studentUserIds = studentsData?.map((s) => s.user_id) || [];
 
       if (studentUserIds.length === 0) {
         return {
@@ -806,14 +877,8 @@ export const dashboardApi = {
           .select('tech_stack')
           .in('student_id', studentUserIds)
           .not('tech_stack', 'is', null),
-        supabase
-          .from('trainings')
-          .select('title, description')
-          .in('student_id', studentUserIds),
-        supabase
-          .from('certificates')
-          .select('title, description')
-          .in('student_id', studentUserIds)
+        supabase.from('trainings').select('title, description').in('student_id', studentUserIds),
+        supabase.from('certificates').select('title, description').in('student_id', studentUserIds),
       ]);
 
       // Process skill participation from student activities
@@ -821,9 +886,9 @@ export const dashboardApi = {
       const categoryCounts: { [key: string]: number } = {};
 
       // Extract skills from project tech stacks
-      projectsData.data?.forEach(project => {
+      projectsData.data?.forEach((project) => {
         if (project.tech_stack && Array.isArray(project.tech_stack)) {
-          project.tech_stack.forEach(tech => {
+          project.tech_stack.forEach((tech) => {
             if (tech) {
               skillCounts[tech] = (skillCounts[tech] || 0) + 1;
               categoryCounts['Technical Skills'] = (categoryCounts['Technical Skills'] || 0) + 1;
@@ -833,11 +898,21 @@ export const dashboardApi = {
       });
 
       // Extract skills from training titles
-      trainingsData.data?.forEach(training => {
+      trainingsData.data?.forEach((training) => {
         if (training.title) {
           // Simple skill extraction from training titles
-          const commonSkills = ['JavaScript', 'Python', 'React', 'Node.js', 'SQL', 'Java', 'C++', 'HTML', 'CSS'];
-          commonSkills.forEach(skill => {
+          const commonSkills = [
+            'JavaScript',
+            'Python',
+            'React',
+            'Node.js',
+            'SQL',
+            'Java',
+            'C++',
+            'HTML',
+            'CSS',
+          ];
+          commonSkills.forEach((skill) => {
             if (training.title.toLowerCase().includes(skill.toLowerCase())) {
               skillCounts[skill] = (skillCounts[skill] || 0) + 1;
               categoryCounts['Technical Skills'] = (categoryCounts['Technical Skills'] || 0) + 1;
@@ -847,11 +922,21 @@ export const dashboardApi = {
       });
 
       // Extract skills from certificate titles
-      certificatesData.data?.forEach(certificate => {
+      certificatesData.data?.forEach((certificate) => {
         if (certificate.title) {
           // Simple skill extraction from certificate titles
-          const commonSkills = ['JavaScript', 'Python', 'React', 'Node.js', 'SQL', 'Java', 'C++', 'HTML', 'CSS'];
-          commonSkills.forEach(skill => {
+          const commonSkills = [
+            'JavaScript',
+            'Python',
+            'React',
+            'Node.js',
+            'SQL',
+            'Java',
+            'C++',
+            'HTML',
+            'CSS',
+          ];
+          commonSkills.forEach((skill) => {
             if (certificate.title.toLowerCase().includes(skill.toLowerCase())) {
               skillCounts[skill] = (skillCounts[skill] || 0) + 1;
               categoryCounts['Technical Skills'] = (categoryCounts['Technical Skills'] || 0) + 1;
@@ -861,12 +946,16 @@ export const dashboardApi = {
       });
 
       // Add some soft skills based on activity participation
-      const totalActivities = (projectsData.data?.length || 0) + (trainingsData.data?.length || 0) + (certificatesData.data?.length || 0);
+      const totalActivities =
+        (projectsData.data?.length || 0) +
+        (trainingsData.data?.length || 0) +
+        (certificatesData.data?.length || 0);
       if (totalActivities > 0) {
         skillCounts['Communication'] = Math.floor(totalActivities * 0.3);
         skillCounts['Problem Solving'] = Math.floor(totalActivities * 0.4);
         skillCounts['Teamwork'] = Math.floor(totalActivities * 0.2);
-        categoryCounts['Soft Skills'] = skillCounts['Communication'] + skillCounts['Problem Solving'] + skillCounts['Teamwork'];
+        categoryCounts['Soft Skills'] =
+          skillCounts['Communication'] + skillCounts['Problem Solving'] + skillCounts['Teamwork'];
       }
 
       const skillParticipation = Object.entries(skillCounts)

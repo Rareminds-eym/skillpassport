@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Input } from "./input";
-import { Label } from "./label";
-import { ChevronDown, Search } from "lucide-react";
+import React, { useState, useEffect, useRef } from 'react';
+import { Input } from './input';
+import { Label } from './label';
+import { ChevronDown, Search } from 'lucide-react';
 
 export const AutocompleteInput = ({
   id,
@@ -12,7 +12,7 @@ export const AutocompleteInput = ({
   className,
   required = false,
   searchFunction,
-  displayField = "name",
+  displayField = 'name',
   minChars = 2,
   debounceMs = 300,
   maxResults = 10,
@@ -21,14 +21,14 @@ export const AutocompleteInput = ({
   const [suggestions, setSuggestions] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState(value || "");
+  const [searchTerm, setSearchTerm] = useState(value || '');
   const inputRef = useRef(null);
   const dropdownRef = useRef(null);
   const debounceRef = useRef(null);
 
   // Update search term when value prop changes
   useEffect(() => {
-    setSearchTerm(value || "");
+    setSearchTerm(value || '');
   }, [value]);
 
   // Debounced search function
@@ -45,7 +45,7 @@ export const AutocompleteInput = ({
           setSuggestions(results.slice(0, maxResults));
           setIsOpen(true);
         } catch (error) {
-          console.error("Search error:", error);
+          console.error('Search error:', error);
           setSuggestions([]);
         } finally {
           setIsLoading(false);
@@ -71,18 +71,18 @@ export const AutocompleteInput = ({
     setSearchTerm(displayValue);
     setIsOpen(false);
     setSuggestions([]);
-    
+
     // Create synthetic event for parent onChange
     const syntheticEvent = {
       target: {
         value: displayValue,
         name: id,
-        id: id
+        id: id,
       },
       preventDefault: () => {},
-      stopPropagation: () => {}
+      stopPropagation: () => {},
     };
-    
+
     // Call onChange immediately
     onChange(syntheticEvent);
   };
@@ -160,8 +160,8 @@ export const AutocompleteInput = ({
         <div
           ref={dropdownRef}
           className="absolute z-[60] w-full mt-2 bg-white border border-gray-300 rounded-xl shadow-xl max-h-64 overflow-auto"
-          style={{ 
-            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' 
+          style={{
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
           }}
         >
           {isLoading && (
@@ -170,7 +170,7 @@ export const AutocompleteInput = ({
               <span className="font-medium">Searching institutions...</span>
             </div>
           )}
-          
+
           {!isLoading && suggestions.length === 0 && searchTerm.length >= minChars && (
             <div className="px-4 py-6 text-center">
               <div className="text-gray-400 mb-2">
@@ -181,50 +181,70 @@ export const AutocompleteInput = ({
             </div>
           )}
 
-          {!isLoading && suggestions.map((suggestion, index) => {
-            const displayValue = typeof suggestion === 'string' ? suggestion : suggestion[displayField];
-            const location = suggestion.city && suggestion.state 
-              ? `${suggestion.city}, ${suggestion.state}` 
-              : suggestion.state || suggestion.district || '';
-            const institutionType = suggestion.type || '';
-            
-            return (
-              <div
-                key={index}
-                className="px-4 py-3 cursor-pointer hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 border-b border-gray-100 last:border-b-0 transition-all duration-200 group"
-                onClick={() => handleSuggestionClick(suggestion)}
-                onMouseDown={(e) => e.preventDefault()} // Prevent blur on click
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-gray-900 group-hover:text-blue-900 truncate">
-                      {displayValue}
-                    </div>
-                    {location && (
-                      <div className="text-xs text-gray-500 mt-1 flex items-center">
-                        <svg className="w-3 h-3 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        <span className="truncate">{location}</span>
+          {!isLoading &&
+            suggestions.map((suggestion, index) => {
+              const displayValue =
+                typeof suggestion === 'string' ? suggestion : suggestion[displayField];
+              const location =
+                suggestion.city && suggestion.state
+                  ? `${suggestion.city}, ${suggestion.state}`
+                  : suggestion.state || suggestion.district || '';
+              const institutionType = suggestion.type || '';
+
+              return (
+                <div
+                  key={index}
+                  className="px-4 py-3 cursor-pointer hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 border-b border-gray-100 last:border-b-0 transition-all duration-200 group"
+                  onClick={() => handleSuggestionClick(suggestion)}
+                  onMouseDown={(e) => e.preventDefault()} // Prevent blur on click
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-gray-900 group-hover:text-blue-900 truncate">
+                        {displayValue}
                       </div>
+                      {location && (
+                        <div className="text-xs text-gray-500 mt-1 flex items-center">
+                          <svg
+                            className="w-3 h-3 mr-1 flex-shrink-0"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                            />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                            />
+                          </svg>
+                          <span className="truncate">{location}</span>
+                        </div>
+                      )}
+                    </div>
+                    {institutionType && (
+                      <span
+                        className={`text-xs px-2.5 py-1 rounded-full ml-3 font-medium flex-shrink-0 ${
+                          institutionType === 'University'
+                            ? 'bg-purple-100 text-purple-700'
+                            : institutionType === 'College'
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-green-100 text-green-700'
+                        }`}
+                      >
+                        {institutionType}
+                      </span>
                     )}
                   </div>
-                  {institutionType && (
-                    <span className={`text-xs px-2.5 py-1 rounded-full ml-3 font-medium flex-shrink-0 ${
-                      institutionType === 'University' 
-                        ? 'bg-purple-100 text-purple-700' 
-                        : institutionType === 'College'
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'bg-green-100 text-green-700'
-                    }`}>
-                      {institutionType}
-                    </span>
-                  )}
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
         </div>
       )}
     </div>

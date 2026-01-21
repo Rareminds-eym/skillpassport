@@ -1,10 +1,10 @@
 import { supabase } from '../../lib/supabaseClient';
-import type { 
-  FeeStructure, 
-  StudentLedger, 
-  Payment, 
-  DefaulterReport, 
-  ApiResponse 
+import type {
+  FeeStructure,
+  StudentLedger,
+  Payment,
+  DefaulterReport,
+  ApiResponse,
 } from '../../types/college';
 
 /**
@@ -96,12 +96,14 @@ export const feeManagementService = {
       // Record payment
       const { data: paymentRecord, error: paymentError } = await supabase
         .from('payments')
-        .insert([{
-          ...payment,
-          ledger_id: ledger.id,
-          receipt_number: receiptNumber,
-          paid_at: new Date().toISOString(),
-        }])
+        .insert([
+          {
+            ...payment,
+            ledger_id: ledger.id,
+            receipt_number: receiptNumber,
+            paid_at: new Date().toISOString(),
+          },
+        ])
         .select()
         .single();
 
@@ -150,8 +152,8 @@ export const feeManagementService = {
         date: payment.paid_at,
       };
 
-      const blob = new Blob([JSON.stringify(receiptContent, null, 2)], { 
-        type: 'application/json' 
+      const blob = new Blob([JSON.stringify(receiptContent, null, 2)], {
+        type: 'application/json',
       });
 
       return { success: true, data: blob };
@@ -174,10 +176,12 @@ export const feeManagementService = {
     try {
       const { data, error } = await supabase
         .from('student_ledgers')
-        .select(`
+        .select(
+          `
           *,
           payments:payments(*)
-        `)
+        `
+        )
         .eq('student_id', studentId);
 
       if (error) throw error;
@@ -264,13 +268,15 @@ export const feeManagementService = {
   }): Promise<ApiResponse<DefaulterReport>> {
     try {
       // Get students with pending fees
-      let query = supabase
+      const query = supabase
         .from('student_ledgers')
-        .select(`
+        .select(
+          `
           *,
           student:users!student_id(*),
           admission:student_admissions!student_id(roll_number, program_id)
-        `)
+        `
+        )
         .gt('balance', 0);
 
       const { data: ledgers, error } = await query;
@@ -326,7 +332,7 @@ export const feeManagementService = {
   ): Promise<ApiResponse<Blob>> {
     try {
       // Get fee data
-      let query = supabase.from('student_ledgers').select('*');
+      const query = supabase.from('student_ledgers').select('*');
 
       if (filters.program_id) {
         // Would need to join with student_admissions
@@ -338,8 +344,8 @@ export const feeManagementService = {
 
       // Generate export (simplified)
       const content = JSON.stringify(data, null, 2);
-      const blob = new Blob([content], { 
-        type: format === 'excel' ? 'application/vnd.ms-excel' : 'application/pdf' 
+      const blob = new Blob([content], {
+        type: format === 'excel' ? 'application/vnd.ms-excel' : 'application/pdf',
       });
 
       return { success: true, data: blob };

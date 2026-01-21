@@ -70,12 +70,12 @@ const InvigilatorAssignment: React.FC<InvigilatorAssignmentProps> = ({
   };
 
   const getFacultyById = (facultyId: string) => {
-    return availableFaculty.find(f => f.id === facultyId);
+    return availableFaculty.find((f) => f.id === facultyId);
   };
 
   const getAvailableFacultyForSlot = (slot: ExamSlot) => {
     // Filter out faculty already assigned to this slot
-    return availableFaculty.filter(f => !slot.invigilators?.includes(f.id));
+    return availableFaculty.filter((f) => !slot.invigilators?.includes(f.id));
   };
 
   if (!isOpen) return null;
@@ -91,10 +91,7 @@ const InvigilatorAssignment: React.FC<InvigilatorAssignmentProps> = ({
                 Assign faculty to exam slots • {examSlots.length} slots
               </p>
             </div>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-lg transition"
-            >
+            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition">
               <XMarkIcon className="h-5 w-5 text-gray-500" />
             </button>
           </div>
@@ -121,16 +118,14 @@ const InvigilatorAssignment: React.FC<InvigilatorAssignmentProps> = ({
               <h3 className="font-semibold">Available Faculty</h3>
             </div>
             <div className="grid grid-cols-4 gap-4">
-              {availableFaculty.slice(0, 4).map(faculty => (
+              {availableFaculty.slice(0, 4).map((faculty) => (
                 <div key={faculty.id} className="text-sm">
                   <p className="font-medium text-blue-900">{faculty.name}</p>
                   <p className="text-blue-700">{faculty.assigned_slots} slots assigned</p>
                 </div>
               ))}
               {availableFaculty.length > 4 && (
-                <div className="text-sm text-blue-700">
-                  +{availableFaculty.length - 4} more
-                </div>
+                <div className="text-sm text-blue-700">+{availableFaculty.length - 4} more</div>
               )}
             </div>
           </div>
@@ -138,7 +133,8 @@ const InvigilatorAssignment: React.FC<InvigilatorAssignmentProps> = ({
           {/* Exam Slots */}
           <div className="space-y-4">
             {examSlots.map((slot) => {
-              const assignedFaculty = slot.invigilators?.map(id => getFacultyById(id)).filter(Boolean) || [];
+              const assignedFaculty =
+                slot.invigilators?.map((id) => getFacultyById(id)).filter(Boolean) || [];
               const availableFaculty = getAvailableFacultyForSlot(slot);
 
               return (
@@ -186,7 +182,9 @@ const InvigilatorAssignment: React.FC<InvigilatorAssignmentProps> = ({
                               className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-3 py-2"
                             >
                               <div>
-                                <p className="text-sm font-medium text-green-900">{faculty!.name}</p>
+                                <p className="text-sm font-medium text-green-900">
+                                  {faculty!.name}
+                                </p>
                                 <p className="text-xs text-green-700">{faculty!.department}</p>
                               </div>
                               <button

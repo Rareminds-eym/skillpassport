@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { 
-  Search, 
-  Send, 
-  MoreVertical, 
-  Phone, 
-  Video, 
-  Paperclip, 
+import {
+  Search,
+  Send,
+  MoreVertical,
+  Phone,
+  Video,
+  Paperclip,
   Smile,
   Check,
   CheckCheck,
-  Loader2
+  Loader2,
 } from 'lucide-react';
 import { useStudentConversations, useStudentMessages } from '../../hooks/useStudentMessages';
 import MessageService from '../../services/messageService';
@@ -39,103 +39,94 @@ const Messages = () => {
   const [selectedConversationId, setSelectedConversationId] = useState(null);
   const [messageInput, setMessageInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Refs
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const markedAsReadRef = useRef(new Set());
-  
+
   // Auth & User Data
   const { user } = useAuth();
-  const userEmail = useMemo(() => 
-    localStorage.getItem('userEmail') || user?.email, 
-    [user?.email]
-  );
+  const userEmail = useMemo(() => localStorage.getItem('userEmail') || user?.email, [user?.email]);
   const { studentData } = useStudentDataByEmail(userEmail);
-  const studentId = useMemo(() => 
-    studentData?.id || user?.id, 
-    [studentData?.id, user?.id]
-  );
-  const studentName = useMemo(() => 
-    studentData?.profile?.name || user?.name || 'Student',
+  const studentId = useMemo(() => studentData?.id || user?.id, [studentData?.id, user?.id]);
+  const studentName = useMemo(
+    () => studentData?.profile?.name || user?.name || 'Student',
     [studentData?.profile?.name, user?.name]
   );
-  
+
   // Data Fetching
-  const { 
-    conversations, 
-    isLoading: loadingConversations, 
-    refetch: refetchConversations
-  } = useStudentConversations(
-    studentId,
-    !!studentId
-  );
-  
-  const { 
-    messages, 
-    isLoading: loadingMessages, 
-    sendMessage, 
-    isSending 
+  const {
+    conversations,
+    isLoading: loadingConversations,
+    refetch: refetchConversations,
+  } = useStudentConversations(studentId, !!studentId);
+
+  const {
+    messages,
+    isLoading: loadingMessages,
+    sendMessage,
+    isSending,
   } = useStudentMessages({
     studentId,
     conversationId: selectedConversationId,
     enabled: !!selectedConversationId,
-    enableRealtime: true
+    enableRealtime: true,
   });
-  
+
   // Realtime Features - Use shared global presence context
   const { isUserOnline: isUserOnlineGlobal } = useGlobalPresence();
-  
+
   const { setTyping, getTypingText, isAnyoneTyping } = useTypingIndicator({
     conversationId: selectedConversationId || '',
     currentUserId: studentId || '',
     currentUserName: studentName,
-    enabled: !!selectedConversationId && !!studentId
+    enabled: !!selectedConversationId && !!studentId,
   });
-  
+
   const { sendNotification } = useNotificationBroadcast({
     userId: studentId || '',
     showToast: true,
-    enabled: !!studentId
+    enabled: !!studentId,
   });
-  
+
   // Mark messages as read when conversation is selected
   useEffect(() => {
     if (!selectedConversationId || !studentId) return;
-    
-    const conversation = conversations.find(c => c.id === selectedConversationId);
+
+    const conversation = conversations.find((c) => c.id === selectedConversationId);
     const hasUnread = conversation?.student_unread_count > 0;
-    
+
     if (!hasUnread) return;
-    
+
     const markKey = `${selectedConversationId}-${conversation?.student_unread_count}`;
     if (markedAsReadRef.current.has(markKey)) return;
     markedAsReadRef.current.add(markKey);
-    
+
     MessageService.markConversationAsRead(selectedConversationId, studentId)
       .then(() => refetchConversations())
-      .catch(err => {
+      .catch((err) => {
         console.error('Failed to mark as read:', err);
         markedAsReadRef.current.delete(markKey);
       });
   }, [selectedConversationId, studentId, conversations, refetchConversations]);
-  
+
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-  
+
   // Transform conversations with memoization
   const contacts = useMemo(() => {
-    return conversations.map(conv => {
+    return conversations.map((conv) => {
       const recruiter = conv.recruiter || {};
       const recruiterName = recruiter.name || 'Recruiter';
       const recruiterEmail = recruiter.email || '';
       const recruiterPhone = recruiter.phone || '';
-      
+
       const role = recruiterEmail || recruiterPhone || 'Recruiter';
       const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(recruiterName)}&background=${AVATAR_BG_COLOR}&color=fff`;
-      
+
       return {
         id: conv.id,
         name: recruiterName,
@@ -147,42 +138,41 @@ const Messages = () => {
         online: isUserOnlineGlobal(conv.recruiter_id),
         recruiterId: conv.recruiter_id,
         applicationId: conv.application_id,
-        opportunityId: conv.opportunity_id
+        opportunityId: conv.opportunity_id,
       };
     });
   }, [conversations, isUserOnlineGlobal]);
-  
+
   // Filter contacts based on search with memoization
   const filteredContacts = useMemo(() => {
     if (!searchQuery.trim()) return contacts;
-    
+
     const query = searchQuery.toLowerCase();
-    return contacts.filter(contact =>
-      contact.name.toLowerCase().includes(query) ||
-      contact.role.toLowerCase().includes(query)
+    return contacts.filter(
+      (contact) =>
+        contact.name.toLowerCase().includes(query) || contact.role.toLowerCase().includes(query)
     );
   }, [contacts, searchQuery]);
-  
+
   // Get current chat
-  const currentChat = useMemo(() => 
-    selectedConversationId 
-      ? contacts.find(c => c.id === selectedConversationId) 
-      : null,
+  const currentChat = useMemo(
+    () => (selectedConversationId ? contacts.find((c) => c.id === selectedConversationId) : null),
     [selectedConversationId, contacts]
   );
-  
+
   // Transform messages for display
-  const displayMessages = useMemo(() => 
-    messages.map(msg => ({
-      id: msg.id,
-      text: msg.message_text,
-      sender: msg.sender_type === 'student' ? 'me' : 'them',
-      time: safeFormatTime(msg.created_at),
-      status: msg.is_read ? 'read' : 'delivered'
-    })),
+  const displayMessages = useMemo(
+    () =>
+      messages.map((msg) => ({
+        id: msg.id,
+        text: msg.message_text,
+        sender: msg.sender_type === 'student' ? 'me' : 'them',
+        time: safeFormatTime(msg.created_at),
+        status: msg.is_read ? 'read' : 'delivered',
+      })),
     [messages]
   );
-  
+
   // Status icon renderer
   const getStatusIcon = useCallback((status) => {
     const iconClass = status === 'read' ? 'text-blue-500' : 'text-gray-400';
@@ -194,57 +184,77 @@ const Messages = () => {
       <Check className={`w-4 h-4 ${iconClass}`} />
     );
   }, []);
-  
+
   // Handle message send
-  const handleSendMessage = useCallback(async (e) => {
-    e.preventDefault();
-    
-    const trimmedInput = messageInput.trim();
-    if (!trimmedInput || !currentChat || !studentId || isSending) return;
-    
-    try {
-      await sendMessage({
-        senderId: studentId,
-        senderType: 'student',
-        receiverId: currentChat.recruiterId,
-        receiverType: 'recruiter',
-        messageText: trimmedInput,
-        applicationId: currentChat.applicationId,
-        opportunityId: currentChat.opportunityId
-      });
-      
-      // Send notification (non-blocking)
-      sendNotification(currentChat.recruiterId, {
-        title: 'New Message from Student',
-        message: trimmedInput.length > MESSAGE_PREVIEW_LENGTH 
-          ? `${trimmedInput.substring(0, MESSAGE_PREVIEW_LENGTH)}...` 
-          : trimmedInput,
-        type: 'message',
-        link: `/recruiter/messages?conversation=${selectedConversationId}`
-      
-      setMessageInput('');
-      setTyping(false);
-      inputRef.current?.focus();
-    } catch (error) {
-      console.error('Failed to send message:', error);
-      // TODO: Show error toast to user
-    }
-  }, [messageInput, currentChat, studentId, isSending, sendMessage, sendNotification, selectedConversationId, setTyping]);
-  
-  // Handle typing indicator
-  const handleInputChange = useCallback((value) => {
-    setMessageInput(value);
-    setTyping(value.length > 0);
-  }, [setTyping]);
-  
-  // Handle keyboard shortcuts
-  const handleKeyDown = useCallback((e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+  const handleSendMessage = useCallback(
+    async (e) => {
       e.preventDefault();
-      handleSendMessage(e);
-    }
-  }, [handleSendMessage]);
-  
+
+      const trimmedInput = messageInput.trim();
+      if (!trimmedInput || !currentChat || !studentId || isSending) return;
+
+      try {
+        await sendMessage({
+          senderId: studentId,
+          senderType: 'student',
+          receiverId: currentChat.recruiterId,
+          receiverType: 'recruiter',
+          messageText: trimmedInput,
+          applicationId: currentChat.applicationId,
+          opportunityId: currentChat.opportunityId,
+        });
+
+        // Send notification (non-blocking)
+        sendNotification(currentChat.recruiterId, {
+          title: 'New Message from Student',
+          message:
+            trimmedInput.length > MESSAGE_PREVIEW_LENGTH
+              ? `${trimmedInput.substring(0, MESSAGE_PREVIEW_LENGTH)}...`
+              : trimmedInput,
+          type: 'message',
+          link: `/recruiter/messages?conversation=${selectedConversationId}`,
+        });
+
+        setMessageInput('');
+        setTyping(false);
+        inputRef.current?.focus();
+      } catch (error) {
+        console.error('Failed to send message:', error);
+        // TODO: Show error toast to user
+      }
+    },
+    [
+      messageInput,
+      currentChat,
+      studentId,
+      isSending,
+      sendMessage,
+      sendNotification,
+      selectedConversationId,
+      setTyping,
+    ]
+  );
+
+  // Handle typing indicator
+  const handleInputChange = useCallback(
+    (value) => {
+      setMessageInput(value);
+      setTyping(value.length > 0);
+    },
+    [setTyping]
+  );
+
+  // Handle keyboard shortcuts
+  const handleKeyDown = useCallback(
+    (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleSendMessage(e);
+      }
+    },
+    [handleSendMessage]
+  );
+
   // Loading state
   if (loadingConversations || !studentId) {
     return (
@@ -258,7 +268,7 @@ const Messages = () => {
       </div>
     );
   }
-  
+
   return (
     <div className="flex h-[calc(100vh-180px)] bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
       {/* Left Panel - Contacts List */}
@@ -307,29 +317,21 @@ const Messages = () => {
                     loading="lazy"
                   />
                   {contact.online && (
-                    <span 
+                    <span
                       className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"
                       aria-label="Online"
                     />
                   )}
                 </div>
-                
+
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
-                    <h3 className="font-semibold text-gray-900 text-sm truncate">
-                      {contact.name}
-                    </h3>
-                    <span className="text-xs text-gray-500 flex-shrink-0 ml-2">
-                      {contact.time}
-                    </span>
+                    <h3 className="font-semibold text-gray-900 text-sm truncate">{contact.name}</h3>
+                    <span className="text-xs text-gray-500 flex-shrink-0 ml-2">{contact.time}</span>
                   </div>
-                  <p className="text-xs text-gray-500 mb-1 truncate">
-                    {contact.role}
-                  </p>
+                  <p className="text-xs text-gray-500 mb-1 truncate">{contact.role}</p>
                   <div className="flex items-center justify-between">
-                    <p className="text-sm text-gray-600 truncate">
-                      {contact.lastMessage}
-                    </p>
+                    <p className="text-sm text-gray-600 truncate">{contact.lastMessage}</p>
                     {contact.unread > 0 && (
                       <span className="flex-shrink-0 ml-2 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
                         {contact.unread}
@@ -374,21 +376,21 @@ const Messages = () => {
                   </p>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-2">
-                <button 
+                <button
                   className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                   aria-label="Voice call"
                 >
                   <Phone className="w-5 h-5 text-gray-600" />
                 </button>
-                <button 
+                <button
                   className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                   aria-label="Video call"
                 >
                   <Video className="w-5 h-5 text-gray-600" />
                 </button>
-                <button 
+                <button
                   className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                   aria-label="More options"
                 >
@@ -422,25 +424,36 @@ const Messages = () => {
                         }`}
                       >
                         <p className="text-sm leading-relaxed break-words">{message.text}</p>
-                        <div className={`flex items-center gap-1 mt-1 text-xs ${
-                          message.sender === 'me' ? 'text-red-100' : 'text-gray-500'
-                        }`}>
+                        <div
+                          className={`flex items-center gap-1 mt-1 text-xs ${
+                            message.sender === 'me' ? 'text-red-100' : 'text-gray-500'
+                          }`}
+                        >
                           <span>{message.time}</span>
                           {message.sender === 'me' && getStatusIcon(message.status)}
                         </div>
                       </div>
                     </div>
                   ))}
-                  
+
                   {/* Typing indicator */}
                   {isAnyoneTyping && (
                     <div className="flex justify-start">
                       <div className="bg-white border border-gray-200 rounded-2xl px-4 py-2.5 shadow-sm">
                         <div className="flex items-center gap-2">
                           <div className="flex gap-1">
-                            <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                            <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                            <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                            <span
+                              className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                              style={{ animationDelay: '0ms' }}
+                            />
+                            <span
+                              className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                              style={{ animationDelay: '150ms' }}
+                            />
+                            <span
+                              className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                              style={{ animationDelay: '300ms' }}
+                            />
                           </div>
                           <span className="text-xs text-gray-500 italic">{getTypingText()}</span>
                         </div>
@@ -449,7 +462,7 @@ const Messages = () => {
                   )}
                 </div>
               )}
-              
+
               <div ref={messagesEndRef} />
             </div>
 
@@ -463,7 +476,7 @@ const Messages = () => {
                 >
                   <Paperclip className="w-5 h-5 text-gray-600" />
                 </button>
-                
+
                 <div className="flex-1 relative">
                   <input
                     ref={inputRef}
@@ -509,9 +522,7 @@ const Messages = () => {
               <div className="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Send className="w-12 h-12 text-red-500" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                Select a conversation
-              </h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Select a conversation</h3>
               <p className="text-gray-500 text-sm">
                 Choose from your existing conversations or start a new one
               </p>

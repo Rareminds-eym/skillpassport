@@ -2,7 +2,7 @@ import { supabase } from '../../../lib/supabaseClient';
 
 /**
  * Data Health Check Utility
- * 
+ *
  * Senior-level database validation to ensure recruiter AI has quality data
  * Provides actionable insights when data is missing or incomplete
  */
@@ -28,13 +28,12 @@ export interface DataHealthReport {
 }
 
 class DataHealthCheckService {
-  
   /**
    * Comprehensive data health check
    */
   async checkDataHealth(): Promise<DataHealthReport> {
     const issues: DataHealthReport['issues'] = [];
-    
+
     // Check 1: Total students
     const { count: totalStudents } = await supabase
       .from('students')
@@ -46,8 +45,9 @@ class DataHealthCheckService {
       .from('skills')
       .select('student_id')
       .eq('enabled', true);
-    
-    const uniqueStudentsWithSkills = new Set(studentsWithSkills?.map(s => s.student_id) || []).size;
+
+    const uniqueStudentsWithSkills = new Set(studentsWithSkills?.map((s) => s.student_id) || [])
+      .size;
 
     // Check 3: Total skills
     const { count: totalSkills } = await supabase
@@ -56,12 +56,9 @@ class DataHealthCheckService {
       .eq('enabled', true);
 
     // Check 4: Unique skill names
-    const { data: skillNames } = await supabase
-      .from('skills')
-      .select('name')
-      .eq('enabled', true);
-    
-    const uniqueSkillNames = new Set(skillNames?.map(s => s.name) || []).size;
+    const { data: skillNames } = await supabase.from('skills').select('name').eq('enabled', true);
+
+    const uniqueSkillNames = new Set(skillNames?.map((s) => s.name) || []).size;
 
     // Check 5: Students with location data
     const { count: studentsWithLocation } = await supabase
@@ -78,21 +75,17 @@ class DataHealthCheckService {
       .not('currentCgpa', 'is', null);
 
     // Calculate metrics
-    const avgSkillsPerStudent = uniqueStudentsWithSkills > 0 
-      ? (totalSkills || 0) / uniqueStudentsWithSkills 
-      : 0;
+    const avgSkillsPerStudent =
+      uniqueStudentsWithSkills > 0 ? (totalSkills || 0) / uniqueStudentsWithSkills : 0;
 
-    const skillCoveragePercent = totalStudents && totalStudents > 0
-      ? (uniqueStudentsWithSkills / totalStudents) * 100
-      : 0;
+    const skillCoveragePercent =
+      totalStudents && totalStudents > 0 ? (uniqueStudentsWithSkills / totalStudents) * 100 : 0;
 
-    const locationCoveragePercent = totalStudents && totalStudents > 0
-      ? ((studentsWithLocation || 0) / totalStudents) * 100
-      : 0;
+    const locationCoveragePercent =
+      totalStudents && totalStudents > 0 ? ((studentsWithLocation || 0) / totalStudents) * 100 : 0;
 
-    const cgpaCoveragePercent = totalStudents && totalStudents > 0
-      ? ((studentsWithCGPA || 0) / totalStudents) * 100
-      : 0;
+    const cgpaCoveragePercent =
+      totalStudents && totalStudents > 0 ? ((studentsWithCGPA || 0) / totalStudents) * 100 : 0;
 
     // Identify issues
     if (skillCoveragePercent < 50) {
@@ -101,7 +94,7 @@ class DataHealthCheckService {
         category: 'skills',
         issue: `Only ${skillCoveragePercent.toFixed(0)}% of students have skills listed`,
         recommendation: 'Import skills from resume parsing, LinkedIn, or manual entry',
-        affectedCount: totalStudents ? totalStudents - uniqueStudentsWithSkills : 0
+        affectedCount: totalStudents ? totalStudents - uniqueStudentsWithSkills : 0,
       });
     }
 
@@ -111,7 +104,7 @@ class DataHealthCheckService {
         category: 'skills',
         issue: `Average only ${avgSkillsPerStudent.toFixed(1)} skills per student`,
         recommendation: 'Encourage students to add more skills (target: 5-8 skills)',
-        affectedCount: uniqueStudentsWithSkills
+        affectedCount: uniqueStudentsWithSkills,
       });
     }
 
@@ -121,7 +114,7 @@ class DataHealthCheckService {
         category: 'skills',
         issue: `Only ${uniqueSkillNames} unique skills in database`,
         recommendation: 'Skill diversity is low. Add more varied skills to improve matching',
-        affectedCount: uniqueSkillNames
+        affectedCount: uniqueSkillNames,
       });
     }
 
@@ -131,7 +124,7 @@ class DataHealthCheckService {
         category: 'students',
         issue: `Only ${locationCoveragePercent.toFixed(0)}% have location data`,
         recommendation: 'Add city/state information for better location-based matching',
-        affectedCount: totalStudents ? totalStudents - (studentsWithLocation || 0) : 0
+        affectedCount: totalStudents ? totalStudents - (studentsWithLocation || 0) : 0,
       });
     }
 
@@ -141,18 +134,19 @@ class DataHealthCheckService {
         category: 'students',
         issue: `Only ${cgpaCoveragePercent.toFixed(0)}% have CGPA data`,
         recommendation: 'Add academic performance data for better candidate assessment',
-        affectedCount: totalStudents ? totalStudents - (studentsWithCGPA || 0) : 0
+        affectedCount: totalStudents ? totalStudents - (studentsWithCGPA || 0) : 0,
       });
     }
 
     // Determine overall status
-    const hasHighSeverity = issues.some(i => i.severity === 'high');
-    const hasMediumSeverity = issues.some(i => i.severity === 'medium');
-    
-    const status: DataHealthReport['status'] = 
-      hasHighSeverity ? 'critical' :
-      hasMediumSeverity ? 'warning' :
-      'healthy';
+    const hasHighSeverity = issues.some((i) => i.severity === 'high');
+    const hasMediumSeverity = issues.some((i) => i.severity === 'medium');
+
+    const status: DataHealthReport['status'] = hasHighSeverity
+      ? 'critical'
+      : hasMediumSeverity
+        ? 'warning'
+        : 'healthy';
 
     return {
       status,
@@ -164,8 +158,8 @@ class DataHealthCheckService {
         unique_skill_names: uniqueSkillNames,
         avg_skills_per_student: Number(avgSkillsPerStudent.toFixed(2)),
         students_with_location: studentsWithLocation || 0,
-        students_with_cgpa: studentsWithCGPA || 0
-      }
+        students_with_cgpa: studentsWithCGPA || 0,
+      },
     };
   }
 
@@ -173,10 +167,7 @@ class DataHealthCheckService {
    * Get common skills in the database
    */
   async getCommonSkills(limit: number = 20): Promise<Array<{ skill: string; count: number }>> {
-    const { data: skills } = await supabase
-      .from('skills')
-      .select('name')
-      .eq('enabled', true);
+    const { data: skills } = await supabase.from('skills').select('name').eq('enabled', true);
 
     if (!skills || skills.length === 0) return [];
 
@@ -217,7 +208,7 @@ class DataHealthCheckService {
       .ilike('name', `%${skillName}%`)
       .limit(limit);
 
-    return [...new Set(skills?.map(s => s.name) || [])];
+    return [...new Set(skills?.map((s) => s.name) || [])];
   }
 
   /**
@@ -229,11 +220,11 @@ class DataHealthCheckService {
     const statusEmoji = {
       healthy: '✅',
       warning: '⚠️',
-      critical: '🚨'
+      critical: '🚨',
     }[status];
 
     let output = `${statusEmoji} Data Health Status: ${status.toUpperCase()}\n\n`;
-    
+
     output += `📊 Summary:\n`;
     output += `• Total Students: ${summary.total_students}\n`;
     output += `• Students with Skills: ${summary.students_with_skills} (${((summary.students_with_skills / summary.total_students) * 100).toFixed(0)}%)\n`;

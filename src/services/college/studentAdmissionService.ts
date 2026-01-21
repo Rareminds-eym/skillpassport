@@ -159,10 +159,10 @@ export const studentAdmissionService = {
     try {
       const { error } = await supabase
         .from('student_admissions')
-        .update({ 
-          status: 'enrolled', 
+        .update({
+          status: 'enrolled',
           roll_number: rollNumber,
-          current_semester: 1 
+          current_semester: 1,
         })
         .eq('id', id);
 
@@ -184,7 +184,9 @@ export const studentAdmissionService = {
    * Promote students to next semester
    * Property 15: Semester promotion validation
    */
-  async promoteToNextSemester(studentIds: string[]): Promise<ApiResponse<{ success: string[]; failed: string[] }>> {
+  async promoteToNextSemester(
+    studentIds: string[]
+  ): Promise<ApiResponse<{ success: string[]; failed: string[] }>> {
     try {
       const result = { success: [] as string[], failed: [] as string[] };
 
@@ -230,7 +232,9 @@ export const studentAdmissionService = {
   /**
    * Check graduation eligibility
    */
-  async checkGraduationEligibility(studentId: string): Promise<ApiResponse<{ eligible: boolean; reason?: string }>> {
+  async checkGraduationEligibility(
+    studentId: string
+  ): Promise<ApiResponse<{ eligible: boolean; reason?: string }>> {
     try {
       const { data: student, error } = await supabase
         .from('student_admissions')
@@ -258,9 +262,9 @@ export const studentAdmissionService = {
       if (student.current_semester < program.duration_semesters) {
         return {
           success: true,
-          data: { 
-            eligible: false, 
-            reason: `Not completed all semesters (${student.current_semester}/${program.duration_semesters})` 
+          data: {
+            eligible: false,
+            reason: `Not completed all semesters (${student.current_semester}/${program.duration_semesters})`,
           },
         };
       }
@@ -416,7 +420,9 @@ export const studentAdmissionService = {
       if (filters.department_id) query = query.eq('department_id', filters.department_id);
       if (filters.status) query = query.eq('status', filters.status);
       if (filters.search) {
-        query = query.or(`application_number.ilike.%${filters.search}%,roll_number.ilike.%${filters.search}%`);
+        query = query.or(
+          `application_number.ilike.%${filters.search}%,roll_number.ilike.%${filters.search}%`
+        );
       }
 
       const { data, error } = await query;

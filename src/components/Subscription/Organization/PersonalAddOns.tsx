@@ -1,22 +1,13 @@
 /**
  * PersonalAddOns Component
- * 
+ *
  * Displays self-purchased add-ons and available add-ons for purchase.
  * Provides clear separation from organization-provided features.
- * 
+ *
  * Requirements: 5.1, 5.2, 5.5
  */
 
-import {
-    Calendar,
-    Check,
-    ChevronRight,
-    Clock,
-    Package,
-    Plus,
-    Sparkles,
-    Star
-} from 'lucide-react';
+import { Calendar, Check, ChevronRight, Clock, Package, Plus, Sparkles, Star } from 'lucide-react';
 import { memo, useMemo, useState } from 'react';
 
 interface PurchasedAddOn {
@@ -64,9 +55,7 @@ function PersonalAddOns({
     return availableAddOns.filter((a) => !purchasedIds.has(a.id));
   }, [purchasedAddOns, availableAddOns]);
 
-  const displayedAvailable = showAllAvailable
-    ? filteredAvailable
-    : filteredAvailable.slice(0, 3);
+  const displayedAvailable = showAllAvailable ? filteredAvailable : filteredAvailable.slice(0, 3);
 
   const activeAddOns = purchasedAddOns.filter((a) => a.isActive);
   const expiredAddOns = purchasedAddOns.filter((a) => !a.isActive);
@@ -124,9 +113,7 @@ function PersonalAddOns({
                 <Sparkles className="w-5 h-5 text-purple-600" />
                 <h4 className="font-medium text-gray-900">Available Add-Ons</h4>
               </div>
-              <span className="text-sm text-purple-600">
-                {filteredAvailable.length} available
-              </span>
+              <span className="text-sm text-purple-600">{filteredAvailable.length} available</span>
             </div>
           </div>
           <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -145,7 +132,9 @@ function PersonalAddOns({
                 className="text-sm text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1"
               >
                 {showAllAvailable ? 'Show less' : `View all ${filteredAvailable.length} add-ons`}
-                <ChevronRight className={`w-4 h-4 transition-transform ${showAllAvailable ? 'rotate-90' : ''}`} />
+                <ChevronRight
+                  className={`w-4 h-4 transition-transform ${showAllAvailable ? 'rotate-90' : ''}`}
+                />
               </button>
             </div>
           )}
@@ -158,9 +147,7 @@ function PersonalAddOns({
           <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Package className="w-8 h-8 text-gray-400" />
           </div>
-          <h4 className="text-lg font-medium text-gray-900 mb-2">
-            No Add-Ons Available
-          </h4>
+          <h4 className="text-lg font-medium text-gray-900 mb-2">No Add-Ons Available</h4>
           <p className="text-sm text-gray-500">
             Check back later for new add-ons to enhance your experience.
           </p>
@@ -203,9 +190,7 @@ function PurchasedAddOnCard({ addOn, onManage }: PurchasedAddOnCardProps) {
               </span>
             )}
           </div>
-          {addOn.description && (
-            <p className="text-sm text-gray-500 mb-2">{addOn.description}</p>
-          )}
+          {addOn.description && <p className="text-sm text-gray-500 mb-2">{addOn.description}</p>}
           <div className="flex items-center gap-4 text-xs text-gray-500">
             <span className="flex items-center gap-1">
               <Calendar className="w-3 h-3" />
@@ -240,9 +225,7 @@ function PurchasedAddOnCard({ addOn, onManage }: PurchasedAddOnCardProps) {
             </span>
           ))}
           {addOn.features.length > 3 && (
-            <span className="text-xs text-gray-500">
-              +{addOn.features.length - 3} more
-            </span>
+            <span className="text-xs text-gray-500">+{addOn.features.length - 3} more</span>
           )}
         </div>
       )}

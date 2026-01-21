@@ -33,19 +33,19 @@ const DiversityExportModal: React.FC<DiversityExportModalProps> = ({
   isOpen,
   onClose,
   geographicData,
-  collegesData
+  collegesData,
 }) => {
   const [selectedSections, setSelectedSections] = useState({
     geographic: true,
-    colleges: true
+    colleges: true,
   });
 
   if (!isOpen) return null;
 
   const handleCheckboxChange = (section: 'geographic' | 'colleges') => {
-    setSelectedSections(prev => ({
+    setSelectedSections((prev) => ({
       ...prev,
-      [section]: !prev[section]
+      [section]: !prev[section],
     }));
   };
 
@@ -62,131 +62,137 @@ const DiversityExportModal: React.FC<DiversityExportModalProps> = ({
       const pageWidth = doc.internal.pageSize.getWidth();
       let yPosition = 20;
 
-    // Add title
-    doc.setFontSize(20);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Diversity & Geography Report', pageWidth / 2, yPosition, { align: 'center' });
-    
-    yPosition += 10;
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100);
-    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, pageWidth / 2, yPosition, { align: 'center' });
-    
-    yPosition += 15;
-
-    // Export Geographic Distribution if selected
-    if (selectedSections.geographic && geographicData && geographicData.length > 0) {
-      doc.setFontSize(14);
+      // Add title
+      doc.setFontSize(20);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(0);
-      doc.text('Geographic Distribution', 14, yPosition);
-      yPosition += 5;
+      doc.text('Diversity & Geography Report', pageWidth / 2, yPosition, { align: 'center' });
 
-      // Calculate total candidates
-      const totalCandidates = geographicData.reduce((sum, loc) => sum + loc.count, 0);
-
-      // Create table data
-      const tableData = geographicData.map(location => [
-        location.city,
-        location.count.toString(),
-        `${location.percentage}%`
-      ]);
-
-      // Add table
-      autoTable(doc, {
-        startY: yPosition,
-        head: [['Location', 'Candidates', 'Percentage']],
-        body: tableData,
-        theme: 'striped',
-        headStyles: {
-          fillColor: [59, 130, 246], // Blue color
-          textColor: 255,
-          fontStyle: 'bold'
-        },
-        styles: {
-          fontSize: 10,
-          cellPadding: 5
-        },
-        margin: { left: 14, right: 14 }
+      yPosition += 10;
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100);
+      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, pageWidth / 2, yPosition, {
+        align: 'center',
       });
 
-      // Update yPosition after table
-      yPosition = (doc as any).lastAutoTable.finalY + 10;
-
-      // Add total
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`Total Candidates: ${totalCandidates}`, 14, yPosition);
       yPosition += 15;
-    }
 
-    // Export Top Hiring Colleges if selected
-    if (selectedSections.colleges && collegesData && collegesData.length > 0) {
-      // Check if we need a new page
-      if (yPosition > 200) {
-        doc.addPage();
-        yPosition = 20;
+      // Export Geographic Distribution if selected
+      if (selectedSections.geographic && geographicData && geographicData.length > 0) {
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(0);
+        doc.text('Geographic Distribution', 14, yPosition);
+        yPosition += 5;
+
+        // Calculate total candidates
+        const totalCandidates = geographicData.reduce((sum, loc) => sum + loc.count, 0);
+
+        // Create table data
+        const tableData = geographicData.map((location) => [
+          location.city,
+          location.count.toString(),
+          `${location.percentage}%`,
+        ]);
+
+        // Add table
+        autoTable(doc, {
+          startY: yPosition,
+          head: [['Location', 'Candidates', 'Percentage']],
+          body: tableData,
+          theme: 'striped',
+          headStyles: {
+            fillColor: [59, 130, 246], // Blue color
+            textColor: 255,
+            fontStyle: 'bold',
+          },
+          styles: {
+            fontSize: 10,
+            cellPadding: 5,
+          },
+          margin: { left: 14, right: 14 },
+        });
+
+        // Update yPosition after table
+        yPosition = (doc as any).lastAutoTable.finalY + 10;
+
+        // Add total
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Total Candidates: ${totalCandidates}`, 14, yPosition);
+        yPosition += 15;
       }
 
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(0);
-      doc.text('Top Hiring Colleges', 14, yPosition);
-      yPosition += 5;
+      // Export Top Hiring Colleges if selected
+      if (selectedSections.colleges && collegesData && collegesData.length > 0) {
+        // Check if we need a new page
+        if (yPosition > 200) {
+          doc.addPage();
+          yPosition = 20;
+        }
 
-      // Create table data
-      const tableData = collegesData.map((college, index) => [
-        (index + 1).toString(),
-        college.name,
-        college.count.toString(),
-        `${college.percentage}%`
-      ]);
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(0);
+        doc.text('Top Hiring Colleges', 14, yPosition);
+        yPosition += 5;
 
-      // Add table
-      autoTable(doc, {
-        startY: yPosition,
-        head: [['Rank', 'College/University', 'Candidates', 'Percentage']],
-        body: tableData,
-        theme: 'striped',
-        headStyles: {
-          fillColor: [34, 197, 94], // Green color
-          textColor: 255,
-          fontStyle: 'bold'
-        },
-        styles: {
-          fontSize: 10,
-          cellPadding: 5
-        },
-        columnStyles: {
-          0: { cellWidth: 15 }
-        },
-        margin: { left: 14, right: 14 }
-      });
+        // Create table data
+        const tableData = collegesData.map((college, index) => [
+          (index + 1).toString(),
+          college.name,
+          college.count.toString(),
+          `${college.percentage}%`,
+        ]);
 
-      // Update yPosition after table
-      yPosition = (doc as any).lastAutoTable.finalY + 10;
+        // Add table
+        autoTable(doc, {
+          startY: yPosition,
+          head: [['Rank', 'College/University', 'Candidates', 'Percentage']],
+          body: tableData,
+          theme: 'striped',
+          headStyles: {
+            fillColor: [34, 197, 94], // Green color
+            textColor: 255,
+            fontStyle: 'bold',
+          },
+          styles: {
+            fontSize: 10,
+            cellPadding: 5,
+          },
+          columnStyles: {
+            0: { cellWidth: 15 },
+          },
+          margin: { left: 14, right: 14 },
+        });
 
-      // Add diversity index note
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'italic');
-      doc.setTextColor(37, 99, 235); // Blue text
-      doc.text(`Diversity Index: Good distribution across ${collegesData.length} institutions`, 14, yPosition);
-    }
+        // Update yPosition after table
+        yPosition = (doc as any).lastAutoTable.finalY + 10;
 
-    // Add footer
-    const pageCount = doc.internal.pages.length - 1;
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setFontSize(8);
-      doc.setTextColor(150);
-      doc.text(
-        `Page ${i} of ${pageCount}`,
-        pageWidth / 2,
-        doc.internal.pageSize.getHeight() - 10,
-        { align: 'center' }
-      );
-    }
+        // Add diversity index note
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'italic');
+        doc.setTextColor(37, 99, 235); // Blue text
+        doc.text(
+          `Diversity Index: Good distribution across ${collegesData.length} institutions`,
+          14,
+          yPosition
+        );
+      }
+
+      // Add footer
+      const pageCount = doc.internal.pages.length - 1;
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        doc.text(
+          `Page ${i} of ${pageCount}`,
+          pageWidth / 2,
+          doc.internal.pageSize.getHeight() - 10,
+          { align: 'center' }
+        );
+      }
 
       // Save the PDF
       const fileName = `Diversity_Geography_${new Date().toISOString().split('T')[0]}.pdf`;
@@ -243,7 +249,10 @@ const DiversityExportModal: React.FC<DiversityExportModalProps> = ({
                   />
                 </div>
                 <div className="ml-3">
-                  <label htmlFor="geographic-checkbox" className="font-medium text-gray-900 cursor-pointer">
+                  <label
+                    htmlFor="geographic-checkbox"
+                    className="font-medium text-gray-900 cursor-pointer"
+                  >
                     Geographic Distribution
                   </label>
                   <p className="text-sm text-gray-500">
@@ -266,7 +275,10 @@ const DiversityExportModal: React.FC<DiversityExportModalProps> = ({
                   />
                 </div>
                 <div className="ml-3">
-                  <label htmlFor="colleges-checkbox" className="font-medium text-gray-900 cursor-pointer">
+                  <label
+                    htmlFor="colleges-checkbox"
+                    className="font-medium text-gray-900 cursor-pointer"
+                  >
                     Top Hiring Colleges
                   </label>
                   <p className="text-sm text-gray-500">

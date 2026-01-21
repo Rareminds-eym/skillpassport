@@ -9,7 +9,7 @@ export const useSessionRestore = (studentId, courseId, options = {}) => {
   const {
     enabled = true,
     minProgressForRestore = 1, // Minimum progress % to show restore modal
-    autoRestoreThreshold = 95  // Auto-restore without modal if progress >= this
+    autoRestoreThreshold = 95, // Auto-restore without modal if progress >= this
   } = options;
 
   const [restorePoint, setRestorePoint] = useState(null);
@@ -20,23 +20,35 @@ export const useSessionRestore = (studentId, courseId, options = {}) => {
   // Check for restore point on mount
   useEffect(() => {
     if (!enabled || !studentId || !courseId) {
-      console.log('🔄 useSessionRestore: Skipping - enabled:', enabled, 'studentId:', studentId, 'courseId:', courseId);
+      console.log(
+        '🔄 useSessionRestore: Skipping - enabled:',
+        enabled,
+        'studentId:',
+        studentId,
+        'courseId:',
+        courseId
+      );
       setIsLoading(false);
       return;
     }
 
     const checkRestorePoint = async () => {
       setIsLoading(true);
-      console.log('🔄 useSessionRestore: Checking restore point for student:', studentId, 'course:', courseId);
-      
+      console.log(
+        '🔄 useSessionRestore: Checking restore point for student:',
+        studentId,
+        'course:',
+        courseId
+      );
+
       try {
         const point = await courseProgressService.getRestorePoint(studentId, courseId);
         console.log('🔄 useSessionRestore: Got restore point:', point);
-        
+
         if (point && point.progress >= minProgressForRestore && point.progress < 100) {
           console.log('🔄 useSessionRestore: Valid restore point found, progress:', point.progress);
           setRestorePoint(point);
-          
+
           // Auto-restore for high progress without showing modal
           if (point.progress >= autoRestoreThreshold) {
             console.log('🔄 useSessionRestore: Auto-restoring (high progress)');
@@ -46,7 +58,12 @@ export const useSessionRestore = (studentId, courseId, options = {}) => {
             setShowRestoreModal(true);
           }
         } else {
-          console.log('🔄 useSessionRestore: No valid restore point - point:', point, 'minProgress:', minProgressForRestore);
+          console.log(
+            '🔄 useSessionRestore: No valid restore point - point:',
+            point,
+            'minProgress:',
+            minProgressForRestore
+          );
         }
       } catch (error) {
         console.error('Error checking restore point:', error);
@@ -80,23 +97,26 @@ export const useSessionRestore = (studentId, courseId, options = {}) => {
   }, []);
 
   // Save current position as restore point
-  const saveRestorePoint = useCallback(async (moduleIndex, lessonIndex, lessonId, videoPosition = 0) => {
-    if (!enabled || !studentId || !courseId) return;
-    
-    await courseProgressService.saveRestorePoint(
-      studentId,
-      courseId,
-      moduleIndex,
-      lessonIndex,
-      lessonId,
-      videoPosition
-    );
-  }, [enabled, studentId, courseId]);
+  const saveRestorePoint = useCallback(
+    async (moduleIndex, lessonIndex, lessonId, videoPosition = 0) => {
+      if (!enabled || !studentId || !courseId) return;
+
+      await courseProgressService.saveRestorePoint(
+        studentId,
+        courseId,
+        moduleIndex,
+        lessonIndex,
+        lessonId,
+        videoPosition
+      );
+    },
+    [enabled, studentId, courseId]
+  );
 
   // Format last accessed time for display
   const getLastAccessedText = useCallback(() => {
     if (!restorePoint?.lastAccessed) return '';
-    
+
     const lastAccessed = new Date(restorePoint.lastAccessed);
     const now = new Date();
     const diffMs = now - lastAccessed;
@@ -108,7 +128,7 @@ export const useSessionRestore = (studentId, courseId, options = {}) => {
     if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
     if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
     if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-    
+
     return lastAccessed.toLocaleDateString();
   }, [restorePoint]);
 
@@ -121,7 +141,7 @@ export const useSessionRestore = (studentId, courseId, options = {}) => {
     handleStartFresh,
     dismissModal,
     saveRestorePoint,
-    getLastAccessedText
+    getLastAccessedText,
   };
 };
 

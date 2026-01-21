@@ -1,9 +1,5 @@
-import React, { useEffect, useState } from "react";
-import {
-  XMarkIcon,
-  BookOpenIcon,
-  CheckCircleIcon,
-} from "@heroicons/react/24/outline";
+import React, { useEffect, useState } from 'react';
+import { XMarkIcon, BookOpenIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { DepartmentWithStats } from '../../../services/college/departmentService';
 
 interface Course {
@@ -34,7 +30,7 @@ const CourseMappingModal: React.FC<CourseMappingModalProps> = ({
   onSave,
 }) => {
   const [selectedCourses, setSelectedCourses] = useState<number[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     if (department) {
@@ -53,9 +49,7 @@ const CourseMappingModal: React.FC<CourseMappingModalProps> = ({
 
   const handleToggleCourse = (courseId: number) => {
     setSelectedCourses((prev) =>
-      prev.includes(courseId)
-        ? prev.filter((id) => id !== courseId)
-        : [...prev, courseId]
+      prev.includes(courseId) ? prev.filter((id) => id !== courseId) : [...prev, courseId]
     );
   };
 
@@ -77,10 +71,7 @@ const CourseMappingModal: React.FC<CourseMappingModalProps> = ({
               Select or remove courses for this department.
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <XMarkIcon className="h-6 w-6" />
           </button>
         </div>
@@ -104,7 +95,7 @@ const CourseMappingModal: React.FC<CourseMappingModalProps> = ({
                   <label
                     key={course.id}
                     className={`flex items-center justify-between p-3 cursor-pointer hover:bg-gray-50 ${
-                      checked ? "bg-indigo-50" : ""
+                      checked ? 'bg-indigo-50' : ''
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -134,7 +125,7 @@ const CourseMappingModal: React.FC<CourseMappingModalProps> = ({
         <div className="mt-5 flex items-center justify-between">
           <p className="text-sm text-gray-600">
             {selectedCourses.length} course
-            {selectedCourses.length !== 1 ? "s" : ""} selected
+            {selectedCourses.length !== 1 ? 's' : ''} selected
           </p>
           <div className="flex gap-3">
             <button

@@ -9,7 +9,7 @@ interface UseBroadcastProps {
 
 /**
  * Hook for sending and receiving broadcast messages
- * 
+ *
  * @example
  * ```tsx
  * const { sendBroadcast } = useBroadcast({
@@ -17,7 +17,7 @@ interface UseBroadcastProps {
  *   onReceive: (message) => {
  *   }
  * });
- * 
+ *
  * // Send a broadcast
  * await sendBroadcast({
  *   type: 'notification',
@@ -27,19 +27,11 @@ interface UseBroadcastProps {
  * });
  * ```
  */
-export const useBroadcast = ({
-  channelName,
-  onReceive,
-  enabled = true
-}: UseBroadcastProps) => {
+export const useBroadcast = ({ channelName, onReceive, enabled = true }: UseBroadcastProps) => {
   useEffect(() => {
     if (!enabled || !channelName) return;
 
-
-    const channel = RealtimeService.createBroadcastChannel(
-      channelName,
-      onReceive
-    );
+    const channel = RealtimeService.createBroadcastChannel(channelName, onReceive);
 
     return () => {
       RealtimeService.unsubscribe(channelName);
@@ -63,7 +55,7 @@ export const useBroadcast = ({
   );
 
   return {
-    sendBroadcast
+    sendBroadcast,
   };
 };
 

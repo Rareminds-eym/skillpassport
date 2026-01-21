@@ -16,7 +16,8 @@ export const getStudentSettingsByEmail = async (email) => {
   try {
     const { data, error } = await supabase
       .from('students')
-      .select(`
+      .select(
+        `
         id,
         email,
         name,
@@ -86,7 +87,8 @@ export const getStudentSettingsByEmail = async (email) => {
           state,
           organization_type
         )
-      `)
+      `
+      )
       .eq('email', email)
       .maybeSingle();
 
@@ -283,21 +285,37 @@ export const updateStudentSettings = async (email, updates) => {
     const numericFields = ['age', 'pincode', 'currentCgpa', 'semester'];
 
     // Define UUID fields that should be null instead of empty string
-    const uuidFields = ['universityCollegeId', 'schoolId', 'schoolClassId', 'collegeId', 'programId', 'universityId', 'programSectionId'];
+    const uuidFields = [
+      'universityCollegeId',
+      'schoolId',
+      'schoolClassId',
+      'collegeId',
+      'programId',
+      'universityId',
+      'programSectionId',
+    ];
 
     // Define fields that might contain phone numbers (could be numeric in DB)
     const phoneFields = ['phone', 'alternatePhone', 'guardianPhone'];
 
     // Define date fields that should be null instead of empty string
-    const dateFields = ['dateOfBirth', 'gradeStartDate', 'enrollmentDate', 'expectedGraduationDate'];
+    const dateFields = [
+      'dateOfBirth',
+      'gradeStartDate',
+      'enrollmentDate',
+      'expectedGraduationDate',
+    ];
 
     // Process updates
-    Object.keys(updates).forEach(key => {
+    Object.keys(updates).forEach((key) => {
       if (fieldMapping[key]) {
         let value = updates[key];
 
         // Handle numeric fields - convert empty strings to null
-        if (numericFields.includes(key) && (value === '' || value === null || value === undefined)) {
+        if (
+          numericFields.includes(key) &&
+          (value === '' || value === null || value === undefined)
+        ) {
           value = null;
         }
 
@@ -317,7 +335,7 @@ export const updateStudentSettings = async (email, updates) => {
         }
 
         columnUpdates[fieldMapping[key]] = value;
-        
+
         // IMPORTANT: When branch_field is updated, also update course_name
         // This ensures consistency between settings page and assessment test page
         if (key === 'branch' && value) {
@@ -335,7 +353,7 @@ export const updateStudentSettings = async (email, updates) => {
       console.log('💾 Saving settings to user_settings table...');
       console.log('   Notification settings:', updates.notificationSettings);
       console.log('   Privacy settings:', updates.privacySettings);
-      
+
       // Check if user_settings record exists
       const { data: existingSettings, error: checkError } = await supabase
         .from('user_settings')
@@ -363,7 +381,7 @@ export const updateStudentSettings = async (email, updates) => {
           .from('user_settings')
           .update(settingsUpdate)
           .eq('user_id', student.user_id);
-        
+
         if (updateError) {
           console.error('❌ Error updating user_settings:', updateError);
           return { success: false, error: updateError.message };
@@ -372,13 +390,11 @@ export const updateStudentSettings = async (email, updates) => {
       } else {
         // Create new record
         console.log('➕ Creating new user_settings record...');
-        const { error: insertError } = await supabase
-          .from('user_settings')
-          .insert({
-            user_id: student.user_id,
-            ...settingsUpdate,
-          });
-        
+        const { error: insertError } = await supabase.from('user_settings').insert({
+          user_id: student.user_id,
+          ...settingsUpdate,
+        });
+
         if (insertError) {
           console.error('❌ Error inserting user_settings:', insertError);
           return { success: false, error: insertError.message };
@@ -391,7 +407,8 @@ export const updateStudentSettings = async (email, updates) => {
     columnUpdates.updated_at = new Date().toISOString();
 
     // Perform the update on students table (only if there are column updates)
-    if (Object.keys(columnUpdates).length > 1) { // More than just updated_at
+    if (Object.keys(columnUpdates).length > 1) {
+      // More than just updated_at
       const { data, error } = await supabase
         .from('students')
         .update(columnUpdates)
@@ -435,17 +452,17 @@ export const updateStudentPassword = async (email, currentPassword, newPassword)
 
     if (authError) {
       console.error('❌ Current password verification failed:', authError.message);
-      return { 
-        success: false, 
-        error: 'Current password is incorrect. Please try again.' 
+      return {
+        success: false,
+        error: 'Current password is incorrect. Please try again.',
       };
     }
 
     if (!authData?.user) {
       console.error('❌ No user returned from authentication');
-      return { 
-        success: false, 
-        error: 'Authentication failed. Please try again.' 
+      return {
+        success: false,
+        error: 'Authentication failed. Please try again.',
       };
     }
 
@@ -459,42 +476,45 @@ export const updateStudentPassword = async (email, currentPassword, newPassword)
 
     if (updateError) {
       console.error('❌ Password update failed:', updateError.message);
-      
+
       // Handle specific error cases
       if (updateError.message?.includes('same password')) {
-        return { 
-          success: false, 
-          error: 'New password must be different from your current password.' 
+        return {
+          success: false,
+          error: 'New password must be different from your current password.',
         };
       }
-      
-      if (updateError.message?.includes('password') && (updateError.message?.includes('6') || updateError.message?.includes('characters'))) {
-        return { 
-          success: false, 
-          error: 'Password must be at least 6 characters long.' 
+
+      if (
+        updateError.message?.includes('password') &&
+        (updateError.message?.includes('6') || updateError.message?.includes('characters'))
+      ) {
+        return {
+          success: false,
+          error: 'Password must be at least 6 characters long.',
         };
       }
-      
-      return { 
-        success: false, 
-        error: updateError.message || 'Failed to update password. Please try again.' 
+
+      return {
+        success: false,
+        error: updateError.message || 'Failed to update password. Please try again.',
       };
     }
 
     console.log('✅ Password updated successfully for:', email);
     console.log('   User ID:', data?.user?.id);
     console.log('   Updated at:', data?.user?.updated_at);
-    
-    return { 
-      success: true, 
+
+    return {
+      success: true,
       message: 'Password updated successfully!',
-      data 
+      data,
     };
   } catch (err) {
     console.error('❌ updateStudentPassword exception:', err);
-    return { 
-      success: false, 
-      error: err.message || 'An unexpected error occurred. Please try again.' 
+    return {
+      success: false,
+      error: err.message || 'An unexpected error occurred. Please try again.',
     };
   }
 };

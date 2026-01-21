@@ -1,30 +1,30 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import {
-    AlertCircle,
-    Award,
-    Bell,
-    Briefcase,
-    Building2,
-    Calendar,
-    CheckCircle2,
-    Clock,
-    Eye,
-    FileText,
-    Filter,
-    Grid3x3,
-    List,
-    MapPin,
-    MessageSquare,
-    RefreshCw,
-    Search,
-    Sparkles,
-    Target,
-    TrendingUp,
-    Users,
-    Video,
-    X,
-    XCircle
+  AlertCircle,
+  Award,
+  Bell,
+  Briefcase,
+  Building2,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  Eye,
+  FileText,
+  Filter,
+  Grid3x3,
+  List,
+  MapPin,
+  MessageSquare,
+  RefreshCw,
+  Search,
+  Sparkles,
+  Target,
+  TrendingUp,
+  Users,
+  Video,
+  X,
+  XCircle,
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -94,19 +94,24 @@ const Opportunities = () => {
     const isSchoolStudent = studentData?.school_id || studentData?.school_class_id;
     const isUniversityStudent = studentData?.university_college_id || studentData?.universityId;
     return { isSchoolStudent, isUniversityStudent };
-  }, [studentData?.school_id, studentData?.school_class_id, studentData?.university_college_id, studentData?.universityId]);
+  }, [
+    studentData?.school_id,
+    studentData?.school_class_id,
+    studentData?.university_college_id,
+    studentData?.universityId,
+  ]);
 
   // Build server-side filters (excluding skills which needs client-side filtering)
   const serverFilters = React.useMemo(() => {
     const filters = {};
-    
+
     // Employment type filter - for school students, force internship only
     if (studentType.isSchoolStudent) {
       filters.employmentType = ['internship'];
     } else if (advancedFilters.employmentType.length > 0) {
       filters.employmentType = advancedFilters.employmentType;
     }
-    
+
     if (advancedFilters.experienceLevel.length > 0) {
       filters.experienceLevel = advancedFilters.experienceLevel;
     }
@@ -125,18 +130,18 @@ const Opportunities = () => {
     if (advancedFilters.postedWithin) {
       filters.postedWithin = advancedFilters.postedWithin;
     }
-    
+
     return filters;
   }, [advancedFilters, studentType.isSchoolStudent]);
 
   // Fetch opportunities with server-side pagination
   const [isLoading, setIsLoading] = useState(true);
-  const { 
-    opportunities, 
-    loading: dataLoading, 
+  const {
+    opportunities,
+    loading: dataLoading,
     error,
     totalCount,
-    totalPages 
+    totalPages,
   } = useOpportunities({
     fetchOnMount: true,
     activeOnly: true,
@@ -145,7 +150,7 @@ const Opportunities = () => {
     pageSize: opportunitiesPerPage,
     sortBy: sortBy,
     filters: serverFilters,
-    serverSidePagination: true
+    serverSidePagination: true,
   });
 
   // Client-side filter for skills (JSONB array filtering not supported well in Supabase)
@@ -153,13 +158,11 @@ const Opportunities = () => {
     if (advancedFilters.skills.length === 0) {
       return opportunities;
     }
-    
-    return opportunities.filter(opp => {
+
+    return opportunities.filter((opp) => {
       const oppSkills = opp.required_skills || opp.skills_required || [];
-      return advancedFilters.skills.some(skill =>
-        oppSkills.some(oppSkill => 
-          oppSkill.toLowerCase().includes(skill.toLowerCase())
-        )
+      return advancedFilters.skills.some((skill) =>
+        oppSkills.some((oppSkill) => oppSkill.toLowerCase().includes(skill.toLowerCase()))
       );
     });
   }, [opportunities, advancedFilters.skills]);
@@ -186,7 +189,7 @@ const Opportunities = () => {
   useEffect(() => {
     if (location.state?.selectedOpportunityId && opportunities.length > 0) {
       const preSelectedOpp = opportunities.find(
-        opp => opp.id === location.state.selectedOpportunityId
+        (opp) => opp.id === location.state.selectedOpportunityId
       );
       if (preSelectedOpp) {
         setSelectedOpportunity(preSelectedOpp);
@@ -208,21 +211,21 @@ const Opportunities = () => {
   useMessageNotifications({
     userId: studentId,
     userType: 'student',
-    enabled: !!studentId
+    enabled: !!studentId,
   });
 
   // Load applied and saved jobs
   useEffect(() => {
     const loadJobsData = async () => {
       if (!studentId) return;
-      
+
       try {
         const [applicationsData, savedIds] = await Promise.all([
           AppliedJobsService.getStudentApplications(studentId),
-          SavedJobsService.getSavedJobIds(studentId)
+          SavedJobsService.getSavedJobIds(studentId),
         ]);
-        
-        setAppliedJobs(new Set(applicationsData.map(app => app.opportunity_id)));
+
+        setAppliedJobs(new Set(applicationsData.map((app) => app.opportunity_id)));
         setSavedJobs(new Set(savedIds));
       } catch (error) {
         console.error('Error loading jobs data:', error);
@@ -242,15 +245,16 @@ const Opportunities = () => {
         userEmail
       );
 
-      const transformedApplications = applicationsData.map(app => ({
+      const transformedApplications = applicationsData.map((app) => ({
         id: app.id,
         studentId: app.student_id,
         jobTitle: app.opportunity?.job_title || app.opportunity?.title || 'N/A',
         company: app.opportunity?.company_name || 'N/A',
         location: app.opportunity?.location || 'N/A',
-        salary: app.opportunity?.salary_range_min && app.opportunity?.salary_range_max
-          ? `₹${(app.opportunity.salary_range_min / 1000).toFixed(0)}k - ₹${(app.opportunity.salary_range_max / 1000).toFixed(0)}k`
-          : 'Not specified',
+        salary:
+          app.opportunity?.salary_range_min && app.opportunity?.salary_range_max
+            ? `₹${(app.opportunity.salary_range_min / 1000).toFixed(0)}k - ₹${(app.opportunity.salary_range_max / 1000).toFixed(0)}k`
+            : 'Not specified',
         appliedDate: app.applied_at?.split('T')[0] || new Date().toISOString().split('T')[0],
         status: app.application_status,
         logo: app.opportunity?.company_logo,
@@ -258,7 +262,11 @@ const Opportunities = () => {
         level: app.opportunity?.experience_level || app.opportunity?.department || 'N/A',
         lastUpdate: formatLastUpdate(app.updated_at || app.applied_at),
         opportunityId: app.opportunity_id,
-        recruiterId: app.opportunity?.recruiter_id || app.pipeline_recruiter_id || app.pipeline_status?.assigned_to || null,
+        recruiterId:
+          app.opportunity?.recruiter_id ||
+          app.pipeline_recruiter_id ||
+          app.pipeline_status?.assigned_to ||
+          null,
         pipelineStatus: app.pipeline_status,
         hasPipelineStatus: app.has_pipeline_status,
         pipelineStage: app.pipeline_stage,
@@ -266,7 +274,7 @@ const Opportunities = () => {
         rejectionReason: app.rejection_reason,
         nextAction: app.next_action,
         nextActionDate: app.next_action_date,
-        interviews: app.interviews || []
+        interviews: app.interviews || [],
       }));
 
       setApplications(transformedApplications);
@@ -314,13 +322,14 @@ const Opportunities = () => {
     let filtered = applications;
 
     if (statusFilter !== 'all') {
-      filtered = filtered.filter(app => app.status === statusFilter);
+      filtered = filtered.filter((app) => app.status === statusFilter);
     }
 
     if (searchQuery) {
-      filtered = filtered.filter(app =>
-        app.jobTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        app.company.toLowerCase().includes(searchQuery.toLowerCase())
+      filtered = filtered.filter(
+        (app) =>
+          app.jobTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          app.company.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
@@ -342,12 +351,12 @@ const Opportunities = () => {
 
     try {
       const result = await SavedJobsService.toggleSaveJob(studentId, opportunity.id);
-      
+
       if (result.success) {
         if (result.isSaved) {
-          setSavedJobs(prev => new Set([...prev, opportunity.id]));
+          setSavedJobs((prev) => new Set([...prev, opportunity.id]));
         } else {
-          setSavedJobs(prev => {
+          setSavedJobs((prev) => {
             const newSet = new Set(prev);
             newSet.delete(opportunity.id);
             return newSet;
@@ -376,11 +385,11 @@ const Opportunities = () => {
       if (opportunity.application_link) {
         // Save application to profile for tracking
         const result = await AppliedJobsService.applyToJob(studentId, opportunity.id);
-        
+
         if (result.success) {
-          setAppliedJobs(prev => new Set([...prev, opportunity.id]));
+          setAppliedJobs((prev) => new Set([...prev, opportunity.id]));
         }
-        
+
         // Open external link
         window.open(opportunity.application_link, '_blank');
         setIsApplying(false);
@@ -389,9 +398,9 @@ const Opportunities = () => {
 
       // Handle regular application
       const result = await AppliedJobsService.applyToJob(studentId, opportunity.id);
-      
+
       if (result.success) {
-        setAppliedJobs(prev => new Set([...prev, opportunity.id]));
+        setAppliedJobs((prev) => new Set([...prev, opportunity.id]));
       } else {
         console.error('Application failed:', result.message);
       }
@@ -453,17 +462,23 @@ const Opportunities = () => {
                   }`}
                 >
                   <div className="flex items-start gap-3">
-                    <div className={`p-2 rounded-lg ${
-                      activeTab === 'my-jobs' ? 'bg-indigo-600' : 'bg-gray-100'
-                    }`}>
-                      <Briefcase className={`w-6 h-6 ${
-                        activeTab === 'my-jobs' ? 'text-white' : 'text-gray-600'
-                      }`} />
+                    <div
+                      className={`p-2 rounded-lg ${
+                        activeTab === 'my-jobs' ? 'bg-indigo-600' : 'bg-gray-100'
+                      }`}
+                    >
+                      <Briefcase
+                        className={`w-6 h-6 ${
+                          activeTab === 'my-jobs' ? 'text-white' : 'text-gray-600'
+                        }`}
+                      />
                     </div>
                     <div className="flex-1">
-                      <h1 className={`font-bold text-2xl ${
-                        activeTab === 'my-jobs' ? 'text-indigo-600' : 'text-gray-900'
-                      }`}>
+                      <h1
+                        className={`font-bold text-2xl ${
+                          activeTab === 'my-jobs' ? 'text-indigo-600' : 'text-gray-900'
+                        }`}
+                      >
                         My Jobs
                       </h1>
                       <p className="text-sm text-gray-600 mt-1">
@@ -483,17 +498,23 @@ const Opportunities = () => {
                   }`}
                 >
                   <div className="flex items-start gap-3">
-                    <div className={`p-2 rounded-lg ${
-                      activeTab === 'my-applications' ? 'bg-indigo-600' : 'bg-gray-100'
-                    }`}>
-                      <FileText className={`w-6 h-6 ${
-                        activeTab === 'my-applications' ? 'text-white' : 'text-gray-600'
-                      }`} />
+                    <div
+                      className={`p-2 rounded-lg ${
+                        activeTab === 'my-applications' ? 'bg-indigo-600' : 'bg-gray-100'
+                      }`}
+                    >
+                      <FileText
+                        className={`w-6 h-6 ${
+                          activeTab === 'my-applications' ? 'text-white' : 'text-gray-600'
+                        }`}
+                      />
                     </div>
                     <div className="flex-1">
-                      <h1 className={`font-bold text-lg ${
-                        activeTab === 'my-applications' ? 'text-indigo-600' : 'text-gray-900'
-                      }`}>
+                      <h1
+                        className={`font-bold text-lg ${
+                          activeTab === 'my-applications' ? 'text-indigo-600' : 'text-gray-900'
+                        }`}
+                      >
                         My Applications
                       </h1>
                       <p className="text-sm text-gray-600 mt-1">
@@ -613,14 +634,18 @@ const MyJobsContent = ({
   studentData,
   totalCount = 0,
   totalPages: serverTotalPages = 1,
-  isServerPaginated = false
+  isServerPaginated = false,
 }) => {
   // Use server-side pagination values when available
-  const totalPages = isServerPaginated ? serverTotalPages : Math.max(1, Math.ceil(opportunities.length / opportunitiesPerPage));
-  const displayedOpportunities = isServerPaginated ? opportunities : (() => {
-    const startIndex = (currentPage - 1) * opportunitiesPerPage;
-    return opportunities.slice(startIndex, startIndex + opportunitiesPerPage);
-  })();
+  const totalPages = isServerPaginated
+    ? serverTotalPages
+    : Math.max(1, Math.ceil(opportunities.length / opportunitiesPerPage));
+  const displayedOpportunities = isServerPaginated
+    ? opportunities
+    : (() => {
+        const startIndex = (currentPage - 1) * opportunitiesPerPage;
+        return opportunities.slice(startIndex, startIndex + opportunitiesPerPage);
+      })();
   const displayCount = isServerPaginated ? totalCount : opportunities.length;
 
   return (
@@ -650,8 +675,7 @@ const MyJobsContent = ({
                 <p className="text-sm text-gray-600">
                   {fallback
                     ? 'Trending opportunities based on popularity'
-                    : 'Personalized matches based on your profile and skills'
-                  }
+                    : 'Personalized matches based on your profile and skills'}
                 </p>
               </div>
             </div>
@@ -771,17 +795,16 @@ const MyJobsContent = ({
           {/* Control Buttons - Right side on desktop */}
           <div className="flex flex-col sm:flex-row lg:flex-row items-stretch sm:items-center gap-3 lg:flex-shrink-0">
             {/* Advanced Filters Button */}
-            <AdvancedFilters
-              onApplyFilters={setAdvancedFilters}
-              initialFilters={advancedFilters}
-            />
+            <AdvancedFilters onApplyFilters={setAdvancedFilters} initialFilters={advancedFilters} />
 
             {/* View Mode Toggle */}
             <div className="flex items-center bg-white border border-slate-200/60 rounded-2xl p-1 shadow-sm h-12">
               <button
                 onClick={() => setViewMode('grid')}
                 className={`flex-1 sm:flex-none p-2.5 rounded-xl transition-all duration-200 ${
-                  viewMode === 'grid' ? 'bg-blue-100 text-blue-600' : 'text-slate-400 hover:text-slate-600'
+                  viewMode === 'grid'
+                    ? 'bg-blue-100 text-blue-600'
+                    : 'text-slate-400 hover:text-slate-600'
                 }`}
               >
                 <Grid3x3 className="w-4 h-4 mx-auto" />
@@ -789,7 +812,9 @@ const MyJobsContent = ({
               <button
                 onClick={() => setViewMode('list')}
                 className={`flex-1 sm:flex-none p-2.5 rounded-xl transition-all duration-200 ${
-                  viewMode === 'list' ? 'bg-blue-100 text-blue-600' : 'text-slate-400 hover:text-slate-600'
+                  viewMode === 'list'
+                    ? 'bg-blue-100 text-blue-600'
+                    : 'text-slate-400 hover:text-slate-600'
                 }`}
               >
                 <List className="w-4 h-4 mx-auto" />
@@ -831,16 +856,18 @@ const MyJobsContent = ({
             advancedFilters.salaryMax ||
             advancedFilters.postedWithin) && (
             <button
-              onClick={() => setAdvancedFilters({
-                employmentType: [],
-                experienceLevel: [],
-                mode: [],
-                salaryMin: '',
-                salaryMax: '',
-                skills: [],
-                department: [],
-                postedWithin: '',
-              })}
+              onClick={() =>
+                setAdvancedFilters({
+                  employmentType: [],
+                  experienceLevel: [],
+                  mode: [],
+                  salaryMin: '',
+                  salaryMax: '',
+                  skills: [],
+                  department: [],
+                  postedWithin: '',
+                })
+              }
               className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
             >
               <X className="w-3 h-3" />
@@ -895,8 +922,12 @@ const MyJobsContent = ({
               ) : (
                 <div className="text-center py-20 bg-white rounded-2xl border border-gray-200">
                   <MapPin className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-600 mb-2">No opportunities found</h3>
-                  <p className="text-gray-500 text-sm">Try adjusting your filters or search terms</p>
+                  <h3 className="text-xl font-semibold text-gray-600 mb-2">
+                    No opportunities found
+                  </h3>
+                  <p className="text-gray-500 text-sm">
+                    Try adjusting your filters or search terms
+                  </p>
                 </div>
               )}
             </div>
@@ -949,7 +980,7 @@ const MyApplicationsContent = ({
   queryClient,
   setActiveTab,
   opportunities,
-  setSelectedOpportunity
+  setSelectedOpportunity,
 }) => {
   // Helper function to get stage order
   const getStageOrder = (stage) => {
@@ -960,7 +991,7 @@ const MyApplicationsContent = ({
       interview_2: 4,
       offer: 5,
       hired: 6,
-      rejected: -1
+      rejected: -1,
     };
     return stageOrder[stage] || 0;
   };
@@ -972,64 +1003,64 @@ const MyApplicationsContent = ({
         icon: Clock,
         color: 'text-blue-700',
         bg: 'bg-blue-50',
-        border: 'border-blue-300'
+        border: 'border-blue-300',
       },
       viewed: {
         label: 'Viewed',
         icon: Eye,
         color: 'text-purple-700',
         bg: 'bg-purple-50',
-        border: 'border-purple-300'
+        border: 'border-purple-300',
       },
       under_review: {
         label: 'Under Review',
         icon: Clock,
         color: 'text-slate-700',
         bg: 'bg-slate-50',
-        border: 'border-slate-300'
+        border: 'border-slate-300',
       },
       interview_scheduled: {
         label: 'Interview Scheduled',
         icon: Calendar,
         color: 'text-indigo-700',
         bg: 'bg-indigo-50',
-        border: 'border-indigo-200'
+        border: 'border-indigo-200',
       },
       interviewed: {
         label: 'Interviewed',
         icon: CheckCircle2,
         color: 'text-cyan-700',
         bg: 'bg-cyan-50',
-        border: 'border-cyan-200'
+        border: 'border-cyan-200',
       },
       offer_received: {
         label: 'Offer Received',
         icon: TrendingUp,
         color: 'text-green-700',
         bg: 'bg-green-50',
-        border: 'border-green-200'
+        border: 'border-green-200',
       },
       accepted: {
         label: 'Accepted',
         icon: CheckCircle2,
         color: 'text-emerald-700',
         bg: 'bg-emerald-50',
-        border: 'border-emerald-200'
+        border: 'border-emerald-200',
       },
       rejected: {
         label: 'Rejected',
         icon: XCircle,
         color: 'text-gray-600',
         bg: 'bg-gray-50',
-        border: 'border-gray-300'
+        border: 'border-gray-300',
       },
       withdrawn: {
         label: 'Withdrawn',
         icon: XCircle,
         color: 'text-orange-600',
         bg: 'bg-orange-50',
-        border: 'border-orange-300'
-      }
+        border: 'border-orange-300',
+      },
     };
     return configs[status] || configs.applied;
   };
@@ -1044,7 +1075,7 @@ const MyApplicationsContent = ({
         bg: 'bg-gray-100',
         order: 1,
         description: 'Your profile has been identified as a potential match!',
-        studentAction: 'No action required - Wait for recruiter to review your profile'
+        studentAction: 'No action required - Wait for recruiter to review your profile',
       },
       screened: {
         label: 'Screened',
@@ -1053,7 +1084,7 @@ const MyApplicationsContent = ({
         bg: 'bg-blue-100',
         order: 2,
         description: 'Your profile is being reviewed by the hiring team!',
-        studentAction: 'Be ready to respond to interview invitations quickly'
+        studentAction: 'Be ready to respond to interview invitations quickly',
       },
       interview_1: {
         label: 'Interview Round 1',
@@ -1062,7 +1093,7 @@ const MyApplicationsContent = ({
         bg: 'bg-indigo-100',
         order: 3,
         description: 'First interview scheduled - Great progress!',
-        studentAction: 'Prepare well and attend your scheduled interview'
+        studentAction: 'Prepare well and attend your scheduled interview',
       },
       interview_2: {
         label: 'Interview Round 2',
@@ -1071,7 +1102,7 @@ const MyApplicationsContent = ({
         bg: 'bg-purple-100',
         order: 4,
         description: 'Advanced to second round - Excellent!',
-        studentAction: 'Attend interview and follow up with thank you note'
+        studentAction: 'Attend interview and follow up with thank you note',
       },
       offer: {
         label: 'Offer Stage',
@@ -1080,7 +1111,7 @@ const MyApplicationsContent = ({
         bg: 'bg-green-100',
         order: 5,
         description: 'Congratulations! Offer is being prepared 🎉',
-        studentAction: 'Wait for formal offer letter and review terms'
+        studentAction: 'Wait for formal offer letter and review terms',
       },
       hired: {
         label: 'Hired',
@@ -1088,8 +1119,8 @@ const MyApplicationsContent = ({
         color: 'text-emerald-700',
         bg: 'bg-emerald-100',
         order: 6,
-        description: 'You\'re hired! Welcome to the team! 🎊',
-        studentAction: 'Prepare for your start date and complete all paperwork'
+        description: "You're hired! Welcome to the team! 🎊",
+        studentAction: 'Prepare for your start date and complete all paperwork',
       },
       rejected: {
         label: 'Not Selected',
@@ -1097,18 +1128,18 @@ const MyApplicationsContent = ({
         color: 'text-red-700',
         bg: 'bg-red-100',
         order: 7,
-        description: 'This position didn\'t work out, but don\'t give up!',
-        studentAction: 'Learn from the experience and continue your job search'
-      }
+        description: "This position didn't work out, but don't give up!",
+        studentAction: 'Learn from the experience and continue your job search',
+      },
     };
     return configs[stage] || configs.sourced;
   };
 
   // Toggle function for pipeline status visibility
   const togglePipelineStatus = (applicationId) => {
-    setShowPipelineStatus(prev => ({
+    setShowPipelineStatus((prev) => ({
       ...prev,
-      [applicationId]: !prev[applicationId]
+      [applicationId]: !prev[applicationId],
     }));
   };
 
@@ -1119,7 +1150,7 @@ const MyApplicationsContent = ({
       recruiterId: app.recruiterId,
       opportunityId: app.opportunityId,
       studentId: studentId,
-      jobTitle: app.jobTitle
+      jobTitle: app.jobTitle,
     });
 
     if (!app.recruiterId) {
@@ -1133,7 +1164,7 @@ const MyApplicationsContent = ({
     }
 
     setMessagingApplicationId(app.id);
-    
+
     try {
       const conversation = await MessageService.getOrCreateConversation(
         String(studentId), // Ensure string
@@ -1142,14 +1173,14 @@ const MyApplicationsContent = ({
         app.opportunityId, // opportunityId
         `Application: ${app.jobTitle}` // subject
       );
-      
+
       navigate('/student/messages', {
         state: {
           conversationId: conversation.id,
           recipientId: app.recruiterId,
           recipientName: app.company,
-          recipientType: 'recruiter'
-        }
+          recipientType: 'recruiter',
+        },
       });
     } catch (error) {
       console.error('❌ Error opening message:', error);
@@ -1157,7 +1188,7 @@ const MyApplicationsContent = ({
         message: error.message,
         code: error.code,
         details: error.details,
-        hint: error.hint
+        hint: error.hint,
       });
       alert(`Failed to open messaging: ${error.message || 'Please try again.'}`);
     } finally {
@@ -1215,7 +1246,9 @@ const MyApplicationsContent = ({
           applications.map((app) => {
             const statusConfig = getStatusConfig(app.status);
             const StatusIcon = statusConfig.icon;
-            const currentStageConfig = app.pipelineStage ? getPipelineStageConfig(app.pipelineStage) : null;
+            const currentStageConfig = app.pipelineStage
+              ? getPipelineStageConfig(app.pipelineStage)
+              : null;
             const StageIcon = currentStageConfig?.icon;
 
             return (
@@ -1234,7 +1267,9 @@ const MyApplicationsContent = ({
                           </h3>
                           <p className="text-gray-600 font-medium mt-1">{app.company}</p>
                         </div>
-                        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${statusConfig.bg} ${statusConfig.border} border`}>
+                        <div
+                          className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${statusConfig.bg} ${statusConfig.border} border`}
+                        >
                           <StatusIcon className={`w-4 h-4 ${statusConfig.color}`} />
                           <span className={`text-sm font-semibold ${statusConfig.color}`}>
                             {statusConfig.label}
@@ -1277,7 +1312,9 @@ const MyApplicationsContent = ({
                               <div className="p-2 bg-white rounded-lg shadow-sm">
                                 <Users className="w-5 h-5 text-slate-700" />
                               </div>
-                              <h4 className="font-bold text-slate-900">Recruitment Pipeline Status</h4>
+                              <h4 className="font-bold text-slate-900">
+                                Recruitment Pipeline Status
+                              </h4>
                             </div>
                           </div>
 
@@ -1290,25 +1327,31 @@ const MyApplicationsContent = ({
                                 interview_1: 'Interview 1',
                                 interview_2: 'Interview 2',
                                 offer: 'Offer',
-                                hired: 'Hired'
+                                hired: 'Hired',
                               }).map(([stageKey, stageLabel], index, array) => {
-                                const isCompleted = getStageOrder(app.pipelineStage) > getStageOrder(stageKey);
+                                const isCompleted =
+                                  getStageOrder(app.pipelineStage) > getStageOrder(stageKey);
                                 const isCurrent = app.pipelineStage === stageKey;
                                 const isRejected = app.pipelineStage === 'rejected';
 
                                 return (
-                                  <div key={stageKey} className="flex flex-col items-center flex-1 relative">
+                                  <div
+                                    key={stageKey}
+                                    className="flex flex-col items-center flex-1 relative"
+                                  >
                                     {/* Stage Number Circle */}
                                     <div className="relative z-10 mb-2">
-                                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${
-                                        isCompleted
-                                          ? 'bg-green-500 text-white shadow-lg shadow-green-200'
-                                          : isCurrent
-                                            ? 'bg-blue-500 text-white shadow-lg shadow-blue-200 ring-4 ring-blue-200 animate-pulse'
-                                            : isRejected && index > getStageOrder('sourced')
-                                              ? 'bg-gray-200 text-gray-400'
-                                              : 'bg-white text-gray-400 border-2 border-gray-300'
-                                      }`}>
+                                      <div
+                                        className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${
+                                          isCompleted
+                                            ? 'bg-green-500 text-white shadow-lg shadow-green-200'
+                                            : isCurrent
+                                              ? 'bg-blue-500 text-white shadow-lg shadow-blue-200 ring-4 ring-blue-200 animate-pulse'
+                                              : isRejected && index > getStageOrder('sourced')
+                                                ? 'bg-gray-200 text-gray-400'
+                                                : 'bg-white text-gray-400 border-2 border-gray-300'
+                                        }`}
+                                      >
                                         {isCompleted ? (
                                           <CheckCircle2 className="w-6 h-6" />
                                         ) : (
@@ -1319,19 +1362,24 @@ const MyApplicationsContent = ({
 
                                     {/* Connecting Line */}
                                     {index < array.length - 1 && (
-                                      <div className={`absolute top-5 left-1/2 w-full h-0.5 -z-0 transition-all ${
-                                        isCompleted ? 'bg-green-500' : 'bg-gray-300'
-                                      }`} style={{ transform: 'translateY(-50%)' }} />
+                                      <div
+                                        className={`absolute top-5 left-1/2 w-full h-0.5 -z-0 transition-all ${
+                                          isCompleted ? 'bg-green-500' : 'bg-gray-300'
+                                        }`}
+                                        style={{ transform: 'translateY(-50%)' }}
+                                      />
                                     )}
 
                                     {/* Stage Label */}
-                                    <div className={`text-xs font-medium text-center px-1 transition-all ${
-                                      isCurrent
-                                        ? 'text-blue-700 font-bold'
-                                        : isCompleted
-                                          ? 'text-green-700'
-                                          : 'text-gray-500'
-                                    }`}>
+                                    <div
+                                      className={`text-xs font-medium text-center px-1 transition-all ${
+                                        isCurrent
+                                          ? 'text-blue-700 font-bold'
+                                          : isCompleted
+                                            ? 'text-green-700'
+                                            : 'text-gray-500'
+                                      }`}
+                                    >
                                       {stageLabel}
                                     </div>
                                   </div>
@@ -1343,21 +1391,28 @@ const MyApplicationsContent = ({
                           {/* Current Status Info */}
                           <div className="bg-white p-4 rounded-lg border border-blue-200 shadow-sm">
                             <div className="flex items-center gap-3">
-                              <div className={`p-3 rounded-lg ${currentStageConfig?.bg || 'bg-gray-100'}`}>
+                              <div
+                                className={`p-3 rounded-lg ${currentStageConfig?.bg || 'bg-gray-100'}`}
+                              >
                                 {StageIcon && <StageIcon className="w-6 h-6" />}
                               </div>
                               <div className="flex-1">
                                 <div className="text-sm text-gray-600">Current Stage</div>
-                                <div className="text-lg font-bold text-gray-900">{currentStageConfig?.label || app.pipelineStage}</div>
+                                <div className="text-lg font-bold text-gray-900">
+                                  {currentStageConfig?.label || app.pipelineStage}
+                                </div>
                                 {app.pipelineStageChangedAt && (
                                   <div className="text-xs text-gray-500 mt-1">
                                     <Clock className="w-3 h-3 inline mr-1" />
-                                    Updated {new Date(app.pipelineStageChangedAt).toLocaleDateString()}
+                                    Updated{' '}
+                                    {new Date(app.pipelineStageChangedAt).toLocaleDateString()}
                                   </div>
                                 )}
                               </div>
                               <div className="text-right">
-                                <div className={`px-4 py-2 rounded-lg font-semibold ${currentStageConfig?.bg || 'bg-gray-100'} ${currentStageConfig?.color || 'text-gray-800'}`}>
+                                <div
+                                  className={`px-4 py-2 rounded-lg font-semibold ${currentStageConfig?.bg || 'bg-gray-100'} ${currentStageConfig?.color || 'text-gray-800'}`}
+                                >
                                   Stage {getStageOrder(app.pipelineStage)} of 6
                                 </div>
                               </div>
@@ -1379,7 +1434,9 @@ const MyApplicationsContent = ({
                                 <div className="flex items-start gap-2">
                                   <CheckCircle2 className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
                                   <div className="flex-1">
-                                    <h5 className="text-sm font-bold text-gray-900 mb-1">What You Need to Do:</h5>
+                                    <h5 className="text-sm font-bold text-gray-900 mb-1">
+                                      What You Need to Do:
+                                    </h5>
                                     <p className="text-sm text-blue-700 font-semibold bg-blue-50 px-3 py-2 rounded-lg">
                                       {currentStageConfig.studentAction}
                                     </p>
@@ -1392,12 +1449,17 @@ const MyApplicationsContent = ({
                                 <div className="flex items-start gap-2 p-3 bg-blue-100 rounded-lg border-2 border-blue-300">
                                   <Bell className="w-5 h-5 text-blue-700 mt-0.5 flex-shrink-0 animate-pulse" />
                                   <div className="flex-1">
-                                    <p className="text-xs font-bold text-blue-900 uppercase tracking-wide">Upcoming Action:</p>
-                                    <p className="text-sm font-semibold text-blue-800 mt-1">{app.nextAction.replace(/_/g, ' ').toUpperCase()}</p>
+                                    <p className="text-xs font-bold text-blue-900 uppercase tracking-wide">
+                                      Upcoming Action:
+                                    </p>
+                                    <p className="text-sm font-semibold text-blue-800 mt-1">
+                                      {app.nextAction.replace(/_/g, ' ').toUpperCase()}
+                                    </p>
                                     {app.nextActionDate && (
                                       <p className="text-xs text-blue-700 mt-1 flex items-center gap-1">
                                         <Calendar className="w-3 h-3" />
-                                        Scheduled: {new Date(app.nextActionDate).toLocaleDateString()}
+                                        Scheduled:{' '}
+                                        {new Date(app.nextActionDate).toLocaleDateString()}
                                       </p>
                                     )}
                                   </div>
@@ -1409,8 +1471,12 @@ const MyApplicationsContent = ({
                                 <div className="flex items-start gap-2 p-3 bg-red-50 rounded-lg border-2 border-red-200">
                                   <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
                                   <div className="flex-1">
-                                    <p className="text-xs font-bold text-red-900 uppercase tracking-wide">Feedback from Recruiter:</p>
-                                    <p className="text-sm text-red-700 mt-1">{app.rejectionReason}</p>
+                                    <p className="text-xs font-bold text-red-900 uppercase tracking-wide">
+                                      Feedback from Recruiter:
+                                    </p>
+                                    <p className="text-sm text-red-700 mt-1">
+                                      {app.rejectionReason}
+                                    </p>
                                   </div>
                                 </div>
                               )}
@@ -1424,10 +1490,17 @@ const MyApplicationsContent = ({
                                   </h5>
                                   <div className="space-y-2">
                                     {app.interviews.map((interview, idx) => (
-                                      <div key={idx} className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg border border-indigo-200 hover:bg-indigo-100 transition-colors">
+                                      <div
+                                        key={idx}
+                                        className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg border border-indigo-200 hover:bg-indigo-100 transition-colors"
+                                      >
                                         <div className="flex-1">
-                                          <p className="font-semibold text-gray-900">{interview.type} Interview</p>
-                                          <p className="text-sm text-gray-600 mt-0.5">with {interview.interviewer}</p>
+                                          <p className="font-semibold text-gray-900">
+                                            {interview.type} Interview
+                                          </p>
+                                          <p className="text-sm text-gray-600 mt-0.5">
+                                            with {interview.interviewer}
+                                          </p>
                                           {interview.meeting_link && (
                                             <a
                                               href={interview.meeting_link}
@@ -1441,10 +1514,16 @@ const MyApplicationsContent = ({
                                         </div>
                                         <div className="text-right ml-4">
                                           <p className="font-bold text-indigo-700">
-                                            {new Date(interview.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                            {new Date(interview.date).toLocaleDateString('en-US', {
+                                              month: 'short',
+                                              day: 'numeric',
+                                            })}
                                           </p>
                                           <p className="text-sm text-gray-600">
-                                            {new Date(interview.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            {new Date(interview.date).toLocaleTimeString([], {
+                                              hour: '2-digit',
+                                              minute: '2-digit',
+                                            })}
                                           </p>
                                         </div>
                                       </div>
@@ -1470,7 +1549,7 @@ const MyApplicationsContent = ({
                         <Eye className="w-4 h-4" />
                         {showPipelineStatus[app.id] ? 'Hide Details' : 'View Details'}
                       </button>
-                      
+
                       {app.recruiterId && (
                         <button
                           onClick={() => handleMessage(app)}

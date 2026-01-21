@@ -1,9 +1,9 @@
 /**
  * Unit tests for PrintView routing logic
- * 
+ *
  * Tests the determineGradeLevel function and component routing
  * Requirements: 1.4, 5.1, 5.2, 5.3, 5.4, 5.5, 6.4
- * 
+ *
  * @vitest-environment node
  */
 
@@ -40,15 +40,15 @@ describe('PrintView Router Component', () => {
     name: 'Test Student',
     regNo: '12345',
     college: 'Test College',
-    stream: 'Computer Science'
+    stream: 'Computer Science',
   };
 
   const mockResults = {
     riasec: {
       topThree: ['R', 'I', 'A'],
       scores: { R: 15, I: 14, A: 13 },
-      maxScore: 20
-    }
+      maxScore: 20,
+    },
   };
 
   describe('Null Results Handling - Requirement 6.4', () => {
@@ -97,10 +97,8 @@ describe('PrintView Router Component', () => {
       const resultsWithAptitudeStrengths = {
         ...mockResults,
         profileSnapshot: {
-          aptitudeStrengths: [
-            { name: 'Problem Solving', description: 'Good at solving problems' }
-          ]
-        }
+          aptitudeStrengths: [{ name: 'Problem Solving', description: 'Good at solving problems' }],
+        },
       };
 
       const result = determineGradeLevel(undefined, resultsWithAptitudeStrengths);
@@ -115,9 +113,9 @@ describe('PrintView Router Component', () => {
             enjoyment: 'Working with hands',
             workStyle: 'Independent',
             strength: 'Creativity',
-            motivation: 'Making things'
-          }
-        }
+            motivation: 'Making things',
+          },
+        },
       };
 
       const result = determineGradeLevel(undefined, resultsWithKeyPatterns);
@@ -128,16 +126,14 @@ describe('PrintView Router Component', () => {
       const resultsWithBoth = {
         ...mockResults,
         profileSnapshot: {
-          aptitudeStrengths: [
-            { name: 'Problem Solving', description: 'Good at solving problems' }
-          ],
+          aptitudeStrengths: [{ name: 'Problem Solving', description: 'Good at solving problems' }],
           keyPatterns: {
             enjoyment: 'Working with hands',
             workStyle: 'Independent',
             strength: 'Creativity',
-            motivation: 'Making things'
-          }
-        }
+            motivation: 'Making things',
+          },
+        },
       };
 
       const result = determineGradeLevel(undefined, resultsWithBoth);
@@ -154,7 +150,7 @@ describe('PrintView Router Component', () => {
     it('should default to college when profileSnapshot exists but has no indicators', () => {
       const resultsWithEmptySnapshot = {
         ...mockResults,
-        profileSnapshot: {}
+        profileSnapshot: {},
       };
 
       const result = determineGradeLevel(undefined, resultsWithEmptySnapshot);
@@ -167,10 +163,8 @@ describe('PrintView Router Component', () => {
       const resultsWithProfileSnapshot = {
         ...mockResults,
         profileSnapshot: {
-          aptitudeStrengths: [
-            { name: 'Problem Solving', description: 'Good at solving problems' }
-          ]
-        }
+          aptitudeStrengths: [{ name: 'Problem Solving', description: 'Good at solving problems' }],
+        },
       };
 
       const result = determineGradeLevel('college', resultsWithProfileSnapshot);

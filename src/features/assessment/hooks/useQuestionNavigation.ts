@@ -1,9 +1,9 @@
 /**
  * Question Navigation Hook
- * 
+ *
  * Provides navigation logic for moving between questions in an assessment.
  * Supports linear navigation, jumping to specific questions, and section-based navigation.
- * 
+ *
  * @module features/assessment/hooks/useQuestionNavigation
  */
 
@@ -78,7 +78,9 @@ export interface UseQuestionNavigationReturn {
   getProgressPercentage: (answeredCount: number) => number;
 }
 
-export function useQuestionNavigation(options: UseQuestionNavigationOptions = {}): UseQuestionNavigationReturn {
+export function useQuestionNavigation(
+  options: UseQuestionNavigationOptions = {}
+): UseQuestionNavigationReturn {
   const {
     questions = [],
     sections = [],
@@ -115,7 +117,7 @@ export function useQuestionNavigation(options: UseQuestionNavigationOptions = {}
 
   // Total questions (in current section or overall)
   const totalQuestionsInSection = currentSectionQuestions.length;
-  
+
   // Total questions overall
   const totalQuestions = useMemo(() => {
     if (isSectionMode) {
@@ -127,15 +129,16 @@ export function useQuestionNavigation(options: UseQuestionNavigationOptions = {}
   const totalSections = sections.length;
 
   // Navigation state
-  const hasNext = currentQuestionIndex < totalQuestionsInSection - 1 || 
+  const hasNext =
+    currentQuestionIndex < totalQuestionsInSection - 1 ||
     (isSectionMode && currentSectionIndex < totalSections - 1);
-  
-  const hasPrevious = currentQuestionIndex > 0 || 
-    (isSectionMode && currentSectionIndex > 0);
+
+  const hasPrevious = currentQuestionIndex > 0 || (isSectionMode && currentSectionIndex > 0);
 
   const isLastInSection = currentQuestionIndex === totalQuestionsInSection - 1;
   const isFirstInSection = currentQuestionIndex === 0;
-  const isLastOverall = isLastInSection && (!isSectionMode || currentSectionIndex === totalSections - 1);
+  const isLastOverall =
+    isLastInSection && (!isSectionMode || currentSectionIndex === totalSections - 1);
 
   // Navigation functions
   const goToNext = useCallback(() => {
@@ -151,7 +154,15 @@ export function useQuestionNavigation(options: UseQuestionNavigationOptions = {}
       onSectionChange?.(newSectionIndex);
       onQuestionChange?.(0, newSectionIndex);
     }
-  }, [currentQuestionIndex, totalQuestionsInSection, isSectionMode, currentSectionIndex, totalSections, onQuestionChange, onSectionChange]);
+  }, [
+    currentQuestionIndex,
+    totalQuestionsInSection,
+    isSectionMode,
+    currentSectionIndex,
+    totalSections,
+    onQuestionChange,
+    onSectionChange,
+  ]);
 
   const goToPrevious = useCallback(() => {
     if (currentQuestionIndex > 0) {
@@ -168,27 +179,40 @@ export function useQuestionNavigation(options: UseQuestionNavigationOptions = {}
       onSectionChange?.(newSectionIndex);
       onQuestionChange?.(newQuestionIndex, newSectionIndex);
     }
-  }, [currentQuestionIndex, isSectionMode, currentSectionIndex, sections, onQuestionChange, onSectionChange]);
+  }, [
+    currentQuestionIndex,
+    isSectionMode,
+    currentSectionIndex,
+    sections,
+    onQuestionChange,
+    onSectionChange,
+  ]);
 
-  const goToQuestion = useCallback((index: number) => {
-    if (!allowSkip) return;
-    if (index >= 0 && index < totalQuestionsInSection) {
-      setCurrentQuestionIndex(index);
-      onQuestionChange?.(index, currentSectionIndex);
-    }
-  }, [allowSkip, totalQuestionsInSection, currentSectionIndex, onQuestionChange]);
+  const goToQuestion = useCallback(
+    (index: number) => {
+      if (!allowSkip) return;
+      if (index >= 0 && index < totalQuestionsInSection) {
+        setCurrentQuestionIndex(index);
+        onQuestionChange?.(index, currentSectionIndex);
+      }
+    },
+    [allowSkip, totalQuestionsInSection, currentSectionIndex, onQuestionChange]
+  );
 
-  const goToSection = useCallback((sectionIndex: number, questionIndex: number = 0) => {
-    if (!isSectionMode) return;
-    if (sectionIndex >= 0 && sectionIndex < totalSections) {
-      const sectionQuestions = sections[sectionIndex].questions;
-      const validQuestionIndex = Math.min(questionIndex, sectionQuestions.length - 1);
-      setCurrentSectionIndex(sectionIndex);
-      setCurrentQuestionIndex(validQuestionIndex);
-      onSectionChange?.(sectionIndex);
-      onQuestionChange?.(validQuestionIndex, sectionIndex);
-    }
-  }, [isSectionMode, totalSections, sections, onSectionChange, onQuestionChange]);
+  const goToSection = useCallback(
+    (sectionIndex: number, questionIndex: number = 0) => {
+      if (!isSectionMode) return;
+      if (sectionIndex >= 0 && sectionIndex < totalSections) {
+        const sectionQuestions = sections[sectionIndex].questions;
+        const validQuestionIndex = Math.min(questionIndex, sectionQuestions.length - 1);
+        setCurrentSectionIndex(sectionIndex);
+        setCurrentQuestionIndex(validQuestionIndex);
+        onSectionChange?.(sectionIndex);
+        onQuestionChange?.(validQuestionIndex, sectionIndex);
+      }
+    },
+    [isSectionMode, totalSections, sections, onSectionChange, onQuestionChange]
+  );
 
   const goToNextSection = useCallback(() => {
     if (isSectionMode && currentSectionIndex < totalSections - 1) {
@@ -206,7 +230,7 @@ export function useQuestionNavigation(options: UseQuestionNavigationOptions = {}
     if (!isSectionMode) {
       return currentQuestionIndex + 1;
     }
-    
+
     let count = 0;
     for (let i = 0; i < currentSectionIndex; i++) {
       count += sections[i].questions.length;
@@ -214,10 +238,13 @@ export function useQuestionNavigation(options: UseQuestionNavigationOptions = {}
     return count + currentQuestionIndex + 1;
   }, [isSectionMode, currentSectionIndex, currentQuestionIndex, sections]);
 
-  const getProgressPercentage = useCallback((answeredCount: number): number => {
-    if (totalQuestions === 0) return 0;
-    return Math.round((answeredCount / totalQuestions) * 100);
-  }, [totalQuestions]);
+  const getProgressPercentage = useCallback(
+    (answeredCount: number): number => {
+      if (totalQuestions === 0) return 0;
+      return Math.round((answeredCount / totalQuestions) * 100);
+    },
+    [totalQuestions]
+  );
 
   return {
     currentQuestionIndex,

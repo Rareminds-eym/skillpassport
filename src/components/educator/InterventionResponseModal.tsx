@@ -119,7 +119,9 @@ const InterventionResponseModal: React.FC<InterventionResponseModalProps> = ({
               </div>
               <div className="flex items-center gap-2 flex-wrap justify-end">
                 {note.priority && (
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getPriorityBadge()}`}>
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-semibold border ${getPriorityBadge()}`}
+                  >
                     {note.priority.toUpperCase()}
                   </span>
                 )}
@@ -128,28 +130,31 @@ const InterventionResponseModal: React.FC<InterventionResponseModalProps> = ({
                 </span>
               </div>
             </div>
-            
+
             {note.title && (
               <h4 className="font-semibold text-gray-900 mb-3 text-base">{note.title}</h4>
             )}
-            
-            <p className="text-gray-700 text-sm leading-relaxed mb-4 whitespace-pre-wrap">{note.note_text}</p>
-            
+
+            <p className="text-gray-700 text-sm leading-relaxed mb-4 whitespace-pre-wrap">
+              {note.note_text}
+            </p>
+
             <div className="flex items-center gap-4 text-xs text-gray-600 pt-3 border-t border-blue-200">
               <span className="flex items-center gap-1.5">
                 <CalendarIcon className="h-4 w-4" />
-                {new Date(note.note_date).toLocaleDateString('en-US', { 
-                  month: 'short', 
-                  day: 'numeric', 
-                  year: 'numeric' 
+                {new Date(note.note_date).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
                 })}
               </span>
               {note.follow_up_required && note.follow_up_date && (
                 <span className="flex items-center gap-1.5 text-orange-700 font-medium bg-orange-50 px-2 py-1 rounded">
                   <ClockIcon className="h-4 w-4" />
-                  Follow-up: {new Date(note.follow_up_date).toLocaleDateString('en-US', { 
-                    month: 'short', 
-                    day: 'numeric' 
+                  Follow-up:{' '}
+                  {new Date(note.follow_up_date).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
                   })}
                 </span>
               )}
@@ -165,14 +170,16 @@ const InterventionResponseModal: React.FC<InterventionResponseModalProps> = ({
                 </div>
                 <h3 className="font-semibold text-purple-900 text-base">Admin's Feedback</h3>
               </div>
-              <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">{note.admin_feedback}</p>
+              <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">
+                {note.admin_feedback}
+              </p>
             </div>
           )}
 
           {/* Educator Response Form */}
           <div className="bg-gray-50 rounded-xl p-6 border border-gray-200 space-y-5">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Response</h3>
-            
+
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Response <span className="text-red-500">*</span>
@@ -184,15 +191,11 @@ const InterventionResponseModal: React.FC<InterventionResponseModalProps> = ({
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none text-sm"
                 placeholder="Describe your understanding, observations, and initial thoughts about this intervention..."
               />
-              <p className="text-xs text-gray-500 mt-1.5">
-                {educatorResponse.length} characters
-              </p>
+              <p className="text-xs text-gray-500 mt-1.5">{educatorResponse.length} characters</p>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Action Taken
-              </label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Action Taken</label>
               <textarea
                 value={actionTaken}
                 onChange={(e) => setActionTaken(e.target.value)}
@@ -203,9 +206,7 @@ const InterventionResponseModal: React.FC<InterventionResponseModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Next Steps
-              </label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Next Steps</label>
               <textarea
                 value={nextSteps}
                 onChange={(e) => setNextSteps(e.target.value)}

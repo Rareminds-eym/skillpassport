@@ -80,7 +80,8 @@ export const getStudentExams = async (studentId: string): Promise<StudentExam[]>
     // Get exam timetable entries for the student's school
     const { data: timetableEntries, error: timetableError } = await supabase
       .from('exam_timetable')
-      .select(`
+      .select(
+        `
         id,
         assessment_id,
         course_name,
@@ -101,16 +102,17 @@ export const getStudentExams = async (studentId: string): Promise<StudentExam[]>
           school_id,
           target_classes
         )
-      `)
+      `
+      )
       .eq('school_id', student.school_id)
       .order('exam_date', { ascending: true });
 
     if (timetableError) throw timetableError;
 
     // Filter exams that target this student's class and are relevant
-    const relevantExams = (timetableEntries || []).filter(entry => {
+    const relevantExams = (timetableEntries || []).filter((entry) => {
       const assessment = entry.assessments as any;
-      
+
       // Only show scheduled, ongoing, marks_pending, or published exams
       if (!['scheduled', 'ongoing', 'marks_pending', 'published'].includes(assessment.status)) {
         return false;
@@ -123,8 +125,9 @@ export const getStudentExams = async (studentId: string): Promise<StudentExam[]>
       if (targetClasses.type === 'whole_grade') {
         return targetClasses.grade === student.grade;
       } else if (targetClasses.type === 'single_section') {
-        return targetClasses.grade === student.grade && 
-               targetClasses.sections?.includes(student.section);
+        return (
+          targetClasses.grade === student.grade && targetClasses.sections?.includes(student.section)
+        );
       } else if (targetClasses.class_ids) {
         return targetClasses.class_ids.includes(student.school_class_id);
       }
@@ -133,10 +136,10 @@ export const getStudentExams = async (studentId: string): Promise<StudentExam[]>
     });
 
     // Transform to StudentExam format with correct subject-specific marks
-    const exams: StudentExam[] = relevantExams.map(entry => {
+    const exams: StudentExam[] = relevantExams.map((entry) => {
       const assessment = entry.assessments as any;
       const overallTotalMarks = parseFloat(assessment.total_marks) || 0;
-      
+
       // Calculate subject-specific marks based on exam type
       let subjectTotalMarks = overallTotalMarks;
       if (assessment.type === 'term_exam' || assessment.type === 'mid_term') {
@@ -160,7 +163,7 @@ export const getStudentExams = async (studentId: string): Promise<StudentExam[]>
         pass_marks: Math.round(subjectTotalMarks * 0.35), // 35% of subject marks
         room: entry.room || '',
         status: assessment.status || '',
-        instructions: assessment.instructions
+        instructions: assessment.instructions,
       };
     });
 
@@ -177,11 +180,11 @@ export const getStudentExams = async (studentId: string): Promise<StudentExam[]>
 export const getGroupedStudentExams = async (studentId: string): Promise<GroupedExam[]> => {
   try {
     const exams = await getStudentExams(studentId);
-    
+
     // Group exams by assessment_id
     const groupedMap = new Map<string, GroupedExam>();
-    
-    exams.forEach(exam => {
+
+    exams.forEach((exam) => {
       if (!groupedMap.has(exam.assessment_id)) {
         groupedMap.set(exam.assessment_id, {
           assessment_id: exam.assessment_id,
@@ -191,16 +194,16 @@ export const getGroupedStudentExams = async (studentId: string): Promise<Grouped
           overall_pass_marks: 0, // Will be calculated
           instructions: exam.instructions,
           status: exam.status,
-          subjects: []
+          subjects: [],
         });
       }
-      
+
       const group = groupedMap.get(exam.assessment_id)!;
       group.subjects.push(exam);
       group.overall_total_marks += exam.total_marks;
       group.overall_pass_marks += exam.pass_marks;
     });
-    
+
     return Array.from(groupedMap.values()).sort((a, b) => {
       const aDate = new Date(a.subjects[0]?.exam_date || '');
       const bDate = new Date(b.subjects[0]?.exam_date || '');
@@ -232,7 +235,8 @@ export const getStudentResults = async (studentId: string): Promise<StudentResul
     // Get mark entries for this student with assessment details
     const { data: markEntries, error: markError } = await supabase
       .from('mark_entries')
-      .select(`
+      .select(
+        `
         id,
         assessment_id,
         marks_obtained,
@@ -257,19 +261,20 @@ export const getStudentResults = async (studentId: string): Promise<StudentResul
           school_id,
           target_classes
         )
-      `)
+      `
+      )
       .eq('student_id', studentId);
 
     if (markError) throw markError;
 
     // Filter for published results only and relevant to student's class
-    const relevantResults = (markEntries || []).filter(entry => {
+    const relevantResults = (markEntries || []).filter((entry) => {
       const assessment = entry.assessments as any;
-      
+
       // Only show published results
       if (assessment.status !== 'published') return false;
       if (assessment.school_id !== student.school_id) return false;
-      
+
       const targetClasses = assessment.target_classes as any;
       if (!targetClasses) return false;
 
@@ -277,8 +282,9 @@ export const getStudentResults = async (studentId: string): Promise<StudentResul
       if (targetClasses.type === 'whole_grade') {
         return targetClasses.grade === student.grade;
       } else if (targetClasses.type === 'single_section') {
-        return targetClasses.grade === student.grade && 
-               targetClasses.sections?.includes(student.section);
+        return (
+          targetClasses.grade === student.grade && targetClasses.sections?.includes(student.section)
+        );
       } else if (targetClasses.class_ids) {
         return targetClasses.class_ids.includes(student.school_class_id);
       }
@@ -287,9 +293,9 @@ export const getStudentResults = async (studentId: string): Promise<StudentResul
     });
 
     // Get exam dates and all subject names from timetable for these assessments
-    const assessmentIds = [...new Set(relevantResults.map(r => r.assessment_id))];
+    const assessmentIds = [...new Set(relevantResults.map((r) => r.assessment_id))];
     const timetableMap: Record<string, { exam_date: string; subjects: string[] }> = {};
-    
+
     if (assessmentIds.length > 0) {
       const { data: timetable } = await supabase
         .from('exam_timetable')
@@ -297,7 +303,7 @@ export const getStudentResults = async (studentId: string): Promise<StudentResul
         .in('assessment_id', assessmentIds);
 
       if (timetable) {
-        timetable.forEach(t => {
+        timetable.forEach((t) => {
           if (!timetableMap[t.assessment_id]) {
             timetableMap[t.assessment_id] = { exam_date: t.exam_date, subjects: [] };
           }
@@ -312,7 +318,7 @@ export const getStudentResults = async (studentId: string): Promise<StudentResul
     const results: StudentResult[] = relevantResults.map((entry, index) => {
       const assessment = entry.assessments as any;
       const timetableInfo = timetableMap[entry.assessment_id];
-      
+
       // For multi-subject exams, try to assign different subjects to different entries
       let subjectName = assessment.course_name || '';
       if (timetableInfo?.subjects && timetableInfo.subjects.length > 1) {
@@ -353,12 +359,12 @@ export const getStudentResults = async (studentId: string): Promise<StudentResul
         is_moderated: isModerated,
         moderation_reason: entry.moderation_reason,
         moderated_by: entry.moderated_by,
-        moderation_date: entry.moderation_date
+        moderation_date: entry.moderation_date,
       };
     });
 
-    return results.sort((a, b) => 
-      new Date(b.exam_date).getTime() - new Date(a.exam_date).getTime()
+    return results.sort(
+      (a, b) => new Date(b.exam_date).getTime() - new Date(a.exam_date).getTime()
     );
   } catch (error) {
     console.error('Error fetching student results:', error);
@@ -369,7 +375,9 @@ export const getStudentResults = async (studentId: string): Promise<StudentResul
 /**
  * Get result statistics for a student
  */
-export const getStudentResultStats = async (studentId: string): Promise<{
+export const getStudentResultStats = async (
+  studentId: string
+): Promise<{
   totalExams: number;
   passed: number;
   failed: number;
@@ -378,33 +386,32 @@ export const getStudentResultStats = async (studentId: string): Promise<{
 }> => {
   try {
     const results = await getStudentResults(studentId);
-    
+
     const totalExams = results.length;
-    
+
     // Use the is_pass field from the database which is correctly calculated
-    const passed = results.filter(r => 
-      !r.is_absent && !r.is_exempt && r.is_pass === true
+    const passed = results.filter((r) => !r.is_absent && !r.is_exempt && r.is_pass === true).length;
+
+    const failed = results.filter(
+      (r) => !r.is_absent && !r.is_exempt && r.is_pass === false
     ).length;
-    
-    const failed = results.filter(r => 
-      !r.is_absent && !r.is_exempt && r.is_pass === false
-    ).length;
-    
-    const absent = results.filter(r => r.is_absent).length;
-    
-    const validResults = results.filter(r => 
-      !r.is_absent && !r.is_exempt && r.percentage !== undefined
+
+    const absent = results.filter((r) => r.is_absent).length;
+
+    const validResults = results.filter(
+      (r) => !r.is_absent && !r.is_exempt && r.percentage !== undefined
     );
-    const averagePercentage = validResults.length > 0
-      ? validResults.reduce((sum, r) => sum + (r.percentage || 0), 0) / validResults.length
-      : 0;
+    const averagePercentage =
+      validResults.length > 0
+        ? validResults.reduce((sum, r) => sum + (r.percentage || 0), 0) / validResults.length
+        : 0;
 
     return {
       totalExams,
       passed,
       failed,
       absent,
-      averagePercentage: Math.round(averagePercentage * 10) / 10
+      averagePercentage: Math.round(averagePercentage * 10) / 10,
     };
   } catch (error) {
     console.error('Error calculating result stats:', error);
@@ -413,7 +420,7 @@ export const getStudentResultStats = async (studentId: string): Promise<{
       passed: 0,
       failed: 0,
       absent: 0,
-      averagePercentage: 0
+      averagePercentage: 0,
     };
   }
 };

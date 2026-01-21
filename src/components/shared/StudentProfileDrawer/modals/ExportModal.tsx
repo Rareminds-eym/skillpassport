@@ -12,7 +12,7 @@ interface ExportModalProps {
 const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, student }) => {
   const [exportSettings, setExportSettings] = useState({
     format: 'pdf',
-    type: 'application_summary'
+    type: 'application_summary',
   });
 
   const generatePDF = (student: Student, _settings: any) => {
@@ -58,11 +58,17 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, student }) =
     const personalFields = [
       { label: 'Full Name', value: student.name },
       { label: 'Email', value: student.email },
-      { label: 'Contact Number', value: student.contact_number || student.contactNumber || student.phone },
-      { label: 'Date of Birth', value: student.date_of_birth ? new Date(student.date_of_birth).toLocaleDateString() : 'N/A' },
+      {
+        label: 'Contact Number',
+        value: student.contact_number || student.contactNumber || student.phone,
+      },
+      {
+        label: 'Date of Birth',
+        value: student.date_of_birth ? new Date(student.date_of_birth).toLocaleDateString() : 'N/A',
+      },
     ];
 
-    personalFields.forEach(field => {
+    personalFields.forEach((field) => {
       if (field.value) {
         checkNewPage();
         doc.text(`${field.label}: ${field.value}`, margin + 5, yPos);
@@ -83,11 +89,17 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, student }) =
     const academicFields = [
       { label: 'Applied Class', value: student.grade },
       { label: 'Subjects', value: student.subjects ? student.subjects.join(', ') : 'N/A' },
-      { label: 'Application Status', value: student.admission_status?.toUpperCase() || student.approval_status?.toUpperCase() },
-      { label: 'Applied Date', value: student.applied_date ? new Date(student.applied_date).toLocaleDateString() : 'N/A' },
+      {
+        label: 'Application Status',
+        value: student.admission_status?.toUpperCase() || student.approval_status?.toUpperCase(),
+      },
+      {
+        label: 'Applied Date',
+        value: student.applied_date ? new Date(student.applied_date).toLocaleDateString() : 'N/A',
+      },
     ];
 
-    academicFields.forEach(field => {
+    academicFields.forEach((field) => {
       if (field.value) {
         checkNewPage();
         doc.text(`${field.label}: ${field.value}`, margin + 5, yPos);
@@ -102,7 +114,9 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, student }) =
       doc.setPage(i);
       doc.setFontSize(8);
       doc.setTextColor(128, 128, 128);
-      doc.text('--- Exported from School Admission System ---', pageWidth / 2, pageHeight - 10, { align: 'center' });
+      doc.text('--- Exported from School Admission System ---', pageWidth / 2, pageHeight - 10, {
+        align: 'center',
+      });
       doc.text(`Page ${i} of ${totalPages}`, pageWidth / 2, pageHeight - 5, { align: 'center' });
       doc.setTextColor(0, 0, 0);
     }
@@ -119,7 +133,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, student }) =
       'Applied Class',
       'Subjects',
       'Admission Status',
-      'Applied Date'
+      'Applied Date',
     ];
 
     const escapeCSV = (value: any) => {
@@ -136,7 +150,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, student }) =
       escapeCSV(student.grade),
       escapeCSV(student.subjects ? student.subjects.join('; ') : ''),
       escapeCSV(student.admission_status || student.approval_status),
-      escapeCSV(student.applied_date ? new Date(student.applied_date).toLocaleDateString() : '')
+      escapeCSV(student.applied_date ? new Date(student.applied_date).toLocaleDateString() : ''),
     ];
 
     const csvContent = headers.join(',') + '\n' + row.join(',') + '\n';
@@ -145,7 +159,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, student }) =
 
   const downloadFile = (content: any, filename: string, format: string) => {
     const blob = new Blob([content], {
-      type: format === 'csv' ? 'text/csv' : 'application/pdf'
+      type: format === 'csv' ? 'text/csv' : 'application/pdf',
     });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -176,7 +190,10 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, student }) =
   return (
     <div className="fixed inset-0 z-[60] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        <div
+          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          onClick={onClose}
+        ></div>
 
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-4">
@@ -196,7 +213,9 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, student }) =
                     name="format"
                     value="csv"
                     checked={exportSettings.format === 'csv'}
-                    onChange={(e) => setExportSettings({ ...exportSettings, format: e.target.value })}
+                    onChange={(e) =>
+                      setExportSettings({ ...exportSettings, format: e.target.value })
+                    }
                     className="h-4 w-4 text-primary-600"
                   />
                   <span className="ml-2 text-sm text-gray-700">CSV</span>
@@ -207,7 +226,9 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, student }) =
                     name="format"
                     value="pdf"
                     checked={exportSettings.format === 'pdf'}
-                    onChange={(e) => setExportSettings({ ...exportSettings, format: e.target.value })}
+                    onChange={(e) =>
+                      setExportSettings({ ...exportSettings, format: e.target.value })
+                    }
                     className="h-4 w-4 text-primary-600"
                   />
                   <span className="ml-2 text-sm text-gray-700">PDF</span>

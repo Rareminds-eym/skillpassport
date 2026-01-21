@@ -1,14 +1,14 @@
 /**
  * EventSales - DEPRECATED
- * 
+ *
  * This complex multi-step form has been replaced by SimpleEventRegistration.jsx
  * for social media campaigns.
- * 
+ *
  * For new registrations, use: /register?campaign=xxx
- * 
+ *
  * This file is kept for backward compatibility with existing /signup/plans
  * and /register/plans routes that may still be in use.
- * 
+ *
  * @deprecated Use SimpleEventRegistration instead
  * @see src/pages/register/SimpleEventRegistration.jsx
  */
@@ -19,7 +19,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 export default function EventSales() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  
+
   useEffect(() => {
     // Redirect to new simple registration with campaign param preserved
     const campaign = searchParams.get('event') || searchParams.get('campaign') || 'legacy';

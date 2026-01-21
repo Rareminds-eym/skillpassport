@@ -12,13 +12,13 @@ const AssessmentPromotionalContext = createContext(null);
 export const AssessmentPromotionalProvider = ({ children }) => {
   // Event data from database
   const [event, setEvent] = useState(null);
-  
+
   // Modal dismissed state - persisted in sessionStorage
   const [isModalDismissed, setIsModalDismissed] = useState(true); // Start as true, then check storage
-  
+
   // Banner dismissed state - persisted in sessionStorage
   const [isBannerDismissed, setIsBannerDismissed] = useState(false);
-  
+
   // Loading state to prevent flash
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -48,7 +48,7 @@ export const AssessmentPromotionalProvider = ({ children }) => {
       const dismissed = sessionStorage.getItem(modalKey) === 'true';
       setIsModalDismissed(dismissed);
       setIsBannerDismissed(sessionStorage.getItem(bannerKey) === 'true');
-      
+
       // Small delay to ensure smooth page load
       setTimeout(() => {
         setIsLoaded(true);
@@ -80,23 +80,23 @@ export const AssessmentPromotionalProvider = ({ children }) => {
       endDate = new Date();
       endDate.setDate(endDate.getDate() + 7);
     }
-    
+
     const now = new Date();
     const diff = endDate - now;
-    
+
     if (diff <= 0) return null;
-    
+
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
     const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-    
+
     return { days, hours, minutes, seconds, total: diff };
   }, [event]);
 
   // Show modal if loaded and not dismissed
   const showModal = isLoaded && !isModalDismissed;
-  
+
   // Show banner if modal is dismissed and banner not dismissed
   const showBanner = isModalDismissed && !isBannerDismissed;
 

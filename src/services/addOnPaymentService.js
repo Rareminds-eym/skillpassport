@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabaseClient';
 
-const PAYMENTS_API_URL = import.meta.env.VITE_PAYMENTS_API_URL || 'https://payments-api.dark-mode-d021.workers.dev';
+const PAYMENTS_API_URL =
+  import.meta.env.VITE_PAYMENTS_API_URL || 'https://payments-api.dark-mode-d021.workers.dev';
 
 /**
  * Helper function to make fetch requests with retry logic
@@ -13,28 +14,28 @@ async function fetchWithRetry(url, options, retries = 3) {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       console.log(`[AddOnPayment] Fetch attempt ${attempt} to ${url}`);
-      
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-      
+
       const response = await fetch(url, {
         ...options,
         signal: controller.signal,
       });
-      
+
       clearTimeout(timeoutId);
       return response;
     } catch (error) {
       console.error(`[AddOnPayment] Fetch attempt ${attempt} failed:`, error);
-      
+
       if (attempt === retries) {
         throw error;
       }
-      
+
       // Wait before retrying (exponential backoff)
       const delay = attempt * 1000;
       console.log(`[AddOnPayment] Retrying in ${delay}ms...`);
-      await new Promise(resolve => setTimeout(resolve, delay));
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
 }
@@ -57,21 +58,23 @@ export const addOnPaymentService = {
   async createAddOnOrder({ featureKey, userId, billingPeriod, userEmail, userName }) {
     try {
       console.log('[AddOnPayment] Creating order:', { featureKey, userId, billingPeriod });
-      
-      const { data: { session } } = await supabase.auth.getSession();
-      
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
       if (!session) {
         console.error('[AddOnPayment] No session found');
         return { success: false, error: 'User not authenticated' };
       }
 
       console.log('[AddOnPayment] Calling API:', `${PAYMENTS_API_URL}/create-addon-order`);
-      
+
       const response = await fetchWithRetry(`${PAYMENTS_API_URL}/create-addon-order`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           user_id: userId,
@@ -97,7 +100,7 @@ export const addOnPaymentService = {
           razorpayKeyId: import.meta.env.VITE_RAZORPAY_KEY_ID,
           userEmail,
           userName,
-        }
+        },
       };
     } catch (error) {
       console.error('[AddOnPayment] Error creating addon order:', error);
@@ -117,8 +120,10 @@ export const addOnPaymentService = {
    */
   async createBundleOrder({ bundleId, userId, billingPeriod, userEmail, userName }) {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
       if (!session) {
         return { success: false, error: 'User not authenticated' };
       }
@@ -127,7 +132,7 @@ export const addOnPaymentService = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           user_id: userId,
@@ -154,7 +159,7 @@ export const addOnPaymentService = {
           razorpayKeyId: import.meta.env.VITE_RAZORPAY_KEY_ID,
           userEmail,
           userName,
-        }
+        },
       };
     } catch (error) {
       console.error('Error creating bundle order:', error);
@@ -170,16 +175,16 @@ export const addOnPaymentService = {
    * @returns {Promise<Object>} - Payment initiation result
    */
   async initiateAddonPurchase(userId, featureKey, billingPeriod = 'monthly') {
-    const result = await this.createAddOnOrder({ 
-      featureKey, 
-      userId, 
-      billingPeriod 
+    const result = await this.createAddOnOrder({
+      featureKey,
+      userId,
+      billingPeriod,
     });
-    
+
     if (!result.success) {
       return result;
     }
-    
+
     return {
       success: true,
       razorpayOrderId: result.data.orderId,
@@ -201,9 +206,11 @@ export const addOnPaymentService = {
     const attemptVerification = async (attempt) => {
       try {
         console.log(`[AddOnPayment] Verification attempt ${attempt} for order: ${razorpayOrderId}`);
-        
-        const { data: { session } } = await supabase.auth.getSession();
-        
+
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
         if (!session) {
           throw new Error('User not authenticated');
         }
@@ -215,7 +222,7 @@ export const addOnPaymentService = {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
             razorpay_order_id: razorpayOrderId,
@@ -243,14 +250,17 @@ export const addOnPaymentService = {
         };
       } catch (error) {
         console.error(`[AddOnPayment] Verification attempt ${attempt} failed:`, error);
-        
+
         // If we have retries left and it's a network error, retry
-        if (attempt < retries && (error.name === 'AbortError' || error.message === 'Failed to fetch')) {
+        if (
+          attempt < retries &&
+          (error.name === 'AbortError' || error.message === 'Failed to fetch')
+        ) {
           console.log(`[AddOnPayment] Retrying in ${attempt * 1000}ms...`);
-          await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+          await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
           return attemptVerification(attempt + 1);
         }
-        
+
         throw error;
       }
     };
@@ -276,13 +286,24 @@ export const addOnPaymentService = {
    * @param {number} retries - Number of retries (default: 3)
    * @returns {Promise<Object>} - Verification result
    */
-  async verifyBundlePayment(razorpayOrderId, razorpayPaymentId, razorpaySignature, bundleId, billingPeriod, retries = 3) {
+  async verifyBundlePayment(
+    razorpayOrderId,
+    razorpayPaymentId,
+    razorpaySignature,
+    bundleId,
+    billingPeriod,
+    retries = 3
+  ) {
     const attemptVerification = async (attempt) => {
       try {
-        console.log(`[AddOnPayment] Bundle verification attempt ${attempt} for order: ${razorpayOrderId}`);
-        
-        const { data: { session } } = await supabase.auth.getSession();
-        
+        console.log(
+          `[AddOnPayment] Bundle verification attempt ${attempt} for order: ${razorpayOrderId}`
+        );
+
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
         if (!session) {
           throw new Error('User not authenticated');
         }
@@ -294,7 +315,7 @@ export const addOnPaymentService = {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
             razorpay_order_id: razorpayOrderId,
@@ -324,14 +345,17 @@ export const addOnPaymentService = {
         };
       } catch (error) {
         console.error(`[AddOnPayment] Bundle verification attempt ${attempt} failed:`, error);
-        
+
         // If we have retries left and it's a network error, retry
-        if (attempt < retries && (error.name === 'AbortError' || error.message === 'Failed to fetch')) {
+        if (
+          attempt < retries &&
+          (error.name === 'AbortError' || error.message === 'Failed to fetch')
+        ) {
           console.log(`[AddOnPayment] Retrying in ${attempt * 1000}ms...`);
-          await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+          await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
           return attemptVerification(attempt + 1);
         }
-        
+
         throw error;
       }
     };

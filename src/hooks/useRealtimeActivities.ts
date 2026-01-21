@@ -19,18 +19,18 @@ export const useRealtimeActivities = (limit = 15) => {
     queryFn: async () => {
       const result = await getRecentActivity(limit);
       const dbActivities = result.data || [];
-      
+
       // Merge with stored deletion activities (keep deletions from last 5 minutes)
       const now = Date.now();
       const recentDeletions = deletionActivitiesRef.current.filter(
-        del => now - new Date(del.timestamp).getTime() < 5 * 60 * 1000 // 5 minutes
+        (del) => now - new Date(del.timestamp).getTime() < 5 * 60 * 1000 // 5 minutes
       );
-      
+
       // Combine and sort by timestamp
       const combined = [...recentDeletions, ...dbActivities]
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
         .slice(0, limit);
-      
+
       return combined;
     },
     refetchOnMount: true, // Always refetch on mount
@@ -40,50 +40,53 @@ export const useRealtimeActivities = (limit = 15) => {
   });
 
   // Callback to handle real-time changes
-  const handleRealtimeChange = useCallback((table: string, payload: any) => {
-    
-    // For DELETE events, handle both with and without old record data
-    if (payload.eventType === 'DELETE') {
-      
-      // Create deletion activity (works even without REPLICA IDENTITY FULL)
-      const deletedActivity = {
-        id: `deleted-${table}-${Date.now()}-${Math.random()}`,
-        user: 'System',
-        action: 'deleted',
-        candidate: payload.old ? 
-          (payload.old.candidate_name || payload.old.name || `${table} record`) : 
-          `${table} record`,
-        details: `Removed from ${table.replace(/_/g, ' ')}`,
-        timestamp: new Date().toISOString(),
-        type: 'deletion',
-        icon: 'delete',
-        metadata: { 
-          table, 
-          deletedId: payload.old?.id,
-          hadFullData: !!payload.old
+  const handleRealtimeChange = useCallback(
+    (table: string, payload: any) => {
+      // For DELETE events, handle both with and without old record data
+      if (payload.eventType === 'DELETE') {
+        // Create deletion activity (works even without REPLICA IDENTITY FULL)
+        const deletedActivity = {
+          id: `deleted-${table}-${Date.now()}-${Math.random()}`,
+          user: 'System',
+          action: 'deleted',
+          candidate: payload.old
+            ? payload.old.candidate_name || payload.old.name || `${table} record`
+            : `${table} record`,
+          details: `Removed from ${table.replace(/_/g, ' ')}`,
+          timestamp: new Date().toISOString(),
+          type: 'deletion',
+          icon: 'delete',
+          metadata: {
+            table,
+            deletedId: payload.old?.id,
+            hadFullData: !!payload.old,
+          },
+        };
+
+        // Store deletion activity in ref (persists across refetches)
+        deletionActivitiesRef.current = [deletedActivity, ...deletionActivitiesRef.current].slice(
+          0,
+          10
+        );
+
+        // Show console warning if we don't have full data
+        if (!payload.old) {
         }
-      };
-      
-      
-      // Store deletion activity in ref (persists across refetches)
-      deletionActivitiesRef.current = [deletedActivity, ...deletionActivitiesRef.current].slice(0, 10);
-      
-      // Show console warning if we don't have full data
-      if (!payload.old) {
       }
-    }
-    
-    // Force refetch to get fresh data (will merge with deletion activities)
-    queryClient.invalidateQueries({ 
-      queryKey: ['activities'],
-      refetchType: 'active' 
-    });
-    
-    if (payload.eventType === 'INSERT') {
-    } else if (payload.eventType === 'UPDATE') {
-    } else if (payload.eventType === 'DELETE') {
-    }
-  }, [queryClient]);
+
+      // Force refetch to get fresh data (will merge with deletion activities)
+      queryClient.invalidateQueries({
+        queryKey: ['activities'],
+        refetchType: 'active',
+      });
+
+      if (payload.eventType === 'INSERT') {
+      } else if (payload.eventType === 'UPDATE') {
+      } else if (payload.eventType === 'DELETE') {
+      }
+    },
+    [queryClient]
+  );
 
   // Set up real-time subscriptions for all tables
   useEffect(() => {
@@ -91,7 +94,6 @@ export const useRealtimeActivities = (limit = 15) => {
     if (isSubscribedRef.current) {
       return;
     }
-
 
     // Create a unique channel
     const channelName = `activities-realtime-${Date.now()}`;
@@ -161,7 +163,7 @@ export const useRealtimeActivities = (limit = 15) => {
  */
 export const useRefreshActivities = () => {
   const queryClient = useQueryClient();
-  
+
   return () => {
     queryClient.invalidateQueries({ queryKey: ['activities'] });
   };

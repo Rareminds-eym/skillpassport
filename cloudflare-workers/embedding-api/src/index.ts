@@ -482,10 +482,10 @@ async function handleBackfill(request: Request, env: Env): Promise<Response> {
     try {
       // Build text based on table type
       let text: string | null;
-      let enrichedRecord = { ...record };
+      const enrichedRecord = { ...record };
       
       switch (table) {
-        case 'students':
+        case 'students': {
           // Fetch skills for this student
           const { data: skills } = await supabase
             .from('skills')
@@ -511,6 +511,7 @@ async function handleBackfill(request: Request, env: Env): Promise<Response> {
           enrichedRecord.trainings = trainings || [];
           text = buildStudentText(enrichedRecord);
           break;
+        }
         case 'opportunities':
           text = buildOpportunityText(record);
           break;
@@ -588,10 +589,10 @@ async function handleRegenerate(request: Request, env: Env): Promise<Response> {
   try {
     // Build text based on table type
     let text: string | null;
-    let enrichedRecord = { ...record };
+    const enrichedRecord = { ...record };
     
     switch (table) {
-      case 'students':
+      case 'students': {
         // Fetch skills for this student
         const { data: skills } = await supabase
           .from('skills')
@@ -617,6 +618,7 @@ async function handleRegenerate(request: Request, env: Env): Promise<Response> {
         enrichedRecord.trainings = trainings || [];
         text = buildStudentText(enrichedRecord);
         break;
+      }
       case 'opportunities':
         text = buildOpportunityText(record);
         break;
@@ -709,7 +711,7 @@ async function handleRegenerateAll(request: Request, env: Env): Promise<Response
   for (const record of records) {
     try {
       let text: string | null;
-      let enrichedRecord = { ...record };
+      const enrichedRecord = { ...record };
       
       if (table === 'students') {
         // Fetch related data for students (3 queries per student)
@@ -870,7 +872,7 @@ async function processEmbeddingQueue(env: Env, batchSize: number = 20): Promise<
 
       // Build text based on table type
       let text: string | null;
-      let enrichedRecord = { ...record };
+      const enrichedRecord = { ...record };
       
       switch (table_name) {
         case 'students':
@@ -1023,7 +1025,7 @@ async function handleQueueStatus(env: Env): Promise<Response> {
       };
       
       data.forEach((item: any) => {
-        if (counts.hasOwnProperty(item.status)) {
+        if (Object.prototype.hasOwnProperty.call(counts, item.status)) {
           counts[item.status as keyof typeof counts]++;
         }
       });

@@ -18,17 +18,20 @@ import {
   CurrencyDollarIcon,
   DocumentCheckIcon,
   ChevronLeftIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
 } from '@heroicons/react/24/outline';
 import { useOffers, Offer } from '../../hooks/useOffers.ts';
-import OfferAdvancedFilters, { OfferFilters, OfferSortOptions } from '../../components/Recruiter/filters/OfferAdvancedFilters';
+import OfferAdvancedFilters, {
+  OfferFilters,
+  OfferSortOptions,
+} from '../../components/Recruiter/filters/OfferAdvancedFilters';
 import OfferSortButton from '../../components/Recruiter/filters/OfferSortButton';
 
 const Toast = ({
   show,
   message,
   type = 'success',
-  onClose
+  onClose,
 }: {
   show: boolean;
   message: string;
@@ -63,17 +66,12 @@ const Toast = ({
     <div className="fixed top-4 right-4 z-50 max-w-sm w-full">
       <div className={`rounded-lg border p-4 shadow-lg ${getToastStyles()}`}>
         <div className="flex items-start">
-          <div className="flex-shrink-0">
-            {getIcon()}
-          </div>
+          <div className="flex-shrink-0">{getIcon()}</div>
           <div className="ml-3 flex-1">
             <p className="text-sm font-medium">{message}</p>
           </div>
           <div className="ml-4 flex-shrink-0">
-            <button
-              onClick={onClose}
-              className="inline-flex text-gray-400 hover:text-gray-600"
-            >
+            <button onClick={onClose} className="inline-flex text-gray-400 hover:text-gray-600">
               <XMarkIcon className="h-4 w-4" />
             </button>
           </div>
@@ -82,7 +80,6 @@ const Toast = ({
     </div>
   );
 };
-
 
 const OfferDetailsDrawer = ({
   isOpen,
@@ -98,9 +95,7 @@ const OfferDetailsDrawer = ({
   const isExpiring = () => {
     const expiryDate = new Date(offer.expiry_date);
     const now = new Date();
-    const diffDays = Math.ceil(
-      (expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-    );
+    const diffDays = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
     return diffDays <= 2 && diffDays > 0;
   };
 
@@ -109,22 +104,22 @@ const OfferDetailsDrawer = ({
   const getStatusClasses = () => {
     // Check if expired first
     if (isExpired() && offer.status === 'pending') {
-      return "bg-gray-200 text-gray-800";
+      return 'bg-gray-200 text-gray-800';
     }
-    
+
     switch (offer.status) {
-      case "pending":
-        return "bg-yellow-100 text-yellow-800";
-      case "accepted":
-        return "bg-green-100 text-green-800";
-      case "rejected":
-        return "bg-red-100 text-red-800";
-      case "expired":
-        return "bg-gray-200 text-gray-800";
-      case "withdrawn":
-        return "bg-orange-100 text-orange-800";
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'accepted':
+        return 'bg-green-100 text-green-800';
+      case 'rejected':
+        return 'bg-red-100 text-red-800';
+      case 'expired':
+        return 'bg-gray-200 text-gray-800';
+      case 'withdrawn':
+        return 'bg-orange-100 text-orange-800';
       default:
-        return "bg-gray-100 text-gray-800";
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -138,22 +133,15 @@ const OfferDetailsDrawer = ({
   return (
     <div className="fixed inset-0 z-50 flex">
       {/* Overlay */}
-      <div
-        className="absolute inset-0 bg-black bg-opacity-40"
-        onClick={onClose}
-      ></div>
+      <div className="absolute inset-0 bg-black bg-opacity-40" onClick={onClose}></div>
 
       {/* Drawer */}
       <div className="relative ml-auto w-full max-w-3xl h-full bg-white shadow-2xl flex flex-col rounded-l-xl">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">
-              Offer Details
-            </h2>
-            <p className="text-sm text-gray-500">
-              Full details for {offer.candidate_name}
-            </p>
+            <h2 className="text-xl font-semibold text-gray-900">Offer Details</h2>
+            <p className="text-sm text-gray-500">Full details for {offer.candidate_name}</p>
           </div>
           <button
             onClick={onClose}
@@ -170,17 +158,11 @@ const OfferDetailsDrawer = ({
             <div className="p-4 bg-gray-50 rounded-lg">
               <div className="flex items-center mb-3">
                 <UserIcon className="h-5 w-5 text-gray-400 mr-2" />
-                <h3 className="font-medium text-gray-900 text-sm">
-                  Candidate Name
-                </h3>
+                <h3 className="font-medium text-gray-900 text-sm">Candidate Name</h3>
               </div>
-              <p className="text-lg font-semibold text-gray-900">
-                {offer.candidate_name}
-              </p>
+              <p className="text-lg font-semibold text-gray-900">{offer.candidate_name}</p>
               {offer.candidate_id && (
-                <p className="text-sm text-gray-600 mt-1">
-                  ID: {offer.candidate_id}
-                </p>
+                <p className="text-sm text-gray-600 mt-1">ID: {offer.candidate_id}</p>
               )}
             </div>
 
@@ -189,16 +171,10 @@ const OfferDetailsDrawer = ({
                 <BriefcaseIcon className="h-5 w-5 text-gray-400 mr-2" />
                 <h3 className="font-medium text-gray-900 text-sm">Job</h3>
               </div>
-              <p className="text-lg font-semibold text-gray-900">
-                {offer.job_title}
-              </p>
-              {offer.job_id && (
-                <p className="text-sm text-gray-600 mt-1">Job ID: {offer.job_id}</p>
-              )}
+              <p className="text-lg font-semibold text-gray-900">{offer.job_title}</p>
+              {offer.job_id && <p className="text-sm text-gray-600 mt-1">Job ID: {offer.job_id}</p>}
               {offer.template && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Template: {offer.template}
-                </p>
+                <p className="text-xs text-gray-500 mt-1">Template: {offer.template}</p>
               )}
             </div>
           </div>
@@ -215,9 +191,7 @@ const OfferDetailsDrawer = ({
             </div>
             <div className="flex justify-between items-center mt-2">
               <p className="text-sm text-gray-600">Offered CTC</p>
-              <span className="text-lg font-bold text-green-600">
-                {offer.offered_ctc}
-              </span>
+              <span className="text-lg font-bold text-green-600">{offer.offered_ctc}</span>
             </div>
           </div>
 
@@ -225,16 +199,12 @@ const OfferDetailsDrawer = ({
           <div className="p-4 bg-gray-50 rounded-lg space-y-3">
             <div className="flex items-center mb-3">
               <DocumentCheckIcon className="h-5 w-5 text-gray-400 mr-2" />
-              <h3 className="font-medium text-gray-900 text-sm">
-                Status & Timeline
-              </h3>
+              <h3 className="font-medium text-gray-900 text-sm">Status & Timeline</h3>
             </div>
 
             <div className="flex justify-between">
               <span className="text-sm text-gray-600">Status</span>
-              <span
-                className={`px-3 py-1 text-xs font-medium rounded-full ${getStatusClasses()}`}
-              >
+              <span className={`px-3 py-1 text-xs font-medium rounded-full ${getStatusClasses()}`}>
                 {getDisplayStatus()}
               </span>
             </div>
@@ -243,10 +213,10 @@ const OfferDetailsDrawer = ({
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Offer Date</span>
                 <span>
-                  {new Date(offer.offer_date).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
+                  {new Date(offer.offer_date).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
                   })}
                 </span>
               </div>
@@ -257,10 +227,10 @@ const OfferDetailsDrawer = ({
               <span
                 className={`${
                   isExpired()
-                    ? "text-red-600 font-medium"
+                    ? 'text-red-600 font-medium'
                     : isExpiring()
-                    ? "text-yellow-700 font-medium"
-                    : "text-gray-900"
+                      ? 'text-yellow-700 font-medium'
+                      : 'text-gray-900'
                 }`}
               >
                 {new Date(offer.expiry_date).toLocaleDateString()}
@@ -313,9 +283,7 @@ const OfferDetailsDrawer = ({
           {/* Acceptance Notes */}
           {offer.acceptance_notes && (
             <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-              <h3 className="font-medium text-green-900 text-sm mb-2">
-                Acceptance Notes
-              </h3>
+              <h3 className="font-medium text-green-900 text-sm mb-2">Acceptance Notes</h3>
               <p className="text-sm text-green-800">{offer.acceptance_notes}</p>
             </div>
           )}
@@ -347,16 +315,15 @@ const OfferDetailsDrawer = ({
   );
 };
 
-
 const ConfirmationModal = ({
   isOpen,
   onClose,
   onConfirm,
   title,
   message,
-  confirmText = "Confirm",
-  cancelText = "Cancel",
-  type = "warning"
+  confirmText = 'Confirm',
+  cancelText = 'Cancel',
+  type = 'warning',
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -365,29 +332,29 @@ const ConfirmationModal = ({
   message: string;
   confirmText?: string;
   cancelText?: string;
-  type?: "warning" | "danger" | "info";
+  type?: 'warning' | 'danger' | 'info';
 }) => {
   if (!isOpen) return null;
 
   const getIconAndColors = () => {
     switch (type) {
-      case "danger":
+      case 'danger':
         return {
           icon: <XCircleIcon className="h-6 w-6 text-red-600" />,
-          confirmBg: "bg-red-600 hover:bg-red-700",
-          iconBg: "bg-red-100"
+          confirmBg: 'bg-red-600 hover:bg-red-700',
+          iconBg: 'bg-red-100',
         };
-      case "info":
+      case 'info':
         return {
           icon: <ExclamationCircleIcon className="h-6 w-6 text-blue-600" />,
-          confirmBg: "bg-blue-600 hover:bg-blue-700",
-          iconBg: "bg-blue-100"
+          confirmBg: 'bg-blue-600 hover:bg-blue-700',
+          iconBg: 'bg-blue-100',
         };
       default:
         return {
           icon: <ExclamationTriangleIcon className="h-6 w-6 text-yellow-600" />,
-          confirmBg: "bg-yellow-600 hover:bg-yellow-700",
-          iconBg: "bg-yellow-100"
+          confirmBg: 'bg-yellow-600 hover:bg-yellow-700',
+          iconBg: 'bg-yellow-100',
         };
     }
   };
@@ -397,21 +364,22 @@ const ConfirmationModal = ({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        <div
+          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          onClick={onClose}
+        ></div>
 
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
           <div className="sm:flex sm:items-start">
-            <div className={`mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full ${iconBg} sm:mx-0 sm:h-10 sm:w-10`}>
+            <div
+              className={`mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full ${iconBg} sm:mx-0 sm:h-10 sm:w-10`}
+            >
               {icon}
             </div>
             <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-              <h3 className="text-lg leading-6 font-medium text-gray-900">
-                {title}
-              </h3>
+              <h3 className="text-lg leading-6 font-medium text-gray-900">{title}</h3>
               <div className="mt-2">
-                <p className="text-sm text-gray-500">
-                  {message}
-                </p>
+                <p className="text-sm text-gray-500">{message}</p>
               </div>
             </div>
           </div>
@@ -437,12 +405,11 @@ const ConfirmationModal = ({
   );
 };
 
-
 const Calendar = ({
   selectedDate,
   onDateSelect,
   minDate,
-  rangeStart
+  rangeStart,
 }: {
   selectedDate: Date | null;
   onDateSelect: (date: Date) => void;
@@ -452,11 +419,21 @@ const Calendar = ({
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   const monthNames = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ];
 
-  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   const getDaysInMonth = (date: Date) => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
@@ -469,7 +446,6 @@ const Calendar = ({
   const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
   const isDateDisabled = (date: Date) => {
-
     return startOfDay(date).getTime() < startOfDay(minDate).getTime();
   };
 
@@ -484,7 +460,7 @@ const Calendar = ({
   };
 
   const navigateMonth = (direction: 'prev' | 'next') => {
-    setCurrentMonth(prev => {
+    setCurrentMonth((prev) => {
       const newMonth = new Date(prev);
       if (direction === 'prev') {
         newMonth.setMonth(prev.getMonth() - 1);
@@ -494,7 +470,6 @@ const Calendar = ({
       return newMonth;
     });
   };
-
 
   useEffect(() => {
     if (selectedDate) {
@@ -507,13 +482,9 @@ const Calendar = ({
     const firstDay = getFirstDayOfMonth(currentMonth);
     const days = [];
 
-
     for (let i = 0; i < firstDay; i++) {
-      days.push(
-        <div key={`empty-${i}`} className="h-8 w-8"></div>
-      );
+      days.push(<div key={`empty-${i}`} className="h-8 w-8"></div>);
     }
-
 
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
@@ -539,10 +510,7 @@ const Calendar = ({
           disabled={isDisabled}
           className={`
             h-8 w-8 rounded-full text-sm font-medium transition-all
-            ${isDisabled
-              ? 'text-gray-300 cursor-not-allowed'
-              : 'text-gray-700 cursor-pointer'
-            }
+            ${isDisabled ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 cursor-pointer'}
             ${isInRange && !isSelected ? 'bg-blue-100 text-blue-800' : ''}
             ${isSelected ? 'bg-blue-600 text-white hover:bg-blue-700' : ''}
             ${isTodayDate && !isSelected && !isInRange ? 'bg-gray-100 text-gray-900 font-semibold' : ''}
@@ -584,17 +552,18 @@ const Calendar = ({
 
       {/* Day Names */}
       <div className="grid grid-cols-7 gap-1 mb-2">
-        {dayNames.map(day => (
-          <div key={day} className="h-8 flex items-center justify-center text-xs font-medium text-gray-500">
+        {dayNames.map((day) => (
+          <div
+            key={day}
+            className="h-8 flex items-center justify-center text-xs font-medium text-gray-500"
+          >
             {day}
           </div>
         ))}
       </div>
 
       {/* Calendar Grid */}
-      <div className="grid grid-cols-7 gap-1">
-        {renderCalendar()}
-      </div>
+      <div className="grid grid-cols-7 gap-1">{renderCalendar()}</div>
 
       {/* Legend */}
       <div className="mt-4 pt-3 border-t border-gray-200">
@@ -617,14 +586,13 @@ const Calendar = ({
   );
 };
 
-
 const ExtendOfferModal = ({
   isOpen,
   onClose,
   onConfirm,
   candidateName,
   currentExpiryDate,
-  currentOfferDate
+  currentOfferDate,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -646,7 +614,9 @@ const ExtendOfferModal = ({
     if (!isOpen) return;
     const startOfDayLocal = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
     const todayLocal = startOfDayLocal(new Date());
-    const providedExpiryLocal = currentExpiryDate ? startOfDayLocal(new Date(currentExpiryDate)) : null;
+    const providedExpiryLocal = currentExpiryDate
+      ? startOfDayLocal(new Date(currentExpiryDate))
+      : null;
     if (providedExpiryLocal) {
       setSelectedDate(providedExpiryLocal);
     } else {
@@ -657,15 +627,15 @@ const ExtendOfferModal = ({
   }, [isOpen, currentExpiryDate]);
 
   const presetOptions = [
-    { days: 3, label: "3 days", description: "Quick extension" },
-    { days: 7, label: "1 week", description: "Standard extension" },
-    { days: 14, label: "2 weeks", description: "Extended period" },
-    { days: 30, label: "1 month", description: "Long extension" }
+    { days: 3, label: '3 days', description: 'Quick extension' },
+    { days: 7, label: '1 week', description: 'Standard extension' },
+    { days: 14, label: '2 weeks', description: 'Extended period' },
+    { days: 30, label: '1 month', description: 'Long extension' },
   ];
 
   const handlePresetSelect = (presetDays: number) => {
-
-    const base = providedExpiry && providedExpiry.getTime() > today.getTime() ? providedExpiry : today;
+    const base =
+      providedExpiry && providedExpiry.getTime() > today.getTime() ? providedExpiry : today;
     const newDate = new Date(base);
     newDate.setDate(base.getDate() + presetDays);
     setSelectedDate(newDate);
@@ -675,7 +645,6 @@ const ExtendOfferModal = ({
   };
 
   const handleCalendarDateSelect = (date: Date) => {
-
     const picked = startOfDay(date);
     if (picked.getTime() < minDate.getTime()) return;
     setSelectedDate(picked);
@@ -705,21 +674,23 @@ const ExtendOfferModal = ({
       weekday: 'long',
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
     });
   };
 
-
   const getDaysForConfirm = () => {
     if (!selectedDate) return 0;
-    const presetBase = providedExpiry && providedExpiry.getTime() > today.getTime() ? providedExpiry : today;
+    const presetBase =
+      providedExpiry && providedExpiry.getTime() > today.getTime() ? providedExpiry : today;
     const diffTime = selectedDate.getTime() - presetBase.getTime();
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
 
   const formatDaysForDisplay = (days: number) => {
     if (days === 0) return '0 days';
-    return (days > 0 ? `+${days} ${days === 1 ? 'day' : 'days'}` : `${days} ${Math.abs(days) === 1 ? 'day' : 'days'}`);
+    return days > 0
+      ? `+${days} ${days === 1 ? 'day' : 'days'}`
+      : `${days} ${Math.abs(days) === 1 ? 'day' : 'days'}`;
   };
 
   if (!isOpen) return null;
@@ -727,7 +698,10 @@ const ExtendOfferModal = ({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        <div
+          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          onClick={onClose}
+        ></div>
 
         <div className="inline-block align-bottom bg-white rounded-xl px-6 pt-6 pb-6 text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
           {/* Header */}
@@ -737,9 +711,7 @@ const ExtendOfferModal = ({
                 <CalendarDaysIcon className="h-6 w-6 text-white" />
               </div>
               <div className="ml-4">
-                <h3 className="text-xl font-semibold text-gray-900">
-                  Extend Offer Expiry
-                </h3>
+                <h3 className="text-xl font-semibold text-gray-900">Extend Offer Expiry</h3>
                 <p className="text-sm text-gray-500">
                   For <span className="font-medium text-gray-900">{candidateName}</span>
                 </p>
@@ -766,10 +738,11 @@ const ExtendOfferModal = ({
                     <button
                       key={preset.days}
                       onClick={() => handlePresetSelect(preset.days)}
-                      className={`p-3 rounded-lg border-2 transition-all ${selectedPreset === preset.days
-                        ? 'border-blue-500 bg-blue-50 text-blue-700'
-                        : 'border-gray-200 hover:border-gray-300 text-gray-700'
-                        }`}
+                      className={`p-3 rounded-lg border-2 transition-all ${
+                        selectedPreset === preset.days
+                          ? 'border-blue-500 bg-blue-50 text-blue-700'
+                          : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                      }`}
                     >
                       <div className="text-center">
                         <div className="font-semibold text-sm">{preset.label}</div>
@@ -787,10 +760,11 @@ const ExtendOfferModal = ({
                 </label>
                 <button
                   onClick={() => setUseCalendar(!useCalendar)}
-                  className={`w-full p-3 rounded-lg border-2 transition-all ${useCalendar
-                    ? 'border-blue-500 bg-blue-50 text-blue-700'
-                    : 'border-gray-200 hover:border-gray-300 text-gray-700'
-                    }`}
+                  className={`w-full p-3 rounded-lg border-2 transition-all ${
+                    useCalendar
+                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                  }`}
                 >
                   <div className="flex items-center justify-center">
                     <CalendarDaysIcon className="h-5 w-5 mr-2" />
@@ -815,7 +789,7 @@ const ExtendOfferModal = ({
                           weekday: 'long',
                           year: 'numeric',
                           month: 'long',
-                          day: 'numeric'
+                          day: 'numeric',
                         })}
                       </p>
                     </div>
@@ -832,7 +806,10 @@ const ExtendOfferModal = ({
                       <p className="text-lg font-semibold text-blue-600">
                         {formatDaysForDisplay(getDaysDifference())}
                       </p>
-                      <p className="text-xs text-gray-400 mt-1">Positive means new expiry is later than current expiry; negative means it's earlier.</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Positive means new expiry is later than current expiry; negative means it's
+                        earlier.
+                      </p>
                     </div>
                   )}
                 </div>
@@ -916,10 +893,16 @@ const getStatusIcon = (status: string) => {
   }
 };
 
-const CreateOfferModal = ({ isOpen, onClose, onCreate }: {
+const CreateOfferModal = ({
+  isOpen,
+  onClose,
+  onCreate,
+}: {
   isOpen: boolean;
   onClose: () => void;
-  onCreate: (offerData: Partial<Offer>) => Promise<{ success: boolean; data?: Offer; error?: string }>;
+  onCreate: (
+    offerData: Partial<Offer>
+  ) => Promise<{ success: boolean; data?: Offer; error?: string }>;
 }) => {
   const [formData, setFormData] = useState({
     candidate_id: '',
@@ -930,7 +913,7 @@ const CreateOfferModal = ({ isOpen, onClose, onCreate }: {
     offered_ctc: '',
     expiry_days: 7,
     benefits: ['Health Insurance'],
-    notes: ''
+    notes: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -956,7 +939,7 @@ const CreateOfferModal = ({ isOpen, onClose, onCreate }: {
         sent_via: 'email',
         response_deadline: expiryDate.toISOString(),
         benefits: formData.benefits,
-        notes: formData.notes
+        notes: formData.notes,
       };
 
       const result = await onCreate(newOfferData);
@@ -971,7 +954,7 @@ const CreateOfferModal = ({ isOpen, onClose, onCreate }: {
           offered_ctc: '',
           expiry_days: 7,
           benefits: ['Health Insurance'],
-          notes: ''
+          notes: '',
         });
         onClose();
       } else {
@@ -979,7 +962,6 @@ const CreateOfferModal = ({ isOpen, onClose, onCreate }: {
       }
     } catch (error) {
       console.error('Error creating offer:', error);
-
     } finally {
       setIsSubmitting(false);
     }
@@ -992,7 +974,7 @@ const CreateOfferModal = ({ isOpen, onClose, onCreate }: {
     'Gym Membership',
     'Food Safety Certification',
     'Transport Allowance',
-    'Performance Bonus'
+    'Performance Bonus',
   ];
 
   if (!isOpen) return null;
@@ -1000,7 +982,10 @@ const CreateOfferModal = ({ isOpen, onClose, onCreate }: {
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        <div
+          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          onClick={onClose}
+        ></div>
 
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-6">
@@ -1077,7 +1062,9 @@ const CreateOfferModal = ({ isOpen, onClose, onCreate }: {
               <label className="block text-sm font-medium text-gray-700 mb-2">Expiry (Days)</label>
               <select
                 value={formData.expiry_days}
-                onChange={(e) => setFormData({ ...formData, expiry_days: parseInt(e.target.value) })}
+                onChange={(e) =>
+                  setFormData({ ...formData, expiry_days: parseInt(e.target.value) })
+                }
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
               >
                 <option value={3}>3 days</option>
@@ -1091,7 +1078,7 @@ const CreateOfferModal = ({ isOpen, onClose, onCreate }: {
           <div className="mt-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">Benefits</label>
             <div className="grid grid-cols-2 gap-2">
-              {benefitOptions.map(benefit => (
+              {benefitOptions.map((benefit) => (
                 <label key={benefit} className="flex items-center">
                   <input
                     type="checkbox"
@@ -1100,7 +1087,10 @@ const CreateOfferModal = ({ isOpen, onClose, onCreate }: {
                       if (e.target.checked) {
                         setFormData({ ...formData, benefits: [...formData.benefits, benefit] });
                       } else {
-                        setFormData({ ...formData, benefits: formData.benefits.filter(b => b !== benefit) });
+                        setFormData({
+                          ...formData,
+                          benefits: formData.benefits.filter((b) => b !== benefit),
+                        });
                       }
                     }}
                     className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
@@ -1131,7 +1121,12 @@ const CreateOfferModal = ({ isOpen, onClose, onCreate }: {
             </button>
             <button
               onClick={handleCreate}
-              disabled={!formData.candidate_name || !formData.job_title || !formData.offered_ctc || isSubmitting}
+              disabled={
+                !formData.candidate_name ||
+                !formData.job_title ||
+                !formData.offered_ctc ||
+                isSubmitting
+              }
               className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
             >
               {isSubmitting ? 'Creating...' : 'Create Offer'}
@@ -1180,16 +1175,14 @@ const OfferCard = ({
         flex flex-col justify-between h-full
         bg-white rounded-xl border shadow-sm 
         hover:shadow-lg transition-shadow duration-200
-        ${isExpiring() && !isExpired() ? "border-yellow-300 bg-yellow-50" : ""}
-        ${isExpired() ? "border-gray-300 bg-gray-50" : ""}
+        ${isExpiring() && !isExpired() ? 'border-yellow-300 bg-yellow-50' : ''}
+        ${isExpired() ? 'border-gray-300 bg-gray-50' : ''}
       `}
     >
       {/* Header */}
       <div className="p-5 border-b flex justify-between items-start">
         <div>
-          <h3 className="font-semibold text-gray-900 text-lg truncate">
-            {offer.candidate_name}
-          </h3>
+          <h3 className="font-semibold text-gray-900 text-lg truncate">{offer.candidate_name}</h3>
           <p className="text-sm text-gray-600">{offer.job_title}</p>
           <p className="text-xs text-gray-500 mt-1">{offer.template}</p>
         </div>
@@ -1208,7 +1201,6 @@ const OfferCard = ({
               Expires in {getDaysUntilExpiry()} day(s)
             </span>
           )}
-          
         </div>
       </div>
 
@@ -1225,20 +1217,18 @@ const OfferCard = ({
         <div className="flex justify-between text-sm">
           <span className="text-gray-600">Offer Date:</span>
           <span className="text-gray-900">
-            {offer.offer_date
-              ? new Date(offer.offer_date).toLocaleDateString()
-              : "N/A"}
+            {offer.offer_date ? new Date(offer.offer_date).toLocaleDateString() : 'N/A'}
           </span>
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-gray-600">Expires:</span>
           <span
             className={`${
-              isExpired() 
-                ? "text-red-700 font-medium" 
-                : isExpiring() 
-                ? "text-yellow-700 font-medium" 
-                : "text-gray-900"
+              isExpired()
+                ? 'text-red-700 font-medium'
+                : isExpiring()
+                  ? 'text-yellow-700 font-medium'
+                  : 'text-gray-900'
             }`}
           >
             {new Date(offer.expiry_date).toLocaleDateString()}
@@ -1259,16 +1249,14 @@ const OfferCard = ({
                 </span>
               ))}
               {offer.benefits.length > 3 && (
-                <span className="text-xs text-gray-500">
-                  +{offer.benefits.length - 3} more
-                </span>
+                <span className="text-xs text-gray-500">+{offer.benefits.length - 3} more</span>
               )}
             </div>
           </div>
         )}
 
         {/* Acceptance Notes */}
-        {offer.status === "accepted" && offer.acceptance_notes && (
+        {offer.status === 'accepted' && offer.acceptance_notes && (
           <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
             <p className="text-xs text-green-800">
               <strong>Acceptance Note:</strong> {offer.acceptance_notes}
@@ -1293,7 +1281,7 @@ const OfferCard = ({
             View
           </button>
 
-          {displayStatus === "pending" && !isExpired() && (
+          {displayStatus === 'pending' && !isExpired() && (
             <button
               onClick={() => onExtend(offer)}
               className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100 transition"
@@ -1303,7 +1291,7 @@ const OfferCard = ({
             </button>
           )}
 
-          {displayStatus === "pending" && !isExpired() && (
+          {displayStatus === 'pending' && !isExpired() && (
             <button
               onClick={() => onWithdraw(offer)}
               className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 rounded-md hover:bg-red-100 transition"
@@ -1320,13 +1308,12 @@ const OfferCard = ({
   );
 };
 
-
 const OffersDecisions = () => {
   // Filter and sort state
   const [filters, setFilters] = useState<OfferFilters>({});
   const [sort, setSort] = useState<OfferSortOptions>({
     field: 'inserted_at',
-    direction: 'desc'
+    direction: 'desc',
   });
 
   const {
@@ -1337,20 +1324,20 @@ const OffersDecisions = () => {
     createOffer,
     withdrawOffer,
     extendOfferExpiry,
-    refreshOffers
+    refreshOffers,
   } = useOffers(filters, sort);
 
   // Process offers to automatically detect expired status
   const processedOffers = useMemo(() => {
     const now = new Date();
-    return offers.map(offer => {
+    return offers.map((offer) => {
       const isExpiredNow = new Date(offer.expiry_date) < now;
-      
+
       // If offer is pending but has expired, treat it as expired for display
       if (offer.status === 'pending' && isExpiredNow) {
         return { ...offer, displayStatus: 'expired' as const };
       }
-      
+
       return { ...offer, displayStatus: offer.status };
     });
   }, [offers]);
@@ -1370,20 +1357,20 @@ const OffersDecisions = () => {
   }>({ show: false, message: '', type: 'success' });
 
   // Extract available filter options from offers
-  const availableTemplates = useMemo(() => 
-    [...new Set(offers.map(o => o.template).filter(Boolean))].sort() as string[],
+  const availableTemplates = useMemo(
+    () => [...new Set(offers.map((o) => o.template).filter(Boolean))].sort() as string[],
     [offers]
   );
 
-  const availableSentVia = useMemo(() => 
-    [...new Set(offers.map(o => o.sent_via).filter(Boolean))].sort() as string[],
+  const availableSentVia = useMemo(
+    () => [...new Set(offers.map((o) => o.sent_via).filter(Boolean))].sort() as string[],
     [offers]
   );
 
   const availableBenefits = useMemo(() => {
     const benefits = new Set<string>();
-    offers.forEach(o => {
-      if (o.benefits) o.benefits.forEach(b => benefits.add(b));
+    offers.forEach((o) => {
+      if (o.benefits) o.benefits.forEach((b) => benefits.add(b));
     });
     return Array.from(benefits).sort();
   }, [offers]);
@@ -1391,7 +1378,7 @@ const OffersDecisions = () => {
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToast({ show: true, message, type });
     setTimeout(() => {
-      setToast(prev => ({ ...prev, show: false }));
+      setToast((prev) => ({ ...prev, show: false }));
     }, 4000);
   };
 
@@ -1446,10 +1433,10 @@ const OffersDecisions = () => {
     if (filterStatus === 'all') {
       return processedOffers;
     }
-    return processedOffers.filter(offer => {
+    return processedOffers.filter((offer) => {
       const now = new Date();
       const isExpiredNow = new Date(offer.expiry_date) < now;
-      const effectiveStatus = (offer.status === 'pending' && isExpiredNow) ? 'expired' : offer.status;
+      const effectiveStatus = offer.status === 'pending' && isExpiredNow ? 'expired' : offer.status;
       return effectiveStatus === filterStatus;
     });
   }, [processedOffers, filterStatus]);
@@ -1475,9 +1462,7 @@ const OffersDecisions = () => {
   };
 
   const acceptanceRate = stats.acceptanceRate;
-  const avgTimeToOffer = offers.filter(o => o.status === 'accepted').length > 0
-    ? 5.2
-    : 0;
+  const avgTimeToOffer = offers.filter((o) => o.status === 'accepted').length > 0 ? 5.2 : 0;
 
   if (loading) {
     return (
@@ -1499,6 +1484,7 @@ const OffersDecisions = () => {
               <h3 className="text-sm font-medium text-red-800">Error loading offers</h3>
               <p className="mt-1 text-sm text-red-700">{error}</p>
               <button
+                // @ts-expect-error - Auto-suppressed for migration
                 onClick={refreshOffers}
                 className="mt-2 text-sm text-red-600 hover:text-red-500"
               >
@@ -1522,6 +1508,7 @@ const OffersDecisions = () => {
         <div className="flex items-center gap-3">
           <OfferAdvancedFilters
             filters={filters}
+            // @ts-expect-error - Auto-suppressed for migration
             sort={sort}
             onFiltersChange={setFilters}
             onSortChange={setSort}
@@ -1653,9 +1640,7 @@ const OffersDecisions = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-purple-800">Avg CTC Offered</p>
-              <p className="text-3xl font-bold text-purple-900">
-                {stats.avgCTC} L
-              </p>
+              <p className="text-3xl font-bold text-purple-900">{stats.avgCTC} L</p>
               <p className="text-xs text-purple-600 mt-1">Across all offers</p>
             </div>
             <BanknotesIcon className="h-12 w-12 text-purple-600" />
@@ -1674,8 +1659,8 @@ const OffersDecisions = () => {
               { key: 'accepted', label: 'Accepted' },
               { key: 'rejected', label: 'Rejected' },
               { key: 'expired', label: 'Expired' },
-              { key: 'withdrawn', label: 'Withdrawn' }
-            ].map(filter => (
+              { key: 'withdrawn', label: 'Withdrawn' },
+            ].map((filter) => (
               <button
                 key={filter.key}
                 onClick={() => setFilterStatus(filter.key)}
@@ -1689,7 +1674,7 @@ const OffersDecisions = () => {
               </button>
             ))}
           </div>
-          
+
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-700">Show:</span>
             <select
@@ -1708,7 +1693,7 @@ const OffersDecisions = () => {
 
       {/* Offers Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {currentOffers.map(offer => (
+        {currentOffers.map((offer) => (
           <OfferCard
             key={offer.id}
             offer={offer}
@@ -1837,7 +1822,7 @@ const OffersDecisions = () => {
         show={toast.show}
         message={toast.message}
         type={toast.type}
-        onClose={() => setToast(prev => ({ ...prev, show: false }))}
+        onClose={() => setToast((prev) => ({ ...prev, show: false }))}
       />
     </div>
   );

@@ -28,11 +28,14 @@ export const useChatScroll = () => {
   /**
    * Scroll to bottom of messages
    */
-  const scrollToBottom = useCallback((force = false) => {
-    if (force || !userScrolledUp) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [userScrolledUp]);
+  const scrollToBottom = useCallback(
+    (force = false) => {
+      if (force || !userScrolledUp) {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }
+    },
+    [userScrolledUp]
+  );
 
   /**
    * Handle scroll events
@@ -40,25 +43,25 @@ export const useChatScroll = () => {
   const handleScroll = useCallback(() => {
     const container = messagesContainerRef.current;
     if (!container) return;
-    
+
     const currentScrollTop = container.scrollTop;
     const scrollingUp = currentScrollTop < lastScrollTopRef.current;
     lastScrollTopRef.current = currentScrollTop;
-    
+
     const isScrollable = container.scrollHeight > container.clientHeight;
-    
+
     // Mark user interaction during typing
     if (scrollTimeoutRef.current) {
       clearTimeout(scrollTimeoutRef.current);
     }
-    
+
     userInteractedRef.current = true;
     isScrollingRef.current = true;
-    
+
     scrollTimeoutRef.current = window.setTimeout(() => {
       isScrollingRef.current = false;
     }, 150);
-    
+
     // Update scroll button visibility
     if (isScrollable && isUserAtBottom()) {
       setUserScrolledUp(false);
@@ -97,11 +100,11 @@ export const useChatScroll = () => {
     const handleWheel = () => {
       userInteractedRef.current = true;
       isScrollingRef.current = true;
-      
+
       if (scrollTimeoutRef.current) {
         clearTimeout(scrollTimeoutRef.current);
       }
-      
+
       scrollTimeoutRef.current = window.setTimeout(() => {
         isScrollingRef.current = false;
       }, 150);
@@ -110,11 +113,11 @@ export const useChatScroll = () => {
     const handleTouchMove = () => {
       userInteractedRef.current = true;
       isScrollingRef.current = true;
-      
+
       if (scrollTimeoutRef.current) {
         clearTimeout(scrollTimeoutRef.current);
       }
-      
+
       scrollTimeoutRef.current = window.setTimeout(() => {
         isScrollingRef.current = false;
       }, 150);

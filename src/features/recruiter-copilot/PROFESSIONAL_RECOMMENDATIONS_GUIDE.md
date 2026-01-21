@@ -1,4 +1,5 @@
 # Professional Recruiter Recommendation System
+
 ## Senior-Level Implementation Guide
 
 **Built by:** Senior Prompt Engineer + SQL Developer  
@@ -80,16 +81,16 @@ console.log(candidates[0]);
 import OpenAI from 'openai';
 
 const client = new OpenAI({
-  baseURL: "https://openrouter.ai/api/v1",
-  apiKey: process.env.VITE_OPENAI_API_KEY
+  baseURL: 'https://openrouter.ai/api/v1',
+  apiKey: process.env.VITE_OPENAI_API_KEY,
 });
 
 // Build professional prompt
 const prompt = ProfessionalRecommendationPrompts.buildHiringRecommendationPrompt({
   candidates: candidates,
-  jobTitle: "Senior React Developer",
-  requiredSkills: ["React", "TypeScript", "Node.js"],
-  urgency: "high"
+  jobTitle: 'Senior React Developer',
+  requiredSkills: ['React', 'TypeScript', 'Node.js'],
+  urgency: 'high',
 });
 
 // Get AI recommendation
@@ -97,7 +98,7 @@ const response = await client.chat.completions.create({
   model: 'nvidia/nemotron-nano-12b-v2-vl:free',
   messages: [{ role: 'user', content: prompt }],
   temperature: 0.7,
-  max_tokens: 2000
+  max_tokens: 2000,
 });
 
 const recommendation = response.choices[0]?.message?.content;
@@ -111,12 +112,14 @@ console.log(recommendation);
 ### Multi-Dimensional Scoring (0-100 scale)
 
 #### 1. **Technical Score** (35% weight)
+
 - Skill count & diversity: 0-30 points
 - Skill proficiency levels: 0-20 points
 - Technical certifications (AWS, Azure, etc.): 0-20 points
 - Advanced training programs: 0-20 points
 
 #### 2. **Education Score** (20% weight)
+
 - Base score: 50 points
 - CGPA bonus: 0-30 points
   - ≥9.0: +30 pts
@@ -126,25 +129,29 @@ console.log(recommendation);
 - University reputation: 0-20 points
 
 #### 3. **Experience Score** (25% weight)
+
 - Training programs: up to 35 points
 - Certifications: up to 35 points
 - Job application activity: up to 30 points
 
 #### 4. **Engagement Score** (20% weight)
+
 - Profile completeness: 0-30 points
 - Social presence (LinkedIn, GitHub): 0-20 points
 - Recent activity: 0-25 points
 - Application frequency: 0-25 points
 
 #### 5. **Overall Score**
+
 ```
-Overall = (Technical × 0.35) + (Education × 0.20) + 
+Overall = (Technical × 0.35) + (Education × 0.20) +
           (Experience × 0.25) + (Engagement × 0.20)
 ```
 
 #### 6. **Hiring Readiness Score**
+
 ```
-Readiness = (Technical × 0.30) + (Education × 0.20) + 
+Readiness = (Technical × 0.30) + (Education × 0.20) +
             (Experience × 0.25) + (Engagement × 0.15)
 
 Penalties:
@@ -158,42 +165,44 @@ Penalties:
 
 ### Red Flags (Automatically Detected)
 
-| Flag | Trigger | Impact |
-|------|---------|--------|
-| ❌ No skills listed | `skills.length === 0` | CRITICAL |
-| ⚠️ Only generic skills | Only "communication", "teamwork" | HIGH |
-| 📄 No resume | `!resumeUrl` | HIGH |
-| 📊 Low CGPA | CGPA < 5.5 | MEDIUM |
-| 🔄 No interview progress | 10+ applications, 0 interviews | MEDIUM |
-| 🕐 Stale profile | Last updated > 180 days | LOW |
+| Flag                     | Trigger                          | Impact   |
+| ------------------------ | -------------------------------- | -------- |
+| ❌ No skills listed      | `skills.length === 0`            | CRITICAL |
+| ⚠️ Only generic skills   | Only "communication", "teamwork" | HIGH     |
+| 📄 No resume             | `!resumeUrl`                     | HIGH     |
+| 📊 Low CGPA              | CGPA < 5.5                       | MEDIUM   |
+| 🔄 No interview progress | 10+ applications, 0 interviews   | MEDIUM   |
+| 🕐 Stale profile         | Last updated > 180 days          | LOW      |
 
 ### Green Flags (Automatically Detected)
 
-| Flag | Trigger | Impact |
-|------|---------|--------|
-| ✅ Excellent academics | CGPA ≥ 8.5 | HIGH |
-| ✅ Diverse skill set | ≥ 8 skills | HIGH |
-| ✅ Well-certified | ≥ 3 certifications | MEDIUM |
-| ✅ Continuous learner | ≥ 3 trainings | MEDIUM |
-| ✅ Active GitHub | Has GitHub URL | MEDIUM |
-| ✅ Complete profile | Profile ≥ 80% | MEDIUM |
-| ✅ Recently active | Last active ≤ 7 days | LOW |
+| Flag                   | Trigger              | Impact |
+| ---------------------- | -------------------- | ------ |
+| ✅ Excellent academics | CGPA ≥ 8.5           | HIGH   |
+| ✅ Diverse skill set   | ≥ 8 skills           | HIGH   |
+| ✅ Well-certified      | ≥ 3 certifications   | MEDIUM |
+| ✅ Continuous learner  | ≥ 3 trainings        | MEDIUM |
+| ✅ Active GitHub       | Has GitHub URL       | MEDIUM |
+| ✅ Complete profile    | Profile ≥ 80%        | MEDIUM |
+| ✅ Recently active     | Last active ≤ 7 days | LOW    |
 
 ---
 
 ## 🎨 Professional Prompt Templates
 
 ### 1. Hiring Recommendations
+
 ```typescript
 const prompt = ProfessionalRecommendationPrompts.buildHiringRecommendationPrompt({
   candidates: enrichedCandidates,
-  jobTitle: "Backend Engineer",
-  requiredSkills: ["Python", "Django", "PostgreSQL"],
-  urgency: "high"
+  jobTitle: 'Backend Engineer',
+  requiredSkills: ['Python', 'Django', 'PostgreSQL'],
+  urgency: 'high',
 });
 ```
 
 **Output Format:**
+
 ```markdown
 ## 🎯 TOP RECOMMENDATIONS
 
@@ -211,11 +220,13 @@ const prompt = ProfessionalRecommendationPrompts.buildHiringRecommendationPrompt
 • No recent GitHub activity
 
 **💡 INTERVIEW FOCUS AREAS:**
+
 1. Deep-dive on database optimization strategies
 2. Assess PostgreSQL migration experience
 3. Probe system design for high-scale applications
 
 **📋 IMMEDIATE NEXT STEPS:**
+
 1. Schedule technical interview within 48 hours
 2. Request GitHub portfolio review
 
@@ -225,26 +236,31 @@ const prompt = ProfessionalRecommendationPrompts.buildHiringRecommendationPrompt
 ```
 
 ### 2. Candidate Comparison
+
 ```typescript
 const prompt = ProfessionalRecommendationPrompts.buildCandidateComparisonPrompt(
   [candidate1, candidate2, candidate3],
-  "Full Stack Developer"
+  'Full Stack Developer'
 );
 ```
 
 ### 3. Skill Gap Analysis
+
 ```typescript
-const prompt = ProfessionalRecommendationPrompts.buildSkillGapAnalysisPrompt(
-  candidates,
-  ["React", "Node.js", "AWS", "Docker"]
-);
+const prompt = ProfessionalRecommendationPrompts.buildSkillGapAnalysisPrompt(candidates, [
+  'React',
+  'Node.js',
+  'AWS',
+  'Docker',
+]);
 ```
 
 ### 4. Interview Questions
+
 ```typescript
 const prompt = ProfessionalRecommendationPrompts.buildInterviewQuestionsPrompt(
   candidate,
-  "Frontend Engineer"
+  'Frontend Engineer'
 );
 ```
 
@@ -253,6 +269,7 @@ const prompt = ProfessionalRecommendationPrompts.buildInterviewQuestionsPrompt(
 ## 🗄️ SQL Optimization Details
 
 ### Old Approach (SLOW) ❌
+
 ```typescript
 // 1 query per candidate for skills
 // 1 query per candidate for trainings
@@ -261,6 +278,7 @@ const prompt = ProfessionalRecommendationPrompts.buildInterviewQuestionsPrompt(
 ```
 
 ### New Approach (FAST) ✅
+
 ```typescript
 // 1. Fetch all students (1 query)
 // 2. Batch fetch ALL related data in parallel (4 queries total):
@@ -273,30 +291,32 @@ const prompt = ProfessionalRecommendationPrompts.buildInterviewQuestionsPrompt(
 ```
 
 **Performance Improvement:**
+
 - 20 candidates: **60 queries → 5 queries** (12x faster)
 - 50 candidates: **150 queries → 5 queries** (30x faster)
 
 ### Example: Batch Fetching with Grouping
+
 ```typescript
 // Fetch all student IDs
-const studentIds = students.map(s => s.user_id);
+const studentIds = students.map((s) => s.user_id);
 
 // Batch fetch all skills in ONE query
 const { data: skillsData } = await supabase
   .from('skills')
   .select('student_id, name, level, type')
-  .in('student_id', studentIds)  // ← IN clause batching
+  .in('student_id', studentIds) // ← IN clause batching
   .eq('enabled', true);
 
 // Group by student in memory (fast)
 const skillsByStudent = new Map();
-skillsData.forEach(skill => {
+skillsData.forEach((skill) => {
   const existing = skillsByStudent.get(skill.student_id) || [];
   skillsByStudent.set(skill.student_id, [...existing, skill]);
 });
 
 // Now lookup is O(1) for each student
-students.forEach(student => {
+students.forEach((student) => {
   const skills = skillsByStudent.get(student.user_id) || [];
   // ... enrich candidate
 });
@@ -307,12 +327,14 @@ students.forEach(student => {
 ## 📈 Expected Output Quality
 
 ### Bad Output (Typical AI) ❌
+
 ```
 John is a good candidate. He has some skills in React.
 You should probably interview him. He seems okay.
 ```
 
 ### Good Output (This System) ✅
+
 ```
 ### 1. JOHN DOE - HIRING RECOMMENDATION: CONDITIONAL HIRE
 
@@ -361,47 +383,47 @@ import ProfessionalRecommendationPrompts from '../prompts/professionalRecommenda
 // Replace old hiring-recommendations handler
 if (intent === 'hiring-recommendations') {
   console.log('🎯 Generating professional hiring recommendations...');
-  
+
   // Use new advanced scoring system
   const enrichedCandidates = await advancedCandidateScoring.fetchEnrichedCandidates(20);
-  
+
   if (enrichedCandidates.length === 0) {
     return {
       success: true,
-      message: 'No candidates found in your talent pool.'
+      message: 'No candidates found in your talent pool.',
     };
   }
-  
+
   // Build professional prompt
   const prompt = ProfessionalRecommendationPrompts.buildHiringRecommendationPrompt({
     candidates: enrichedCandidates,
-    urgency: 'normal'
+    urgency: 'normal',
   });
-  
+
   // Generate AI recommendation
   const client = getOpenAIClient();
   const aiResponse = await client.chat.completions.create({
     model: 'nvidia/nemotron-nano-12b-v2-vl:free',
     messages: [{ role: 'user', content: prompt }],
     temperature: 0.7,
-    max_tokens: 2500
+    max_tokens: 2500,
   });
-  
+
   const recommendation = aiResponse.choices[0]?.message?.content;
-  
+
   return {
     success: true,
     message: `## 📊 Professional Hiring Analysis\n\n${recommendation}`,
-    data: { 
+    data: {
       candidates: enrichedCandidates,
-      scores: enrichedCandidates.map(c => ({
+      scores: enrichedCandidates.map((c) => ({
         name: c.name,
         overallScore: c.scores.overall,
         hiringReadiness: c.scores.hiringReadiness,
         redFlags: c.redFlags.length,
-        greenFlags: c.greenFlags.length
-      }))
-    }
+        greenFlags: c.greenFlags.length,
+      })),
+    },
   };
 }
 ```
@@ -410,18 +432,18 @@ if (intent === 'hiring-recommendations') {
 
 ## 📊 Comparison: Old vs New System
 
-| Feature | Old System | New System |
-|---------|-----------|------------|
-| **SQL Queries** | 3N (N = candidates) | 5 (constant) |
-| **Scoring Dimensions** | 1 (profile completeness) | 6 (multi-dimensional) |
-| **Red/Green Flags** | None | Automatic detection |
-| **Data Quality** | Not monitored | Real-time flagging |
-| **AI Prompt Quality** | Generic | Professional templates |
-| **Output Structure** | Unstructured | Executive-ready |
-| **Skill Categorization** | No | Yes (technical/soft/tools) |
-| **Risk Assessment** | No | Yes (low/medium/high) |
-| **Interview Questions** | No | Auto-generated |
-| **Salary Recommendations** | No | Yes (data-driven) |
+| Feature                    | Old System               | New System                 |
+| -------------------------- | ------------------------ | -------------------------- |
+| **SQL Queries**            | 3N (N = candidates)      | 5 (constant)               |
+| **Scoring Dimensions**     | 1 (profile completeness) | 6 (multi-dimensional)      |
+| **Red/Green Flags**        | None                     | Automatic detection        |
+| **Data Quality**           | Not monitored            | Real-time flagging         |
+| **AI Prompt Quality**      | Generic                  | Professional templates     |
+| **Output Structure**       | Unstructured             | Executive-ready            |
+| **Skill Categorization**   | No                       | Yes (technical/soft/tools) |
+| **Risk Assessment**        | No                       | Yes (low/medium/high)      |
+| **Interview Questions**    | No                       | Auto-generated             |
+| **Salary Recommendations** | No                       | Yes (data-driven)          |
 
 ---
 
@@ -441,6 +463,7 @@ if (intent === 'hiring-recommendations') {
 ## 🎓 Best Practices
 
 ### 1. Always Check Data Quality First
+
 ```typescript
 const candidates = await advancedCandidateScoring.fetchEnrichedCandidates(50);
 
@@ -453,14 +476,16 @@ if (issuesCount > candidates.length * 0.5) {
 ```
 
 ### 2. Filter by Hiring Readiness
+
 ```typescript
-const hireReady = candidates.filter(c => c.scores.hiringReadiness >= 60);
+const hireReady = candidates.filter((c) => c.scores.hiringReadiness >= 60);
 console.log(`${hireReady.length}/${candidates.length} candidates are hire-ready`);
 ```
 
 ### 3. Surface Red Flags Immediately
+
 ```typescript
-candidates.forEach(c => {
+candidates.forEach((c) => {
   if (c.redFlags.length >= 3) {
     console.log(`⚠️ ${c.name}: Multiple red flags - ${c.redFlags.join(', ')}`);
   }
@@ -468,6 +493,7 @@ candidates.forEach(c => {
 ```
 
 ### 4. Use Appropriate Prompt Templates
+
 ```typescript
 // For final decision between 2-3 candidates
 if (candidates.length <= 3) {
@@ -477,7 +503,7 @@ if (candidates.length <= 3) {
 else {
   prompt = ProfessionalRecommendationPrompts.buildHiringRecommendationPrompt({
     candidates,
-    jobTitle: "Software Engineer"
+    jobTitle: 'Software Engineer',
   });
 }
 ```
@@ -487,18 +513,23 @@ else {
 ## 🐛 Troubleshooting
 
 ### Issue: Scores seem too low
+
 **Solution:** Check thresholds in scoring algorithms. Entry-level candidates will naturally score 40-60, which is normal.
 
 ### Issue: Too many red flags
+
 **Solution:** This indicates poor data quality. Run data cleanup:
+
 ```typescript
 // Find candidates with data quality issues
-const needsCleanup = candidates.filter(c => c.dataQualityIssues.length > 0);
+const needsCleanup = candidates.filter((c) => c.dataQualityIssues.length > 0);
 console.log(`${needsCleanup.length} candidates need data cleanup`);
 ```
 
 ### Issue: SQL queries still slow
+
 **Solution:** Add database indexes:
+
 ```sql
 CREATE INDEX idx_skills_student_enabled ON skills(student_id, enabled);
 CREATE INDEX idx_trainings_student ON trainings(student_id);
@@ -519,6 +550,7 @@ CREATE INDEX idx_applied_jobs_student ON applied_jobs(student_id);
 ## 👥 Support
 
 For questions or issues:
+
 1. Check this documentation first
 2. Review code comments in `advancedCandidateScoring.ts`
 3. Test with small dataset (5-10 candidates) first
@@ -529,4 +561,3 @@ For questions or issues:
 **Version:** 1.0.0  
 **Last Updated:** 2024-11-14  
 **Status:** ✅ Production Ready
-

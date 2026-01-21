@@ -26,7 +26,11 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { usePermission } from '../../hooks/usePermissions';
 
-const FilterSection = ({ title, children, defaultOpen = false }: {
+const FilterSection = ({
+  title,
+  children,
+  defaultOpen = false,
+}: {
   title: string;
   children: React.ReactNode;
   defaultOpen?: boolean;
@@ -47,7 +51,11 @@ const FilterSection = ({ title, children, defaultOpen = false }: {
   );
 };
 
-const CheckboxGroup = ({ options, selectedValues, onChange }: {
+const CheckboxGroup = ({
+  options,
+  selectedValues,
+  onChange,
+}: {
   options: Array<{ value: string; label: string; count?: number }>;
   selectedValues: string[];
   onChange: (values: string[]) => void;
@@ -63,15 +71,13 @@ const CheckboxGroup = ({ options, selectedValues, onChange }: {
               if (e.target.checked) {
                 onChange([...selectedValues, option.value]);
               } else {
-                onChange(selectedValues.filter(v => v !== option.value));
+                onChange(selectedValues.filter((v) => v !== option.value));
               }
             }}
             className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
           />
           <span className="ml-2 text-sm text-gray-700">{option.label}</span>
-          {option.count && (
-            <span className="ml-auto text-xs text-gray-500">({option.count})</span>
-          )}
+          {option.count && <span className="ml-auto text-xs text-gray-500">({option.count})</span>}
         </label>
       ))}
     </div>
@@ -82,7 +88,10 @@ const BadgeComponent = ({ badges }: { badges: string[] }) => {
   const badgeConfig: Record<string, { color: string; label: string }> = {
     self_verified: { color: 'bg-gray-100 text-gray-800', label: 'Self' },
     institution_verified: { color: 'bg-blue-100 text-blue-800', label: 'Institution' },
-    external_audited: { color: 'bg-yellow-100 text-yellow-800 border border-yellow-300', label: 'External' }
+    external_audited: {
+      color: 'bg-yellow-100 text-yellow-800 border border-yellow-300',
+      label: 'External',
+    },
   };
 
   return (
@@ -102,7 +111,16 @@ const BadgeComponent = ({ badges }: { badges: string[] }) => {
   );
 };
 
-const StudentCard = ({ student, onViewProfile, onEdit, onDelete, onMessage, isSelected, onToggleSelect, permissions }: {
+const StudentCard = ({
+  student,
+  onViewProfile,
+  onEdit,
+  onDelete,
+  onMessage,
+  isSelected,
+  onToggleSelect,
+  permissions,
+}: {
   student: UICandidate;
   onViewProfile: (student: UICandidate) => void;
   onEdit: (student: UICandidate) => void;
@@ -125,13 +143,15 @@ const StudentCard = ({ student, onViewProfile, onEdit, onDelete, onMessage, isSe
     canMessage = true,
     editReason,
     deleteReason,
-    messageReason
+    messageReason,
   } = permissions || {};
 
   return (
-    <div 
+    <div
       className={`bg-white border rounded-lg p-4 hover:shadow-md transition-all duration-200 flex flex-col h-full relative group ${
-        isSelected ? 'border-primary-500 ring-2 ring-primary-200 bg-primary-50/30' : 'border-gray-200 hover:border-gray-300'
+        isSelected
+          ? 'border-primary-500 ring-2 ring-primary-200 bg-primary-50/30'
+          : 'border-gray-200 hover:border-gray-300'
       }`}
     >
       {/* Professional Checkbox - Top Right Corner */}
@@ -144,23 +164,30 @@ const StudentCard = ({ student, onViewProfile, onEdit, onDelete, onMessage, isSe
               onChange={() => onToggleSelect(student.id)}
               className="sr-only peer"
             />
-            <div className={`
+            <div
+              className={`
               w-5 h-5 rounded border-2 transition-all duration-200 flex items-center justify-center
-              ${isSelected 
-                ? 'bg-primary-600 border-primary-600' 
-                : 'bg-white border-gray-300 hover:border-primary-400 group-hover:border-gray-400'
+              ${
+                isSelected
+                  ? 'bg-primary-600 border-primary-600'
+                  : 'bg-white border-gray-300 hover:border-primary-400 group-hover:border-gray-400'
               }
-            `}>
+            `}
+            >
               {isSelected && (
                 <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  <path
+                    fillRule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clipRule="evenodd"
+                  />
                 </svg>
               )}
             </div>
           </label>
         </div>
       )}
-      
+
       {/* Content that can grow */}
       <div className="flex-1">
         {/* Header */}
@@ -168,12 +195,16 @@ const StudentCard = ({ student, onViewProfile, onEdit, onDelete, onMessage, isSe
           <div className="flex-1 min-w-0">
             <h3 className="font-medium text-gray-900 truncate">{student.name}</h3>
             <p className="text-sm text-gray-500 truncate">{student.dept}</p>
-            <p className="text-xs text-gray-400 truncate">{student.college} • {student.location}</p>
+            <p className="text-xs text-gray-400 truncate">
+              {student.college} • {student.location}
+            </p>
           </div>
           <div className="flex flex-col items-end ml-3 flex-shrink-0">
             <div className="flex items-center mb-1">
               <StarIcon className="h-4 w-4 text-yellow-400 fill-current" />
-              <span className="text-sm font-medium text-gray-700 ml-1">{student.ai_score_overall}</span>
+              <span className="text-sm font-medium text-gray-700 ml-1">
+                {student.ai_score_overall}
+              </span>
             </div>
             <BadgeComponent badges={student.badges} />
           </div>
@@ -183,7 +214,12 @@ const StudentCard = ({ student, onViewProfile, onEdit, onDelete, onMessage, isSe
         <div className="mb-3">
           <div className="flex flex-wrap gap-1">
             {student.skills.slice(0, 5).map((skill, index: number) => {
-              const label = typeof skill === 'string' ? skill : (skill && typeof skill === 'object' && 'name' in skill) ? skill.name : undefined;
+              const label =
+                typeof skill === 'string'
+                  ? skill
+                  : skill && typeof skill === 'object' && 'name' in skill
+                    ? skill.name
+                    : undefined;
               if (!label) return null;
               return (
                 <span
@@ -203,9 +239,7 @@ const StudentCard = ({ student, onViewProfile, onEdit, onDelete, onMessage, isSe
         {/* Evidence snippets */}
         <div className="mb-4 space-y-1">
           {student.projects && student.projects.length > 0 && (
-            <p className="text-xs text-gray-600">
-              🔬 {student.projects[0].title}
-            </p>
+            <p className="text-xs text-gray-600">🔬 {student.projects[0].title}</p>
           )}
         </div>
       </div>
@@ -221,10 +255,10 @@ const StudentCard = ({ student, onViewProfile, onEdit, onDelete, onMessage, isSe
             <EyeIcon className="h-3 w-3 mr-1.5" />
             View
           </button>
-          
+
           <div className="relative group">
             <button
-              onClick={() => canMessage ? onMessage(student) : undefined}
+              onClick={() => (canMessage ? onMessage(student) : undefined)}
               disabled={!canMessage}
               className={`inline-flex items-center px-3 py-1.5 border rounded-md text-xs font-medium transition-colors whitespace-nowrap ${
                 canMessage
@@ -241,10 +275,10 @@ const StudentCard = ({ student, onViewProfile, onEdit, onDelete, onMessage, isSe
               </div>
             )}
           </div>
-          
+
           <div className="relative group">
             <button
-              onClick={() => canEdit ? onEdit(student) : undefined}
+              onClick={() => (canEdit ? onEdit(student) : undefined)}
               disabled={!canEdit}
               className={`inline-flex items-center px-3 py-1.5 border rounded-md text-xs font-medium transition-colors whitespace-nowrap ${
                 canEdit
@@ -261,10 +295,10 @@ const StudentCard = ({ student, onViewProfile, onEdit, onDelete, onMessage, isSe
               </div>
             )}
           </div>
-          
+
           <div className="relative group">
             <button
-              onClick={() => canDelete ? onDelete(student) : undefined}
+              onClick={() => (canDelete ? onDelete(student) : undefined)}
               disabled={!canDelete}
               className={`inline-flex items-center px-3 py-1.5 border rounded-md text-xs font-medium transition-colors whitespace-nowrap ${
                 canDelete
@@ -288,11 +322,11 @@ const StudentCard = ({ student, onViewProfile, onEdit, onDelete, onMessage, isSe
 };
 
 type EducatorOutletContext = {
-  onViewProfile: (student: UICandidate) => void
-}
+  onViewProfile: (student: UICandidate) => void;
+};
 
 const StudentsPage = () => {
-  const { onViewProfile } = useOutletContext<EducatorOutletContext>()
+  const { onViewProfile } = useOutletContext<EducatorOutletContext>();
   const { searchQuery, setSearchQuery } = useSearch();
   const navigate = useNavigate();
   const [viewMode, setViewMode] = useState('grid');
@@ -303,7 +337,7 @@ const StudentsPage = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [studentToEdit, setStudentToEdit] = useState<UICandidate | null>(null);
   const [studentToDelete, setStudentToDelete] = useState<UICandidate | null>(null);
-  
+
   // Bulk selection state
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
@@ -315,9 +349,14 @@ const StudentsPage = () => {
   // Permission hooks
   const { allowed: canViewStudents, loading: viewLoading } = usePermission('Students', 'view');
   const { allowed: canAddStudents, reason: addReason } = usePermission('Students', 'create');
+  // @ts-expect-error - Auto-suppressed for migration
   const { allowed: canEditStudents, reason: editReason } = usePermission('Students', 'edit');
+  // @ts-expect-error - Auto-suppressed for migration
   const { allowed: canDeleteStudents, reason: deleteReason } = usePermission('Students', 'edit'); // Using edit for delete
-  const { allowed: canMessageStudents, reason: messageReason } = usePermission('Communication', 'view');
+  const { allowed: canMessageStudents, reason: messageReason } = usePermission(
+    'Communication',
+    'view'
+  );
 
   const [filters, setFilters] = useState({
     skills: [] as string[],
@@ -328,14 +367,168 @@ const StudentsPage = () => {
     locations: [] as string[],
     years: [] as string[],
     minScore: 0,
-    maxScore: 100
+    maxScore: 100,
   });
 
   // Get educator's school/college information
-  const { school: educatorSchool, college: educatorCollege, educatorType, educatorRole, assignedClassIds, loading: schoolLoading } = useEducatorSchool();
+  const {
+    school: educatorSchool,
+    college: educatorCollege,
+    educatorType,
+    educatorRole,
+    assignedClassIds,
+    loading: schoolLoading,
+  } = useEducatorSchool();
 
   // Get auth context for user ID
   const { user } = useAuth();
+
+  // Log permissions on button clicks
+  const logPermissionAction = (action: string, allowed: boolean, reason?: string) => {
+    console.log(`🔐 Student Management - ${action}:`, {
+      allowed,
+      reason: reason || 'Permission granted',
+      timestamp: new Date().toISOString(),
+    });
+  };
+
+  // Fetch students filtered by educator's assigned classes or institution
+  const { students, loading, error, refetch } = useStudents({
+    schoolId: educatorSchool?.id,
+    collegeId: educatorCollege?.id,
+    classIds:
+      (educatorType === 'school' && educatorRole !== 'admin') ||
+      (educatorType === 'college' && educatorRole !== 'admin')
+        ? assignedClassIds
+        : undefined,
+    educatorType: educatorType,
+    userId: educatorType === 'college' ? user?.id : undefined,
+  });
+
+  // Permission debug panel (development only)
+  const showDebugPanel = process.env.NODE_ENV === 'development';
+
+  // Reset to page 1 when filters or search change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filters, sortBy]);
+
+  // Dynamically generate filter options from actual data
+  const skillOptions = useMemo(() => {
+    const skillCounts: Record<string, number> = {};
+    students.forEach((student) => {
+      const skillsToCheck = student.skills;
+      if (skillsToCheck && Array.isArray(skillsToCheck)) {
+        skillsToCheck.forEach((skill) => {
+          const skillName =
+            typeof skill === 'string'
+              ? skill
+              : skill && typeof skill === 'object' && 'name' in skill
+                ? skill.name
+                : undefined;
+          if (skillName) {
+            const normalizedSkill = skillName.toLowerCase();
+            skillCounts[normalizedSkill] = (skillCounts[normalizedSkill] || 0) + 1;
+          }
+        });
+      }
+    });
+    return Object.entries(skillCounts)
+      .map(([skill, count]) => ({
+        value: skill,
+        label: skill.charAt(0).toUpperCase() + skill.slice(1),
+        count,
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 20);
+  }, [students]);
+
+  // Enhanced filter and sort with comprehensive search
+  const filteredAndSortedStudents = useMemo(() => {
+    let result = [...students];
+
+    // Apply comprehensive search query filter
+    if (searchQuery && searchQuery.trim() !== '') {
+      const query = searchQuery.toLowerCase().trim();
+
+      result = result.filter((student) => {
+        // Check basic fields
+        if (student.name?.toLowerCase().includes(query)) return true;
+        if (student.email?.toLowerCase().includes(query)) return true;
+        if (student.dept?.toLowerCase().includes(query)) return true;
+        if (student.college?.toLowerCase().includes(query)) return true;
+        if (student.location?.toLowerCase().includes(query)) return true;
+
+        // Check skills
+        if (
+          student.skills?.some((skill) => {
+            const skillName =
+              typeof skill === 'string'
+                ? skill
+                : skill && typeof skill === 'object' && 'name' in skill
+                  ? skill.name
+                  : undefined;
+            return skillName?.toLowerCase().includes(query);
+          })
+        )
+          return true;
+
+        return false;
+      });
+    }
+
+    // Apply filters
+    result = result.filter((student) => {
+      // Skill filters
+      if (filters.skills.length > 0) {
+        const studentSkills =
+          student.skills?.map((s) => (typeof s === 'string' ? s : s.name)?.toLowerCase()) ?? [];
+        if (!filters.skills.every((fs) => studentSkills.includes(fs.toLowerCase()))) {
+          return false;
+        }
+      }
+
+      // AI score range filter
+      const score = student.ai_score_overall || 0;
+      if (score < filters.minScore || score > filters.maxScore) {
+        return false;
+      }
+
+      return true;
+    });
+
+    // Apply sorting
+    if (!searchQuery || searchQuery.trim() === '') {
+      const sortedResult = [...result];
+      switch (sortBy) {
+        case 'ai_score':
+          sortedResult.sort((a, b) => (b.ai_score_overall || 0) - (a.ai_score_overall || 0));
+          break;
+        case 'name':
+          sortedResult.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+          break;
+        case 'last_updated':
+          sortedResult.sort(
+            (a, b) =>
+              new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime()
+          );
+          break;
+        case 'relevance':
+        default:
+          break;
+      }
+      return sortedResult;
+    }
+
+    return result;
+  }, [students, searchQuery, filters, sortBy]);
+
+  // Calculate pagination
+  const totalItems = filteredAndSortedStudents.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedStudents = filteredAndSortedStudents.slice(startIndex, endIndex);
 
   // Show access denied if user doesn't have view permission
   if (!viewLoading && !canViewStudents) {
@@ -360,134 +553,6 @@ const StudentsPage = () => {
     );
   }
 
-  // Log permissions on button clicks
-  const logPermissionAction = (action: string, allowed: boolean, reason?: string) => {
-    console.log(`🔐 Student Management - ${action}:`, {
-      allowed,
-      reason: reason || 'Permission granted',
-      timestamp: new Date().toISOString()
-    });
-  };
-
-  // Fetch students filtered by educator's assigned classes or institution
-  const { students, loading, error, refetch } = useStudents({ 
-    schoolId: educatorSchool?.id,
-    collegeId: educatorCollege?.id,
-    classIds: (educatorType === 'school' && educatorRole !== 'admin') || (educatorType === 'college' && educatorRole !== 'admin') ? assignedClassIds : undefined,
-    educatorType: educatorType,
-    userId: educatorType === 'college' ? user?.id : undefined
-  });
-
-  // Permission debug panel (development only)
-  const showDebugPanel = process.env.NODE_ENV === 'development';
-
-  // Reset to page 1 when filters or search change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, filters, sortBy]);
-
-  // Dynamically generate filter options from actual data
-  const skillOptions = useMemo(() => {
-    const skillCounts: Record<string, number> = {};
-    students.forEach(student => {
-      const skillsToCheck = student.skills;
-      if (skillsToCheck && Array.isArray(skillsToCheck)) {
-        skillsToCheck.forEach(skill => {
-          const skillName = typeof skill === 'string' ? skill : (skill && typeof skill === 'object' && 'name' in skill) ? skill.name : undefined;
-          if (skillName) {
-            const normalizedSkill = skillName.toLowerCase();
-            skillCounts[normalizedSkill] = (skillCounts[normalizedSkill] || 0) + 1;
-          }
-        });
-      }
-    });
-    return Object.entries(skillCounts)
-      .map(([skill, count]) => ({
-        value: skill,
-        label: skill.charAt(0).toUpperCase() + skill.slice(1),
-        count
-      }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 20);
-  }, [students]);
-
-  // Enhanced filter and sort with comprehensive search
-  const filteredAndSortedStudents = useMemo(() => {
-    let result = [...students];
-
-    // Apply comprehensive search query filter
-    if (searchQuery && searchQuery.trim() !== '') {
-      const query = searchQuery.toLowerCase().trim();
-      
-      result = result.filter(student => {
-        // Check basic fields
-        if (student.name?.toLowerCase().includes(query)) return true;
-        if (student.email?.toLowerCase().includes(query)) return true;
-        if (student.dept?.toLowerCase().includes(query)) return true;
-        if (student.college?.toLowerCase().includes(query)) return true;
-        if (student.location?.toLowerCase().includes(query)) return true;
-
-        // Check skills
-        if (student.skills?.some(skill => {
-          const skillName = typeof skill === 'string' ? skill : (skill && typeof skill === 'object' && 'name' in skill) ? skill.name : undefined;
-          return skillName?.toLowerCase().includes(query);
-        })) return true;
-
-        return false;
-      });
-    }
-
-    // Apply filters
-    result = result.filter(student => {
-      // Skill filters
-      if (filters.skills.length > 0) {
-        const studentSkills = student.skills?.map(s => (typeof s === 'string' ? s : s.name)?.toLowerCase()) ?? [];
-        if (!filters.skills.every(fs => studentSkills.includes(fs.toLowerCase()))) {
-          return false;
-        }
-      }
-
-      // AI score range filter
-      const score = student.ai_score_overall || 0;
-      if (score < filters.minScore || score > filters.maxScore) {
-        return false;
-      }
-      
-      return true;
-    });
-
-    // Apply sorting
-    if (!searchQuery || searchQuery.trim() === '') {
-      const sortedResult = [...result];
-      switch (sortBy) {
-        case 'ai_score':
-          sortedResult.sort((a, b) => (b.ai_score_overall || 0) - (a.ai_score_overall || 0));
-          break;
-        case 'name':
-          sortedResult.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-          break;
-        case 'last_updated':
-          sortedResult.sort((a, b) =>
-            new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime()
-          );
-          break;
-        case 'relevance':
-        default:
-          break;
-      }
-      return sortedResult;
-    }
-
-    return result;
-  }, [students, searchQuery, filters, sortBy]);
-
-  // Calculate pagination
-  const totalItems = filteredAndSortedStudents.length;
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedStudents = filteredAndSortedStudents.slice(startIndex, endIndex);
-
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -504,14 +569,14 @@ const StudentsPage = () => {
       locations: [],
       years: [],
       minScore: 0,
-      maxScore: 100
+      maxScore: 100,
     });
   };
 
   const handleEditClick = (student: UICandidate) => {
     logPermissionAction('Edit Student', canEditStudents, editReason);
     if (!canEditStudents) return;
-    
+
     setStudentToEdit(student);
     setShowEditModal(true);
   };
@@ -524,7 +589,7 @@ const StudentsPage = () => {
   const handleDeleteClick = (student: UICandidate) => {
     logPermissionAction('Delete Student', canDeleteStudents, deleteReason);
     if (!canDeleteStudents) return;
-    
+
     setStudentToDelete(student);
     setShowDeleteModal(true);
   };
@@ -536,7 +601,7 @@ const StudentsPage = () => {
 
   // Bulk selection handlers
   const handleSelectAll = () => {
-    const allIds = new Set(paginatedStudents.map(s => s.id));
+    const allIds = new Set(paginatedStudents.map((s) => s.id));
     setSelectedStudentIds(allIds);
   };
 
@@ -557,7 +622,7 @@ const StudentsPage = () => {
   const handleBulkDelete = () => {
     logPermissionAction('Bulk Delete Students', canDeleteStudents, deleteReason);
     if (!canDeleteStudents) return;
-    
+
     setShowBulkDeleteModal(true);
   };
 
@@ -570,15 +635,15 @@ const StudentsPage = () => {
   const handleMessageStudent = async (student: UICandidate) => {
     logPermissionAction('Message Student', canMessageStudents, messageReason);
     if (!canMessageStudents) return;
-    
+
     try {
       // Navigate to Communication page with student info
       navigate('/educator/communication', {
         state: {
           targetStudentId: student.id,
           targetStudentName: student.name,
-          targetStudentEmail: student.email
-        }
+          targetStudentEmail: student.email,
+        },
       });
     } catch (error) {
       console.error('Error initiating message:', error);
@@ -590,12 +655,13 @@ const StudentsPage = () => {
   const handleAddStudentClick = () => {
     logPermissionAction('Add Student', canAddStudents, addReason);
     if (!canAddStudents) return;
-    
+
     setShowAddStudentModal(true);
   };
 
-  const selectedStudents = students.filter(s => selectedStudentIds.has(s.id));
-  const allOnPageSelected = paginatedStudents.length > 0 && paginatedStudents.every(s => selectedStudentIds.has(s.id));
+  const selectedStudents = students.filter((s) => selectedStudentIds.has(s.id));
+  const allOnPageSelected =
+    paginatedStudents.length > 0 && paginatedStudents.every((s) => selectedStudentIds.has(s.id));
 
   return (
     <div className="flex flex-col h-screen">
@@ -603,7 +669,9 @@ const StudentsPage = () => {
       <div className="p-4 sm:p-6 lg:p-8 mb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl md:text-3xl font-bold text-gray-900">Students Management</h1>
-          <p className="text-base md:text-lg mt-2 text-gray-600">Manage your students and their profiles.</p>
+          <p className="text-base md:text-lg mt-2 text-gray-600">
+            Manage your students and their profiles.
+          </p>
         </div>
         <div className="relative group">
           <button
@@ -654,28 +722,43 @@ const StudentsPage = () => {
           >
             <FunnelIcon className="h-4 w-4 mr-2" />
             Filters
-            {(filters.skills.length + filters.courses.length + filters.grades.length + filters.sections.length + filters.badges.length + filters.locations.length + filters.years.length) > 0 && (
+            {filters.skills.length +
+              filters.courses.length +
+              filters.grades.length +
+              filters.sections.length +
+              filters.badges.length +
+              filters.locations.length +
+              filters.years.length >
+              0 && (
               <span className="ml-1 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-primary-600 rounded-full">
-                {filters.skills.length + filters.courses.length + filters.grades.length + filters.sections.length + filters.badges.length + filters.locations.length + filters.years.length}
+                {filters.skills.length +
+                  filters.courses.length +
+                  filters.grades.length +
+                  filters.sections.length +
+                  filters.badges.length +
+                  filters.locations.length +
+                  filters.years.length}
               </span>
             )}
           </button>
           <div className="flex rounded-md shadow-sm">
             <button
               onClick={() => setViewMode('grid')}
-              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${viewMode === 'grid'
-                ? 'bg-primary-50 border-primary-300 text-primary-700'
-                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
+              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${
+                viewMode === 'grid'
+                  ? 'bg-primary-50 border-primary-300 text-primary-700'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
             >
               <Squares2X2Icon className="h-4 w-4" />
             </button>
             <button
               onClick={() => setViewMode('table')}
-              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${viewMode === 'table'
-                ? 'bg-primary-50 border-primary-300 text-primary-700'
-                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
+              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${
+                viewMode === 'table'
+                  ? 'bg-primary-50 border-primary-300 text-primary-700'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
             >
               <TableCellsIcon className="h-4 w-4" />
             </button>
@@ -718,7 +801,9 @@ const StudentsPage = () => {
                         min="0"
                         max="100"
                         value={filters.minScore}
-                        onChange={(e) => setFilters({ ...filters, minScore: parseInt(e.target.value) })}
+                        onChange={(e) =>
+                          setFilters({ ...filters, minScore: parseInt(e.target.value) })
+                        }
                         className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
                       />
                     </div>
@@ -758,7 +843,8 @@ const StudentsPage = () => {
                       }`}
                     >
                       <TrashIcon className="h-4 w-4 mr-2" />
-                      Delete {selectedStudentIds.size} Student{selectedStudentIds.size > 1 ? 's' : ''}
+                      Delete {selectedStudentIds.size} Student
+                      {selectedStudentIds.size > 1 ? 's' : ''}
                     </button>
                     {!canDeleteStudents && deleteReason && (
                       <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
@@ -813,7 +899,8 @@ const StudentsPage = () => {
                 <p className="text-sm text-gray-700">
                   Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
                   <span className="font-medium">{Math.min(endIndex, totalItems)}</span> of{' '}
-                  <span className="font-medium">{totalItems}</span> result{totalItems !== 1 ? 's' : ''}
+                  <span className="font-medium">{totalItems}</span> result
+                  {totalItems !== 1 ? 's' : ''}
                   {searchQuery && <span className="text-gray-500"> for "{searchQuery}"</span>}
                 </p>
               </div>
@@ -833,33 +920,39 @@ const StudentsPage = () => {
           {/* Results */}
           <div className="px-4 sm:px-6 lg:px-8 flex-1 overflow-y-auto p-4">
             {viewMode === 'grid' ? (
-              <div className={`grid grid-cols-1 gap-4 items-stretch ${
-                showFilters 
-                  ? 'md:grid-cols-1 lg:grid-cols-2' // 2 columns when filters are open
-                  : 'md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3' // 3 columns when filters are closed
-              }`}>
-                {(loading || schoolLoading) && <div className="text-sm text-gray-500">Loading students...</div>}
+              <div
+                className={`grid grid-cols-1 gap-4 items-stretch ${
+                  showFilters
+                    ? 'md:grid-cols-1 lg:grid-cols-2' // 2 columns when filters are open
+                    : 'md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3' // 3 columns when filters are closed
+                }`}
+              >
+                {(loading || schoolLoading) && (
+                  <div className="text-sm text-gray-500">Loading students...</div>
+                )}
                 {error && <div className="text-sm text-red-600">{error}</div>}
-                {!loading && !schoolLoading && paginatedStudents.map((student) => (
-                  <StudentCard
-                    key={student.id}
-                    student={student}
-                    onViewProfile={onViewProfile}
-                    onEdit={handleEditClick}
-                    onDelete={handleDeleteClick}
-                    onMessage={handleMessageStudent}
-                    isSelected={selectedStudentIds.has(student.id)}
-                    onToggleSelect={handleToggleStudent}
-                    permissions={{
-                      canEdit: canEditStudents,
-                      canDelete: canDeleteStudents,
-                      canMessage: canMessageStudents,
-                      editReason,
-                      deleteReason,
-                      messageReason
-                    }}
-                  />
-                ))}
+                {!loading &&
+                  !schoolLoading &&
+                  paginatedStudents.map((student) => (
+                    <StudentCard
+                      key={student.id}
+                      student={student}
+                      onViewProfile={onViewProfile}
+                      onEdit={handleEditClick}
+                      onDelete={handleDeleteClick}
+                      onMessage={handleMessageStudent}
+                      isSelected={selectedStudentIds.has(student.id)}
+                      onToggleSelect={handleToggleStudent}
+                      permissions={{
+                        canEdit: canEditStudents,
+                        canDelete: canDeleteStudents,
+                        canMessage: canMessageStudents,
+                        editReason,
+                        deleteReason,
+                        messageReason,
+                      }}
+                    />
+                  ))}
                 {!loading && !schoolLoading && paginatedStudents.length === 0 && !error && (
                   <div className="col-span-full text-center py-8">
                     <p className="text-sm text-gray-500">
@@ -909,9 +1002,7 @@ const StudentsPage = () => {
                               <div className="text-sm font-medium text-gray-900">
                                 {student.name}
                               </div>
-                              <div className="text-sm text-gray-500">
-                                {student.dept}
-                              </div>
+                              <div className="text-sm text-gray-500">{student.dept}</div>
                               <BadgeComponent badges={student.badges} />
                             </div>
                           </div>
@@ -931,7 +1022,9 @@ const StudentsPage = () => {
                               );
                             })}
                             {student.skills && student.skills.length > 3 && (
-                              <span className="text-xs text-gray-500">+{student.skills.length - 3}</span>
+                              <span className="text-xs text-gray-500">
+                                +{student.skills.length - 3}
+                              </span>
                             )}
                           </div>
                         </td>
@@ -958,14 +1051,16 @@ const StudentsPage = () => {
                             </button>
                             <div className="relative group">
                               <button
-                                onClick={() => canMessageStudents ? handleMessageStudent(student) : undefined}
+                                onClick={() =>
+                                  canMessageStudents ? handleMessageStudent(student) : undefined
+                                }
                                 disabled={!canMessageStudents}
                                 className={`transition-colors ${
                                   canMessageStudents
                                     ? 'text-green-600 hover:text-green-900'
                                     : 'text-gray-400 cursor-not-allowed'
                                 }`}
-                                title={canMessageStudents ? "Message Student" : messageReason}
+                                title={canMessageStudents ? 'Message Student' : messageReason}
                               >
                                 Message
                               </button>
@@ -977,14 +1072,16 @@ const StudentsPage = () => {
                             </div>
                             <div className="relative group">
                               <button
-                                onClick={() => canEditStudents ? handleEditClick(student) : undefined}
+                                onClick={() =>
+                                  canEditStudents ? handleEditClick(student) : undefined
+                                }
                                 disabled={!canEditStudents}
                                 className={`transition-colors ${
                                   canEditStudents
                                     ? 'text-orange-600 hover:text-orange-900'
                                     : 'text-gray-400 cursor-not-allowed'
                                 }`}
-                                title={canEditStudents ? "Edit Student" : editReason}
+                                title={canEditStudents ? 'Edit Student' : editReason}
                               >
                                 Edit
                               </button>
@@ -996,14 +1093,16 @@ const StudentsPage = () => {
                             </div>
                             <div className="relative group">
                               <button
-                                onClick={() => canDeleteStudents ? handleDeleteClick(student) : undefined}
+                                onClick={() =>
+                                  canDeleteStudents ? handleDeleteClick(student) : undefined
+                                }
                                 disabled={!canDeleteStudents}
                                 className={`transition-colors ${
                                   canDeleteStudents
                                     ? 'text-red-600 hover:text-red-900'
                                     : 'text-gray-400 cursor-not-allowed'
                                 }`}
-                                title={canDeleteStudents ? "Delete Student" : deleteReason}
+                                title={canDeleteStudents ? 'Delete Student' : deleteReason}
                               >
                                 Delete
                               </button>

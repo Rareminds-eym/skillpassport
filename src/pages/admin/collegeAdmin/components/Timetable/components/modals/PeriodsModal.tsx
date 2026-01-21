@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { X, Clock, Plus, Trash2, Save, Coffee, GripVertical } from "lucide-react";
-import { TimePeriod } from "../../types";
+import React, { useState, useEffect } from 'react';
+import { X, Clock, Plus, Trash2, Save, Coffee, GripVertical } from 'lucide-react';
+import { TimePeriod } from '../../types';
 
 interface PeriodsModalProps {
   isOpen: boolean;
@@ -10,12 +10,12 @@ interface PeriodsModalProps {
   onSave: (periods: TimePeriod[]) => void;
 }
 
-const PeriodsModal: React.FC<PeriodsModalProps> = ({ 
-  isOpen, 
-  periods: initialPeriods, 
+const PeriodsModal: React.FC<PeriodsModalProps> = ({
+  isOpen,
+  periods: initialPeriods,
   loading,
   onClose,
-  onSave 
+  onSave,
 }) => {
   const [editablePeriods, setEditablePeriods] = useState<TimePeriod[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
@@ -33,16 +33,16 @@ const PeriodsModal: React.FC<PeriodsModalProps> = ({
   const updatePeriod = (index: number, field: keyof TimePeriod, value: any) => {
     const updated = [...editablePeriods];
     updated[index] = { ...updated[index], [field]: value };
-    
+
     // If toggling is_break off, clear break_type
-    if (field === "is_break" && !value) {
+    if (field === 'is_break' && !value) {
       updated[index].break_type = undefined;
     }
     // If toggling is_break on, set default break_type
-    if (field === "is_break" && value) {
-      updated[index].break_type = "short";
+    if (field === 'is_break' && value) {
+      updated[index].break_type = 'short';
     }
-    
+
     setEditablePeriods(updated);
     setHasChanges(true);
   };
@@ -50,24 +50,24 @@ const PeriodsModal: React.FC<PeriodsModalProps> = ({
   const addPeriod = (isBreak: boolean = false) => {
     const lastPeriod = editablePeriods[editablePeriods.length - 1];
     const newPeriodNumber = editablePeriods.length + 1;
-    
+
     // Calculate next start time (end time of last period)
-    const startTime = lastPeriod?.end_time || "09:00";
-    
+    const startTime = lastPeriod?.end_time || '09:00';
+
     // Calculate end time (50 min for period, 15 min for break)
-    const [hours, mins] = startTime.split(":").map(Number);
+    const [hours, mins] = startTime.split(':').map(Number);
     const duration = isBreak ? 15 : 50;
     const endMins = mins + duration;
     const endHours = hours + Math.floor(endMins / 60);
-    const endTime = `${String(endHours).padStart(2, "0")}:${String(endMins % 60).padStart(2, "0")}`;
+    const endTime = `${String(endHours).padStart(2, '0')}:${String(endMins % 60).padStart(2, '0')}`;
 
     const newPeriod: TimePeriod = {
       period_number: newPeriodNumber,
-      period_name: isBreak ? "Break" : `Period ${newPeriodNumber}`,
+      period_name: isBreak ? 'Break' : `Period ${newPeriodNumber}`,
       start_time: startTime,
       end_time: endTime,
       is_break: isBreak,
-      break_type: isBreak ? "short" : undefined,
+      break_type: isBreak ? 'short' : undefined,
     };
 
     setEditablePeriods([...editablePeriods, newPeriod]);
@@ -76,10 +76,10 @@ const PeriodsModal: React.FC<PeriodsModalProps> = ({
 
   const deletePeriod = (index: number) => {
     if (editablePeriods.length <= 1) {
-      alert("Cannot delete the last period");
+      alert('Cannot delete the last period');
       return;
     }
-    
+
     const updated = editablePeriods.filter((_, i) => i !== index);
     // Renumber periods
     const renumbered = updated.map((p, i) => ({ ...p, period_number: i + 1 }));
@@ -104,13 +104,13 @@ const PeriodsModal: React.FC<PeriodsModalProps> = ({
         return;
       }
     }
-    
+
     onSave(editablePeriods);
   };
 
   const handleClose = () => {
     if (hasChanges) {
-      if (!confirm("You have unsaved changes. Discard them?")) {
+      if (!confirm('You have unsaved changes. Discard them?')) {
         return;
       }
     }
@@ -139,9 +139,9 @@ const PeriodsModal: React.FC<PeriodsModalProps> = ({
             <div
               key={index}
               className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
-                period.is_break 
-                  ? "bg-amber-50 border-amber-200" 
-                  : "bg-white border-gray-200 hover:border-gray-300"
+                period.is_break
+                  ? 'bg-amber-50 border-amber-200'
+                  : 'bg-white border-gray-200 hover:border-gray-300'
               }`}
             >
               {/* Drag Handle (visual only for now) */}
@@ -158,9 +158,9 @@ const PeriodsModal: React.FC<PeriodsModalProps> = ({
               <input
                 type="text"
                 value={period.period_name}
-                onChange={(e) => updatePeriod(index, "period_name", e.target.value)}
+                onChange={(e) => updatePeriod(index, 'period_name', e.target.value)}
                 className={`flex-1 px-3 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-indigo-500 ${
-                  period.is_break ? "border-amber-300 bg-amber-50" : "border-gray-300"
+                  period.is_break ? 'border-amber-300 bg-amber-50' : 'border-gray-300'
                 }`}
                 placeholder="Period name"
               />
@@ -171,14 +171,14 @@ const PeriodsModal: React.FC<PeriodsModalProps> = ({
                 <input
                   type="time"
                   value={period.start_time}
-                  onChange={(e) => updatePeriod(index, "start_time", e.target.value)}
+                  onChange={(e) => updatePeriod(index, 'start_time', e.target.value)}
                   className="px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 w-24"
                 />
                 <span className="text-gray-400">-</span>
                 <input
                   type="time"
                   value={period.end_time}
-                  onChange={(e) => updatePeriod(index, "end_time", e.target.value)}
+                  onChange={(e) => updatePeriod(index, 'end_time', e.target.value)}
                   className="px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 w-24"
                 />
               </div>
@@ -189,19 +189,21 @@ const PeriodsModal: React.FC<PeriodsModalProps> = ({
                   <input
                     type="checkbox"
                     checked={period.is_break}
-                    onChange={(e) => updatePeriod(index, "is_break", e.target.checked)}
+                    onChange={(e) => updatePeriod(index, 'is_break', e.target.checked)}
                     className="sr-only peer"
                   />
                   <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
                 </label>
-                <Coffee className={`h-4 w-4 ${period.is_break ? "text-amber-600" : "text-gray-300"}`} />
+                <Coffee
+                  className={`h-4 w-4 ${period.is_break ? 'text-amber-600' : 'text-gray-300'}`}
+                />
               </div>
 
               {/* Break Type (if is_break) */}
               {period.is_break && (
                 <select
-                  value={period.break_type || "short"}
-                  onChange={(e) => updatePeriod(index, "break_type", e.target.value)}
+                  value={period.break_type || 'short'}
+                  onChange={(e) => updatePeriod(index, 'break_type', e.target.value)}
                   className="px-2 py-1.5 text-sm border border-amber-300 bg-amber-50 rounded-lg focus:ring-2 focus:ring-indigo-500"
                 >
                   <option value="short">Short</option>
@@ -242,7 +244,8 @@ const PeriodsModal: React.FC<PeriodsModalProps> = ({
         {/* Footer */}
         <div className="flex items-center justify-between pt-4 border-t border-gray-200">
           <div className="text-sm text-gray-500">
-            {editablePeriods.length} periods • {editablePeriods.filter(p => p.is_break).length} breaks
+            {editablePeriods.length} periods • {editablePeriods.filter((p) => p.is_break).length}{' '}
+            breaks
           </div>
           <div className="flex gap-3">
             <button
@@ -257,7 +260,7 @@ const PeriodsModal: React.FC<PeriodsModalProps> = ({
               className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 transition"
             >
               <Save className="h-4 w-4" />
-              {loading ? "Saving..." : "Save Changes"}
+              {loading ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         </div>

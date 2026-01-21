@@ -37,7 +37,8 @@ const NewEducatorConversationModal = ({ isOpen, onClose, studentId, onConversati
       // Get all educators and their class assignments for this school
       const { data: assignments, error } = await supabase
         .from('school_educator_class_assignments')
-        .select(`
+        .select(
+          `
           id,
           subject,
           class_id,
@@ -55,33 +56,34 @@ const NewEducatorConversationModal = ({ isOpen, onClose, studentId, onConversati
             email,
             photo_url
           )
-        `)
+        `
+        )
         .eq('school_classes.school_id', studentData.school_id);
 
       if (error) throw error;
 
       // Group by educator
       const educatorMap = new Map();
-      assignments?.forEach(assignment => {
+      assignments?.forEach((assignment) => {
         const educator = assignment.school_educators;
         const educatorId = educator.id;
-        
+
         if (!educatorMap.has(educatorId)) {
           educatorMap.set(educatorId, {
             id: educatorId,
             name: `${educator.first_name} ${educator.last_name}`,
             email: educator.email,
             photo_url: educator.photo_url,
-            classes: []
+            classes: [],
           });
         }
-        
+
         educatorMap.get(educatorId).classes.push({
           classId: assignment.school_classes.id,
           className: assignment.school_classes.name,
           grade: assignment.school_classes.grade,
           section: assignment.school_classes.section,
-          subject: assignment.subject
+          subject: assignment.subject,
         });
       });
 
@@ -99,7 +101,7 @@ const NewEducatorConversationModal = ({ isOpen, onClose, studentId, onConversati
         educatorId: selectedEducator.id,
         classId: selectedClass.classId,
         subject: selectedSubject,
-        initialMessage: initialMessage.trim()
+        initialMessage: initialMessage.trim(),
       });
       handleClose();
     }
@@ -114,9 +116,10 @@ const NewEducatorConversationModal = ({ isOpen, onClose, studentId, onConversati
     onClose();
   };
 
-  const filteredEducators = educators.filter(educator =>
-    educator.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    educator.email.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredEducators = educators.filter(
+    (educator) =>
+      educator.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      educator.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   if (!isOpen) return null;
@@ -174,7 +177,10 @@ const NewEducatorConversationModal = ({ isOpen, onClose, studentId, onConversati
                     {/* Educator Info */}
                     <div className="flex items-center gap-3 mb-3">
                       <img
-                        src={educator.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(educator.name)}&background=3B82F6&color=fff`}
+                        src={
+                          educator.photo_url ||
+                          `https://ui-avatars.com/api/?name=${encodeURIComponent(educator.name)}&background=3B82F6&color=fff`
+                        }
                         alt={educator.name}
                         className="w-12 h-12 rounded-full object-cover"
                       />
@@ -195,7 +201,7 @@ const NewEducatorConversationModal = ({ isOpen, onClose, studentId, onConversati
                             setSelectedSubject(classInfo.subject);
                           }}
                           className={`w-full text-left px-3 py-2 rounded-lg border transition-all ${
-                            selectedEducator?.id === educator.id && 
+                            selectedEducator?.id === educator.id &&
                             selectedClass?.classId === classInfo.classId &&
                             selectedSubject === classInfo.subject
                               ? 'border-blue-500 bg-blue-50'
@@ -204,20 +210,34 @@ const NewEducatorConversationModal = ({ isOpen, onClose, studentId, onConversati
                         >
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm font-medium text-gray-900">{classInfo.subject}</p>
+                              <p className="text-sm font-medium text-gray-900">
+                                {classInfo.subject}
+                              </p>
                               <p className="text-xs text-gray-500">
-                                {classInfo.grade}{classInfo.section ? `-${classInfo.section}` : ''} • {classInfo.className}
+                                {classInfo.grade}
+                                {classInfo.section ? `-${classInfo.section}` : ''} •{' '}
+                                {classInfo.className}
                               </p>
                             </div>
-                            {selectedEducator?.id === educator.id && 
-                             selectedClass?.classId === classInfo.classId &&
-                             selectedSubject === classInfo.subject && (
-                              <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
-                                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
-                              </div>
-                            )}
+                            {selectedEducator?.id === educator.id &&
+                              selectedClass?.classId === classInfo.classId &&
+                              selectedSubject === classInfo.subject && (
+                                <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
+                                  <svg
+                                    className="w-3 h-3 text-white"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M5 13l4 4L19 7"
+                                    />
+                                  </svg>
+                                </div>
+                              )}
                           </div>
                         </button>
                       ))}
@@ -236,7 +256,12 @@ const NewEducatorConversationModal = ({ isOpen, onClose, studentId, onConversati
                   📝 Your message to {selectedEducator.name}
                 </label>
                 <div className="text-sm text-gray-600 mb-4 p-3 bg-white rounded-md border border-blue-200 shadow-sm">
-                  Subject: <span className="font-medium text-blue-700">{selectedSubject}</span> • Class: <span className="font-medium text-blue-700">{selectedClass.grade}{selectedClass.section ? `-${selectedClass.section}` : ''}</span>
+                  Subject: <span className="font-medium text-blue-700">{selectedSubject}</span> •
+                  Class:{' '}
+                  <span className="font-medium text-blue-700">
+                    {selectedClass.grade}
+                    {selectedClass.section ? `-${selectedClass.section}` : ''}
+                  </span>
                 </div>
               </div>
               <textarea
@@ -251,9 +276,7 @@ const NewEducatorConversationModal = ({ isOpen, onClose, studentId, onConversati
                   {initialMessage.length}/500 characters
                 </div>
                 {initialMessage.length > 500 && (
-                  <div className="text-sm text-red-600 font-medium">
-                    ⚠️ Message too long
-                  </div>
+                  <div className="text-sm text-red-600 font-medium">⚠️ Message too long</div>
                 )}
               </div>
             </div>
@@ -270,7 +293,13 @@ const NewEducatorConversationModal = ({ isOpen, onClose, studentId, onConversati
           </button>
           <button
             onClick={handleCreateConversation}
-            disabled={!selectedEducator || !selectedClass || !selectedSubject || !initialMessage.trim() || initialMessage.length > 500}
+            disabled={
+              !selectedEducator ||
+              !selectedClass ||
+              !selectedSubject ||
+              !initialMessage.trim() ||
+              initialMessage.length > 500
+            }
             className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium"
           >
             {initialMessage.trim() ? 'Send Message & Start Conversation' : 'Start Conversation'}

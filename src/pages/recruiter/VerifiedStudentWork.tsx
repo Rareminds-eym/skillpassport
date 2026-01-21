@@ -1,4 +1,3 @@
-
 // // // import React, { useState } from "react";
 // // // import { CheckCircle, XCircle, FileText } from "lucide-react";
 
@@ -746,129 +745,123 @@
 //   );
 // }
 
-import React, { useMemo, useState } from "react";
-import { FileText } from "lucide-react";
+import React, { useMemo, useState } from 'react';
+import { FileText } from 'lucide-react';
 
 export default function VerifiedStudentWorkUI() {
   const initialData = [
     {
       id: 1,
-      studentName: "Aarav Sharma",
-      title: "Portfolio Website",
-      description: "A personal portfolio showcasing UI/UX and frontend skills.",
-      status: "verified",
-      createdAt: "2025-10-18T09:30:00Z",
+      studentName: 'Aarav Sharma',
+      title: 'Portfolio Website',
+      description: 'A personal portfolio showcasing UI/UX and frontend skills.',
+      status: 'verified',
+      createdAt: '2025-10-18T09:30:00Z',
     },
     {
       id: 2,
-      studentName: "Sneha Reddy",
-      title: "Resume",
-      description: "Professional resume with updated academic details.",
-      status: "pending",
-      createdAt: "2025-11-05T14:20:00Z",
+      studentName: 'Sneha Reddy',
+      title: 'Resume',
+      description: 'Professional resume with updated academic details.',
+      status: 'pending',
+      createdAt: '2025-11-05T14:20:00Z',
     },
     {
       id: 3,
-      studentName: "Rahul Verma",
-      title: "Python Mini Project",
-      description: "A basic calculator built using Python.",
-      status: "rejected",
-      createdAt: "2025-09-02T12:10:00Z",
+      studentName: 'Rahul Verma',
+      title: 'Python Mini Project',
+      description: 'A basic calculator built using Python.',
+      status: 'rejected',
+      createdAt: '2025-09-02T12:10:00Z',
     },
     {
       id: 4,
-      studentName: "Priya Iyer",
-      title: "React To-Do App",
-      description: "A to-do app using React hooks.",
-      status: "verified",
-      createdAt: "2025-08-29T08:45:00Z",
+      studentName: 'Priya Iyer',
+      title: 'React To-Do App',
+      description: 'A to-do app using React hooks.',
+      status: 'verified',
+      createdAt: '2025-08-29T08:45:00Z',
     },
     {
       id: 5,
-      studentName: "Karan Patel",
-      title: "Data Visualization Report",
-      description: "Analysis using charts and graphs.",
-      status: "pending",
-      createdAt: "2025-11-10T11:00:00Z",
+      studentName: 'Karan Patel',
+      title: 'Data Visualization Report',
+      description: 'Analysis using charts and graphs.',
+      status: 'pending',
+      createdAt: '2025-11-10T11:00:00Z',
     },
     {
       id: 6,
-      studentName: "Aditi Rao",
-      title: "Node.js API Project",
-      description: "REST API using Node.js.",
-      status: "verified",
-      createdAt: "2025-07-14T16:30:00Z",
+      studentName: 'Aditi Rao',
+      title: 'Node.js API Project',
+      description: 'REST API using Node.js.',
+      status: 'verified',
+      createdAt: '2025-07-14T16:30:00Z',
     },
     {
       id: 7,
-      studentName: "Manoj Singh",
-      title: "Java Banking App",
-      description: "A simple Java-based banking system.",
-      status: "rejected",
-      createdAt: "2025-06-21T10:15:00Z",
+      studentName: 'Manoj Singh',
+      title: 'Java Banking App',
+      description: 'A simple Java-based banking system.',
+      status: 'rejected',
+      createdAt: '2025-06-21T10:15:00Z',
     },
     {
       id: 8,
-      studentName: "Nisha Gupta",
-      title: "Canva Graphic Designs",
-      description: "Poster and banner designs.",
-      status: "pending",
-      createdAt: "2025-11-12T09:40:00Z",
+      studentName: 'Nisha Gupta',
+      title: 'Canva Graphic Designs',
+      description: 'Poster and banner designs.',
+      status: 'pending',
+      createdAt: '2025-11-12T09:40:00Z',
     },
     {
       id: 9,
-      studentName: "Rohit Nair",
-      title: "SQL Database Schema",
-      description: "ER diagram and schema creation.",
-      status: "verified",
-      createdAt: "2025-05-03T07:50:00Z",
+      studentName: 'Rohit Nair',
+      title: 'SQL Database Schema',
+      description: 'ER diagram and schema creation.',
+      status: 'verified',
+      createdAt: '2025-05-03T07:50:00Z',
     },
   ];
 
   const [data, setData] = useState(initialData);
-  const [search, setSearch] = useState("");
-  const [tab, setTab] = useState("all");
-  const [sort, setSort] = useState("latest");
+  const [search, setSearch] = useState('');
+  const [tab, setTab] = useState('all');
+  const [sort, setSort] = useState('latest');
   const [page, setPage] = useState(1);
 
   const itemsPerPage = 6;
 
   const statusStyles = {
-    verified: "bg-green-100 text-green-700 border-green-300",
-    pending: "bg-yellow-100 text-yellow-700 border-yellow-300",
-    rejected: "bg-red-100 text-red-700 border-red-300",
+    verified: 'bg-green-100 text-green-700 border-green-300',
+    pending: 'bg-yellow-100 text-yellow-700 border-yellow-300',
+    rejected: 'bg-red-100 text-red-700 border-red-300',
   };
 
   const updateStatus = (id, newStatus) => {
-    setData((prev) =>
-      prev.map((x) => (x.id === id ? { ...x, status: newStatus } : x))
-    );
+    setData((prev) => prev.map((x) => (x.id === id ? { ...x, status: newStatus } : x)));
   };
 
   const filtered = useMemo(() => {
     let arr = data;
 
-    if (tab !== "all") arr = arr.filter((x) => x.status === tab);
+    if (tab !== 'all') arr = arr.filter((x) => x.status === tab);
 
     if (search.trim()) {
       const q = search.toLowerCase();
       arr = arr.filter(
-        (x) =>
-          x.title.toLowerCase().includes(q) ||
-          x.studentName.toLowerCase().includes(q)
+        (x) => x.title.toLowerCase().includes(q) || x.studentName.toLowerCase().includes(q)
       );
     }
 
-    if (sort === "az") arr = [...arr].sort((a, b) => a.title.localeCompare(b.title));
-    if (sort === "za") arr = [...arr].sort((a, b) => b.title.localeCompare(a.title));
-    if (sort === "latest")
-      arr = [...arr].sort(
-        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-      );
-    if (sort === "oldest")
-      arr = [...arr].sort(
-        (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
-      );
+    if (sort === 'az') arr = [...arr].sort((a, b) => a.title.localeCompare(b.title));
+    if (sort === 'za') arr = [...arr].sort((a, b) => b.title.localeCompare(a.title));
+    if (sort === 'latest')
+      // @ts-expect-error - Auto-suppressed for migration
+      arr = [...arr].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    if (sort === 'oldest')
+      // @ts-expect-error - Auto-suppressed for migration
+      arr = [...arr].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
     return arr;
   }, [data, tab, search, sort]);
@@ -879,20 +872,16 @@ export default function VerifiedStudentWorkUI() {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-6xl mx-auto">
-
-        <h1 className="text-3xl font-bold mb-2 text-gray-800">
-          Verified Student Work
-        </h1>
+        <h1 className="text-3xl font-bold mb-2 text-gray-800">Verified Student Work</h1>
         <p className="text-lg text-gray-500 mb-6">
           Showcase of student submissions — verified by recruiters.
         </p>
 
         {/* Tabs + Search + Sort */}
         <div className="mb-6 grid grid-cols-1 lg:grid-cols-3 gap-4 items-center">
-
           {/* Tabs */}
           <div className="flex gap-2 flex-wrap">
-            {["all", "verified", "pending", "rejected"].map((t) => (
+            {['all', 'verified', 'pending', 'rejected'].map((t) => (
               <button
                 key={t}
                 onClick={() => {
@@ -900,14 +889,10 @@ export default function VerifiedStudentWorkUI() {
                   setPage(1);
                 }}
                 className={`px-3 py-2 rounded-lg text-sm font-medium ${
-                  tab === t
-                    ? "bg-blue-600 text-white"
-                    : "bg-transparent border border-gray-300"
+                  tab === t ? 'bg-blue-600 text-white' : 'bg-transparent border border-gray-300'
                 }`}
               >
-                {t === "all"
-                  ? "All"
-                  : t.charAt(0).toUpperCase() + t.slice(1)}
+                {t === 'all' ? 'All' : t.charAt(0).toUpperCase() + t.slice(1)}
               </button>
             ))}
           </div>
@@ -954,15 +939,10 @@ export default function VerifiedStudentWorkUI() {
                   </div>
 
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-800">
-                      {item.title}
-                    </h3>
-                    <p className="text-sm text-blue-600 font-medium">
-                      {item.studentName}
-                    </p>
+                    <h3 className="text-lg font-semibold text-gray-800">{item.title}</h3>
+                    <p className="text-sm text-blue-600 font-medium">{item.studentName}</p>
                     <p className="text-xs text-gray-500 mt-1">
-                      Submitted{" "}
-                      {new Date(item.createdAt).toLocaleDateString()}
+                      Submitted {new Date(item.createdAt).toLocaleDateString()}
                     </p>
                   </div>
                 </div>
@@ -982,18 +962,14 @@ export default function VerifiedStudentWorkUI() {
               </div>
 
               {/* BOTTOM */}
-              <p className="text-gray-600 text-sm mt-4">
-                {item.description}
-              </p>
+              <p className="text-gray-600 text-sm mt-4">{item.description}</p>
             </div>
           ))}
         </div>
 
         {/* No Results */}
         {filtered.length === 0 && (
-          <div className="text-center text-gray-500 mt-10">
-            No results found.
-          </div>
+          <div className="text-center text-gray-500 mt-10">No results found.</div>
         )}
 
         {/* Pagination */}

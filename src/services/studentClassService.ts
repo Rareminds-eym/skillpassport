@@ -57,7 +57,8 @@ export const getStudentClassInfo = async (studentId: string): Promise<ClassInfo 
     // Get class details with school info
     const { data: classData, error: classError } = await supabase
       .from('school_classes')
-      .select(`
+      .select(
+        `
         id,
         name,
         grade,
@@ -68,7 +69,8 @@ export const getStudentClassInfo = async (studentId: string): Promise<ClassInfo 
         school_id,
         metadata,
         organizations!school_id (name)
-      `)
+      `
+      )
       .eq('id', student.school_class_id)
       .single();
 
@@ -77,18 +79,24 @@ export const getStudentClassInfo = async (studentId: string): Promise<ClassInfo 
     // Get educator info from class assignments
     const { data: educatorAssignment } = await supabase
       .from('school_educator_class_assignments')
-      .select(`
+      .select(
+        `
         school_educators (
           first_name,
           last_name,
           email
         )
-      `)
+      `
+      )
       .eq('class_id', student.school_class_id)
       .eq('is_primary', true)
       .maybeSingle();
 
-    const educator = educatorAssignment?.school_educators as unknown as { first_name: string; last_name: string; email: string } | null;
+    const educator = educatorAssignment?.school_educators as unknown as {
+      first_name: string;
+      last_name: string;
+      email: string;
+    } | null;
     const school = classData.organizations as unknown as { name: string } | null;
 
     return {
@@ -102,7 +110,7 @@ export const getStudentClassInfo = async (studentId: string): Promise<ClassInfo 
       school_id: classData.school_id,
       school_name: school?.name,
       educator_name: educator ? `${educator.first_name} ${educator.last_name}` : undefined,
-      educator_email: educator?.email
+      educator_email: educator?.email,
     };
   } catch (error) {
     console.error('Error fetching class info:', error);
@@ -113,7 +121,10 @@ export const getStudentClassInfo = async (studentId: string): Promise<ClassInfo 
 /**
  * Get classmates (students in the same class)
  */
-export const getClassmates = async (classId: string, currentStudentId: string): Promise<Classmate[]> => {
+export const getClassmates = async (
+  classId: string,
+  currentStudentId: string
+): Promise<Classmate[]> => {
   try {
     const { data, error } = await supabase
       .from('students')
@@ -138,7 +149,8 @@ export const getClassTimetable = async (classId: string): Promise<TimetableSlot[
   try {
     const { data, error } = await supabase
       .from('timetable_slots')
-      .select(`
+      .select(
+        `
         id,
         day_of_week,
         period_number,
@@ -150,15 +162,19 @@ export const getClassTimetable = async (classId: string): Promise<TimetableSlot[
           first_name,
           last_name
         )
-      `)
+      `
+      )
       .eq('class_id', classId)
       .order('day_of_week')
       .order('period_number');
 
     if (error) throw error;
 
-    return (data || []).map(slot => {
-      const educator = slot.school_educators as unknown as { first_name: string; last_name: string } | null;
+    return (data || []).map((slot) => {
+      const educator = slot.school_educators as unknown as {
+        first_name: string;
+        last_name: string;
+      } | null;
       return {
         id: slot.id,
         day_of_week: slot.day_of_week,
@@ -167,7 +183,7 @@ export const getClassTimetable = async (classId: string): Promise<TimetableSlot[
         end_time: slot.end_time,
         subject_name: slot.subject_name,
         room_number: slot.room_number,
-        educator_name: educator ? `${educator.first_name} ${educator.last_name}` : undefined
+        educator_name: educator ? `${educator.first_name} ${educator.last_name}` : undefined,
       };
     });
   } catch (error) {
@@ -186,7 +202,8 @@ export const getTodaySchedule = async (classId: string): Promise<TimetableSlot[]
   try {
     const { data, error } = await supabase
       .from('timetable_slots')
-      .select(`
+      .select(
+        `
         id,
         day_of_week,
         period_number,
@@ -198,15 +215,19 @@ export const getTodaySchedule = async (classId: string): Promise<TimetableSlot[]
           first_name,
           last_name
         )
-      `)
+      `
+      )
       .eq('class_id', classId)
       .eq('day_of_week', dayOfWeek)
       .order('period_number');
 
     if (error) throw error;
 
-    return (data || []).map(slot => {
-      const educator = slot.school_educators as unknown as { first_name: string; last_name: string } | null;
+    return (data || []).map((slot) => {
+      const educator = slot.school_educators as unknown as {
+        first_name: string;
+        last_name: string;
+      } | null;
       return {
         id: slot.id,
         day_of_week: slot.day_of_week,
@@ -215,7 +236,7 @@ export const getTodaySchedule = async (classId: string): Promise<TimetableSlot[]
         end_time: slot.end_time,
         subject_name: slot.subject_name,
         room_number: slot.room_number,
-        educator_name: educator ? `${educator.first_name} ${educator.last_name}` : undefined
+        educator_name: educator ? `${educator.first_name} ${educator.last_name}` : undefined,
       };
     });
   } catch (error) {

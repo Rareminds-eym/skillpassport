@@ -11,7 +11,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 /**
  * ResumeParserTester - Test component to verify resume parsing and JSONB storage
- * 
+ *
  * This component helps you:
  * 1. Upload and parse a resume
  * 2. View the extracted JSON data
@@ -84,10 +84,9 @@ const ResumeParserTester = ({ userId, onClose }) => {
   // Extract text from PDF using PDF.js
   const extractTextFromPDF = async (arrayBuffer) => {
     try {
-      
       // Create a Uint8Array from the ArrayBuffer
       const uint8Array = new Uint8Array(arrayBuffer);
-      
+
       // Load the PDF document with better error handling
       const loadingTask = pdfjsLib.getDocument({
         data: uint8Array,
@@ -95,44 +94,46 @@ const ResumeParserTester = ({ userId, onClose }) => {
         cMapUrl: 'https://unpkg.com/pdfjs-dist@' + pdfjsLib.version + '/cmaps/',
         cMapPacked: true,
       });
-      
+
       const pdf = await loadingTask.promise;
-      
-      
+
       let fullText = '';
-      
+
       for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
         try {
           const page = await pdf.getPage(pageNum);
           const textContent = await page.getTextContent();
-          
+
           const pageText = textContent.items
-            .map(item => item.str)
-            .filter(str => str.trim().length > 0)
+            .map((item) => item.str)
+            .filter((str) => str.trim().length > 0)
             .join(' ');
-          
+
           fullText += pageText + '\n\n';
-        } catch (pageError) {
-        }
+        } catch (pageError) {}
       }
-      
+
       const cleanedText = fullText.trim();
-      
+
       if (cleanedText.length === 0) {
-        throw new Error('No text could be extracted from the PDF. The PDF might be image-based or encrypted.');
+        throw new Error(
+          'No text could be extracted from the PDF. The PDF might be image-based or encrypted.'
+        );
       }
-      
+
       return cleanedText;
     } catch (error) {
       console.error('❌ PDF extraction error:', error);
       console.error('❌ Error details:', error.message);
-      
+
       if (error.message?.includes('Invalid PDF')) {
         throw new Error('Invalid PDF file. Please ensure the file is a valid PDF document.');
       } else if (error.message?.includes('password')) {
         throw new Error('PDF is password protected. Please upload an unprotected PDF.');
       } else if (error.message?.includes('No text')) {
-        throw new Error('No text found in PDF. The PDF might contain only images. Try converting to text first or use a TXT file.');
+        throw new Error(
+          'No text found in PDF. The PDF might contain only images. Try converting to text first or use a TXT file.'
+        );
       } else {
         throw new Error(`Failed to extract text from PDF: ${error.message}`);
       }
@@ -172,19 +173,33 @@ const ResumeParserTester = ({ userId, onClose }) => {
   // Verify JSONB structure
   const verifyJSONBStructure = (data) => {
     const requiredFields = [
-      'name', 'email', 'contact_number', 'education', 'experience',
-      'technicalSkills', 'softSkills', 'certificates', 'training'
+      'name',
+      'email',
+      'contact_number',
+      'education',
+      'experience',
+      'technicalSkills',
+      'softSkills',
+      'certificates',
+      'training',
     ];
 
     const issues = [];
-    requiredFields.forEach(field => {
+    requiredFields.forEach((field) => {
       if (!(field in data)) {
         issues.push(`Missing field: ${field}`);
       }
     });
 
     // Check array fields
-    ['education', 'experience', 'technicalSkills', 'softSkills', 'certificates', 'training'].forEach(field => {
+    [
+      'education',
+      'experience',
+      'technicalSkills',
+      'softSkills',
+      'certificates',
+      'training',
+    ].forEach((field) => {
       if (data[field] && !Array.isArray(data[field])) {
         issues.push(`${field} should be an array`);
       }
@@ -202,7 +217,7 @@ const ResumeParserTester = ({ userId, onClose }) => {
 
     // Use email from extracted data if userId is not available
     const emailToUse = extractedData.email || userId;
-    
+
     if (!emailToUse) {
       setError('No email or user ID available');
       return;
@@ -212,7 +227,6 @@ const ResumeParserTester = ({ userId, onClose }) => {
     setSaveResult(null);
 
     try {
-
       // Get current student data by email (from JSONB profile column)
       const { data: currentStudent, error: fetchError } = await supabase
         .from('students')
@@ -224,7 +238,6 @@ const ResumeParserTester = ({ userId, onClose }) => {
         // PGRST116 = no rows found, which is okay - we'll create a new record
         throw new Error(`Error fetching current data: ${fetchError.message}`);
       }
-
 
       // Merge extracted data with current profile
       const updatedProfile = {
@@ -245,20 +258,20 @@ const ResumeParserTester = ({ userId, onClose }) => {
         alternate_number: extractedData.alternate_number,
         contact_number_dial_code: extractedData.contact_number_dial_code,
         skill: extractedData.skill,
-        
+
         // Arrays - merge with existing
         education: extractedData.education || currentStudent?.profile?.education || [],
         training: extractedData.training || currentStudent?.profile?.training || [],
         experience: extractedData.experience || currentStudent?.profile?.experience || [],
-        technicalSkills: extractedData.technicalSkills || currentStudent?.profile?.technicalSkills || [],
+        technicalSkills:
+          extractedData.technicalSkills || currentStudent?.profile?.technicalSkills || [],
         softSkills: extractedData.softSkills || currentStudent?.profile?.softSkills || [],
         certificates: extractedData.certificates || currentStudent?.profile?.certificates || [],
-        
+
         // Metadata
         resumeImportedAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       };
-
 
       // Update in database using email from profile
       const { data: savedData, error: updateError } = await supabase
@@ -272,11 +285,10 @@ const ResumeParserTester = ({ userId, onClose }) => {
         throw new Error(`Error saving data: ${updateError.message}`);
       }
 
-
       setSaveResult({
         success: true,
         message: 'Data saved successfully to JSONB column',
-        data: savedData
+        data: savedData,
       });
 
       setDatabaseData(savedData?.profile);
@@ -284,7 +296,7 @@ const ResumeParserTester = ({ userId, onClose }) => {
       console.error('❌ Save error:', err);
       setSaveResult({
         success: false,
-        message: err.message
+        message: err.message,
       });
       setError(err.message);
     } finally {
@@ -332,7 +344,9 @@ const ResumeParserTester = ({ userId, onClose }) => {
               </div>
             </div>
             {onClose && (
-              <Button variant="ghost" onClick={onClose}>Close</Button>
+              <Button variant="ghost" onClick={onClose}>
+                Close
+              </Button>
             )}
           </div>
         </div>
@@ -341,7 +355,9 @@ const ResumeParserTester = ({ userId, onClose }) => {
           {/* Step 1: Upload File */}
           <div className="border rounded-lg p-6">
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <span className="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">1</span>
+              <span className="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">
+                1
+              </span>
               Upload Resume
             </h3>
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
@@ -352,7 +368,10 @@ const ResumeParserTester = ({ userId, onClose }) => {
                 onChange={handleFileChange}
                 className="hidden"
               />
-              <label htmlFor="resume-test-upload" className="cursor-pointer flex flex-col items-center">
+              <label
+                htmlFor="resume-test-upload"
+                className="cursor-pointer flex flex-col items-center"
+              >
                 <Upload className="w-12 h-12 text-gray-400 mb-3" />
                 <span className="text-lg font-medium text-gray-700 mb-1">
                   {file ? file.name : 'Click to upload resume'}
@@ -371,10 +390,12 @@ const ResumeParserTester = ({ userId, onClose }) => {
           {extractedData && (
             <div className="border rounded-lg p-6">
               <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <span className="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">2</span>
+                <span className="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">
+                  2
+                </span>
                 Extracted Data (JSON)
               </h3>
-              
+
               {/* Structure validation */}
               {structureIssues.length > 0 && (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
@@ -433,9 +454,13 @@ const ResumeParserTester = ({ userId, onClose }) => {
 
           {/* Step 3: Save Result */}
           {saveResult && (
-            <div className={`border rounded-lg p-6 ${saveResult.success ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+            <div
+              className={`border rounded-lg p-6 ${saveResult.success ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}
+            >
               <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <span className="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">3</span>
+                <span className="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">
+                  3
+                </span>
                 {saveResult.success ? 'Save Successful' : 'Save Failed'}
               </h3>
               <div className="flex items-start gap-3">
@@ -456,7 +481,9 @@ const ResumeParserTester = ({ userId, onClose }) => {
           {/* Step 4: Verify Database Data */}
           <div className="border rounded-lg p-6">
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <span className="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">4</span>
+              <span className="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm">
+                4
+              </span>
               Verify Database Storage
             </h3>
             <Button onClick={handleFetchDatabaseData} className="w-full mb-4">

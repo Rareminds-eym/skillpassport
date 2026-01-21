@@ -4,13 +4,22 @@ export interface ApplicationTrackingData {
   id: number;
   student_id: string;
   opportunity_id: number;
-  application_status: 'applied' | 'viewed' | 'under_review' | 'interview_scheduled' | 'interviewed' | 'offer_received' | 'accepted' | 'rejected' | 'withdrawn';
+  application_status:
+    | 'applied'
+    | 'viewed'
+    | 'under_review'
+    | 'interview_scheduled'
+    | 'interviewed'
+    | 'offer_received'
+    | 'accepted'
+    | 'rejected'
+    | 'withdrawn';
   applied_at: string;
   updated_at: string;
   viewed_at?: string;
   interview_scheduled_at?: string;
   notes?: string;
-  
+
   // Joined data
   student?: {
     id: string;
@@ -28,7 +37,7 @@ export interface ApplicationTrackingData {
     approval_status?: string;
     profile?: any;
   };
-  
+
   opportunity?: {
     id: number;
     title: string;
@@ -48,7 +57,7 @@ export interface ApplicationTrackingData {
     is_active: boolean;
     created_at: string;
   };
-  
+
   company?: {
     id: string;
     name: string;
@@ -122,13 +131,15 @@ class ApplicationTrackingService {
       }
 
       // Get unique student IDs and opportunity IDs
-      const studentIds = [...new Set(appliedJobs.map(job => job.student_id))];
-      const opportunityIds = [...new Set(appliedJobs.map(job => job.opportunity_id))];
+      const studentIds = [...new Set(appliedJobs.map((job) => job.student_id))];
+      const opportunityIds = [...new Set(appliedJobs.map((job) => job.opportunity_id))];
 
       // Fetch students data - applied_jobs.student_id references students.id
       const { data: students, error: studentsError } = await supabase
         .from('students')
-        .select('id, user_id, name, email, contact_number, university, branch_field, course_name, college_school_name, district_name, currentCgpa, expectedGraduationDate, approval_status, college_id')
+        .select(
+          'id, user_id, name, email, contact_number, university, branch_field, course_name, college_school_name, district_name, currentCgpa, expectedGraduationDate, approval_status, college_id'
+        )
         .in('id', studentIds);
 
       if (studentsError) {
@@ -139,7 +150,7 @@ class ApplicationTrackingService {
         requested: studentIds.length,
         received: students?.length || 0,
         error: studentsError,
-        sampleStudent: students?.[0]
+        sampleStudent: students?.[0],
       });
 
       // Fetch opportunities data
@@ -153,8 +164,10 @@ class ApplicationTrackingService {
       }
 
       // Get unique company names from opportunities for company lookup
-      const companyNames = [...new Set((opportunities || []).map(opp => opp.company_name).filter(Boolean))];
-      
+      const companyNames = [
+        ...new Set((opportunities || []).map((opp) => opp.company_name).filter(Boolean)),
+      ];
+
       // Fetch companies data
       let companies: any[] = [];
       if (companyNames.length > 0) {
@@ -171,31 +184,40 @@ class ApplicationTrackingService {
       }
 
       // Create lookup maps - applied_jobs.student_id references students.id
-      const studentMap = (students || []).reduce((acc, student) => {
-        acc[student.id] = student;
-        return acc;
-      }, {} as Record<string, any>);
+      const studentMap = (students || []).reduce(
+        (acc, student) => {
+          acc[student.id] = student;
+          return acc;
+        },
+        {} as Record<string, any>
+      );
 
       console.log('ApplicationTracking Debug:', {
         totalApplications: appliedJobs.length,
         totalStudents: students?.length || 0,
         studentMapSize: Object.keys(studentMap).length,
         sampleStudent: students?.[0],
-        sampleApplication: appliedJobs[0]
+        sampleApplication: appliedJobs[0],
       });
 
-      const opportunityMap = (opportunities || []).reduce((acc, opp) => {
-        acc[opp.id] = opp;
-        return acc;
-      }, {} as Record<number, any>);
+      const opportunityMap = (opportunities || []).reduce(
+        (acc, opp) => {
+          acc[opp.id] = opp;
+          return acc;
+        },
+        {} as Record<number, any>
+      );
 
-      const companyMap = companies.reduce((acc, company) => {
-        acc[company.name] = company;
-        return acc;
-      }, {} as Record<string, any>);
+      const companyMap = companies.reduce(
+        (acc, company) => {
+          acc[company.name] = company;
+          return acc;
+        },
+        {} as Record<string, any>
+      );
 
       // Combine all data
-      let result = appliedJobs.map(job => {
+      let result = appliedJobs.map((job) => {
         const student = studentMap[job.student_id];
         const opportunity = opportunityMap[job.opportunity_id];
         const company = opportunity ? companyMap[opportunity.company_name] : null;
@@ -207,79 +229,85 @@ class ApplicationTrackingService {
             studentId: job.student_id,
             foundStudent: !!student,
             studentName: student?.name,
-            studentEmail: student?.email
+            studentEmail: student?.email,
           });
         }
 
         return {
           ...job,
-          student: student ? {
-            id: student.id,
-            user_id: student.user_id,
-            name: student.name || 'Unknown Student',
-            email: student.email || 'No email',
-            contact_number: student.contact_number || student.contactNumber || '',
-            university: student.university || '',
-            branch_field: student.branch_field || '',
-            course_name: student.course_name || '',
-            college_school_name: student.college_school_name || '',
-            district_name: student.district_name || '',
-            currentCgpa: student.currentCgpa || null,
-            expectedGraduationDate: student.expectedGraduationDate || '',
-            approval_status: student.approval_status,
-            college_id: student.college_id
-          } : {
-            id: job.student_id,
-            user_id: '',
-            name: 'Unknown Student',
-            email: 'No email',
-            contact_number: '',
-            university: '',
-            branch_field: '',
-            course_name: '',
-            college_school_name: '',
-            district_name: '',
-            currentCgpa: null,
-            expectedGraduationDate: '',
-            approval_status: '',
-            college_id: ''
-          },
+          student: student
+            ? {
+                id: student.id,
+                user_id: student.user_id,
+                name: student.name || 'Unknown Student',
+                email: student.email || 'No email',
+                contact_number: student.contact_number || student.contactNumber || '',
+                university: student.university || '',
+                branch_field: student.branch_field || '',
+                course_name: student.course_name || '',
+                college_school_name: student.college_school_name || '',
+                district_name: student.district_name || '',
+                currentCgpa: student.currentCgpa || null,
+                expectedGraduationDate: student.expectedGraduationDate || '',
+                approval_status: student.approval_status,
+                college_id: student.college_id,
+              }
+            : {
+                id: job.student_id,
+                user_id: '',
+                name: 'Unknown Student',
+                email: 'No email',
+                contact_number: '',
+                university: '',
+                branch_field: '',
+                course_name: '',
+                college_school_name: '',
+                district_name: '',
+                currentCgpa: null,
+                expectedGraduationDate: '',
+                approval_status: '',
+                college_id: '',
+              },
           opportunity,
-          company
+          company,
         };
       });
 
       // Apply additional filters
       if (filters.search) {
         const search = filters.search.toLowerCase();
-        result = result.filter(app => 
-          app.student?.name?.toLowerCase().includes(search) ||
-          app.student?.email?.toLowerCase().includes(search) ||
-          app.opportunity?.title?.toLowerCase().includes(search) ||
-          app.opportunity?.job_title?.toLowerCase().includes(search) ||
-          app.opportunity?.company_name?.toLowerCase().includes(search) ||
-          app.company?.name?.toLowerCase().includes(search)
+        result = result.filter(
+          (app) =>
+            app.student?.name?.toLowerCase().includes(search) ||
+            app.student?.email?.toLowerCase().includes(search) ||
+            app.opportunity?.title?.toLowerCase().includes(search) ||
+            app.opportunity?.job_title?.toLowerCase().includes(search) ||
+            app.opportunity?.company_name?.toLowerCase().includes(search) ||
+            app.company?.name?.toLowerCase().includes(search)
         );
       }
 
       if (filters.company_name) {
-        result = result.filter(app => app.opportunity?.company_name === filters.company_name);
+        result = result.filter((app) => app.opportunity?.company_name === filters.company_name);
       }
 
       if (filters.department) {
-        result = result.filter(app => 
-          app.student?.branch_field === filters.department ||
-          app.student?.course_name === filters.department ||
-          app.opportunity?.department === filters.department
+        result = result.filter(
+          (app) =>
+            app.student?.branch_field === filters.department ||
+            app.student?.course_name === filters.department ||
+            app.opportunity?.department === filters.department
         );
       }
 
       if (filters.employment_type) {
-        result = result.filter(app => app.opportunity?.employment_type === filters.employment_type);
+        result = result.filter(
+          (app) => app.opportunity?.employment_type === filters.employment_type
+        );
       }
 
       if (filters.college_id) {
-        result = result.filter(app => app.student?.college_id === filters.college_id);
+        result = result.filter((app) => app.student?.college_id === filters.college_id);
       }
 
       return result;
@@ -294,9 +322,7 @@ class ApplicationTrackingService {
    */
   async getApplicationStats(filters: ApplicationFilters = {}): Promise<ApplicationStats> {
     try {
-      let query = supabase
-        .from('applied_jobs')
-        .select('application_status');
+      let query = supabase.from('applied_jobs').select('application_status');
 
       // Apply filters
       if (filters.status) {
@@ -328,10 +354,10 @@ class ApplicationTrackingService {
         offer_received: 0,
         accepted: 0,
         rejected: 0,
-        withdrawn: 0
+        withdrawn: 0,
       };
 
-      data?.forEach(app => {
+      data?.forEach((app) => {
         if (app.application_status && stats.hasOwnProperty(app.application_status)) {
           stats[app.application_status as keyof ApplicationStats]++;
         }
@@ -348,14 +374,14 @@ class ApplicationTrackingService {
    * Update application status
    */
   async updateApplicationStatus(
-    applicationId: number, 
-    status: string, 
+    applicationId: number,
+    status: string,
     notes?: string
   ): Promise<ApplicationTrackingData> {
     try {
       const updateData: any = {
         application_status: status,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       };
 
       if (notes) {
@@ -383,8 +409,8 @@ class ApplicationTrackingService {
 
       // Return the updated application with joined data
       const applications = await this.getAllApplications();
-      const updatedApplication = applications.find(app => app.id === applicationId);
-      
+      const updatedApplication = applications.find((app) => app.id === applicationId);
+
       return updatedApplication || data;
     } catch (error) {
       console.error('Error in updateApplicationStatus:', error);
@@ -396,14 +422,14 @@ class ApplicationTrackingService {
    * Bulk update application statuses
    */
   async bulkUpdateApplications(
-    applicationIds: number[], 
-    status: string, 
+    applicationIds: number[],
+    status: string,
     notes?: string
   ): Promise<ApplicationTrackingData[]> {
     try {
       const updateData: any = {
         application_status: status,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       };
 
       if (notes) {
@@ -438,7 +464,7 @@ class ApplicationTrackingService {
   /**
    * Get unique companies from applications
    */
-  async getCompaniesWithApplications(): Promise<Array<{id: string, name: string}>> {
+  async getCompaniesWithApplications(): Promise<Array<{ id: string; name: string }>> {
     try {
       // Get all opportunities that have applications
       const { data: appliedJobs, error: appliedJobsError } = await supabase
@@ -454,7 +480,7 @@ class ApplicationTrackingService {
         return [];
       }
 
-      const opportunityIds = [...new Set(appliedJobs.map(job => job.opportunity_id))];
+      const opportunityIds = [...new Set(appliedJobs.map((job) => job.opportunity_id))];
 
       const { data: opportunities, error: opportunitiesError } = await supabase
         .from('opportunities')
@@ -467,7 +493,9 @@ class ApplicationTrackingService {
       }
 
       // Get unique company names
-      const uniqueCompanyNames = [...new Set((opportunities || []).map(opp => opp.company_name).filter(Boolean))];
+      const uniqueCompanyNames = [
+        ...new Set((opportunities || []).map((opp) => opp.company_name).filter(Boolean)),
+      ];
 
       // Fetch company details
       if (uniqueCompanyNames.length === 0) {
@@ -498,16 +526,16 @@ class ApplicationTrackingService {
   async getDepartmentsWithApplications(): Promise<string[]> {
     try {
       const applications = await this.getAllApplications();
-      
+
       const departments = new Set<string>();
-      
-      applications.forEach(app => {
+
+      applications.forEach((app) => {
         if (app.student?.branch_field) departments.add(app.student.branch_field);
         if (app.student?.course_name) departments.add(app.student.course_name);
         if (app.opportunity?.department) departments.add(app.opportunity.department);
       });
 
-      return Array.from(departments).filter(dept => dept && dept.trim().length > 0);
+      return Array.from(departments).filter((dept) => dept && dept.trim().length > 0);
     } catch (error) {
       console.error('Error in getDepartmentsWithApplications:', error);
       throw error;
@@ -520,7 +548,7 @@ class ApplicationTrackingService {
   async getApplicationById(id: number): Promise<ApplicationTrackingData | null> {
     try {
       const applications = await this.getAllApplications();
-      return applications.find(app => app.id === id) || null;
+      return applications.find((app) => app.id === id) || null;
     } catch (error) {
       console.error('Error in getApplicationById:', error);
       throw error;

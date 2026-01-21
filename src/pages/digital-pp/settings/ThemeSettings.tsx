@@ -10,19 +10,44 @@ const ThemeSettings: React.FC = () => {
   const navigate = useNavigate();
   const { theme } = useTheme();
   const { settings, updateSettings } = usePortfolio();
-  
+
   const colorThemes = [
     { id: 'blue', name: 'Ocean Blue', primary: '#3b82f6', secondary: '#1e40af', accent: '#60a5fa' },
-    { id: 'purple', name: 'Royal Purple', primary: '#8b5cf6', secondary: '#7c3aed', accent: '#a78bfa' },
-    { id: 'green', name: 'Forest Green', primary: '#10b981', secondary: '#059669', accent: '#34d399' },
-    { id: 'orange', name: 'Sunset Orange', primary: '#f59e0b', secondary: '#d97706', accent: '#fbbf24' },
+    {
+      id: 'purple',
+      name: 'Royal Purple',
+      primary: '#8b5cf6',
+      secondary: '#7c3aed',
+      accent: '#a78bfa',
+    },
+    {
+      id: 'green',
+      name: 'Forest Green',
+      primary: '#10b981',
+      secondary: '#059669',
+      accent: '#34d399',
+    },
+    {
+      id: 'orange',
+      name: 'Sunset Orange',
+      primary: '#f59e0b',
+      secondary: '#d97706',
+      accent: '#fbbf24',
+    },
     { id: 'pink', name: 'Rose Pink', primary: '#ec4899', secondary: '#db2777', accent: '#f472b6' },
-    { id: 'indigo', name: 'Deep Indigo', primary: '#6366f1', secondary: '#4f46e5', accent: '#818cf8' }
+    {
+      id: 'indigo',
+      name: 'Deep Indigo',
+      primary: '#6366f1',
+      secondary: '#4f46e5',
+      accent: '#818cf8',
+    },
   ];
 
   // derive initial selected color theme from saved settings.primaryColor
   const initialColorId = (
-    colorThemes.find((t) => t.primary.toLowerCase() === settings.primaryColor?.toLowerCase()) || colorThemes[0]
+    colorThemes.find((t) => t.primary.toLowerCase() === settings.primaryColor?.toLowerCase()) ||
+    colorThemes[0]
   ).id;
 
   const [selectedColorTheme, setSelectedColorTheme] = useState<string>(initialColorId);
@@ -34,22 +59,23 @@ const ThemeSettings: React.FC = () => {
   useEffect(() => {
     document.documentElement.style.fontSize = `${settings.fontSize}px`;
   }, [settings.fontSize]);
-  
+
   // Keep selectedColorTheme in sync with saved settings
   useEffect(() => {
-    const match = colorThemes.find((t) => t.primary.toLowerCase() === settings.primaryColor?.toLowerCase());
+    const match = colorThemes.find(
+      (t) => t.primary.toLowerCase() === settings.primaryColor?.toLowerCase()
+    );
     if (match) setSelectedColorTheme(match.id);
   }, [settings.primaryColor]);
- 
 
   const handleColorThemeSelect = (themeId: string) => {
     setSelectedColorTheme(themeId);
-    const selectedTheme = colorThemes.find(t => t.id === themeId);
+    const selectedTheme = colorThemes.find((t) => t.id === themeId);
     if (selectedTheme) {
       updateSettings({
         primaryColor: selectedTheme.primary,
         secondaryColor: selectedTheme.secondary,
-        accentColor: selectedTheme.accent
+        accentColor: selectedTheme.accent,
       });
     }
   };
@@ -57,12 +83,12 @@ const ThemeSettings: React.FC = () => {
   const handleSaveSettings = () => {
     updateSettings({
       animation: selectedAnimation,
-      fontSize: selectedFontSize
+      fontSize: selectedFontSize,
     });
-    
+
     // Apply font size to root element
     document.documentElement.style.fontSize = `${selectedFontSize}px`;
-    
+
     setShowSaveConfirmation(true);
     setTimeout(() => {
       setShowSaveConfirmation(false);
@@ -88,7 +114,9 @@ const ThemeSettings: React.FC = () => {
               <Palette className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Appearance & Colors</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                Appearance & Colors
+              </h2>
               <p className="text-gray-600 dark:text-gray-400">Customize your visual experience</p>
             </div>
           </div>
@@ -129,21 +157,23 @@ const ThemeSettings: React.FC = () => {
                     }`}
                   >
                     <div className="flex items-center justify-between mb-3">
-                      <span className="font-semibold text-base dark:text-white">{colorTheme.name}</span>
+                      <span className="font-semibold text-base dark:text-white">
+                        {colorTheme.name}
+                      </span>
                       {selectedColorTheme === colorTheme.id && (
                         <span className="text-purple-600 dark:text-purple-400">✓</span>
                       )}
                     </div>
                     <div className="flex space-x-2 mb-2">
-                      <div 
+                      <div
                         className="w-8 h-8 rounded-lg border-2 border-white dark:border-gray-700 shadow-md"
                         style={{ backgroundColor: colorTheme.primary }}
                       ></div>
-                      <div 
+                      <div
                         className="w-8 h-8 rounded-lg border-2 border-white dark:border-gray-700 shadow-md"
                         style={{ backgroundColor: colorTheme.secondary }}
                       ></div>
-                      <div 
+                      <div
                         className="w-8 h-8 rounded-lg border-2 border-white dark:border-gray-700 shadow-md"
                         style={{ backgroundColor: colorTheme.accent }}
                       ></div>
@@ -166,9 +196,9 @@ const ThemeSettings: React.FC = () => {
                   { id: 'fade', label: 'Fade Animations', desc: 'Smooth opacity transitions' },
                   { id: 'slide', label: 'Slide Animations', desc: 'Dynamic sliding effects' },
                   { id: 'bounce', label: 'Bounce Animations', desc: 'Playful bouncing motions' },
-                  { id: 'none', label: 'No Animations', desc: 'Static, minimal movement' }
+                  { id: 'none', label: 'No Animations', desc: 'Static, minimal movement' },
                 ].map((anim) => (
-                  <label 
+                  <label
                     key={anim.id}
                     className={`flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer transition-all hover:shadow-md ${
                       selectedAnimation === anim.id
@@ -185,7 +215,9 @@ const ThemeSettings: React.FC = () => {
                         className="w-5 h-5 border-gray-300 text-purple-600 focus:ring-purple-500"
                       />
                       <div className="ml-4">
-                        <span className="font-medium text-gray-900 dark:text-white">{anim.label}</span>
+                        <span className="font-medium text-gray-900 dark:text-white">
+                          {anim.label}
+                        </span>
                         <p className="text-sm text-gray-600 dark:text-gray-400">{anim.desc}</p>
                       </div>
                     </div>
@@ -205,10 +237,10 @@ const ThemeSettings: React.FC = () => {
               <div className="space-y-4">
                 <div className="flex items-center space-x-4">
                   <span className="text-sm text-gray-600 dark:text-gray-400">Small</span>
-                  <input 
-                    type="range" 
-                    min="12" 
-                    max="20" 
+                  <input
+                    type="range"
+                    min="12"
+                    max="20"
                     value={selectedFontSize}
                     onChange={(e) => setSelectedFontSize(Number(e.target.value))}
                     className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"

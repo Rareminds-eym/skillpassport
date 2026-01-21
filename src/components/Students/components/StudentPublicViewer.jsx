@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useRef } from "react";
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import {
   CheckCircle,
   Award,
@@ -18,28 +18,25 @@ import {
   ArrowLeftIcon,
   ExternalLink,
   FolderGit2,
-} from "lucide-react";
-import { useStudentDataById } from "../../../hooks/useStudentDataById";
-import { useNavigate, useParams } from "react-router-dom";
-import { useToast } from "../../../hooks/use-toast";
-import { useAuth } from "../../../context/AuthContext";
-import {
-  generateResumePDF,
-  prepareStudentDataForResume,
-} from "./Generateresumepdf";
-import { generateBadges, getBadgeProgress } from "../../../services/badgeService";
-import { capitalizeName } from "../../../utils/helpers";
+} from 'lucide-react';
+import { useStudentDataById } from '../../../hooks/useStudentDataById';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useToast } from '../../../hooks/use-toast';
+import { useAuth } from '../../../context/AuthContext';
+import { generateResumePDF, prepareStudentDataForResume } from './Generateresumepdf';
+import { generateBadges, getBadgeProgress } from '../../../services/badgeService';
+import { capitalizeName } from '../../../utils/helpers';
 
 function safeParse(jsonLike) {
   if (!jsonLike) return {};
-  if (typeof jsonLike === "object") return jsonLike;
+  if (typeof jsonLike === 'object') return jsonLike;
   try {
     return JSON.parse(jsonLike);
   } catch (e) {
     try {
       return JSON.parse(
         String(jsonLike)
-          .replace(/(\r\n|\n|\r)/g, " ")
+          .replace(/(\r\n|\n|\r)/g, ' ')
           .replace(/'/g, '"')
       );
     } catch (e2) {
@@ -55,11 +52,7 @@ function Avatar({ src, name, size = 88 }) {
       style={{ width: size, height: size }}
     >
       {src ? (
-        <img
-          src={src}
-          alt={name || "avatar"}
-          className="w-full h-full object-cover"
-        />
+        <img src={src} alt={name || 'avatar'} className="w-full h-full object-cover" />
       ) : (
         <User className="w-10 h-10 text-indigo-400" />
       )}
@@ -67,7 +60,7 @@ function Avatar({ src, name, size = 88 }) {
   );
 }
 
-function SkillBadge({ skill, type = "technical" }) {
+function SkillBadge({ skill, type = 'technical' }) {
   const verified = skill.verified;
   const level = skill.level || 0;
   const isProcessing = skill.processing;
@@ -104,8 +97,8 @@ function SkillBadge({ skill, type = "technical" }) {
       {/* Category */}
       <p className="text-sm text-gray-500 truncate">
         {skill.category ||
-          (skill.type && skill.type.replace(/_/g, " ")) ||
-          (type === "soft" ? "Soft Skill" : "Technical Skill")}
+          (skill.type && skill.type.replace(/_/g, ' ')) ||
+          (type === 'soft' ? 'Soft Skill' : 'Technical Skill')}
       </p>
       {/* Stars */}
       <div className="flex items-center gap-1 mt-2">
@@ -113,7 +106,7 @@ function SkillBadge({ skill, type = "technical" }) {
           <Star
             key={i}
             className={`w-4 h-4 sm:w-5 sm:h-5 ${
-              i <= level ? "text-[#FFD700] fill-[#FFD700]" : "text-gray-300"
+              i <= level ? 'text-[#FFD700] fill-[#FFD700]' : 'text-gray-300'
             } transition-colors duration-200`}
           />
         ))}
@@ -127,7 +120,7 @@ function Donut({ value }) {
   const radius = 38;
   const circumference = 2 * Math.PI * radius;
   const dash = (value / 100) * circumference;
-  const ACCENT_COLOR = "#4f46e5"; // Indigo-600 or your brand color
+  const ACCENT_COLOR = '#4f46e5'; // Indigo-600 or your brand color
 
   return (
     <svg width="90" height="90" viewBox="0 0 90 90" aria-hidden>
@@ -150,14 +143,7 @@ function Donut({ value }) {
         transform="rotate(-90 45 45)"
         fill="none"
       />
-      <text
-        x="45"
-        y="50"
-        textAnchor="middle"
-        fontSize="16"
-        fill="#111827"
-        fontWeight="700"
-      >
+      <text x="45" y="50" textAnchor="middle" fontSize="16" fill="#111827" fontWeight="700">
         {Math.round(value)}%
       </text>
     </svg>
@@ -251,16 +237,17 @@ export default function StudentPublicViewer() {
     training,
     experience,
     projects,
-    certificates
+    certificates,
   };
 
   const earnedBadges = useMemo(() => generateBadges(studentDataForBadges), [studentDataForBadges]);
-  const badgeProgress = useMemo(() => getBadgeProgress(studentDataForBadges), [studentDataForBadges]);
+  const badgeProgress = useMemo(
+    () => getBadgeProgress(studentDataForBadges),
+    [studentDataForBadges]
+  );
 
   useEffect(() => {
-    document.title = `${
-      profile.name || profile.fullName || "Student"
-    } • Profile`;
+    document.title = `${profile.name || profile.fullName || 'Student'} • Profile`;
   }, [profile.name, profile.fullName]);
 
   const phone =
@@ -270,33 +257,16 @@ export default function StudentPublicViewer() {
     raw?.contact_number ||
     raw?.contact;
   const emailAddr = profile.email || raw?.email;
-  const location = [
-    profile.district_name || profile.district,
-    profile.state_name || profile.state,
-  ]
+  const location = [profile.district_name || profile.district, profile.state_name || profile.state]
     .filter(Boolean)
-    .join(", ");
+    .join(', ');
   const university =
-    profile.university ||
-    profile.college_school_name ||
-    raw?.college_school_name ||
-    "";
-  const registration_number =
-    raw?.registrationNumber || profile.registrationNumber || "N/A";
-  const employability = Math.max(
-    0,
-    Math.min(100, Number(profile?.employabilityScore || 0))
-  );
+    profile.university || profile.college_school_name || raw?.college_school_name || '';
+  const registration_number = raw?.registrationNumber || profile.registrationNumber || 'N/A';
+  const employability = Math.max(0, Math.min(100, Number(profile?.employabilityScore || 0)));
 
-  const tabs = [
-    "Overview",
-    "Projects",
-    "Experience",
-    "Education",
-    "Certificates",
-    "Training",
-  ];
-  const [activeTab, setActiveTab] = useState("Overview");
+  const tabs = ['Overview', 'Projects', 'Experience', 'Education', 'Certificates', 'Training'];
+  const [activeTab, setActiveTab] = useState('Overview');
   const tabRefs = useRef([]);
 
   function focusNextTab(i) {
@@ -313,8 +283,8 @@ export default function StudentPublicViewer() {
     navigator.clipboard.writeText(qrCodeValue);
     setCopied(true);
     toast({
-      title: "Link copied",
-      description: "Profile link copied to clipboard.",
+      title: 'Link copied',
+      description: 'Profile link copied to clipboard.',
     });
     setTimeout(() => setCopied(false), 2000);
   };
@@ -323,8 +293,8 @@ export default function StudentPublicViewer() {
     try {
       if (navigator.share) {
         await navigator.share({
-          title: "My Skill Passport",
-          text: "Check out this student’s Skill Passport!",
+          title: 'My Skill Passport',
+          text: 'Check out this student’s Skill Passport!',
           url: qrCodeValue,
         });
       } else {
@@ -342,12 +312,8 @@ export default function StudentPublicViewer() {
       <div className="min-h-screen flex flex-col items-center justify-center p-6">
         <div className="bg-white p-10 max-w-md text-center border border-gray-200 rounded-lg shadow-lg">
           <User className="w-20 h-20 text-gray-300 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Authentication Required
-          </h2>
-          <p className="text-gray-600 mb-6">
-            You must be logged in to view student profiles.
-          </p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Authentication Required</h2>
+          <p className="text-gray-600 mb-6">You must be logged in to view student profiles.</p>
           <a
             href="/login"
             className="inline-block w-full px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium text-center"
@@ -760,17 +726,15 @@ export default function StudentPublicViewer() {
       }
 
       toast({
-        title: "Resume downloaded",
-        description: `${
-          profile.name || "Student"
-        }'s resume generated successfully.`,
+        title: 'Resume downloaded',
+        description: `${profile.name || 'Student'}'s resume generated successfully.`,
       });
     } catch (error) {
-      console.error("Error generating resume:", error);
+      console.error('Error generating resume:', error);
       toast({
-        title: "Error",
-        description: "Failed to generate resume. Please try again.",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to generate resume. Please try again.',
+        variant: 'destructive',
       });
     }
   };
@@ -784,7 +748,7 @@ export default function StudentPublicViewer() {
           <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-8 flex flex-col md:flex-row items-center md:items-start gap-6">
             {/* Avatar Skeleton */}
             <div className="w-24 h-24 bg-gray-200 rounded-xl"></div>
-            
+
             {/* Profile Info Skeleton */}
             <div className="flex-1 space-y-4 text-center md:text-left">
               <div className="space-y-2">
@@ -796,7 +760,7 @@ export default function StudentPublicViewer() {
                 <div className="h-6 bg-gray-200 rounded-full w-24"></div>
               </div>
             </div>
-            
+
             {/* QR Code Skeleton */}
             <div className="w-32 h-32 bg-gray-200 rounded-lg"></div>
           </div>
@@ -939,10 +903,7 @@ export default function StudentPublicViewer() {
               {/* Tabs */}
               <div className="flex gap-2">
                 {[1, 2, 3, 4, 5].map((t) => (
-                  <div
-                    key={t}
-                    className="h-9 w-20 bg-gray-200 rounded-xl"
-                  ></div>
+                  <div key={t} className="h-9 w-20 bg-gray-200 rounded-xl"></div>
                 ))}
               </div>
 
@@ -967,12 +928,9 @@ export default function StudentPublicViewer() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-indigo-50 p-6">
         <div className="bg-white rounded-2xl shadow-lg p-10 max-w-md text-center border border-gray-200">
           <User className="w-20 h-20 text-gray-300 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Profile Unavailable
-          </h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Profile Unavailable</h2>
           <p className="text-gray-600">
-            This profile could not be loaded. Please try again or verify the
-            record.
+            This profile could not be loaded. Please try again or verify the record.
           </p>
         </div>
       </div>
@@ -982,31 +940,28 @@ export default function StudentPublicViewer() {
   // NOW do access control after we have the student data loaded
   // Role-based access control
   const userRole = user.role?.toLowerCase();
-  const isStudent = userRole === "student";
-  const isRecruiter = userRole === "recruiter";
-  const isEducator = userRole === "educator" || userRole === "school_educator" || userRole === "college_educator";
-  const isAdmin = userRole?.includes("admin") || userRole === "principal" || userRole === "it_admin";
+  const isStudent = userRole === 'student';
+  const isRecruiter = userRole === 'recruiter';
+  const isEducator =
+    userRole === 'educator' || userRole === 'school_educator' || userRole === 'college_educator';
+  const isAdmin =
+    userRole?.includes('admin') || userRole === 'principal' || userRole === 'it_admin';
 
   // Check if user has permission to view this student profile
-  const hasAccess = isStudent || // Students can view all student profiles
-                   isRecruiter || // Recruiters can view all student profiles
-                   isEducator || // Educators can view student profiles (TODO: add institution check)
-                   isAdmin; // Admins can view student profiles (TODO: add institution check)
+  const hasAccess =
+    isStudent || // Students can view all student profiles
+    isRecruiter || // Recruiters can view all student profiles
+    isEducator || // Educators can view student profiles (TODO: add institution check)
+    isAdmin; // Admins can view student profiles (TODO: add institution check)
 
   if (!hasAccess) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6">
         <div className="bg-white p-10 max-w-md text-center border border-gray-200 rounded-lg shadow-lg">
           <User className="w-20 h-20 text-gray-300 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Access Denied
-          </h2>
-          <p className="text-gray-600">
-            You don't have permission to view this student profile.
-          </p>
-          <p className="text-sm text-gray-500 mt-2">
-            Role: {user.role || 'Unknown'}
-          </p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
+          <p className="text-gray-600">You don't have permission to view this student profile.</p>
+          <p className="text-sm text-gray-500 mt-2">Role: {user.role || 'Unknown'}</p>
         </div>
       </div>
     );
@@ -1025,23 +980,20 @@ export default function StudentPublicViewer() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-3 flex-wrap">
                     <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 truncate">
-                      {capitalizeName(profile.name) || capitalizeName(profile.fullName) || "Student Name"}
+                      {capitalizeName(profile.name) ||
+                        capitalizeName(profile.fullName) ||
+                        'Student Name'}
                     </h1>
                     {profile.verified && (
                       <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 border border-emerald-200">
                         <CheckCircle className="w-4 h-4 text-emerald-600" />
-                        <span className="text-xs font-medium text-emerald-700">
-                          Verified
-                        </span>
+                        <span className="text-xs font-medium text-emerald-700">Verified</span>
                       </div>
                     )}
                   </div>
 
                   <div className="text-base text-indigo-600 font-medium mt-2">
-                    {profile.skill ||
-                      profile.course ||
-                      profile.branch_field ||
-                      university}
+                    {profile.skill || profile.course || profile.branch_field || university}
                   </div>
 
                   {/* Action Buttons */}
@@ -1087,40 +1039,30 @@ export default function StudentPublicViewer() {
                   <div className="w-28 h-28 rounded-full bg-white flex items-center justify-center border shadow-sm">
                     <Donut value={employability} />
                   </div>
-                  <div className="text-xs text-gray-500 mt-2">
-                    Employability
-                  </div>
+                  <div className="text-xs text-gray-500 mt-2">Employability</div>
                 </div>
               </div>
               <div className="hidden sm:block border-l-2 border-gray-200 pl-6 space-y-4">
                 <div>
-                  <div className="text-xs text-gray-500 font-medium mb-1">
-                    Location
-                  </div>
+                  <div className="text-xs text-gray-500 font-medium mb-1">Location</div>
                   <div className="text-sm font-semibold text-gray-900">
-                    {location || "Not specified"}
+                    {location || 'Not specified'}
                   </div>
                 </div>
 
                 <div>
-                  <div className="text-xs text-gray-500 font-medium mb-1">
-                    University
-                  </div>
+                  <div className="text-xs text-gray-500 font-medium mb-1">University</div>
                   <div
                     className="text-sm font-semibold text-gray-900 truncate max-w-[200px]"
                     title={university}
                   >
-                    {university || "Not specified"}
+                    {university || 'Not specified'}
                   </div>
                 </div>
 
                 <div>
-                  <div className="text-xs text-gray-500 font-medium mb-1">
-                    Registration
-                  </div>
-                  <div className="text-sm font-semibold text-gray-900">
-                    {registration_number}
-                  </div>
+                  <div className="text-xs text-gray-500 font-medium mb-1">Registration</div>
+                  <div className="text-sm font-semibold text-gray-900">{registration_number}</div>
                 </div>
               </div>
             </div>
@@ -1149,19 +1091,17 @@ export default function StudentPublicViewer() {
                       <Mail className="w-4.5 h-4.5 text-gray-500" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <dt className="text-xs font-medium text-gray-500 mb-1">
-                        Email
-                      </dt>
+                      <dt className="text-xs font-medium text-gray-500 mb-1">Email</dt>
                       <div className="flex items-center justify-between gap-2">
                         <dd className="text-sm font-semibold text-gray-900 truncate">
-                          {emailAddr || "—"}
+                          {emailAddr || '—'}
                         </dd>
                         {emailAddr && (
                           <button
                             onClick={() => {
                               navigator.clipboard.writeText(emailAddr);
                               toast({
-                                title: "Email copied",
+                                title: 'Email copied',
                                 description: `${emailAddr} has been copied to clipboard.`,
                               });
                             }}
@@ -1182,19 +1122,15 @@ export default function StudentPublicViewer() {
                       <Phone className="w-4.5 h-4.5 text-gray-500" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <dt className="text-xs font-medium text-gray-500 mb-1">
-                        Phone
-                      </dt>
+                      <dt className="text-xs font-medium text-gray-500 mb-1">Phone</dt>
                       <div className="flex items-center justify-between gap-2">
-                        <dd className="text-sm font-semibold text-gray-900">
-                          {phone || "—"}
-                        </dd>
+                        <dd className="text-sm font-semibold text-gray-900">{phone || '—'}</dd>
                         {phone && (
                           <button
                             onClick={() => {
                               navigator.clipboard.writeText(phone);
                               toast({
-                                title: "Phone number copied",
+                                title: 'Phone number copied',
                                 description: `${phone} has been copied to clipboard.`,
                               });
                             }}
@@ -1215,12 +1151,8 @@ export default function StudentPublicViewer() {
                       <MapPin className="w-4.5 h-4.5 text-gray-500" />
                     </div>
                     <div className="min-w-0">
-                      <dt className="text-xs font-medium text-gray-500 mb-1">
-                        Location
-                      </dt>
-                      <dd className="text-sm font-semibold text-gray-900">
-                        {location || "—"}
-                      </dd>
+                      <dt className="text-xs font-medium text-gray-500 mb-1">Location</dt>
+                      <dd className="text-sm font-semibold text-gray-900">{location || '—'}</dd>
                     </div>
                   </div>
 
@@ -1234,7 +1166,7 @@ export default function StudentPublicViewer() {
                         Registration Number
                       </dt>
                       <dd className="text-sm font-semibold text-gray-900">
-                        {registration_number || "—"}
+                        {registration_number || '—'}
                       </dd>
                     </div>
                   </div>
@@ -1258,13 +1190,13 @@ export default function StudentPublicViewer() {
                     ref={(el) => (tabRefs.current[idx] = el)}
                     onClick={() => setActiveTab(t)}
                     onKeyDown={(e) => {
-                      if (e.key === "ArrowRight") focusNextTab(idx);
-                      if (e.key === "ArrowLeft") focusPrevTab(idx);
+                      if (e.key === 'ArrowRight') focusNextTab(idx);
+                      if (e.key === 'ArrowLeft') focusPrevTab(idx);
                     }}
                     className={`flex-shrink-0 px-4 sm:px-5 py-2.5 rounded-xl text-sm sm:text-base font-semibold whitespace-nowrap transition-all duration-200 ${
                       activeTab === t
-                        ? "bg-indigo-600 text-white shadow-sm" // 🟦 flat indigo, no gradient
-                        : "text-gray-700 hover:bg-gray-100"
+                        ? 'bg-indigo-600 text-white shadow-sm' // 🟦 flat indigo, no gradient
+                        : 'text-gray-700 hover:bg-gray-100'
                     }`}
                   >
                     {t}
@@ -1273,7 +1205,7 @@ export default function StudentPublicViewer() {
               </div>
 
               {/* Overview Tab */}
-              {activeTab === "Overview" && (
+              {activeTab === 'Overview' && (
                 <div className="space-y-5 sm:space-y-6">
                   {/* About Section */}
                   <section className="p-2 sm:p-3">
@@ -1281,14 +1213,10 @@ export default function StudentPublicViewer() {
                       <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-100 to-indigo-200 flex items-center justify-center">
                         <User className="w-5 h-5 text-indigo-600" />
                       </div>
-                      <h2 className="text-lg sm:text-xl font-bold text-gray-900">
-                        About
-                      </h2>
+                      <h2 className="text-lg sm:text-xl font-bold text-gray-900">About</h2>
                     </div>
                     <p className="text-sm sm:text-base text-gray-700 leading-snug max-w-3xl">
-                      {profile.summary ||
-                        profile.bio ||
-                        "This student hasn’t added a summary yet."}
+                      {profile.summary || profile.bio || 'This student hasn’t added a summary yet.'}
                     </p>
                   </section>
 
@@ -1318,11 +1246,15 @@ export default function StudentPublicViewer() {
                                 {badge.icon}
                               </div>
                               <div className="flex-1">
-                                <h3 className="font-semibold text-gray-900 text-sm">{badge.name}</h3>
+                                <h3 className="font-semibold text-gray-900 text-sm">
+                                  {badge.name}
+                                </h3>
                                 <p className="text-xs text-gray-500 capitalize">{badge.category}</p>
                               </div>
                             </div>
-                            <p className="text-xs text-gray-600 leading-relaxed">{badge.description}</p>
+                            <p className="text-xs text-gray-600 leading-relaxed">
+                              {badge.description}
+                            </p>
                             <div className="mt-3 text-xs text-gray-400">
                               Earned {new Date(badge.earnedAt).toLocaleDateString()}
                             </div>
@@ -1363,30 +1295,41 @@ export default function StudentPublicViewer() {
                             <div className="flex items-center gap-3 mb-3">
                               <div
                                 className="w-10 h-10 rounded-full flex items-center justify-center text-lg shadow-sm"
-                                style={{ backgroundColor: `${progress.badge.color}20`, color: progress.badge.color }}
+                                style={{
+                                  backgroundColor: `${progress.badge.color}20`,
+                                  color: progress.badge.color,
+                                }}
                               >
                                 {progress.badge.icon}
                               </div>
                               <div className="flex-1">
-                                <h3 className="font-semibold text-gray-900 text-sm">{progress.badge.name}</h3>
-                                <p className="text-xs text-gray-500 capitalize">{progress.badge.category}</p>
+                                <h3 className="font-semibold text-gray-900 text-sm">
+                                  {progress.badge.name}
+                                </h3>
+                                <p className="text-xs text-gray-500 capitalize">
+                                  {progress.badge.category}
+                                </p>
                               </div>
                             </div>
                             <div className="space-y-2">
                               <div className="flex justify-between text-xs text-gray-600">
                                 <span>Progress</span>
-                                <span>{progress.current}/{progress.required}</span>
+                                <span>
+                                  {progress.current}/{progress.required}
+                                </span>
                               </div>
                               <div className="w-full bg-gray-200 rounded-full h-2">
                                 <div
                                   className="h-2 rounded-full transition-all duration-300"
                                   style={{
                                     width: `${progress.percentage}%`,
-                                    backgroundColor: progress.badge.color
+                                    backgroundColor: progress.badge.color,
                                   }}
                                 />
                               </div>
-                              <p className="text-xs text-gray-500">{progress.percentage}% complete</p>
+                              <p className="text-xs text-gray-500">
+                                {progress.percentage}% complete
+                              </p>
                             </div>
                           </div>
                         ))}
@@ -1408,11 +1351,7 @@ export default function StudentPublicViewer() {
                     {technicalSkills.length ? (
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-2.5 sm:gap-3">
                         {technicalSkills.map((s, i) => (
-                          <SkillBadge
-                            key={s.id || i}
-                            skill={s}
-                            type="technical"
-                          />
+                          <SkillBadge key={s.id || i} skill={s} type="technical" />
                         ))}
                       </div>
                     ) : (
@@ -1431,9 +1370,7 @@ export default function StudentPublicViewer() {
                       <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-100 to-indigo-200 flex items-center justify-center">
                         <Award className="w-5 h-5 text-indigo-600" />
                       </div>
-                      <h2 className="text-lg sm:text-xl font-bold text-gray-900">
-                        Soft Skills
-                      </h2>
+                      <h2 className="text-lg sm:text-xl font-bold text-gray-900">Soft Skills</h2>
                     </div>
 
                     {softSkills.length ? (
@@ -1454,9 +1391,7 @@ export default function StudentPublicViewer() {
                 </div>
               )}
 
-
-
-              {activeTab === "Projects" && (
+              {activeTab === 'Projects' && (
                 <section className="p-4">
                   <div className="flex items-center gap-3 mb-8">
                     <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-100 to-indigo-200 flex items-center justify-center">
@@ -1470,9 +1405,7 @@ export default function StudentPublicViewer() {
                   {projects.length === 0 ? (
                     <div className="text-center py-8">
                       <FolderGit2 className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                      <p className="text-gray-400 text-sm font-medium">
-                        No projects added yet
-                      </p>
+                      <p className="text-gray-400 text-sm font-medium">No projects added yet</p>
                     </div>
                   ) : (
                     <div className="space-y-5">
@@ -1480,15 +1413,13 @@ export default function StudentPublicViewer() {
                         const techList = Array.isArray(project.tech)
                           ? project.tech
                           : Array.isArray(project.technologies)
-                          ? project.technologies
-                          : Array.isArray(project.techStack)
-                          ? project.techStack
-                          : Array.isArray(project.skills)
-                          ? project.skills
-                          : [];
-                        const projectLink =
-                          project.link ||
-                          project.github;
+                            ? project.technologies
+                            : Array.isArray(project.techStack)
+                              ? project.techStack
+                              : Array.isArray(project.skills)
+                                ? project.skills
+                                : [];
+                        const projectLink = project.link || project.github;
                         return (
                           <div
                             key={project.id || index}
@@ -1497,7 +1428,7 @@ export default function StudentPublicViewer() {
                             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
                               <div className="min-w-0 flex-1">
                                 <h3 className="text-base sm:text-lg font-semibold text-gray-900 leading-snug">
-                                  {project.title || project.name || "Untitled Project"}
+                                  {project.title || project.name || 'Untitled Project'}
                                 </h3>
                                 {(project.organization || project.company || project.client) && (
                                   <p className="text-sm text-indigo-600 font-medium">
@@ -1560,7 +1491,7 @@ export default function StudentPublicViewer() {
               )}
 
               {/* Experience Tab */}
-              {activeTab === "Experience" && (
+              {activeTab === 'Experience' && (
                 <section className="p-4">
                   {/* Header */}
                   <div className="flex items-center gap-3 mb-8">
@@ -1605,9 +1536,7 @@ export default function StudentPublicViewer() {
                             <p className="text-indigo-600 font-medium text-sm sm:text-base">
                               {exp.organization}
                             </p>
-                            <p className="text-gray-500 font-medium text-sm">
-                              {exp.duration}
-                            </p>
+                            <p className="text-gray-500 font-medium text-sm">{exp.duration}</p>
                           </div>
 
                           {/* Summary */}
@@ -1644,7 +1573,7 @@ export default function StudentPublicViewer() {
               )}
 
               {/* Education Tab */}
-              {activeTab === "Education" && (
+              {activeTab === 'Education' && (
                 <section className="p-4">
                   {/* Header */}
                   <div className="flex items-center gap-3 mb-8">
@@ -1669,12 +1598,10 @@ export default function StudentPublicViewer() {
 
                           {/* Degree & Institution */}
                           <h3 className="font-bold text-gray-900 text-base sm:text-lg mb-0.5">
-                            {ed.degree || "Degree Not Specified"}
+                            {ed.degree || 'Degree Not Specified'}
                           </h3>
                           <p className="text-sm text-indigo-600 font-medium">
-                            {ed.university ||
-                              ed.institution ||
-                              "Institution Not Specified"}
+                            {ed.university || ed.institution || 'Institution Not Specified'}
                           </p>
 
                           {/* Department */}
@@ -1695,11 +1622,9 @@ export default function StudentPublicViewer() {
 
                             {/* CGPA */}
                             <div className="flex items-center gap-2 px-3 py-1 bg-indigo-50 rounded-lg border border-indigo-100">
-                              <span className="text-xs font-medium text-gray-600">
-                                CGPA:
-                              </span>
+                              <span className="text-xs font-medium text-gray-600">CGPA:</span>
                               <span className="text-sm font-bold text-indigo-700">
-                                {ed.cgpa || "N/A"}
+                                {ed.cgpa || 'N/A'}
                               </span>
                             </div>
 
@@ -1707,14 +1632,12 @@ export default function StudentPublicViewer() {
                             {ed.status && (
                               <span
                                 className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
-                                  ed.status === "completed"
-                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                    : "bg-amber-50 text-amber-700 border-amber-200"
+                                  ed.status === 'completed'
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    : 'bg-amber-50 text-amber-700 border-amber-200'
                                 }`}
                               >
-                                {ed.status === "completed"
-                                  ? "Completed"
-                                  : "Ongoing"}
+                                {ed.status === 'completed' ? 'Completed' : 'Ongoing'}
                               </span>
                             )}
                           </div>
@@ -1723,9 +1646,7 @@ export default function StudentPublicViewer() {
                     ) : (
                       <div className="text-center py-10">
                         <GraduationCap className="w-14 h-14 text-gray-300 mx-auto mb-3" />
-                        <p className="text-gray-400 font-medium">
-                          No education records added yet
-                        </p>
+                        <p className="text-gray-400 font-medium">No education records added yet</p>
                       </div>
                     )}
                   </div>
@@ -1733,16 +1654,14 @@ export default function StudentPublicViewer() {
               )}
 
               {/* Certificates Tab */}
-              {activeTab === "Certificates" && (
+              {activeTab === 'Certificates' && (
                 <section className="p-2 sm:p-3">
                   {/* Header */}
                   <div className="flex items-center gap-2 mb-5">
                     <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center">
                       <Award className="w-5 h-5 text-amber-600" />
                     </div>
-                    <h2 className="text-lg sm:text-xl font-bold text-gray-900">
-                      Certificates
-                    </h2>
+                    <h2 className="text-lg sm:text-xl font-bold text-gray-900">Certificates</h2>
                   </div>
 
                   <div className="space-y-4">
@@ -1750,11 +1669,7 @@ export default function StudentPublicViewer() {
                       certificates.map((c, i) => {
                         const certificateDate = c.issuedOn || c.date || c.year;
                         const certificateLink =
-                          c.link ||
-                          c.url ||
-                          c.certificateUrl ||
-                          c.credentialUrl ||
-                          c.viewUrl;
+                          c.link || c.url || c.certificateUrl || c.credentialUrl || c.viewUrl;
                         return (
                           <div
                             key={c.id || i}
@@ -1763,16 +1678,10 @@ export default function StudentPublicViewer() {
                             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
                               <div className="min-w-0 flex-1">
                                 <h3 className="text-base font-semibold text-gray-900 leading-snug">
-                                  {c.title ||
-                                    c.name ||
-                                    c.cert ||
-                                    "Untitled Certificate"}
+                                  {c.title || c.name || c.cert || 'Untitled Certificate'}
                                 </h3>
                                 <p className="text-sm text-amber-700 font-medium mt-0.5">
-                                  {c.issuer ||
-                                    c.issuer_name ||
-                                    c.institution ||
-                                    "Unknown Issuer"}
+                                  {c.issuer || c.issuer_name || c.institution || 'Unknown Issuer'}
                                 </p>
                               </div>
                               {certificateDate && (
@@ -1830,7 +1739,7 @@ export default function StudentPublicViewer() {
               )}
 
               {/* Training Tab */}
-              {activeTab === "Training" && (
+              {activeTab === 'Training' && (
                 <section className="p-2 sm:p-3">
                   {/* Header */}
                   <div className="flex items-center gap-2 mb-5">
@@ -1847,9 +1756,7 @@ export default function StudentPublicViewer() {
                       training.map((t, i) => {
                         const progress = t.progress || 0;
                         const segmentCount = 10;
-                        const filledSegments = Math.round(
-                          (progress / 100) * segmentCount
-                        );
+                        const filledSegments = Math.round((progress / 100) * segmentCount);
 
                         return (
                           <div
@@ -1860,29 +1767,29 @@ export default function StudentPublicViewer() {
                             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 mb-1">
                               <div className="flex-1 min-w-0">
                                 <h3 className="text-base font-semibold text-gray-900 mb-0.5">
-                                  {t.course || t.name || "Untitled Course"}
+                                  {t.course || t.name || 'Untitled Course'}
                                 </h3>
                                 <p className="text-sm text-indigo-600 font-medium">
-                                  {t.trainer || t.instructor || "Self-paced"}
+                                  {t.trainer || t.instructor || 'Self-paced'}
                                 </p>
                               </div>
 
                               {/* Status Badge */}
                               <div
                                 className={`px-3 py-1 rounded-full text-xs font-semibold text-center whitespace-nowrap ${
-                                  t.status === "completed"
-                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                    : t.status === "ongoing"
-                                    ? "bg-blue-50 text-blue-700 border border-blue-200"
-                                    : "bg-gray-50 text-gray-700 border border-gray-200"
+                                  t.status === 'completed'
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                    : t.status === 'ongoing'
+                                      ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                      : 'bg-gray-50 text-gray-700 border border-gray-200'
                                 }`}
                               >
-                                {t.status || "Enrolled"}
+                                {t.status || 'Enrolled'}
                               </div>
                             </div>
 
                             {/* Progress Bar */}
-                            {typeof t.progress !== "undefined" && (
+                            {typeof t.progress !== 'undefined' && (
                               <div className="mt-2">
                                 <div className="flex items-center justify-between mb-1">
                                   <span className="text-xs font-medium text-gray-600">
@@ -1893,18 +1800,16 @@ export default function StudentPublicViewer() {
                                   </span>
                                 </div>
                                 <div className="flex gap-1.5">
-                                  {Array.from({ length: segmentCount }).map(
-                                    (_, idx) => (
-                                      <div
-                                        key={idx}
-                                        className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
-                                          idx < filledSegments
-                                            ? "bg-gradient-to-r from-indigo-500 to-purple-500"
-                                            : "bg-gray-200"
-                                        }`}
-                                      />
-                                    )
-                                  )}
+                                  {Array.from({ length: segmentCount }).map((_, idx) => (
+                                    <div
+                                      key={idx}
+                                      className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
+                                        idx < filledSegments
+                                          ? 'bg-gradient-to-r from-indigo-500 to-purple-500'
+                                          : 'bg-gray-200'
+                                      }`}
+                                    />
+                                  ))}
                                 </div>
                               </div>
                             )}
@@ -1953,17 +1858,13 @@ export default function StudentPublicViewer() {
                 {/* WhatsApp */}
                 <a
                   href={`https://wa.me/?text=${encodeURIComponent(
-                    "Check out this Skill Passport: " + qrCodeValue
+                    'Check out this Skill Passport: ' + qrCodeValue
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2 px-4 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-semibold transition-colors shadow-md"
                 >
-                  <svg
-                    className="w-5 h-5"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967..." />
                   </svg>
                   <span>WhatsApp</span>
@@ -1978,11 +1879,7 @@ export default function StudentPublicViewer() {
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors shadow-md"
                 >
-                  <svg
-                    className="w-5 h-5"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M20.447 20.452h-3.554v-5.569..." />
                   </svg>
                   <span>LinkedIn</span>
@@ -1991,17 +1888,13 @@ export default function StudentPublicViewer() {
                 {/* Twitter */}
                 <a
                   href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
-                    "Check out this Skill Passport!"
+                    'Check out this Skill Passport!'
                   )}&url=${encodeURIComponent(qrCodeValue)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2 px-4 py-3 bg-black hover:bg-gray-800 text-white rounded-lg font-semibold transition-colors shadow-md"
                 >
-                  <svg
-                    className="w-5 h-5"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M18.244 2.25h3.308l-7.227..." />
                   </svg>
                   <span>Twitter</span>
@@ -2010,10 +1903,8 @@ export default function StudentPublicViewer() {
                 {/* Email */}
                 <a
                   href={`mailto:?subject=${encodeURIComponent(
-                    "Check out this Skill Passport"
-                  )}&body=${encodeURIComponent(
-                    "Here is the Skill Passport link: " + qrCodeValue
-                  )}`}
+                    'Check out this Skill Passport'
+                  )}&body=${encodeURIComponent('Here is the Skill Passport link: ' + qrCodeValue)}`}
                   className="flex items-center justify-center gap-2 px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold transition-colors shadow-md"
                 >
                   <svg
@@ -2046,11 +1937,7 @@ export default function StudentPublicViewer() {
                     onClick={handleCopyLink}
                     className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-colors shadow-md"
                   >
-                    {copied ? (
-                      <Check className="w-5 h-5" />
-                    ) : (
-                      <Copy className="w-5 h-5" />
-                    )}
+                    {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
                   </button>
                 </div>
               </div>

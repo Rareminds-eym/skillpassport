@@ -1,9 +1,9 @@
 /**
  * ProgressHeader Component
- * 
+ *
  * Displays the assessment progress header with section steps,
  * progress percentage, and test mode toggle.
- * 
+ *
  * @module features/assessment/career-test/components/layout/ProgressHeader
  */
 
@@ -45,7 +45,7 @@ export const ProgressHeader: React.FC<ProgressHeaderProps> = ({
   adaptiveProgress,
   isDevMode = false,
   testMode = false,
-  onEnableTestMode
+  onEnableTestMode,
 }) => {
   return (
     <div className="w-full max-w-4xl mb-6">
@@ -98,19 +98,25 @@ export const ProgressHeader: React.FC<ProgressHeaderProps> = ({
                 lineProgress = adaptiveTotal > 0 ? (adaptiveAnswered / adaptiveTotal) * 100 : 0;
               } else {
                 const totalQuestions = section.questions?.length || 0;
-                lineProgress = totalQuestions > 0 ? ((currentQuestionIndex + 1) / totalQuestions) * 100 : 0;
+                lineProgress =
+                  totalQuestions > 0 ? ((currentQuestionIndex + 1) / totalQuestions) * 100 : 0;
               }
             }
 
             return (
-              <div key={section.id} className={`flex items-center ${idx < sections.length - 1 ? 'flex-1' : ''}`}>
+              <div
+                key={section.id}
+                className={`flex items-center ${idx < sections.length - 1 ? 'flex-1' : ''}`}
+              >
                 {/* Step Circle */}
-                <div className={`
+                <div
+                  className={`
                   w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 border-2 shrink-0
                   ${isCompleted ? 'bg-green-500 border-green-500 text-white shadow-md' : ''}
                   ${isCurrent ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg ring-4 ring-indigo-100 relative z-10' : ''}
                   ${isUpcoming ? 'bg-white border-gray-300 text-gray-500' : ''}
-                `}>
+                `}
+                >
                   {isCompleted ? (
                     <CheckCircle2 className="w-5 h-5" />
                   ) : (
@@ -131,7 +137,7 @@ export const ProgressHeader: React.FC<ProgressHeaderProps> = ({
                       }`}
                       initial={{ width: 0 }}
                       animate={{ width: `${lineProgress}%` }}
-                      transition={{ duration: 0.3, ease: "easeOut" }}
+                      transition={{ duration: 0.3, ease: 'easeOut' }}
                     />
                   </div>
                 )}
@@ -148,13 +154,18 @@ export const ProgressHeader: React.FC<ProgressHeaderProps> = ({
             const isUpcoming = idx > currentSectionIndex;
 
             return (
-              <div key={`label-${section.id}`} className={`${idx < sections.length - 1 ? 'flex-1' : ''}`}>
-                <span className={`
+              <div
+                key={`label-${section.id}`}
+                className={`${idx < sections.length - 1 ? 'flex-1' : ''}`}
+              >
+                <span
+                  className={`
                   text-[10px] font-semibold text-center leading-tight block w-10
                   ${isCompleted ? 'text-green-700' : ''}
                   ${isCurrent ? 'text-indigo-700' : ''}
                   ${isUpcoming ? 'text-gray-500' : ''}
-                `}>
+                `}
+                >
                   {section.title.split(' ')[0]}
                 </span>
               </div>

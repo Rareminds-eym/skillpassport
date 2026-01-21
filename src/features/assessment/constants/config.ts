@@ -3,7 +3,12 @@
  * Centralized configuration for the assessment system
  */
 
-import type { GradeLevel, GradeRange, CategoryOption, StreamOption } from '../types/assessment.types';
+import type {
+  GradeLevel,
+  GradeRange,
+  CategoryOption,
+  StreamOption,
+} from '../types/assessment.types';
 
 // ============================================
 // Grade Level Configuration
@@ -25,12 +30,12 @@ export const GRADE_RANGES: Record<string, GradeRange> = {
 };
 
 export const PROGRAM_GRADE_MAPPINGS: Record<string, GradeLevel> = {
-  'UG': 'after12',
-  'UNDERGRADUATE': 'after12',
-  'PG': 'after12',
-  'POSTGRADUATE': 'after12',
-  'DIPLOMA': 'after10',
-  'CERTIFICATE': 'after12',
+  UG: 'after12',
+  UNDERGRADUATE: 'after12',
+  PG: 'after12',
+  POSTGRADUATE: 'after12',
+  DIPLOMA: 'after10',
+  CERTIFICATE: 'after12',
 };
 
 // ============================================
@@ -40,17 +45,17 @@ export const PROGRAM_GRADE_MAPPINGS: Record<string, GradeLevel> = {
 export const TIMERS = {
   // Adaptive aptitude
   ADAPTIVE_QUESTION_TIME_LIMIT: 90, // seconds per question
-  
+
   // Regular aptitude
   APTITUDE_INDIVIDUAL_TIME_LIMIT: 60, // 1 minute per question
   APTITUDE_SHARED_TIME_LIMIT: 15 * 60, // 15 minutes for shared section
-  
+
   // Knowledge section
   KNOWLEDGE_TIME_LIMIT: 30 * 60, // 30 minutes
-  
+
   // Auto-save interval
   AUTO_SAVE_INTERVAL: 30000, // 30 seconds
-  
+
   // Warning thresholds
   TIME_WARNING_THRESHOLD: 60, // Show warning when 60 seconds left
   TIME_CRITICAL_THRESHOLD: 10, // Critical warning at 10 seconds
@@ -96,20 +101,20 @@ export const SECTION_ID_MAPPINGS = {
 // ============================================
 
 export const STREAM_CATEGORIES: Omit<CategoryOption, 'icon'>[] = [
-  { 
-    id: 'science', 
-    label: 'Science', 
-    description: 'Engineering, Medical, Pure Sciences' 
+  {
+    id: 'science',
+    label: 'Science',
+    description: 'Engineering, Medical, Pure Sciences',
   },
-  { 
-    id: 'commerce', 
-    label: 'Commerce', 
-    description: 'Business, Finance, Accounting' 
+  {
+    id: 'commerce',
+    label: 'Commerce',
+    description: 'Business, Finance, Accounting',
   },
-  { 
-    id: 'arts', 
-    label: 'Arts/Humanities', 
-    description: 'Literature, Social Sciences, Design' 
+  {
+    id: 'arts',
+    label: 'Arts/Humanities',
+    description: 'Literature, Social Sciences, Design',
   },
 ];
 
@@ -119,28 +124,118 @@ export const STREAM_CATEGORIES: Omit<CategoryOption, 'icon'>[] = [
 
 export const STREAMS_BY_CATEGORY: Record<string, StreamOption[]> = {
   science: [
-    { id: 'cs', label: 'B.Sc Computer Science / B.Tech CS/IT', riasec: ['I', 'C', 'R'], aptitudeStrengths: ['logical', 'numerical', 'abstract'] },
-    { id: 'engineering', label: 'B.Tech / B.E (Other Engineering)', riasec: ['R', 'I', 'C'], aptitudeStrengths: ['numerical', 'spatial', 'logical'] },
-    { id: 'medical', label: 'MBBS / BDS / Nursing', riasec: ['I', 'S', 'R'], aptitudeStrengths: ['verbal', 'logical', 'numerical'] },
-    { id: 'pharmacy', label: 'B.Pharm / Pharm.D', riasec: ['I', 'C', 'S'], aptitudeStrengths: ['numerical', 'verbal', 'logical'] },
-    { id: 'bsc', label: 'B.Sc (Physics/Chemistry/Biology/Maths)', riasec: ['I', 'R', 'C'], aptitudeStrengths: ['numerical', 'logical', 'abstract'] },
-    { id: 'animation', label: 'B.Sc Animation / Game Design', riasec: ['A', 'I', 'R'], aptitudeStrengths: ['spatial', 'abstract', 'logical'] },
+    {
+      id: 'cs',
+      label: 'B.Sc Computer Science / B.Tech CS/IT',
+      riasec: ['I', 'C', 'R'],
+      aptitudeStrengths: ['logical', 'numerical', 'abstract'],
+    },
+    {
+      id: 'engineering',
+      label: 'B.Tech / B.E (Other Engineering)',
+      riasec: ['R', 'I', 'C'],
+      aptitudeStrengths: ['numerical', 'spatial', 'logical'],
+    },
+    {
+      id: 'medical',
+      label: 'MBBS / BDS / Nursing',
+      riasec: ['I', 'S', 'R'],
+      aptitudeStrengths: ['verbal', 'logical', 'numerical'],
+    },
+    {
+      id: 'pharmacy',
+      label: 'B.Pharm / Pharm.D',
+      riasec: ['I', 'C', 'S'],
+      aptitudeStrengths: ['numerical', 'verbal', 'logical'],
+    },
+    {
+      id: 'bsc',
+      label: 'B.Sc (Physics/Chemistry/Biology/Maths)',
+      riasec: ['I', 'R', 'C'],
+      aptitudeStrengths: ['numerical', 'logical', 'abstract'],
+    },
+    {
+      id: 'animation',
+      label: 'B.Sc Animation / Game Design',
+      riasec: ['A', 'I', 'R'],
+      aptitudeStrengths: ['spatial', 'abstract', 'logical'],
+    },
   ],
   commerce: [
-    { id: 'bba', label: 'BBA General', riasec: ['E', 'S', 'C'], aptitudeStrengths: ['verbal', 'numerical', 'logical'] },
-    { id: 'bca', label: 'BCA General', riasec: ['I', 'C', 'E'], aptitudeStrengths: ['logical', 'numerical', 'abstract'] },
-    { id: 'dm', label: 'BBA Digital Marketing', riasec: ['E', 'A', 'S'], aptitudeStrengths: ['verbal', 'abstract', 'logical'] },
-    { id: 'bcom', label: 'B.Com / B.Com (Hons)', riasec: ['C', 'E', 'I'], aptitudeStrengths: ['numerical', 'logical', 'verbal'] },
-    { id: 'ca', label: 'CA / CMA / CS', riasec: ['C', 'I', 'E'], aptitudeStrengths: ['numerical', 'logical', 'verbal'] },
-    { id: 'finance', label: 'BBA Finance / Banking', riasec: ['E', 'C', 'I'], aptitudeStrengths: ['numerical', 'logical', 'verbal'] },
+    {
+      id: 'bba',
+      label: 'BBA General',
+      riasec: ['E', 'S', 'C'],
+      aptitudeStrengths: ['verbal', 'numerical', 'logical'],
+    },
+    {
+      id: 'bca',
+      label: 'BCA General',
+      riasec: ['I', 'C', 'E'],
+      aptitudeStrengths: ['logical', 'numerical', 'abstract'],
+    },
+    {
+      id: 'dm',
+      label: 'BBA Digital Marketing',
+      riasec: ['E', 'A', 'S'],
+      aptitudeStrengths: ['verbal', 'abstract', 'logical'],
+    },
+    {
+      id: 'bcom',
+      label: 'B.Com / B.Com (Hons)',
+      riasec: ['C', 'E', 'I'],
+      aptitudeStrengths: ['numerical', 'logical', 'verbal'],
+    },
+    {
+      id: 'ca',
+      label: 'CA / CMA / CS',
+      riasec: ['C', 'I', 'E'],
+      aptitudeStrengths: ['numerical', 'logical', 'verbal'],
+    },
+    {
+      id: 'finance',
+      label: 'BBA Finance / Banking',
+      riasec: ['E', 'C', 'I'],
+      aptitudeStrengths: ['numerical', 'logical', 'verbal'],
+    },
   ],
   arts: [
-    { id: 'ba', label: 'BA (English/History/Political Science)', riasec: ['S', 'A', 'I'], aptitudeStrengths: ['verbal', 'abstract', 'logical'] },
-    { id: 'journalism', label: 'BA Journalism / Mass Communication', riasec: ['A', 'S', 'E'], aptitudeStrengths: ['verbal', 'abstract', 'logical'] },
-    { id: 'design', label: 'B.Des / Fashion Design', riasec: ['A', 'R', 'E'], aptitudeStrengths: ['spatial', 'abstract', 'verbal'] },
-    { id: 'law', label: 'BA LLB / BBA LLB', riasec: ['E', 'S', 'I'], aptitudeStrengths: ['verbal', 'logical', 'abstract'] },
-    { id: 'psychology', label: 'BA/B.Sc Psychology', riasec: ['S', 'I', 'A'], aptitudeStrengths: ['verbal', 'logical', 'abstract'] },
-    { id: 'finearts', label: 'BFA / Visual Arts', riasec: ['A', 'R', 'S'], aptitudeStrengths: ['spatial', 'abstract', 'verbal'] },
+    {
+      id: 'ba',
+      label: 'BA (English/History/Political Science)',
+      riasec: ['S', 'A', 'I'],
+      aptitudeStrengths: ['verbal', 'abstract', 'logical'],
+    },
+    {
+      id: 'journalism',
+      label: 'BA Journalism / Mass Communication',
+      riasec: ['A', 'S', 'E'],
+      aptitudeStrengths: ['verbal', 'abstract', 'logical'],
+    },
+    {
+      id: 'design',
+      label: 'B.Des / Fashion Design',
+      riasec: ['A', 'R', 'E'],
+      aptitudeStrengths: ['spatial', 'abstract', 'verbal'],
+    },
+    {
+      id: 'law',
+      label: 'BA LLB / BBA LLB',
+      riasec: ['E', 'S', 'I'],
+      aptitudeStrengths: ['verbal', 'logical', 'abstract'],
+    },
+    {
+      id: 'psychology',
+      label: 'BA/B.Sc Psychology',
+      riasec: ['S', 'I', 'A'],
+      aptitudeStrengths: ['verbal', 'logical', 'abstract'],
+    },
+    {
+      id: 'finearts',
+      label: 'BFA / Visual Arts',
+      riasec: ['A', 'R', 'S'],
+      aptitudeStrengths: ['spatial', 'abstract', 'verbal'],
+    },
   ],
 };
 
@@ -150,19 +245,73 @@ export const STREAMS_BY_CATEGORY: Record<string, StreamOption[]> = {
 
 export const AFTER10_STREAMS_BY_CATEGORY: Record<string, StreamOption[]> = {
   science: [
-    { id: 'science_pcmb', label: 'Science (PCMB)', riasec: ['I', 'R', 'C'], aptitudeStrengths: ['numerical', 'logical', 'verbal'], description: 'Physics, Chemistry, Maths, Biology - Medical & Engineering' },
-    { id: 'science_pcms', label: 'Science (PCMS)', riasec: ['I', 'C', 'R'], aptitudeStrengths: ['logical', 'numerical', 'abstract'], description: 'Physics, Chemistry, Maths, Computer Science - Engineering/IT' },
-    { id: 'science_pcm', label: 'Science (PCM)', riasec: ['R', 'I', 'C'], aptitudeStrengths: ['numerical', 'spatial', 'logical'], description: 'Physics, Chemistry, Maths - Engineering' },
-    { id: 'science_pcb', label: 'Science (PCB)', riasec: ['I', 'S', 'R'], aptitudeStrengths: ['verbal', 'logical', 'numerical'], description: 'Physics, Chemistry, Biology - Medical' },
+    {
+      id: 'science_pcmb',
+      label: 'Science (PCMB)',
+      riasec: ['I', 'R', 'C'],
+      aptitudeStrengths: ['numerical', 'logical', 'verbal'],
+      description: 'Physics, Chemistry, Maths, Biology - Medical & Engineering',
+    },
+    {
+      id: 'science_pcms',
+      label: 'Science (PCMS)',
+      riasec: ['I', 'C', 'R'],
+      aptitudeStrengths: ['logical', 'numerical', 'abstract'],
+      description: 'Physics, Chemistry, Maths, Computer Science - Engineering/IT',
+    },
+    {
+      id: 'science_pcm',
+      label: 'Science (PCM)',
+      riasec: ['R', 'I', 'C'],
+      aptitudeStrengths: ['numerical', 'spatial', 'logical'],
+      description: 'Physics, Chemistry, Maths - Engineering',
+    },
+    {
+      id: 'science_pcb',
+      label: 'Science (PCB)',
+      riasec: ['I', 'S', 'R'],
+      aptitudeStrengths: ['verbal', 'logical', 'numerical'],
+      description: 'Physics, Chemistry, Biology - Medical',
+    },
   ],
   commerce: [
-    { id: 'commerce_maths', label: 'Commerce with Maths', riasec: ['C', 'E', 'I'], aptitudeStrengths: ['numerical', 'logical', 'verbal'], description: 'For CA, Finance, Economics, Statistics' },
-    { id: 'commerce_general', label: 'Commerce without Maths', riasec: ['E', 'C', 'S'], aptitudeStrengths: ['verbal', 'numerical', 'logical'], description: 'For Business, Accounting, Management' },
+    {
+      id: 'commerce_maths',
+      label: 'Commerce with Maths',
+      riasec: ['C', 'E', 'I'],
+      aptitudeStrengths: ['numerical', 'logical', 'verbal'],
+      description: 'For CA, Finance, Economics, Statistics',
+    },
+    {
+      id: 'commerce_general',
+      label: 'Commerce without Maths',
+      riasec: ['E', 'C', 'S'],
+      aptitudeStrengths: ['verbal', 'numerical', 'logical'],
+      description: 'For Business, Accounting, Management',
+    },
   ],
   arts: [
-    { id: 'arts_psychology', label: 'Arts with Psychology', riasec: ['S', 'I', 'A'], aptitudeStrengths: ['verbal', 'logical', 'abstract'], description: 'Psychology, Sociology, English - For Counseling, HR, Social Work' },
-    { id: 'arts_economics', label: 'Arts with Economics', riasec: ['I', 'E', 'S'], aptitudeStrengths: ['verbal', 'numerical', 'logical'], description: 'Economics, Political Science, English - For Civil Services, Policy' },
-    { id: 'arts', label: 'Arts/Humanities General', riasec: ['A', 'S', 'I'], aptitudeStrengths: ['verbal', 'abstract', 'logical'], description: 'English, History, Geography - For Journalism, Law, Teaching' },
+    {
+      id: 'arts_psychology',
+      label: 'Arts with Psychology',
+      riasec: ['S', 'I', 'A'],
+      aptitudeStrengths: ['verbal', 'logical', 'abstract'],
+      description: 'Psychology, Sociology, English - For Counseling, HR, Social Work',
+    },
+    {
+      id: 'arts_economics',
+      label: 'Arts with Economics',
+      riasec: ['I', 'E', 'S'],
+      aptitudeStrengths: ['verbal', 'numerical', 'logical'],
+      description: 'Economics, Political Science, English - For Civil Services, Policy',
+    },
+    {
+      id: 'arts',
+      label: 'Arts/Humanities General',
+      riasec: ['A', 'S', 'I'],
+      aptitudeStrengths: ['verbal', 'abstract', 'logical'],
+      description: 'English, History, Geography - For Journalism, Law, Teaching',
+    },
   ],
 };
 
@@ -293,21 +442,22 @@ export const APTITUDE_SUBTAG_MAPPINGS: Record<string, string> = {
 // Course Personality Fit Mappings
 // ============================================
 
-export const COURSE_PERSONALITY_MAPPINGS: Record<string, { traits: string[]; weights: number[] }> = {
-  cs: { traits: ['O', 'C'], weights: [0.4, 0.4] },
-  bca: { traits: ['O', 'C'], weights: [0.4, 0.4] },
-  engineering: { traits: ['O', 'C'], weights: [0.4, 0.4] },
-  bba: { traits: ['E', 'C', 'A'], weights: [0.4, 0.3, 0.3] },
-  dm: { traits: ['E', 'C', 'A'], weights: [0.4, 0.3, 0.3] },
-  finance: { traits: ['E', 'C', 'A'], weights: [0.4, 0.3, 0.3] },
-  design: { traits: ['O', 'E'], weights: [0.5, 0.2] },
-  finearts: { traits: ['O', 'E'], weights: [0.5, 0.2] },
-  animation: { traits: ['O', 'E'], weights: [0.5, 0.2] },
-  medical: { traits: ['A', 'C'], weights: [0.4, 0.4] },
-  pharmacy: { traits: ['A', 'C'], weights: [0.4, 0.4] },
-  psychology: { traits: ['A', 'C'], weights: [0.4, 0.4] },
-  law: { traits: ['E', 'O', 'C'], weights: [0.35, 0.35, 0.3] },
-  journalism: { traits: ['E', 'O', 'C'], weights: [0.35, 0.35, 0.3] },
-  bcom: { traits: ['C', 'A'], weights: [0.5, 0.2] },
-  ca: { traits: ['C', 'A'], weights: [0.5, 0.2] },
-};
+export const COURSE_PERSONALITY_MAPPINGS: Record<string, { traits: string[]; weights: number[] }> =
+  {
+    cs: { traits: ['O', 'C'], weights: [0.4, 0.4] },
+    bca: { traits: ['O', 'C'], weights: [0.4, 0.4] },
+    engineering: { traits: ['O', 'C'], weights: [0.4, 0.4] },
+    bba: { traits: ['E', 'C', 'A'], weights: [0.4, 0.3, 0.3] },
+    dm: { traits: ['E', 'C', 'A'], weights: [0.4, 0.3, 0.3] },
+    finance: { traits: ['E', 'C', 'A'], weights: [0.4, 0.3, 0.3] },
+    design: { traits: ['O', 'E'], weights: [0.5, 0.2] },
+    finearts: { traits: ['O', 'E'], weights: [0.5, 0.2] },
+    animation: { traits: ['O', 'E'], weights: [0.5, 0.2] },
+    medical: { traits: ['A', 'C'], weights: [0.4, 0.4] },
+    pharmacy: { traits: ['A', 'C'], weights: [0.4, 0.4] },
+    psychology: { traits: ['A', 'C'], weights: [0.4, 0.4] },
+    law: { traits: ['E', 'O', 'C'], weights: [0.35, 0.35, 0.3] },
+    journalism: { traits: ['E', 'O', 'C'], weights: [0.35, 0.35, 0.3] },
+    bcom: { traits: ['C', 'A'], weights: [0.5, 0.2] },
+    ca: { traits: ['C', 'A'], weights: [0.5, 0.2] },
+  };

@@ -12,7 +12,6 @@ export class SavedJobsService {
    */
   static async saveJob(studentId, opportunityId) {
     try {
-
       // Check if already saved
       const { data: existing, error: checkError } = await supabase
         .from('saved_jobs')
@@ -26,7 +25,7 @@ export class SavedJobsService {
           success: true,
           message: 'Job is already saved',
           data: existing,
-          alreadySaved: true
+          alreadySaved: true,
         };
       }
 
@@ -36,8 +35,8 @@ export class SavedJobsService {
         .insert([
           {
             student_id: studentId,
-            opportunity_id: opportunityId
-          }
+            opportunity_id: opportunityId,
+          },
         ])
         .select()
         .single();
@@ -47,19 +46,18 @@ export class SavedJobsService {
         throw error;
       }
 
-
       return {
         success: true,
         message: 'Job saved successfully!',
         data,
-        alreadySaved: false
+        alreadySaved: false,
       };
     } catch (error) {
       console.error('❌ Error in saveJob:', error);
       return {
         success: false,
         message: error.message || 'Failed to save job',
-        error
+        error,
       };
     }
   }
@@ -72,7 +70,6 @@ export class SavedJobsService {
    */
   static async unsaveJob(studentId, opportunityId) {
     try {
-
       const { data, error } = await supabase
         .from('saved_jobs')
         .delete()
@@ -85,18 +82,17 @@ export class SavedJobsService {
         throw error;
       }
 
-
       return {
         success: true,
         message: 'Job unsaved successfully!',
-        data
+        data,
       };
     } catch (error) {
       console.error('❌ Error in unsaveJob:', error);
       return {
         success: false,
         message: error.message || 'Failed to unsave job',
-        error
+        error,
       };
     }
   }
@@ -115,13 +111,13 @@ export class SavedJobsService {
         const result = await this.unsaveJob(studentId, opportunityId);
         return {
           ...result,
-          isSaved: false
+          isSaved: false,
         };
       } else {
         const result = await this.saveJob(studentId, opportunityId);
         return {
           ...result,
-          isSaved: true
+          isSaved: true,
         };
       }
     } catch (error) {
@@ -129,7 +125,7 @@ export class SavedJobsService {
       return {
         success: false,
         message: error.message || 'Failed to toggle save status',
-        error
+        error,
       };
     }
   }
@@ -149,7 +145,8 @@ export class SavedJobsService {
         .eq('opportunity_id', opportunityId)
         .single();
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+      if (error && error.code !== 'PGRST116') {
+        // PGRST116 = no rows returned
         console.error('Error checking saved status:', error);
         return false;
       }
@@ -178,7 +175,7 @@ export class SavedJobsService {
         throw error;
       }
 
-      return data.map(item => item.opportunity_id);
+      return data.map((item) => item.opportunity_id);
     } catch (error) {
       console.error('Error in getSavedJobIds:', error);
       return [];
@@ -195,7 +192,8 @@ export class SavedJobsService {
     try {
       let query = supabase
         .from('saved_jobs')
-        .select(`
+        .select(
+          `
           *,
           opportunity:opportunities (
             id,
@@ -220,7 +218,8 @@ export class SavedJobsService {
             department,
             created_at
           )
-        `)
+        `
+        )
         .eq('student_id', studentId);
 
       // Apply filters
@@ -243,15 +242,15 @@ export class SavedJobsService {
       }
 
       // Map to flatten opportunity data and add applied status check
-      const savedJobs = data.map(item => ({
+      const savedJobs = data.map((item) => ({
         saved_job_id: item.id,
         saved_at: item.saved_at,
-        ...item.opportunity
+        ...item.opportunity,
       }));
 
       // Filter out inactive jobs if requested
       if (options.activeOnly) {
-        return savedJobs.filter(job => job.is_active);
+        return savedJobs.filter((job) => job.is_active);
       }
 
       return savedJobs;
@@ -283,16 +282,14 @@ export class SavedJobsService {
       }
 
       // Create a map for quick lookup
-      const appliedMap = new Map(
-        appliedJobs.map(app => [app.opportunity_id, app])
-      );
+      const appliedMap = new Map(appliedJobs.map((app) => [app.opportunity_id, app]));
 
       // Merge applied status
-      return savedJobs.map(job => ({
+      return savedJobs.map((job) => ({
         ...job,
         has_applied: appliedMap.has(job.id),
         application_status: appliedMap.get(job.id)?.application_status || null,
-        applied_at: appliedMap.get(job.id)?.applied_at || null
+        applied_at: appliedMap.get(job.id)?.applied_at || null,
       }));
     } catch (error) {
       console.error('Error in getSavedJobsWithAppliedStatus:', error);
@@ -330,17 +327,15 @@ export class SavedJobsService {
     try {
       // Get all saved jobs
       const savedJobs = await this.getSavedJobsWithDetails(studentId);
-      
+
       // Filter inactive ones
-      const inactiveJobIds = savedJobs
-        .filter(job => !job.is_active)
-        .map(job => job.id);
+      const inactiveJobIds = savedJobs.filter((job) => !job.is_active).map((job) => job.id);
 
       if (inactiveJobIds.length === 0) {
         return {
           success: true,
           message: 'No inactive saved jobs to remove',
-          count: 0
+          count: 0,
         };
       }
 
@@ -356,14 +351,14 @@ export class SavedJobsService {
       return {
         success: true,
         message: `Removed ${inactiveJobIds.length} inactive saved jobs`,
-        count: inactiveJobIds.length
+        count: inactiveJobIds.length,
       };
     } catch (error) {
       console.error('Error removing inactive saved jobs:', error);
       return {
         success: false,
         message: error.message || 'Failed to remove inactive jobs',
-        error
+        error,
       };
     }
   }
@@ -379,15 +374,15 @@ export class SavedJobsService {
 
       const stats = {
         total: savedJobs.length,
-        active: savedJobs.filter(job => job.is_active).length,
-        inactive: savedJobs.filter(job => !job.is_active).length,
-        applied: savedJobs.filter(job => job.has_applied).length,
-        not_applied: savedJobs.filter(job => !job.has_applied).length,
-        by_type: {}
+        active: savedJobs.filter((job) => job.is_active).length,
+        inactive: savedJobs.filter((job) => !job.is_active).length,
+        applied: savedJobs.filter((job) => job.has_applied).length,
+        not_applied: savedJobs.filter((job) => !job.has_applied).length,
+        by_type: {},
       };
 
       // Group by employment type
-      savedJobs.forEach(job => {
+      savedJobs.forEach((job) => {
         const type = job.employment_type || 'unknown';
         stats.by_type[type] = (stats.by_type[type] || 0) + 1;
       });
@@ -401,7 +396,7 @@ export class SavedJobsService {
         inactive: 0,
         applied: 0,
         not_applied: 0,
-        by_type: {}
+        by_type: {},
       };
     }
   }

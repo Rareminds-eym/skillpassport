@@ -1,7 +1,7 @@
 /**
  * Assessment System Type Definitions
  * Centralized types for the entire assessment feature
- * 
+ *
  * @module features/assessment/types
  */
 
@@ -37,13 +37,13 @@ export {
 // Grade Level Types
 // ============================================
 
-export type GradeLevel = 
-  | 'middle'           // Grades 6-8
-  | 'highschool'       // Grades 9-10
+export type GradeLevel =
+  | 'middle' // Grades 6-8
+  | 'highschool' // Grades 9-10
   | 'higher_secondary' // Grades 11-12
-  | 'after10'          // After 10th grade
-  | 'after12'          // After 12th grade
-  | 'college';         // UG/PG students
+  | 'after10' // After 10th grade
+  | 'after12' // After 12th grade
+  | 'college'; // UG/PG students
 
 export interface GradeRange {
   min: number;
@@ -75,12 +75,12 @@ export interface CategoryOption {
 // Question Types
 // ============================================
 
-export type QuestionType = 
-  | 'mcq'           // Multiple choice
-  | 'likert'        // Rating scale
-  | 'sjt'           // Situational judgment
-  | 'multiselect'   // Multiple selection
-  | 'text';         // Free text
+export type QuestionType =
+  | 'mcq' // Multiple choice
+  | 'likert' // Rating scale
+  | 'sjt' // Situational judgment
+  | 'multiselect' // Multiple selection
+  | 'text'; // Free text
 
 export interface Question {
   id: string | number;
@@ -129,12 +129,7 @@ export interface SJTAnswer {
   worst: string;
 }
 
-export type AnswerValue = 
-  | number 
-  | string 
-  | string[] 
-  | SJTAnswer 
-  | undefined;
+export type AnswerValue = number | string | string[] | SJTAnswer | undefined;
 
 export interface Answers {
   [questionId: string]: AnswerValue;
@@ -369,7 +364,7 @@ export interface Education {
 // Assessment Flow State Types
 // ============================================
 
-export type AssessmentFlowStatus = 
+export type AssessmentFlowStatus =
   | 'idle'
   | 'checkingEligibility'
   | 'gradeSelection'

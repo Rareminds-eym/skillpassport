@@ -42,7 +42,7 @@ const CurriculumChangeRequests: React.FC = () => {
       const result = await curriculumChangeRequestService.getAllPendingChangesForUniversity(
         'your-university-id' // Replace with actual university ID
       );
-      
+
       if (result.success && result.data) {
         setChanges(result.data);
       }
@@ -69,17 +69,18 @@ const CurriculumChangeRequests: React.FC = () => {
     }
 
     try {
-      const result = reviewAction === 'approve'
-        ? await curriculumChangeRequestService.approveChange(
-            selectedChange.curriculum_id,
-            selectedChange.change_id,
-            reviewNotes
-          )
-        : await curriculumChangeRequestService.rejectChange(
-            selectedChange.curriculum_id,
-            selectedChange.change_id,
-            reviewNotes
-          );
+      const result =
+        reviewAction === 'approve'
+          ? await curriculumChangeRequestService.approveChange(
+              selectedChange.curriculum_id,
+              selectedChange.change_id,
+              reviewNotes
+            )
+          : await curriculumChangeRequestService.rejectChange(
+              selectedChange.curriculum_id,
+              selectedChange.change_id,
+              reviewNotes
+            );
 
       if (result.success) {
         toast.success(`Change ${reviewAction}d successfully!`);
@@ -98,14 +99,22 @@ const CurriculumChangeRequests: React.FC = () => {
 
   const getChangeIcon = (changeType: string) => {
     switch (changeType) {
-      case 'unit_add': return '➕';
-      case 'unit_edit': return '📝';
-      case 'unit_delete': return '🗑️';
-      case 'outcome_add': return '➕';
-      case 'outcome_edit': return '📝';
-      case 'outcome_delete': return '🗑️';
-      case 'curriculum_edit': return '📋';
-      default: return '📄';
+      case 'unit_add':
+        return '➕';
+      case 'unit_edit':
+        return '📝';
+      case 'unit_delete':
+        return '🗑️';
+      case 'outcome_add':
+        return '➕';
+      case 'outcome_edit':
+        return '📝';
+      case 'outcome_delete':
+        return '🗑️';
+      case 'curriculum_edit':
+        return '📋';
+      default:
+        return '📄';
     }
   };
 
@@ -132,12 +141,8 @@ const CurriculumChangeRequests: React.FC = () => {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Curriculum Change Requests
-          </h1>
-          <p className="text-gray-600">
-            Review and approve changes from affiliated colleges
-          </p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Curriculum Change Requests</h1>
+          <p className="text-gray-600">Review and approve changes from affiliated colleges</p>
         </div>
 
         {/* Stats */}
@@ -159,12 +164,8 @@ const CurriculumChangeRequests: React.FC = () => {
         {changes.length === 0 ? (
           <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
             <AcademicCapIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              No Pending Changes
-            </h3>
-            <p className="text-gray-600">
-              All curriculum change requests have been reviewed
-            </p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Pending Changes</h3>
+            <p className="text-gray-600">All curriculum change requests have been reviewed</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -178,7 +179,9 @@ const CurriculumChangeRequests: React.FC = () => {
                     <span className="text-3xl">{getChangeIcon(change.change_type)}</span>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <span className={`px-2 py-1 rounded text-xs font-medium border ${getChangeColor(change.change_type)}`}>
+                        <span
+                          className={`px-2 py-1 rounded text-xs font-medium border ${getChangeColor(change.change_type)}`}
+                        >
                           {change.change_type.replace('_', ' ').toUpperCase()}
                         </span>
                         <span className="text-sm text-gray-500">•</span>
@@ -188,7 +191,8 @@ const CurriculumChangeRequests: React.FC = () => {
                         {change.curriculum_name}
                       </h3>
                       <p className="text-sm text-gray-600 mb-3">
-                        Requested by {change.requester_name} • {new Date(change.timestamp).toLocaleDateString()}
+                        Requested by {change.requester_name} •{' '}
+                        {new Date(change.timestamp).toLocaleDateString()}
                       </p>
                       {change.request_message && (
                         <div className="bg-gray-50 rounded-lg p-3 mb-3">
@@ -253,9 +257,7 @@ const CurriculumChangeRequests: React.FC = () => {
                   <h2 className="text-xl font-semibold text-gray-900">
                     {reviewAction === 'approve' ? 'Approve' : 'Reject'} Change Request
                   </h2>
-                  <p className="mt-1 text-sm text-gray-500">
-                    {selectedChange.curriculum_name}
-                  </p>
+                  <p className="mt-1 text-sm text-gray-500">{selectedChange.curriculum_name}</p>
                 </div>
                 <button
                   onClick={() => setShowReviewModal(false)}
@@ -265,22 +267,26 @@ const CurriculumChangeRequests: React.FC = () => {
                 </button>
               </div>
               <div className="p-6">
-                <div className={`mb-4 p-4 rounded-lg border ${
-                  reviewAction === 'approve' 
-                    ? 'bg-green-50 border-green-200' 
-                    : 'bg-red-50 border-red-200'
-                }`}>
+                <div
+                  className={`mb-4 p-4 rounded-lg border ${
+                    reviewAction === 'approve'
+                      ? 'bg-green-50 border-green-200'
+                      : 'bg-red-50 border-red-200'
+                  }`}
+                >
                   <div className="flex items-start gap-3">
                     {reviewAction === 'approve' ? (
                       <CheckCircleIcon className="h-5 w-5 text-green-600 mt-0.5" />
                     ) : (
                       <ExclamationTriangleIcon className="h-5 w-5 text-red-600 mt-0.5" />
                     )}
-                    <div className={`text-sm ${
-                      reviewAction === 'approve' ? 'text-green-800' : 'text-red-800'
-                    }`}>
+                    <div
+                      className={`text-sm ${
+                        reviewAction === 'approve' ? 'text-green-800' : 'text-red-800'
+                      }`}
+                    >
                       <p className="font-medium mb-1">
-                        {reviewAction === 'approve' 
+                        {reviewAction === 'approve'
                           ? 'Approving this change will apply it to the published curriculum'
                           : 'Rejecting this change will notify the college admin'}
                       </p>
@@ -290,7 +296,8 @@ const CurriculumChangeRequests: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Review Notes {reviewAction === 'reject' && <span className="text-red-500">*</span>}
+                    Review Notes{' '}
+                    {reviewAction === 'reject' && <span className="text-red-500">*</span>}
                   </label>
                   <textarea
                     value={reviewNotes}

@@ -16,8 +16,16 @@ export interface CollegeEvent {
   updated_at: string;
 }
 
-export type EventType = "seminar" | "workshop" | "cultural" | "sports" | "placement" | "guest_lecture" | "orientation" | "other";
-export type EventStatus = "draft" | "published" | "cancelled" | "completed";
+export type EventType =
+  | 'seminar'
+  | 'workshop'
+  | 'cultural'
+  | 'sports'
+  | 'placement'
+  | 'guest_lecture'
+  | 'orientation'
+  | 'other';
+export type EventStatus = 'draft' | 'published' | 'cancelled' | 'completed';
 
 export interface EventRegistration {
   id: string;
@@ -49,4 +57,4 @@ export interface WeekEvent {
   isEventEnd: boolean;
 }
 
-export type CalendarView = "month" | "week" | "day";
+export type CalendarView = 'month' | 'week' | 'day';

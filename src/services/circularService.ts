@@ -139,10 +139,7 @@ class CircularService {
     college_id?: string;
     search?: string;
   }): Promise<Circular[]> {
-    let query = supabase
-      .from('circulars')
-      .select('*')
-      .order('created_at', { ascending: false });
+    let query = supabase.from('circulars').select('*').order('created_at', { ascending: false });
 
     if (filters?.status) {
       query = query.eq('status', filters.status);
@@ -165,11 +162,7 @@ class CircularService {
    * Get a single circular
    */
   async getCircular(id: string): Promise<Circular> {
-    const { data, error } = await supabase
-      .from('circulars')
-      .select('*')
-      .eq('id', id)
-      .single();
+    const { data, error } = await supabase.from('circulars').select('*').eq('id', id).single();
 
     if (error) throw error;
     return data;
@@ -184,10 +177,12 @@ class CircularService {
 
     const { data, error } = await supabase
       .from('circulars')
-      .select(`
+      .select(
+        `
         *,
         circular_recipients!inner(is_read, read_at)
-      `)
+      `
+      )
       .eq('circular_recipients.user_id', user.user.id)
       .eq('status', 'published')
       .order('publish_date', { ascending: false });
@@ -281,9 +276,7 @@ class CircularService {
 
     if (uploadError) throw uploadError;
 
-    const { data } = supabase.storage
-      .from('circular-attachments')
-      .getPublicUrl(fileName);
+    const { data } = supabase.storage.from('circular-attachments').getPublicUrl(fileName);
 
     return data.publicUrl;
   }

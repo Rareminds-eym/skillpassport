@@ -27,7 +27,7 @@ import DetailedAssessmentBreakdown from './shared/DetailedAssessmentBreakdown';
 /**
  * PrintViewHigherSecondary Component
  * Renders assessment report for higher secondary and post-12th students
- * 
+ *
  * @param {Object} props - Component props
  * @param {Object} props.results - Assessment results data
  * @param {Object} props.studentInfo - Student information
@@ -38,14 +38,14 @@ import DetailedAssessmentBreakdown from './shared/DetailedAssessmentBreakdown';
  * @param {Object} props.studentAcademicData - Student academic data (optional)
  * @returns {JSX.Element} - Print view component
  */
-const PrintViewHigherSecondary = ({ 
-  results, 
-  studentInfo, 
-  riasecNames, 
+const PrintViewHigherSecondary = ({
+  results,
+  studentInfo,
+  riasecNames,
   traitNames,
   courseRecommendations,
   streamRecommendation,
-  studentAcademicData
+  studentAcademicData,
 }) => {
   // Handle null results
   if (!results) {
@@ -92,9 +92,7 @@ const PrintViewHigherSecondary = ({
 
         {/* Page 2: Cognitive Abilities */}
         <PrintPage pageNumber={2}>
-          {aptitude && (
-            <CognitiveAbilitiesSection aptitude={aptitude} />
-          )}
+          {aptitude && <CognitiveAbilitiesSection aptitude={aptitude} />}
         </PrintPage>
 
         {/* Page 3: Big Five Personality & Work Values */}
@@ -102,15 +100,13 @@ const PrintViewHigherSecondary = ({
           {bigFive && (
             <BigFivePersonalitySection bigFive={bigFive} safeTraitNames={safeTraitNames} />
           )}
-          {workValues && (
-            <WorkValuesSection workValues={workValues} />
-          )}
+          {workValues && <WorkValuesSection workValues={workValues} />}
         </PrintPage>
 
         {/* Page 4: Detailed Assessment Breakdown (Developer Reference) */}
         <PrintPage pageNumber={4}>
-          <DetailedAssessmentBreakdown 
-            results={results} 
+          <DetailedAssessmentBreakdown
+            results={results}
             riasecNames={safeRiasecNames}
             gradeLevel="after10"
           />
@@ -118,23 +114,17 @@ const PrintViewHigherSecondary = ({
 
         {/* Page 5: Career Fit Analysis */}
         <PrintPage pageNumber={5}>
-          {careerFit && (
-            <CareerFitAnalysisSection careerFit={careerFit} />
-          )}
+          {careerFit && <CareerFitAnalysisSection careerFit={careerFit} />}
         </PrintPage>
 
         {/* Page 6: Skill Gap & Development Plan */}
         <PrintPage pageNumber={6}>
-          {skillGap && (
-            <SkillGapDevelopmentSection skillGap={skillGap} />
-          )}
+          {skillGap && <SkillGapDevelopmentSection skillGap={skillGap} />}
         </PrintPage>
 
         {/* Page 7: Development Roadmap */}
         <PrintPage pageNumber={7}>
-          {roadmap && (
-            <DevelopmentRoadmapSection roadmap={roadmap} />
-          )}
+          {roadmap && <DevelopmentRoadmapSection roadmap={roadmap} />}
         </PrintPage>
 
         {/* Page 8: Stream Recommendation (if available) */}
@@ -146,43 +136,39 @@ const PrintViewHigherSecondary = ({
 
         {/* Page 9 (or 8 if no stream): Course Recommendations (if available) */}
         {courseRecommendations && courseRecommendations.length > 0 && (
-          <PrintPage pageNumber={streamRecommendation && streamRecommendation.recommendedStream ? 9 : 8}>
+          <PrintPage
+            pageNumber={streamRecommendation && streamRecommendation.recommendedStream ? 9 : 8}
+          >
             <CourseRecommendationsSection courseRecommendations={courseRecommendations} />
           </PrintPage>
         )}
 
         {/* Final Page: Disclaimer */}
-        <PrintPage pageNumber={
-          (streamRecommendation && streamRecommendation.recommendedStream ? 1 : 0) +
-          (courseRecommendations && courseRecommendations.length > 0 ? 1 : 0) + 7
-        }>
+        <PrintPage
+          pageNumber={
+            (streamRecommendation && streamRecommendation.recommendedStream ? 1 : 0) +
+            (courseRecommendations && courseRecommendations.length > 0 ? 1 : 0) +
+            7
+          }
+        >
           <ReportDisclaimer />
         </PrintPage>
       </div>
 
       {/* Screen-only continuous content (hidden in print) */}
-      <div className="print-content" style={{ position: 'relative', zIndex: 1, paddingBottom: '70px' }}>
+      <div
+        className="print-content"
+        style={{ position: 'relative', zIndex: 1, paddingBottom: '70px' }}
+      >
         <DataPrivacyNotice />
         <h2 style={printStyles.sectionTitle}>1. Student Profile Snapshot</h2>
         <InterestProfileSection riasec={riasec} safeRiasecNames={safeRiasecNames} />
-        {aptitude && (
-          <CognitiveAbilitiesSection aptitude={aptitude} />
-        )}
-        {bigFive && (
-          <BigFivePersonalitySection bigFive={bigFive} safeTraitNames={safeTraitNames} />
-        )}
-        {workValues && (
-          <WorkValuesSection workValues={workValues} />
-        )}
-        {careerFit && (
-          <CareerFitAnalysisSection careerFit={careerFit} />
-        )}
-        {skillGap && (
-          <SkillGapDevelopmentSection skillGap={skillGap} />
-        )}
-        {roadmap && (
-          <DevelopmentRoadmapSection roadmap={roadmap} />
-        )}
+        {aptitude && <CognitiveAbilitiesSection aptitude={aptitude} />}
+        {bigFive && <BigFivePersonalitySection bigFive={bigFive} safeTraitNames={safeTraitNames} />}
+        {workValues && <WorkValuesSection workValues={workValues} />}
+        {careerFit && <CareerFitAnalysisSection careerFit={careerFit} />}
+        {skillGap && <SkillGapDevelopmentSection skillGap={skillGap} />}
+        {roadmap && <DevelopmentRoadmapSection roadmap={roadmap} />}
         {streamRecommendation && streamRecommendation.recommendedStream && (
           <StreamRecommendationSection streamRecommendation={streamRecommendation} />
         )}
@@ -205,45 +191,53 @@ const InterestProfileSection = ({ riasec, safeRiasecNames }) => {
 
   const maxScore = riasec.maxScore || 20;
   const codes = ['R', 'I', 'A', 'S', 'E', 'C'];
-  
-  // Get top three interests
-  const topThree = riasec.topThree || codes
-    .map(code => ({ code, score: riasec.scores[code] || 0 }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 3)
-    .map(item => item.code);
 
-  const topInterestsText = topThree.map(code => safeRiasecNames[code]).join(', ');
-  const hasStrongInterests = topThree.some(code => (riasec.scores?.[code] || 0) >= maxScore * 0.5);
+  // Get top three interests
+  const topThree =
+    riasec.topThree ||
+    codes
+      .map((code) => ({ code, score: riasec.scores[code] || 0 }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3)
+      .map((item) => item.code);
+
+  const topInterestsText = topThree.map((code) => safeRiasecNames[code]).join(', ');
+  const hasStrongInterests = topThree.some(
+    (code) => (riasec.scores?.[code] || 0) >= maxScore * 0.5
+  );
 
   return (
     <div>
       <h3 style={printStyles.subTitle}>Interest Explorer Results</h3>
 
       {/* RIASEC Infographic Layout with Central Circle */}
-      <div style={{
-        position: 'relative',
-        padding: '0',
-        marginTop: '0',
-        marginBottom: '0',
-        minHeight: '220px'
-      }}>
+      <div
+        style={{
+          position: 'relative',
+          padding: '0',
+          marginTop: '0',
+          marginBottom: '0',
+          minHeight: '220px',
+        }}
+      >
         {/* SVG for connecting lines */}
-        <svg style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          pointerEvents: 'none',
-          zIndex: 0
-        }}>
+        <svg
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            pointerEvents: 'none',
+            zIndex: 0,
+          }}
+        >
           {/* Dotted lines from red dots to central RIASEC circle */}
           {topThree.map((code, idx) => {
             const positions = [
               { x1: '14%', y1: '60%', x2: '50%', y2: '78%' },
               { x1: '50%', y1: '30%', x2: '50%', y2: '78%' },
-              { x1: '86%', y1: '60%', x2: '50%', y2: '78%' }
+              { x1: '86%', y1: '60%', x2: '50%', y2: '78%' },
             ];
             const pos = positions[idx];
             return (
@@ -261,64 +255,104 @@ const InterestProfileSection = ({ riasec, safeRiasecNames }) => {
             );
           })}
           {/* Vertical lines from red dots to diagonal start for cards 1 and 3 */}
-          <line x1="14%" y1="30%" x2="14%" y2="60%" stroke="#000000" strokeWidth="1" strokeDasharray="2,4" strokeLinecap="round" />
-          <line x1="86%" y1="30%" x2="86%" y2="60%" stroke="#000000" strokeWidth="1" strokeDasharray="2,4" strokeLinecap="round" />
+          <line
+            x1="14%"
+            y1="30%"
+            x2="14%"
+            y2="60%"
+            stroke="#000000"
+            strokeWidth="1"
+            strokeDasharray="2,4"
+            strokeLinecap="round"
+          />
+          <line
+            x1="86%"
+            y1="30%"
+            x2="86%"
+            y2="60%"
+            stroke="#000000"
+            strokeWidth="1"
+            strokeDasharray="2,4"
+            strokeLinecap="round"
+          />
         </svg>
 
         {/* Top 3 Interest Cards */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          position: 'relative',
-          zIndex: 1
-        }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            position: 'relative',
+            zIndex: 1,
+          }}
+        >
           {topThree.map((code, idx) => {
             const score = riasec.scores?.[code] || 0;
-            
+
             return (
               <div key={code} style={{ width: '28%', textAlign: 'center' }}>
-                <div style={{ fontWeight: 'bold', fontSize: '11px', color: '#1e293b', marginBottom: '4px' }}>
+                <div
+                  style={{
+                    fontWeight: 'bold',
+                    fontSize: '11px',
+                    color: '#1e293b',
+                    marginBottom: '4px',
+                  }}
+                >
                   {safeRiasecNames[code]} ({code})
                 </div>
-                <p style={{ fontSize: '8px', color: '#4b5563', margin: '0 0 8px 0', lineHeight: '1.3' }}>
+                <p
+                  style={{
+                    fontSize: '8px',
+                    color: '#4b5563',
+                    margin: '0 0 8px 0',
+                    lineHeight: '1.3',
+                  }}
+                >
                   {riasecDescriptions[code]}
                 </p>
-                <div style={{
-                  display: 'inline-block',
-                  padding: '4px 12px',
-                  background: '#e0f2fe',
-                  borderRadius: '12px',
-                  fontSize: '9px',
-                  fontWeight: '600',
-                  color: '#0369a1',
-                  marginBottom: '8px'
-                }}>
+                <div
+                  style={{
+                    display: 'inline-block',
+                    padding: '4px 12px',
+                    background: '#e0f2fe',
+                    borderRadius: '12px',
+                    fontSize: '9px',
+                    fontWeight: '600',
+                    color: '#0369a1',
+                    marginBottom: '8px',
+                  }}
+                >
                   {score}/{maxScore}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'center', position: 'relative' }}>
-                  <div style={{
-                    width: '70px',
-                    height: '70px',
-                    borderRadius: '50%',
-                    border: '2px solid #1e3a5f',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: 'white'
-                  }}>
+                  <div
+                    style={{
+                      width: '70px',
+                      height: '70px',
+                      borderRadius: '50%',
+                      border: '2px solid #1e3a5f',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: 'white',
+                    }}
+                  >
                     <RiasecIcon code={code} size={42} />
                   </div>
-                  <div style={{
-                    position: 'absolute',
-                    bottom: '-5px',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    background: '#ef4444'
-                  }}></div>
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: '-5px',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      background: '#ef4444',
+                    }}
+                  ></div>
                 </div>
               </div>
             );
@@ -326,51 +360,61 @@ const InterestProfileSection = ({ riasec, safeRiasecNames }) => {
         </div>
 
         {/* Central RIASEC Circle */}
-        <div style={{
-          position: 'absolute',
-          bottom: '10px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          textAlign: 'center',
-          zIndex: 1
-        }}>
-          <div style={{
-            width: '100px',
-            height: '100px',
-            borderRadius: '50%',
-            border: '3px dashed #1e3a5f',
-            background: 'white',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-          }}>
-            <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#000000', marginBottom: '2px' }}>
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '10px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            textAlign: 'center',
+            zIndex: 1,
+          }}
+        >
+          <div
+            style={{
+              width: '100px',
+              height: '100px',
+              borderRadius: '50%',
+              border: '3px dashed #1e3a5f',
+              background: 'white',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            }}
+          >
+            <div
+              style={{
+                fontSize: '14px',
+                fontWeight: 'bold',
+                color: '#000000',
+                marginBottom: '2px',
+              }}
+            >
               RIASEC
             </div>
-            <div style={{ fontSize: '9px', color: '#000000' }}>
-              Interest
-            </div>
-            <div style={{ fontSize: '9px', color: '#000000' }}>
-              Profile
-            </div>
+            <div style={{ fontSize: '9px', color: '#000000' }}>Interest</div>
+            <div style={{ fontSize: '9px', color: '#000000' }}>Profile</div>
           </div>
         </div>
       </div>
 
       {/* Bottom Summary Text */}
-      <div style={{ 
-        fontSize: '9px', 
-        color: '#6b7280', 
-        fontStyle: 'italic', 
-        lineHeight: '1.5',
-        marginTop: '0',
-        marginBottom: '0',
-        textAlign: 'left'
-      }}>
-        <strong>Your Top Interests:</strong> {topInterestsText}. {hasStrongInterests 
-          ? 'These interests indicate your natural preferences and can guide your career exploration.' 
+      <div
+        style={{
+          fontSize: '9px',
+          color: '#6b7280',
+          fontStyle: 'italic',
+          lineHeight: '1.5',
+          marginTop: '0',
+          marginBottom: '0',
+          textAlign: 'left',
+        }}
+      >
+        <strong>Your Top Interests:</strong> {topInterestsText}.{' '}
+        {hasStrongInterests
+          ? 'These interests indicate your natural preferences and can guide your career exploration.'
           : 'The student has not expressed any strong interests in any of the RIASEC categories, indicating a need for exploration in various fields.'}
       </div>
     </div>
@@ -394,33 +438,46 @@ const CognitiveAbilitiesSection = ({ aptitude }) => {
         {Object.entries(aptitude.scores).map(([ability, scoreData]) => {
           const correct = scoreData.correct || 0;
           const total = scoreData.total || 0;
-          const percentage = scoreData.percentage || (total > 0 ? Math.round((correct / total) * 100) : 0);
+          const percentage =
+            scoreData.percentage || (total > 0 ? Math.round((correct / total) * 100) : 0);
           const scoreStyle = getScoreStyle(percentage);
 
           return (
             <div key={ability} style={printStyles.card}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '6px',
+                }}
+              >
                 <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b' }}>
                   {ability}
                 </div>
-                <span style={{
-                  ...printStyles.badge,
-                  background: scoreStyle.bg,
-                  color: scoreStyle.color,
-                  border: `1px solid ${scoreStyle.border}`
-                }}>
+                <span
+                  style={{
+                    ...printStyles.badge,
+                    background: scoreStyle.bg,
+                    color: scoreStyle.color,
+                    border: `1px solid ${scoreStyle.border}`,
+                  }}
+                >
                   {correct}/{total}
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div style={{ flex: 1 }}>
                   <div style={printStyles.progressBar}>
-                    <div style={{
-                      width: `${percentage}%`,
-                      height: '100%',
-                      background: percentage >= 70 ? '#22c55e' : percentage >= 40 ? '#eab308' : '#ef4444',
-                      borderRadius: '4px'
-                    }}></div>
+                    <div
+                      style={{
+                        width: `${percentage}%`,
+                        height: '100%',
+                        background:
+                          percentage >= 70 ? '#22c55e' : percentage >= 40 ? '#eab308' : '#ef4444',
+                        borderRadius: '4px',
+                      }}
+                    ></div>
                   </div>
                 </div>
                 <span style={{ fontSize: '9px', fontWeight: '600', color: scoreStyle.color }}>
@@ -449,12 +506,14 @@ const BigFivePersonalitySection = ({ bigFive, safeTraitNames }) => {
     C: 'Conscientiousness',
     E: 'Extraversion',
     A: 'Agreeableness',
-    N: 'Neuroticism'
+    N: 'Neuroticism',
   };
 
   return (
     <>
-      <h2 style={{ ...printStyles.sectionTitle, marginTop: '0' }}>3. Big Five Personality Traits</h2>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '0' }}>
+        3. Big Five Personality Traits
+      </h2>
 
       <div style={printStyles.twoCol}>
         {traits.map((trait) => {
@@ -464,33 +523,51 @@ const BigFivePersonalitySection = ({ bigFive, safeTraitNames }) => {
 
           return (
             <div key={trait} style={printStyles.card}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '6px',
+                }}
+              >
                 <div>
-                  <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '2px' }}>
+                  <div
+                    style={{
+                      fontWeight: 'bold',
+                      fontSize: '10px',
+                      color: '#1e293b',
+                      marginBottom: '2px',
+                    }}
+                  >
                     {safeTraitNames[trait] || trait}
                   </div>
                   <div style={{ fontSize: '8px', color: '#6b7280' }}>
                     {traitDescriptions[trait]}
                   </div>
                 </div>
-                <span style={{
-                  ...printStyles.badge,
-                  background: scoreStyle.bg,
-                  color: scoreStyle.color,
-                  border: `1px solid ${scoreStyle.border}`,
-                  fontSize: '10px',
-                  fontWeight: 'bold'
-                }}>
+                <span
+                  style={{
+                    ...printStyles.badge,
+                    background: scoreStyle.bg,
+                    color: scoreStyle.color,
+                    border: `1px solid ${scoreStyle.border}`,
+                    fontSize: '10px',
+                    fontWeight: 'bold',
+                  }}
+                >
                   {percentage}%
                 </span>
               </div>
               <div style={printStyles.progressBar}>
-                <div style={{
-                  width: `${percentage}%`,
-                  height: '100%',
-                  background: scoreStyle.color,
-                  borderRadius: '4px'
-                }}></div>
+                <div
+                  style={{
+                    width: `${percentage}%`,
+                    height: '100%',
+                    background: scoreStyle.color,
+                    borderRadius: '4px',
+                  }}
+                ></div>
               </div>
             </div>
           );
@@ -499,8 +576,17 @@ const BigFivePersonalitySection = ({ bigFive, safeTraitNames }) => {
 
       {/* Work Style Summary */}
       {bigFive.workStyleSummary && (
-        <div style={{ ...printStyles.card, marginTop: '15px', background: '#f0f9ff', border: '1px solid #bae6fd' }}>
-          <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#0369a1', marginBottom: '6px' }}>
+        <div
+          style={{
+            ...printStyles.card,
+            marginTop: '15px',
+            background: '#f0f9ff',
+            border: '1px solid #bae6fd',
+          }}
+        >
+          <div
+            style={{ fontWeight: 'bold', fontSize: '10px', color: '#0369a1', marginBottom: '6px' }}
+          >
             Work Style Summary
           </div>
           <p style={{ margin: '0', fontSize: '9px', lineHeight: '1.5', color: '#475569' }}>
@@ -533,30 +619,35 @@ const WorkValuesSection = ({ workValues }) => {
           const priorityColors = [
             { bg: '#dcfce7', color: '#166534', border: '#86efac' },
             { bg: '#fef9c3', color: '#854d0e', border: '#fde047' },
-            { bg: '#dbeafe', color: '#1e40af', border: '#93c5fd' }
+            { bg: '#dbeafe', color: '#1e40af', border: '#93c5fd' },
           ];
           const colors = priorityColors[idx] || priorityColors[2];
 
           return (
             <div key={idx} style={printStyles.card}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '4px',
+                }}
+              >
                 <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b' }}>
                   {value}
                 </div>
-                <span style={{
-                  ...printStyles.badge,
-                  background: colors.bg,
-                  color: colors.color,
-                  border: `1px solid ${colors.border}`
-                }}>
+                <span
+                  style={{
+                    ...printStyles.badge,
+                    background: colors.bg,
+                    color: colors.color,
+                    border: `1px solid ${colors.border}`,
+                  }}
+                >
                   {priorityLabels[idx]}
                 </span>
               </div>
-              {score > 0 && (
-                <div style={{ fontSize: '9px', color: '#6b7280' }}>
-                  Score: {score}
-                </div>
-              )}
+              {score > 0 && <div style={{ fontSize: '9px', color: '#6b7280' }}>Score: {score}</div>}
             </div>
           );
         })}
@@ -587,18 +678,27 @@ const CareerFitAnalysisSection = ({ careerFit }) => {
 
           return (
             <div key={idx} style={printStyles.card}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  marginBottom: '6px',
+                }}
+              >
                 <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', flex: 1 }}>
                   {name}
                 </div>
                 {fitScore > 0 && (
-                  <span style={{
-                    ...printStyles.badge,
-                    background: scoreStyle.bg,
-                    color: scoreStyle.color,
-                    border: `1px solid ${scoreStyle.border}`,
-                    marginLeft: '8px'
-                  }}>
+                  <span
+                    style={{
+                      ...printStyles.badge,
+                      background: scoreStyle.bg,
+                      color: scoreStyle.color,
+                      border: `1px solid ${scoreStyle.border}`,
+                      marginLeft: '8px',
+                    }}
+                  >
                     {fitScore}% Fit
                   </span>
                 )}
@@ -626,7 +726,9 @@ const SkillGapDevelopmentSection = ({ skillGap }) => {
 
   return (
     <>
-      <h2 style={{ ...printStyles.sectionTitle, marginTop: '0' }}>6. Skill Gap & Development Plan</h2>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '0' }}>
+        6. Skill Gap & Development Plan
+      </h2>
 
       {/* Current Skills */}
       {skillGap.currentSkills && skillGap.currentSkills.length > 0 && (
@@ -640,7 +742,7 @@ const SkillGapDevelopmentSection = ({ skillGap }) => {
                   ...printStyles.badge,
                   background: '#dcfce7',
                   color: '#166534',
-                  border: '1px solid #86efac'
+                  border: '1px solid #86efac',
                 }}
               >
                 {safeRender(skill)}
@@ -662,7 +764,7 @@ const SkillGapDevelopmentSection = ({ skillGap }) => {
                   ...printStyles.badge,
                   background: '#dbeafe',
                   color: '#1e40af',
-                  border: '1px solid #93c5fd'
+                  border: '1px solid #93c5fd',
                 }}
               >
                 {safeRender(skill)}
@@ -683,22 +785,30 @@ const SkillGapDevelopmentSection = ({ skillGap }) => {
               const priorityColors = {
                 High: { bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' },
                 Medium: { bg: '#fef9c3', color: '#854d0e', border: '#fde047' },
-                Low: { bg: '#dcfce7', color: '#166534', border: '#86efac' }
+                Low: { bg: '#dcfce7', color: '#166534', border: '#86efac' },
               };
               const colors = priorityColors[priority] || priorityColors.Medium;
 
               return (
                 <div key={idx} style={printStyles.card}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
                     <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b' }}>
                       {skill}
                     </div>
-                    <span style={{
-                      ...printStyles.badge,
-                      background: colors.bg,
-                      color: colors.color,
-                      border: `1px solid ${colors.border}`
-                    }}>
+                    <span
+                      style={{
+                        ...printStyles.badge,
+                        background: colors.bg,
+                        color: colors.color,
+                        border: `1px solid ${colors.border}`,
+                      }}
+                    >
                       {priority}
                     </span>
                   </div>
@@ -729,17 +839,26 @@ const DevelopmentRoadmapSection = ({ roadmap }) => {
         <div style={{ marginTop: '5px' }}>
           {roadmap.phases.map((phase, idx) => (
             <div key={idx} style={{ ...printStyles.card, marginBottom: '6px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '8px',
+                }}
+              >
                 <div style={{ fontWeight: 'bold', fontSize: '11px', color: '#4f46e5' }}>
                   {safeRender(phase.phase || `Phase ${idx + 1}`)}
                 </div>
                 {phase.duration && (
-                  <span style={{
-                    ...printStyles.badge,
-                    background: '#e0e7ff',
-                    color: '#4338ca',
-                    border: '1px solid #a5b4fc'
-                  }}>
+                  <span
+                    style={{
+                      ...printStyles.badge,
+                      background: '#e0e7ff',
+                      color: '#4338ca',
+                      border: '1px solid #a5b4fc',
+                    }}
+                  >
                     {phase.duration}
                   </span>
                 )}
@@ -748,10 +867,25 @@ const DevelopmentRoadmapSection = ({ roadmap }) => {
               {/* Phase Goals */}
               {phase.goals && phase.goals.length > 0 && (
                 <div>
-                  <div style={{ fontSize: '9px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>
+                  <div
+                    style={{
+                      fontSize: '9px',
+                      fontWeight: '600',
+                      color: '#374151',
+                      marginBottom: '4px',
+                    }}
+                  >
                     Goals:
                   </div>
-                  <ul style={{ margin: '0', paddingLeft: '18px', fontSize: '9px', color: '#4b5563', lineHeight: '1.5' }}>
+                  <ul
+                    style={{
+                      margin: '0',
+                      paddingLeft: '18px',
+                      fontSize: '9px',
+                      color: '#4b5563',
+                      lineHeight: '1.5',
+                    }}
+                  >
                     {phase.goals.map((goal, goalIdx) => (
                       <li key={goalIdx}>{safeRender(goal)}</li>
                     ))}
@@ -770,7 +904,14 @@ const DevelopmentRoadmapSection = ({ roadmap }) => {
           <div style={{ marginTop: '8px' }}>
             {roadmap.twelveMonthJourney.map((item, idx) => (
               <div key={idx} style={{ ...printStyles.card, marginBottom: '8px' }}>
-                <div style={{ fontWeight: 'bold', fontSize: '9px', color: '#4f46e5', marginBottom: '3px' }}>
+                <div
+                  style={{
+                    fontWeight: 'bold',
+                    fontSize: '9px',
+                    color: '#4f46e5',
+                    marginBottom: '3px',
+                  }}
+                >
                   {safeRender(item.month || `Month ${idx + 1}`)}
                 </div>
                 <p style={{ fontSize: '9px', color: '#4b5563', margin: '0', lineHeight: '1.4' }}>
@@ -789,7 +930,14 @@ const DevelopmentRoadmapSection = ({ roadmap }) => {
           <div style={printStyles.twoCol}>
             {roadmap.projects.map((project, idx) => (
               <div key={idx} style={printStyles.card}>
-                <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '4px' }}>
+                <div
+                  style={{
+                    fontWeight: 'bold',
+                    fontSize: '10px',
+                    color: '#1e293b',
+                    marginBottom: '4px',
+                  }}
+                >
                   {safeRender(project.name || project)}
                 </div>
                 {project.description && (
@@ -817,44 +965,53 @@ const StreamRecommendationSection = ({ streamRecommendation }) => {
     <>
       <h2 style={printStyles.sectionTitle}>11th/12th Stream Recommendation</h2>
       <p style={{ fontSize: '10px', color: '#6b7280', marginBottom: '15px', lineHeight: '1.5' }}>
-        Based on your interests, aptitudes, and academic performance, here is your recommended stream for grades 11-12:
+        Based on your interests, aptitudes, and academic performance, here is your recommended
+        stream for grades 11-12:
       </p>
 
-      <div style={{ 
-        ...printStyles.card, 
-        border: '2px solid #3b82f6',
-        backgroundColor: '#eff6ff',
-        marginBottom: '15px'
-      }}>
-        <div style={{ 
-          fontWeight: 'bold', 
-          fontSize: '14px', 
-          color: '#1e40af', 
-          marginBottom: '8px',
-          textAlign: 'center'
-        }}>
+      <div
+        style={{
+          ...printStyles.card,
+          border: '2px solid #3b82f6',
+          backgroundColor: '#eff6ff',
+          marginBottom: '15px',
+        }}
+      >
+        <div
+          style={{
+            fontWeight: 'bold',
+            fontSize: '14px',
+            color: '#1e40af',
+            marginBottom: '8px',
+            textAlign: 'center',
+          }}
+        >
           Recommended Stream: {streamRecommendation.recommendedStream}
         </div>
 
         {streamRecommendation.matchScore && (
-          <div style={{ 
-            fontSize: '11px', 
-            color: '#059669',
-            fontWeight: '600',
-            textAlign: 'center',
-            marginBottom: '10px'
-          }}>
+          <div
+            style={{
+              fontSize: '11px',
+              color: '#059669',
+              fontWeight: '600',
+              textAlign: 'center',
+              marginBottom: '10px',
+            }}
+          >
             Match Score: {Math.round(streamRecommendation.matchScore)}%
           </div>
         )}
 
         {streamRecommendation.reasoning && (
-          <p style={{ 
-            fontSize: '9px', 
-            color: '#4b5563', 
-            lineHeight: '1.5',
-            margin: '0'
-          }}>
+          <p
+            style={{
+              fontSize: '9px',
+              color: '#4b5563',
+              lineHeight: '1.5',
+              margin: '0',
+            }}
+          >
             {streamRecommendation.reasoning}
           </p>
         )}
@@ -865,35 +1022,44 @@ const StreamRecommendationSection = ({ streamRecommendation }) => {
         <div style={{ marginTop: '15px' }}>
           <h3 style={printStyles.subTitle}>Alternative Stream Options</h3>
           {streamRecommendation.alternatives.map((alt, index) => (
-            <div key={index} style={{ 
-              ...printStyles.card, 
-              marginBottom: '10px',
-              border: '1px solid #e5e7eb'
-            }}>
-              <div style={{ 
-                fontWeight: 'bold', 
-                fontSize: '11px', 
-                color: '#1e293b', 
-                marginBottom: '4px'
-              }}>
+            <div
+              key={index}
+              style={{
+                ...printStyles.card,
+                marginBottom: '10px',
+                border: '1px solid #e5e7eb',
+              }}
+            >
+              <div
+                style={{
+                  fontWeight: 'bold',
+                  fontSize: '11px',
+                  color: '#1e293b',
+                  marginBottom: '4px',
+                }}
+              >
                 {alt.stream}
                 {alt.matchScore && (
-                  <span style={{ 
-                    fontSize: '9px', 
-                    color: '#059669',
-                    marginLeft: '8px'
-                  }}>
+                  <span
+                    style={{
+                      fontSize: '9px',
+                      color: '#059669',
+                      marginLeft: '8px',
+                    }}
+                  >
                     ({Math.round(alt.matchScore)}% match)
                   </span>
                 )}
               </div>
               {alt.reasoning && (
-                <p style={{ 
-                  fontSize: '9px', 
-                  color: '#4b5563', 
-                  lineHeight: '1.5',
-                  margin: '0'
-                }}>
+                <p
+                  style={{
+                    fontSize: '9px',
+                    color: '#4b5563',
+                    lineHeight: '1.5',
+                    margin: '0',
+                  }}
+                >
                   {alt.reasoning}
                 </p>
               )}
@@ -918,53 +1084,63 @@ const CourseRecommendationsSection = ({ courseRecommendations }) => {
     <>
       <h2 style={printStyles.sectionTitle}>Recommended Degree Programs</h2>
       <p style={{ fontSize: '10px', color: '#6b7280', marginBottom: '15px', lineHeight: '1.5' }}>
-        Based on your assessment results and chosen stream, here are the top degree programs for you:
+        Based on your assessment results and chosen stream, here are the top degree programs for
+        you:
       </p>
 
       {topCourses.map((course, index) => (
-        <div key={index} style={{ 
-          ...printStyles.card, 
-          marginBottom: '12px',
-          border: index === 0 ? '2px solid #3b82f6' : '1px solid #e5e7eb',
-          backgroundColor: index === 0 ? '#eff6ff' : '#ffffff'
-        }}>
+        <div
+          key={index}
+          style={{
+            ...printStyles.card,
+            marginBottom: '12px',
+            border: index === 0 ? '2px solid #3b82f6' : '1px solid #e5e7eb',
+            backgroundColor: index === 0 ? '#eff6ff' : '#ffffff',
+          }}
+        >
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-            <div style={{
-              width: '28px',
-              height: '28px',
-              borderRadius: '50%',
-              backgroundColor: index === 0 ? '#3b82f6' : index === 1 ? '#60a5fa' : '#93c5fd',
-              color: 'white',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 'bold',
-              fontSize: '12px',
-              flexShrink: 0
-            }}>
+            <div
+              style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: '50%',
+                backgroundColor: index === 0 ? '#3b82f6' : index === 1 ? '#60a5fa' : '#93c5fd',
+                color: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 'bold',
+                fontSize: '12px',
+                flexShrink: 0,
+              }}
+            >
               {index + 1}
             </div>
 
             <div style={{ flex: 1 }}>
-              <div style={{ 
-                fontWeight: 'bold', 
-                fontSize: '11px', 
-                color: '#1e293b', 
-                marginBottom: '4px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}>
+              <div
+                style={{
+                  fontWeight: 'bold',
+                  fontSize: '11px',
+                  color: '#1e293b',
+                  marginBottom: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
                 {course.courseName}
                 {index === 0 && (
-                  <span style={{
-                    fontSize: '8px',
-                    backgroundColor: '#fbbf24',
-                    color: '#78350f',
-                    padding: '2px 6px',
-                    borderRadius: '4px',
-                    fontWeight: 'bold'
-                  }}>
+                  <span
+                    style={{
+                      fontSize: '8px',
+                      backgroundColor: '#fbbf24',
+                      color: '#78350f',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      fontWeight: 'bold',
+                    }}
+                  >
                     TOP PICK
                   </span>
                 )}
@@ -976,22 +1152,51 @@ const CourseRecommendationsSection = ({ courseRecommendations }) => {
                 </div>
               )}
 
-              <div style={{ fontSize: '9px', color: '#059669', fontWeight: '600', marginBottom: '6px' }}>
+              <div
+                style={{
+                  fontSize: '9px',
+                  color: '#059669',
+                  fontWeight: '600',
+                  marginBottom: '6px',
+                }}
+              >
                 Match Score: {Math.round(course.matchScore)}%
               </div>
 
               {course.description && (
-                <p style={{ fontSize: '9px', color: '#4b5563', lineHeight: '1.5', margin: '0 0 8px 0' }}>
+                <p
+                  style={{
+                    fontSize: '9px',
+                    color: '#4b5563',
+                    lineHeight: '1.5',
+                    margin: '0 0 8px 0',
+                  }}
+                >
                   {course.description}
                 </p>
               )}
 
               {course.reasons && course.reasons.length > 0 && (
                 <div style={{ marginTop: '8px' }}>
-                  <div style={{ fontSize: '9px', fontWeight: 'bold', color: '#1e293b', marginBottom: '4px' }}>
+                  <div
+                    style={{
+                      fontSize: '9px',
+                      fontWeight: 'bold',
+                      color: '#1e293b',
+                      marginBottom: '4px',
+                    }}
+                  >
                     Why this program suits you:
                   </div>
-                  <ul style={{ margin: '0', paddingLeft: '15px', fontSize: '8px', color: '#4b5563', lineHeight: '1.5' }}>
+                  <ul
+                    style={{
+                      margin: '0',
+                      paddingLeft: '15px',
+                      fontSize: '8px',
+                      color: '#4b5563',
+                      lineHeight: '1.5',
+                    }}
+                  >
                     {course.reasons.slice(0, 3).map((reason, idx) => (
                       <li key={idx}>{reason}</li>
                     ))}

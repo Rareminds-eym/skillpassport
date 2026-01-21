@@ -31,16 +31,14 @@ export interface AssessmentType {
   description: string;
 }
 
-export const useCurriculum = (
-  subject: string,
-  className: string,
-  academicYear: string
-) => {
+export const useCurriculum = (subject: string, className: string, academicYear: string) => {
   const [curriculumId, setCurriculumId] = useState<string | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [learningOutcomes, setLearningOutcomes] = useState<LearningOutcome[]>([]);
   const [assessmentTypes, setAssessmentTypes] = useState<AssessmentType[]>([]);
-  const [status, setStatus] = useState<'draft' | 'pending_approval' | 'approved' | 'rejected'>('draft');
+  const [status, setStatus] = useState<'draft' | 'pending_approval' | 'approved' | 'rejected'>(
+    'draft'
+  );
   const [rejectionReason, setRejectionReason] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
@@ -149,7 +147,7 @@ export const useCurriculum = (
       setChapters((prev) => [...prev, mappedChapter]);
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 2000);
-      
+
       return mappedChapter;
     } catch (error: any) {
       console.error('Error adding chapter:', error);
@@ -171,9 +169,7 @@ export const useCurriculum = (
         duration_unit: updates.durationUnit,
       });
 
-      setChapters((prev) =>
-        prev.map((ch) => (ch.id === chapterId ? { ...ch, ...updates } : ch))
-      );
+      setChapters((prev) => prev.map((ch) => (ch.id === chapterId ? { ...ch, ...updates } : ch)));
 
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 2000);
@@ -227,7 +223,7 @@ export const useCurriculum = (
       setLearningOutcomes((prev) => [...prev, mappedOutcome]);
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 2000);
-      
+
       return mappedOutcome;
     } catch (error: any) {
       console.error('Error adding learning outcome:', error);
@@ -236,10 +232,7 @@ export const useCurriculum = (
     }
   };
 
-  const updateLearningOutcome = async (
-    outcomeId: string,
-    updates: Partial<LearningOutcome>
-  ) => {
+  const updateLearningOutcome = async (outcomeId: string, updates: Partial<LearningOutcome>) => {
     try {
       setSaveStatus('saving');
 
@@ -294,7 +287,9 @@ export const useCurriculum = (
       }
 
       // Check if user is school_admin - they can auto-approve
-      const { data: { user } } = await curriculumService.supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await curriculumService.supabase.auth.getUser();
       if (user) {
         const { data: userData } = await curriculumService.supabase
           .from('users')

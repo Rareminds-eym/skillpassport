@@ -16,18 +16,18 @@ const NotificationModal: React.FC<NotificationModalProps> = ({
   message,
   onClose,
   onConfirm,
-  confirmText = 'Confirm'
+  confirmText = 'Confirm',
 }) => {
   const icons = {
     info: <Clock className="h-12 w-12 text-blue-500" />,
     warning: <AlertTriangle className="h-12 w-12 text-yellow-500" />,
-    error: <AlertCircle className="h-12 w-12 text-red-500" />
+    error: <AlertCircle className="h-12 w-12 text-red-500" />,
   };
 
   const colors = {
     info: 'blue',
     warning: 'yellow',
-    error: 'red'
+    error: 'red',
   };
 
   return (

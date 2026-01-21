@@ -23,9 +23,9 @@ const ProfileSettings: React.FC = () => {
 
   const handleSaveSettings = () => {
     updateSettings({
-      profileImage: profileImage
+      profileImage: profileImage,
     });
-    
+
     setShowSaveConfirmation(true);
     setTimeout(() => {
       setShowSaveConfirmation(false);
@@ -50,8 +50,12 @@ const ProfileSettings: React.FC = () => {
               <User className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Personal Information</h2>
-              <p className="text-gray-600 dark:text-gray-400">Manage your profile details and preferences</p>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                Personal Information
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400">
+                Manage your profile details and preferences
+              </p>
             </div>
           </div>
 
@@ -82,7 +86,9 @@ const ProfileSettings: React.FC = () => {
                       className="hidden"
                     />
                   </label>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">JPG, PNG or GIF, max 5MB</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    JPG, PNG or GIF, max 5MB
+                  </p>
                 </div>
               </div>
             </div>
@@ -158,7 +164,9 @@ const ProfileSettings: React.FC = () => {
               </label>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">LinkedIn</label>
+                  <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                    LinkedIn
+                  </label>
                   <input
                     type="url"
                     placeholder="https://linkedin.com/in/username"
@@ -166,7 +174,9 @@ const ProfileSettings: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">GitHub</label>
+                  <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                    GitHub
+                  </label>
                   <input
                     type="url"
                     placeholder="https://github.com/username"
@@ -174,7 +184,9 @@ const ProfileSettings: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Twitter</label>
+                  <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                    Twitter
+                  </label>
                   <input
                     type="url"
                     placeholder="https://twitter.com/username"
@@ -182,7 +194,9 @@ const ProfileSettings: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Portfolio Website</label>
+                  <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                    Portfolio Website
+                  </label>
                   <input
                     type="url"
                     placeholder="https://yourwebsite.com"

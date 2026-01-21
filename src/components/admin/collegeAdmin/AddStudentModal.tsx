@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 import {
   XMarkIcon,
   UserPlusIcon,
   UserMinusIcon,
   MagnifyingGlassIcon,
-} from "@heroicons/react/24/outline";
+} from '@heroicons/react/24/outline';
 import { supabase } from '../../../lib/supabaseClient';
 import toast from 'react-hot-toast';
 
@@ -47,20 +47,21 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
   const [currentStudents, setCurrentStudents] = useState<Student[]>([]);
   const [availableStudents, setAvailableStudents] = useState<Student[]>([]);
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // New states for student assignment details
   const [assignmentDetails, setAssignmentDetails] = useState({
     semester: 1,
     section: '',
-    course_name: ''
+    course_name: '',
   });
 
   useEffect(() => {
     if (isOpen && department) {
       console.log('AddStudentModal opened with department:', department);
+      // @ts-expect-error - Auto-suppressed for migration
       console.log('Department college_id:', department.college_id);
       fetchStudents();
     }
@@ -68,37 +69,47 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
 
   const fetchStudents = async () => {
     if (!department) return;
-    
+
     setLoading(true);
     setError(null);
-    
+
     try {
-      console.log('Fetching students for department:', department.id, 'college:', department.college_id);
-      
+      console.log(
+        'Fetching students for department:',
+        department.id,
+        'college:',
+        // @ts-expect-error - Auto-suppressed for migration
+        department.college_id
+      );
+
       // Check if department has college_id
+      // @ts-expect-error - Auto-suppressed for migration
       if (!department.college_id) {
         console.warn('Department missing college_id, trying to fetch from departments table');
-        
+
         // Fetch department details to get college_id
         const { data: deptData, error: deptFetchError } = await supabase
           .from('departments')
           .select('college_id')
           .eq('id', department.id)
           .single();
-          
+
         if (deptFetchError || !deptData?.college_id) {
           throw new Error('Department is not associated with a college');
         }
-        
+
         // Update the department object with college_id
+        // @ts-expect-error - Auto-suppressed for migration
         department.college_id = deptData.college_id;
         console.log('Retrieved college_id from database:', deptData.college_id);
       }
-      
+
       // Fetch current department students
       const { data: deptStudents, error: deptError } = await supabase
         .from('students')
-        .select('id, name, email, department_id, college_id, roll_number, course_name, branch_field, contactNumber, semester, section')
+        .select(
+          'id, name, email, department_id, college_id, roll_number, course_name, branch_field, contactNumber, semester, section'
+        )
         .eq('department_id', department.id);
 
       if (deptError) {
@@ -111,8 +122,11 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
       // Fetch available students (not assigned to any department but belong to the same college)
       const { data: availStudents, error: availError } = await supabase
         .from('students')
-        .select('id, name, email, department_id, college_id, roll_number, course_name, branch_field, contactNumber, semester, section')
+        .select(
+          'id, name, email, department_id, college_id, roll_number, course_name, branch_field, contactNumber, semester, section'
+        )
         .is('department_id', null)
+        // @ts-expect-error - Auto-suppressed for migration
         .eq('college_id', department.college_id);
 
       if (availError) {
@@ -135,12 +149,13 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
 
   if (!isOpen || !department) return null;
 
-  const filteredAvailable = availableStudents.filter(student =>
-    student.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    student.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    student.roll_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    student.course_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    student.branch_field?.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredAvailable = availableStudents.filter(
+    (student) =>
+      student.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      student.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      student.roll_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      student.course_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      student.branch_field?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const toggleStudentSelection = (studentId: string) => {
@@ -152,18 +167,18 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
   const handleAddStudents = async () => {
     if (loading) return;
     if (!selectedStudents.length) {
-      toast.error("Choose at least one student to add");
+      toast.error('Choose at least one student to add');
       return;
     }
 
     // Validate assignment details
     if (!assignmentDetails.section.trim()) {
-      toast.error("Please specify the section");
+      toast.error('Please specify the section');
       return;
     }
 
     if (!assignmentDetails.course_name.trim()) {
-      toast.error("Please specify the course name");
+      toast.error('Please specify the course name');
       return;
     }
 
@@ -171,16 +186,16 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
     try {
       console.log('Adding students to department:', department.id, 'students:', selectedStudents);
       console.log('Assignment details:', assignmentDetails);
-      
+
       const { error } = await supabase
-        .from("students")
-        .update({ 
+        .from('students')
+        .update({
           department_id: department.id,
           semester: assignmentDetails.semester,
           section: assignmentDetails.section.trim(),
-          course_name: assignmentDetails.course_name.trim()
+          course_name: assignmentDetails.course_name.trim(),
         })
-        .in("id", selectedStudents);
+        .in('id', selectedStudents);
 
       if (error) {
         console.error('Error adding students:', error);
@@ -188,23 +203,22 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
       }
 
       const addedCount = selectedStudents.length;
-      const studentNames = availableStudents.filter(s => selectedStudents.includes(s.id!));
-      
+      const studentNames = availableStudents.filter((s) => selectedStudents.includes(s.id!));
+
       toast.success(
-        addedCount === 1 
-          ? `${studentNames[0]?.name || 'Student'} added to ${department.name}` 
+        addedCount === 1
+          ? `${studentNames[0]?.name || 'Student'} added to ${department.name}`
           : `${addedCount} students added to ${department.name}`
       );
-      
+
       setSelectedStudents([]);
       // Reset assignment details
       setAssignmentDetails({
         semester: 1,
         section: '',
-        course_name: ''
+        course_name: '',
       });
       fetchStudents(); // Refresh the lists
-      
     } catch (error: any) {
       console.error('Error in handleAddStudents:', error);
       toast.error(`Failed to add students: ${error.message || 'Unknown error'}`);
@@ -215,15 +229,15 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
 
   const handleRemoveStudent = async (studentId: string, studentName: string) => {
     if (loading) return;
-    
+
     setLoading(true);
     try {
       console.log('Removing student from department:', studentId, studentName);
-      
+
       const { error } = await supabase
-        .from("students")
+        .from('students')
         .update({ department_id: null })
-        .eq("id", studentId);
+        .eq('id', studentId);
 
       if (error) {
         console.error('Error removing student:', error);
@@ -259,14 +273,11 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
                 </span>
               </div>
               <p className="mt-1 text-sm text-gray-500">
-                Assign students to {department.name} ({department.code}) with semester and course details
+                Assign students to {department.name} ({department.code}) with semester and course
+                details
               </p>
             </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
-              type="button"
-            >
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600" type="button">
               <XMarkIcon className="h-6 w-6" />
               <span className="sr-only">Close</span>
             </button>
@@ -294,7 +305,10 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
                   </div>
                 ) : (
                   currentStudents.map((student) => (
-                    <div key={student.id} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
+                    <div
+                      key={student.id}
+                      className="px-6 py-4 flex items-center justify-between hover:bg-gray-50"
+                    >
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <p className="text-sm font-medium text-gray-900">
@@ -311,31 +325,41 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
                           {student.semester && (
                             <div>
                               <p className="text-xs text-gray-500">Semester</p>
-                              <p className="text-sm font-semibold text-gray-900">{student.semester}</p>
+                              <p className="text-sm font-semibold text-gray-900">
+                                {student.semester}
+                              </p>
                             </div>
                           )}
                           {student.section && (
                             <div>
                               <p className="text-xs text-gray-500">Section</p>
-                              <p className="text-sm font-semibold text-gray-900">{student.section}</p>
+                              <p className="text-sm font-semibold text-gray-900">
+                                {student.section}
+                              </p>
                             </div>
                           )}
                           {student.course_name && (
                             <div>
                               <p className="text-xs text-gray-500">Course</p>
-                              <p className="text-sm font-semibold text-gray-900">{student.course_name}</p>
+                              <p className="text-sm font-semibold text-gray-900">
+                                {student.course_name}
+                              </p>
                             </div>
                           )}
                           {student.branch_field && (
                             <div>
                               <p className="text-xs text-gray-500">Branch</p>
-                              <p className="text-sm font-semibold text-gray-900">{student.branch_field}</p>
+                              <p className="text-sm font-semibold text-gray-900">
+                                {student.branch_field}
+                              </p>
                             </div>
                           )}
                           {(student.contactNumber || student.contact_number) && (
                             <div>
                               <p className="text-xs text-gray-500">Phone</p>
-                              <p className="text-sm font-semibold text-gray-900">{student.contactNumber || student.contact_number}</p>
+                              <p className="text-sm font-semibold text-gray-900">
+                                {student.contactNumber || student.contact_number}
+                              </p>
                             </div>
                           )}
                         </div>
@@ -343,10 +367,14 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
                       <div className="flex items-center space-x-4">
                         <div className="text-right">
                           <p className="text-xs text-gray-500">Progress</p>
-                          <p className="text-sm font-semibold text-gray-900">{student.progress || 0}%</p>
+                          <p className="text-sm font-semibold text-gray-900">
+                            {student.progress || 0}%
+                          </p>
                         </div>
                         <button
-                          onClick={() => handleRemoveStudent(student.id!, student.name || 'Student')}
+                          onClick={() =>
+                            handleRemoveStudent(student.id!, student.name || 'Student')
+                          }
                           disabled={loading}
                           className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md text-xs font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                           type="button"
@@ -365,40 +393,60 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
             <div className="lg:col-span-1">
               <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
                 <h3 className="text-sm font-medium text-gray-900">Add Students to Department</h3>
-                
+
                 <div className="mt-4 space-y-4">
                   {/* Assignment Details Form */}
                   <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 mb-4">
                     <h4 className="text-sm font-medium text-indigo-900 mb-3">Assignment Details</h4>
                     <div className="grid grid-cols-1 gap-3">
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Semester *</label>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Semester *
+                        </label>
                         <select
                           value={assignmentDetails.semester}
-                          onChange={(e) => setAssignmentDetails(prev => ({ ...prev, semester: parseInt(e.target.value) }))}
+                          onChange={(e) =>
+                            setAssignmentDetails((prev) => ({
+                              ...prev,
+                              semester: parseInt(e.target.value),
+                            }))
+                          }
                           className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         >
-                          {[1, 2, 3, 4, 5, 6, 7, 8].map(sem => (
-                            <option key={sem} value={sem}>Semester {sem}</option>
+                          {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
+                            <option key={sem} value={sem}>
+                              Semester {sem}
+                            </option>
                           ))}
                         </select>
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Section *</label>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Section *
+                        </label>
                         <input
                           type="text"
                           value={assignmentDetails.section}
-                          onChange={(e) => setAssignmentDetails(prev => ({ ...prev, section: e.target.value }))}
+                          onChange={(e) =>
+                            setAssignmentDetails((prev) => ({ ...prev, section: e.target.value }))
+                          }
                           placeholder="e.g., A, B, C"
                           className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Course Name *</label>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Course Name *
+                        </label>
                         <input
                           type="text"
                           value={assignmentDetails.course_name}
-                          onChange={(e) => setAssignmentDetails(prev => ({ ...prev, course_name: e.target.value }))}
+                          onChange={(e) =>
+                            setAssignmentDetails((prev) => ({
+                              ...prev,
+                              course_name: e.target.value,
+                            }))
+                          }
                           placeholder="e.g., Bachelor of Computer Applications"
                           className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
@@ -407,7 +455,9 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Choose Students</label>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Choose Students
+                    </label>
                     <div className="relative">
                       <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                       <input
@@ -420,9 +470,13 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
                     </div>
                     <div className="max-h-64 overflow-y-auto rounded-md border border-gray-200 bg-white">
                       {availableStudents.length === 0 ? (
-                        <div className="px-3 py-2 text-sm text-gray-500">No unassigned students available</div>
+                        <div className="px-3 py-2 text-sm text-gray-500">
+                          No unassigned students available
+                        </div>
                       ) : filteredAvailable.length === 0 ? (
-                        <div className="px-3 py-2 text-sm text-gray-500">No students match your search</div>
+                        <div className="px-3 py-2 text-sm text-gray-500">
+                          No students match your search
+                        </div>
                       ) : (
                         filteredAvailable.map((student) => (
                           <label
@@ -447,12 +501,16 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
                                 )}
                               </div>
                               <p className="text-xs text-gray-500">{student.email}</p>
-                              {(student.semester || student.section || student.course_name || student.branch_field) && (
+                              {(student.semester ||
+                                student.section ||
+                                student.course_name ||
+                                student.branch_field) && (
                                 <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
                                   {student.semester && <span>Sem {student.semester}</span>}
                                   {student.semester && student.section && <span>•</span>}
                                   {student.section && <span>Sec {student.section}</span>}
-                                  {(student.semester || student.section) && (student.course_name || student.branch_field) && <span>•</span>}
+                                  {(student.semester || student.section) &&
+                                    (student.course_name || student.branch_field) && <span>•</span>}
                                   {student.course_name && <span>{student.course_name}</span>}
                                   {student.course_name && student.branch_field && <span>•</span>}
                                   {student.branch_field && <span>{student.branch_field}</span>}
@@ -465,7 +523,8 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
                     </div>
                     {selectedStudents.length > 0 && (
                       <p className="mt-2 text-xs text-gray-500">
-                        {selectedStudents.length} student{selectedStudents.length === 1 ? "" : "s"} selected
+                        {selectedStudents.length} student{selectedStudents.length === 1 ? '' : 's'}{' '}
+                        selected
                       </p>
                     )}
                   </div>
@@ -473,19 +532,27 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
 
                 <button
                   onClick={handleAddStudents}
-                  disabled={loading || selectedStudents.length === 0 || !assignmentDetails.section.trim() || !assignmentDetails.course_name.trim()}
+                  disabled={
+                    loading ||
+                    selectedStudents.length === 0 ||
+                    !assignmentDetails.section.trim() ||
+                    !assignmentDetails.course_name.trim()
+                  }
                   className="mt-6 w-full inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
                   type="button"
                 >
                   <UserPlusIcon className="h-4 w-4 mr-2" />
-                  {loading ? "Adding..." : `Add ${selectedStudents.length || ''} Student${selectedStudents.length !== 1 ? 's' : ''} to Sem ${assignmentDetails.semester}`}
+                  {loading
+                    ? 'Adding...'
+                    : `Add ${selectedStudents.length || ''} Student${selectedStudents.length !== 1 ? 's' : ''} to Sem ${assignmentDetails.semester}`}
                 </button>
-                
-                {selectedStudents.length > 0 && (!assignmentDetails.section.trim() || !assignmentDetails.course_name.trim()) && (
-                  <p className="mt-2 text-xs text-red-600">
-                    Please fill in all assignment details above
-                  </p>
-                )}
+
+                {selectedStudents.length > 0 &&
+                  (!assignmentDetails.section.trim() || !assignmentDetails.course_name.trim()) && (
+                    <p className="mt-2 text-xs text-red-600">
+                      Please fill in all assignment details above
+                    </p>
+                  )}
               </div>
             </div>
           </div>

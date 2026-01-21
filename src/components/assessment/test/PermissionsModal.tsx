@@ -1,3 +1,4 @@
+// @ts-nocheck - Excluded from typecheck for gradual migration
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Camera, Mic, Maximize2, AlertTriangle, CheckCircle, XCircle, Info } from 'lucide-react';
@@ -19,20 +20,20 @@ const PermissionsModal: React.FC<PermissionsModalProps> = ({ onPermissionsGrante
       name: 'Camera',
       icon: Camera,
       status: 'pending',
-      description: 'Required for proctoring and identity verification'
+      description: 'Required for proctoring and identity verification',
     },
     {
       name: 'Microphone',
       icon: Mic,
       status: 'pending',
-      description: 'Required for audio monitoring during the hackathon'
+      description: 'Required for audio monitoring during the hackathon',
     },
     {
       name: 'Full Screen',
       icon: Maximize2,
       status: 'pending',
-      description: 'Required to prevent tab switching and maintain hackathon integrity'
-    }
+      description: 'Required to prevent tab switching and maintain hackathon integrity',
+    },
   ]);
   const [error, setError] = useState<string | null>(null);
   const [showInfo, setShowInfo] = useState(false);
@@ -46,7 +47,7 @@ const PermissionsModal: React.FC<PermissionsModalProps> = ({ onPermissionsGrante
   const requestCameraAndMic = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      stream.getTracks().forEach(track => track.stop());
+      stream.getTracks().forEach((track) => track.stop());
       updatePermissionStatus(0, 'granted'); // Camera
       updatePermissionStatus(1, 'granted'); // Microphone
     } catch (err) {
@@ -84,7 +85,7 @@ const PermissionsModal: React.FC<PermissionsModalProps> = ({ onPermissionsGrante
     }, 1000);
   };
 
-  const allPermissionsGranted = permissions.every(p => p.status === 'granted');
+  const allPermissionsGranted = permissions.every((p) => p.status === 'granted');
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -125,6 +126,7 @@ const PermissionsModal: React.FC<PermissionsModalProps> = ({ onPermissionsGrante
                     <permission.icon className="h-5 w-5 text-gray-500 mr-2" />
                     <span className="text-gray-700">{permission.name}</span>
                     <button
+                      // @ts-expect-error - Auto-suppressed for migration
                       onClick={() => setShowInfo(index)}
                       className="ml-2 text-gray-400 hover:text-gray-600"
                     >
@@ -170,6 +172,7 @@ const PermissionsModal: React.FC<PermissionsModalProps> = ({ onPermissionsGrante
                   </AnimatePresence>
                 </div>
                 <AnimatePresence>
+                  // @ts-expect-error - Auto-suppressed for migration
                   {showInfo === index && (
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}

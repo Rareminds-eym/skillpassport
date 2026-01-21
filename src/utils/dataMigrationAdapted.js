@@ -8,7 +8,7 @@ import {
   softSkills,
   opportunities,
   recentUpdates,
-  suggestions
+  suggestions,
 } from '../components/Students/data/mockData';
 
 /**
@@ -18,7 +18,6 @@ import {
 
 export const migrateMockDataToSupabaseAdapted = async (userId, universityId = null) => {
   try {
-
     // Check if student already exists
     const { data: existing, error: checkError } = await supabase
       .from('students')
@@ -43,7 +42,7 @@ export const migrateMockDataToSupabaseAdapted = async (userId, universityId = nu
       cgpa: studentData.cgpa,
       yearOfPassing: studentData.yearOfPassing,
       passportId: studentData.passportId,
-      
+
       // Arrays with IDs
       education: educationData.map((edu, idx) => ({
         id: idx + 1,
@@ -54,67 +53,67 @@ export const migrateMockDataToSupabaseAdapted = async (userId, universityId = nu
         cgpa: edu.cgpa,
         level: edu.level,
         status: edu.status,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       })),
-      
+
       training: trainingData.map((training, idx) => ({
         id: idx + 1,
         course: training.course,
         progress: training.progress,
         status: training.status,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       })),
-      
+
       experience: experienceData.map((exp, idx) => ({
         id: idx + 1,
         role: exp.role,
         organization: exp.organization,
         duration: exp.duration,
         verified: exp.verified,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       })),
-      
+
       technicalSkills: technicalSkills.map((skill, idx) => ({
         id: idx + 1,
         name: skill.name,
         level: skill.level,
         verified: skill.verified,
         icon: skill.icon,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       })),
-      
+
       softSkills: softSkills.map((skill, idx) => ({
         id: idx + 1,
         name: skill.name,
         level: skill.level,
         type: skill.type,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       })),
-      
+
       opportunities: opportunities.map((opp, idx) => ({
         id: idx + 1,
         title: opp.title,
         company: opp.company,
         type: opp.type,
         deadline: opp.deadline,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       })),
-      
+
       recentUpdates: recentUpdates.map((update, idx) => ({
         id: idx + 1,
         message: update.message,
         type: update.type,
         timestamp: new Date(Date.now() - parseTimestamp(update.timestamp)).toISOString(),
-        isRead: false
+        isRead: false,
       })),
-      
+
       suggestions: suggestions.map((suggestion, idx) => ({
         id: idx + 1,
         message: suggestion,
         priority: suggestions.length - idx,
         isActive: true,
-        createdAt: new Date().toISOString()
-      }))
+        createdAt: new Date().toISOString(),
+      })),
     };
 
     let result;
@@ -125,7 +124,7 @@ export const migrateMockDataToSupabaseAdapted = async (userId, universityId = nu
         .from('students')
         .update({
           universityId: universityId,
-          profile: profileData
+          profile: profileData,
         })
         .eq('userId', userId)
         .select()
@@ -137,11 +136,13 @@ export const migrateMockDataToSupabaseAdapted = async (userId, universityId = nu
       // Insert new student
       const { data, error } = await supabase
         .from('students')
-        .insert([{
-          userId: userId,
-          universityId: universityId,
-          profile: profileData
-        }])
+        .insert([
+          {
+            userId: userId,
+            universityId: universityId,
+            profile: profileData,
+          },
+        ])
         .select()
         .single();
 
@@ -149,9 +150,7 @@ export const migrateMockDataToSupabaseAdapted = async (userId, universityId = nu
       result = data;
     }
 
-
     return { success: true, studentId: result.id, userId: userId };
-
   } catch (error) {
     console.error('💥 Migration failed:', error);
     return { success: false, error };
@@ -167,12 +166,12 @@ const parseTimestamp = (timeString) => {
   const unit = parts[1];
 
   const multipliers = {
-    'hour': 60 * 60 * 1000,
-    'hours': 60 * 60 * 1000,
-    'day': 24 * 60 * 60 * 1000,
-    'days': 24 * 60 * 60 * 1000,
-    'week': 7 * 24 * 60 * 60 * 1000,
-    'weeks': 7 * 24 * 60 * 60 * 1000
+    hour: 60 * 60 * 1000,
+    hours: 60 * 60 * 1000,
+    day: 24 * 60 * 60 * 1000,
+    days: 24 * 60 * 60 * 1000,
+    week: 7 * 24 * 60 * 60 * 1000,
+    weeks: 7 * 24 * 60 * 60 * 1000,
   };
 
   return value * (multipliers[unit] || 0);
@@ -183,11 +182,7 @@ const parseTimestamp = (timeString) => {
  */
 export const clearStudentDataAdapted = async (userId) => {
   try {
-
-    const { error } = await supabase
-      .from('students')
-      .delete()
-      .eq('userId', userId);
+    const { error } = await supabase.from('students').delete().eq('userId', userId);
 
     if (error) throw error;
 
@@ -248,7 +243,10 @@ export const runMigrationAdapted = async (userId, universityId = null) => {
  */
 export const getCurrentUserId = async () => {
   try {
-    const { data: { user }, error } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
     if (error) throw error;
     return { userId: user?.id, user, error: null };
   } catch (error) {
@@ -263,7 +261,7 @@ export const getCurrentUserId = async () => {
 export const migrateCurrentUserData = async (universityId = null) => {
   try {
     const { userId, error } = await getCurrentUserId();
-    
+
     if (error || !userId) {
       throw new Error('No authenticated user found. Please log in first.');
     }

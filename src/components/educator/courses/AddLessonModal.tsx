@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
-import {
-  XMarkIcon
-} from '@heroicons/react/24/outline';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 import { Lesson, Resource } from '../../../types/educator/course';
 
 interface AddLessonModalProps {
@@ -15,14 +13,14 @@ const AddLessonModal: React.FC<AddLessonModalProps> = ({
   isOpen,
   onClose,
   onSubmit,
-  editingLesson
+  editingLesson,
 }) => {
   const [lessonData, setLessonData] = useState<Partial<Lesson>>({
     title: '',
     description: '',
     content: '',
     duration: '',
-    resources: []
+    resources: [],
   });
   const [isFormatting, setIsFormatting] = useState(false);
 
@@ -34,7 +32,7 @@ const AddLessonModal: React.FC<AddLessonModalProps> = ({
         description: editingLesson.description || '',
         content: editingLesson.content || '',
         duration: editingLesson.duration || '',
-        resources: editingLesson.resources || []
+        resources: editingLesson.resources || [],
       });
     } else {
       setLessonData({
@@ -42,7 +40,7 @@ const AddLessonModal: React.FC<AddLessonModalProps> = ({
         description: '',
         content: '',
         duration: '',
-        resources: []
+        resources: [],
       });
     }
   }, [editingLesson, isOpen]);
@@ -59,7 +57,7 @@ const AddLessonModal: React.FC<AddLessonModalProps> = ({
       description: lessonData.description,
       content: lessonData.content,
       duration: lessonData.duration || '0 mins',
-      resources: lessonData.resources || []
+      resources: lessonData.resources || [],
     });
 
     onClose();
@@ -72,7 +70,7 @@ const AddLessonModal: React.FC<AddLessonModalProps> = ({
       description: '',
       content: '',
       duration: '',
-      resources: []
+      resources: [],
     });
   };
 
@@ -83,7 +81,7 @@ const AddLessonModal: React.FC<AddLessonModalProps> = ({
   };
 
   const getResourceIcon = (type: Resource['type']) => {
-    const iconClass = "h-4 w-4";
+    const iconClass = 'h-4 w-4';
     switch (type) {
       case 'pdf':
         return <span className={iconClass}>📄</span>;
@@ -112,7 +110,10 @@ const AddLessonModal: React.FC<AddLessonModalProps> = ({
               {editingLesson ? 'Edit Lesson' : 'Add New Lesson'}
             </h2>
             <button
-              onClick={() => { onClose(); resetForm(); }}
+              onClick={() => {
+                onClose();
+                resetForm();
+              }}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             >
               <XMarkIcon className="h-6 w-6 text-gray-400" />
@@ -137,9 +138,7 @@ const AddLessonModal: React.FC<AddLessonModalProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Duration
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Duration</label>
                   <input
                     type="text"
                     value={lessonData.duration}
@@ -258,9 +257,7 @@ const AddLessonModal: React.FC<AddLessonModalProps> = ({
             {/* Resources - Note about adding after lesson creation */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <label className="block text-sm font-medium text-gray-700">
-                  Lesson Resources
-                </label>
+                <label className="block text-sm font-medium text-gray-700">Lesson Resources</label>
               </div>
 
               {lessonData.resources && lessonData.resources.length > 0 ? (
@@ -288,8 +285,7 @@ const AddLessonModal: React.FC<AddLessonModalProps> = ({
                   <p className="text-sm text-gray-500">
                     {editingLesson
                       ? 'No resources added yet. Use the course view to add resources to this lesson.'
-                      : 'Resources can be added after creating the lesson from the course modules view.'
-                    }
+                      : 'Resources can be added after creating the lesson from the course modules view.'}
                   </p>
                 </div>
               )}
@@ -299,7 +295,10 @@ const AddLessonModal: React.FC<AddLessonModalProps> = ({
           {/* Footer */}
           <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
             <button
-              onClick={() => { onClose(); resetForm(); }}
+              onClick={() => {
+                onClose();
+                resetForm();
+              }}
               className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
             >
               Cancel

@@ -1,10 +1,10 @@
 import {
-    AcademicCapIcon,
-    BookOpenIcon,
-    BuildingOffice2Icon,
-    CheckCircleIcon,
-    PlusIcon,
-    UsersIcon
+  AcademicCapIcon,
+  BookOpenIcon,
+  BuildingOffice2Icon,
+  CheckCircleIcon,
+  PlusIcon,
+  UsersIcon,
 } from '@heroicons/react/24/outline';
 import React, { useEffect, useMemo, useState } from 'react';
 
@@ -73,7 +73,11 @@ const UniversityAdminCourses: React.FC = () => {
       const [skillsResult, classesResult, modulesResult] = await Promise.allSettled([
         supabase.from('course_skills').select('course_id, skill_name').in('course_id', courseIds),
         supabase.from('course_classes').select('course_id, class_name').in('course_id', courseIds),
-        supabase.from('course_modules').select('*, lessons(*, lesson_resources(*))').in('course_id', courseIds).order('order_index', { ascending: true })
+        supabase
+          .from('course_modules')
+          .select('*, lessons(*, lesson_resources(*))')
+          .in('course_id', courseIds)
+          .order('order_index', { ascending: true }),
       ]);
 
       // Build lookup maps
@@ -140,15 +144,15 @@ const UniversityAdminCourses: React.FC = () => {
               url: res.url,
               size: res.file_size,
               thumbnailUrl: res.thumbnail_url,
-              embedUrl: res.embed_url
-            }))
-          }))
+              embedUrl: res.embed_url,
+            })),
+          })),
         })),
         coEducators: [],
         createdAt: courseRow.created_at,
         updatedAt: courseRow.updated_at,
         educatorName: courseRow.educator_name,
-        collegeName: courseRow.college_name
+        collegeName: courseRow.college_name,
       }));
 
       setCourses(transformedCourses);
@@ -168,7 +172,7 @@ const UniversityAdminCourses: React.FC = () => {
         .select('id, name')
         .eq('organization_type', 'college')
         .order('name');
-      
+
       if (!error && data) {
         setColleges(data);
       }
@@ -184,25 +188,21 @@ const UniversityAdminCourses: React.FC = () => {
 
   // Filter and sort
   const filteredCourses = useMemo(() => {
-    const filtered = courses.filter(course => {
+    const filtered = courses.filter((course) => {
       const matchesSearch =
         course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         course.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        course.skillsCovered.some(skill =>
+        course.skillsCovered.some((skill) =>
           skill.toLowerCase().includes(searchQuery.toLowerCase())
         );
 
-      const matchesTab =
-        activeTabFilter === 'All Courses' || course.status === activeTabFilter;
+      const matchesTab = activeTabFilter === 'All Courses' || course.status === activeTabFilter;
 
-      const matchesStatus =
-        statusFilter === 'All' || course.status === statusFilter;
+      const matchesStatus = statusFilter === 'All' || course.status === statusFilter;
 
-      const matchesSkill =
-        skillFilter === 'All' || course.skillsCovered.includes(skillFilter);
+      const matchesSkill = skillFilter === 'All' || course.skillsCovered.includes(skillFilter);
 
-      const matchesClass =
-        classFilter === 'All' || course.linkedClasses.includes(classFilter);
+      const matchesClass = classFilter === 'All' || course.linkedClasses.includes(classFilter);
 
       return matchesSearch && matchesTab && matchesStatus && matchesSkill && matchesClass;
     });
@@ -228,11 +228,12 @@ const UniversityAdminCourses: React.FC = () => {
   // Analytics
   const analytics = useMemo(() => {
     const total = courses.length;
-    const active = courses.filter(c => c.status === 'Active').length;
+    const active = courses.filter((c) => c.status === 'Active').length;
     const totalEnrolled = courses.reduce((s, c) => s + c.enrollmentCount, 0);
-    const avgCompletion = courses.length > 0
-      ? Math.round(courses.reduce((s, c) => s + c.completionRate, 0) / courses.length)
-      : 0;
+    const avgCompletion =
+      courses.length > 0
+        ? Math.round(courses.reduce((s, c) => s + c.completionRate, 0) / courses.length)
+        : 0;
     const pendingEvidence = courses.reduce((s, c) => s + c.evidencePending, 0);
 
     return { total, active, totalEnrolled, avgCompletion, pendingEvidence };
@@ -304,7 +305,7 @@ const UniversityAdminCourses: React.FC = () => {
 
       {/* Tabs */}
       <div className="mb-6 flex items-center gap-2 border-b border-gray-200">
-        {tabFilters.map(tab => (
+        {tabFilters.map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTabFilter(tab)}
@@ -411,7 +412,12 @@ const UniversityAdminCourses: React.FC = () => {
               ? 'Try adjusting your filters'
               : 'Create your first course to get started'}
           </p>
-          {!(searchQuery || statusFilter !== 'All' || skillFilter !== 'All' || classFilter !== 'All') && (
+          {!(
+            searchQuery ||
+            statusFilter !== 'All' ||
+            skillFilter !== 'All' ||
+            classFilter !== 'All'
+          ) && (
             <button
               onClick={() => setShowCreateModal(true)}
               className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
@@ -421,11 +427,14 @@ const UniversityAdminCourses: React.FC = () => {
           )}
         </div>
       ) : (
-        <div className={viewMode === 'grid'
-          ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5'
-          : 'space-y-4'
-        }>
-          {filteredCourses.map(course => (
+        <div
+          className={
+            viewMode === 'grid'
+              ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5'
+              : 'space-y-4'
+          }
+        >
+          {filteredCourses.map((course) => (
             <CourseCard
               key={course.id}
               course={course}
@@ -459,7 +468,7 @@ const UniversityAdminCourses: React.FC = () => {
                   description: courseData.description,
                   status: courseData.status,
                   duration: courseData.duration,
-                  target_outcomes: courseData.targetOutcomes
+                  target_outcomes: courseData.targetOutcomes,
                 })
                 .eq('course_id', editingCourse.id);
 
@@ -467,23 +476,21 @@ const UniversityAdminCourses: React.FC = () => {
               toast.success('Course updated successfully!');
             } else {
               // Create new course
-              const { error } = await supabase
-                .from('courses')
-                .insert({
-                  title: courseData.title,
-                  code: courseData.code,
-                  description: courseData.description,
-                  status: courseData.status || 'Draft',
-                  duration: courseData.duration,
-                  target_outcomes: courseData.targetOutcomes,
-                  educator_id: user?.id,
-                  educator_name: user?.full_name || 'University Admin'
-                });
+              const { error } = await supabase.from('courses').insert({
+                title: courseData.title,
+                code: courseData.code,
+                description: courseData.description,
+                status: courseData.status || 'Draft',
+                duration: courseData.duration,
+                target_outcomes: courseData.targetOutcomes,
+                educator_id: user?.id,
+                educator_name: user?.full_name || 'University Admin',
+              });
 
               if (error) throw error;
               toast.success('Course created successfully!');
             }
-            
+
             setShowCreateModal(false);
             setEditingCourse(null);
             fetchUniversityCourses();
@@ -515,13 +522,13 @@ const UniversityAdminCourses: React.FC = () => {
                 code: updatedCourse.code,
                 description: updatedCourse.description,
                 status: updatedCourse.status,
-                duration: updatedCourse.duration
+                duration: updatedCourse.duration,
               })
               .eq('course_id', updatedCourse.id);
 
             if (error) throw error;
-            
-            setCourses(courses.map(c => c.id === updatedCourse.id ? updatedCourse : c));
+
+            setCourses(courses.map((c) => (c.id === updatedCourse.id ? updatedCourse : c)));
             setSelectedCourse(updatedCourse);
             toast.success('Course updated!');
           } catch (err: any) {

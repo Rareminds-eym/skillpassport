@@ -55,16 +55,16 @@ class IntelligenceService {
       skillsMarketability: await this.scoreSkillsMarketability(profile),
       experienceLevel: this.scoreExperienceLevel(profile),
       projectQuality: this.scoreProjectQuality(profile),
-      learningConsistency: this.scoreLearningConsistency(profile)
+      learningConsistency: this.scoreLearningConsistency(profile),
     };
 
     // Weighted overall score
-    const overallScore = 
-      scores.profileCompleteness * 0.20 +
-      scores.skillsMarketability * 0.30 +
-      scores.experienceLevel * 0.20 +
-      scores.projectQuality * 0.20 +
-      scores.learningConsistency * 0.10;
+    const overallScore =
+      scores.profileCompleteness * 0.2 +
+      scores.skillsMarketability * 0.3 +
+      scores.experienceLevel * 0.2 +
+      scores.projectQuality * 0.2 +
+      scores.learningConsistency * 0.1;
 
     const breakdown = this.analyzeScoreBreakdown(scores, profile);
 
@@ -73,7 +73,7 @@ class IntelligenceService {
       overall_score: overallScore,
       ...scores,
       breakdown,
-      recommendations: breakdown.recommendations
+      recommendations: breakdown.recommendations,
     });
 
     return {
@@ -86,9 +86,9 @@ class IntelligenceService {
       breakdown: {
         strengths: breakdown.strengths,
         weaknesses: breakdown.weaknesses,
-        criticalGaps: breakdown.criticalGaps
+        criticalGaps: breakdown.criticalGaps,
       },
-      recommendations: breakdown.recommendations
+      recommendations: breakdown.recommendations,
     };
   }
 
@@ -104,7 +104,7 @@ class IntelligenceService {
       projects: 20,
       training: 15,
       experience: 10,
-      certificates: 5
+      certificates: 5,
     };
 
     // Basic info
@@ -159,19 +159,19 @@ class IntelligenceService {
    */
   private async scoreSkillsMarketability(profile: StudentProfile): Promise<number> {
     const skills = profile.profile?.technicalSkills || [];
-    
+
     if (skills.length === 0) return 0;
 
     // Get in-demand skills from market
     const marketSkills = await this.getInDemandSkills();
-    
+
     let matchScore = 0;
     let totalLevel = 0;
 
     skills.forEach((skill: any) => {
       const skillName = skill.name?.toLowerCase();
-      const isInDemand = marketSkills.some(ms => 
-        ms.toLowerCase().includes(skillName) || skillName.includes(ms.toLowerCase())
+      const isInDemand = marketSkills.some(
+        (ms) => ms.toLowerCase().includes(skillName) || skillName.includes(ms.toLowerCase())
       );
 
       if (isInDemand) {
@@ -181,7 +181,7 @@ class IntelligenceService {
         // Other skills count less
         matchScore += (skill.level || 3) * 3;
       }
-      
+
       totalLevel += skill.level || 3;
     });
 
@@ -198,18 +198,16 @@ class IntelligenceService {
   private scoreExperienceLevel(profile: StudentProfile): number {
     const experience = profile.profile?.experience || [];
     const projects = profile.profile?.projects || [];
-    
+
     let score = 0;
 
     // Formal experience (internships, jobs)
-    const formalExp = experience.filter((e: any) => 
-      e.type !== 'project' && e.role && e.company
-    );
+    const formalExp = experience.filter((e: any) => e.type !== 'project' && e.role && e.company);
     score += Math.min(50, formalExp.length * 25);
 
     // Project experience
-    const completedProjects = projects.filter((p: any) => 
-      p.status === 'Completed' || p.status === 'completed'
+    const completedProjects = projects.filter(
+      (p: any) => p.status === 'Completed' || p.status === 'completed'
     );
     score += Math.min(50, completedProjects.length * 12);
 
@@ -221,7 +219,7 @@ class IntelligenceService {
    */
   private scoreProjectQuality(profile: StudentProfile): number {
     const projects = profile.profile?.projects || [];
-    
+
     if (projects.length === 0) return 0;
 
     let totalQuality = 0;
@@ -256,7 +254,7 @@ class IntelligenceService {
    */
   private scoreLearningConsistency(profile: StudentProfile): number {
     const training = profile.profile?.training || [];
-    
+
     if (training.length === 0) return 0;
 
     let score = 0;
@@ -317,7 +315,9 @@ class IntelligenceService {
     } else {
       weaknesses.push('Need better quality projects');
       criticalGaps.push('projects');
-      recommendations.push('Build 2-3 substantial projects with clear descriptions and deployed demos');
+      recommendations.push(
+        'Build 2-3 substantial projects with clear descriptions and deployed demos'
+      );
     }
 
     if (scores.experienceLevel < 30) {
@@ -339,15 +339,12 @@ class IntelligenceService {
    */
   private async getInDemandSkills(): Promise<string[]> {
     try {
-      const { data } = await supabase
-        .from('opportunities')
-        .select('skills_required')
-        .limit(50);
+      const { data } = await supabase.from('opportunities').select('skills_required').limit(50);
 
       if (!data) return this.getDefaultInDemandSkills();
 
       const skillsMap = new Map<string, number>();
-      
+
       data.forEach((job: any) => {
         let skills: string[] = [];
         if (Array.isArray(job.skills_required)) {
@@ -358,7 +355,7 @@ class IntelligenceService {
           } catch (e) {}
         }
 
-        skills.forEach(skill => {
+        skills.forEach((skill) => {
           if (skill) {
             const normalized = skill.toLowerCase().trim();
             skillsMap.set(normalized, (skillsMap.get(normalized) || 0) + 1);
@@ -381,9 +378,22 @@ class IntelligenceService {
    */
   private getDefaultInDemandSkills(): string[] {
     return [
-      'react', 'javascript', 'python', 'java', 'node.js', 'sql',
-      'aws', 'docker', 'kubernetes', 'typescript', 'mongodb',
-      'git', 'rest api', 'microservices', 'agile', 'ci/cd'
+      'react',
+      'javascript',
+      'python',
+      'java',
+      'node.js',
+      'sql',
+      'aws',
+      'docker',
+      'kubernetes',
+      'typescript',
+      'mongodb',
+      'git',
+      'rest api',
+      'microservices',
+      'agile',
+      'ci/cd',
     ];
   }
 
@@ -401,7 +411,7 @@ class IntelligenceService {
         project_quality: data.projectQuality,
         learning_consistency: data.learningConsistency,
         breakdown: data.breakdown,
-        recommendations: data.recommendations
+        recommendations: data.recommendations,
       });
     } catch (error) {
       console.error('Error saving readiness score:', error);
@@ -422,7 +432,7 @@ class IntelligenceService {
       suggestions.push({
         action: 'Add your education details (degree, university, CGPA)',
         priority: 'high',
-        impact: '+15% profile score'
+        impact: '+15% profile score',
       });
     }
 
@@ -431,7 +441,7 @@ class IntelligenceService {
       suggestions.push({
         action: 'Add at least 5 technical skills relevant to your field',
         priority: 'critical',
-        impact: '+25% profile score, +40% job matches'
+        impact: '+25% profile score, +40% job matches',
       });
     }
 
@@ -440,7 +450,7 @@ class IntelligenceService {
       suggestions.push({
         action: 'Add 2-3 projects with descriptions and tech stack',
         priority: 'high',
-        impact: '+20% profile score, significantly improves job matches'
+        impact: '+20% profile score, significantly improves job matches',
       });
     }
 
@@ -449,7 +459,7 @@ class IntelligenceService {
       suggestions.push({
         action: 'Add completed courses or certifications',
         priority: 'medium',
-        impact: '+15% profile score'
+        impact: '+15% profile score',
       });
     }
 
@@ -459,12 +469,12 @@ class IntelligenceService {
       weakSections.push({
         section: 'skills',
         reason: `Only ${skills.length} skills listed. Employers prefer 5-8 relevant skills.`,
-        impact: 'medium'
+        impact: 'medium',
       });
       suggestions.push({
         action: `Add ${5 - skills.length} more relevant skills to reach optimal count`,
         priority: 'medium',
-        impact: '+10% job matches'
+        impact: '+10% job matches',
       });
     }
 
@@ -473,30 +483,30 @@ class IntelligenceService {
       weakSections.push({
         section: 'projects',
         reason: `Only ${projects.length} projects. 3+ projects show consistent building.`,
-        impact: 'high'
+        impact: 'high',
       });
     }
 
     // Check project quality
-    const projectsWithoutDescription = projects.filter((p: any) => 
-      !p.description || p.description.length < 50
+    const projectsWithoutDescription = projects.filter(
+      (p: any) => !p.description || p.description.length < 50
     );
     if (projectsWithoutDescription.length > 0) {
       weakSections.push({
         section: 'project_quality',
         reason: `${projectsWithoutDescription.length} projects lack detailed descriptions`,
-        impact: 'medium'
+        impact: 'medium',
       });
       suggestions.push({
         action: 'Add detailed descriptions to your projects (what, why, how, tech used)',
         priority: 'medium',
-        impact: 'Better recruiter understanding'
+        impact: 'Better recruiter understanding',
       });
     }
 
     // Calculate completeness
     const totalSections = 6; // education, skills, projects, training, experience, certificates
-    const completeSections = totalSections - missingSections.length - (weakSections.length * 0.5);
+    const completeSections = totalSections - missingSections.length - weakSections.length * 0.5;
     const completenessScore = Math.round((completeSections / totalSections) * 100);
 
     // Estimate impact
@@ -514,7 +524,7 @@ class IntelligenceService {
       missing_sections: missingSections,
       weak_sections: weakSections,
       improvement_suggestions: suggestions,
-      estimated_impact: estimatedImpact
+      estimated_impact: estimatedImpact,
     });
 
     return {
@@ -522,7 +532,7 @@ class IntelligenceService {
       missing_sections: missingSections,
       weak_sections: weakSections,
       improvement_suggestions: suggestions,
-      estimated_impact: estimatedImpact
+      estimated_impact: estimatedImpact,
     };
   }
 
@@ -550,16 +560,25 @@ class IntelligenceService {
         const avgProjects = benchmarks.metric_value.avg_projects || 2;
 
         // Calculate rank
-        const skillsRank = yourSkills >= avgSkills * 1.5 ? 'top 10%' : 
-                          yourSkills >= avgSkills * 1.2 ? 'top 25%' :
-                          yourSkills >= avgSkills ? 'top 50%' : 'below average';
+        const skillsRank =
+          yourSkills >= avgSkills * 1.5
+            ? 'top 10%'
+            : yourSkills >= avgSkills * 1.2
+              ? 'top 25%'
+              : yourSkills >= avgSkills
+                ? 'top 50%'
+                : 'below average';
 
         const recommendations: string[] = [];
         if (yourSkills < avgSkills) {
-          recommendations.push(`Add ${Math.ceil(avgSkills - yourSkills)} more skills to match peer average`);
+          recommendations.push(
+            `Add ${Math.ceil(avgSkills - yourSkills)} more skills to match peer average`
+          );
         }
         if (yourProjects < avgProjects) {
-          recommendations.push(`Build ${Math.ceil(avgProjects - yourProjects)} more projects to match peers`);
+          recommendations.push(
+            `Build ${Math.ceil(avgProjects - yourProjects)} more projects to match peers`
+          );
         }
 
         return {
@@ -568,7 +587,7 @@ class IntelligenceService {
           avgSkillsCount: avgSkills,
           avgProjectsCount: avgProjects,
           avgTrainingHours: benchmarks.metric_value.avg_training_hours || 40,
-          recommendations
+          recommendations,
         };
       }
     } catch (error) {
@@ -582,7 +601,7 @@ class IntelligenceService {
       avgSkillsCount: 5,
       avgProjectsCount: 2,
       avgTrainingHours: 40,
-      recommendations: ['Complete your profile for accurate peer comparison']
+      recommendations: ['Complete your profile for accurate peer comparison'],
     };
   }
 
@@ -592,10 +611,14 @@ class IntelligenceService {
   private determineCohort(profile: StudentProfile): string {
     const department = profile.department?.toLowerCase() || 'general';
     const year = profile.year_of_passing || new Date().getFullYear().toString();
-    
+
     // Simplify department to category
     let category = 'general';
-    if (department.includes('computer') || department.includes('cs') || department.includes('software')) {
+    if (
+      department.includes('computer') ||
+      department.includes('cs') ||
+      department.includes('software')
+    ) {
       category = 'cs';
     } else if (department.includes('engineer')) {
       category = 'engineering';
@@ -609,4 +632,3 @@ class IntelligenceService {
 
 export const intelligenceService = new IntelligenceService();
 export default intelligenceService;
-

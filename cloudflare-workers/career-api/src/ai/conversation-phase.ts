@@ -71,7 +71,7 @@ export function getPhaseParameters(
     'find-jobs': 3000
   };
   
-  let result = { ...baseParams[phase] };
+  const result = { ...baseParams[phase] };
   
   if (intent) {
     const intentTemp = intentTemperatures[intent];

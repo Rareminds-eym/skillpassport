@@ -1,6 +1,6 @@
 /**
  * 👨‍💻 CODE MENTOR SERVICE
- * 
+ *
  * Provides:
  * - Intelligent code review
  * - Refactoring suggestions
@@ -15,7 +15,7 @@ import { getOpenAIClient, DEFAULT_MODEL } from './openAIClient';
 export interface CodeReviewResult {
   overallQuality: 'Excellent' | 'Good' | 'Needs Improvement' | 'Problematic';
   score: number; // 0-100
-  
+
   strengths: string[];
   improvements: Array<{
     type: 'critical' | 'important' | 'nice-to-have';
@@ -25,7 +25,7 @@ export interface CodeReviewResult {
     suggestedFix: string;
     codeExample?: string;
   }>;
-  
+
   refactoredCode?: string;
   learningPoints: string[];
   resourceLinks: string[];
@@ -39,26 +39,25 @@ export interface DebuggingHelp {
     probability: number;
     explanation: string;
   }>;
-  
+
   debuggingSteps: Array<{
     step: number;
     action: string;
     whatToLookFor: string;
   }>;
-  
+
   possibleSolutions: Array<{
     solution: string;
     codeExample: string;
     explanation: string;
     difficulty: 'Easy' | 'Medium' | 'Hard';
   }>;
-  
+
   preventionTips: string[];
   relatedConcepts: string[];
 }
 
 class CodeMentorService {
-  
   /**
    * 📝 Review Code: Comprehensive analysis with mentorship tone
    */
@@ -68,10 +67,9 @@ class CodeMentorService {
     context?: string,
     studentLevel?: 'beginner' | 'intermediate' | 'advanced'
   ): Promise<CodeReviewResult> {
-    
     try {
       console.log('👨‍💻 Code Mentor: Analyzing code...');
-      
+
       const prompt = `You are a friendly, experienced coding mentor reviewing a student's code. Be constructive, encouraging, and educational.
 
 **STUDENT LEVEL:** ${studentLevel || 'intermediate'}
@@ -192,29 +190,29 @@ ${code}
         messages: [
           {
             role: 'system',
-            content: 'You are an expert coding mentor who provides detailed, educational code reviews. You are encouraging and constructive, focusing on teaching rather than criticizing. You explain WHY behind every suggestion.'
+            content:
+              'You are an expert coding mentor who provides detailed, educational code reviews. You are encouraging and constructive, focusing on teaching rather than criticizing. You explain WHY behind every suggestion.',
           },
-          { role: 'user', content: prompt }
+          { role: 'user', content: prompt },
         ],
         temperature: 0.6,
         max_tokens: 2500,
-        response_format: { type: 'json_object' }
+        response_format: { type: 'json_object' },
       });
-      
+
       const result = JSON.parse(completion.choices[0]?.message?.content || '{}');
-      
-      console.log('✅ Code Review Complete:',result.overallQuality, `(${result.score}/100)`);
+
+      console.log('✅ Code Review Complete:', result.overallQuality, `(${result.score}/100)`);
       console.log('👍 Strengths:', result.strengths?.length || 0);
       console.log('⚠️  Improvements:', result.improvements?.length || 0);
-      
+
       return result as CodeReviewResult;
-      
     } catch (error) {
       console.error('Code review error:', error);
       throw new Error('Failed to review code');
     }
   }
-  
+
   /**
    * 🐛 Debugging Help: Analyze error and provide solutions
    */
@@ -224,10 +222,9 @@ ${code}
     language: string,
     context?: string
   ): Promise<DebuggingHelp> {
-    
     try {
       console.log('🐛 Code Mentor: Helping debug issue...');
-      
+
       const prompt = `You are a patient debugging mentor helping a student fix their code.
 
 **LANGUAGE:** ${language}
@@ -354,29 +351,29 @@ ${code}
         messages: [
           {
             role: 'system',
-            content: 'You are a patient debugging mentor. You help students understand errors, find the root cause methodically, and learn from mistakes. Be clear, educational, and encouraging.'
+            content:
+              'You are a patient debugging mentor. You help students understand errors, find the root cause methodically, and learn from mistakes. Be clear, educational, and encouraging.',
           },
-          { role: 'user', content: prompt }
+          { role: 'user', content: prompt },
         ],
         temperature: 0.5,
         max_tokens: 2000,
-        response_format: { type: 'json_object' }
+        response_format: { type: 'json_object' },
       });
-      
+
       const result = JSON.parse(completion.choices[0]?.message?.content || '{}');
-      
+
       console.log('🐛 Debugging Help Generated');
       console.log('🔍 Likely causes identified:', result.likelyCauses?.length || 0);
       console.log('💡 Solutions provided:', result.possibleSolutions?.length || 0);
-      
+
       return result as DebuggingHelp;
-      
     } catch (error) {
       console.error('Debugging help error:', error);
       throw new Error('Failed to generate debugging help');
     }
   }
-  
+
   /**
    * 💡 Explain Code: Help understand what code does
    */
@@ -385,7 +382,6 @@ ${code}
     language: string,
     studentLevel?: 'beginner' | 'intermediate' | 'advanced'
   ): Promise<string> {
-    
     try {
       const prompt = `Explain this ${language} code to a ${studentLevel || 'intermediate'} level student:
 
@@ -408,16 +404,16 @@ Be clear, educational, and adjust complexity to student level.`;
         messages: [
           {
             role: 'system',
-            content: 'You are a coding tutor who explains code clearly and patiently. You adapt explanations to student level.'
+            content:
+              'You are a coding tutor who explains code clearly and patiently. You adapt explanations to student level.',
           },
-          { role: 'user', content: prompt }
+          { role: 'user', content: prompt },
         ],
         temperature: 0.6,
-        max_tokens: 1500
+        max_tokens: 1500,
       });
-      
+
       return completion.choices[0]?.message?.content || 'Unable to explain code at this time.';
-      
     } catch (error) {
       console.error('Code explanation error:', error);
       return 'Unable to explain code at this time.';

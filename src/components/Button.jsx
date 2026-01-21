@@ -1,11 +1,6 @@
-const Button = ({
-  children,
-  variant = 'primary',
-  size = 'md',
-  className = '',
-  ...props
-}) => {
-  const baseStyles = 'font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2';
+const Button = ({ children, variant = 'primary', size = 'md', className = '', ...props }) => {
+  const baseStyles =
+    'font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2';
 
   const variants = {
     primary: 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500',
@@ -22,10 +17,7 @@ const Button = ({
   };
 
   return (
-    <button
-      className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
-      {...props}
-    >
+    <button className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`} {...props}>
       {children}
     </button>
   );

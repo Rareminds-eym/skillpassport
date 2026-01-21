@@ -1,6 +1,6 @@
 /**
  * Subscription Components
- * 
+ *
  * Barrel export for subscription-related components.
  */
 

@@ -8,7 +8,7 @@ import {
   getConversation,
   getSuggestedQuestions,
   submitFeedback as submitFeedbackService,
-  deleteConversation as deleteConversationService
+  deleteConversation as deleteConversationService,
 } from '../services/tutorService';
 
 export interface UseTutorChatOptions {
@@ -80,85 +80,87 @@ export function useTutorChat({ courseId, lessonId }: UseTutorChatOptions): UseTu
     refreshSuggestions();
   }, [refreshSuggestions]);
 
-
   // Send a message to the AI tutor
-  const handleSendMessage = useCallback(async (content: string) => {
-    if (!content.trim() || isStreaming) return;
+  const handleSendMessage = useCallback(
+    async (content: string) => {
+      if (!content.trim() || isStreaming) return;
 
-    setError(null);
-    setIsLoading(true);
-    setIsStreaming(true);
+      setError(null);
+      setIsLoading(true);
+      setIsStreaming(true);
 
-    // Add user message immediately
-    const userMessage: ChatMessage = {
-      id: crypto.randomUUID(),
-      role: 'user',
-      content: content.trim(),
-      timestamp: new Date()
-    };
-    setMessages(prev => [...prev, userMessage]);
+      // Add user message immediately
+      const userMessage: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: 'user',
+        content: content.trim(),
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, userMessage]);
 
-    // Create placeholder for assistant message
-    const assistantMessageId = crypto.randomUUID();
-    const assistantMessage: ChatMessage = {
-      id: assistantMessageId,
-      role: 'assistant',
-      content: '',
-      timestamp: new Date()
-    };
-    setMessages(prev => [...prev, assistantMessage]);
+      // Create placeholder for assistant message
+      const assistantMessageId = crypto.randomUUID();
+      const assistantMessage: ChatMessage = {
+        id: assistantMessageId,
+        role: 'assistant',
+        content: '',
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, assistantMessage]);
 
-    try {
-      // Stream the response
-      const generator = sendMessage({
-        conversationId: conversationId || undefined,
-        courseId,
-        lessonId,
-        message: content.trim()
-      });
+      try {
+        // Stream the response
+        const generator = sendMessage({
+          conversationId: conversationId || undefined,
+          courseId,
+          lessonId,
+          message: content.trim(),
+        });
 
-      setCurrentReasoning('');
-      
-      for await (const chunk of generator) {
-        if (chunk.type === 'reasoning' && chunk.reasoning) {
-          // AI is thinking/reasoning
-          setIsReasoning(true);
-          setCurrentReasoning(prev => prev + chunk.reasoning);
-        } else if (chunk.type === 'content' && chunk.content) {
-          // AI is generating response content
-          setIsReasoning(false);
-          setMessages(prev => 
-            prev.map(msg => 
-              msg.id === assistantMessageId 
-                ? { ...msg, content: msg.content + chunk.content }
-                : msg
-            )
-          );
-        } else if (chunk.type === 'done') {
-          // Stream complete
-          if (chunk.conversationId && !conversationId) {
-            setConversationId(chunk.conversationId);
-            refreshConversations();
+        setCurrentReasoning('');
+
+        for await (const chunk of generator) {
+          if (chunk.type === 'reasoning' && chunk.reasoning) {
+            // AI is thinking/reasoning
+            setIsReasoning(true);
+            setCurrentReasoning((prev) => prev + chunk.reasoning);
+          } else if (chunk.type === 'content' && chunk.content) {
+            // AI is generating response content
+            setIsReasoning(false);
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === assistantMessageId
+                  ? { ...msg, content: msg.content + chunk.content }
+                  : msg
+              )
+            );
+          } else if (chunk.type === 'done') {
+            // Stream complete
+            if (chunk.conversationId && !conversationId) {
+              setConversationId(chunk.conversationId);
+              refreshConversations();
+            }
           }
         }
-      }
 
-      // Update conversation ID if this was a new conversation (fallback)
-      const newConvId = getLastConversationId();
-      if (newConvId && !conversationId) {
-        setConversationId(newConvId);
-        refreshConversations();
+        // Update conversation ID if this was a new conversation (fallback)
+        const newConvId = getLastConversationId();
+        if (newConvId && !conversationId) {
+          setConversationId(newConvId);
+          refreshConversations();
+        }
+      } catch (err: any) {
+        setError(err.message || 'Failed to send message');
+        // Remove the empty assistant message on error
+        setMessages((prev) => prev.filter((msg) => msg.id !== assistantMessageId));
+      } finally {
+        setIsLoading(false);
+        setIsStreaming(false);
+        setIsReasoning(false);
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to send message');
-      // Remove the empty assistant message on error
-      setMessages(prev => prev.filter(msg => msg.id !== assistantMessageId));
-    } finally {
-      setIsLoading(false);
-      setIsStreaming(false);
-      setIsReasoning(false);
-    }
-  }, [conversationId, courseId, lessonId, isStreaming, refreshConversations]);
+    },
+    [conversationId, courseId, lessonId, isStreaming, refreshConversations]
+  );
 
   // Load an existing conversation
   const loadConversation = useCallback(async (convId: string) => {
@@ -188,122 +190,127 @@ export function useTutorChat({ courseId, lessonId }: UseTutorChatOptions): UseTu
   }, []);
 
   // Edit a user message and regenerate AI response (ChatGPT-style)
-  const handleEditMessage = useCallback(async (messageId: string, newContent: string) => {
-    if (!newContent.trim() || isStreaming) return;
+  const handleEditMessage = useCallback(
+    async (messageId: string, newContent: string) => {
+      if (!newContent.trim() || isStreaming) return;
 
-    // Find the message index
-    const messageIndex = messages.findIndex(msg => msg.id === messageId);
-    if (messageIndex === -1) return;
+      // Find the message index
+      const messageIndex = messages.findIndex((msg) => msg.id === messageId);
+      if (messageIndex === -1) return;
 
-    // Only allow editing user messages
-    const message = messages[messageIndex];
-    if (message.role !== 'user') return;
+      // Only allow editing user messages
+      const message = messages[messageIndex];
+      if (message.role !== 'user') return;
 
-    setError(null);
-    setIsLoading(true);
-    setIsStreaming(true);
+      setError(null);
+      setIsLoading(true);
+      setIsStreaming(true);
 
-    // Remove all messages after the edited message and update the edited message
-    const updatedMessages = messages.slice(0, messageIndex);
-    const editedUserMessage: ChatMessage = {
-      ...message,
-      content: newContent.trim(),
-      timestamp: new Date()
-    };
-    setMessages([...updatedMessages, editedUserMessage]);
+      // Remove all messages after the edited message and update the edited message
+      const updatedMessages = messages.slice(0, messageIndex);
+      const editedUserMessage: ChatMessage = {
+        ...message,
+        content: newContent.trim(),
+        timestamp: new Date(),
+      };
+      setMessages([...updatedMessages, editedUserMessage]);
 
-    // Create placeholder for new assistant message
-    const assistantMessageId = crypto.randomUUID();
-    const assistantMessage: ChatMessage = {
-      id: assistantMessageId,
-      role: 'assistant',
-      content: '',
-      timestamp: new Date()
-    };
-    setMessages(prev => [...prev, assistantMessage]);
+      // Create placeholder for new assistant message
+      const assistantMessageId = crypto.randomUUID();
+      const assistantMessage: ChatMessage = {
+        id: assistantMessageId,
+        role: 'assistant',
+        content: '',
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, assistantMessage]);
 
-    try {
-      // Stream the new response
-      const generator = sendMessage({
-        conversationId: conversationId || undefined,
-        courseId,
-        lessonId,
-        message: newContent.trim()
-      });
+      try {
+        // Stream the new response
+        const generator = sendMessage({
+          conversationId: conversationId || undefined,
+          courseId,
+          lessonId,
+          message: newContent.trim(),
+        });
 
-      setCurrentReasoning('');
-      
-      for await (const chunk of generator) {
-        if (chunk.type === 'reasoning' && chunk.reasoning) {
-          setIsReasoning(true);
-          setCurrentReasoning(prev => prev + chunk.reasoning);
-        } else if (chunk.type === 'content' && chunk.content) {
-          setIsReasoning(false);
-          setMessages(prev => 
-            prev.map(msg => 
-              msg.id === assistantMessageId 
-                ? { ...msg, content: msg.content + chunk.content }
-                : msg
-            )
-          );
-        } else if (chunk.type === 'done') {
-          if (chunk.conversationId && !conversationId) {
-            setConversationId(chunk.conversationId);
-            refreshConversations();
+        setCurrentReasoning('');
+
+        for await (const chunk of generator) {
+          if (chunk.type === 'reasoning' && chunk.reasoning) {
+            setIsReasoning(true);
+            setCurrentReasoning((prev) => prev + chunk.reasoning);
+          } else if (chunk.type === 'content' && chunk.content) {
+            setIsReasoning(false);
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === assistantMessageId
+                  ? { ...msg, content: msg.content + chunk.content }
+                  : msg
+              )
+            );
+          } else if (chunk.type === 'done') {
+            if (chunk.conversationId && !conversationId) {
+              setConversationId(chunk.conversationId);
+              refreshConversations();
+            }
           }
         }
-      }
 
-      const newConvId = getLastConversationId();
-      if (newConvId && !conversationId) {
-        setConversationId(newConvId);
-        refreshConversations();
+        const newConvId = getLastConversationId();
+        if (newConvId && !conversationId) {
+          setConversationId(newConvId);
+          refreshConversations();
+        }
+      } catch (err: any) {
+        setError(err.message || 'Failed to regenerate response');
+        setMessages((prev) => prev.filter((msg) => msg.id !== assistantMessageId));
+      } finally {
+        setIsLoading(false);
+        setIsStreaming(false);
+        setIsReasoning(false);
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to regenerate response');
-      setMessages(prev => prev.filter(msg => msg.id !== assistantMessageId));
-    } finally {
-      setIsLoading(false);
-      setIsStreaming(false);
-      setIsReasoning(false);
-    }
-  }, [messages, conversationId, courseId, lessonId, isStreaming, refreshConversations]);
+    },
+    [messages, conversationId, courseId, lessonId, isStreaming, refreshConversations]
+  );
 
   // Delete a conversation permanently
-  const handleDeleteConversation = useCallback(async (convId: string) => {
-    setError(null);
-    try {
-      await deleteConversationService(convId);
-      // If we deleted the current conversation, clear it
-      if (conversationId === convId) {
-        setConversationId(null);
-        setMessages([]);
+  const handleDeleteConversation = useCallback(
+    async (convId: string) => {
+      setError(null);
+      try {
+        await deleteConversationService(convId);
+        // If we deleted the current conversation, clear it
+        if (conversationId === convId) {
+          setConversationId(null);
+          setMessages([]);
+        }
+        // Refresh the conversations list
+        await refreshConversations();
+      } catch (err: any) {
+        setError(err.message || 'Failed to delete conversation');
+        throw err;
       }
-      // Refresh the conversations list
-      await refreshConversations();
-    } catch (err: any) {
-      setError(err.message || 'Failed to delete conversation');
-      throw err;
-    }
-  }, [conversationId, refreshConversations]);
+    },
+    [conversationId, refreshConversations]
+  );
 
   // Submit feedback for a message
-  const handleSubmitFeedback = useCallback(async (
-    messageIndex: number,
-    rating: 1 | -1,
-    feedbackText?: string
-  ) => {
-    if (!conversationId) {
-      setError('No active conversation');
-      return;
-    }
+  const handleSubmitFeedback = useCallback(
+    async (messageIndex: number, rating: 1 | -1, feedbackText?: string) => {
+      if (!conversationId) {
+        setError('No active conversation');
+        return;
+      }
 
-    try {
-      await submitFeedbackService(conversationId, messageIndex, rating, feedbackText);
-    } catch (err: any) {
-      setError(err.message || 'Failed to submit feedback');
-    }
-  }, [conversationId]);
+      try {
+        await submitFeedbackService(conversationId, messageIndex, rating, feedbackText);
+      } catch (err: any) {
+        setError(err.message || 'Failed to submit feedback');
+      }
+    },
+    [conversationId]
+  );
 
   return {
     messages,
@@ -322,6 +329,6 @@ export function useTutorChat({ courseId, lessonId }: UseTutorChatOptions): UseTu
     deleteConversation: handleDeleteConversation,
     submitFeedback: handleSubmitFeedback,
     refreshConversations,
-    refreshSuggestions
+    refreshSuggestions,
   };
 }

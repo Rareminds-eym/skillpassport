@@ -1,24 +1,24 @@
 import { supabase } from '../lib/supabaseClient';
 import {
-    AUTH_ERROR_CODES,
-    AuthError,
-    buildErrorResponse,
-    generateCorrelationId,
-    handleAuthError,
-    logAuthEvent,
-    mapSupabaseError,
-    validateCredentials,
-    validateEmail,
-    validatePassword,
-    withRetry,
-    withTimeout
+  AUTH_ERROR_CODES,
+  AuthError,
+  buildErrorResponse,
+  generateCorrelationId,
+  handleAuthError,
+  logAuthEvent,
+  mapSupabaseError,
+  validateCredentials,
+  validateEmail,
+  validatePassword,
+  withRetry,
+  withTimeout,
 } from '../utils/authErrorHandler';
 import userApiService from './userApiService';
 
 /**
  * Authentication Service
  * Industrial-grade authentication with comprehensive error handling
- * 
+ *
  * Features:
  * - Input validation and sanitization
  * - Standardized error codes
@@ -48,10 +48,16 @@ export const checkAuthentication = async () => {
 
   try {
     const sessionPromise = supabase.auth.getSession();
-    const { data: { session }, error } = await withTimeout(sessionPromise, AUTH_TIMEOUT_MS);
+    const {
+      data: { session },
+      error,
+    } = await withTimeout(sessionPromise, AUTH_TIMEOUT_MS);
 
     if (error) {
-      logAuthEvent('warn', 'Session check failed', { correlationId, errorCode: mapSupabaseError(error) });
+      logAuthEvent('warn', 'Session check failed', {
+        correlationId,
+        errorCode: mapSupabaseError(error),
+      });
       return {
         isAuthenticated: false,
         user: null,
@@ -69,7 +75,8 @@ export const checkAuthentication = async () => {
     }
 
     // Extract role from user metadata - check user_role first (set by UnifiedSignup)
-    const role = session.user.user_metadata?.user_role ||
+    const role =
+      session.user.user_metadata?.user_role ||
       session.user.user_metadata?.role ||
       session.user.raw_user_meta_data?.user_role ||
       session.user.raw_user_meta_data?.role ||
@@ -103,8 +110,8 @@ export const checkAuthentication = async () => {
 /**
  * Sign up a new user with role
  * Uses the Worker API for proper rollback handling - no orphaned users
- * @param {string} email 
- * @param {string} password 
+ * @param {string} email
+ * @param {string} password
  * @param {object} userData - Additional user data including role
  * @returns {Promise<{ success: boolean, user: object | null, error: string | null }>}
  */
@@ -124,7 +131,10 @@ export const signUpWithRole = async (email, password, userData = {}) => {
       return buildErrorResponse(AUTH_ERROR_CODES.PASSWORD_TOO_WEAK);
     }
 
-    logAuthEvent('info', 'Signup attempt via Worker API', { correlationId, email: validation.email });
+    logAuthEvent('info', 'Signup attempt via Worker API', {
+      correlationId,
+      email: validation.email,
+    });
 
     // Parse name into firstName and lastName
     const nameParts = (userData.name || '').trim().split(' ');
@@ -133,17 +143,17 @@ export const signUpWithRole = async (email, password, userData = {}) => {
 
     // Map role to worker API expected format
     const roleMapping = {
-      'student': userData.studentType === 'college' ? 'college_student' : 'school_student',
-      'school_student': 'school_student',
-      'college_student': 'college_student',
-      'educator': 'school_educator',
-      'school_educator': 'school_educator',
-      'college_educator': 'college_educator',
-      'recruiter': 'recruiter',
-      'admin': 'school_admin',
-      'school_admin': 'school_admin',
-      'college_admin': 'college_admin',
-      'university_admin': 'university_admin',
+      student: userData.studentType === 'college' ? 'college_student' : 'school_student',
+      school_student: 'school_student',
+      college_student: 'college_student',
+      educator: 'school_educator',
+      school_educator: 'school_educator',
+      college_educator: 'college_educator',
+      recruiter: 'recruiter',
+      admin: 'school_admin',
+      school_admin: 'school_admin',
+      college_admin: 'college_admin',
+      university_admin: 'university_admin',
     };
 
     const mappedRole = roleMapping[userData.role] || 'school_student';
@@ -164,9 +174,9 @@ export const signUpWithRole = async (email, password, userData = {}) => {
       referralCode: userData.referralCode || null,
     });
 
-    logAuthEvent('info', 'Signup successful via Worker API', { 
-      correlationId, 
-      userId: result.data?.userId 
+    logAuthEvent('info', 'Signup successful via Worker API', {
+      correlationId,
+      userId: result.data?.userId,
     });
 
     // Return in the expected format for compatibility
@@ -184,7 +194,6 @@ export const signUpWithRole = async (email, password, userData = {}) => {
       requiresEmailConfirmation: false, // Worker API confirms email automatically
       error: null,
     };
-
   } catch (error) {
     const errorCode = mapSupabaseError(error);
     logAuthEvent('error', 'Signup failed', { correlationId, errorCode, message: error.message });
@@ -222,8 +231,8 @@ export const signUpWithRole = async (email, password, userData = {}) => {
 
 /**
  * Sign in user with comprehensive error handling
- * @param {string} email 
- * @param {string} password 
+ * @param {string} email
+ * @param {string} password
  * @returns {Promise<{ success: boolean, user: object | null, role: string | null, error: string | null }>}
  */
 export const signIn = async (email, password) => {
@@ -267,13 +276,14 @@ export const signIn = async (email, password) => {
         ].includes(code);
       },
     });
-    
+
     const data = await withTimeout(
       retryableSignIn(), // Call the function to get the promise
       AUTH_TIMEOUT_MS
     );
 
-    const role = data.user?.user_metadata?.user_role ||
+    const role =
+      data.user?.user_metadata?.user_role ||
       data.user?.user_metadata?.role ||
       data.user?.raw_user_meta_data?.user_role ||
       data.user?.raw_user_meta_data?.role ||
@@ -288,7 +298,6 @@ export const signIn = async (email, password) => {
       session: data.session,
       error: null,
     };
-
   } catch (error) {
     const errorCode = mapSupabaseError(error);
     logAuthEvent('error', 'Sign-in failed', { correlationId, errorCode });
@@ -312,10 +321,7 @@ export const signOut = async () => {
   try {
     logAuthEvent('info', 'Sign-out attempt', { correlationId });
 
-    const { error } = await withTimeout(
-      supabase.auth.signOut(),
-      AUTH_TIMEOUT_MS
-    );
+    const { error } = await withTimeout(supabase.auth.signOut(), AUTH_TIMEOUT_MS);
 
     if (error) {
       logAuthEvent('warn', 'Sign-out error', { correlationId, errorCode: mapSupabaseError(error) });
@@ -350,7 +356,7 @@ export const signOut = async () => {
 
 /**
  * Check if user has specific role
- * @param {string} requiredRole 
+ * @param {string} requiredRole
  * @returns {Promise<{ hasRole: boolean, role: string | null }>}
  */
 export const checkUserRole = async (requiredRole) => {
@@ -383,7 +389,7 @@ export const checkUserRole = async (requiredRole) => {
 
 /**
  * Update user metadata including role
- * @param {object} metadata 
+ * @param {object} metadata
  * @returns {Promise<{ success: boolean, error: string | null }>}
  */
 export const updateUserMetadata = async (metadata) => {
@@ -402,7 +408,10 @@ export const updateUserMetadata = async (metadata) => {
     );
 
     if (error) {
-      logAuthEvent('error', 'Metadata update failed', { correlationId, errorCode: mapSupabaseError(error) });
+      logAuthEvent('error', 'Metadata update failed', {
+        correlationId,
+        errorCode: mapSupabaseError(error),
+      });
       return handleAuthError(error, { correlationId, operation: 'updateMetadata' });
     }
 
@@ -430,20 +439,24 @@ export const getCurrentUser = async () => {
   const correlationId = generateCorrelationId();
 
   try {
-    const { data: { user }, error } = await withTimeout(
-      supabase.auth.getUser(),
-      AUTH_TIMEOUT_MS
-    );
+    const {
+      data: { user },
+      error,
+    } = await withTimeout(supabase.auth.getUser(), AUTH_TIMEOUT_MS);
 
     if (error) {
-      logAuthEvent('warn', 'Get current user failed', { correlationId, errorCode: mapSupabaseError(error) });
+      logAuthEvent('warn', 'Get current user failed', {
+        correlationId,
+        errorCode: mapSupabaseError(error),
+      });
       return {
         user: null,
         role: null,
       };
     }
 
-    const role = user?.user_metadata?.user_role ||
+    const role =
+      user?.user_metadata?.user_role ||
       user?.user_metadata?.role ||
       user?.raw_user_meta_data?.user_role ||
       user?.raw_user_meta_data?.role ||
@@ -486,7 +499,10 @@ export const sendPasswordResetOtp = async (email) => {
     const { data, error } = await withTimeout(
       (async () => {
         try {
-          const result = await userApiService.resetPassword({ action: 'send', email: emailValidation.sanitized });
+          const result = await userApiService.resetPassword({
+            action: 'send',
+            email: emailValidation.sanitized,
+          });
           return { data: result, error: null };
         } catch (err) {
           return { data: null, error: err };
@@ -496,7 +512,10 @@ export const sendPasswordResetOtp = async (email) => {
     );
 
     if (error) {
-      logAuthEvent('error', 'Password reset OTP failed', { correlationId, errorCode: mapSupabaseError(error) });
+      logAuthEvent('error', 'Password reset OTP failed', {
+        correlationId,
+        errorCode: mapSupabaseError(error),
+      });
       return handleAuthError(error, { correlationId, operation: 'sendResetOtp' });
     }
 

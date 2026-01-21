@@ -1,7 +1,7 @@
-import React from "react";
-import { Coffee, Sun, Plus, Users, MapPin, UserCheck } from "lucide-react";
-import { Faculty, CollegeClass, ScheduleSlot, Break, TimePeriod, Substitution } from "../types";
-import { DAYS, BREAK_BG_COLORS, BREAK_TEXT_COLORS, BREAK_ICON_COLORS } from "../constants";
+import React from 'react';
+import { Coffee, Sun, Plus, Users, MapPin, UserCheck } from 'lucide-react';
+import { Faculty, CollegeClass, ScheduleSlot, Break, TimePeriod, Substitution } from '../types';
+import { DAYS, BREAK_BG_COLORS, BREAK_TEXT_COLORS, BREAK_ICON_COLORS } from '../constants';
 import {
   formatDate,
   isHoliday,
@@ -11,7 +11,7 @@ import {
   getFacultyColor,
   getFacultyName,
   getClassName,
-} from "../utils";
+} from '../utils';
 
 interface CalendarGridProps {
   weekDates: Date[];
@@ -34,12 +34,15 @@ const getSubstitutionForCell = (
   substitutions: Substitution[]
 ): Substitution | null => {
   const dateStr = date.toISOString().split('T')[0];
-  return substitutions.find(
-    s => s.substitution_date === dateStr && 
-         s.period_number === periodNumber && 
-         s.class_id === classId &&
-         s.substitute_faculty_id // Only show if substitute is assigned
-  ) || null;
+  return (
+    substitutions.find(
+      (s) =>
+        s.substitution_date === dateStr &&
+        s.period_number === periodNumber &&
+        s.class_id === classId &&
+        s.substitute_faculty_id // Only show if substitute is assigned
+    ) || null
+  );
 };
 
 const CalendarGrid: React.FC<CalendarGridProps> = ({
@@ -67,19 +70,19 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
                 const date = weekDates[index];
                 const holiday = isHoliday(date, breaks);
                 const breakType = getBreakType(date, breaks);
-                const headerBgColor = BREAK_BG_COLORS[breakType] || "bg-red-50";
-                const headerTextColor = BREAK_TEXT_COLORS[breakType] || "text-red-600";
+                const headerBgColor = BREAK_BG_COLORS[breakType] || 'bg-red-50';
+                const headerTextColor = BREAK_TEXT_COLORS[breakType] || 'text-red-600';
                 return (
                   <th
                     key={day}
                     className={`px-3 py-3 text-center border-b border-r border-gray-200 last:border-r-0 ${
-                      holiday ? headerBgColor : ""
+                      holiday ? headerBgColor : ''
                     }`}
                   >
                     <div className="text-xs font-semibold text-gray-900">{day}</div>
                     <div
                       className={`text-xs mt-0.5 ${
-                        holiday ? `${headerTextColor} font-medium` : "text-gray-500"
+                        holiday ? `${headerTextColor} font-medium` : 'text-gray-500'
                       }`}
                     >
                       {formatDate(date)}
@@ -94,7 +97,7 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
           </thead>
           <tbody>
             {periods.map((period) => (
-              <tr key={period.period_number} className={period.is_break ? "bg-gray-100" : ""}>
+              <tr key={period.period_number} className={period.is_break ? 'bg-gray-100' : ''}>
                 <td className="px-3 py-2 border-b border-r border-gray-200 bg-gray-50">
                   <div className="text-xs font-medium text-gray-900">{period.period_name}</div>
                   <div className="text-[10px] text-gray-500">
@@ -107,8 +110,8 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
                   const breakType = getBreakType(date, breaks);
 
                   if (holiday) {
-                    const cellBgColor = BREAK_BG_COLORS[breakType] || "bg-red-50";
-                    const iconColor = BREAK_ICON_COLORS[breakType] || "text-red-400";
+                    const cellBgColor = BREAK_BG_COLORS[breakType] || 'bg-red-50';
+                    const iconColor = BREAK_ICON_COLORS[breakType] || 'text-red-400';
                     return (
                       <td
                         key={dayIndex}
@@ -122,7 +125,8 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
                   }
 
                   // Check if this is a break period (by flag or name)
-                  const isBreakPeriod = period.is_break || 
+                  const isBreakPeriod =
+                    period.is_break ||
                     period.period_name?.toLowerCase().includes('break') ||
                     period.period_name?.toLowerCase().includes('lunch');
 
@@ -133,14 +137,16 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
                         className="px-2 py-2 border-b border-r border-gray-200 last:border-r-0 bg-gray-100"
                         style={{
                           backgroundImage:
-                            "repeating-linear-gradient(45deg, #e5e7eb, #e5e7eb 2px, #f3f4f6 2px, #f3f4f6 4px)",
+                            'repeating-linear-gradient(45deg, #e5e7eb, #e5e7eb 2px, #f3f4f6 2px, #f3f4f6 4px)',
                         }}
                       >
                         <div className="h-14 flex items-center justify-center">
                           <div className="flex flex-col items-center gap-1">
                             <Coffee className="h-5 w-5 text-gray-500" />
                             <span className="text-xs text-gray-500 font-medium">
-                              {period.period_name?.toLowerCase().includes('lunch') ? 'Lunch' : 'Break'}
+                              {period.period_name?.toLowerCase().includes('lunch')
+                                ? 'Lunch'
+                                : 'Break'}
                             </span>
                           </div>
                         </div>
@@ -166,8 +172,13 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
                       : null;
 
                   // Check for substitution on this date/period/class
-                  const substitution = filteredSlot 
-                    ? getSubstitutionForCell(date, period.period_number, filteredSlot.class_id, substitutions)
+                  const substitution = filteredSlot
+                    ? getSubstitutionForCell(
+                        date,
+                        period.period_number,
+                        filteredSlot.class_id,
+                        substitutions
+                      )
                     : null;
 
                   // Check if this is a substitution
@@ -177,15 +188,15 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
                     <td
                       key={dayIndex}
                       className={`px-2 py-2 border-b border-r border-gray-200 last:border-r-0 cursor-pointer transition ${
-                        filteredSlot ? "" : "bg-green-50 hover:bg-green-100"
+                        filteredSlot ? '' : 'bg-green-50 hover:bg-green-100'
                       }`}
                       onClick={() => onCellClick(dayIndex, period, date)}
                     >
                       {filteredSlot ? (
                         <div
                           className={`p-2 rounded-lg border text-xs h-14 overflow-hidden relative ${
-                            isSubstitute 
-                              ? 'bg-amber-50 border-amber-300' 
+                            isSubstitute
+                              ? 'bg-amber-50 border-amber-300'
                               : getFacultyColor(filteredSlot.educator_id, faculty)
                           }`}
                         >
@@ -196,11 +207,12 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
                             </div>
                           )}
                           <div className="font-semibold truncate">{filteredSlot.subject_name}</div>
-                          <div className={`truncate ${isSubstitute ? 'text-amber-700' : 'opacity-80'}`}>
-                            {isSubstitute 
+                          <div
+                            className={`truncate ${isSubstitute ? 'text-amber-700' : 'opacity-80'}`}
+                          >
+                            {isSubstitute
                               ? substitution.substitute_faculty_name
-                              : getFacultyName(filteredSlot.educator_id, faculty)
-                            }
+                              : getFacultyName(filteredSlot.educator_id, faculty)}
                           </div>
                           {isSubstitute && (
                             <div className="text-[9px] text-amber-600 truncate">

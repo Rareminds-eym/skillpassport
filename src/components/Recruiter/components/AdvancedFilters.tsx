@@ -9,7 +9,7 @@ import {
   BriefcaseIcon,
   UserGroupIcon,
   AcademicCapIcon,
-  SparklesIcon
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { AnalyticsFilters } from '../../../types/recruiter';
 
@@ -20,10 +20,36 @@ interface AdvancedFiltersProps {
 }
 
 // Filter options data
-const DEPARTMENTS = ['Engineering', 'Food Safety', 'Manufacturing', 'Quality Assurance', 'IT', 'Operations'];
+const DEPARTMENTS = [
+  'Engineering',
+  'Food Safety',
+  'Manufacturing',
+  'Quality Assurance',
+  'IT',
+  'Operations',
+];
 const JOB_LEVELS = ['Intern', 'Entry Level', 'Mid Level', 'Senior Level', 'Lead'];
-const SOURCES = ['Direct Application', 'Referral', 'Campus Drive', 'Hackathon', 'Course Program', 'LinkedIn', 'Job Board'];
-const SKILLS = ['React', 'Python', 'Node.js', 'HACCP', 'Six Sigma', 'AutoCAD', 'AWS', 'TypeScript', 'Java', 'FMEA'];
+const SOURCES = [
+  'Direct Application',
+  'Referral',
+  'Campus Drive',
+  'Hackathon',
+  'Course Program',
+  'LinkedIn',
+  'Job Board',
+];
+const SKILLS = [
+  'React',
+  'Python',
+  'Node.js',
+  'HACCP',
+  'Six Sigma',
+  'AutoCAD',
+  'AWS',
+  'TypeScript',
+  'Java',
+  'FMEA',
+];
 const LOCATIONS = ['Chennai', 'Bangalore', 'Coimbatore', 'Pune', 'Mumbai', 'Hyderabad', 'Delhi'];
 const RECRUITERS = ['Sarah Johnson', 'Mike Chen', 'Lisa Wang', 'Raj Kumar', 'Emily Brown'];
 
@@ -32,7 +58,7 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({ filters, onFiltersCha
   const [activeSection, setActiveSection] = useState<string | null>(null);
 
   // Count active filters
-  const activeFilterCount = 
+  const activeFilterCount =
     filters.departments.length +
     filters.jobLevels.length +
     filters.sources.length +
@@ -43,32 +69,32 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({ filters, onFiltersCha
   const toggleFilter = (category: keyof AnalyticsFilters, value: string) => {
     const currentValues = filters[category] as string[];
     const newValues = currentValues.includes(value)
-      ? currentValues.filter(v => v !== value)
+      ? currentValues.filter((v) => v !== value)
       : [...currentValues, value];
-    
+
     onFiltersChange({
       ...filters,
-      [category]: newValues
+      [category]: newValues,
     });
   };
 
   const clearCategory = (category: keyof AnalyticsFilters) => {
     onFiltersChange({
       ...filters,
-      [category]: []
+      [category]: [],
     });
   };
 
-  const FilterSection = ({ 
-    title, 
-    icon: Icon, 
-    category, 
-    options 
-  }: { 
-    title: string; 
-    icon: any; 
-    category: keyof AnalyticsFilters; 
-    options: string[] 
+  const FilterSection = ({
+    title,
+    icon: Icon,
+    category,
+    options,
+  }: {
+    title: string;
+    icon: any;
+    category: keyof AnalyticsFilters;
+    options: string[];
   }) => {
     const selectedValues = filters[category] as string[];
     const isActive = selectedValues.length > 0;
@@ -90,13 +116,13 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({ filters, onFiltersCha
               </span>
             )}
           </div>
-          <ChevronDownIcon 
+          <ChevronDownIcon
             className={`h-4 w-4 text-gray-400 transition-transform ${
               activeSection === category ? 'transform rotate-180' : ''
-            }`} 
+            }`}
           />
         </button>
-        
+
         {activeSection === category && (
           <div className="px-6 py-4 bg-gray-50 space-y-2 max-h-80 overflow-y-auto">
             {options.map((option) => {
@@ -148,8 +174,8 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({ filters, onFiltersCha
             {activeFilterCount}
           </span>
         )}
-        <ChevronDownIcon 
-          className={`h-4 w-4 transition-transform ${isExpanded ? 'transform rotate-180' : ''}`} 
+        <ChevronDownIcon
+          className={`h-4 w-4 transition-transform ${isExpanded ? 'transform rotate-180' : ''}`}
         />
       </button>
 
@@ -157,11 +183,11 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({ filters, onFiltersCha
       {isExpanded && (
         <>
           {/* Backdrop */}
-          <div 
+          <div
             className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity"
             onClick={() => setIsExpanded(false)}
           />
-          
+
           {/* Slide-in Panel from Right */}
           <div className="fixed top-0 right-0 h-full w-full md:w-[480px] bg-white shadow-2xl z-50 flex flex-col transform transition-transform duration-300 ease-out">
             {/* Header */}
@@ -203,35 +229,35 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({ filters, onFiltersCha
                 category="departments"
                 options={DEPARTMENTS}
               />
-              
+
               <FilterSection
                 title="Job Level"
                 icon={AcademicCapIcon}
                 category="jobLevels"
                 options={JOB_LEVELS}
               />
-              
+
               <FilterSection
                 title="Source"
                 icon={SparklesIcon}
                 category="sources"
                 options={SOURCES}
               />
-              
+
               <FilterSection
                 title="Skills"
                 icon={SparklesIcon}
                 category="skills"
                 options={SKILLS}
               />
-              
+
               <FilterSection
                 title="Location"
                 icon={MapPinIcon}
                 category="locations"
                 options={LOCATIONS}
               />
-              
+
               <FilterSection
                 title="Recruiter"
                 icon={UserGroupIcon}
@@ -262,8 +288,11 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({ filters, onFiltersCha
       {/* Active Filter Tags */}
       {activeFilterCount > 0 && !isExpanded && (
         <div className="absolute top-full left-0 mt-2 flex flex-wrap gap-2 max-w-2xl">
-          {filters.departments.map(dept => (
-            <span key={dept} className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+          {filters.departments.map((dept) => (
+            <span
+              key={dept}
+              className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full"
+            >
               <BriefcaseIcon className="h-3 w-3" />
               {dept}
               <button
@@ -274,9 +303,12 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({ filters, onFiltersCha
               </button>
             </span>
           ))}
-          
-          {filters.jobLevels.map(level => (
-            <span key={level} className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+
+          {filters.jobLevels.map((level) => (
+            <span
+              key={level}
+              className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full"
+            >
               <AcademicCapIcon className="h-3 w-3" />
               {level}
               <button
@@ -287,9 +319,12 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({ filters, onFiltersCha
               </button>
             </span>
           ))}
-          
-          {filters.sources.map(source => (
-            <span key={source} className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-800 text-xs font-medium rounded-full">
+
+          {filters.sources.map((source) => (
+            <span
+              key={source}
+              className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-800 text-xs font-medium rounded-full"
+            >
               <SparklesIcon className="h-3 w-3" />
               {source}
               <button
@@ -301,8 +336,11 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({ filters, onFiltersCha
             </span>
           ))}
 
-          {filters.locations.map(loc => (
-            <span key={loc} className="inline-flex items-center gap-1 px-3 py-1 bg-orange-100 text-orange-800 text-xs font-medium rounded-full">
+          {filters.locations.map((loc) => (
+            <span
+              key={loc}
+              className="inline-flex items-center gap-1 px-3 py-1 bg-orange-100 text-orange-800 text-xs font-medium rounded-full"
+            >
               <MapPinIcon className="h-3 w-3" />
               {loc}
               <button

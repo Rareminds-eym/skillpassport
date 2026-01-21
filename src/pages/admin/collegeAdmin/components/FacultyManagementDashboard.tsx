@@ -1,12 +1,4 @@
-import {
-    BarChart3,
-    Calendar,
-    CalendarOff,
-    RefreshCw,
-    Upload,
-    UserPlus,
-    Users
-} from 'lucide-react';
+import { BarChart3, Calendar, CalendarOff, RefreshCw, Upload, UserPlus, Users } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../../../context/AuthContext';
 import { supabase } from '../../../../lib/supabaseClient';
@@ -21,7 +13,9 @@ import SwapRequestsManagement from './SwapRequestsManagement';
 
 const FacultyManagementDashboard: React.FC = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'list' | 'onboarding' | 'timetable' | 'analytics' | 'leave' | 'import' | 'swaps'>('list');
+  const [activeTab, setActiveTab] = useState<
+    'list' | 'onboarding' | 'timetable' | 'analytics' | 'leave' | 'import' | 'swaps'
+  >('list');
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [collegeId, setCollegeId] = useState<string | null>(null);
@@ -119,10 +113,25 @@ const FacultyManagementDashboard: React.FC = () => {
 
   const tabs = [
     { id: 'list', label: 'Faculty', icon: Users, description: 'View and manage all faculty' },
-    { id: 'onboarding', label: 'Onboarding', icon: UserPlus, description: 'Add new faculty members' },
+    {
+      id: 'onboarding',
+      label: 'Onboarding',
+      icon: UserPlus,
+      description: 'Add new faculty members',
+    },
     { id: 'timetable', label: 'Timetable', icon: Calendar, description: 'Manage class schedules' },
-    { id: 'swaps', label: 'Swap Requests', icon: RefreshCw, description: 'Manage class swap requests' },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3, description: 'Faculty performance metrics' },
+    {
+      id: 'swaps',
+      label: 'Swap Requests',
+      icon: RefreshCw,
+      description: 'Manage class swap requests',
+    },
+    {
+      id: 'analytics',
+      label: 'Analytics',
+      icon: BarChart3,
+      description: 'Faculty performance metrics',
+    },
     { id: 'leave', label: 'Leave', icon: CalendarOff, description: 'Leave & substitution' },
     { id: 'import', label: 'Bulk Import', icon: Upload, description: 'Import multiple faculty' },
   ];
@@ -131,9 +140,7 @@ const FacultyManagementDashboard: React.FC = () => {
     <div className="space-y-6">
       {/* Header with Stats */}
       <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 rounded-2xl p-6 border border-indigo-100">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Faculty Management
-        </h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Faculty Management</h1>
         <p className="text-gray-600 mb-6">
           Comprehensive faculty management system for your college
         </p>
@@ -183,7 +190,9 @@ const FacultyManagementDashboard: React.FC = () => {
                 <Icon className="h-6 w-6" />
                 <div className="text-center">
                   <div className="text-sm font-semibold">{tab.label}</div>
-                  <div className={`text-xs mt-1 ${activeTab === tab.id ? 'text-indigo-100' : 'text-gray-500'}`}>
+                  <div
+                    className={`text-xs mt-1 ${activeTab === tab.id ? 'text-indigo-100' : 'text-gray-500'}`}
+                  >
                     {tab.description}
                   </div>
                 </div>

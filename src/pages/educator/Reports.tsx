@@ -1,10 +1,7 @@
 import { useState } from 'react';
 import Chart from 'react-apexcharts';
 import { ApexOptions } from 'apexcharts';
-import {
-  ArrowDownTrayIcon,
-  DocumentArrowDownIcon,
-} from '@heroicons/react/24/outline';
+import { ArrowDownTrayIcon, DocumentArrowDownIcon } from '@heroicons/react/24/outline';
 import {
   mockSkillSummary,
   mockAttendanceData,
@@ -12,7 +9,9 @@ import {
 } from '../../data/educator/mockAnalytics';
 
 const Reports = () => {
-  const [selectedReport, setSelectedReport] = useState<'summary' | 'attendance' | 'growth'>('summary');
+  const [selectedReport, setSelectedReport] = useState<'summary' | 'attendance' | 'growth'>(
+    'summary'
+  );
 
   // Skill Summary Bar Chart
   const skillSummaryOptions: ApexOptions = {
@@ -390,9 +389,13 @@ const Reports = () => {
                 <thead>
                   <tr className="border-b border-gray-200">
                     <th className="text-left py-3 px-4 font-semibold text-gray-700">Category</th>
-                    <th className="text-center py-3 px-4 font-semibold text-gray-700">Total Activities</th>
+                    <th className="text-center py-3 px-4 font-semibold text-gray-700">
+                      Total Activities
+                    </th>
                     <th className="text-center py-3 px-4 font-semibold text-gray-700">Verified</th>
-                    <th className="text-center py-3 px-4 font-semibold text-gray-700">Participation Rate</th>
+                    <th className="text-center py-3 px-4 font-semibold text-gray-700">
+                      Participation Rate
+                    </th>
                     <th className="text-center py-3 px-4 font-semibold text-gray-700">Avg Score</th>
                   </tr>
                 </thead>
@@ -400,7 +403,9 @@ const Reports = () => {
                   {mockSkillSummary.map((skill, idx) => (
                     <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="py-4 px-4 font-medium text-gray-900">{skill.category}</td>
-                      <td className="py-4 px-4 text-center text-gray-700">{skill.totalActivities}</td>
+                      <td className="py-4 px-4 text-center text-gray-700">
+                        {skill.totalActivities}
+                      </td>
                       <td className="py-4 px-4 text-center">
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                           {skill.verifiedActivities}
@@ -414,7 +419,9 @@ const Reports = () => {
                               style={{ width: `${skill.participationRate}%` }}
                             />
                           </div>
-                          <span className="text-sm font-medium text-gray-700">{skill.participationRate}%</span>
+                          <span className="text-sm font-medium text-gray-700">
+                            {skill.participationRate}%
+                          </span>
                         </div>
                       </td>
                       <td className="py-4 px-4 text-center">
@@ -431,8 +438,15 @@ const Reports = () => {
 
           {/* Skill Summary Bar Chart */}
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Activity Distribution by Category</h2>
-            <Chart options={skillSummaryOptions} series={skillSummarySeries} type="bar" height={400} />
+            <h2 className="text-xl font-bold text-gray-900 mb-4">
+              Activity Distribution by Category
+            </h2>
+            <Chart
+              options={skillSummaryOptions}
+              series={skillSummarySeries}
+              type="bar"
+              height={400}
+            />
           </div>
         </div>
       )}
@@ -441,7 +455,9 @@ const Reports = () => {
         <div className="space-y-6">
           {/* Attendance Chart */}
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Monthly Attendance & Engagement</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-4">
+              Monthly Attendance & Engagement
+            </h2>
             <Chart options={attendanceOptions} series={attendanceSeries} type="bar" height={400} />
           </div>
         </div>
@@ -452,13 +468,23 @@ const Reports = () => {
           {/* Growth Line Chart */}
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
             <h2 className="text-xl font-bold text-gray-900 mb-4">Skill Growth Over Time</h2>
-            <Chart options={skillGrowthOptions} series={skillGrowthSeries} type="line" height={400} />
+            <Chart
+              options={skillGrowthOptions}
+              series={skillGrowthSeries}
+              type="line"
+              height={400}
+            />
           </div>
 
           {/* Skill Distribution Pie Chart */}
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
             <h2 className="text-xl font-bold text-gray-900 mb-4">Skill Distribution</h2>
-            <Chart options={skillDistributionOptions} series={skillDistributionSeries} type="donut" height={400} />
+            <Chart
+              options={skillDistributionOptions}
+              series={skillDistributionSeries}
+              type="donut"
+              height={400}
+            />
           </div>
         </div>
       )}

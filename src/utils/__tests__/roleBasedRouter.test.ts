@@ -41,10 +41,10 @@ describe('roleBasedRouter', () => {
         'educator',
         'school_admin',
         'college_admin',
-        'university_admin'
+        'university_admin',
       ];
 
-      roles.forEach(role => {
+      roles.forEach((role) => {
         const route = getRouteForRole(role);
         expect(route.startsWith('/')).toBe(true);
       });
@@ -57,10 +57,10 @@ describe('roleBasedRouter', () => {
         'educator',
         'school_admin',
         'college_admin',
-        'university_admin'
+        'university_admin',
       ];
 
-      roles.forEach(role => {
+      roles.forEach((role) => {
         const route = getRouteForRole(role);
         expect(typeof route).toBe('string');
         expect(route.length).toBeGreaterThan(0);
@@ -71,9 +71,9 @@ describe('roleBasedRouter', () => {
   describe('redirectToRoleDashboard', () => {
     it('should call navigate with correct route and replace option', () => {
       const mockNavigate = vi.fn();
-      
+
       redirectToRoleDashboard('student', mockNavigate);
-      
+
       expect(mockNavigate).toHaveBeenCalledWith('/student/dashboard', { replace: true });
     });
 
@@ -84,17 +84,14 @@ describe('roleBasedRouter', () => {
         'educator',
         'school_admin',
         'college_admin',
-        'university_admin'
+        'university_admin',
       ];
 
-      roles.forEach(role => {
+      roles.forEach((role) => {
         const mockNavigate = vi.fn();
         redirectToRoleDashboard(role, mockNavigate);
         expect(mockNavigate).toHaveBeenCalledTimes(1);
-        expect(mockNavigate).toHaveBeenCalledWith(
-          expect.stringContaining('/'),
-          { replace: true }
-        );
+        expect(mockNavigate).toHaveBeenCalledWith(expect.stringContaining('/'), { replace: true });
       });
     });
   });

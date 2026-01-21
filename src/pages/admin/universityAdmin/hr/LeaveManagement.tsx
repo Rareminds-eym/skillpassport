@@ -107,46 +107,47 @@ const LeaveManagement: React.FC = () => {
   // KPI Data
   const kpiData = [
     {
-      title: "Pending Requests",
+      title: 'Pending Requests',
       value: leaveStats.pendingRequests.toLocaleString(),
       change: 8,
-      changeLabel: "awaiting approval",
+      changeLabel: 'awaiting approval',
       icon: <Clock className="h-6 w-6" />,
-      color: "yellow" as const,
+      color: 'yellow' as const,
     },
     {
-      title: "Approved Requests",
+      title: 'Approved Requests',
       value: leaveStats.approvedRequests.toLocaleString(),
       change: 12,
-      changeLabel: "this month",
+      changeLabel: 'this month',
       icon: <CheckCircle className="h-6 w-6" />,
-      color: "green" as const,
+      color: 'green' as const,
     },
     {
-      title: "Total Days Approved",
+      title: 'Total Days Approved',
       value: leaveStats.totalDaysApproved.toLocaleString(),
       change: 5,
-      changeLabel: "vs last month",
+      changeLabel: 'vs last month',
       icon: <Calendar className="h-6 w-6" />,
-      color: "blue" as const,
+      color: 'blue' as const,
     },
     {
-      title: "Rejection Rate",
+      title: 'Rejection Rate',
       value: `${Math.round((leaveStats.rejectedRequests / (leaveStats.approvedRequests + leaveStats.rejectedRequests)) * 100)}%`,
       change: -3,
-      changeLabel: "improved rate",
+      changeLabel: 'improved rate',
       icon: <AlertTriangle className="h-6 w-6" />,
-      color: "purple" as const,
+      color: 'purple' as const,
     },
   ];
 
   const statuses = ['All', 'Pending', 'Approved', 'Rejected'];
 
-  const filteredRequests = leaveRequests.filter(request => {
+  const filteredRequests = leaveRequests.filter((request) => {
     const matchesStatus = selectedStatus === 'All' || request.status === selectedStatus;
-    const matchesSearch = request.employeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         request.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         request.leaveType.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch =
+      request.employeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.leaveType.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesStatus && matchesSearch;
   });
 
@@ -210,7 +211,7 @@ const LeaveManagement: React.FC = () => {
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-gray-800">Recent Leave Requests</h3>
-            <button 
+            <button
               onClick={() => setActiveTab('requests')}
               className="text-sm text-purple-600 hover:text-purple-700 font-medium"
             >
@@ -219,25 +220,42 @@ const LeaveManagement: React.FC = () => {
           </div>
           <div className="space-y-4">
             {leaveRequests.slice(0, 3).map((request) => (
-              <div key={request.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div
+                key={request.id}
+                className="flex items-center justify-between p-4 bg-gray-50 rounded-xl"
+              >
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${
-                    request.status === 'Pending' ? 'bg-yellow-100' :
-                    request.status === 'Approved' ? 'bg-green-100' : 'bg-red-100'
-                  }`}>
-                    <Users className={`h-4 w-4 ${
-                      request.status === 'Pending' ? 'text-yellow-600' :
-                      request.status === 'Approved' ? 'text-green-600' : 'text-red-600'
-                    }`} />
+                  <div
+                    className={`p-2 rounded-lg ${
+                      request.status === 'Pending'
+                        ? 'bg-yellow-100'
+                        : request.status === 'Approved'
+                          ? 'bg-green-100'
+                          : 'bg-red-100'
+                    }`}
+                  >
+                    <Users
+                      className={`h-4 w-4 ${
+                        request.status === 'Pending'
+                          ? 'text-yellow-600'
+                          : request.status === 'Approved'
+                            ? 'text-green-600'
+                            : 'text-red-600'
+                      }`}
+                    />
                   </div>
                   <div>
                     <p className="font-medium text-gray-900">{request.employeeName}</p>
-                    <p className="text-sm text-gray-600">{request.leaveType} - {request.days} days</p>
+                    <p className="text-sm text-gray-600">
+                      {request.leaveType} - {request.days} days
+                    </p>
                   </div>
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-medium text-gray-900">{request.appliedDate}</p>
-                  <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full border ${getStatusColor(request.status)}`}>
+                  <span
+                    className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full border ${getStatusColor(request.status)}`}
+                  >
                     {getStatusIcon(request.status)}
                     {request.status}
                   </span>
@@ -251,25 +269,32 @@ const LeaveManagement: React.FC = () => {
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-gray-800">Leave Type Distribution</h3>
-            <span className="text-sm text-purple-600 font-medium">{leaveStats.totalDaysApproved} total days</span>
+            <span className="text-sm text-purple-600 font-medium">
+              {leaveStats.totalDaysApproved} total days
+            </span>
           </div>
           <div className="space-y-4">
             {leaveTypes.slice(0, 4).map((leave) => (
-              <div key={leave.name} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div
+                key={leave.name}
+                className="flex items-center justify-between p-4 bg-gray-50 rounded-xl"
+              >
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-purple-100 rounded-lg">
                     <Calendar className="h-4 w-4 text-purple-600" />
                   </div>
                   <div>
                     <p className="font-medium text-gray-900">{leave.name}</p>
-                    <p className="text-sm text-gray-600">{leave.used}/{leave.allocation} days used</p>
+                    <p className="text-sm text-gray-600">
+                      {leave.used}/{leave.allocation} days used
+                    </p>
                   </div>
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-medium text-gray-900">{leave.remaining} remaining</p>
                   <div className="w-20 bg-gray-200 rounded-full h-2 mt-1">
-                    <div 
-                      className="bg-gradient-to-r from-purple-600 to-indigo-600 h-2 rounded-full" 
+                    <div
+                      className="bg-gradient-to-r from-purple-600 to-indigo-600 h-2 rounded-full"
                       style={{ width: `${(leave.used / leave.allocation) * 100}%` }}
                     ></div>
                   </div>
@@ -285,8 +310,10 @@ const LeaveManagement: React.FC = () => {
   const renderRequests = () => (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h3 className="text-lg font-semibold text-gray-800">Leave Requests ({filteredRequests.length})</h3>
-        <button 
+        <h3 className="text-lg font-semibold text-gray-800">
+          Leave Requests ({filteredRequests.length})
+        </h3>
+        <button
           onClick={() => console.log('Add leave request functionality would be implemented here')}
           className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-medium"
         >
@@ -310,7 +337,7 @@ const LeaveManagement: React.FC = () => {
                 className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
               />
             </div>
-            <button 
+            <button
               onClick={() => setShowFilters(!showFilters)}
               className={`px-6 py-2.5 border border-gray-300 rounded-xl hover:bg-gray-50 flex items-center gap-2 font-medium transition-all duration-200 ${
                 showFilters ? 'bg-purple-50 border-purple-300 text-purple-700' : ''
@@ -351,7 +378,10 @@ const LeaveManagement: React.FC = () => {
       {/* Leave Requests Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredRequests.map((request) => (
-          <div key={request.id} className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md hover:border-purple-300 transition-all duration-200">
+          <div
+            key={request.id}
+            className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md hover:border-purple-300 transition-all duration-200"
+          >
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="p-3 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-xl">
@@ -363,7 +393,7 @@ const LeaveManagement: React.FC = () => {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button 
+                <button
                   onClick={() => console.log('View request:', request)}
                   className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
                 >
@@ -375,20 +405,23 @@ const LeaveManagement: React.FC = () => {
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Leave Type:</span>
-                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full border ${getLeaveTypeColor(request.leaveType)}`}>
+                <span
+                  className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full border ${getLeaveTypeColor(request.leaveType)}`}
+                >
                   {request.leaveType}
                 </span>
               </div>
-              
+
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Duration:</span>
                 <span className="text-sm font-medium text-gray-900">{request.days} days</span>
               </div>
-              
+
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Period:</span>
                 <span className="text-sm font-medium text-gray-900">
-                  {new Date(request.startDate).toLocaleDateString()} - {new Date(request.endDate).toLocaleDateString()}
+                  {new Date(request.startDate).toLocaleDateString()} -{' '}
+                  {new Date(request.endDate).toLocaleDateString()}
                 </span>
               </div>
 
@@ -400,7 +433,9 @@ const LeaveManagement: React.FC = () => {
               </div>
 
               <div className="pt-4 border-t border-gray-100">
-                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(request.status)}`}>
+                <span
+                  className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(request.status)}`}
+                >
                   {getStatusIcon(request.status)}
                   {request.status}
                 </span>
@@ -411,9 +446,9 @@ const LeaveManagement: React.FC = () => {
               <p className="text-sm text-gray-600 mb-3">
                 <span className="font-medium">Reason:</span> {request.reason}
               </p>
-              
+
               <div className="flex gap-2">
-                <button 
+                <button
                   onClick={() => console.log('View details:', request)}
                   className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-xl hover:bg-gray-200 flex items-center justify-center gap-1 font-medium transition-all duration-200"
                 >
@@ -422,14 +457,14 @@ const LeaveManagement: React.FC = () => {
                 </button>
                 {request.status === 'Pending' && (
                   <>
-                    <button 
+                    <button
                       onClick={() => console.log('Approve request:', request)}
                       className="px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white text-sm rounded-xl hover:shadow-lg transition-all duration-200 font-medium flex items-center gap-1"
                     >
                       <CheckCircleIcon className="h-4 w-4" />
                       Approve
                     </button>
-                    <button 
+                    <button
                       onClick={() => console.log('Reject request:', request)}
                       className="px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white text-sm rounded-xl hover:shadow-lg transition-all duration-200 font-medium flex items-center gap-1"
                     >
@@ -462,7 +497,7 @@ const LeaveManagement: React.FC = () => {
         Visual calendar showing all approved leaves and holidays across the university.
       </p>
       <div className="mt-6">
-        <button 
+        <button
           onClick={() => console.log('Calendar functionality would be implemented here')}
           className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-medium"
         >
@@ -499,8 +534,8 @@ const LeaveManagement: React.FC = () => {
                     <span className="text-green-600 font-medium">{leave.remaining} days</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
-                    <div 
-                      className="bg-gradient-to-r from-purple-600 to-indigo-600 h-2 rounded-full" 
+                    <div
+                      className="bg-gradient-to-r from-purple-600 to-indigo-600 h-2 rounded-full"
                       style={{ width: `${(leave.used / leave.allocation) * 100}%` }}
                     ></div>
                   </div>
@@ -527,7 +562,8 @@ const LeaveManagement: React.FC = () => {
             <div className="border-l-4 border-red-400 pl-4 bg-red-50 rounded-r-xl p-4">
               <h4 className="font-semibold text-gray-900">Sick Leave</h4>
               <p className="text-sm text-gray-600 mt-1">
-                12 days per year. Medical certificate required for leaves exceeding 3 consecutive days.
+                12 days per year. Medical certificate required for leaves exceeding 3 consecutive
+                days.
               </p>
             </div>
             <div className="border-l-4 border-green-400 pl-4 bg-green-50 rounded-r-xl p-4">
@@ -539,7 +575,8 @@ const LeaveManagement: React.FC = () => {
             <div className="border-l-4 border-pink-400 pl-4 bg-pink-50 rounded-r-xl p-4">
               <h4 className="font-semibold text-gray-900">Maternity Leave</h4>
               <p className="text-sm text-gray-600 mt-1">
-                180 days (26 weeks) as per Maternity Benefit Act. Can be taken before and after delivery.
+                180 days (26 weeks) as per Maternity Benefit Act. Can be taken before and after
+                delivery.
               </p>
             </div>
           </div>
@@ -571,7 +608,8 @@ const LeaveManagement: React.FC = () => {
           Leave Management
         </h1>
         <p className="text-gray-600 mt-2">
-          Manage leave requests, policies, and employee leave balances across all affiliated colleges
+          Manage leave requests, policies, and employee leave balances across all affiliated
+          colleges
         </p>
       </div>
 

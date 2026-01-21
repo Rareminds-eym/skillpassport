@@ -36,7 +36,12 @@ const generateCertificateImage = (studentName, courseName, completionDate, crede
 
   // Corner decorations
   ctx.fillStyle = '#3b82f6';
-  [[30, 30], [1130, 30], [30, 780], [1130, 780]].forEach(([x, y]) => {
+  [
+    [30, 30],
+    [1130, 30],
+    [30, 780],
+    [1130, 780],
+  ].forEach(([x, y]) => {
     ctx.fillRect(x, y, 40, 8);
     ctx.fillRect(x, y, 8, 40);
   });
@@ -80,7 +85,10 @@ const generateCertificateImage = (studentName, courseName, completionDate, crede
   ctx.fillText('has successfully completed the course', 600, 420);
 
   ctx.fillStyle = '#1e40af';
-  ctx.font = ctx.measureText(courseName).width > 900 ? 'bold 28px Georgia, serif' : 'bold 36px Georgia, serif';
+  ctx.font =
+    ctx.measureText(courseName).width > 900
+      ? 'bold 28px Georgia, serif'
+      : 'bold 36px Georgia, serif';
   ctx.fillText(courseName, 600, 490);
 
   ctx.fillStyle = '#475569';
@@ -94,7 +102,10 @@ const generateCertificateImage = (studentName, courseName, completionDate, crede
   // Signature lines
   ctx.strokeStyle = '#94a3b8';
   ctx.lineWidth = 1;
-  [[200, 450], [750, 1000]].forEach(([start, end]) => {
+  [
+    [200, 450],
+    [750, 1000],
+  ].forEach(([start, end]) => {
     ctx.beginPath();
     ctx.moveTo(start, 720);
     ctx.lineTo(end, 720);
@@ -140,22 +151,33 @@ const uploadToR2 = async (blob, studentId, courseId, credentialId) => {
   }
 
   const data = await response.json();
-  
+
   // Return proxy URL instead of direct R2 URL (R2 bucket is not public)
   // This allows downloading through the storage-api worker which has R2 credentials
   return `${STORAGE_API_URL}/course-certificate?key=${encodeURIComponent(filename)}`;
 };
 
-export const generateCourseCertificate = async (studentId, studentName, courseId, courseName, educatorName) => {
+export const generateCourseCertificate = async (
+  studentId,
+  studentName,
+  courseId,
+  courseName,
+  educatorName
+) => {
   try {
     const credentialId = generateCredentialId();
     const completionDate = new Date().toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
     });
 
-    const certificateDataUrl = generateCertificateImage(studentName, courseName, completionDate, credentialId);
+    const certificateDataUrl = generateCertificateImage(
+      studentName,
+      courseName,
+      completionDate,
+      credentialId
+    );
     let certificateUrl = certificateDataUrl;
 
     // Upload to R2
@@ -179,7 +201,7 @@ export const generateCourseCertificate = async (studentId, studentName, courseId
       description: `Certificate of completion for "${courseName}"`,
       status: 'active',
       approval_status: 'approved',
-      enabled: true
+      enabled: true,
     });
 
     // Update enrollment
@@ -199,8 +221,9 @@ export const generateCourseCertificate = async (studentId, studentName, courseId
 };
 
 export const downloadCertificate = async (certificateUrl, courseName) => {
-  const STORAGE_API_URL = import.meta.env.VITE_STORAGE_API_URL || import.meta.env.VITE_COURSE_API_URL;
-  
+  const STORAGE_API_URL =
+    import.meta.env.VITE_STORAGE_API_URL || import.meta.env.VITE_COURSE_API_URL;
+
   try {
     // If it's a data URL, download directly
     if (certificateUrl.startsWith('data:')) {
@@ -214,36 +237,39 @@ export const downloadCertificate = async (certificateUrl, courseName) => {
     }
 
     let downloadUrl = certificateUrl;
-    
+
     // If it's already a proxy URL, use it directly
     if (certificateUrl.includes('/course-certificate')) {
       downloadUrl = certificateUrl;
-    } 
+    }
     // If it's a direct R2 URL, convert to proxy URL
-    else if (certificateUrl.includes('.r2.dev/') || certificateUrl.includes('r2.cloudflarestorage.com')) {
+    else if (
+      certificateUrl.includes('.r2.dev/') ||
+      certificateUrl.includes('r2.cloudflarestorage.com')
+    ) {
       downloadUrl = `${STORAGE_API_URL}/course-certificate?url=${encodeURIComponent(certificateUrl)}`;
     }
     // For any other URL, try using the proxy
     else {
       downloadUrl = `${STORAGE_API_URL}/course-certificate?url=${encodeURIComponent(certificateUrl)}`;
     }
-    
+
     const response = await fetch(downloadUrl);
-    
+
     if (!response.ok) {
       throw new Error(`Download failed: ${response.status}`);
     }
 
     const blob = await response.blob();
     const url = window.URL.createObjectURL(blob);
-    
+
     const link = document.createElement('a');
     link.href = url;
     link.download = `${courseName.replace(/[^a-z0-9]/gi, '_')}_Certificate.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
+
     // Clean up the blob URL
     window.URL.revokeObjectURL(url);
   } catch (error) {
@@ -259,27 +285,28 @@ export const downloadCertificate = async (certificateUrl, courseName) => {
  * @param {string} mode - 'inline' for viewing in browser, 'download' for downloading
  */
 export const getCertificateProxyUrl = (certificateUrl, mode = 'inline') => {
-  const STORAGE_API_URL = import.meta.env.VITE_STORAGE_API_URL || import.meta.env.VITE_COURSE_API_URL;
-  
+  const STORAGE_API_URL =
+    import.meta.env.VITE_STORAGE_API_URL || import.meta.env.VITE_COURSE_API_URL;
+
   if (!certificateUrl) return null;
-  
+
   // Data URLs work directly
   if (certificateUrl.startsWith('data:')) {
     return certificateUrl;
   }
-  
+
   // Already a proxy URL - add/update mode parameter
   if (certificateUrl.includes('/course-certificate')) {
     const url = new URL(certificateUrl);
     url.searchParams.set('mode', mode);
     return url.toString();
   }
-  
+
   // Convert R2 URL to proxy URL
   if (certificateUrl.includes('.r2.dev/') || certificateUrl.includes('r2.cloudflarestorage.com')) {
     return `${STORAGE_API_URL}/course-certificate?url=${encodeURIComponent(certificateUrl)}&mode=${mode}`;
   }
-  
+
   // For other URLs, try proxy
   return `${STORAGE_API_URL}/course-certificate?url=${encodeURIComponent(certificateUrl)}&mode=${mode}`;
 };

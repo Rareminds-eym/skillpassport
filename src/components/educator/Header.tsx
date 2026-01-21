@@ -1,159 +1,154 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   BellIcon,
   UserCircleIcon,
   Bars3Icon,
   XMarkIcon,
   ChevronDownIcon,
-} from '@heroicons/react/24/outline'
-import NotificationPanel from './NotificationPanel'
-import { supabase } from '../../lib/supabaseClient'
-import { useNotifications } from '../../hooks/useNotifications'
+} from '@heroicons/react/24/outline';
+import NotificationPanel from './NotificationPanel';
+import { supabase } from '../../lib/supabaseClient';
+import { useNotifications } from '../../hooks/useNotifications';
 
 interface HeaderProps {
-  onMenuToggle: () => void
-  showMobileMenu: boolean
+  onMenuToggle: () => void;
+  showMobileMenu: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({
-  onMenuToggle,
-  showMobileMenu,
-}) => {
-  const [showNotifications, setShowNotifications] = useState(false)
-  const [showProfileMenu, setShowProfileMenu] = useState(false)
-  const [educatorProfile, setEducatorProfile] = useState<any>(null)
-  const [educatorEmail, setEducatorEmail] = useState<string | null>(null)
-  const navigate = useNavigate()
-  const profileRef = useRef<HTMLDivElement>(null)
-  const notificationRef = useRef<HTMLDivElement>(null)
+const Header: React.FC<HeaderProps> = ({ onMenuToggle, showMobileMenu }) => {
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [educatorProfile, setEducatorProfile] = useState<any>(null);
+  const [educatorEmail, setEducatorEmail] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const profileRef = useRef<HTMLDivElement>(null);
+  const notificationRef = useRef<HTMLDivElement>(null);
 
   // Close profile menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       // Profile Dropdown
       if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
-        setShowProfileMenu(false)
+        setShowProfileMenu(false);
       }
       // Notification Panel
       if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
-        setShowNotifications(false)
+        setShowNotifications(false);
       }
-    }
+    };
 
     if (showProfileMenu || showNotifications) {
-      document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [showProfileMenu, showNotifications])
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showProfileMenu, showNotifications]);
 
   // Get notifications using the unified notification system
-  const {
-    unreadCount,
-  } = useNotifications(educatorEmail)
-
+  const { unreadCount } = useNotifications(educatorEmail);
 
   // Load educator profile for header
   const loadEducatorProfile = async () => {
     try {
       // Get email from localStorage (same method as ProfileFixed)
-      const storedUser = localStorage.getItem('user')
-      const storedEmail = localStorage.getItem('userEmail')
+      const storedUser = localStorage.getItem('user');
+      const storedEmail = localStorage.getItem('userEmail');
 
-      let email = 'karthikeyan@rareminds.in' // Default fallback
+      let email = 'karthikeyan@rareminds.in'; // Default fallback
 
       if (storedUser) {
         try {
-          const userData = JSON.parse(storedUser)
-          email = userData.email || email
+          const userData = JSON.parse(storedUser);
+          email = userData.email || email;
         } catch (e) {
-          console.error('Error parsing stored user:', e)
+          console.error('Error parsing stored user:', e);
         }
       } else if (storedEmail) {
-        email = storedEmail
+        email = storedEmail;
       }
 
-      setEducatorEmail(email)
+      setEducatorEmail(email);
 
       // Fetch educator data
       const { data: educatorData, error } = await supabase
         .from('school_educators')
         .select('first_name, last_name, photo_url, email, specialization')
         .eq('email', email)
-        .maybeSingle()
+        .maybeSingle();
 
       if (error) {
-        console.error('Error loading educator profile for header:', error)
-        return
+        console.error('Error loading educator profile for header:', error);
+        return;
       }
 
       if (educatorData) {
         setEducatorProfile({
-          name: educatorData.first_name && educatorData.last_name
-            ? `${educatorData.first_name} ${educatorData.last_name}`
-            : educatorData.first_name || 'Educator',
+          name:
+            educatorData.first_name && educatorData.last_name
+              ? `${educatorData.first_name} ${educatorData.last_name}`
+              : educatorData.first_name || 'Educator',
           photo_url: educatorData.photo_url,
           email: educatorData.email,
-          specialization: educatorData.specialization || 'Account'
-        })
+          specialization: educatorData.specialization || 'Account',
+        });
       }
     } catch (error) {
-      console.error('Failed to load educator profile for header:', error)
+      console.error('Failed to load educator profile for header:', error);
     }
-  }
+  };
 
   useEffect(() => {
-    loadEducatorProfile()
+    loadEducatorProfile();
 
     // Listen for profile updates
     const handleProfileUpdate = () => {
-      console.log('🔄 Header received profile update event, refreshing...')
-      loadEducatorProfile()
-    }
+      console.log('🔄 Header received profile update event, refreshing...');
+      loadEducatorProfile();
+    };
 
     // Add event listener for profile updates
-    window.addEventListener('educatorProfileUpdated', handleProfileUpdate)
+    window.addEventListener('educatorProfileUpdated', handleProfileUpdate);
 
     // Cleanup
     return () => {
-      window.removeEventListener('educatorProfileUpdated', handleProfileUpdate)
-    }
-  }, [])
+      window.removeEventListener('educatorProfileUpdated', handleProfileUpdate);
+    };
+  }, []);
 
   const handleNotificationClick = () => {
-    setShowNotifications((prev) => !prev)
-    setShowProfileMenu(false)
-  }
+    setShowNotifications((prev) => !prev);
+    setShowProfileMenu(false);
+  };
 
   const handleProfile = () => {
-    setShowProfileMenu(false)
-    navigate('/educator/profile')
-  }
+    setShowProfileMenu(false);
+    navigate('/educator/profile');
+  };
 
   const handleSettings = () => {
-    setShowProfileMenu(false)
-    navigate('/educator/settings')
-  }
+    setShowProfileMenu(false);
+    navigate('/educator/settings');
+  };
 
   const handleLogout = () => {
-    setShowProfileMenu(false)
-    navigate('/')
-  }
+    setShowProfileMenu(false);
+    navigate('/');
+  };
 
   const handleProfileClick = () => {
-    setShowProfileMenu((prev) => !prev)
-    setShowNotifications(false)
-  }
+    setShowProfileMenu((prev) => !prev);
+    setShowNotifications(false);
+  };
 
   // Menu button click handler
   const handleMenuClick = () => {
-    onMenuToggle()
-    setShowNotifications(false)
-    setShowProfileMenu(false)
-  }
+    onMenuToggle();
+    setShowNotifications(false);
+    setShowProfileMenu(false);
+  };
 
   return (
     <header className="bg-white  border-b border-gray-200 sticky top-0 z-50">
@@ -209,7 +204,6 @@ const Header: React.FC<HeaderProps> = ({
                   educatorEmail={educatorEmail}
                 />
               )}
-
             </div>
 
             {/* Profile Menu */}
@@ -228,8 +222,10 @@ const Header: React.FC<HeaderProps> = ({
                     className="h-6 sm:h-8 w-6 sm:w-8 rounded-full object-cover border border-gray-200"
                     onError={(e) => {
                       // Fallback to icon if image fails to load
-                      e.target.style.display = 'none'
-                      e.target.nextSibling.style.display = 'block'
+                      // @ts-expect-error - Auto-suppressed for migration
+                      e.target.style.display = 'none';
+                      // @ts-expect-error - Auto-suppressed for migration
+                      e.target.nextSibling.style.display = 'block';
                     }}
                   />
                 ) : null}
@@ -243,13 +239,12 @@ const Header: React.FC<HeaderProps> = ({
                   <span className="text-xs text-gray-500">
                     {educatorProfile?.specialization || 'Computer Science'}
                   </span>
-                  <span className="text-xs text-blue-600 font-medium">
-                    Educator
-                  </span>
+                  <span className="text-xs text-blue-600 font-medium">Educator</span>
                 </div>
                 <ChevronDownIcon
-                  className={`hidden sm:block h-4 w-4 text-gray-500 transition-transform duration-200 ${showProfileMenu ? 'rotate-180' : ''
-                    }`}
+                  className={`hidden sm:block h-4 w-4 text-gray-500 transition-transform duration-200 ${
+                    showProfileMenu ? 'rotate-180' : ''
+                  }`}
                 />
               </button>
 
@@ -321,13 +316,10 @@ const Header: React.FC<HeaderProps> = ({
 
       {/* Mobile backdrop - clicks here close the menu */}
       {showMobileMenu && (
-        <div
-          className="md:hidden fixed inset-0 z-30 top-16"
-          onClick={onMenuToggle}
-        />
+        <div className="md:hidden fixed inset-0 z-30 top-16" onClick={onMenuToggle} />
       )}
     </header>
-  )
-}
+  );
+};
 
-export default Header
+export default Header;

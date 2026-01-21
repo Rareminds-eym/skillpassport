@@ -26,17 +26,17 @@ export const MessageModal: React.FC<MessageModalProps> = ({
   opportunityId,
   jobTitle,
   currentUserId,
-  currentUserType
+  currentUserType,
 }) => {
   const [newMessage, setNewMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
+
   // Only fetch conversation when modal is open
-  const { 
-    conversation, 
+  const {
+    conversation,
     isLoading: loadingConversation,
     error: conversationError,
-    markAsRead 
+    markAsRead,
   } = useConversation(
     studentId,
     recruiterId,
@@ -45,10 +45,10 @@ export const MessageModal: React.FC<MessageModalProps> = ({
     jobTitle || 'General Inquiry',
     isOpen // Pass isOpen to enable/disable the query
   );
-  
+
   // Show error toast if conversation creation fails (only once)
   const hasShownErrorRef = useRef(false);
-  
+
   useEffect(() => {
     if (conversationError && !hasShownErrorRef.current) {
       hasShownErrorRef.current = true;
@@ -64,22 +64,22 @@ export const MessageModal: React.FC<MessageModalProps> = ({
       hasShownErrorRef.current = false;
     }
   }, [conversationError, isOpen]);
-  
-  const { 
-    messages, 
+
+  const {
+    messages,
     isLoading: loadingMessages,
     sendMessage,
-    isSending 
+    isSending,
   } = useMessages({
     conversationId: conversation?.id || null,
-    enabled: isOpen && !!conversation
+    enabled: isOpen && !!conversation,
   });
-  
+
   const loading = loadingConversation || loadingMessages;
 
   // Mark messages as read when conversation is opened (only once)
   const hasMarkedReadRef = useRef(false);
-  
+
   useEffect(() => {
     if (conversation && isOpen && !hasMarkedReadRef.current) {
       hasMarkedReadRef.current = true;
@@ -96,34 +96,48 @@ export const MessageModal: React.FC<MessageModalProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSendMessage = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!newMessage.trim() || !conversation || isSending) {
-      return;
-    }
+  const handleSendMessage = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
 
-    try {
-      // Determine receiver based on current user type
-      const receiverId = currentUserType === 'student' ? recruiterId : studentId;
-      const receiverType = currentUserType === 'student' ? 'recruiter' : 'student';
-      
-      sendMessage({
-        senderId: currentUserId,
-        senderType: currentUserType,
-        receiverId: receiverId,
-        receiverType: receiverType,
-        messageText: newMessage.trim(),
-        applicationId,
-        opportunityId
-      });
-      
-      setNewMessage('');
-    } catch (error) {
-      console.error('Error sending message:', error);
-      toast.error('Failed to send message');
-    }
-  }, [newMessage, conversation, isSending, currentUserType, recruiterId, studentId, currentUserId, sendMessage, applicationId, opportunityId]);
+      if (!newMessage.trim() || !conversation || isSending) {
+        return;
+      }
+
+      try {
+        // Determine receiver based on current user type
+        const receiverId = currentUserType === 'student' ? recruiterId : studentId;
+        const receiverType = currentUserType === 'student' ? 'recruiter' : 'student';
+
+        sendMessage({
+          senderId: currentUserId,
+          senderType: currentUserType,
+          receiverId: receiverId,
+          receiverType: receiverType,
+          messageText: newMessage.trim(),
+          applicationId,
+          opportunityId,
+        });
+
+        setNewMessage('');
+      } catch (error) {
+        console.error('Error sending message:', error);
+        toast.error('Failed to send message');
+      }
+    },
+    [
+      newMessage,
+      conversation,
+      isSending,
+      currentUserType,
+      recruiterId,
+      studentId,
+      currentUserId,
+      sendMessage,
+      applicationId,
+      opportunityId,
+    ]
+  );
 
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -143,7 +157,7 @@ export const MessageModal: React.FC<MessageModalProps> = ({
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">
         {/* Backdrop */}
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
           onClick={onClose}
         />
@@ -198,7 +212,7 @@ export const MessageModal: React.FC<MessageModalProps> = ({
             ) : (
               messages.map((msg) => {
                 const isCurrentUser = msg.sender_id === currentUserId;
-                
+
                 return (
                   <div
                     key={msg.id}
@@ -211,9 +225,7 @@ export const MessageModal: React.FC<MessageModalProps> = ({
                           : 'bg-white border border-gray-200 text-gray-900'
                       }`}
                     >
-                      <p className="text-sm whitespace-pre-wrap break-words">
-                        {msg.message_text}
-                      </p>
+                      <p className="text-sm whitespace-pre-wrap break-words">{msg.message_text}</p>
                       <p
                         className={`text-xs mt-1 ${
                           isCurrentUser ? 'text-primary-100' : 'text-gray-500'
@@ -236,7 +248,7 @@ export const MessageModal: React.FC<MessageModalProps> = ({
                 type="text"
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
-                placeholder={conversationError ? "Unable to send messages" : "Type your message..."}
+                placeholder={conversationError ? 'Unable to send messages' : 'Type your message...'}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 disabled={isSending || loading || !!conversationError}
               />

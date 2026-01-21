@@ -1,5 +1,12 @@
 import React from 'react';
-import { UserPlusIcon, ClipboardDocumentCheckIcon, PhoneIcon, DocumentTextIcon, CheckBadgeIcon, TrophyIcon } from '@heroicons/react/24/outline';
+import {
+  UserPlusIcon,
+  ClipboardDocumentCheckIcon,
+  PhoneIcon,
+  DocumentTextIcon,
+  CheckBadgeIcon,
+  TrophyIcon,
+} from '@heroicons/react/24/outline';
 
 interface EmptyStateProps {
   stage: string;
@@ -14,7 +21,7 @@ export const PipelineEmptyState: React.FC<EmptyStateProps> = ({ stage, onAddClic
       description: 'Start building your pipeline by adding candidates from your talent pool',
       actionText: 'Add from Talent Pool',
       color: 'text-gray-500',
-      bgColor: 'bg-gray-50'
+      bgColor: 'bg-gray-50',
     },
     screened: {
       icon: ClipboardDocumentCheckIcon,
@@ -22,7 +29,7 @@ export const PipelineEmptyState: React.FC<EmptyStateProps> = ({ stage, onAddClic
       description: 'Review sourced candidates and move promising ones to screening stage',
       actionText: 'Add Candidates',
       color: 'text-blue-500',
-      bgColor: 'bg-blue-50'
+      bgColor: 'bg-blue-50',
     },
     interview_1: {
       icon: PhoneIcon,
@@ -30,7 +37,7 @@ export const PipelineEmptyState: React.FC<EmptyStateProps> = ({ stage, onAddClic
       description: 'Move screened candidates here to schedule their first interview',
       actionText: 'Add Candidates',
       color: 'text-yellow-500',
-      bgColor: 'bg-yellow-50'
+      bgColor: 'bg-yellow-50',
     },
     interview_2: {
       icon: DocumentTextIcon,
@@ -38,7 +45,7 @@ export const PipelineEmptyState: React.FC<EmptyStateProps> = ({ stage, onAddClic
       description: 'Candidates who pass the first round will appear here',
       actionText: 'Add Candidates',
       color: 'text-orange-500',
-      bgColor: 'bg-orange-50'
+      bgColor: 'bg-orange-50',
     },
     offer: {
       icon: CheckBadgeIcon,
@@ -46,7 +53,7 @@ export const PipelineEmptyState: React.FC<EmptyStateProps> = ({ stage, onAddClic
       description: 'Move successful candidates here to prepare and send offers',
       actionText: 'Add Candidates',
       color: 'text-green-500',
-      bgColor: 'bg-green-50'
+      bgColor: 'bg-green-50',
     },
     hired: {
       icon: TrophyIcon,
@@ -54,8 +61,8 @@ export const PipelineEmptyState: React.FC<EmptyStateProps> = ({ stage, onAddClic
       description: 'Candidates who accept offers will be moved here',
       actionText: 'Add Candidates',
       color: 'text-emerald-500',
-      bgColor: 'bg-emerald-50'
-    }
+      bgColor: 'bg-emerald-50',
+    },
   };
 
   const config = stageConfig[stage] || stageConfig.sourced;
@@ -78,4 +85,3 @@ export const PipelineEmptyState: React.FC<EmptyStateProps> = ({ stage, onAddClic
     </div>
   );
 };
-

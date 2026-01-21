@@ -13,46 +13,46 @@ export const generateUuid = () => {
 };
 
 export const calculateDuration = (startDate, endDate) => {
-  if (!startDate) return "";
-  
+  if (!startDate) return '';
+
   const start = new Date(startDate);
   const end = endDate ? new Date(endDate) : new Date();
-  
-  if (isNaN(start.getTime())) return "";
-  if (endDate && isNaN(end.getTime())) return "";
-  
+
+  if (isNaN(start.getTime())) return '';
+  if (endDate && isNaN(end.getTime())) return '';
+
   // Calculate the difference using proper date arithmetic
   let years = end.getFullYear() - start.getFullYear();
   let months = end.getMonth() - start.getMonth();
   let days = end.getDate() - start.getDate();
-  
+
   // Adjust for negative days
   if (days < 0) {
     months--;
     const lastDayOfPrevMonth = new Date(end.getFullYear(), end.getMonth(), 0).getDate();
     days += lastDayOfPrevMonth;
   }
-  
+
   // Adjust for negative months
   if (months < 0) {
     years--;
     months += 12;
   }
-  
+
   // Build duration parts
   const parts = [];
   if (years > 0) parts.push(`${years} year${years > 1 ? 's' : ''}`);
   if (months > 0) parts.push(`${months} month${months > 1 ? 's' : ''}`);
   if (days > 0 && years === 0) parts.push(`${days} day${days > 1 ? 's' : ''}`);
-  
+
   const formatDate = (date) => {
     return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
   };
-  
+
   const startLabel = formatDate(start);
   const endLabel = endDate ? formatDate(end) : 'Present';
   const durationText = parts.length > 0 ? parts.join(' ') : 'Less than a month';
-  
+
   return `${startLabel} - ${endLabel} (${durationText})`;
 };
 
@@ -64,16 +64,19 @@ export const calculateProgress = (completedModules, totalModules) => {
 
 export const parseSkills = (value) => {
   if (Array.isArray(value)) return value;
-  if (typeof value === "string" && value.trim()) {
-    return value.split(",").map((skill) => skill.trim()).filter(Boolean);
+  if (typeof value === 'string' && value.trim()) {
+    return value
+      .split(',')
+      .map((skill) => skill.trim())
+      .filter(Boolean);
   }
   return [];
 };
 
 export const formatDateLabel = (value) => {
-  if (!value) return "";
+  if (!value) return '';
   const date = new Date(value);
-  if (isNaN(date.getTime())) return "";
+  if (isNaN(date.getTime())) return '';
   return date.toLocaleDateString();
 };
 
@@ -91,7 +94,7 @@ export const parsePositiveNumber = (value) => {
 export const isValidUrl = (value) => {
   // Allow empty values (URL fields are optional)
   if (!value || !value.trim()) return true;
-  
+
   try {
     const url = new URL(value);
     // Only allow http and https protocols

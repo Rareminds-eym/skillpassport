@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  Send, 
-  X, 
-  MessageSquare, 
-  Plus, 
-  ThumbsUp, 
+import {
+  Send,
+  X,
+  MessageSquare,
+  Plus,
+  ThumbsUp,
   ThumbsDown,
   Loader2,
   AlertCircle,
@@ -12,7 +12,7 @@ import {
   ChevronLeft,
   Brain,
   Trash2,
-  Pencil
+  Pencil,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useTutorChat } from '../../hooks/useTutorChat';
@@ -52,7 +52,7 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
     startNewConversation,
     deleteConversation,
     submitFeedback,
-    refreshConversations
+    refreshConversations,
   } = useTutorChat({ courseId, lessonId });
 
   // Auto-scroll to bottom when messages change
@@ -98,7 +98,7 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
 
   const handleFeedback = async (messageIndex: number, rating: 1 | -1) => {
     await submitFeedback(messageIndex, rating);
-    setFeedbackGiven(prev => ({ ...prev, [messageIndex]: rating }));
+    setFeedbackGiven((prev) => ({ ...prev, [messageIndex]: rating }));
   };
 
   // Start editing a message
@@ -116,7 +116,7 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
   // Save edited message and regenerate response
   const handleSaveEdit = async () => {
     if (!editingMessageId || !editedContent.trim() || isStreaming) return;
-    
+
     await editMessage(editingMessageId, editedContent);
     setEditingMessageId(null);
     setEditedContent('');
@@ -147,7 +147,6 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
-
 
   // Render message bubble
   const renderMessage = (msg: ChatMessage, index: number) => {
@@ -197,10 +196,7 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
     }
 
     return (
-      <div
-        key={msg.id}
-        className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4 group`}
-      >
+      <div key={msg.id} className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4 group`}>
         <div className={`max-w-[80%] ${isUser ? 'order-2' : 'order-1'}`}>
           <div className="relative">
             <div
@@ -227,13 +223,22 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
               {/* Loading indicator - waiting for content */}
               {isStreaming && isLastAssistant && !msg.content && !isReasoning && (
                 <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  <div
+                    className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                    style={{ animationDelay: '0ms' }}
+                  />
+                  <div
+                    className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                    style={{ animationDelay: '150ms' }}
+                  />
+                  <div
+                    className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                    style={{ animationDelay: '300ms' }}
+                  />
                 </div>
               )}
             </div>
-            
+
             {/* Edit button for user messages - appears on hover */}
             {isUser && !isStreaming && (
               <button
@@ -245,10 +250,12 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
               </button>
             )}
           </div>
-          
-          <div className={`flex items-center gap-2 mt-1 ${isUser ? 'justify-end' : 'justify-start'}`}>
+
+          <div
+            className={`flex items-center gap-2 mt-1 ${isUser ? 'justify-end' : 'justify-start'}`}
+          >
             <span className="text-xs text-gray-400">{formatTime(msg.timestamp)}</span>
-            
+
             {/* Feedback buttons for assistant messages */}
             {!isUser && msg.content && (
               <div className="flex items-center gap-1">
@@ -291,7 +298,7 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
           </button>
           <h3 className="font-semibold text-gray-800">Conversation History</h3>
         </div>
-        
+
         <div className="flex-1 overflow-y-auto p-4">
           <button
             onClick={() => {
@@ -303,15 +310,17 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
             <Plus className="w-4 h-4" />
             New Conversation
           </button>
-          
+
           {conversations.length === 0 ? (
             <p className="text-center text-gray-500 py-8">No conversations yet</p>
           ) : (
-            conversations.map(conv => (
+            conversations.map((conv) => (
               <div key={conv.id} className="relative mb-2">
                 {deleteConfirmId === conv.id ? (
                   <div className="p-3 rounded-xl border border-red-300 bg-red-50">
-                    <p className="text-sm text-red-700 mb-2">Delete this conversation permanently?</p>
+                    <p className="text-sm text-red-700 mb-2">
+                      Delete this conversation permanently?
+                    </p>
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleDeleteConversation(conv.id)}
@@ -344,7 +353,8 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
                     >
                       <p className="font-medium text-gray-800 truncate">{conv.title}</p>
                       <p className="text-xs text-gray-500 mt-1">
-                        {new Set(conv.messages.map(m => m.id)).size} messages · {conv.updatedAt.toLocaleDateString()}
+                        {new Set(conv.messages.map((m) => m.id)).size} messages ·{' '}
+                        {conv.updatedAt.toLocaleDateString()}
                       </p>
                     </button>
                     <button
@@ -366,7 +376,6 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
       </div>
     );
   }
-
 
   // Main chat view
   return (
@@ -414,7 +423,7 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
             <p className="text-sm text-gray-600 mb-6">
               I'm here to help you understand the course material. Ask me anything!
             </p>
-            
+
             {/* Suggested Questions */}
             {suggestedQuestions.length > 0 && (
               <div className="w-full">

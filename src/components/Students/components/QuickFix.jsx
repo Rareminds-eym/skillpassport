@@ -7,7 +7,7 @@ import React from 'react';
 // const QuickFix = () => {
 //   const functions = [
 //     'verifyEducationSave',
-//     'verifyTechnicalSkillSave', 
+//     'verifyTechnicalSkillSave',
 //     'verifyTrainingSave',
 //     'verifyExperienceSave',
 //     'verifyTrainingSave',

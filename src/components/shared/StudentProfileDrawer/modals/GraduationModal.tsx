@@ -11,19 +11,22 @@ interface GraduationModalProps {
   loading: boolean;
 }
 
-const GraduationModal: React.FC<GraduationModalProps> = ({ 
-  isOpen, 
-  onClose, 
-  student, 
-  onGraduate, 
-  loading 
+const GraduationModal: React.FC<GraduationModalProps> = ({
+  isOpen,
+  onClose,
+  student,
+  onGraduate,
+  loading,
 }) => {
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[60] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        <div
+          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          onClick={onClose}
+        ></div>
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium text-gray-900">Mark as Graduate</h3>
@@ -44,18 +47,19 @@ const GraduationModal: React.FC<GraduationModalProps> = ({
                 </p>
               </div>
             </div>
-            
+
             <div className="bg-green-50 border border-green-200 rounded-md p-4">
               <div className="flex">
                 <div className="flex-shrink-0">
                   <CheckCircleIcon className="h-5 w-5 text-green-400" />
                 </div>
                 <div className="ml-3">
-                  <h3 className="text-sm font-medium text-green-800">
-                    Graduation Confirmation
-                  </h3>
+                  <h3 className="text-sm font-medium text-green-800">Graduation Confirmation</h3>
                   <div className="mt-2 text-sm text-green-700">
-                    <p>This action will mark the student as graduated and update their enrollment status. This action cannot be easily undone.</p>
+                    <p>
+                      This action will mark the student as graduated and update their enrollment
+                      status. This action cannot be easily undone.
+                    </p>
                   </div>
                 </div>
               </div>

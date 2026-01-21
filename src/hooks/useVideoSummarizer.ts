@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-    VideoSummary,
-    checkProcessingStatus,
-    getVideoSummaryRobust,
-    processVideo
+  VideoSummary,
+  checkProcessingStatus,
+  getVideoSummaryRobust,
+  processVideo,
 } from '../services/videoSummarizerService';
 
 interface UseVideoSummarizerOptions {
@@ -45,7 +45,7 @@ export function useVideoSummarizer(options: UseVideoSummarizerOptions): UseVideo
 
       if (existingSummary) {
         setSummary(existingSummary);
-        
+
         // Check if still processing
         if (existingSummary.processingStatus === 'processing') {
           setIsProcessing(true);
@@ -63,40 +63,43 @@ export function useVideoSummarizer(options: UseVideoSummarizerOptions): UseVideo
   }, [videoUrl, lessonId, autoProcess]);
 
   // Poll for processing status
-  const pollProcessingStatus = useCallback(async (summaryId: string) => {
-    const pollInterval = setInterval(async () => {
-      try {
-        const { status, summary: updatedSummary } = await checkProcessingStatus(summaryId);
+  const pollProcessingStatus = useCallback(
+    async (summaryId: string) => {
+      const pollInterval = setInterval(async () => {
+        try {
+          const { status, summary: updatedSummary } = await checkProcessingStatus(summaryId);
 
-        if (status === 'completed' && updatedSummary) {
-          setSummary(updatedSummary);
-          setIsProcessing(false);
-          setProcessingProgress(100);
-          clearInterval(pollInterval);
-        } else if (status === 'failed') {
-          setError('Video processing failed');
-          setIsProcessing(false);
-          clearInterval(pollInterval);
-        } else {
-          // Simulate progress
-          setProcessingProgress(prev => Math.min(prev + 5, 90));
+          if (status === 'completed' && updatedSummary) {
+            setSummary(updatedSummary);
+            setIsProcessing(false);
+            setProcessingProgress(100);
+            clearInterval(pollInterval);
+          } else if (status === 'failed') {
+            setError('Video processing failed');
+            setIsProcessing(false);
+            clearInterval(pollInterval);
+          } else {
+            // Simulate progress
+            setProcessingProgress((prev) => Math.min(prev + 5, 90));
+          }
+        } catch (err) {
+          console.error('Polling error:', err);
         }
-      } catch (err) {
-        console.error('Polling error:', err);
-      }
-    }, 5000); // Poll every 5 seconds
+      }, 5000); // Poll every 5 seconds
 
-    // Cleanup after 10 minutes
-    setTimeout(() => {
-      clearInterval(pollInterval);
-      if (isProcessing) {
-        setError('Processing timeout');
-        setIsProcessing(false);
-      }
-    }, 600000);
+      // Cleanup after 10 minutes
+      setTimeout(() => {
+        clearInterval(pollInterval);
+        if (isProcessing) {
+          setError('Processing timeout');
+          setIsProcessing(false);
+        }
+      }, 600000);
 
-    return () => clearInterval(pollInterval);
-  }, [isProcessing]);
+      return () => clearInterval(pollInterval);
+    },
+    [isProcessing]
+  );
 
   // Start processing video
   const startProcessing = useCallback(async () => {
@@ -114,7 +117,7 @@ export function useVideoSummarizer(options: UseVideoSummarizerOptions): UseVideo
         videoUrl,
         lessonId,
         courseId,
-        language: 'en'
+        language: 'en',
       });
 
       if (result.processingStatus === 'completed') {
@@ -152,7 +155,7 @@ export function useVideoSummarizer(options: UseVideoSummarizerOptions): UseVideo
     error,
     processingProgress,
     processVideo: startProcessing,
-    refreshSummary
+    refreshSummary,
   };
 }
 

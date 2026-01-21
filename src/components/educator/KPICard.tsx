@@ -37,12 +37,17 @@ const KPICard: React.FC<KPICardProps> = ({
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow" data-testid="kpi-card">
+    <div
+      className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow"
+      data-testid="kpi-card"
+    >
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
-          <p className="text-3xl font-bold text-gray-900 mb-2" data-testid="kpi-value">{value}</p>
-          
+          <p className="text-3xl font-bold text-gray-900 mb-2" data-testid="kpi-value">
+            {value}
+          </p>
+
           {change !== undefined && (
             <div className="flex items-center space-x-1">
               {change >= 0 ? (
@@ -51,22 +56,17 @@ const KPICard: React.FC<KPICardProps> = ({
                 <ArrowTrendingDownIcon className="h-4 w-4 text-red-500" />
               )}
               <span
-                className={`text-sm font-medium ${
-                  change >= 0 ? 'text-green-600' : 'text-red-600'
-                }`}
+                className={`text-sm font-medium ${change >= 0 ? 'text-green-600' : 'text-red-600'}`}
               >
-                {change > 0 ? '+' : ''}{change}%
+                {change > 0 ? '+' : ''}
+                {change}%
               </span>
               <span className="text-sm text-gray-500">{changeLabel}</span>
             </div>
           )}
         </div>
-        
-        {icon && (
-          <div className={`p-3 rounded-lg ${colorClasses[color]}`}>
-            {icon}
-          </div>
-        )}
+
+        {icon && <div className={`p-3 rounded-lg ${colorClasses[color]}`}>{icon}</div>}
       </div>
     </div>
   );

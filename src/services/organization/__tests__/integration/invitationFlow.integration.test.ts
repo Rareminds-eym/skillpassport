@@ -1,6 +1,6 @@
 /**
  * Integration Tests: Member Invitation and Acceptance Flow
- * 
+ *
  * Tests the complete invitation workflow from sending invitations through acceptance
  * and optional auto-assignment of licenses.
  * Requirements: 10.1, 10.2, 10.3, 10.4, 10.5
@@ -12,13 +12,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mockOrganization = {
   id: 'org-123',
   name: 'Test School',
-  type: 'school'
+  type: 'school',
 };
 
 const mockPool = {
   id: 'pool-123',
   organization_subscription_id: 'sub-123',
-  available_seats: 10
+  available_seats: 10,
 };
 
 describe('Invitation Flow Integration Tests', () => {
@@ -61,7 +61,7 @@ describe('Invitation Flow Integration Tests', () => {
           auto_assign_subscription: autoAssign,
           target_license_pool_id: autoAssign ? mockPool.id : null,
           expires_at: expiresAt.toISOString(),
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
         };
 
         invitations.set(token, invitation);
@@ -79,7 +79,7 @@ describe('Invitation Flow Integration Tests', () => {
     it('should prevent duplicate pending invitations', async () => {
       const sendInvitation = async (email: string) => {
         const normalizedEmail = email.toLowerCase();
-        
+
         // Check for existing pending invitation
         for (const inv of invitations.values()) {
           if (inv.email === normalizedEmail && inv.status === 'pending') {
@@ -90,23 +90,23 @@ describe('Invitation Flow Integration Tests', () => {
         const invitation = {
           id: `inv-${Date.now()}`,
           email: normalizedEmail,
-          status: 'pending'
+          status: 'pending',
         };
         invitations.set(invitation.id, invitation);
         return invitation;
       };
 
       await sendInvitation('teacher@test.com');
-      
-      await expect(
-        sendInvitation('teacher@test.com')
-      ).rejects.toThrow('An invitation is already pending for this email');
+
+      await expect(sendInvitation('teacher@test.com')).rejects.toThrow(
+        'An invitation is already pending for this email'
+      );
     });
 
     it('should normalize email addresses', async () => {
       const sendInvitation = async (email: string) => {
         return {
-          email: email.toLowerCase().trim()
+          email: email.toLowerCase().trim(),
         };
       };
 
@@ -120,11 +120,7 @@ describe('Invitation Flow Integration Tests', () => {
 
   describe('Bulk Invitations', () => {
     it('should send multiple invitations', async () => {
-      const emails = [
-        'teacher1@test.com',
-        'teacher2@test.com',
-        'teacher3@test.com'
-      ];
+      const emails = ['teacher1@test.com', 'teacher2@test.com', 'teacher3@test.com'];
 
       const bulkInvite = async (emailList: string[]) => {
         const successful: any[] = [];
@@ -135,7 +131,7 @@ describe('Invitation Flow Integration Tests', () => {
             const invitation = {
               id: `inv-${Date.now()}-${Math.random()}`,
               email: email.toLowerCase(),
-              status: 'pending'
+              status: 'pending',
             };
             invitations.set(invitation.id, invitation);
             successful.push(invitation);
@@ -204,7 +200,7 @@ describe('Invitation Flow Integration Tests', () => {
         status: 'pending',
         invitation_token: token,
         expires_at: new Date(Date.now() + 86400000).toISOString(), // Tomorrow
-        auto_assign_subscription: false
+        auto_assign_subscription: false,
       };
       invitations.set(token, invitation);
 
@@ -240,7 +236,7 @@ describe('Invitation Flow Integration Tests', () => {
         id: 'inv-123',
         status: 'pending',
         invitation_token: token,
-        expires_at: new Date(Date.now() - 86400000).toISOString() // Yesterday
+        expires_at: new Date(Date.now() - 86400000).toISOString(), // Yesterday
       };
       invitations.set(token, invitation);
 
@@ -267,7 +263,9 @@ describe('Invitation Flow Integration Tests', () => {
         return inv;
       };
 
-      await expect(acceptInvitation('invalid-token')).rejects.toThrow('Invalid or expired invitation');
+      await expect(acceptInvitation('invalid-token')).rejects.toThrow(
+        'Invalid or expired invitation'
+      );
     });
 
     it('should auto-assign license when configured', async () => {
@@ -281,7 +279,7 @@ describe('Invitation Flow Integration Tests', () => {
         expires_at: new Date(Date.now() + 86400000).toISOString(),
         auto_assign_subscription: true,
         target_license_pool_id: mockPool.id,
-        member_type: 'educator'
+        member_type: 'educator',
       };
       invitations.set(token, invitation);
 
@@ -302,7 +300,7 @@ describe('Invitation Flow Integration Tests', () => {
             user_id: userId,
             member_type: inv.member_type,
             status: 'active',
-            assigned_at: new Date().toISOString()
+            assigned_at: new Date().toISOString(),
           };
         }
 
@@ -325,7 +323,7 @@ describe('Invitation Flow Integration Tests', () => {
         id: 'inv-123',
         status: 'pending',
         invitation_token: oldToken,
-        expires_at: new Date(Date.now() + 86400000).toISOString()
+        expires_at: new Date(Date.now() + 86400000).toISOString(),
       };
       invitations.set(oldToken, invitation);
 
@@ -347,7 +345,7 @@ describe('Invitation Flow Integration Tests', () => {
         // Generate new token
         const newToken = `new-token-${Date.now()}`;
         inv.invitation_token = newToken;
-        
+
         // Extend expiration
         const newExpiry = new Date();
         newExpiry.setDate(newExpiry.getDate() + 7);
@@ -368,7 +366,7 @@ describe('Invitation Flow Integration Tests', () => {
       const invitation = {
         id: 'inv-123',
         status: 'accepted',
-        invitation_token: 'token'
+        invitation_token: 'token',
       };
       invitations.set('token', invitation);
 
@@ -384,7 +382,9 @@ describe('Invitation Flow Integration Tests', () => {
         throw new Error('Invitation not found');
       };
 
-      await expect(resendInvitation('inv-123')).rejects.toThrow('Can only resend pending invitations');
+      await expect(resendInvitation('inv-123')).rejects.toThrow(
+        'Can only resend pending invitations'
+      );
     });
   });
 
@@ -393,7 +393,7 @@ describe('Invitation Flow Integration Tests', () => {
       const invitation = {
         id: 'inv-123',
         status: 'pending',
-        invitation_token: 'token'
+        invitation_token: 'token',
       };
       invitations.set('token', invitation);
 
@@ -424,9 +424,9 @@ describe('Invitation Flow Integration Tests', () => {
         { id: '4', status: 'accepted' },
         { id: '5', status: 'accepted' },
         { id: '6', status: 'expired' },
-        { id: '7', status: 'cancelled' }
+        { id: '7', status: 'cancelled' },
       ];
-      testInvitations.forEach(inv => invitations.set(inv.id, inv));
+      testInvitations.forEach((inv) => invitations.set(inv.id, inv));
 
       const getStats = async () => {
         const stats = {
@@ -435,23 +435,29 @@ describe('Invitation Flow Integration Tests', () => {
           accepted: 0,
           expired: 0,
           cancelled: 0,
-          acceptanceRate: 0
+          acceptanceRate: 0,
         };
 
         for (const inv of invitations.values()) {
           stats.total++;
           switch (inv.status) {
-            case 'pending': stats.pending++; break;
-            case 'accepted': stats.accepted++; break;
-            case 'expired': stats.expired++; break;
-            case 'cancelled': stats.cancelled++; break;
+            case 'pending':
+              stats.pending++;
+              break;
+            case 'accepted':
+              stats.accepted++;
+              break;
+            case 'expired':
+              stats.expired++;
+              break;
+            case 'cancelled':
+              stats.cancelled++;
+              break;
           }
         }
 
         const completed = stats.accepted + stats.expired + stats.cancelled;
-        stats.acceptanceRate = completed > 0 
-          ? Math.round((stats.accepted / completed) * 100) 
-          : 0;
+        stats.acceptanceRate = completed > 0 ? Math.round((stats.accepted / completed) * 100) : 0;
 
         return stats;
       };

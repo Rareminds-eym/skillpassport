@@ -1,6 +1,6 @@
 /**
  * Integration Tests: Upgrade/Downgrade Flows
- * 
+ *
  * Tests subscription plan upgrades, downgrades, prorated billing,
  * and feature access changes.
  * Requirements: 14.1, 14.2, 14.3, 14.4, 14.5
@@ -18,30 +18,39 @@ describe('Upgrade/Downgrade Integration Tests', () => {
     subscriptions = new Map();
     assignments = new Map();
     entitlements = new Map();
-    
+
     // Setup subscription plans
     plans = new Map([
-      ['plan-basic', {
-        id: 'plan-basic',
-        name: 'Basic',
-        price: 500,
-        features: ['feature-a', 'feature-b'],
-        tier: 1
-      }],
-      ['plan-pro', {
-        id: 'plan-pro',
-        name: 'Professional',
-        price: 1000,
-        features: ['feature-a', 'feature-b', 'feature-c', 'feature-d'],
-        tier: 2
-      }],
-      ['plan-enterprise', {
-        id: 'plan-enterprise',
-        name: 'Enterprise',
-        price: 2000,
-        features: ['feature-a', 'feature-b', 'feature-c', 'feature-d', 'feature-e', 'feature-f'],
-        tier: 3
-      }]
+      [
+        'plan-basic',
+        {
+          id: 'plan-basic',
+          name: 'Basic',
+          price: 500,
+          features: ['feature-a', 'feature-b'],
+          tier: 1,
+        },
+      ],
+      [
+        'plan-pro',
+        {
+          id: 'plan-pro',
+          name: 'Professional',
+          price: 1000,
+          features: ['feature-a', 'feature-b', 'feature-c', 'feature-d'],
+          tier: 2,
+        },
+      ],
+      [
+        'plan-enterprise',
+        {
+          id: 'plan-enterprise',
+          name: 'Enterprise',
+          price: 2000,
+          features: ['feature-a', 'feature-b', 'feature-c', 'feature-d', 'feature-e', 'feature-f'],
+          tier: 3,
+        },
+      ],
     ]);
 
     vi.clearAllMocks();
@@ -57,7 +66,7 @@ describe('Upgrade/Downgrade Integration Tests', () => {
         status: 'active',
         price_per_seat: 500,
         start_date: new Date(Date.now() - 86400000 * 15).toISOString(), // 15 days ago
-        end_date: new Date(Date.now() + 86400000 * 15).toISOString() // 15 days from now
+        end_date: new Date(Date.now() + 86400000 * 15).toISOString(), // 15 days from now
       };
       subscriptions.set(subscription.id, subscription);
 
@@ -77,7 +86,9 @@ describe('Upgrade/Downgrade Integration Tests', () => {
         // Calculate prorated amount
         const now = new Date();
         const endDate = new Date(sub.end_date);
-        const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        const daysRemaining = Math.ceil(
+          (endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+        );
         const dailyDifference = (newPlan.price - currentPlan.price) / 30;
         const proratedAmount = dailyDifference * daysRemaining * sub.total_seats;
 
@@ -89,7 +100,7 @@ describe('Upgrade/Downgrade Integration Tests', () => {
         return {
           subscription: sub,
           proratedAmount,
-          newFeatures: newPlan.features.filter((f: string) => !currentPlan.features.includes(f))
+          newFeatures: newPlan.features.filter((f: string) => !currentPlan.features.includes(f)),
         };
       };
 
@@ -106,7 +117,7 @@ describe('Upgrade/Downgrade Integration Tests', () => {
       const subscription = {
         id: 'sub-123',
         subscription_plan_id: 'plan-basic',
-        total_seats: 10
+        total_seats: 10,
       };
       subscriptions.set(subscription.id, subscription);
 
@@ -116,20 +127,20 @@ describe('Upgrade/Downgrade Integration Tests', () => {
           id: `assign-${i}`,
           user_id: `user-${i}`,
           organization_subscription_id: 'sub-123',
-          status: 'active'
+          status: 'active',
         });
         // Basic plan features
         entitlements.set(`ent-${i}-a`, {
           id: `ent-${i}-a`,
           user_id: `user-${i}`,
           feature_key: 'feature-a',
-          is_active: true
+          is_active: true,
         });
         entitlements.set(`ent-${i}-b`, {
           id: `ent-${i}-b`,
           user_id: `user-${i}`,
           feature_key: 'feature-b',
-          is_active: true
+          is_active: true,
         });
       }
 
@@ -153,7 +164,7 @@ describe('Upgrade/Downgrade Integration Tests', () => {
                 user_id: assignment.user_id,
                 feature_key: feature,
                 is_active: true,
-                granted_by_organization: true
+                granted_by_organization: true,
               };
               entitlements.set(ent.id, ent);
               grantedEntitlements.push(ent);
@@ -168,12 +179,12 @@ describe('Upgrade/Downgrade Integration Tests', () => {
       const result = await upgradeWithEntitlements('sub-123', 'plan-pro');
 
       expect(result.grantedEntitlements.length).toBe(10); // 5 users × 2 new features
-      
+
       // Verify user-1 has all pro features
       const user1Features = Array.from(entitlements.values())
-        .filter(e => e.user_id === 'user-1' && e.is_active)
-        .map(e => e.feature_key);
-      
+        .filter((e) => e.user_id === 'user-1' && e.is_active)
+        .map((e) => e.feature_key);
+
       expect(user1Features).toContain('feature-a');
       expect(user1Features).toContain('feature-b');
       expect(user1Features).toContain('feature-c');
@@ -196,7 +207,7 @@ describe('Upgrade/Downgrade Integration Tests', () => {
         return {
           dailyDifference: Math.round(dailyDifference * 100) / 100,
           proratedAmount: Math.round(proratedAmount * 100) / 100,
-          effectiveDate: new Date().toISOString()
+          effectiveDate: new Date().toISOString(),
         };
       };
 
@@ -215,7 +226,7 @@ describe('Upgrade/Downgrade Integration Tests', () => {
         subscription_plan_id: 'plan-pro',
         total_seats: 50,
         status: 'active',
-        end_date: new Date(Date.now() + 86400000 * 15).toISOString()
+        end_date: new Date(Date.now() + 86400000 * 15).toISOString(),
       };
       subscriptions.set(subscription.id, subscription);
 
@@ -232,15 +243,13 @@ describe('Upgrade/Downgrade Integration Tests', () => {
         sub.pending_plan_change = {
           new_plan_id: newPlanId,
           effective_date: sub.end_date,
-          scheduled_at: new Date().toISOString()
+          scheduled_at: new Date().toISOString(),
         };
 
         return {
           subscription: sub,
           effectiveDate: sub.end_date,
-          featuresLosing: currentPlan.features.filter(
-            (f: string) => !newPlan.features.includes(f)
-          )
+          featuresLosing: currentPlan.features.filter((f: string) => !newPlan.features.includes(f)),
         };
       };
 
@@ -258,8 +267,8 @@ describe('Upgrade/Downgrade Integration Tests', () => {
         subscription_plan_id: 'plan-pro',
         pending_plan_change: {
           new_plan_id: 'plan-basic',
-          effective_date: new Date(Date.now() - 1000).toISOString() // Just passed
-        }
+          effective_date: new Date(Date.now() - 1000).toISOString(), // Just passed
+        },
       };
       subscriptions.set(subscription.id, subscription);
 
@@ -269,14 +278,14 @@ describe('Upgrade/Downgrade Integration Tests', () => {
           id: `assign-${i}`,
           user_id: `user-${i}`,
           organization_subscription_id: 'sub-123',
-          status: 'active'
+          status: 'active',
         });
         for (const feature of ['feature-a', 'feature-b', 'feature-c', 'feature-d']) {
           entitlements.set(`ent-${i}-${feature}`, {
             id: `ent-${i}-${feature}`,
             user_id: `user-${i}`,
             feature_key: feature,
-            is_active: true
+            is_active: true,
           });
         }
       }
@@ -326,8 +335,8 @@ describe('Upgrade/Downgrade Integration Tests', () => {
         subscription_plan_id: 'plan-pro',
         pending_plan_change: {
           new_plan_id: 'plan-basic',
-          effective_date: new Date(Date.now() + 86400000 * 10).toISOString()
-        }
+          effective_date: new Date(Date.now() + 86400000 * 10).toISOString(),
+        },
       };
       subscriptions.set(subscription.id, subscription);
 
@@ -359,17 +368,19 @@ describe('Upgrade/Downgrade Integration Tests', () => {
         assigned_seats: 45,
         price_per_seat: 1000,
         start_date: new Date(Date.now() - 86400000 * 15).toISOString(),
-        end_date: new Date(Date.now() + 86400000 * 15).toISOString()
+        end_date: new Date(Date.now() + 86400000 * 15).toISOString(),
       };
       subscriptions.set(subscription.id, subscription);
 
       const addSeats = async (subId: string, additionalSeats: number) => {
         const sub = subscriptions.get(subId);
-        
+
         // Calculate prorated cost
         const now = new Date();
         const endDate = new Date(sub.end_date);
-        const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        const daysRemaining = Math.ceil(
+          (endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+        );
         const dailyCost = sub.price_per_seat / 30;
         const proratedCost = dailyCost * daysRemaining * additionalSeats;
 
@@ -379,7 +390,7 @@ describe('Upgrade/Downgrade Integration Tests', () => {
           subscription: sub,
           additionalSeats,
           proratedCost: Math.round(proratedCost * 100) / 100,
-          newTotalSeats: sub.total_seats
+          newTotalSeats: sub.total_seats,
         };
       };
 
@@ -393,7 +404,7 @@ describe('Upgrade/Downgrade Integration Tests', () => {
       const subscription = {
         id: 'sub-123',
         total_seats: 50,
-        assigned_seats: 40
+        assigned_seats: 40,
       };
       subscriptions.set(subscription.id, subscription);
 
@@ -426,7 +437,7 @@ describe('Upgrade/Downgrade Integration Tests', () => {
         total_seats: 100,
         assigned_seats: 50,
         price_per_seat: 1000,
-        pending_seat_reduction: null
+        pending_seat_reduction: null,
       };
       subscriptions.set(subscription.id, subscription);
 
@@ -440,13 +451,13 @@ describe('Upgrade/Downgrade Integration Tests', () => {
         sub.pending_seat_reduction = {
           new_seat_count: newSeatCount,
           scheduled_at: new Date().toISOString(),
-          seats_to_remove: sub.total_seats - newSeatCount
+          seats_to_remove: sub.total_seats - newSeatCount,
         };
 
         return {
           subscription: sub,
           effectiveAtRenewal: true,
-          seatsToRemove: sub.total_seats - newSeatCount
+          seatsToRemove: sub.total_seats - newSeatCount,
         };
       };
 
@@ -486,8 +497,8 @@ describe('Upgrade/Downgrade Integration Tests', () => {
         status: 'active',
         pending_plan_change: {
           new_plan_id: 'plan-basic',
-          effective_date: new Date(Date.now() + 86400000 * 5).toISOString()
-        }
+          effective_date: new Date(Date.now() + 86400000 * 5).toISOString(),
+        },
       };
 
       const hasFeatureAccess = (sub: any, featureKey: string) => {
@@ -518,7 +529,7 @@ describe('Upgrade/Downgrade Integration Tests', () => {
           amount: proratedAmount,
           type: 'upgrade_proration',
           status: 'completed',
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
         };
         payments.push(payment);
         return payment;
@@ -547,7 +558,7 @@ describe('Upgrade/Downgrade Integration Tests', () => {
           type: 'downgrade_credit',
           status: 'pending',
           applies_at: 'next_renewal',
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
         };
         credits.push(credit);
         return credit;

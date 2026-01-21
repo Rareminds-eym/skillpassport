@@ -4,7 +4,11 @@
  */
 
 import { useState, useEffect } from 'react';
-import { getStudentSettingsByEmail, updateStudentSettings, updateStudentPassword } from '../services/studentSettingsService';
+import {
+  getStudentSettingsByEmail,
+  updateStudentSettings,
+  updateStudentPassword,
+} from '../services/studentSettingsService';
 
 export const useStudentSettings = (email) => {
   const [studentData, setStudentData] = useState(null);
@@ -21,9 +25,9 @@ export const useStudentSettings = (email) => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const result = await getStudentSettingsByEmail(email);
-      
+
       if (result.success) {
         setStudentData(result.data);
       } else {
@@ -41,7 +45,7 @@ export const useStudentSettings = (email) => {
   const updateProfile = async (updates) => {
     try {
       const result = await updateStudentSettings(email, updates);
-      
+
       if (result.success) {
         // Only update studentData if we're NOT updating notification or privacy settings
         // This prevents the state from being overwritten while user is toggling settings
@@ -62,7 +66,7 @@ export const useStudentSettings = (email) => {
   const updatePassword = async (currentPassword, newPassword) => {
     try {
       const result = await updateStudentPassword(email, currentPassword, newPassword);
-      
+
       if (result.success) {
         return { success: true, message: result.message };
       } else {

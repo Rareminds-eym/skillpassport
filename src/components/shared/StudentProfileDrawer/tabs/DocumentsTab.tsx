@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { DocumentIcon, EyeIcon, ArrowDownTrayIcon, CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
-import { getStudentDocuments, getStudentDocumentUrl } from '../../../../services/studentDocumentService';
+import {
+  DocumentIcon,
+  EyeIcon,
+  ArrowDownTrayIcon,
+  CheckCircleIcon,
+  ExclamationCircleIcon,
+} from '@heroicons/react/24/outline';
+import {
+  getStudentDocuments,
+  getStudentDocumentUrl,
+} from '../../../../services/studentDocumentService';
 
 interface Document {
   url: string;
@@ -15,7 +24,10 @@ interface DocumentsTabProps {
   loading?: boolean;
 }
 
-const DocumentsTab: React.FC<DocumentsTabProps> = ({ student, loading: externalLoading = false }) => {
+const DocumentsTab: React.FC<DocumentsTabProps> = ({
+  student,
+  loading: externalLoading = false,
+}) => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -73,11 +85,11 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ student, loading: externalL
       setDownloading(document.url);
       setDownloadError(null);
       setDownloadSuccess(null);
-      
+
       console.log('Downloading document:', document.name);
       const downloadUrl = getStudentDocumentUrl(document.url, 'download');
       console.log('Download URL:', downloadUrl);
-      
+
       const link = window.document.createElement('a');
       link.href = downloadUrl;
       link.download = document.name;
@@ -85,9 +97,9 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ student, loading: externalL
       window.document.body.appendChild(link);
       link.click();
       window.document.body.removeChild(link);
-      
+
       console.log('Download initiated for:', document.name);
-      
+
       // Set success state
       setDownloadSuccess(document.url);
       setDownloading(null);
@@ -95,7 +107,7 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ student, loading: externalL
       console.error('Download failed:', error);
       setDownloadError(document.url);
       setDownloading(null);
-      
+
       // Fallback: open in new tab if download fails
       const viewUrl = getStudentDocumentUrl(document.url, 'inline');
       window.open(viewUrl, '_blank');
@@ -114,60 +126,63 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ student, loading: externalL
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
-      day: 'numeric'
+      day: 'numeric',
     });
   };
 
   const getDocumentTypeConfig = (type: string) => {
     const typeConfig = {
-      resume: { 
-        icon: '📄', 
-        label: 'Resume/CV', 
+      resume: {
+        icon: '📄',
+        label: 'Resume/CV',
         color: 'text-blue-600',
         bgColor: 'bg-blue-50',
-        borderColor: 'border-blue-200'
+        borderColor: 'border-blue-200',
       },
-      certificate: { 
-        icon: '🏆', 
-        label: 'Certificate', 
+      certificate: {
+        icon: '🏆',
+        label: 'Certificate',
         color: 'text-yellow-600',
         bgColor: 'bg-yellow-50',
-        borderColor: 'border-yellow-200'
+        borderColor: 'border-yellow-200',
       },
-      transcript: { 
-        icon: '📊', 
-        label: 'Transcript', 
+      transcript: {
+        icon: '📊',
+        label: 'Transcript',
         color: 'text-green-600',
         bgColor: 'bg-green-50',
-        borderColor: 'border-green-200'
+        borderColor: 'border-green-200',
       },
-      id_proof: { 
-        icon: '🆔', 
-        label: 'ID Proof', 
+      id_proof: {
+        icon: '🆔',
+        label: 'ID Proof',
         color: 'text-purple-600',
         bgColor: 'bg-purple-50',
-        borderColor: 'border-purple-200'
+        borderColor: 'border-purple-200',
       },
-      other: { 
-        // label: 'Other', 
+      other: {
+        // label: 'Other',
         color: 'text-gray-600',
         bgColor: 'bg-gray-50',
-        borderColor: 'border-gray-200'
-      }
+        borderColor: 'border-gray-200',
+      },
     };
     return typeConfig[type] || typeConfig.other;
   };
 
   const groupDocumentsByType = (docs: Document[]) => {
-    const grouped = docs.reduce((acc, doc) => {
-      const type = doc.type;
-      if (!acc[type]) {
-        acc[type] = [];
-      }
-      acc[type].push(doc);
-      return acc;
-    }, {} as Record<string, Document[]>);
-    
+    const grouped = docs.reduce(
+      (acc, doc) => {
+        const type = doc.type;
+        if (!acc[type]) {
+          acc[type] = [];
+        }
+        acc[type].push(doc);
+        return acc;
+      },
+      {} as Record<string, Document[]>
+    );
+
     return grouped;
   };
 
@@ -206,7 +221,9 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ student, loading: externalL
         <div className="text-center py-20">
           <DocumentIcon className="mx-auto h-12 w-12 text-gray-400" />
           <h3 className="mt-2 text-sm font-medium text-gray-900">No documents found</h3>
-          <p className="mt-1 text-sm text-gray-500">This student hasn't uploaded any documents yet.</p>
+          <p className="mt-1 text-sm text-gray-500">
+            This student hasn't uploaded any documents yet.
+          </p>
         </div>
       </div>
     );
@@ -235,7 +252,7 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ student, loading: externalL
                   </span> */}
                 </h4>
               </div>
-              
+
               <div className="divide-y divide-gray-200">
                 {docs.map((doc, index) => (
                   <div key={index} className="p-4 hover:bg-gray-50 transition-colors">
@@ -245,15 +262,14 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ student, loading: externalL
                           <DocumentIcon className={`h-6 w-6 ${typeConfig.color}`} />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">
-                            {doc.name}
-                          </p>
+                          <p className="text-sm font-medium text-gray-900 truncate">{doc.name}</p>
                           <p className="text-xs text-gray-500 mt-1">
-                            PDF Document • {formatFileSize(doc.size)} • Uploaded {formatDate(doc.uploadedAt)}
+                            PDF Document • {formatFileSize(doc.size)} • Uploaded{' '}
+                            {formatDate(doc.uploadedAt)}
                           </p>
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center space-x-2 ml-4">
                         <button
                           onClick={() => handleViewDocument(doc)}
@@ -263,7 +279,7 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ student, loading: externalL
                           <EyeIcon className="h-3 w-3 mr-1" />
                           View
                         </button>
-                        
+
                         <button
                           onClick={() => handleDownloadDocument(doc)}
                           disabled={downloading === doc.url}
@@ -271,8 +287,8 @@ const DocumentsTab: React.FC<DocumentsTabProps> = ({ student, loading: externalL
                             downloading === doc.url
                               ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
                               : downloadSuccess === doc.url
-                              ? 'border-green-300 bg-green-50 text-green-700 hover:bg-green-100'
-                              : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
+                                ? 'border-green-300 bg-green-50 text-green-700 hover:bg-green-100'
+                                : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
                           }`}
                           title="Download document"
                         >

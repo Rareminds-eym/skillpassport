@@ -4,11 +4,7 @@ import { ArrowDown, Square } from 'lucide-react';
 
 export const TypingIndicator: React.FC = () => {
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="flex justify-start"
-    >
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start">
       <div className="bg-gray-100 rounded-2xl px-6 py-4">
         <div className="flex gap-2">
           <motion.div
@@ -45,11 +41,14 @@ export const ScrollButtons: React.FC<ScrollButtonsProps> = ({
   isTyping,
   loading,
   onScrollToBottom,
-  onStopGenerating
+  onStopGenerating,
 }) => {
   return (
     <AnimatePresence>
-      {((userScrolledUp && (loading || isTyping)) || (userScrolledUp && !loading && !isTyping) || (loading || isTyping)) && (
+      {((userScrolledUp && (loading || isTyping)) ||
+        (userScrolledUp && !loading && !isTyping) ||
+        loading ||
+        isTyping) && (
         <div className="absolute bottom-36 left-1/2 -translate-x-1/2 z-50">
           <div className="flex items-center gap-2">
             {/* Scroll Down Button - Shows when user scrolled up during typing */}
@@ -58,9 +57,9 @@ export const ScrollButtons: React.FC<ScrollButtonsProps> = ({
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 10 }}
-                transition={{ 
+                transition={{
                   duration: 0.15,
-                  ease: [0.25, 0.1, 0.25, 1]
+                  ease: [0.25, 0.1, 0.25, 1],
                 }}
                 whileHover={{ y: -1 }}
                 whileTap={{ y: 0 }}
@@ -78,9 +77,9 @@ export const ScrollButtons: React.FC<ScrollButtonsProps> = ({
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 10 }}
-                transition={{ 
+                transition={{
                   duration: 0.15,
-                  ease: [0.25, 0.1, 0.25, 1]
+                  ease: [0.25, 0.1, 0.25, 1],
                 }}
                 whileHover={{ y: -1 }}
                 whileTap={{ y: 0 }}
@@ -99,9 +98,9 @@ export const ScrollButtons: React.FC<ScrollButtonsProps> = ({
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 10 }}
-                transition={{ 
+                transition={{
                   duration: 0.15,
-                  ease: [0.25, 0.1, 0.25, 1]
+                  ease: [0.25, 0.1, 0.25, 1],
                 }}
                 whileHover={{ y: -1 }}
                 whileTap={{ y: 0 }}

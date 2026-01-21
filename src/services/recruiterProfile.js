@@ -1,4 +1,4 @@
-import { supabase } from "../lib/supabaseClient";
+import { supabase } from '../lib/supabaseClient';
 import {
   AUTH_ERROR_CODES,
   validateCredentials,
@@ -15,7 +15,7 @@ import {
 /**
  * Recruiter Profile Service
  * Industrial-grade authentication and profile management for recruiters
- * 
+ *
  * Features:
  * - Comprehensive input validation
  * - Standardized error codes
@@ -42,13 +42,13 @@ const DB_QUERY_TIMEOUT_MS = 15000;
  */
 export async function getRecruiterByEmail(email) {
   const correlationId = generateCorrelationId();
-  
+
   try {
     // Validate email
     const emailValidation = validateEmail(email);
     if (!emailValidation.valid) {
-      return { 
-        success: false, 
+      return {
+        success: false,
         data: null,
         error: 'Please enter a valid email address.',
         errorCode: emailValidation.code,
@@ -56,18 +56,17 @@ export async function getRecruiterByEmail(email) {
     }
 
     const { data, error } = await withTimeout(
-      supabase
-        .from("recruiters")
-        .select("*")
-        .eq("email", emailValidation.sanitized)
-        .maybeSingle(),
+      supabase.from('recruiters').select('*').eq('email', emailValidation.sanitized).maybeSingle(),
       DB_QUERY_TIMEOUT_MS
     );
 
     if (error) {
-      logAuthEvent('error', 'Recruiter lookup by email failed', { correlationId, errorCode: error.code });
-      return { 
-        success: false, 
+      logAuthEvent('error', 'Recruiter lookup by email failed', {
+        correlationId,
+        errorCode: error.code,
+      });
+      return {
+        success: false,
         data: null,
         error: 'Unable to find recruiter. Please try again.',
         errorCode: mapSupabaseError(error),
@@ -75,10 +74,11 @@ export async function getRecruiterByEmail(email) {
     }
 
     if (!data) {
-      return { 
-        success: false, 
+      return {
+        success: false,
         data: null,
-        error: 'No recruiter account found with this email. Please check your email or contact support.',
+        error:
+          'No recruiter account found with this email. Please check your email or contact support.',
         errorCode: AUTH_ERROR_CODES.USER_NOT_FOUND,
       };
     }
@@ -86,8 +86,8 @@ export async function getRecruiterByEmail(email) {
     return { success: true, data, error: null };
   } catch (err) {
     logAuthEvent('error', 'Unexpected error in getRecruiterByEmail', { correlationId });
-    return { 
-      success: false, 
+    return {
+      success: false,
       data: null,
       error: 'Unable to find recruiter. Please try again later.',
       errorCode: mapSupabaseError(err),
@@ -106,11 +106,11 @@ export async function getRecruiterByEmail(email) {
  */
 export async function getRecruiterByUserId(userId) {
   const correlationId = generateCorrelationId();
-  
+
   try {
     if (!userId || typeof userId !== 'string') {
-      return { 
-        success: false, 
+      return {
+        success: false,
         data: null,
         error: 'Invalid user ID.',
         errorCode: AUTH_ERROR_CODES.INVALID_INPUT_FORMAT,
@@ -118,18 +118,17 @@ export async function getRecruiterByUserId(userId) {
     }
 
     const { data, error } = await withTimeout(
-      supabase
-        .from("recruiters")
-        .select("*")
-        .eq("user_id", userId)
-        .maybeSingle(),
+      supabase.from('recruiters').select('*').eq('user_id', userId).maybeSingle(),
       DB_QUERY_TIMEOUT_MS
     );
 
     if (error) {
-      logAuthEvent('error', 'Recruiter lookup by userId failed', { correlationId, errorCode: error.code });
-      return { 
-        success: false, 
+      logAuthEvent('error', 'Recruiter lookup by userId failed', {
+        correlationId,
+        errorCode: error.code,
+      });
+      return {
+        success: false,
         data: null,
         error: 'Unable to load recruiter profile.',
         errorCode: mapSupabaseError(error),
@@ -137,8 +136,8 @@ export async function getRecruiterByUserId(userId) {
     }
 
     if (!data) {
-      return { 
-        success: false, 
+      return {
+        success: false,
         data: null,
         error: 'No recruiter profile found.',
         errorCode: AUTH_ERROR_CODES.PROFILE_NOT_FOUND,
@@ -148,8 +147,8 @@ export async function getRecruiterByUserId(userId) {
     return { success: true, data, error: null };
   } catch (err) {
     logAuthEvent('error', 'Unexpected error in getRecruiterByUserId', { correlationId });
-    return { 
-      success: false, 
+    return {
+      success: false,
       data: null,
       error: 'Unable to load recruiter profile.',
       errorCode: mapSupabaseError(err),
@@ -169,15 +168,18 @@ export async function getRecruiterByUserId(userId) {
  */
 export async function loginRecruiter(email, password) {
   const correlationId = generateCorrelationId();
-  
+
   try {
     // Validate inputs
     const validation = validateCredentials(email, password);
     if (!validation.valid) {
-      logAuthEvent('warn', 'Recruiter login validation failed', { correlationId, field: validation.field });
+      logAuthEvent('warn', 'Recruiter login validation failed', {
+        correlationId,
+        field: validation.field,
+      });
       const response = buildErrorResponse(validation.code);
-      return { 
-        success: false, 
+      return {
+        success: false,
         data: null,
         session: null,
         error: response.error,
@@ -218,7 +220,7 @@ export async function loginRecruiter(email, password) {
     } catch (authError) {
       const errorCode = mapSupabaseError(authError);
       logAuthEvent('error', 'Recruiter auth failed', { correlationId, errorCode });
-      
+
       if (errorCode === AUTH_ERROR_CODES.INVALID_CREDENTIALS) {
         return {
           success: false,
@@ -229,8 +231,11 @@ export async function loginRecruiter(email, password) {
           correlationId,
         };
       }
-      
-      if (errorCode === AUTH_ERROR_CODES.RATE_LIMITED || errorCode === AUTH_ERROR_CODES.TOO_MANY_ATTEMPTS) {
+
+      if (
+        errorCode === AUTH_ERROR_CODES.RATE_LIMITED ||
+        errorCode === AUTH_ERROR_CODES.TOO_MANY_ATTEMPTS
+      ) {
         return {
           success: false,
           data: null,
@@ -240,10 +245,10 @@ export async function loginRecruiter(email, password) {
           correlationId,
         };
       }
-      
+
       const response = handleAuthError(authError, { correlationId, operation: 'recruiterLogin' });
-      return { 
-        success: false, 
+      return {
+        success: false,
         data: null,
         session: null,
         error: response.error,
@@ -254,8 +259,8 @@ export async function loginRecruiter(email, password) {
 
     if (!authData.user) {
       logAuthEvent('error', 'Recruiter auth returned no user', { correlationId });
-      return { 
-        success: false, 
+      return {
+        success: false,
         data: null,
         session: null,
         error: 'Authentication failed. Please try again.',
@@ -268,21 +273,20 @@ export async function loginRecruiter(email, password) {
     let recruiter;
     try {
       const { data, error } = await withTimeout(
-        supabase
-          .from("recruiters")
-          .select("*")
-          .eq("user_id", authData.user.id)
-          .maybeSingle(),
+        supabase.from('recruiters').select('*').eq('user_id', authData.user.id).maybeSingle(),
         DB_QUERY_TIMEOUT_MS
       );
 
       if (error) throw error;
       recruiter = data;
     } catch (dbError) {
-      logAuthEvent('error', 'Recruiter profile fetch failed', { correlationId, errorCode: mapSupabaseError(dbError) });
+      logAuthEvent('error', 'Recruiter profile fetch failed', {
+        correlationId,
+        errorCode: mapSupabaseError(dbError),
+      });
       await safeSignOut();
-      return { 
-        success: false, 
+      return {
+        success: false,
         data: null,
         session: null,
         error: 'Unable to load your profile. Please try again later.',
@@ -292,13 +296,17 @@ export async function loginRecruiter(email, password) {
     }
 
     if (!recruiter) {
-      logAuthEvent('warn', 'No recruiter profile found for authenticated user', { correlationId, userId: authData.user.id });
+      logAuthEvent('warn', 'No recruiter profile found for authenticated user', {
+        correlationId,
+        userId: authData.user.id,
+      });
       await safeSignOut();
-      return { 
-        success: false, 
+      return {
+        success: false,
         data: null,
         session: null,
-        error: 'No recruiter account found. Please check if you are using the correct login portal.',
+        error:
+          'No recruiter account found. Please check if you are using the correct login portal.',
         errorCode: AUTH_ERROR_CODES.WRONG_PORTAL,
         correlationId,
       };
@@ -306,7 +314,10 @@ export async function loginRecruiter(email, password) {
 
     // Step 3: Check account status
     if (recruiter.isactive === false) {
-      logAuthEvent('warn', 'Recruiter account inactive', { correlationId, recruiterId: recruiter.id });
+      logAuthEvent('warn', 'Recruiter account inactive', {
+        correlationId,
+        recruiterId: recruiter.id,
+      });
       await safeSignOut();
       return {
         success: false,
@@ -320,7 +331,10 @@ export async function loginRecruiter(email, password) {
 
     // Step 4: Check verification status
     if (recruiter.verificationstatus === 'rejected') {
-      logAuthEvent('warn', 'Recruiter account rejected', { correlationId, recruiterId: recruiter.id });
+      logAuthEvent('warn', 'Recruiter account rejected', {
+        correlationId,
+        recruiterId: recruiter.id,
+      });
       await safeSignOut();
       return {
         success: false,
@@ -332,7 +346,10 @@ export async function loginRecruiter(email, password) {
       };
     }
 
-    logAuthEvent('info', 'Recruiter login successful', { correlationId, recruiterId: recruiter.id });
+    logAuthEvent('info', 'Recruiter login successful', {
+      correlationId,
+      recruiterId: recruiter.id,
+    });
 
     return {
       success: true,
@@ -349,12 +366,14 @@ export async function loginRecruiter(email, password) {
       session: authData.session,
       error: null,
     };
-
   } catch (err) {
-    logAuthEvent('error', 'Unexpected recruiter login error', { correlationId, errorCode: mapSupabaseError(err) });
+    logAuthEvent('error', 'Unexpected recruiter login error', {
+      correlationId,
+      errorCode: mapSupabaseError(err),
+    });
     const response = handleAuthError(err, { correlationId, operation: 'recruiterLogin' });
-    return { 
-      success: false, 
+    return {
+      success: false,
       data: null,
       session: null,
       error: response.error,

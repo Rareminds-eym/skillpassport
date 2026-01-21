@@ -1,21 +1,21 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import {
-    Building2,
-    Check,
-    CheckCheck,
-    ChevronDown,
-    GraduationCap,
-    Loader2,
-    MoreVertical,
-    Paperclip,
-    Phone,
-    Search,
-    Send,
-    Smile,
-    Trash2,
-    Users,
-    Video
+  Building2,
+  Check,
+  CheckCheck,
+  ChevronDown,
+  GraduationCap,
+  Loader2,
+  MoreVertical,
+  Paperclip,
+  Phone,
+  Search,
+  Send,
+  Smile,
+  Trash2,
+  Users,
+  Video,
 } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
@@ -28,10 +28,21 @@ import { useAuth } from '../../context/AuthContext';
 import { useGlobalPresence } from '../../context/GlobalPresenceContext';
 import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
 import { useRealtimePresence } from '../../hooks/useRealtimePresence';
-import { useCreateStudentAdminConversation, useStudentAdminConversations, useStudentAdminMessages } from '../../hooks/useStudentAdminMessages';
-import { useCreateStudentCollegeAdminConversation, useStudentCollegeAdminConversations, useStudentCollegeAdminMessages } from '../../hooks/useStudentCollegeAdminMessages';
+import {
+  useCreateStudentAdminConversation,
+  useStudentAdminConversations,
+  useStudentAdminMessages,
+} from '../../hooks/useStudentAdminMessages';
+import {
+  useCreateStudentCollegeAdminConversation,
+  useStudentCollegeAdminConversations,
+  useStudentCollegeAdminMessages,
+} from '../../hooks/useStudentCollegeAdminMessages';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
-import { useStudentEducatorConversations, useStudentEducatorMessages } from '../../hooks/useStudentEducatorMessages';
+import {
+  useStudentEducatorConversations,
+  useStudentEducatorMessages,
+} from '../../hooks/useStudentEducatorMessages';
 import { useStudentConversations, useStudentMessages } from '../../hooks/useStudentMessages';
 import { useTypingIndicator } from '../../hooks/useTypingIndicator';
 import { supabase } from '../../lib/supabaseClient';
@@ -56,10 +67,15 @@ const Messages = () => {
     // Default to recruiters (always available)
     return 'recruiters';
   });
-  const [deleteModal, setDeleteModal] = useState({ isOpen: false, conversationId: null, contactName: '' });
+  const [deleteModal, setDeleteModal] = useState({
+    isOpen: false,
+    conversationId: null,
+    contactName: '',
+  });
   const [showNewConversationModal, setShowNewConversationModal] = useState(false);
   const [showNewAdminConversationModal, setShowNewAdminConversationModal] = useState(false);
-  const [showNewCollegeAdminConversationModal, setShowNewCollegeAdminConversationModal] = useState(false);
+  const [showNewCollegeAdminConversationModal, setShowNewCollegeAdminConversationModal] =
+    useState(false);
   const [showTabDropdown, setShowTabDropdown] = useState(false);
   const [isTabSwitching, setIsTabSwitching] = useState(false);
   const messagesEndRef = useRef(null);
@@ -80,7 +96,7 @@ const Messages = () => {
 
   // Available tabs logic:
   // - Recruiters: Always available
-  // - Educators: Always available  
+  // - Educators: Always available
   // - School Admin: Only if student has school_id
   // - College Admin: Only if student has university_college_id
   const availableTabs = useMemo(() => {
@@ -114,7 +130,7 @@ const Messages = () => {
     conversations: recruiterConversations,
     isLoading: loadingRecruiterConversations,
     refetch: refetchRecruiterConversations,
-    clearUnreadCount: clearRecruiterUnreadCount
+    clearUnreadCount: clearRecruiterUnreadCount,
   } = useStudentConversations(
     studentId,
     !!studentId && !loadingStudentData // Wait for studentData to load
@@ -125,33 +141,24 @@ const Messages = () => {
     conversations: educatorConversations,
     isLoading: loadingEducatorConversations,
     refetch: refetchEducatorConversations,
-    clearUnreadCount: clearEducatorUnreadCount
-  } = useStudentEducatorConversations(
-    studentId,
-    !!studentId && !loadingStudentData
-  );
+    clearUnreadCount: clearEducatorUnreadCount,
+  } = useStudentEducatorConversations(studentId, !!studentId && !loadingStudentData);
 
   // Fetch admin conversations
   const {
     conversations: adminConversations,
     isLoading: loadingAdminConversations,
     refetch: refetchAdminConversations,
-    clearUnreadCount: clearAdminUnreadCount
-  } = useStudentAdminConversations(
-    studentId,
-    !!studentId && !loadingStudentData
-  );
+    clearUnreadCount: clearAdminUnreadCount,
+  } = useStudentAdminConversations(studentId, !!studentId && !loadingStudentData);
 
   // Fetch college admin conversations
   const {
     conversations: collegeAdminConversations,
     isLoading: loadingCollegeAdminConversations,
     refetch: refetchCollegeAdminConversations,
-    clearUnreadCount: clearCollegeAdminUnreadCount
-  } = useStudentCollegeAdminConversations(
-    studentId,
-    !!studentId && !loadingStudentData
-  );
+    clearUnreadCount: clearCollegeAdminUnreadCount,
+  } = useStudentCollegeAdminConversations(studentId, !!studentId && !loadingStudentData);
 
   // Create admin conversation hook
   const createAdminConversation = useCreateStudentAdminConversation();
@@ -160,26 +167,46 @@ const Messages = () => {
   const createCollegeAdminConversation = useCreateStudentCollegeAdminConversation();
 
   // Get current conversations and loading state based on active tab
-  const conversations = activeTab === 'recruiters' ? (recruiterConversations || []) :
-    activeTab === 'educators' ? (educatorConversations || []) :
-      activeTab === 'admin' ? (adminConversations || []) :
-        activeTab === 'college_admin' ? (collegeAdminConversations || []) :
-          [];
-  const loadingConversations = activeTab === 'recruiters' ? loadingRecruiterConversations :
-    activeTab === 'educators' ? loadingEducatorConversations :
-      activeTab === 'admin' ? loadingAdminConversations :
-        activeTab === 'college_admin' ? loadingCollegeAdminConversations :
-          false;
-  const refetchConversations = activeTab === 'recruiters' ? refetchRecruiterConversations :
-    activeTab === 'educators' ? refetchEducatorConversations :
-      activeTab === 'admin' ? refetchAdminConversations :
-        activeTab === 'college_admin' ? refetchCollegeAdminConversations :
-          () => { };
-  const clearUnreadCount = activeTab === 'recruiters' ? clearRecruiterUnreadCount :
-    activeTab === 'educators' ? clearEducatorUnreadCount :
-      activeTab === 'admin' ? clearAdminUnreadCount :
-        activeTab === 'college_admin' ? clearCollegeAdminUnreadCount :
-          () => { };
+  const conversations =
+    activeTab === 'recruiters'
+      ? recruiterConversations || []
+      : activeTab === 'educators'
+        ? educatorConversations || []
+        : activeTab === 'admin'
+          ? adminConversations || []
+          : activeTab === 'college_admin'
+            ? collegeAdminConversations || []
+            : [];
+  const loadingConversations =
+    activeTab === 'recruiters'
+      ? loadingRecruiterConversations
+      : activeTab === 'educators'
+        ? loadingEducatorConversations
+        : activeTab === 'admin'
+          ? loadingAdminConversations
+          : activeTab === 'college_admin'
+            ? loadingCollegeAdminConversations
+            : false;
+  const refetchConversations =
+    activeTab === 'recruiters'
+      ? refetchRecruiterConversations
+      : activeTab === 'educators'
+        ? refetchEducatorConversations
+        : activeTab === 'admin'
+          ? refetchAdminConversations
+          : activeTab === 'college_admin'
+            ? refetchCollegeAdminConversations
+            : () => {};
+  const clearUnreadCount =
+    activeTab === 'recruiters'
+      ? clearRecruiterUnreadCount
+      : activeTab === 'educators'
+        ? clearEducatorUnreadCount
+        : activeTab === 'admin'
+          ? clearAdminUnreadCount
+          : activeTab === 'college_admin'
+            ? clearCollegeAdminUnreadCount
+            : () => {};
 
   // Force refetch on mount if we have a conversation ID in URL
   // This ensures we have fresh data when navigating from Applications page
@@ -208,7 +235,7 @@ const Messages = () => {
     }
 
     // Check if conversation exists in current list
-    const conversationExists = conversations.find(c => c.id === conversationIdFromUrl);
+    const conversationExists = conversations.find((c) => c.id === conversationIdFromUrl);
 
     if (conversationExists) {
       // Success! Conversation found
@@ -226,7 +253,9 @@ const Messages = () => {
       // Conversation not found - try refetching with faster backoff
       // (Cache should be pre-populated from Applications page, so this is just a safety net)
       retryAttempts.current += 1;
-      console.log(`⌛ Conversation not in list yet, retry attempt ${retryAttempts.current}/${MAX_RETRIES}...`);
+      console.log(
+        `⌛ Conversation not in list yet, retry attempt ${retryAttempts.current}/${MAX_RETRIES}...`
+      );
 
       const delay = retryAttempts.current * 200; // 200ms, 400ms, 600ms (faster since cache is optimistic)
       const timeoutId = setTimeout(() => {
@@ -246,7 +275,15 @@ const Messages = () => {
       }, 100);
       return () => clearTimeout(timeoutId);
     }
-  }, [conversationIdFromUrl, conversations, studentId, loadingConversations, loadingStudentData, refetchConversations, setSearchParams]);
+  }, [
+    conversationIdFromUrl,
+    conversations,
+    studentId,
+    loadingConversations,
+    loadingStudentData,
+    refetchConversations,
+    setSearchParams,
+  ]);
 
   // Reset handler when URL changes
   useEffect(() => {
@@ -257,10 +294,14 @@ const Messages = () => {
   // Handle tab changes from URL parameter and trigger data fetch
   useEffect(() => {
     const tabFromUrl = searchParams.get('tab');
-    const newTab = tabFromUrl === 'educators' ? 'educators' :
-      tabFromUrl === 'admin' ? 'admin' :
-        tabFromUrl === 'college_admin' ? 'college_admin' :
-          'recruiters';
+    const newTab =
+      tabFromUrl === 'educators'
+        ? 'educators'
+        : tabFromUrl === 'admin'
+          ? 'admin'
+          : tabFromUrl === 'college_admin'
+            ? 'college_admin'
+            : 'recruiters';
 
     if (newTab !== activeTab) {
       console.log('🔄 Tab switching from', activeTab, 'to', newTab);
@@ -299,7 +340,7 @@ const Messages = () => {
   // Debug logging - only when there's an issue
   useEffect(() => {
     if (!studentId && !loadingStudentData && userEmail) {
-      console.warn("⚠️ No studentId found for email:", userEmail);
+      console.warn('⚠️ No studentId found for email:', userEmail);
     }
   }, [studentId, loadingStudentData, userEmail]);
 
@@ -308,37 +349,45 @@ const Messages = () => {
     studentId,
     conversationId: activeTab === 'recruiters' ? selectedConversationId : null,
     enabled: activeTab === 'recruiters' && !!selectedConversationId,
-    enableRealtime: true
+    enableRealtime: true,
   });
 
   const educatorMessages = useStudentEducatorMessages({
     studentId,
     conversationId: activeTab === 'educators' ? selectedConversationId : null,
     enabled: activeTab === 'educators' && !!selectedConversationId,
-    enableRealtime: true
+    enableRealtime: true,
   });
 
   const adminMessages = useStudentAdminMessages({
     studentId,
     conversationId: activeTab === 'admin' ? selectedConversationId : null,
     enabled: activeTab === 'admin' && !!selectedConversationId,
-    enableRealtime: true
+    enableRealtime: true,
   });
 
   const collegeAdminMessages = useStudentCollegeAdminMessages({
     studentId,
     conversationId: activeTab === 'college_admin' ? selectedConversationId : null,
     enabled: activeTab === 'college_admin' && !!selectedConversationId,
-    enableRealtime: true
+    enableRealtime: true,
   });
 
   // Select the appropriate messages based on active tab
-  const { messages, isLoading: loadingMessages, sendMessage, isSending } =
-    activeTab === 'recruiters' ? recruiterMessages :
-      activeTab === 'educators' ? educatorMessages :
-        activeTab === 'admin' ? adminMessages :
-          activeTab === 'college_admin' ? collegeAdminMessages :
-            { messages: [], isLoading: false, sendMessage: () => { }, isSending: false };
+  const {
+    messages,
+    isLoading: loadingMessages,
+    sendMessage,
+    isSending,
+  } = activeTab === 'recruiters'
+    ? recruiterMessages
+    : activeTab === 'educators'
+      ? educatorMessages
+      : activeTab === 'admin'
+        ? adminMessages
+        : activeTab === 'college_admin'
+          ? collegeAdminMessages
+          : { messages: [], isLoading: false, sendMessage: () => {}, isSending: false };
 
   // Use shared global presence context (no duplicate subscription)
   const { isUserOnline: isUserOnlineGlobal, onlineUsers: globalOnlineUsers } = useGlobalPresence();
@@ -352,9 +401,9 @@ const Messages = () => {
       userType: 'student',
       status: 'online',
       lastSeen: new Date().toISOString(),
-      conversationId: selectedConversationId || undefined
+      conversationId: selectedConversationId || undefined,
     },
-    enabled: !!selectedConversationId && !!studentId
+    enabled: !!selectedConversationId && !!studentId,
   });
 
   // Typing indicators
@@ -362,14 +411,14 @@ const Messages = () => {
     conversationId: selectedConversationId || '',
     currentUserId: studentId || '',
     currentUserName: studentName,
-    enabled: !!selectedConversationId && !!studentId
+    enabled: !!selectedConversationId && !!studentId,
   });
 
   // Notification broadcasts
   const { sendNotification } = useNotificationBroadcast({
     userId: studentId || '',
     showToast: true,
-    enabled: !!studentId
+    enabled: !!studentId,
   });
 
   // Delete mutation with proper optimistic updates
@@ -388,7 +437,7 @@ const Messages = () => {
       // Optimistically update: mark as deleted
       queryClient.setQueryData(['student-conversations', studentId], (old) => {
         if (!old) return [];
-        return old.map(conv =>
+        return old.map((conv) =>
           conv.id === conversationId ? { ...conv, _pendingDelete: true } : conv
         );
       });
@@ -396,7 +445,7 @@ const Messages = () => {
       // CRITICAL: Invalidate to trigger immediate re-render
       queryClient.invalidateQueries({
         queryKey: ['student-conversations', studentId],
-        refetchType: 'none' // Don't refetch, just notify subscribers
+        refetchType: 'none', // Don't refetch, just notify subscribers
       });
 
       console.log('🗑️ Marked conversation as deleted:', conversationId);
@@ -406,7 +455,10 @@ const Messages = () => {
     onError: (err, variables, context) => {
       // Rollback on error
       if (context?.previousConversations) {
-        queryClient.setQueryData(['student-conversations', studentId], context.previousConversations);
+        queryClient.setQueryData(
+          ['student-conversations', studentId],
+          context.previousConversations
+        );
       }
       toast.error('Failed to delete conversation');
     },
@@ -416,18 +468,18 @@ const Messages = () => {
       // Just remove it from cache so it doesn't come back
       queryClient.setQueryData(['student-conversations', studentId], (old) => {
         if (!old) return [];
-        return old.filter(conv => conv.id !== variables.conversationId);
+        return old.filter((conv) => conv.id !== variables.conversationId);
       });
 
       // CRITICAL: Invalidate to ensure the query doesn't refetch from realtime updates
       // This prevents the deleted conversation from coming back
       queryClient.invalidateQueries({
         queryKey: ['student-conversations', studentId],
-        refetchType: 'none' // Don't refetch, just notify
+        refetchType: 'none', // Don't refetch, just notify
       });
 
       console.log('✅ Conversation permanently removed from cache:', variables.conversationId);
-    }
+    },
   });
 
   // Undo mutation
@@ -450,42 +502,48 @@ const Messages = () => {
     onError: (err, variables, context) => {
       // Rollback on error
       if (context?.previousConversations) {
-        queryClient.setQueryData(['student-conversations', studentId], context.previousConversations);
+        queryClient.setQueryData(
+          ['student-conversations', studentId],
+          context.previousConversations
+        );
       }
       toast.error('Failed to restore conversation');
     },
     onSuccess: () => {
       toast.success('Conversation restored');
       refetchConversations(); // Sync with DB
-    }
+    },
   });
 
   // Mark messages as read when conversation is selected
-  const markConversationAsRead = useCallback(async (conversationId, unreadCount) => {
-    if (!studentId || !clearUnreadCount) return;
+  const markConversationAsRead = useCallback(
+    async (conversationId, unreadCount) => {
+      if (!studentId || !clearUnreadCount) return;
 
-    const markKey = `${conversationId}-${unreadCount}`;
+      const markKey = `${conversationId}-${unreadCount}`;
 
-    // Prevent duplicate marking
-    if (markedAsReadRef.current.has(markKey)) {
-      return;
-    }
-    markedAsReadRef.current.add(markKey);
+      // Prevent duplicate marking
+      if (markedAsReadRef.current.has(markKey)) {
+        return;
+      }
+      markedAsReadRef.current.add(markKey);
 
-    // Optimistically clear the unread count immediately in UI (instant feedback)
-    clearUnreadCount(conversationId);
+      // Optimistically clear the unread count immediately in UI (instant feedback)
+      clearUnreadCount(conversationId);
 
-    // Mark as read in database
-    try {
-      await MessageService.markConversationAsRead(conversationId, studentId);
-    } catch (err) {
-      console.error('❌ [Student] Failed to mark as read:', err);
-      // Remove from marked set so it can be retried
-      markedAsReadRef.current.delete(markKey);
-      // Refetch to revert optimistic update
-      refetchConversations();
-    }
-  }, [studentId, clearUnreadCount, refetchConversations]);
+      // Mark as read in database
+      try {
+        await MessageService.markConversationAsRead(conversationId, studentId);
+      } catch (err) {
+        console.error('❌ [Student] Failed to mark as read:', err);
+        // Remove from marked set so it can be retried
+        markedAsReadRef.current.delete(markKey);
+        // Refetch to revert optimistic update
+        refetchConversations();
+      }
+    },
+    [studentId, clearUnreadCount, refetchConversations]
+  );
 
   // Trigger mark as read when conversation changes
   useEffect(() => {
@@ -493,7 +551,7 @@ const Messages = () => {
       return;
     }
 
-    const conversation = conversations.find(c => c.id === selectedConversationId);
+    const conversation = conversations.find((c) => c.id === selectedConversationId);
     const hasUnread = conversation?.student_unread_count > 0;
 
     if (hasUnread) {
@@ -517,27 +575,34 @@ const Messages = () => {
 
   // Transform conversations for display based on active tab
   const contacts = useMemo(() => {
-    console.log('🔄 Recalculating contacts memo, conversations:', (conversations || []).length, 'tab:', activeTab);
+    console.log(
+      '🔄 Recalculating contacts memo, conversations:',
+      (conversations || []).length,
+      'tab:',
+      activeTab
+    );
 
     // Ensure conversations is always an array
     const safeConversations = conversations || [];
 
     // First filter out conversations marked for deletion
-    const activeConversations = safeConversations.filter(conv => !conv._pendingDelete);
+    const activeConversations = safeConversations.filter((conv) => !conv._pendingDelete);
 
     // Debug logging
-    const pendingCount = safeConversations.filter(c => c._pendingDelete).length;
-    console.log(`📊 Conversations: ${safeConversations.length} total, ${pendingCount} pending delete, ${activeConversations.length} active`);
+    const pendingCount = safeConversations.filter((c) => c._pendingDelete).length;
+    console.log(
+      `📊 Conversations: ${safeConversations.length} total, ${pendingCount} pending delete, ${activeConversations.length} active`
+    );
 
     if (pendingCount > 0) {
-      const pendingIds = safeConversations.filter(c => c._pendingDelete).map(c => c.id);
+      const pendingIds = safeConversations.filter((c) => c._pendingDelete).map((c) => c.id);
       console.log('❌ Pending delete IDs:', pendingIds);
     }
 
     // Transform based on tab
     if (activeTab === 'recruiters') {
       // Recruiter conversations
-      return activeConversations.map(conv => {
+      return activeConversations.map((conv) => {
         const recruiter = conv.recruiter;
         const recruiterName = recruiter?.name || 'Recruiter';
         const recruiterEmail = recruiter?.email || '';
@@ -578,16 +643,17 @@ const Messages = () => {
           recruiterId: conv.recruiter_id,
           applicationId: conv.application_id,
           opportunityId: conv.opportunity_id,
-          type: 'recruiter'
+          type: 'recruiter',
         };
       });
     } else if (activeTab === 'educators') {
       // Educator conversations
-      return activeConversations.map(conv => {
+      return activeConversations.map((conv) => {
         const educator = conv.educator;
-        const educatorName = educator?.first_name && educator?.last_name
-          ? `${educator.first_name} ${educator.last_name}`
-          : educator?.email || 'Educator';
+        const educatorName =
+          educator?.first_name && educator?.last_name
+            ? `${educator.first_name} ${educator.last_name}`
+            : educator?.email || 'Educator';
 
         // Get class and subject info
         const className = conv.school_class?.name || 'Class';
@@ -605,7 +671,8 @@ const Messages = () => {
         }
 
         // Generate avatar URL
-        const avatar = educator?.photo_url ||
+        const avatar =
+          educator?.photo_url ||
           `https://ui-avatars.com/api/?name=${encodeURIComponent(educatorName)}&background=3B82F6&color=fff`;
 
         // Format time
@@ -630,12 +697,12 @@ const Messages = () => {
           educatorId: conv.educator_id,
           classId: conv.class_id,
           subject: conv.subject,
-          type: 'educator'
+          type: 'educator',
         };
       });
     } else if (activeTab === 'admin') {
       // School admin conversations
-      return activeConversations.map(conv => {
+      return activeConversations.map((conv) => {
         const school = conv.school;
         const schoolName = school?.name || 'School Administration';
         const subject = conv.subject || 'General Discussion';
@@ -664,12 +731,12 @@ const Messages = () => {
           online: false, // School admin online status not tracked the same way
           schoolId: conv.school_id,
           subject: conv.subject,
-          type: 'admin'
+          type: 'admin',
         };
       });
     } else {
       // College admin conversations
-      return activeConversations.map(conv => {
+      return activeConversations.map((conv) => {
         const college = conv.college;
         const collegeName = college?.name || 'College Administration';
         const subject = conv.subject || 'General Discussion';
@@ -698,7 +765,7 @@ const Messages = () => {
           online: false, // College admin online status not tracked the same way
           collegeId: conv.college_id,
           subject: conv.subject,
-          type: 'college_admin'
+          type: 'college_admin',
         };
       });
     }
@@ -708,15 +775,16 @@ const Messages = () => {
   const filteredContacts = useMemo(() => {
     if (!searchQuery) return contacts; // No search, return all
 
-    return contacts.filter(contact =>
-      contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      contact.role.toLowerCase().includes(searchQuery.toLowerCase())
+    return contacts.filter(
+      (contact) =>
+        contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        contact.role.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [contacts, searchQuery]);
 
   // Get selected conversation
   const currentChat = selectedConversationId
-    ? contacts.find(c => c.id === selectedConversationId)
+    ? contacts.find((c) => c.id === selectedConversationId)
     : null;
 
   const handleSendMessage = async (e) => {
@@ -732,16 +800,17 @@ const Messages = () => {
             receiverType: 'recruiter',
             messageText: messageInput,
             applicationId: currentChat.applicationId,
-            opportunityId: currentChat.opportunityId
+            opportunityId: currentChat.opportunityId,
           });
 
           // Send notification broadcast to recruiter
           try {
             await sendNotification(currentChat.recruiterId, {
               title: 'New Message from Student',
-              message: messageInput.length > 50 ? messageInput.substring(0, 50) + '...' : messageInput,
+              message:
+                messageInput.length > 50 ? messageInput.substring(0, 50) + '...' : messageInput,
               type: 'message',
-              link: `/recruiter/messages?conversation=${selectedConversationId}`
+              link: `/recruiter/messages?conversation=${selectedConversationId}`,
             });
           } catch (notifError) {
             // Silent fail
@@ -755,16 +824,17 @@ const Messages = () => {
             receiverType: 'educator',
             messageText: messageInput,
             classId: currentChat.classId,
-            subject: currentChat.subject
+            subject: currentChat.subject,
           });
 
           // Send notification broadcast to educator
           try {
             await sendNotification(currentChat.educatorId, {
               title: 'New Message from Student',
-              message: messageInput.length > 50 ? messageInput.substring(0, 50) + '...' : messageInput,
+              message:
+                messageInput.length > 50 ? messageInput.substring(0, 50) + '...' : messageInput,
               type: 'message',
-              link: `/educator/messages?conversation=${selectedConversationId}`
+              link: `/educator/messages?conversation=${selectedConversationId}`,
             });
           } catch (notifError) {
             // Silent fail
@@ -787,7 +857,7 @@ const Messages = () => {
               receiverId: schoolAdmin.user_id,
               receiverType: 'school_admin',
               messageText: messageInput,
-              subject: currentChat.subject
+              subject: currentChat.subject,
             });
           } else {
             console.warn('No school admin found for school:', currentChat.schoolId);
@@ -830,7 +900,7 @@ const Messages = () => {
               receiverId: adminUserId,
               receiverType: 'college_admin',
               messageText: messageInput,
-              subject: currentChat.subject
+              subject: currentChat.subject,
             });
           } else {
             console.warn('No college admin found for college:', currentChat.collegeId);
@@ -850,10 +920,13 @@ const Messages = () => {
   };
 
   // Handle typing in input
-  const handleInputChange = useCallback((value) => {
-    setMessageInput(value);
-    setTyping(value.length > 0);
-  }, [setTyping]);
+  const handleInputChange = useCallback(
+    (value) => {
+      setMessageInput(value);
+      setTyping(value.length > 0);
+    },
+    [setTyping]
+  );
 
   // Auto-scroll to bottom when new messages arrive (with debounce for performance)
   useEffect(() => {
@@ -880,12 +953,12 @@ const Messages = () => {
   };
 
   // Transform messages for display
-  const displayMessages = (messages || []).map(msg => ({
+  const displayMessages = (messages || []).map((msg) => ({
     id: msg.id,
     text: msg.message_text,
     sender: msg.sender_type === 'student' ? 'me' : 'them',
     time: formatDistanceToNow(new Date(msg.created_at), { addSuffix: true }),
-    status: msg.is_read ? 'read' : 'delivered'
+    status: msg.is_read ? 'read' : 'delivered',
   }));
 
   // Close menu when clicking outside (memoized handler)
@@ -984,10 +1057,20 @@ const Messages = () => {
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <div className="relative flex-shrink-0 w-11 h-11">
               <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
-                <circle cx="18" cy="18" r="15.5" fill="none" className="stroke-gray-200" strokeWidth="2.5" />
+                <circle
+                  cx="18"
+                  cy="18"
+                  r="15.5"
+                  fill="none"
+                  className="stroke-gray-200"
+                  strokeWidth="2.5"
+                />
                 <circle
                   ref={progressRef}
-                  cx="18" cy="18" r="15.5" fill="none"
+                  cx="18"
+                  cy="18"
+                  r="15.5"
+                  fill="none"
                   className="stroke-blue-500"
                   strokeWidth="2.5"
                   strokeDasharray="97.4"
@@ -1002,7 +1085,9 @@ const Messages = () => {
               </div>
             </div>
             <div className="flex-1 min-w-0 py-1">
-              <p className="font-semibold text-[15px] text-gray-900 leading-tight">Conversation deleted</p>
+              <p className="font-semibold text-[15px] text-gray-900 leading-tight">
+                Conversation deleted
+              </p>
               <p className="text-[13px] text-gray-500 mt-1 truncate">with {contactName}</p>
             </div>
           </div>
@@ -1017,13 +1102,7 @@ const Messages = () => {
     };
 
     toast.success(
-      (t) => (
-        <UndoToastComponent
-          t={t}
-          conversationId={conversationId}
-          contactName={contactName}
-        />
-      ),
+      (t) => <UndoToastComponent t={t} conversationId={conversationId} contactName={contactName} />,
       {
         duration: 5000,
         position: 'bottom-center',
@@ -1037,7 +1116,14 @@ const Messages = () => {
         icon: null,
       }
     );
-  }, [deleteModal.conversationId, deleteModal.contactName, studentId, selectedConversationId, deleteMutation, undoMutation]);
+  }, [
+    deleteModal.conversationId,
+    deleteModal.contactName,
+    studentId,
+    selectedConversationId,
+    deleteMutation,
+    undoMutation,
+  ]);
 
   // Open delete confirmation modal
   const openDeleteModal = useCallback((conversationId, contactName, e) => {
@@ -1053,9 +1139,11 @@ const Messages = () => {
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
           <p className="text-gray-500">
-            {!studentId ? 'Loading user data...' :
-              isTabSwitching ? 'Switching tabs...' :
-                'Loading conversations...'}
+            {!studentId
+              ? 'Loading user data...'
+              : isTabSwitching
+                ? 'Switching tabs...'
+                : 'Loading conversations...'}
           </p>
         </div>
       </div>
@@ -1137,7 +1225,9 @@ const Messages = () => {
                       </>
                     )}
                   </div>
-                  <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${showTabDropdown ? 'rotate-180' : ''}`} />
+                  <ChevronDown
+                    className={`w-4 h-4 text-gray-500 transition-transform ${showTabDropdown ? 'rotate-180' : ''}`}
+                  />
                 </button>
 
                 {/* Dropdown Menu */}
@@ -1166,10 +1256,13 @@ const Messages = () => {
                             setIsTabSwitching(false);
                           }
                         }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${activeTab === 'recruiters' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
-                          }`}
+                        className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                          activeTab === 'recruiters' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                        }`}
                       >
-                        <Users className={`w-4 h-4 ${activeTab === 'recruiters' ? 'text-blue-600' : 'text-gray-500'}`} />
+                        <Users
+                          className={`w-4 h-4 ${activeTab === 'recruiters' ? 'text-blue-600' : 'text-gray-500'}`}
+                        />
                         <div className="flex-1">
                           <div className="font-medium">Recruiters</div>
                           <div className="text-xs text-gray-500">Job application messages</div>
@@ -1203,10 +1296,13 @@ const Messages = () => {
                             setIsTabSwitching(false);
                           }
                         }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${activeTab === 'educators' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
-                          }`}
+                        className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                          activeTab === 'educators' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                        }`}
                       >
-                        <GraduationCap className={`w-4 h-4 ${activeTab === 'educators' ? 'text-blue-600' : 'text-gray-500'}`} />
+                        <GraduationCap
+                          className={`w-4 h-4 ${activeTab === 'educators' ? 'text-blue-600' : 'text-gray-500'}`}
+                        />
                         <div className="flex-1">
                           <div className="font-medium">Educators</div>
                           <div className="text-xs text-gray-500">Teacher and class messages</div>
@@ -1241,13 +1337,18 @@ const Messages = () => {
                               setIsTabSwitching(false);
                             }
                           }}
-                          className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${activeTab === 'admin' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
-                            }`}
+                          className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                            activeTab === 'admin' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                          }`}
                         >
-                          <Building2 className={`w-4 h-4 ${activeTab === 'admin' ? 'text-blue-600' : 'text-gray-500'}`} />
+                          <Building2
+                            className={`w-4 h-4 ${activeTab === 'admin' ? 'text-blue-600' : 'text-gray-500'}`}
+                          />
                           <div className="flex-1">
                             <div className="font-medium">School Admin</div>
-                            <div className="text-xs text-gray-500">School administration messages</div>
+                            <div className="text-xs text-gray-500">
+                              School administration messages
+                            </div>
                           </div>
                           {adminConversations.length > 0 && (
                             <span className="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
@@ -1269,7 +1370,11 @@ const Messages = () => {
                             setShowTabDropdown(false);
 
                             // Force refetch for college admin tab
-                            if (studentId && !loadingStudentData && refetchCollegeAdminConversations) {
+                            if (
+                              studentId &&
+                              !loadingStudentData &&
+                              refetchCollegeAdminConversations
+                            ) {
                               console.log('🚀 Refetching college admin conversations');
                               try {
                                 await refetchCollegeAdminConversations();
@@ -1280,13 +1385,20 @@ const Messages = () => {
                               setIsTabSwitching(false);
                             }
                           }}
-                          className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${activeTab === 'college_admin' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
-                            }`}
+                          className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                            activeTab === 'college_admin'
+                              ? 'bg-blue-50 text-blue-700'
+                              : 'text-gray-700'
+                          }`}
                         >
-                          <Building2 className={`w-4 h-4 ${activeTab === 'college_admin' ? 'text-blue-600' : 'text-gray-500'}`} />
+                          <Building2
+                            className={`w-4 h-4 ${activeTab === 'college_admin' ? 'text-blue-600' : 'text-gray-500'}`}
+                          />
                           <div className="flex-1">
                             <div className="font-medium">College Admin</div>
-                            <div className="text-xs text-gray-500">College administration messages</div>
+                            <div className="text-xs text-gray-500">
+                              College administration messages
+                            </div>
                           </div>
                           {collegeAdminConversations.length > 0 && (
                             <span className="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
@@ -1334,7 +1446,9 @@ const Messages = () => {
                 <>
                   <GraduationCap className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500 text-sm">No educator conversations yet</p>
-                  <p className="text-gray-400 text-xs mt-2 mb-4">Message your teachers about classes!</p>
+                  <p className="text-gray-400 text-xs mt-2 mb-4">
+                    Message your teachers about classes!
+                  </p>
                   <button
                     onClick={() => setShowNewConversationModal(true)}
                     className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors"
@@ -1346,7 +1460,9 @@ const Messages = () => {
                 <>
                   <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500 text-sm">No school admin conversations yet</p>
-                  <p className="text-gray-400 text-xs mt-2 mb-4">Contact your school administration!</p>
+                  <p className="text-gray-400 text-xs mt-2 mb-4">
+                    Contact your school administration!
+                  </p>
                   <button
                     onClick={() => setShowNewAdminConversationModal(true)}
                     className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors"
@@ -1358,7 +1474,9 @@ const Messages = () => {
                 <>
                   <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500 text-sm">No college admin conversations yet</p>
-                  <p className="text-gray-400 text-xs mt-2 mb-4">Contact your college administration!</p>
+                  <p className="text-gray-400 text-xs mt-2 mb-4">
+                    Contact your college administration!
+                  </p>
                   <button
                     onClick={() => setShowNewCollegeAdminConversationModal(true)}
                     className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors"
@@ -1372,12 +1490,11 @@ const Messages = () => {
             filteredContacts.map((contact) => (
               <div
                 key={contact.id}
-                className={`relative group flex items-start gap-3 p-4 cursor-pointer hover:bg-gray-50 transition-all duration-200 border-b border-gray-100 ${selectedConversationId === contact.id
-                  ? 'bg-blue-50'
-                  : ''
-                  }`}
+                className={`relative group flex items-start gap-3 p-4 cursor-pointer hover:bg-gray-50 transition-all duration-200 border-b border-gray-100 ${
+                  selectedConversationId === contact.id ? 'bg-blue-50' : ''
+                }`}
                 style={{
-                  animation: 'fadeInSlide 0.2s ease-out'
+                  animation: 'fadeInSlide 0.2s ease-out',
                 }}
               >
                 <div
@@ -1408,9 +1525,7 @@ const Messages = () => {
                       {contact.role}
                     </p>
                     <div className="flex items-center justify-between">
-                      <p className="text-sm text-gray-600 truncate">
-                        {contact.lastMessage}
-                      </p>
+                      <p className="text-sm text-gray-600 truncate">{contact.lastMessage}</p>
                       {contact.unread > 0 && (
                         <span className="flex-shrink-0 ml-2 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center bg-blue-500">
                           {contact.unread}
@@ -1522,16 +1637,18 @@ const Messages = () => {
                       className={`flex ${message.sender === 'me' ? 'justify-end' : 'justify-start'}`}
                     >
                       <div
-                        className={`max-w-[70%] rounded-2xl px-4 py-2.5 ${message.sender === 'me'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-white text-gray-900 border border-gray-200'
-                          }`}
+                        className={`max-w-[70%] rounded-2xl px-4 py-2.5 ${
+                          message.sender === 'me'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-white text-gray-900 border border-gray-200'
+                        }`}
                       >
                         <p className="text-sm leading-relaxed">{message.text}</p>
-                        <div className={`flex items-center gap-1 mt-1 text-xs ${message.sender === 'me'
-                          ? 'text-blue-100'
-                          : 'text-gray-500'
-                          }`}>
+                        <div
+                          className={`flex items-center gap-1 mt-1 text-xs ${
+                            message.sender === 'me' ? 'text-blue-100' : 'text-gray-500'
+                          }`}
+                        >
                           <span>{message.time}</span>
                           {message.sender === 'me' && getStatusIcon(message.status)}
                         </div>
@@ -1545,9 +1662,18 @@ const Messages = () => {
                       <div className="bg-white border border-gray-200 rounded-2xl px-4 py-2.5 shadow-sm">
                         <div className="flex items-center gap-2">
                           <div className="flex gap-1">
-                            <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                            <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                            <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                            <span
+                              className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                              style={{ animationDelay: '0ms' }}
+                            />
+                            <span
+                              className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                              style={{ animationDelay: '150ms' }}
+                            />
+                            <span
+                              className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                              style={{ animationDelay: '300ms' }}
+                            />
                           </div>
                           <span className="text-xs text-gray-500 italic">{getTypingText()}</span>
                         </div>
@@ -1606,7 +1732,9 @@ const Messages = () => {
           // Empty State
           <div className="flex-1 flex items-center justify-center bg-gray-50">
             <div className="text-center">
-              <div className={`w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 bg-blue-100`}>
+              <div
+                className={`w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 bg-blue-100`}
+              >
                 {activeTab === 'recruiters' ? (
                   <Send className="w-12 h-12 text-blue-500" />
                 ) : activeTab === 'educators' ? (
@@ -1615,16 +1743,13 @@ const Messages = () => {
                   <Building2 className="w-12 h-12 text-blue-500" />
                 )}
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                Select a conversation
-              </h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Select a conversation</h3>
               <p className="text-gray-500 text-sm">
                 {activeTab === 'recruiters'
                   ? 'Choose from your recruiter conversations or start a new one'
                   : activeTab === 'educators'
                     ? 'Choose from your educator conversations or start a new one'
-                    : 'Choose from your school admin conversations'
-                }
+                    : 'Choose from your school admin conversations'}
               </p>
             </div>
           </div>
@@ -1647,7 +1772,12 @@ const Messages = () => {
         studentId={studentId}
         onConversationCreated={async ({ educatorId, classId, subject, initialMessage }) => {
           try {
-            console.log('🚀 Creating conversation with:', { educatorId, classId, subject, initialMessage });
+            console.log('🚀 Creating conversation with:', {
+              educatorId,
+              classId,
+              subject,
+              initialMessage,
+            });
             const conversation = await MessageService.getOrCreateStudentEducatorConversation(
               studentId,
               educatorId,
@@ -1707,7 +1837,11 @@ const Messages = () => {
         studentId={studentId}
         onConversationCreated={async ({ schoolId, subject, initialMessage }) => {
           try {
-            console.log('🚀 Creating admin conversation with:', { schoolId, subject, initialMessage });
+            console.log('🚀 Creating admin conversation with:', {
+              schoolId,
+              subject,
+              initialMessage,
+            });
             const conversation = await MessageService.getOrCreateStudentAdminConversation(
               studentId,
               schoolId,
@@ -1787,7 +1921,11 @@ const Messages = () => {
         studentId={studentId}
         onConversationCreated={async ({ collegeId, subject, initialMessage }) => {
           try {
-            console.log('🚀 Creating college admin conversation with:', { collegeId, subject, initialMessage });
+            console.log('🚀 Creating college admin conversation with:', {
+              collegeId,
+              subject,
+              initialMessage,
+            });
             const conversation = await MessageService.getOrCreateStudentCollegeAdminConversation(
               studentId,
               collegeId,
@@ -1880,4 +2018,3 @@ const Messages = () => {
 };
 
 export default Messages;
-

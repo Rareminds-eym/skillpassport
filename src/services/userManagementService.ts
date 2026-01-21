@@ -134,10 +134,7 @@ class UserManagementService {
     search?: string;
     college_id?: string;
   }): Promise<User[]> {
-    let query = supabase
-      .from('users')
-      .select('*')
-      .order('createdAt', { ascending: false });
+    let query = supabase.from('users').select('*').order('createdAt', { ascending: false });
 
     if (filters?.role) {
       query = query.eq('role', filters.role);
@@ -162,11 +159,7 @@ class UserManagementService {
    * Get a single user by ID
    */
   async getUser(userId: string): Promise<User | null> {
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', userId)
-      .maybeSingle();
+    const { data, error } = await supabase.from('users').select('*').eq('id', userId).maybeSingle();
 
     if (error) throw error;
     return data;
@@ -182,17 +175,17 @@ class UserManagementService {
 
     // Map role to worker API expected format
     const roleMapping: Record<string, string> = {
-      'student': 'school_student',
-      'school_student': 'school_student',
-      'college_student': 'college_student',
-      'educator': 'school_educator',
-      'school_educator': 'school_educator',
-      'college_educator': 'college_educator',
-      'recruiter': 'recruiter',
-      'admin': 'school_admin',
-      'school_admin': 'school_admin',
-      'college_admin': 'college_admin',
-      'university_admin': 'university_admin',
+      student: 'school_student',
+      school_student: 'school_student',
+      college_student: 'college_student',
+      educator: 'school_educator',
+      school_educator: 'school_educator',
+      college_educator: 'college_educator',
+      recruiter: 'recruiter',
+      admin: 'school_admin',
+      school_admin: 'school_admin',
+      college_admin: 'college_admin',
+      university_admin: 'university_admin',
     };
 
     const mappedRole = roleMapping[userData.role] || 'school_student';
@@ -255,10 +248,7 @@ class UserManagementService {
    * Delete user (soft delete by setting isActive to false)
    */
   async deleteUser(userId: string): Promise<void> {
-    const { error } = await supabase
-      .from('users')
-      .update({ isActive: false })
-      .eq('id', userId);
+    const { error } = await supabase.from('users').update({ isActive: false }).eq('id', userId);
 
     if (error) throw error;
 
@@ -269,11 +259,7 @@ class UserManagementService {
   /**
    * Change user role
    */
-  async changeUserRole(
-    userId: string,
-    newRole: string,
-    reason?: string
-  ): Promise<void> {
+  async changeUserRole(userId: string, newRole: string, reason?: string): Promise<void> {
     const { data: currentUser } = await supabase.auth.getUser();
     if (!currentUser.user) throw new Error('Not authenticated');
 
@@ -338,11 +324,7 @@ class UserManagementService {
   /**
    * Upload user document
    */
-  async uploadDocument(
-    userId: string,
-    file: File,
-    documentType: string
-  ): Promise<UserDocument> {
+  async uploadDocument(userId: string, file: File, documentType: string): Promise<UserDocument> {
     // Upload file to storage
     const fileExt = file.name.split('.').pop();
     const fileName = `${userId}/${documentType}/${Date.now()}.${fileExt}`;
@@ -353,9 +335,7 @@ class UserManagementService {
 
     if (uploadError) throw uploadError;
 
-    const { data: urlData } = supabase.storage
-      .from('user-documents')
-      .getPublicUrl(fileName);
+    const { data: urlData } = supabase.storage.from('user-documents').getPublicUrl(fileName);
 
     // Create document record
     const { data, error } = await supabase
@@ -396,10 +376,7 @@ class UserManagementService {
       updateData.rejection_reason = reason;
     }
 
-    const { error } = await supabase
-      .from('user_documents')
-      .update(updateData)
-      .eq('id', documentId);
+    const { error } = await supabase.from('user_documents').update(updateData).eq('id', documentId);
 
     if (error) throw error;
   }
@@ -407,10 +384,7 @@ class UserManagementService {
   /**
    * Get user activity log
    */
-  async getUserActivity(
-    userId: string,
-    limit: number = 50
-  ): Promise<UserActivity[]> {
+  async getUserActivity(userId: string, limit: number = 50): Promise<UserActivity[]> {
     const { data, error } = await supabase
       .from('user_activity_log')
       .select('*')
@@ -456,9 +430,7 @@ class UserManagementService {
 
     if (uploadError) throw uploadError;
 
-    const { data: urlData } = supabase.storage
-      .from('user-documents')
-      .getPublicUrl(fileName);
+    const { data: urlData } = supabase.storage.from('user-documents').getPublicUrl(fileName);
 
     // Create import job
     const { data, error } = await supabase

@@ -198,19 +198,20 @@ export const filterAssessments = (
   let filtered = [...assessments];
 
   if (filters.type) {
-    filtered = filtered.filter(a => a.type === filters.type);
+    filtered = filtered.filter((a) => a.type === filters.type);
   }
 
   if (filters.status) {
-    filtered = filtered.filter(a => a.status === filters.status);
+    filtered = filtered.filter((a) => a.status === filters.status);
   }
 
   if (filters.search) {
     const searchLower = filters.search.toLowerCase();
-    filtered = filtered.filter(a => 
-      a.academic_year.toLowerCase().includes(searchLower) ||
-      a.type.toLowerCase().includes(searchLower) ||
-      a.status.toLowerCase().includes(searchLower)
+    filtered = filtered.filter(
+      (a) =>
+        a.academic_year.toLowerCase().includes(searchLower) ||
+        a.type.toLowerCase().includes(searchLower) ||
+        a.status.toLowerCase().includes(searchLower)
     );
   }
 
@@ -219,15 +220,15 @@ export const filterAssessments = (
 
 // Helper function to get course name by ID
 export const getCourseById = (courseId: string) => {
-  return mockCourses.find(c => c.id === courseId);
+  return mockCourses.find((c) => c.id === courseId);
 };
 
 // Helper function to get department name by ID
 export const getDepartmentById = (deptId: string) => {
-  return mockDepartments.find(d => d.id === deptId);
+  return mockDepartments.find((d) => d.id === deptId);
 };
 
 // Helper function to get program name by ID
 export const getProgramById = (progId: string) => {
-  return mockPrograms.find(p => p.id === progId);
+  return mockPrograms.find((p) => p.id === progId);
 };

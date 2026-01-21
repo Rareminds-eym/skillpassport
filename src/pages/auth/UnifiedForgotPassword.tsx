@@ -12,19 +12,19 @@ interface ForgotPasswordState {
 
 const UnifiedForgotPassword = () => {
   const navigate = useNavigate();
-  
+
   const [state, setState] = useState<ForgotPasswordState>({
     email: '',
     loading: false,
     error: '',
-    success: false
+    success: false,
   });
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       email: e.target.value,
-      error: ''
+      error: '',
     }));
   };
 
@@ -33,39 +33,38 @@ const UnifiedForgotPassword = () => {
 
     // Validate email
     if (!state.email) {
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
-        error: 'Please enter your email address'
+        error: 'Please enter your email address',
       }));
       return;
     }
 
-    setState(prev => ({ ...prev, loading: true, error: '' }));
+    setState((prev) => ({ ...prev, loading: true, error: '' }));
 
     try {
       const result = await resetPassword(state.email);
 
       if (!result.success) {
-        setState(prev => ({
+        setState((prev) => ({
           ...prev,
           loading: false,
-          error: result.error || 'Failed to send reset email'
+          error: result.error || 'Failed to send reset email',
         }));
         return;
       }
 
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         loading: false,
-        success: true
+        success: true,
       }));
-
     } catch (error) {
       console.error('Forgot password error:', error);
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         loading: false,
-        error: 'An unexpected error occurred. Please try again'
+        error: 'An unexpected error occurred. Please try again',
       }));
     }
   };
@@ -81,10 +80,9 @@ const UnifiedForgotPassword = () => {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Forgot Password?</h1>
           <p className="text-gray-600">
-            {state.success 
+            {state.success
               ? 'Check your email for reset instructions'
-              : 'Enter your email to receive a password reset link'
-            }
+              : 'Enter your email to receive a password reset link'}
           </p>
         </div>
 

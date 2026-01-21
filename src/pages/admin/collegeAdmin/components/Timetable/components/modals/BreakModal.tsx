@@ -1,6 +1,6 @@
-import React from "react";
-import { X, Save } from "lucide-react";
-import { Break, BreakFormData } from "../../types";
+import React from 'react';
+import { X, Save } from 'lucide-react';
+import { Break, BreakFormData } from '../../types';
 
 interface BreakModalProps {
   isOpen: boolean;
@@ -32,7 +32,7 @@ const BreakModal: React.FC<BreakModalProps> = ({
       <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-gray-900">
-            {editingBreakId ? "Edit Break / Holiday" : "Add Break / Holiday"}
+            {editingBreakId ? 'Edit Break / Holiday' : 'Add Break / Holiday'}
           </h3>
           <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg">
             <X className="h-5 w-5 text-gray-500" />
@@ -45,7 +45,7 @@ const BreakModal: React.FC<BreakModalProps> = ({
             <select
               value={breakForm.break_type}
               onChange={(e) =>
-                onFormChange({ ...breakForm, break_type: e.target.value as Break["break_type"] })
+                onFormChange({ ...breakForm, break_type: e.target.value as Break['break_type'] })
               }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
             >
@@ -75,7 +75,7 @@ const BreakModal: React.FC<BreakModalProps> = ({
                 onChange={(e) => {
                   const newStartDate = e.target.value;
                   onFormChange({ ...breakForm, start_date: newStartDate });
-                  onDateChange(newStartDate, breakForm.end_date || "");
+                  onDateChange(newStartDate, breakForm.end_date || '');
                 }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
               />
@@ -88,7 +88,7 @@ const BreakModal: React.FC<BreakModalProps> = ({
                 onChange={(e) => {
                   const newEndDate = e.target.value;
                   onFormChange({ ...breakForm, end_date: newEndDate });
-                  onDateChange(breakForm.start_date || "", newEndDate);
+                  onDateChange(breakForm.start_date || '', newEndDate);
                 }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
               />
@@ -108,7 +108,7 @@ const BreakModal: React.FC<BreakModalProps> = ({
               Description (optional)
             </label>
             <textarea
-              value={breakForm.description || ""}
+              value={breakForm.description || ''}
               onChange={(e) => onFormChange({ ...breakForm, description: e.target.value })}
               placeholder="Additional notes..."
               rows={2}
@@ -130,7 +130,7 @@ const BreakModal: React.FC<BreakModalProps> = ({
             className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 transition"
           >
             <Save className="h-4 w-4" />
-            {loading ? "Saving..." : editingBreakId ? "Save Changes" : "Add"}
+            {loading ? 'Saving...' : editingBreakId ? 'Save Changes' : 'Add'}
           </button>
         </div>
       </div>

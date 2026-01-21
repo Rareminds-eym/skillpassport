@@ -3,7 +3,12 @@ import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabaseClient';
 
-const NewStudentConversationModalCollegeAdmin = ({ isOpen, onClose, collegeId, onConversationCreated }) => {
+const NewStudentConversationModalCollegeAdmin = ({
+  isOpen,
+  onClose,
+  collegeId,
+  onConversationCreated,
+}) => {
   const [students, setStudents] = useState([]);
   const [filteredStudents, setFilteredStudents] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -23,7 +28,7 @@ const NewStudentConversationModalCollegeAdmin = ({ isOpen, onClose, collegeId, o
     'Placement Support',
     'Library Access',
     'Hostel/Accommodation',
-    'Other'
+    'Other',
   ];
 
   // Fetch students from the college
@@ -37,27 +42,28 @@ const NewStudentConversationModalCollegeAdmin = ({ isOpen, onClose, collegeId, o
     setLoading(true);
     try {
       console.log('🔍 Fetching students for college:', collegeId);
-      
+
       // First get the college name for fallback search from organizations table
       const { data: collegeInfo, error: collegeError } = await supabase
         .from('organizations')
         .select('id, name')
         .eq('id', collegeId)
         .single();
-      
+
       if (collegeError) {
         console.error('❌ Error fetching college info:', collegeError);
       }
-      
+
       console.log('🏫 College info:', collegeInfo);
-      
+
       // Try multiple approaches to find students
       let studentsData = [];
-      
+
       // Method 1: Direct college association (without users join to avoid column errors)
       const { data: directStudents, error: directError } = await supabase
         .from('students')
-        .select(`
+        .select(
+          `
           id,
           user_id,
           name,
@@ -66,7 +72,8 @@ const NewStudentConversationModalCollegeAdmin = ({ isOpen, onClose, collegeId, o
           branch_field,
           college_id,
           university_college_id
-        `)
+        `
+        )
         .or(`college_id.eq.${collegeId},university_college_id.eq.${collegeId}`)
         .order('name');
 
@@ -75,12 +82,13 @@ const NewStudentConversationModalCollegeAdmin = ({ isOpen, onClose, collegeId, o
         studentsData = directStudents;
       } else if (collegeInfo) {
         console.log('⚠️ No direct association found, trying college name search...');
-        
+
         // Method 2: Search by college name in university field or email domain
         const collegeName = collegeInfo.name.toLowerCase();
         const { data: nameStudents, error: nameError } = await supabase
           .from('students')
-          .select(`
+          .select(
+            `
             id,
             user_id,
             name,
@@ -89,10 +97,13 @@ const NewStudentConversationModalCollegeAdmin = ({ isOpen, onClose, collegeId, o
             branch_field,
             college_id,
             university_college_id
-          `)
-          .or(`university.ilike.%${collegeInfo.name}%,email.ilike.%${collegeName.replace(/\s+/g, '')}%`)
+          `
+          )
+          .or(
+            `university.ilike.%${collegeInfo.name}%,email.ilike.%${collegeName.replace(/\s+/g, '')}%`
+          )
           .order('name');
-        
+
         if (!nameError && nameStudents && nameStudents.length > 0) {
           console.log('✅ Found students using college name search:', nameStudents.length);
           studentsData = nameStudents;
@@ -104,26 +115,28 @@ const NewStudentConversationModalCollegeAdmin = ({ isOpen, onClose, collegeId, o
 
       if (directError && !collegeInfo) throw directError;
 
-      const formattedStudents = studentsData.map(student => ({
+      const formattedStudents = studentsData.map((student) => ({
         id: student.id,
         user_id: student.user_id,
         name: student.name || student.email || 'Student',
         email: student.email || '',
         university: student.university || '',
         branch: student.branch_field || '',
-        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(student.name || student.email || 'Student')}&background=3B82F6&color=fff`
+        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(student.name || student.email || 'Student')}&background=3B82F6&color=fff`,
       }));
 
       console.log('📋 Final formatted students:', formattedStudents.length);
       setStudents(formattedStudents);
       setFilteredStudents(formattedStudents);
-      
+
       if (formattedStudents.length === 0) {
         const collegeName = collegeInfo?.name || 'this college';
         console.warn('⚠️ No students found for:', collegeName);
-        toast.info(`No students found for ${collegeName}. Students may need to be associated with this college first.`);
+        toast.info(
+          `No students found for ${collegeName}. Students may need to be associated with this college first.`
+        );
       } else {
-        console.log('✅ Students loaded:', formattedStudents.map(s => s.name).join(', '));
+        console.log('✅ Students loaded:', formattedStudents.map((s) => s.name).join(', '));
       }
     } catch (error) {
       console.error('❌ Error fetching students:', error);
@@ -138,11 +151,13 @@ const NewStudentConversationModalCollegeAdmin = ({ isOpen, onClose, collegeId, o
     if (!searchQuery) {
       setFilteredStudents(students);
     } else {
-      const filtered = students.filter(student =>
-        student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        student.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (student.university && student.university.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (student.branch && student.branch.toLowerCase().includes(searchQuery.toLowerCase()))
+      const filtered = students.filter(
+        (student) =>
+          student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          student.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (student.university &&
+            student.university.toLowerCase().includes(searchQuery.toLowerCase())) ||
+          (student.branch && student.branch.toLowerCase().includes(searchQuery.toLowerCase()))
       );
       setFilteredStudents(filtered);
     }
@@ -153,7 +168,7 @@ const NewStudentConversationModalCollegeAdmin = ({ isOpen, onClose, collegeId, o
       onConversationCreated({
         studentId: selectedStudent.user_id,
         subject: subject,
-        initialMessage: '' // College admin will send first message after creation
+        initialMessage: '', // College admin will send first message after creation
       });
       handleClose();
     }
@@ -235,7 +250,9 @@ const NewStudentConversationModalCollegeAdmin = ({ isOpen, onClose, collegeId, o
                 <div className="text-center py-12">
                   <GraduationCap className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500 text-sm">
-                    {searchQuery ? `No students found for "${searchQuery}"` : 'No students found in this college'}
+                    {searchQuery
+                      ? `No students found for "${searchQuery}"`
+                      : 'No students found in this college'}
                   </p>
                 </div>
               ) : (
@@ -258,9 +275,7 @@ const NewStudentConversationModalCollegeAdmin = ({ isOpen, onClose, collegeId, o
                       <h3 className="font-semibold text-gray-900 text-sm truncate">
                         {student.name}
                       </h3>
-                      <p className="text-xs text-gray-600 truncate">
-                        {student.email}
-                      </p>
+                      <p className="text-xs text-gray-600 truncate">{student.email}</p>
                       {(student.university || student.branch) && (
                         <p className="text-xs text-blue-600 truncate">
                           {student.university} {student.branch && `• ${student.branch}`}

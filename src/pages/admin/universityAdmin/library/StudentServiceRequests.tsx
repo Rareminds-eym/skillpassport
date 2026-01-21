@@ -108,43 +108,54 @@ const StudentServiceRequests = () => {
   // KPI Data for consistent theming
   const kpiData = [
     {
-      title: "Total Requests",
-      value: "156",
+      title: 'Total Requests',
+      value: '156',
       change: 12,
-      changeLabel: "vs last month",
+      changeLabel: 'vs last month',
       icon: <FileText className="h-6 w-6" />,
-      color: "blue" as const,
+      color: 'blue' as const,
     },
     {
-      title: "Pending Requests",
-      value: "45",
+      title: 'Pending Requests',
+      value: '45',
       change: 8,
-      changeLabel: "awaiting assignment",
+      changeLabel: 'awaiting assignment',
       icon: <Clock className="h-6 w-6" />,
-      color: "yellow" as const,
+      color: 'yellow' as const,
     },
     {
-      title: "Avg Response Time",
-      value: "2.4 hrs",
+      title: 'Avg Response Time',
+      value: '2.4 hrs',
       change: -15,
-      changeLabel: "faster response",
+      changeLabel: 'faster response',
       icon: <Calendar className="h-6 w-6" />,
-      color: "green" as const,
+      color: 'green' as const,
     },
     {
-      title: "Satisfaction Rate",
-      value: "94%",
+      title: 'Satisfaction Rate',
+      value: '94%',
       change: 3,
-      changeLabel: "student satisfaction",
+      changeLabel: 'student satisfaction',
       icon: <CheckCircle className="h-6 w-6" />,
-      color: "purple" as const,
+      color: 'purple' as const,
     },
   ];
 
   // Filter options
-  const colleges = ['All Colleges', 'Engineering College A', 'Arts & Science College B', 'Medical College C'];
+  const colleges = [
+    'All Colleges',
+    'Engineering College A',
+    'Arts & Science College B',
+    'Medical College C',
+  ];
   const priorities = ['All Priorities', 'High', 'Medium', 'Low'];
-  const assignees = ['All Assignees', 'Library Staff A', 'Research Librarian', 'ILL Coordinator', 'Digital Resources Team'];
+  const assignees = [
+    'All Assignees',
+    'Library Staff A',
+    'Research Librarian',
+    'ILL Coordinator',
+    'Digital Resources Team',
+  ];
   const serviceTypeOptions = ['All Service Types', ...serviceTypes];
 
   const getStatusColor = (status: string) => {
@@ -190,21 +201,40 @@ const StudentServiceRequests = () => {
     }
   };
 
-  const filteredRequests = serviceRequests.filter(request => {
+  const filteredRequests = serviceRequests.filter((request) => {
     const matchesTab = activeTab === 'all' || request.status === activeTab;
-    const matchesSearch = request.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         request.ticketId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         request.serviceType.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCollege = !filterCollege || filterCollege === 'All Colleges' || request.college === filterCollege;
-    const matchesServiceType = !filterServiceType || filterServiceType === 'All Service Types' || request.serviceType === filterServiceType;
-    const matchesPriority = !filterPriority || filterPriority === 'All Priorities' || request.priority === filterPriority;
-    const matchesAssignee = !filterAssignee || filterAssignee === 'All Assignees' || request.assignedTo === filterAssignee;
-    
-    return matchesTab && matchesSearch && matchesCollege && matchesServiceType && matchesPriority && matchesAssignee;
+    const matchesSearch =
+      request.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.ticketId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.serviceType.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCollege =
+      !filterCollege || filterCollege === 'All Colleges' || request.college === filterCollege;
+    const matchesServiceType =
+      !filterServiceType ||
+      filterServiceType === 'All Service Types' ||
+      request.serviceType === filterServiceType;
+    const matchesPriority =
+      !filterPriority || filterPriority === 'All Priorities' || request.priority === filterPriority;
+    const matchesAssignee =
+      !filterAssignee ||
+      filterAssignee === 'All Assignees' ||
+      request.assignedTo === filterAssignee;
+
+    return (
+      matchesTab &&
+      matchesSearch &&
+      matchesCollege &&
+      matchesServiceType &&
+      matchesPriority &&
+      matchesAssignee
+    );
   });
 
   const renderRequestCard = (request: any) => (
-    <div key={request.id} className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md hover:border-purple-300 transition-all duration-200">
+    <div
+      key={request.id}
+      className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md hover:border-purple-300 transition-all duration-200"
+    >
       <div className="flex justify-between items-start mb-4">
         <div className="flex items-center gap-3">
           <div className="p-3 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-xl">
@@ -213,17 +243,23 @@ const StudentServiceRequests = () => {
           <div>
             <div className="flex items-center gap-2 mb-1">
               <h3 className="text-lg font-bold text-gray-900">{request.ticketId}</h3>
-              <span className={`inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(request.status)}`}>
+              <span
+                className={`inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(request.status)}`}
+              >
                 {getStatusIcon(request.status)}
                 {request.status.charAt(0).toUpperCase() + request.status.slice(1).replace('-', ' ')}
               </span>
             </div>
-            <p className="text-sm text-gray-600">{request.studentName} ({request.studentId})</p>
+            <p className="text-sm text-gray-600">
+              {request.studentName} ({request.studentId})
+            </p>
             <p className="text-sm text-gray-600">{request.college}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className={`px-3 py-1 text-xs font-semibold rounded-full border ${getPriorityColor(request.priority)}`}>
+          <span
+            className={`px-3 py-1 text-xs font-semibold rounded-full border ${getPriorityColor(request.priority)}`}
+          >
             {request.priority}
           </span>
         </div>
@@ -259,7 +295,10 @@ const StudentServiceRequests = () => {
         <p className="text-sm font-medium text-gray-700 mb-2">Documents</p>
         <div className="flex flex-wrap gap-2">
           {request.documents.map((doc: string, index: number) => (
-            <span key={index} className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full border border-blue-200">
+            <span
+              key={index}
+              className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full border border-blue-200"
+            >
               <DocumentTextIcon className="h-3 w-3" />
               {doc}
             </span>
@@ -275,7 +314,7 @@ const StudentServiceRequests = () => {
           </div>
         </div>
         <div className="flex gap-2">
-          <button 
+          <button
             onClick={() => console.log('View request:', request)}
             className="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-xl hover:bg-gray-200 flex items-center gap-1 font-medium transition-all duration-200"
           >
@@ -301,12 +340,14 @@ const StudentServiceRequests = () => {
             <span className="text-sm text-gray-600">{type}</span>
             <div className="flex items-center gap-2">
               <div className="w-20 bg-gray-200 rounded-full h-2">
-                <div 
-                  className="bg-gradient-to-r from-purple-600 to-indigo-600 h-2 rounded-full" 
+                <div
+                  className="bg-gradient-to-r from-purple-600 to-indigo-600 h-2 rounded-full"
                   style={{ width: `${Math.random() * 80 + 20}%` }}
                 ></div>
               </div>
-              <span className="text-sm font-medium text-gray-900">{Math.floor(Math.random() * 30 + 5)}</span>
+              <span className="text-sm font-medium text-gray-900">
+                {Math.floor(Math.random() * 30 + 5)}
+              </span>
             </div>
           </div>
         ))}
@@ -381,7 +422,7 @@ const StudentServiceRequests = () => {
                     className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                   />
                 </div>
-                <button 
+                <button
                   onClick={() => setShowFilters(!showFilters)}
                   className={`px-6 py-2.5 border border-gray-300 rounded-xl hover:bg-gray-50 flex items-center gap-2 font-medium transition-all duration-200 ${
                     showFilters ? 'bg-purple-50 border-purple-300 text-purple-700' : ''
@@ -407,7 +448,7 @@ const StudentServiceRequests = () => {
                       onChange={(e) => setFilterCollege(e.target.value)}
                       className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                     >
-                      {colleges.map(college => (
+                      {colleges.map((college) => (
                         <option key={college} value={college === 'All Colleges' ? '' : college}>
                           {college}
                         </option>
@@ -415,13 +456,15 @@ const StudentServiceRequests = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Service Type</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Service Type
+                    </label>
                     <select
                       value={filterServiceType}
                       onChange={(e) => setFilterServiceType(e.target.value)}
                       className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                     >
-                      {serviceTypeOptions.map(type => (
+                      {serviceTypeOptions.map((type) => (
                         <option key={type} value={type === 'All Service Types' ? '' : type}>
                           {type}
                         </option>
@@ -435,8 +478,11 @@ const StudentServiceRequests = () => {
                       onChange={(e) => setFilterPriority(e.target.value)}
                       className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                     >
-                      {priorities.map(priority => (
-                        <option key={priority} value={priority === 'All Priorities' ? '' : priority}>
+                      {priorities.map((priority) => (
+                        <option
+                          key={priority}
+                          value={priority === 'All Priorities' ? '' : priority}
+                        >
                           {priority}
                         </option>
                       ))}
@@ -449,7 +495,7 @@ const StudentServiceRequests = () => {
                       onChange={(e) => setFilterAssignee(e.target.value)}
                       className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                     >
-                      {assignees.map(assignee => (
+                      {assignees.map((assignee) => (
                         <option key={assignee} value={assignee === 'All Assignees' ? '' : assignee}>
                           {assignee}
                         </option>
@@ -462,9 +508,7 @@ const StudentServiceRequests = () => {
           </div>
 
           {/* Requests List */}
-          <div className="space-y-4">
-            {filteredRequests.map(renderRequestCard)}
-          </div>
+          <div className="space-y-4">{filteredRequests.map(renderRequestCard)}</div>
 
           {filteredRequests.length === 0 && (
             <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
@@ -475,9 +519,7 @@ const StudentServiceRequests = () => {
           )}
         </div>
 
-        <div className="lg:col-span-1">
-          {renderServiceTypeStats()}
-        </div>
+        <div className="lg:col-span-1">{renderServiceTypeStats()}</div>
       </div>
     </div>
   );

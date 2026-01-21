@@ -15,22 +15,22 @@ import {
   PencilIcon,
   RocketLaunchIcon,
   UserCircleIcon,
-  XMarkIcon
-} from "@heroicons/react/24/outline";
-import React, { useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "../../../context/AuthContext";
-import { useNotifications } from "../../../hooks/useNotifications";
-import { useStudentDataByEmail } from "../../../hooks/useStudentDataByEmail";
-import DigitalPortfolioSideDrawer from "./DigitalPortfolioSideDrawer";
-import NotificationPanel from "./NotificationPanel";
+  XMarkIcon,
+} from '@heroicons/react/24/outline';
+import React, { useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../context/AuthContext';
+import { useNotifications } from '../../../hooks/useNotifications';
+import { useStudentDataByEmail } from '../../../hooks/useStudentDataByEmail';
+import DigitalPortfolioSideDrawer from './DigitalPortfolioSideDrawer';
+import NotificationPanel from './NotificationPanel';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "./ui/dropdown-menu";
+} from './ui/dropdown-menu';
 
 const Header = ({ activeTab, setActiveTab }) => {
   const [scrolled, setScrolled] = useState(false);
@@ -113,7 +113,7 @@ const Header = ({ activeTab, setActiveTab }) => {
   }, [showNotifications]);
 
   // Fetch real-time notifications
-  const userEmail = user?.email || localStorage.getItem("userEmail");
+  const userEmail = user?.email || localStorage.getItem('userEmail');
   const { unreadCount } = useNotifications(userEmail);
 
   // Fetch student data to check school/college association
@@ -124,7 +124,7 @@ const Header = ({ activeTab, setActiveTab }) => {
 
   // Generate profile link
   const profileLink = useMemo(() => {
-    const studentId = studentData?.id || "student";
+    const studentId = studentData?.id || 'student';
     return `${window.location.origin}/student/profile/${studentId}`;
   }, [studentData?.id]);
 
@@ -137,44 +137,46 @@ const Header = ({ activeTab, setActiveTab }) => {
 
   const tabs = [
     // { id: "skills", label: "Skills" },
-    { id: "training", label: "My Learning", icon: AcademicCapIcon },
+    { id: 'training', label: 'My Learning', icon: AcademicCapIcon },
     // { id: "experience", label: "Experience" },
-    { id: "courses", label: "Courses", icon: BookOpenIcon },
-    { id: "digital-portfolio", label: "Digital Portfolio", icon: BriefcaseIcon },
-    { id: "opportunities", label: "Opportunities", icon: RocketLaunchIcon },
-    { id: "career-ai", label: "Career AI" },
+    { id: 'courses', label: 'Courses', icon: BookOpenIcon },
+    { id: 'digital-portfolio', label: 'Digital Portfolio', icon: BriefcaseIcon },
+    { id: 'opportunities', label: 'Opportunities', icon: RocketLaunchIcon },
+    { id: 'career-ai', label: 'Career AI' },
     // Only show "My Class" if student is part of a school or college
-    ...(isPartOfSchoolOrCollege ? [{ id: "assignments", label: "My Class", icon: ClipboardDocumentListIcon }] : []),
+    ...(isPartOfSchoolOrCollege
+      ? [{ id: 'assignments', label: 'My Class', icon: ClipboardDocumentListIcon }]
+      : []),
     // {id: "clubs", label: "Co-Curriculars"},
-    { id: "messages", label: "Messages", icon: EnvelopeIcon },
+    { id: 'messages', label: 'Messages', icon: EnvelopeIcon },
     // Analytics removed - now integrated in Dashboard with tabs
   ];
 
   // Handle tab click - navigate to appropriate route
   const handleTabClick = (tab) => {
     setActiveTab(tab.id);
-    if (tab.id === "share") {
+    if (tab.id === 'share') {
       setShowShareModal(true);
-    } else if (tab.id === "skills") {
-      navigate("/student/my-skills");
-    } else if (tab.id === "training") {
-      navigate("/student/my-learning");
-    } else if (tab.id === "experience") {
-      navigate("/student/my-experience");
-    } else if (tab.id === "courses") {
-      navigate("/student/courses");
-    } else if (tab.id === "digital-portfolio") {
-      navigate("/student/digital-portfolio");
-    } else if (tab.id === "opportunities") {
-      navigate("/student/opportunities");
-    } else if (tab.id === "applications") {
-      navigate("/student/applications");
-    } else if (tab.id === "assignments") {
-      navigate("/student/my-class");
-    } else if (tab.id === "career-ai") {
-      navigate("/student/career-ai");
-    } else if (tab.id === "messages") {
-      navigate("/student/messages");
+    } else if (tab.id === 'skills') {
+      navigate('/student/my-skills');
+    } else if (tab.id === 'training') {
+      navigate('/student/my-learning');
+    } else if (tab.id === 'experience') {
+      navigate('/student/my-experience');
+    } else if (tab.id === 'courses') {
+      navigate('/student/courses');
+    } else if (tab.id === 'digital-portfolio') {
+      navigate('/student/digital-portfolio');
+    } else if (tab.id === 'opportunities') {
+      navigate('/student/opportunities');
+    } else if (tab.id === 'applications') {
+      navigate('/student/applications');
+    } else if (tab.id === 'assignments') {
+      navigate('/student/my-class');
+    } else if (tab.id === 'career-ai') {
+      navigate('/student/career-ai');
+    } else if (tab.id === 'messages') {
+      navigate('/student/messages');
     }
   };
 
@@ -196,14 +198,15 @@ const Header = ({ activeTab, setActiveTab }) => {
             <button
               key="dashboard"
               onClick={() => {
-                setActiveTab("dashboard");
-                localStorage.removeItem("dashboardActiveNav");
-                navigate("/student/dashboard");
+                setActiveTab('dashboard');
+                localStorage.removeItem('dashboardActiveNav');
+                navigate('/student/dashboard');
               }}
-              className={`group flex items-center py-2 px-1.5 lg:px-2 xl:px-2 text-sm font-medium rounded-md transition-all duration-200 whitespace-nowrap ${activeTab === "dashboard"
-                ? "bg-primary-50 text-primary-700"
-                : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                }`}
+              className={`group flex items-center py-2 px-1.5 lg:px-2 xl:px-2 text-sm font-medium rounded-md transition-all duration-200 whitespace-nowrap ${
+                activeTab === 'dashboard'
+                  ? 'bg-primary-50 text-primary-700'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+              }`}
             >
               <HomeIcon className="h-4 w-4 mr-2 flex-shrink-0" />
               <span className="hidden xl:inline">Dashboard</span>
@@ -213,14 +216,21 @@ const Header = ({ activeTab, setActiveTab }) => {
               <button
                 key={tab.id}
                 onClick={() => handleTabClick(tab)}
-                className={`group flex items-center py-2 px-1.5 lg:px-2 xl:px-2 text-sm font-medium rounded-md transition-all duration-200 whitespace-nowrap ${activeTab === tab.id || (tab.id === "digital-portfolio" && isDigitalPortfolioRoute)
-                  ? "bg-primary-50 text-primary-700"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                  }`}
+                className={`group flex items-center py-2 px-1.5 lg:px-2 xl:px-2 text-sm font-medium rounded-md transition-all duration-200 whitespace-nowrap ${
+                  activeTab === tab.id ||
+                  (tab.id === 'digital-portfolio' && isDigitalPortfolioRoute)
+                    ? 'bg-primary-50 text-primary-700'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                }`}
               >
                 {tab.icon && <tab.icon className="h-4 w-4 mr-2 flex-shrink-0" />}
                 <span className="hidden xl:inline">{tab.label}</span>
-                <span className="xl:hidden">{tab.label.split(' ').map(word => word.charAt(0)).join('')}</span>
+                <span className="xl:hidden">
+                  {tab.label
+                    .split(' ')
+                    .map((word) => word.charAt(0))
+                    .join('')}
+                </span>
               </button>
             ))}
           </div>
@@ -232,29 +242,34 @@ const Header = ({ activeTab, setActiveTab }) => {
             <button
               key="dashboard"
               onClick={() => {
-                setActiveTab("dashboard");
-                localStorage.removeItem("dashboardActiveNav");
-                navigate("/student/dashboard");
+                setActiveTab('dashboard');
+                localStorage.removeItem('dashboardActiveNav');
+                navigate('/student/dashboard');
               }}
-              className={`group flex items-center py-2 px-1 text-sm font-medium rounded-md transition-all duration-200 whitespace-nowrap flex-shrink-0 ${activeTab === "dashboard"
-                ? "bg-primary-50 text-primary-700"
-                : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                }`}
+              className={`group flex items-center py-2 px-1 text-sm font-medium rounded-md transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
+                activeTab === 'dashboard'
+                  ? 'bg-primary-50 text-primary-700'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+              }`}
             >
-              <HomeIcon className="h-4 w-4 mr-2 flex-shrink-0" />
-              D
+              <HomeIcon className="h-4 w-4 mr-2 flex-shrink-0" />D
             </button>
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => handleTabClick(tab)}
-                className={`group flex items-center py-2 px-1 text-sm font-medium rounded-md transition-all duration-200 whitespace-nowrap flex-shrink-0 ${activeTab === tab.id || (tab.id === "digital-portfolio" && isDigitalPortfolioRoute)
-                  ? "bg-primary-50 text-primary-700"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                  }`}
+                className={`group flex items-center py-2 px-1 text-sm font-medium rounded-md transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
+                  activeTab === tab.id ||
+                  (tab.id === 'digital-portfolio' && isDigitalPortfolioRoute)
+                    ? 'bg-primary-50 text-primary-700'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                }`}
               >
                 {tab.icon && <tab.icon className="h-4 w-4 mr-2 flex-shrink-0" />}
-                {tab.label.split(' ').map(word => word.charAt(0)).join('')}
+                {tab.label
+                  .split(' ')
+                  .map((word) => word.charAt(0))
+                  .join('')}
               </button>
             ))}
           </div>
@@ -267,8 +282,8 @@ const Header = ({ activeTab, setActiveTab }) => {
             <button
               className="p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
               onClick={() => {
-                setMobileMenuOpen((open) => !open)
-                setShowNotifications(false)
+                setMobileMenuOpen((open) => !open);
+                setShowNotifications(false);
               }}
               aria-label="Open menu"
             >
@@ -284,8 +299,8 @@ const Header = ({ activeTab, setActiveTab }) => {
           <div ref={notificationRef} className="relative">
             <button
               onClick={() => {
-                setShowNotifications((s) => !s)
-                setMobileMenuOpen(false)
+                setShowNotifications((s) => !s);
+                setMobileMenuOpen(false);
               }}
               className="relative p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
             >
@@ -318,8 +333,8 @@ const Header = ({ activeTab, setActiveTab }) => {
               {!isPartOfSchoolOrCollege && (
                 <DropdownMenuItem
                   onClick={() => {
-                    setActiveTab("profile");
-                    navigate("/student/profile");
+                    setActiveTab('profile');
+                    navigate('/student/profile');
                   }}
                   className="cursor-pointer w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                 >
@@ -329,8 +344,8 @@ const Header = ({ activeTab, setActiveTab }) => {
               )}
               <DropdownMenuItem
                 onClick={() => {
-                  setActiveTab("saved-jobs");
-                  navigate("/student/saved-jobs");
+                  setActiveTab('saved-jobs');
+                  navigate('/student/saved-jobs');
                 }}
                 className="cursor-pointer w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
               >
@@ -339,8 +354,8 @@ const Header = ({ activeTab, setActiveTab }) => {
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => {
-                  setActiveTab("settings");
-                  navigate("/student/settings");
+                  setActiveTab('settings');
+                  navigate('/student/settings');
                 }}
                 className="cursor-pointer w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
               >
@@ -351,7 +366,7 @@ const Header = ({ activeTab, setActiveTab }) => {
               <DropdownMenuItem
                 onClick={() => {
                   logout();
-                  navigate("/login");
+                  navigate('/login');
                 }}
                 className="cursor-pointer w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
               >
@@ -369,15 +384,16 @@ const Header = ({ activeTab, setActiveTab }) => {
             <button
               key="dashboard"
               onClick={() => {
-                setActiveTab("dashboard");
-                localStorage.removeItem("dashboardActiveNav");
-                navigate("/student/dashboard");
+                setActiveTab('dashboard');
+                localStorage.removeItem('dashboardActiveNav');
+                navigate('/student/dashboard');
                 setMobileMenuOpen(false);
               }}
-              className={`w-full text-left py-3 px-4 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === "dashboard"
-                ? "bg-primary-50 text-primary-700"
-                : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                }`}
+              className={`w-full text-left py-3 px-4 rounded-lg text-sm font-medium transition-all duration-200 ${
+                activeTab === 'dashboard'
+                  ? 'bg-primary-50 text-primary-700'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+              }`}
             >
               <div className="flex items-center">
                 <HomeIcon className="h-5 w-5 flex-shrink-0" />
@@ -391,10 +407,12 @@ const Header = ({ activeTab, setActiveTab }) => {
                   handleTabClick(tab);
                   setMobileMenuOpen(false);
                 }}
-                className={`w-full text-left py-3 px-4 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === tab.id || (tab.id === "digital-portfolio" && isDigitalPortfolioRoute)
-                  ? "bg-primary-50 text-primary-700"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                  }`}
+                className={`w-full text-left py-3 px-4 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  activeTab === tab.id ||
+                  (tab.id === 'digital-portfolio' && isDigitalPortfolioRoute)
+                    ? 'bg-primary-50 text-primary-700'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                }`}
               >
                 <div className="flex items-center">
                   {tab.icon && <tab.icon className="h-5 w-5 flex-shrink-0" />}
@@ -429,8 +447,8 @@ const Header = ({ activeTab, setActiveTab }) => {
                   onClick={() => {
                     navigator
                       .share({
-                        title: "My Skill Passport",
-                        text: "Check out my Skill Passport!",
+                        title: 'My Skill Passport',
+                        text: 'Check out my Skill Passport!',
                         url: profileLink,
                       })
                       .catch(() => {
@@ -450,16 +468,8 @@ const Header = ({ activeTab, setActiveTab }) => {
                       strokeLinejoin="round"
                       d="M4 12v7a2 2 0 002 2h12a2 2 0 002-2v-7"
                     />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M16 6l-4-4-4 4"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M12 2v14"
-                    />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16 6l-4-4-4 4" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v14" />
                   </svg>
                   <span>Share via Device</span>
                 </button>
@@ -470,17 +480,13 @@ const Header = ({ activeTab, setActiveTab }) => {
                 {/* WhatsApp */}
                 <a
                   href={`https://wa.me/?text=${encodeURIComponent(
-                    "Check out my Skill Passport: " + profileLink
+                    'Check out my Skill Passport: ' + profileLink
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2 px-4 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-semibold transition-colors shadow-md"
                 >
-                  <svg
-                    className="w-5 h-5"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
                   </svg>
                   <span>WhatsApp</span>
@@ -490,18 +496,12 @@ const Header = ({ activeTab, setActiveTab }) => {
                 <a
                   href={`https://t.me/share/url?url=${encodeURIComponent(
                     profileLink
-                  )}&text=${encodeURIComponent(
-                    "Check out my Skill Passport!"
-                  )}`}
+                  )}&text=${encodeURIComponent('Check out my Skill Passport!')}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors shadow-md"
                 >
-                  <svg
-                    className="w-5 h-5"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 0C5.371 0 0 5.371 0 12c0 6.627 5.371 12 12 12s12-5.373 12-12c0-6.629-5.371-12-12-12zm5.707 7.293l-2.828 10.607c-.211.789-.678.979-1.372.609l-3.797-2.803-1.834-.883c-.399-.211-.408-.399.084-.588l7.16-2.763c.312-.123.604.075.469.588l-1.153 4.66c-.084.338-.258.408-.525.252l-2.262-1.484-1.084 1.045c-.112.112-.213.217-.436.112l.155-2.197 4.004-3.617c.174-.155.338-.07.282.155z" />
                   </svg>
                   <span>Telegram</span>
@@ -516,11 +516,7 @@ const Header = ({ activeTab, setActiveTab }) => {
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors shadow-md"
                 >
-                  <svg
-                    className="w-5 h-5"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
                   </svg>
                   <span>LinkedIn</span>
@@ -529,10 +525,8 @@ const Header = ({ activeTab, setActiveTab }) => {
                 {/* Email */}
                 <a
                   href={`mailto:?subject=${encodeURIComponent(
-                    "Check out my Skill Passport"
-                  )}&body=${encodeURIComponent(
-                    "Here is my Skill Passport: " + profileLink
-                  )}`}
+                    'Check out my Skill Passport'
+                  )}&body=${encodeURIComponent('Here is my Skill Passport: ' + profileLink)}`}
                   className="flex items-center justify-center gap-2 px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold transition-colors shadow-md"
                 >
                   <svg
@@ -564,7 +558,7 @@ const Header = ({ activeTab, setActiveTab }) => {
                   <button
                     onClick={handleCopyLink}
                     className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors shadow-md"
-                    title={copied ? "Copied!" : "Copy Link"}
+                    title={copied ? 'Copied!' : 'Copy Link'}
                   >
                     {copied ? (
                       <CheckIcon className="w-5 h-5" />
@@ -592,4 +586,3 @@ const Header = ({ activeTab, setActiveTab }) => {
 };
 
 export default Header;
-

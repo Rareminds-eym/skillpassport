@@ -19,7 +19,7 @@ const NewAdminConversationModal = ({ isOpen, onClose, studentId, onConversationC
     'Technical Support',
     'Admission Query',
     'Transfer Request',
-    'Other'
+    'Other',
   ];
 
   // Fetch student's school information
@@ -35,7 +35,8 @@ const NewAdminConversationModal = ({ isOpen, onClose, studentId, onConversationC
       // Get student's school information
       const { data: studentData, error } = await supabase
         .from('students')
-        .select(`
+        .select(
+          `
           school_id,
           schools (
             id,
@@ -44,7 +45,8 @@ const NewAdminConversationModal = ({ isOpen, onClose, studentId, onConversationC
             phone,
             email
           )
-        `)
+        `
+        )
         .eq('id', studentId)
         .single();
 
@@ -67,7 +69,7 @@ const NewAdminConversationModal = ({ isOpen, onClose, studentId, onConversationC
       onConversationCreated({
         schoolId: school.id,
         subject: selectedSubject,
-        initialMessage: initialMessage.trim()
+        initialMessage: initialMessage.trim(),
       });
       handleClose();
     }
@@ -114,7 +116,9 @@ const NewAdminConversationModal = ({ isOpen, onClose, studentId, onConversationC
               <div className="text-center py-12">
                 <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                 <p className="text-gray-500 text-sm">No school information found</p>
-                <p className="text-gray-400 text-xs mt-2">Please contact support if this is an error</p>
+                <p className="text-gray-400 text-xs mt-2">
+                  Please contact support if this is an error
+                </p>
               </div>
             ) : (
               <div className="space-y-6">
@@ -129,18 +133,14 @@ const NewAdminConversationModal = ({ isOpen, onClose, studentId, onConversationC
                       <p className="text-sm text-gray-600">School Administration</p>
                     </div>
                   </div>
-                  
+
                   {school.address && (
                     <p className="text-sm text-gray-600 mb-2">📍 {school.address}</p>
                   )}
-                  
+
                   <div className="flex flex-wrap gap-4 text-sm text-gray-600">
-                    {school.phone && (
-                      <span>📞 {school.phone}</span>
-                    )}
-                    {school.email && (
-                      <span>✉️ {school.email}</span>
-                    )}
+                    {school.phone && <span>📞 {school.phone}</span>}
+                    {school.email && <span>✉️ {school.email}</span>}
                   </div>
                 </div>
 
@@ -197,7 +197,7 @@ const NewAdminConversationModal = ({ isOpen, onClose, studentId, onConversationC
                   Subject: <span className="font-medium text-blue-700">{selectedSubject}</span>
                 </div>
               </div>
-              
+
               <textarea
                 value={initialMessage}
                 onChange={(e) => setInitialMessage(e.target.value)}
@@ -206,21 +206,21 @@ const NewAdminConversationModal = ({ isOpen, onClose, studentId, onConversationC
                 className="w-full px-4 py-4 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-base bg-white shadow-sm"
                 maxLength={1000}
               />
-              
+
               <div className="flex justify-between items-center mt-3">
                 <div className="text-sm text-gray-600 font-medium">
                   {initialMessage.length}/1000 characters
                 </div>
                 {initialMessage.length > 1000 && (
-                  <div className="text-sm text-red-600 font-medium">
-                    ⚠️ Message too long
-                  </div>
+                  <div className="text-sm text-red-600 font-medium">⚠️ Message too long</div>
                 )}
               </div>
 
               {/* Message Guidelines */}
               <div className="mt-4 p-3 bg-white rounded-lg border border-blue-200">
-                <h4 className="text-sm font-semibold text-gray-800 mb-2">💡 Tips for effective communication:</h4>
+                <h4 className="text-sm font-semibold text-gray-800 mb-2">
+                  💡 Tips for effective communication:
+                </h4>
                 <ul className="text-xs text-gray-600 space-y-1">
                   <li>• Be clear and specific about your request</li>
                   <li>• Include relevant details (student ID, class, dates if applicable)</li>
@@ -242,7 +242,9 @@ const NewAdminConversationModal = ({ isOpen, onClose, studentId, onConversationC
           </button>
           <button
             onClick={handleCreateConversation}
-            disabled={!school || !selectedSubject || !initialMessage.trim() || initialMessage.length > 1000}
+            disabled={
+              !school || !selectedSubject || !initialMessage.trim() || initialMessage.length > 1000
+            }
             className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium flex items-center gap-2"
           >
             <MessageCircle className="w-4 h-4" />

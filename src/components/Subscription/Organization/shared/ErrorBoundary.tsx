@@ -1,6 +1,6 @@
 /**
  * Error Boundary and Error Handling Components
- * 
+ *
  * Provides graceful error handling for organization subscription components.
  * Requirements: 19.2, 19.3, 19.4
  */
@@ -45,12 +45,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
         return this.props.fallback;
       }
 
-      return (
-        <ErrorFallback
-          error={this.state.error}
-          onRetry={this.handleRetry}
-        />
-      );
+      return <ErrorFallback error={this.state.error} onRetry={this.handleRetry} />;
     }
 
     return this.props.children;
@@ -80,12 +75,8 @@ export const ErrorFallback = memo(function ErrorFallback({
       <p className="text-sm text-red-600 mb-4 max-w-md mx-auto">{description}</p>
       {error && (
         <details className="text-left bg-red-100 rounded-lg p-3 mb-4 max-w-md mx-auto">
-          <summary className="text-sm text-red-700 cursor-pointer">
-            Technical details
-          </summary>
-          <pre className="mt-2 text-xs text-red-600 overflow-auto">
-            {error.message}
-          </pre>
+          <summary className="text-sm text-red-700 cursor-pointer">Technical details</summary>
+          <pre className="mt-2 text-xs text-red-600 overflow-auto">{error.message}</pre>
         </details>
       )}
       {onRetry && (
@@ -112,9 +103,7 @@ export const NetworkError = memo(function NetworkError({ onRetry }: NetworkError
       <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
         <WifiOff className="w-8 h-8 text-gray-400" />
       </div>
-      <h3 className="text-lg font-semibold text-gray-800 mb-2">
-        Connection Error
-      </h3>
+      <h3 className="text-lg font-semibold text-gray-800 mb-2">Connection Error</h3>
       <p className="text-sm text-gray-600 mb-4 max-w-md mx-auto">
         Unable to connect to the server. Please check your internet connection and try again.
       </p>
@@ -154,11 +143,7 @@ export const ToastContainer = memo(function ToastContainer({
   return (
     <div className="fixed bottom-4 right-4 z-50 space-y-2">
       {toasts.map((toast) => (
-        <ToastNotification
-          key={toast.id}
-          toast={toast}
-          onDismiss={() => onDismiss(toast.id)}
-        />
+        <ToastNotification key={toast.id} toast={toast} onDismiss={() => onDismiss(toast.id)} />
       ))}
     </div>
   );
@@ -207,10 +192,7 @@ const ToastNotification = memo(function ToastNotification({
     >
       <span className={`${config.text} text-lg`}>{config.icon}</span>
       <p className={`${config.text} text-sm flex-1`}>{toast.message}</p>
-      <button
-        onClick={onDismiss}
-        className={`${config.text} hover:opacity-70 transition-opacity`}
-      >
+      <button onClick={onDismiss} className={`${config.text} hover:opacity-70 transition-opacity`}>
         <X className="w-4 h-4" />
       </button>
     </div>
@@ -224,7 +206,7 @@ export function useToast() {
   const addToast = useCallback((type: ToastType, message: string, duration = 5000) => {
     const id = Math.random().toString(36).substr(2, 9);
     const toast: Toast = { id, type, message, duration };
-    
+
     setToasts((prev) => [...prev, toast]);
 
     if (duration > 0) {
@@ -264,16 +246,8 @@ interface UseRetryOptions {
   onMaxRetriesReached?: () => void;
 }
 
-export function useRetry<T>(
-  asyncFn: () => Promise<T>,
-  options: UseRetryOptions = {}
-) {
-  const {
-    maxRetries = 3,
-    retryDelay = 1000,
-    onRetry,
-    onMaxRetriesReached,
-  } = options;
+export function useRetry<T>(asyncFn: () => Promise<T>, options: UseRetryOptions = {}) {
+  const { maxRetries = 3, retryDelay = 1000, onRetry, onMaxRetriesReached } = options;
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -295,7 +269,7 @@ export function useRetry<T>(
         return result;
       } catch (err) {
         lastError = err instanceof Error ? err : new Error(String(err));
-        
+
         if (attempt < maxRetries) {
           setRetryCount(attempt + 1);
           onRetry?.(attempt + 1);

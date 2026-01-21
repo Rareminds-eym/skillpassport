@@ -20,7 +20,7 @@ export class ProfessionalRecommendationPrompts {
    */
   static buildHiringRecommendationPrompt(context: RecommendationContext): string {
     const { candidates, jobTitle, requiredSkills, urgency } = context;
-    
+
     return `You are a Senior Technical Recruiter with 15 years of experience in talent acquisition. Analyze these candidates and provide data-driven hiring recommendations.
 
 ═══════════════════════════════════════════════════════════
@@ -34,7 +34,9 @@ Urgency: ${urgency?.toUpperCase() || 'NORMAL'}
 👥 CANDIDATE POOL (${candidates.length} candidates)
 ═══════════════════════════════════════════════════════════
 
-${candidates.map((c, i) => `
+${candidates
+  .map(
+    (c, i) => `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CANDIDATE ${i + 1}: ${c.name}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -59,8 +61,14 @@ CANDIDATE ${i + 1}: ${c.name}
    • Soft Skills: ${c.skillCategories.soft.join(', ') || 'None listed'}
    
 📚 PROFESSIONAL DEVELOPMENT:
-   • Training Programs: ${c.trainings.length} (${c.trainings.slice(0, 2).map(t => t.title).join(', ')}${c.trainings.length > 2 ? '...' : ''})
-   • Certifications: ${c.certificates.length} (${c.certificates.slice(0, 2).map(c => c.name).join(', ')}${c.certificates.length > 2 ? '...' : ''})
+   • Training Programs: ${c.trainings.length} (${c.trainings
+     .slice(0, 2)
+     .map((t) => t.title)
+     .join(', ')}${c.trainings.length > 2 ? '...' : ''})
+   • Certifications: ${c.certificates.length} (${c.certificates
+     .slice(0, 2)
+     .map((c) => c.name)
+     .join(', ')}${c.certificates.length > 2 ? '...' : ''})
    
 🌍 LOCATION & AVAILABILITY:
    • Location: ${c.city}, ${c.state}
@@ -76,15 +84,21 @@ CANDIDATE ${i + 1}: ${c.name}
    • Portfolio: ${c.hasPortfolio ? '✅' : '❌'}
 
 ✅ GREEN FLAGS:
-${c.greenFlags.length > 0 ? c.greenFlags.map(f => `   ${f}`).join('\n') : '   None identified'}
+${c.greenFlags.length > 0 ? c.greenFlags.map((f) => `   ${f}`).join('\n') : '   None identified'}
 
 ⚠️ RED FLAGS:
-${c.redFlags.length > 0 ? c.redFlags.map(f => `   ${f}`).join('\n') : '   None identified'}
+${c.redFlags.length > 0 ? c.redFlags.map((f) => `   ${f}`).join('\n') : '   None identified'}
 
-${c.dataQualityIssues.length > 0 ? `🔍 DATA QUALITY ISSUES:
-${c.dataQualityIssues.map(i => `   ⚠️ ${i}`).join('\n')}` : ''}
+${
+  c.dataQualityIssues.length > 0
+    ? `🔍 DATA QUALITY ISSUES:
+${c.dataQualityIssues.map((i) => `   ⚠️ ${i}`).join('\n')}`
+    : ''
+}
 
-`).join('\n')}
+`
+  )
+  .join('\n')}
 
 ═══════════════════════════════════════════════════════════
 📝 INSTRUCTIONS
@@ -136,8 +150,14 @@ List candidates who don't meet the bar:
 
 Create a comparison table:
 
-| Criterion | ${candidates.slice(0, 3).map(c => c.name).join(' | ')} |
-|-----------|${candidates.slice(0, 3).map(() => '---').join('|')}|
+| Criterion | ${candidates
+      .slice(0, 3)
+      .map((c) => c.name)
+      .join(' | ')} |
+|-----------|${candidates
+      .slice(0, 3)
+      .map(() => '---')
+      .join('|')}|
 | Technical Fit | [Score/10] | [Score/10] | [Score/10] |
 | Cultural Fit | [Score/10] | [Score/10] | [Score/10] |
 | Risk Level | [LOW/MED/HIGH] | [LOW/MED/HIGH] | [LOW/MED/HIGH] |
@@ -170,14 +190,19 @@ BEGIN ANALYSIS:`;
   /**
    * Generate comparison prompt for 2-3 candidates
    */
-  static buildCandidateComparisonPrompt(candidates: EnrichedCandidate[], jobTitle?: string): string {
+  static buildCandidateComparisonPrompt(
+    candidates: EnrichedCandidate[],
+    jobTitle?: string
+  ): string {
     return `You are conducting a final-round candidate comparison for hiring decision.
 
 JOB POSITION: ${jobTitle || 'General Position'}
 
 FINALISTS (${candidates.length}):
 
-${candidates.map((c, i) => `
+${candidates
+  .map(
+    (c, i) => `
 ═══ CANDIDATE ${i + 1}: ${c.name} ═══
 
 Key Metrics:
@@ -192,7 +217,9 @@ Education: ${c.cgpa}/10 CGPA from ${c.university}
 Green Flags: ${c.greenFlags.join('; ') || 'None'}
 Red Flags: ${c.redFlags.join('; ') || 'None'}
 
-`).join('\n')}
+`
+  )
+  .join('\n')}
 
 Provide a HEAD-TO-HEAD comparison with:
 
@@ -234,9 +261,13 @@ REQUIRED SKILLS: ${requiredSkills.join(', ')}
 
 CANDIDATES: ${candidates.length}
 
-${candidates.map(c => `
+${candidates
+  .map(
+    (c) => `
 • ${c.name}: ${c.skillCategories.technical.join(', ')}
-`).join('\n')}
+`
+  )
+  .join('\n')}
 
 Provide:
 
@@ -244,7 +275,7 @@ Provide:
    
    | Skill | Candidates with Skill | Coverage % |
    |-------|----------------------|------------|
-   ${requiredSkills.map(skill => `| ${skill} | [List names] | [X]% |`).join('\n   ')}
+   ${requiredSkills.map((skill) => `| ${skill} | [List names] | [X]% |`).join('\n   ')}
 
 2. **CRITICAL GAPS:**
    • [Skill with <30% coverage]: CRITICAL - [Recommendation]
@@ -267,7 +298,7 @@ Provide:
     const days = Math.floor(
       (new Date().getTime() - new Date(lastActive).getTime()) / (1000 * 60 * 60 * 24)
     );
-    
+
     if (days === 0) return 'Today';
     if (days === 1) return 'Yesterday';
     if (days <= 7) return `${days} days ago`;
@@ -317,4 +348,3 @@ For each question, provide:
 }
 
 export default ProfessionalRecommendationPrompts;
-

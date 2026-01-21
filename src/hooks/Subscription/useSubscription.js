@@ -1,8 +1,8 @@
 /**
  * useSubscription Hook
- * 
+ *
  * Provides subscription data and management functions.
- * 
+ *
  * READ operations use subscriptionService (direct Supabase)
  * WRITE operations use paymentsApiService (via Cloudflare Worker)
  */
@@ -19,7 +19,7 @@ const PLAN_FEATURES = {
     'Access to basic skill assessments',
     'Limited profile visibility',
     'Basic analytics',
-    'Email support'
+    'Email support',
   ],
   pro: [
     'All Basic features',
@@ -27,7 +27,7 @@ const PLAN_FEATURES = {
     'Priority profile visibility',
     'Detailed analytics',
     'Priority support',
-    'Personalized recommendations'
+    'Personalized recommendations',
   ],
   enterprise: [
     'All Professional features',
@@ -36,17 +36,17 @@ const PLAN_FEATURES = {
     'Advanced analytics',
     '24/7 Premium support',
     'Custom integrations',
-    'Dedicated account manager'
-  ]
+    'Dedicated account manager',
+  ],
 };
 
 // Plan type to ID mapping
 const PLAN_TYPE_MAP = {
-  'basic': 'basic',
-  'professional': 'pro',
-  'enterprise': 'enterprise',
-  'standard': 'basic',
-  'premium': 'pro'
+  basic: 'basic',
+  professional: 'pro',
+  enterprise: 'enterprise',
+  standard: 'basic',
+  premium: 'pro',
 };
 
 /**
@@ -122,7 +122,9 @@ export const useSubscription = () => {
 
   // Get auth token helper
   const getToken = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     return session?.access_token;
   };
 
@@ -131,74 +133,80 @@ export const useSubscription = () => {
    * @param {string} reason - Cancellation reason
    * @returns {Promise<{ success: boolean, error?: string }>}
    */
-  const cancelSubscription = useCallback(async (reason = 'other') => {
-    if (!subscriptionData?.id) {
-      return { success: false, error: 'No active subscription' };
-    }
-
-    try {
-      setActionLoading(true);
-      const token = await getToken();
-
-      const result = await paymentsApiService.deactivateSubscription(
-        subscriptionData.id,
-        reason,
-        token
-      );
-
-      if (result.success) {
-        // Refresh subscription data
-        await fetchSubscription();
-        return { success: true };
+  const cancelSubscription = useCallback(
+    async (reason = 'other') => {
+      if (!subscriptionData?.id) {
+        return { success: false, error: 'No active subscription' };
       }
 
-      return { success: false, error: result.error || 'Failed to cancel subscription' };
-    } catch (err) {
-      console.error('❌ Cancel subscription error:', err);
-      return { success: false, error: err.message };
-    } finally {
-      setActionLoading(false);
-    }
-  }, [subscriptionData, fetchSubscription]);
+      try {
+        setActionLoading(true);
+        const token = await getToken();
+
+        const result = await paymentsApiService.deactivateSubscription(
+          subscriptionData.id,
+          reason,
+          token
+        );
+
+        if (result.success) {
+          // Refresh subscription data
+          await fetchSubscription();
+          return { success: true };
+        }
+
+        return { success: false, error: result.error || 'Failed to cancel subscription' };
+      } catch (err) {
+        console.error('❌ Cancel subscription error:', err);
+        return { success: false, error: err.message };
+      } finally {
+        setActionLoading(false);
+      }
+    },
+    [subscriptionData, fetchSubscription]
+  );
 
   /**
    * Pause subscription via Worker
    * @param {number} months - Number of months to pause (1-3)
    * @returns {Promise<{ success: boolean, error?: string }>}
    */
-  const pauseSubscription = useCallback(async (months = 1) => {
-    if (!subscriptionData?.id) {
-      return { success: false, error: 'No active subscription' };
-    }
-
-    if (subscriptionData.status !== 'active') {
-      return { success: false, error: 'Can only pause active subscriptions' };
-    }
-
-    try {
-      setActionLoading(true);
-      const token = await getToken();
-
-      const result = await paymentsApiService.pauseSubscription(
-        subscriptionData.id,
-        months,
-        token
-      );
-
-      if (result.success) {
-        // Refresh subscription data
-        await fetchSubscription();
-        return { success: true, pausedUntil: result.paused_until };
+  const pauseSubscription = useCallback(
+    async (months = 1) => {
+      if (!subscriptionData?.id) {
+        return { success: false, error: 'No active subscription' };
       }
 
-      return { success: false, error: result.error || 'Failed to pause subscription' };
-    } catch (err) {
-      console.error('❌ Pause subscription error:', err);
-      return { success: false, error: err.message };
-    } finally {
-      setActionLoading(false);
-    }
-  }, [subscriptionData, fetchSubscription]);
+      if (subscriptionData.status !== 'active') {
+        return { success: false, error: 'Can only pause active subscriptions' };
+      }
+
+      try {
+        setActionLoading(true);
+        const token = await getToken();
+
+        const result = await paymentsApiService.pauseSubscription(
+          subscriptionData.id,
+          months,
+          token
+        );
+
+        if (result.success) {
+          // Refresh subscription data
+          await fetchSubscription();
+          return { success: true, pausedUntil: result.paused_until };
+        }
+
+        return { success: false, error: result.error || 'Failed to pause subscription' };
+      } catch (err) {
+        console.error('❌ Pause subscription error:', err);
+        return { success: false, error: err.message };
+      } finally {
+        setActionLoading(false);
+      }
+    },
+    [subscriptionData, fetchSubscription]
+  );
 
   /**
    * Resume paused subscription via Worker
@@ -217,10 +225,7 @@ export const useSubscription = () => {
       setActionLoading(true);
       const token = await getToken();
 
-      const result = await paymentsApiService.resumeSubscription(
-        subscriptionData.id,
-        token
-      );
+      const result = await paymentsApiService.resumeSubscription(subscriptionData.id, token);
 
       if (result.success) {
         // Refresh subscription data

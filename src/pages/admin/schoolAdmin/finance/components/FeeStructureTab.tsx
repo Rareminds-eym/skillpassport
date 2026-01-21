@@ -1,6 +1,6 @@
-import React, { useState } from "react";
-import { Plus, Search, Edit, Trash2, Copy, ToggleLeft, ToggleRight, RefreshCw } from "lucide-react";
-import { FeeStructure } from "../types";
+import React, { useState } from 'react';
+import { Plus, Search, Edit, Trash2, Copy, ToggleLeft, ToggleRight, RefreshCw } from 'lucide-react';
+import { FeeStructure } from '../types';
 
 interface Props {
   feeStructures: FeeStructure[];
@@ -23,26 +23,30 @@ export const FeeStructureTab: React.FC<Props> = ({
   onToggleActive,
   onDuplicate,
 }) => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState<"all" | "active" | "inactive">("all");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
 
   // Filter fee structures
   const filteredStructures = feeStructures.filter((structure) => {
-    const matchesSearch = 
+    const matchesSearch =
       structure.class_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       structure.fee_head.toLowerCase().includes(searchTerm.toLowerCase()) ||
       structure.academic_year.includes(searchTerm);
-    
-    const matchesStatus = 
-      filterStatus === "all" || 
-      (filterStatus === "active" && structure.is_active) ||
-      (filterStatus === "inactive" && !structure.is_active);
+
+    const matchesStatus =
+      filterStatus === 'all' ||
+      (filterStatus === 'active' && structure.is_active) ||
+      (filterStatus === 'inactive' && !structure.is_active);
 
     return matchesSearch && matchesStatus;
   });
 
   const handleDelete = (id: string, className: string, feeHead: string) => {
-    if (window.confirm(`Are you sure you want to delete the fee structure for ${className} - ${feeHead}?`)) {
+    if (
+      window.confirm(
+        `Are you sure you want to delete the fee structure for ${className} - ${feeHead}?`
+      )
+    ) {
       onDelete(id);
     }
   };
@@ -61,9 +65,11 @@ export const FeeStructureTab: React.FC<Props> = ({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
           <h2 className="text-xl font-bold text-gray-900">Fee Structure Setup</h2>
-          <p className="text-gray-600 text-sm">Create and manage fee structures for different classes</p>
+          <p className="text-gray-600 text-sm">
+            Create and manage fee structures for different classes
+          </p>
         </div>
-        
+
         <div className="flex items-center gap-2">
           <button
             onClick={onRefresh}
@@ -97,7 +103,7 @@ export const FeeStructureTab: React.FC<Props> = ({
               />
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2">
             <select
               value={filterStatus}
@@ -119,12 +125,14 @@ export const FeeStructureTab: React.FC<Props> = ({
             <Plus className="h-8 w-8 text-gray-400" />
           </div>
           <p className="text-gray-900 font-medium mb-1">
-            {feeStructures.length === 0 ? "No fee structures created yet" : "No matching fee structures"}
+            {feeStructures.length === 0
+              ? 'No fee structures created yet'
+              : 'No matching fee structures'}
           </p>
           <p className="text-sm text-gray-600 mb-4">
             {feeStructures.length === 0
-              ? "Create your first fee structure to get started"
-              : "Try adjusting your search or filters"}
+              ? 'Create your first fee structure to get started'
+              : 'Try adjusting your search or filters'}
           </p>
           {feeStructures.length === 0 && (
             <button
@@ -141,14 +149,26 @@ export const FeeStructureTab: React.FC<Props> = ({
           <table className="w-full">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Academic Year</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
+                  Academic Year
+                </th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Class</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Fee Head</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
+                  Fee Head
+                </th>
                 <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Amount</th>
-                <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">Frequency</th>
-                <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">Late Fee %</th>
-                <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">Status</th>
-                <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">Actions</th>
+                <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">
+                  Frequency
+                </th>
+                <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">
+                  Late Fee %
+                </th>
+                <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">
+                  Status
+                </th>
+                <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -165,7 +185,9 @@ export const FeeStructureTab: React.FC<Props> = ({
                     </span>
                   </td>
                   <td className="py-3 px-4 font-medium text-gray-900">
-                    {structure.fee_head === "Others" ? structure.custom_fee_head : structure.fee_head}
+                    {structure.fee_head === 'Others'
+                      ? structure.custom_fee_head
+                      : structure.fee_head}
                   </td>
                   <td className="py-3 px-4 text-right font-semibold text-green-600">
                     ₹{structure.amount.toLocaleString('en-IN')}
@@ -189,8 +211,8 @@ export const FeeStructureTab: React.FC<Props> = ({
                       onClick={() => onToggleActive(structure.id)}
                       className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                         structure.is_active
-                          ? "bg-green-100 text-green-700"
-                          : "bg-gray-100 text-gray-700"
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-gray-100 text-gray-700'
                       }`}
                     >
                       {structure.is_active ? (
@@ -223,7 +245,9 @@ export const FeeStructureTab: React.FC<Props> = ({
                         <Copy className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={() => handleDelete(structure.id, structure.class_name, structure.fee_head)}
+                        onClick={() =>
+                          handleDelete(structure.id, structure.class_name, structure.fee_head)
+                        }
                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
                         title="Delete"
                       >
@@ -249,14 +273,15 @@ export const FeeStructureTab: React.FC<Props> = ({
             <div>
               <span className="text-gray-600">Active:</span>
               <span className="ml-2 font-semibold text-green-600">
-                {filteredStructures.filter(s => s.is_active).length}
+                {filteredStructures.filter((s) => s.is_active).length}
               </span>
             </div>
             <div>
               <span className="text-gray-600">Total Value:</span>
               <span className="ml-2 font-semibold text-blue-600">
-                ₹{filteredStructures
-                  .filter(s => s.is_active)
+                ₹
+                {filteredStructures
+                  .filter((s) => s.is_active)
                   .reduce((sum, s) => sum + s.amount, 0)
                   .toLocaleString('en-IN')}
               </span>

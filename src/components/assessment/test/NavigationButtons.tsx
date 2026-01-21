@@ -14,7 +14,7 @@ const NavigationButtons: React.FC<NavigationButtonsProps> = ({
   totalQuestions,
   onPrevious,
   onNext,
-  isFromReview = false
+  isFromReview = false,
 }) => {
   return (
     <div className="flex justify-between">
@@ -25,7 +25,7 @@ const NavigationButtons: React.FC<NavigationButtonsProps> = ({
       >
         Previous
       </button>
-      
+
       {isFromReview ? (
         <button
           onClick={onNext}

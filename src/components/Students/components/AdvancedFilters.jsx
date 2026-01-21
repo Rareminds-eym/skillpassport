@@ -19,17 +19,48 @@ const AdvancedFilters = ({ onApplyFilters, initialFilters = {} }) => {
   const employmentTypes = ['Full-time', 'Part-time', 'Contract', 'Internship', 'Temporary'];
   const experienceLevels = ['Entry Level', 'Mid Level', 'Senior Level', 'Lead', 'Executive'];
   const workModes = ['Onsite', 'Remote', 'Hybrid'];
-  const departments = ['Engineering', 'Design', 'Product', 'Marketing', 'Sales', 'HR', 'Finance', 'Operations', 'Customer Support', 'Legal'];
-  
+  const departments = [
+    'Engineering',
+    'Design',
+    'Product',
+    'Marketing',
+    'Sales',
+    'HR',
+    'Finance',
+    'Operations',
+    'Customer Support',
+    'Legal',
+  ];
+
   // Common tech skills - can be expanded
   const skillsList = [
-    'JavaScript', 'TypeScript', 'Python', 'Java', 'C++', 'C#',
-    'React', 'Vue.js', 'Angular', 'Node.js', 'Django', 'Flask',
-    'SQL', 'MongoDB', 'PostgreSQL', 'MySQL',
-    'AWS', 'Azure', 'GCP', 'Docker', 'Kubernetes',
-    'Git', 'CI/CD', 'Agile', 'Scrum'
+    'JavaScript',
+    'TypeScript',
+    'Python',
+    'Java',
+    'C++',
+    'C#',
+    'React',
+    'Vue.js',
+    'Angular',
+    'Node.js',
+    'Django',
+    'Flask',
+    'SQL',
+    'MongoDB',
+    'PostgreSQL',
+    'MySQL',
+    'AWS',
+    'Azure',
+    'GCP',
+    'Docker',
+    'Kubernetes',
+    'Git',
+    'CI/CD',
+    'Agile',
+    'Scrum',
   ];
-  
+
   const postedWithinOptions = [
     { label: 'Last 24 hours', value: '1' },
     { label: 'Last 7 days', value: '7' },
@@ -38,11 +69,11 @@ const AdvancedFilters = ({ onApplyFilters, initialFilters = {} }) => {
   ];
 
   const handleCheckboxChange = (category, value) => {
-    setFilters(prev => ({
+    setFilters((prev) => ({
       ...prev,
       [category]: prev[category].includes(value)
-        ? prev[category].filter(item => item !== value)
-        : [...prev[category], value]
+        ? prev[category].filter((item) => item !== value)
+        : [...prev[category], value],
     }));
   };
 
@@ -66,11 +97,11 @@ const AdvancedFilters = ({ onApplyFilters, initialFilters = {} }) => {
     onApplyFilters(resetFilters);
   };
 
-  const activeFilterCount = 
-    filters.employmentType.length + 
-    filters.experienceLevel.length + 
-    filters.mode.length + 
-    filters.skills.length + 
+  const activeFilterCount =
+    filters.employmentType.length +
+    filters.experienceLevel.length +
+    filters.mode.length +
+    filters.skills.length +
     filters.department.length +
     (filters.salaryMin ? 1 : 0) +
     (filters.salaryMax ? 1 : 0) +
@@ -96,11 +127,11 @@ const AdvancedFilters = ({ onApplyFilters, initialFilters = {} }) => {
       {isOpen && (
         <>
           {/* Backdrop */}
-          <div 
+          <div
             className="fixed inset-0 bg-black bg-opacity-50 z-50 transition-opacity"
             onClick={() => setIsOpen(false)}
           />
-          
+
           {/* Panel */}
           <div className="fixed inset-y-0 right-0 z-50 w-full max-w-lg bg-white shadow-2xl flex flex-col animate-slide-in">
             <style jsx>{`
@@ -120,7 +151,9 @@ const AdvancedFilters = ({ onApplyFilters, initialFilters = {} }) => {
             <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-white">
               <div className="flex-1">
                 <h2 className="text-2xl font-bold text-gray-900">Advanced Filters</h2>
-                <p className="text-sm text-gray-500 mt-1">Refine your job search with detailed criteria</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  Refine your job search with detailed criteria
+                </p>
               </div>
               <button
                 onClick={() => setIsOpen(false)}
@@ -136,7 +169,7 @@ const AdvancedFilters = ({ onApplyFilters, initialFilters = {} }) => {
               <div>
                 <h3 className="text-sm font-semibold text-gray-900 mb-3">Employment Type</h3>
                 <div className="grid grid-cols-2 gap-2">
-                  {employmentTypes.map(type => (
+                  {employmentTypes.map((type) => (
                     <label key={type} className="flex items-center gap-2 cursor-pointer group">
                       <input
                         type="checkbox"
@@ -144,7 +177,9 @@ const AdvancedFilters = ({ onApplyFilters, initialFilters = {} }) => {
                         onChange={() => handleCheckboxChange('employmentType', type)}
                         className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                       />
-                      <span className="text-sm text-gray-700 group-hover:text-gray-900 capitalize">{type}</span>
+                      <span className="text-sm text-gray-700 group-hover:text-gray-900 capitalize">
+                        {type}
+                      </span>
                     </label>
                   ))}
                 </div>
@@ -154,7 +189,7 @@ const AdvancedFilters = ({ onApplyFilters, initialFilters = {} }) => {
               <div>
                 <h3 className="text-sm font-semibold text-gray-900 mb-3">Experience Level</h3>
                 <div className="grid grid-cols-2 gap-2">
-                  {experienceLevels.map(level => (
+                  {experienceLevels.map((level) => (
                     <label key={level} className="flex items-center gap-2 cursor-pointer group">
                       <input
                         type="checkbox"
@@ -162,7 +197,9 @@ const AdvancedFilters = ({ onApplyFilters, initialFilters = {} }) => {
                         onChange={() => handleCheckboxChange('experienceLevel', level)}
                         className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                       />
-                      <span className="text-sm text-gray-700 group-hover:text-gray-900 capitalize">{level}</span>
+                      <span className="text-sm text-gray-700 group-hover:text-gray-900 capitalize">
+                        {level}
+                      </span>
                     </label>
                   ))}
                 </div>
@@ -172,7 +209,7 @@ const AdvancedFilters = ({ onApplyFilters, initialFilters = {} }) => {
               <div>
                 <h3 className="text-sm font-semibold text-gray-900 mb-3">Work Mode</h3>
                 <div className="grid grid-cols-3 gap-2">
-                  {workModes.map(mode => (
+                  {workModes.map((mode) => (
                     <label key={mode} className="flex items-center gap-2 cursor-pointer group">
                       <input
                         type="checkbox"
@@ -180,7 +217,9 @@ const AdvancedFilters = ({ onApplyFilters, initialFilters = {} }) => {
                         onChange={() => handleCheckboxChange('mode', mode)}
                         className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                       />
-                      <span className="text-sm text-gray-700 group-hover:text-gray-900 capitalize">{mode}</span>
+                      <span className="text-sm text-gray-700 group-hover:text-gray-900 capitalize">
+                        {mode}
+                      </span>
                     </label>
                   ))}
                 </div>
@@ -196,7 +235,9 @@ const AdvancedFilters = ({ onApplyFilters, initialFilters = {} }) => {
                       type="number"
                       placeholder="$ 0"
                       value={filters.salaryMin}
-                      onChange={(e) => setFilters(prev => ({ ...prev, salaryMin: e.target.value }))}
+                      onChange={(e) =>
+                        setFilters((prev) => ({ ...prev, salaryMin: e.target.value }))
+                      }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
@@ -206,7 +247,9 @@ const AdvancedFilters = ({ onApplyFilters, initialFilters = {} }) => {
                       type="number"
                       placeholder="$ 10,000"
                       value={filters.salaryMax}
-                      onChange={(e) => setFilters(prev => ({ ...prev, salaryMax: e.target.value }))}
+                      onChange={(e) =>
+                        setFilters((prev) => ({ ...prev, salaryMax: e.target.value }))
+                      }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
@@ -217,7 +260,7 @@ const AdvancedFilters = ({ onApplyFilters, initialFilters = {} }) => {
               <div>
                 <h3 className="text-sm font-semibold text-gray-900 mb-3">Department</h3>
                 <div className="grid grid-cols-2 gap-2">
-                  {departments.map(dept => (
+                  {departments.map((dept) => (
                     <label key={dept} className="flex items-center gap-2 cursor-pointer group">
                       <input
                         type="checkbox"
@@ -225,7 +268,9 @@ const AdvancedFilters = ({ onApplyFilters, initialFilters = {} }) => {
                         onChange={() => handleCheckboxChange('department', dept)}
                         className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                       />
-                      <span className="text-sm text-gray-700 group-hover:text-gray-900">{dept}</span>
+                      <span className="text-sm text-gray-700 group-hover:text-gray-900">
+                        {dept}
+                      </span>
                     </label>
                   ))}
                 </div>
@@ -235,7 +280,7 @@ const AdvancedFilters = ({ onApplyFilters, initialFilters = {} }) => {
               <div>
                 <h3 className="text-sm font-semibold text-gray-900 mb-3">Skills Required</h3>
                 <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-2">
-                  {skillsList.map(skill => (
+                  {skillsList.map((skill) => (
                     <label key={skill} className="flex items-center gap-2 cursor-pointer group">
                       <input
                         type="checkbox"
@@ -243,7 +288,9 @@ const AdvancedFilters = ({ onApplyFilters, initialFilters = {} }) => {
                         onChange={() => handleCheckboxChange('skills', skill)}
                         className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                       />
-                      <span className="text-sm text-gray-700 group-hover:text-gray-900">{skill}</span>
+                      <span className="text-sm text-gray-700 group-hover:text-gray-900">
+                        {skill}
+                      </span>
                     </label>
                   ))}
                 </div>
@@ -253,10 +300,12 @@ const AdvancedFilters = ({ onApplyFilters, initialFilters = {} }) => {
               <div>
                 <h3 className="text-sm font-semibold text-gray-900 mb-3">Posted Within</h3>
                 <div className="flex flex-wrap gap-2">
-                  {postedWithinOptions.map(option => (
+                  {postedWithinOptions.map((option) => (
                     <button
                       key={option.value}
-                      onClick={() => setFilters(prev => ({ ...prev, postedWithin: option.value }))}
+                      onClick={() =>
+                        setFilters((prev) => ({ ...prev, postedWithin: option.value }))
+                      }
                       className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                         filters.postedWithin === option.value
                           ? 'bg-blue-600 text-white'

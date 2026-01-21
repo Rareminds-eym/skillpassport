@@ -1,6 +1,6 @@
 /**
  * TEST FILE: How to Add and Save Data to Supabase JSONB
- * 
+ *
  * This file demonstrates how the add functionality works with Supabase
  * and saves data in JSONB format to the students table.
  */
@@ -12,7 +12,7 @@ import { useAuth } from '../context/AuthContext';
 const AddDataTest = () => {
   const { user } = useAuth();
   const userEmail = user?.email;
-  
+
   const {
     studentData,
     loading,
@@ -21,14 +21,13 @@ const AddDataTest = () => {
     updateTraining,
     updateExperience,
     updateTechnicalSkills,
-    updateSoftSkills
+    updateSoftSkills,
   } = useStudentDataByEmail(userEmail);
 
   const [testResults, setTestResults] = useState([]);
 
   // Test adding new education
   const testAddEducation = async () => {
-    
     const currentEducation = studentData?.education || [];
     const newEducation = {
       id: Date.now(),
@@ -38,26 +37,25 @@ const AddDataTest = () => {
       yearOfPassing: '2026',
       cgpa: '9.0',
       level: "Master's",
-      status: 'ongoing'
+      status: 'ongoing',
     };
 
     const updatedEducation = [...currentEducation, newEducation];
-    
+
     try {
       const result = await updateEducation(updatedEducation);
       if (result.success) {
-        setTestResults(prev => [...prev, '✅ Education added successfully']);
+        setTestResults((prev) => [...prev, '✅ Education added successfully']);
       } else {
-        setTestResults(prev => [...prev, `❌ Education failed: ${result.error}`]);
+        setTestResults((prev) => [...prev, `❌ Education failed: ${result.error}`]);
       }
     } catch (err) {
-      setTestResults(prev => [...prev, `❌ Education error: ${err.message}`]);
+      setTestResults((prev) => [...prev, `❌ Education error: ${err.message}`]);
     }
   };
 
   // Test adding new training
   const testAddTraining = async () => {
-    
     const currentTraining = studentData?.training || [];
     const newTraining = {
       id: Date.now(),
@@ -66,26 +64,25 @@ const AddDataTest = () => {
       status: 'ongoing',
       instructor: 'John Doe',
       startDate: new Date().toISOString(),
-      description: 'Learning advanced React patterns and hooks'
+      description: 'Learning advanced React patterns and hooks',
     };
 
     const updatedTraining = [...currentTraining, newTraining];
-    
+
     try {
       const result = await updateTraining(updatedTraining);
       if (result.success) {
-        setTestResults(prev => [...prev, '✅ Training added successfully']);
+        setTestResults((prev) => [...prev, '✅ Training added successfully']);
       } else {
-        setTestResults(prev => [...prev, `❌ Training failed: ${result.error}`]);
+        setTestResults((prev) => [...prev, `❌ Training failed: ${result.error}`]);
       }
     } catch (err) {
-      setTestResults(prev => [...prev, `❌ Training error: ${err.message}`]);
+      setTestResults((prev) => [...prev, `❌ Training error: ${err.message}`]);
     }
   };
 
   // Test adding new experience
   const testAddExperience = async () => {
-    
     const currentExperience = studentData?.experience || [];
     const newExperience = {
       id: Date.now(),
@@ -96,26 +93,25 @@ const AddDataTest = () => {
       skills: ['React', 'Node.js', 'MongoDB'],
       startDate: '2024-01-01',
       endDate: '2024-03-31',
-      verified: false
+      verified: false,
     };
 
     const updatedExperience = [...currentExperience, newExperience];
-    
+
     try {
       const result = await updateExperience(updatedExperience);
       if (result.success) {
-        setTestResults(prev => [...prev, '✅ Experience added successfully']);
+        setTestResults((prev) => [...prev, '✅ Experience added successfully']);
       } else {
-        setTestResults(prev => [...prev, `❌ Experience failed: ${result.error}`]);
+        setTestResults((prev) => [...prev, `❌ Experience failed: ${result.error}`]);
       }
     } catch (err) {
-      setTestResults(prev => [...prev, `❌ Experience error: ${err.message}`]);
+      setTestResults((prev) => [...prev, `❌ Experience error: ${err.message}`]);
     }
   };
 
   // Test adding new technical skill
   const testAddTechnicalSkill = async () => {
-    
     const currentSkills = studentData?.technicalSkills || [];
     const newSkill = {
       id: Date.now(),
@@ -124,46 +120,45 @@ const AddDataTest = () => {
       verified: false,
       icon: '📝',
       category: 'Programming Language',
-      description: 'Statically typed JavaScript'
+      description: 'Statically typed JavaScript',
     };
 
     const updatedSkills = [...currentSkills, newSkill];
-    
+
     try {
       const result = await updateTechnicalSkills(updatedSkills);
       if (result.success) {
-        setTestResults(prev => [...prev, '✅ Technical skill added successfully']);
+        setTestResults((prev) => [...prev, '✅ Technical skill added successfully']);
       } else {
-        setTestResults(prev => [...prev, `❌ Technical skill failed: ${result.error}`]);
+        setTestResults((prev) => [...prev, `❌ Technical skill failed: ${result.error}`]);
       }
     } catch (err) {
-      setTestResults(prev => [...prev, `❌ Technical skill error: ${err.message}`]);
+      setTestResults((prev) => [...prev, `❌ Technical skill error: ${err.message}`]);
     }
   };
 
   // Test adding new soft skill
   const testAddSoftSkill = async () => {
-    
     const currentSoftSkills = studentData?.softSkills || [];
     const newSoftSkill = {
       id: Date.now(),
       name: 'Leadership',
       level: 3,
       type: 'leadership',
-      description: 'Ability to lead and motivate teams'
+      description: 'Ability to lead and motivate teams',
     };
 
     const updatedSoftSkills = [...currentSoftSkills, newSoftSkill];
-    
+
     try {
       const result = await updateSoftSkills(updatedSoftSkills);
       if (result.success) {
-        setTestResults(prev => [...prev, '✅ Soft skill added successfully']);
+        setTestResults((prev) => [...prev, '✅ Soft skill added successfully']);
       } else {
-        setTestResults(prev => [...prev, `❌ Soft skill failed: ${result.error}`]);
+        setTestResults((prev) => [...prev, `❌ Soft skill failed: ${result.error}`]);
       }
     } catch (err) {
-      setTestResults(prev => [...prev, `❌ Soft skill error: ${err.message}`]);
+      setTestResults((prev) => [...prev, `❌ Soft skill error: ${err.message}`]);
     }
   };
 
@@ -174,37 +169,37 @@ const AddDataTest = () => {
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">Add Data to Supabase JSONB Test</h1>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        <button 
+        <button
           onClick={testAddEducation}
           className="p-4 bg-blue-500 text-white rounded hover:bg-blue-600"
         >
           Add Education
         </button>
-        
-        <button 
+
+        <button
           onClick={testAddTraining}
           className="p-4 bg-green-500 text-white rounded hover:bg-green-600"
         >
           Add Training
         </button>
-        
-        <button 
+
+        <button
           onClick={testAddExperience}
           className="p-4 bg-purple-500 text-white rounded hover:bg-purple-600"
         >
           Add Experience
         </button>
-        
-        <button 
+
+        <button
           onClick={testAddTechnicalSkill}
           className="p-4 bg-orange-500 text-white rounded hover:bg-orange-600"
         >
           Add Technical Skill
         </button>
-        
-        <button 
+
+        <button
           onClick={testAddSoftSkill}
           className="p-4 bg-pink-500 text-white rounded hover:bg-pink-600"
         >
@@ -220,7 +215,9 @@ const AddDataTest = () => {
           ) : (
             <ul className="space-y-1">
               {testResults.map((result, index) => (
-                <li key={index} className="font-mono text-sm">{result}</li>
+                <li key={index} className="font-mono text-sm">
+                  {result}
+                </li>
               ))}
             </ul>
           )}
@@ -231,13 +228,17 @@ const AddDataTest = () => {
         <h2 className="text-xl font-semibold mb-3">Current Data Structure:</h2>
         <div className="bg-gray-100 p-4 rounded overflow-auto max-h-96">
           <pre className="text-xs">
-            {JSON.stringify({
-              education: studentData.education,
-              training: studentData.training,
-              experience: studentData.experience,
-              technicalSkills: studentData.technicalSkills,
-              softSkills: studentData.softSkills
-            }, null, 2)}
+            {JSON.stringify(
+              {
+                education: studentData.education,
+                training: studentData.training,
+                experience: studentData.experience,
+                technicalSkills: studentData.technicalSkills,
+                softSkills: studentData.softSkills,
+              },
+              null,
+              2
+            )}
           </pre>
         </div>
       </div>

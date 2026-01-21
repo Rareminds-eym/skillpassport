@@ -1,7 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  TrendingUp, Users, BookOpen, FileText, Award, 
-  Calendar, Clock, Target, BarChart3 
+import {
+  TrendingUp,
+  Users,
+  BookOpen,
+  FileText,
+  Award,
+  Calendar,
+  Clock,
+  Target,
+  BarChart3,
 } from 'lucide-react';
 import { getTeachers, getTeacherPerformance } from '../../../../services/teacherService';
 
@@ -54,18 +61,31 @@ const TeacherPerformanceAnalytics: React.FC = () => {
 
   const getTopPerformers = () => {
     return metrics
-      .sort((a, b) => b.lesson_plans_created + b.assignments_created - (a.lesson_plans_created + a.assignments_created))
+      .sort(
+        (a, b) =>
+          b.lesson_plans_created +
+          b.assignments_created -
+          (a.lesson_plans_created + a.assignments_created)
+      )
       .slice(0, 5);
   };
 
   const getAverageMetrics = () => {
     if (metrics.length === 0) return null;
-    
+
     return {
-      avgClasses: (metrics.reduce((sum, m) => sum + m.classes_taught, 0) / metrics.length).toFixed(1),
-      avgStudents: (metrics.reduce((sum, m) => sum + m.students_count, 0) / metrics.length).toFixed(0),
-      avgLessonPlans: (metrics.reduce((sum, m) => sum + m.lesson_plans_created, 0) / metrics.length).toFixed(1),
-      avgAssignments: (metrics.reduce((sum, m) => sum + m.assignments_created, 0) / metrics.length).toFixed(1),
+      avgClasses: (metrics.reduce((sum, m) => sum + m.classes_taught, 0) / metrics.length).toFixed(
+        1
+      ),
+      avgStudents: (metrics.reduce((sum, m) => sum + m.students_count, 0) / metrics.length).toFixed(
+        0
+      ),
+      avgLessonPlans: (
+        metrics.reduce((sum, m) => sum + m.lesson_plans_created, 0) / metrics.length
+      ).toFixed(1),
+      avgAssignments: (
+        metrics.reduce((sum, m) => sum + m.assignments_created, 0) / metrics.length
+      ).toFixed(1),
     };
   };
 
@@ -89,7 +109,7 @@ const TeacherPerformanceAnalytics: React.FC = () => {
           <h2 className="text-2xl font-bold text-gray-900">Teacher Performance Analytics</h2>
           <p className="text-gray-600 mt-1">Track and analyze teacher performance metrics</p>
         </div>
-        
+
         <select
           value={timeRange}
           onChange={(e) => setTimeRange(e.target.value as any)}
@@ -157,7 +177,7 @@ const TeacherPerformanceAnalytics: React.FC = () => {
           <Award className="h-6 w-6 text-yellow-600" />
           <h3 className="text-lg font-bold text-gray-900">Top Performers</h3>
         </div>
-        
+
         <div className="space-y-3">
           {topPerformers.map((teacher, index) => (
             <div
@@ -165,12 +185,17 @@ const TeacherPerformanceAnalytics: React.FC = () => {
               className="bg-white rounded-lg p-4 border border-gray-200 flex items-center justify-between"
             >
               <div className="flex items-center gap-4">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white ${
-                  index === 0 ? 'bg-yellow-500' :
-                  index === 1 ? 'bg-gray-400' :
-                  index === 2 ? 'bg-orange-600' :
-                  'bg-gray-300'
-                }`}>
+                <div
+                  className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white ${
+                    index === 0
+                      ? 'bg-yellow-500'
+                      : index === 1
+                        ? 'bg-gray-400'
+                        : index === 2
+                          ? 'bg-orange-600'
+                          : 'bg-gray-300'
+                  }`}
+                >
                   {index + 1}
                 </div>
                 <div>
@@ -180,7 +205,7 @@ const TeacherPerformanceAnalytics: React.FC = () => {
                   </p>
                 </div>
               </div>
-              
+
               <div className="flex gap-4 text-sm">
                 <div className="text-center">
                   <p className="font-bold text-purple-600">{teacher.lesson_plans_created}</p>
@@ -201,7 +226,7 @@ const TeacherPerformanceAnalytics: React.FC = () => {
         <div className="p-4 bg-gray-50 border-b border-gray-200">
           <h3 className="text-lg font-bold text-gray-900">All Teachers Performance</h3>
         </div>
-        
+
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
@@ -230,7 +255,7 @@ const TeacherPerformanceAnalytics: React.FC = () => {
               {metrics.map((metric) => {
                 const totalActivity = metric.lesson_plans_created + metric.assignments_created;
                 const performanceScore = Math.min(100, (totalActivity / 20) * 100);
-                
+
                 return (
                   <tr key={metric.teacher_id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -265,10 +290,13 @@ const TeacherPerformanceAnalytics: React.FC = () => {
                         <div className="flex-1 bg-gray-200 rounded-full h-2">
                           <div
                             className={`h-2 rounded-full ${
-                              performanceScore >= 80 ? 'bg-green-500' :
-                              performanceScore >= 60 ? 'bg-yellow-500' :
-                              performanceScore >= 40 ? 'bg-orange-500' :
-                              'bg-red-500'
+                              performanceScore >= 80
+                                ? 'bg-green-500'
+                                : performanceScore >= 60
+                                  ? 'bg-yellow-500'
+                                  : performanceScore >= 40
+                                    ? 'bg-orange-500'
+                                    : 'bg-red-500'
                             }`}
                             style={{ width: `${performanceScore}%` }}
                           />

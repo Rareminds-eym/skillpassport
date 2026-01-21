@@ -57,9 +57,7 @@ const SubscriptionStatusWidget = () => {
             <Shield className="w-5 h-5 text-blue-600" />
           </div>
           <div className="flex-1">
-            <h3 className="text-sm font-semibold text-neutral-900 mb-1">
-              Unlock Premium Features
-            </h3>
+            <h3 className="text-sm font-semibold text-neutral-900 mb-1">Unlock Premium Features</h3>
             <p className="text-xs text-neutral-600 mb-3">
               Get access to Career AI, Video Portfolio, and more premium features
             </p>
@@ -92,9 +90,7 @@ const SubscriptionStatusWidget = () => {
             <AlertCircle className="w-5 h-5 text-red-600" />
           </div>
           <div className="flex-1">
-            <h3 className="text-sm font-semibold text-neutral-900 mb-1">
-              Subscription Expired
-            </h3>
+            <h3 className="text-sm font-semibold text-neutral-900 mb-1">Subscription Expired</h3>
             <p className="text-xs text-neutral-600 mb-3">
               Renew now to restore access to premium features
             </p>
@@ -123,7 +119,8 @@ const SubscriptionStatusWidget = () => {
               Subscription Expiring Soon
             </h3>
             <p className="text-xs text-neutral-600 mb-3">
-              Only {daysRemaining} day{daysRemaining !== 1 ? 's' : ''} left on your {subscriptionData.planName || 'Basic'} plan
+              Only {daysRemaining} day{daysRemaining !== 1 ? 's' : ''} left on your{' '}
+              {subscriptionData.planName || 'Basic'} plan
             </p>
             <button
               onClick={() => navigate(`${basePath}/subscription/manage`)}
@@ -148,9 +145,7 @@ const SubscriptionStatusWidget = () => {
           <h3 className="text-sm font-semibold text-neutral-900 mb-1">
             {subscriptionData.planName || 'Basic'} Plan Active
           </h3>
-          <p className="text-xs text-neutral-600 mb-2">
-            {daysRemaining} days remaining
-          </p>
+          <p className="text-xs text-neutral-600 mb-2">{daysRemaining} days remaining</p>
           <button
             onClick={() => navigate(`${basePath}/subscription/manage`)}
             className="text-xs font-medium text-green-600 hover:text-green-700"
@@ -164,4 +159,3 @@ const SubscriptionStatusWidget = () => {
 };
 
 export default SubscriptionStatusWidget;
-

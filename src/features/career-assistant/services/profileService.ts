@@ -22,21 +22,22 @@ export async function fetchStudentProfile(studentId: string): Promise<StudentPro
 
     // Parse the JSONB profile column
     const profileData = student.profile || {};
-    
+
     console.log('📦 Raw profile data:', {
       hasProfile: !!student.profile,
       education: profileData.education?.length || 0,
       training: profileData.training?.length || 0,
       projects: profileData.projects?.length || 0,
-      softSkills: profileData.softSkills?.length || 0
+      softSkills: profileData.softSkills?.length || 0,
     });
 
     // Extract department from education or profile
-    const department = profileData.education?.[0]?.department || 
-                      profileData.education?.[0]?.degree || 
-                      profileData.branch_field ||
-                      student.department ||
-                      'General';
+    const department =
+      profileData.education?.[0]?.department ||
+      profileData.education?.[0]?.degree ||
+      profileData.branch_field ||
+      student.department ||
+      'General';
 
     // Extract technical skills from training courses
     const technicalSkills: TechnicalSkill[] = [];
@@ -44,12 +45,12 @@ export async function fetchStudentProfile(studentId: string): Promise<StudentPro
       profileData.training.forEach((training: any) => {
         if (training.skills && Array.isArray(training.skills)) {
           training.skills.forEach((skill: string) => {
-            if (!technicalSkills.find(s => s.name?.toLowerCase() === skill.toLowerCase())) {
+            if (!technicalSkills.find((s) => s.name?.toLowerCase() === skill.toLowerCase())) {
               technicalSkills.push({
                 name: skill,
                 level: 3, // Default level
                 category: 'Technical',
-                source: 'training'
+                source: 'training',
               });
             }
           });
@@ -62,12 +63,15 @@ export async function fetchStudentProfile(studentId: string): Promise<StudentPro
       profileData.projects.forEach((project: any) => {
         const projectSkills = project.skills || project.technologies || project.techStack || [];
         projectSkills.forEach((skill: string) => {
-          if (skill && !technicalSkills.find(s => s.name?.toLowerCase() === skill.toLowerCase())) {
+          if (
+            skill &&
+            !technicalSkills.find((s) => s.name?.toLowerCase() === skill.toLowerCase())
+          ) {
             technicalSkills.push({
               name: skill,
               level: 4, // Projects show applied skills
               category: 'Technical',
-              source: 'project'
+              source: 'project',
             });
           }
         });
@@ -83,7 +87,7 @@ export async function fetchStudentProfile(studentId: string): Promise<StudentPro
             role: 'Project Developer',
             company: project.title,
             duration: project.duration || '',
-            type: 'project'
+            type: 'project',
           });
         }
       });
@@ -104,8 +108,8 @@ export async function fetchStudentProfile(studentId: string): Promise<StudentPro
         training: profileData.training || [],
         experience: experience,
         projects: profileData.projects || [],
-        certificates: profileData.certificates || []
-      }
+        certificates: profileData.certificates || [],
+      },
     };
   } catch (error) {
     console.error('Error in fetchStudentProfile:', error);
@@ -119,7 +123,7 @@ export async function fetchStudentProfile(studentId: string): Promise<StudentPro
 export async function fetchOpportunities(): Promise<any[]> {
   try {
     console.log('📊 Fetching opportunities from database...');
-    
+
     // Fetch ALL jobs (don't filter by is_active since many jobs may have it as false/null)
     const { data, error } = await supabase
       .from('opportunities')
@@ -133,9 +137,9 @@ export async function fetchOpportunities(): Promise<any[]> {
     }
 
     console.log(`✅ Found ${data?.length || 0} total opportunities in database`);
-    
+
     if (data && data.length > 0) {
-      const activeCount = data.filter(j => j.is_active === true).length;
+      const activeCount = data.filter((j) => j.is_active === true).length;
       console.log(`📊 Active jobs: ${activeCount} | Total: ${data.length}`);
     } else {
       console.warn('⚠️ No jobs found in database. Please add some opportunities!');

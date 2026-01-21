@@ -1,0 +1,30 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "sequential-thinking": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ]
+    },
+    "context7": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@upstash/context7-mcp",
+        "--api-key",
+        "ctx7sk-85d25c87-9054-47e4-9a56-3168d0664db0"
+      ]
+    },
+    "supabase": {
+      "type": "remote",
+      "url": "https://mcp.supabase.com/mcp?project_ref=dpooleduinyyzxgrcwko",
+      "headers": {
+        "Authorization": "Bearer sbp_e931fa33346724d0ad8c66a86605fd854225bb02"
+      }
+    }
+  }
+}

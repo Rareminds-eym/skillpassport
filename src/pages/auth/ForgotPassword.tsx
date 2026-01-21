@@ -39,7 +39,7 @@ export default function ForgotPassword() {
     try {
       const data = await userApiService.resetPassword({
         action: 'send',
-        email: email.toLowerCase().trim()
+        email: email.toLowerCase().trim(),
       });
 
       if (!data?.success) {
@@ -48,13 +48,13 @@ export default function ForgotPassword() {
 
       setMessage({
         type: 'success',
-        text: 'OTP sent successfully! Please check your email.'
+        text: 'OTP sent successfully! Please check your email.',
       });
       setStep(2);
     } catch (error: any) {
       setMessage({
         type: 'error',
-        text: error.message || 'Failed to send OTP. Please try again.'
+        text: error.message || 'Failed to send OTP. Please try again.',
       });
     } finally {
       setLoading(false);
@@ -85,7 +85,7 @@ export default function ForgotPassword() {
         action: 'verify',
         email: email.toLowerCase().trim(),
         otp: otp.trim(),
-        newPassword: newPassword
+        newPassword: newPassword,
       });
 
       if (!data?.success) {
@@ -94,7 +94,7 @@ export default function ForgotPassword() {
 
       setMessage({
         type: 'success',
-        text: 'Password reset successfully! Redirecting to login...'
+        text: 'Password reset successfully! Redirecting to login...',
       });
 
       // Redirect to login after 2 seconds
@@ -104,7 +104,7 @@ export default function ForgotPassword() {
     } catch (error: any) {
       setMessage({
         type: 'error',
-        text: error.message || 'Failed to reset password. Please try again.'
+        text: error.message || 'Failed to reset password. Please try again.',
       });
     } finally {
       setLoading(false);
@@ -143,10 +143,11 @@ export default function ForgotPassword() {
           {/* Success/Error Messages */}
           {message && (
             <div
-              className={`mb-6 p-4 rounded-lg flex items-start ${message.type === 'success'
+              className={`mb-6 p-4 rounded-lg flex items-start ${
+                message.type === 'success'
                   ? 'bg-green-50 border border-green-200'
                   : 'bg-red-50 border border-red-200'
-                }`}
+              }`}
             >
               {message.type === 'success' ? (
                 <Check className="h-5 w-5 text-green-600 mr-3 flex-shrink-0 mt-0.5" />
@@ -154,8 +155,9 @@ export default function ForgotPassword() {
                 <AlertCircle className="h-5 w-5 text-red-600 mr-3 flex-shrink-0 mt-0.5" />
               )}
               <p
-                className={`text-sm ${message.type === 'success' ? 'text-green-800' : 'text-red-800'
-                  }`}
+                className={`text-sm ${
+                  message.type === 'success' ? 'text-green-800' : 'text-red-800'
+                }`}
               >
                 {message.text}
               </p>
@@ -176,15 +178,14 @@ export default function ForgotPassword() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all ${errors.email ? 'border-red-300' : 'border-gray-300'
-                      }`}
+                    className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all ${
+                      errors.email ? 'border-red-300' : 'border-gray-300'
+                    }`}
                     placeholder="your.email@example.com"
                     disabled={loading}
                   />
                 </div>
-                {errors.email && (
-                  <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-                )}
+                {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
               </div>
 
               <button
@@ -209,22 +210,24 @@ export default function ForgotPassword() {
                   type="text"
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-center text-2xl tracking-widest ${errors.otp ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-center text-2xl tracking-widest ${
+                    errors.otp ? 'border-red-300' : 'border-gray-300'
+                  }`}
                   placeholder="000000"
                   maxLength={6}
                   disabled={loading}
                 />
-                {errors.otp && (
-                  <p className="mt-1 text-sm text-red-600">{errors.otp}</p>
-                )}
+                {errors.otp && <p className="mt-1 text-sm text-red-600">{errors.otp}</p>}
                 <p className="mt-2 text-xs text-gray-500 text-center">
                   Check your email for the 6-digit code
                 </p>
               </div>
 
               <div>
-                <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="newPassword"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   New Password
                 </label>
                 <input
@@ -232,8 +235,9 @@ export default function ForgotPassword() {
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all ${errors.newPassword ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all ${
+                    errors.newPassword ? 'border-red-300' : 'border-gray-300'
+                  }`}
                   placeholder="Enter new password"
                   disabled={loading}
                 />
@@ -243,7 +247,10 @@ export default function ForgotPassword() {
               </div>
 
               <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="confirmPassword"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Confirm Password
                 </label>
                 <input
@@ -251,8 +258,9 @@ export default function ForgotPassword() {
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all ${errors.confirmPassword ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all ${
+                    errors.confirmPassword ? 'border-red-300' : 'border-gray-300'
+                  }`}
                   placeholder="Confirm new password"
                   disabled={loading}
                 />
@@ -307,7 +315,10 @@ export default function ForgotPassword() {
         {/* Footer */}
         <p className="text-center text-sm text-gray-600 mt-6">
           Remember your password?{' '}
-          <Link to="/auth/login-student" className="text-indigo-600 hover:text-indigo-700 font-medium">
+          <Link
+            to="/auth/login-student"
+            className="text-indigo-600 hover:text-indigo-700 font-medium"
+          >
             Sign in
           </Link>
         </p>

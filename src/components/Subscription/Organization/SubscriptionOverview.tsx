@@ -1,11 +1,25 @@
 /**
  * SubscriptionOverview Component
- * 
+ *
  * Displays organization details and active subscriptions with seat utilization metrics,
  * quick action buttons, and expiration warnings.
  */
 
-import { AlertTriangle, Building2, Calendar, ChevronRight, Clock, Globe, Mail, MapPin, Phone, Plus, RefreshCw, Settings, Users } from 'lucide-react';
+import {
+  AlertTriangle,
+  Building2,
+  Calendar,
+  ChevronRight,
+  Clock,
+  Globe,
+  Mail,
+  MapPin,
+  Phone,
+  Plus,
+  RefreshCw,
+  Settings,
+  Users,
+} from 'lucide-react';
 import { memo, useMemo } from 'react';
 
 interface Subscription {
@@ -120,9 +134,9 @@ function SubscriptionOverview({
               {/* Logo */}
               <div className="flex-shrink-0">
                 {organizationDetails.logoUrl ? (
-                  <img 
-                    src={organizationDetails.logoUrl} 
-                    alt={organizationDetails.name || 'Organization'} 
+                  <img
+                    src={organizationDetails.logoUrl}
+                    alt={organizationDetails.name || 'Organization'}
                     className="w-20 h-20 rounded-xl object-cover border border-gray-200"
                   />
                 ) : (
@@ -144,25 +158,28 @@ function SubscriptionOverview({
                     </span>
                   )}
                   {organizationDetails.accountStatus && (
-                    <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                      organizationDetails.accountStatus === 'active' 
-                        ? 'bg-green-100 text-green-700' 
-                        : 'bg-amber-100 text-amber-700'
-                    }`}>
-                      {organizationDetails.accountStatus.charAt(0).toUpperCase() + organizationDetails.accountStatus.slice(1)}
+                    <span
+                      className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                        organizationDetails.accountStatus === 'active'
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-amber-100 text-amber-700'
+                      }`}
+                    >
+                      {organizationDetails.accountStatus.charAt(0).toUpperCase() +
+                        organizationDetails.accountStatus.slice(1)}
                     </span>
                   )}
                 </div>
-                
+
                 <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
                   <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded font-medium">
                     {formatOrgType(organizationDetails.organizationType)}
                   </span>
+                  {organizationDetails.code && <span className="text-gray-400">•</span>}
                   {organizationDetails.code && (
-                    <span className="text-gray-400">•</span>
-                  )}
-                  {organizationDetails.code && (
-                    <span className="font-mono text-gray-600">Code: {organizationDetails.code}</span>
+                    <span className="font-mono text-gray-600">
+                      Code: {organizationDetails.code}
+                    </span>
                   )}
                   {organizationDetails.establishedYear && (
                     <>
@@ -177,7 +194,10 @@ function SubscriptionOverview({
                   {organizationDetails.email && (
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <Mail className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                      <a href={`mailto:${organizationDetails.email}`} className="hover:text-blue-600 truncate">
+                      <a
+                        href={`mailto:${organizationDetails.email}`}
+                        className="hover:text-blue-600 truncate"
+                      >
                         {organizationDetails.email}
                       </a>
                     </div>
@@ -193,9 +213,13 @@ function SubscriptionOverview({
                   {organizationDetails.website && (
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <Globe className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                      <a 
-                        href={organizationDetails.website.startsWith('http') ? organizationDetails.website : `https://${organizationDetails.website}`} 
-                        target="_blank" 
+                      <a
+                        href={
+                          organizationDetails.website.startsWith('http')
+                            ? organizationDetails.website
+                            : `https://${organizationDetails.website}`
+                        }
+                        target="_blank"
                         rel="noopener noreferrer"
                         className="hover:text-blue-600 truncate"
                       >
@@ -203,7 +227,9 @@ function SubscriptionOverview({
                       </a>
                     </div>
                   )}
-                  {(organizationDetails.address || organizationDetails.city || organizationDetails.state) && (
+                  {(organizationDetails.address ||
+                    organizationDetails.city ||
+                    organizationDetails.state) && (
                     <div className="flex items-start gap-2 text-sm text-gray-600">
                       <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
                       <span className="truncate">
@@ -212,8 +238,10 @@ function SubscriptionOverview({
                           organizationDetails.city,
                           organizationDetails.state,
                           organizationDetails.pincode,
-                          organizationDetails.country
-                        ].filter(Boolean).join(', ')}
+                          organizationDetails.country,
+                        ]
+                          .filter(Boolean)
+                          .join(', ')}
                       </span>
                     </div>
                   )}
@@ -233,7 +261,7 @@ function SubscriptionOverview({
           <p className="text-gray-500 mb-4">
             Purchase a subscription to start managing licenses for your organization.
           </p>
-          <button 
+          <button
             onClick={onBrowsePlans}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
           >
@@ -247,7 +275,8 @@ function SubscriptionOverview({
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Subscription Summary</h2>
               <span className="px-3 py-1 bg-white/20 rounded-full text-sm">
-                {activeSubscriptions.length} Active Plan{activeSubscriptions.length !== 1 ? 's' : ''}
+                {activeSubscriptions.length} Active Plan
+                {activeSubscriptions.length !== 1 ? 's' : ''}
               </span>
             </div>
 
@@ -278,8 +307,8 @@ function SubscriptionOverview({
                     utilizationPercentage >= 90
                       ? 'bg-red-400'
                       : utilizationPercentage >= 70
-                      ? 'bg-yellow-400'
-                      : 'bg-green-400'
+                        ? 'bg-yellow-400'
+                        : 'bg-green-400'
                   }`}
                   style={{ width: `${utilizationPercentage}%` }}
                 />
@@ -306,9 +335,7 @@ function SubscriptionOverview({
                   {(isExpiringSoon || isGracePeriod) && (
                     <div
                       className={`px-4 py-2 flex items-center gap-2 text-sm ${
-                        isGracePeriod
-                          ? 'bg-red-50 text-red-700'
-                          : 'bg-amber-50 text-amber-700'
+                        isGracePeriod ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'
                       }`}
                     >
                       <AlertTriangle className="w-4 h-4" />
@@ -325,22 +352,23 @@ function SubscriptionOverview({
                         <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
                           <span className="flex items-center gap-1">
                             <Calendar className="w-4 h-4" />
-                            {formatDate(subscription.startDate)} - {formatDate(subscription.endDate)}
+                            {formatDate(subscription.startDate)} -{' '}
+                            {formatDate(subscription.endDate)}
                           </span>
                           <span
                             className={`px-2 py-0.5 rounded text-xs font-medium ${
                               subscription.targetMemberType === 'both'
                                 ? 'bg-purple-100 text-purple-700'
                                 : subscription.targetMemberType === 'educator'
-                                ? 'bg-blue-100 text-blue-700'
-                                : 'bg-green-100 text-green-700'
+                                  ? 'bg-blue-100 text-blue-700'
+                                  : 'bg-green-100 text-green-700'
                             }`}
                           >
                             {subscription.targetMemberType === 'both'
                               ? 'All Members'
                               : subscription.targetMemberType === 'educator'
-                              ? 'Educators'
-                              : 'Students'}
+                                ? 'Educators'
+                                : 'Students'}
                           </span>
                         </div>
                       </div>
@@ -368,8 +396,8 @@ function SubscriptionOverview({
                             utilization >= 90
                               ? 'bg-red-500'
                               : utilization >= 70
-                              ? 'bg-amber-500'
-                              : 'bg-blue-500'
+                                ? 'bg-amber-500'
+                                : 'bg-blue-500'
                           }`}
                           style={{ width: `${utilization}%` }}
                         />

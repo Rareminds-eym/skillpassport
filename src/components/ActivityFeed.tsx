@@ -11,13 +11,14 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   TrashIcon,
-  CalendarIcon
+  CalendarIcon,
 } from '@heroicons/react/24/outline';
 
 // Format relative time (e.g., "2 hours ago")
 const formatRelativeTime = (timestamp) => {
   const now = new Date();
   const activityTime = new Date(timestamp);
+  // @ts-expect-error - Auto-suppressed for migration
   const diffMs = now - activityTime;
   const diffSecs = Math.floor(diffMs / 1000);
   const diffMins = Math.floor(diffSecs / 60);
@@ -34,7 +35,7 @@ const formatRelativeTime = (timestamp) => {
 // Get icon based on activity type
 const getActivityIcon = (iconType, type) => {
   const iconClass = 'h-4 w-4';
-  
+
   switch (iconType || type) {
     case 'pipeline':
     case 'pipeline_activity':
@@ -137,29 +138,34 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, isLast }) => {
         )}
         <div className="relative flex space-x-3">
           <div>
-            <span className={`h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white ${colorClasses}`}>
+            <span
+              className={`h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white ${colorClasses}`}
+            >
               {getActivityIcon(activity.icon, activity.type)}
             </span>
           </div>
           <div className="flex min-w-0 flex-1 justify-between space-x-4 pt-1">
             <div className="min-w-0 flex-1">
               <p className="text-sm text-gray-900">
-                <span className="font-medium">{activity.user}</span>
-                {' '}
-                <span className="text-gray-600">{activity.action}</span>
-                {' '}
+                <span className="font-medium">{activity.user}</span>{' '}
+                <span className="text-gray-600">{activity.action}</span>{' '}
                 <span className="font-medium">{activity.candidate}</span>
               </p>
               {activity.details && (
                 <p className="mt-0.5 text-xs text-gray-500">{activity.details}</p>
               )}
               {activity.metadata?.status && (
-                <span className={`mt-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                  activity.metadata.status === 'accepted' ? 'bg-green-100 text-green-800' :
-                  activity.metadata.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                  activity.metadata.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                  'bg-gray-100 text-gray-800'
-                }`}>
+                <span
+                  className={`mt-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                    activity.metadata.status === 'accepted'
+                      ? 'bg-green-100 text-green-800'
+                      : activity.metadata.status === 'rejected'
+                        ? 'bg-red-100 text-red-800'
+                        : activity.metadata.status === 'pending'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-gray-100 text-gray-800'
+                  }`}
+                >
                   {activity.metadata.status}
                 </span>
               )}
@@ -182,20 +188,27 @@ interface ActivityFeedProps {
   showRealtimeIndicator?: boolean;
 }
 
-const ActivityFeed: React.FC<ActivityFeedProps> = ({ 
-  activities = [], 
+const ActivityFeed: React.FC<ActivityFeedProps> = ({
+  activities = [],
   loading = false,
   onLoadMore,
   hasMore = false,
-  showRealtimeIndicator = false
+  showRealtimeIndicator = false,
 }) => {
   const [filter, setFilter] = useState('all');
-  
-  const filteredActivities = filter === 'all' 
-    ? activities 
-    : filter === 'interview'
-    ? activities.filter(a => a.type === 'interview' || a.type === 'interview_completed' || a.type === 'interview_cancelled' || a.icon === 'calendar')
-    : activities.filter(a => a.type === filter || a.icon === filter);
+
+  const filteredActivities =
+    filter === 'all'
+      ? activities
+      : filter === 'interview'
+        ? activities.filter(
+            (a) =>
+              a.type === 'interview' ||
+              a.type === 'interview_completed' ||
+              a.type === 'interview_cancelled' ||
+              a.icon === 'calendar'
+          )
+        : activities.filter((a) => a.type === filter || a.icon === filter);
 
   if (loading && activities.length === 0) {
     return (

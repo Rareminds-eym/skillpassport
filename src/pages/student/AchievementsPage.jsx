@@ -4,7 +4,12 @@ import { ArrowLeft } from 'lucide-react';
 import { Button } from '../../components/Students/components/ui/button';
 import AchievementsExpanded from '../../components/Students/components/AchievementsExpanded';
 import SkillTrackerExpanded from '../../components/Students/components/SkillTrackerExpanded';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/Students/components/ui/tabs';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '../../components/Students/components/ui/tabs';
 
 const AchievementsPage = () => {
   const navigate = useNavigate();
@@ -43,11 +48,11 @@ const AchievementsPage = () => {
               Skill Tracker
             </TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="achievements" className="mt-6">
             <AchievementsExpanded studentId={studentId} email={userEmail} />
           </TabsContent>
-          
+
           <TabsContent value="skills" className="mt-6">
             <SkillTrackerExpanded studentId={studentId} email={userEmail} />
           </TabsContent>

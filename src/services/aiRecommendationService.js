@@ -11,76 +11,58 @@ class AIRecommendationService {
    * Get AI-powered job recommendations for a student
    */
   async getRecommendations(studentId, forceRefresh = false) {
-    try {
-      // Check cache first unless force refresh is requested
-      if (!forceRefresh) {
-        const cachedData = await this.getCachedRecommendations(studentId);
-        if (cachedData) {
-          return {
-            success: true,
-            recommendations: cachedData.recommendations,
-            cached: true,
-            fallback: false,
-            reason: 'Cached recommendations'
-          };
-        }
+    // Check cache first unless force refresh is requested
+    if (!forceRefresh) {
+      const cachedData = await this.getCachedRecommendations(studentId);
+      if (cachedData) {
+        return {
+          success: true,
+          recommendations: cachedData.recommendations,
+          cached: true,
+          fallback: false,
+          reason: 'Cached recommendations',
+        };
       }
-
-      // Generate fresh recommendations via Cloudflare Worker (falls back to edge function)
-      let data, error;
-      try {
-        data = await careerApiService.getRecommendations(studentId, { forceRefresh: true });
-      } catch (err) {
-        error = err;
-        console.error('Error fetching recommendations:', err);
-        throw err;
-      }
-
-      // Cache the fresh recommendations
-      if (data?.recommendations && data.recommendations.length > 0) {
-        await this.cacheRecommendations(studentId, data.recommendations);
-      }
-
-      return {
-        success: true,
-        recommendations: data?.recommendations || [],
-        cached: false,
-        fallback: data?.fallback || false,
-        reason: data?.reason
-      };
-    } catch (error) {
-      console.error('❌ Failed to get recommendations:', error);
-      return {
-        success: false,
-        recommendations: [],
-        error: error.message
-      };
     }
+
+    // Generate fresh recommendations via Cloudflare Worker (falls back to edge function)
+    let data, error;
+    try {
+      data = await careerApiService.getRecommendations(studentId, { forceRefresh: true });
+    } catch (err) {
+      error = err;
+      console.error('Error fetching recommendations:', err);
+      throw err;
+    }
+
+    // Cache the fresh recommendations
+    if (data?.recommendations && data.recommendations.length > 0) {
+      await this.cacheRecommendations(studentId, data.recommendations);
+    }
+
+    return {
+      success: true,
+      recommendations: data?.recommendations || [],
+      cached: false,
+      fallback: data?.fallback || false,
+      reason: data?.reason,
+    };
   }
 
   /**
    * Get cached recommendations for a student
    */
   async getCachedRecommendations(studentId) {
-    try {
-      // recommendation_cache table doesn't exist, return null to force fresh fetch
-      return null;
-    } catch (error) {
-      console.error('Error fetching cached recommendations:', error);
-      return null;
-    }
+    // recommendation_cache table doesn't exist, return null to force fresh fetch
+    return null;
   }
 
   /**
    * Cache recommendations for a student
    */
   async cacheRecommendations(studentId, recommendations) {
-    try {
-      // recommendation_cache table doesn't exist, skip caching
-      return;
-    } catch (error) {
-      console.error('Error caching recommendations:', error);
-    }
+    // recommendation_cache table doesn't exist, skip caching
+    return;
   }
 
   /**
@@ -88,7 +70,6 @@ class AIRecommendationService {
    */
   async generateOpportunityEmbedding(opportunityId) {
     try {
-
       // Get opportunity details
       const { data: opp, error: fetchError } = await supabase
         .from('opportunities')
@@ -113,8 +94,10 @@ class AIRecommendationService {
         opp.mode,
         Array.isArray(opp.skills_required) ? opp.skills_required.join(' ') : '',
         Array.isArray(opp.requirements) ? opp.requirements.join(' ') : '',
-        Array.isArray(opp.responsibilities) ? opp.responsibilities.join(' ') : ''
-      ].filter(Boolean).join(' ');
+        Array.isArray(opp.responsibilities) ? opp.responsibilities.join(' ') : '',
+      ]
+        .filter(Boolean)
+        .join(' ');
 
       // Generate embedding via Cloudflare Worker
       let data;
@@ -123,7 +106,7 @@ class AIRecommendationService {
           text,
           table: 'opportunities',
           id: opportunityId,
-          type: 'opportunity'
+          type: 'opportunity',
         });
       } catch (error) {
         throw error;
@@ -141,7 +124,6 @@ class AIRecommendationService {
    */
   async generateStudentEmbedding(studentId) {
     try {
-
       // Get student details
       const { data: student, error: fetchError } = await supabase
         .from('students')
@@ -162,8 +144,12 @@ class AIRecommendationService {
         Array.isArray(student.skills) ? student.skills.join(' ') : '',
         Array.isArray(student.interests) ? student.interests.join(' ') : '',
         Array.isArray(student.preferred_departments) ? student.preferred_departments.join(' ') : '',
-        Array.isArray(student.preferred_employment_types) ? student.preferred_employment_types.join(' ') : ''
-      ].filter(Boolean).join(' ');
+        Array.isArray(student.preferred_employment_types)
+          ? student.preferred_employment_types.join(' ')
+          : '',
+      ]
+        .filter(Boolean)
+        .join(' ');
 
       // Generate embedding via Cloudflare Worker
       let data;
@@ -172,7 +158,7 @@ class AIRecommendationService {
           text,
           table: 'students',
           id: studentId,
-          type: 'student'
+          type: 'student',
         });
       } catch (error) {
         throw error;
@@ -190,15 +176,16 @@ class AIRecommendationService {
    */
   async trackInteraction(studentId, opportunityId, action) {
     try {
-      const { error } = await supabase
-        .from('opportunity_interactions')
-        .upsert({
+      const { error } = await supabase.from('opportunity_interactions').upsert(
+        {
           student_id: studentId,
           opportunity_id: opportunityId,
-          action
-        }, {
-          onConflict: 'student_id,opportunity_id,action'
-        });
+          action,
+        },
+        {
+          onConflict: 'student_id,opportunity_id,action',
+        }
+      );
 
       if (error) throw error;
 
@@ -244,7 +231,6 @@ class AIRecommendationService {
    */
   async generateAllOpportunityEmbeddings() {
     try {
-
       const { data: opportunities, error } = await supabase
         .from('opportunities')
         .select('id')
@@ -253,20 +239,19 @@ class AIRecommendationService {
 
       if (error) throw error;
 
-
       const results = [];
       for (const opp of opportunities) {
         const result = await this.generateOpportunityEmbedding(opp.id);
         results.push({ id: opp.id, ...result });
 
         // Add small delay to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 500));
       }
 
       return {
         success: true,
         processed: results.length,
-        results
+        results,
       };
     } catch (error) {
       console.error('Error generating batch embeddings:', error);
@@ -280,13 +265,11 @@ class AIRecommendationService {
   async updateStudentProfile(studentId, profileData) {
     try {
       // Update profile
-      const { error: updateError } = await supabase
-        .from('students')
-        .upsert({
-          id: studentId,
-          ...profileData,
-          updated_at: new Date().toISOString()
-        });
+      const { error: updateError } = await supabase.from('students').upsert({
+        id: studentId,
+        ...profileData,
+        updated_at: new Date().toISOString(),
+      });
 
       if (updateError) throw updateError;
 
@@ -336,4 +319,3 @@ class AIRecommendationService {
 }
 
 export default new AIRecommendationService();
-

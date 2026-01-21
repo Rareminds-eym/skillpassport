@@ -15,7 +15,10 @@ const ProfileDebug = () => {
       const info: any = {};
 
       // Get current user
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
       info.authUser = user;
       info.authError = authError;
 
@@ -26,7 +29,7 @@ const ProfileDebug = () => {
           .select('*')
           .eq('id', user.id)
           .maybeSingle();
-        
+
         info.userData = userData;
         info.userError = userError;
 
@@ -36,7 +39,7 @@ const ProfileDebug = () => {
           .select('*')
           .eq('user_id', user.id)
           .maybeSingle();
-        
+
         info.educatorData = educatorData;
         info.educatorError = educatorError;
 
@@ -45,7 +48,7 @@ const ProfileDebug = () => {
           .from('organizations')
           .select('*')
           .limit(5);
-        
+
         info.schoolsData = orgsData;
         info.schoolsError = orgsError;
 
@@ -55,7 +58,7 @@ const ProfileDebug = () => {
           .select('table_name')
           .eq('table_schema', 'public')
           .in('table_name', ['users', 'school_educators', 'organizations']);
-        
+
         info.tablesData = tablesData;
         info.tablesError = tablesError;
       }
@@ -76,7 +79,7 @@ const ProfileDebug = () => {
   return (
     <div className="p-8 space-y-6">
       <h1 className="text-2xl font-bold">Profile Debug Information</h1>
-      
+
       <div className="bg-gray-100 p-4 rounded-lg">
         <h2 className="text-lg font-semibold mb-2">Raw Debug Data:</h2>
         <pre className="text-sm overflow-auto max-h-96 bg-white p-4 rounded border">

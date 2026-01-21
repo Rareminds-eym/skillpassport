@@ -1,14 +1,14 @@
 /**
  * Question Generator Service
- * 
+ *
  * Generates adaptive aptitude test questions using Cloudflare Worker API.
  * Handles question generation for all test phases with caching support.
- * 
+ *
  * Requirements: 4.1, 4.2, 1.4, 6.1, 2.5, 6.2, 3.1, 3.2, 7.1
- * 
+ *
  * NOTE: This service uses the unified question-generation-api Cloudflare Worker.
  * The worker is deployed at: question-generation-api.dark-mode-d021.workers.dev
- * 
+ *
  * Endpoints used:
  * - POST /generate/diagnostic - Diagnostic screener questions
  * - POST /generate/adaptive - Adaptive core questions
@@ -31,7 +31,8 @@ import {
 // =============================================================================
 
 // Use environment variable or fallback to production URL
-const ADAPTIVE_APTITUDE_API_URL = import.meta.env.VITE_QUESTION_GENERATION_API_URL || 
+const ADAPTIVE_APTITUDE_API_URL =
+  import.meta.env.VITE_QUESTION_GENERATION_API_URL ||
   'https://question-generation-api.dark-mode-d021.workers.dev';
 
 /**
@@ -40,7 +41,7 @@ const ADAPTIVE_APTITUDE_API_URL = import.meta.env.VITE_QUESTION_GENERATION_API_U
 async function callWorkerAPI<T>(endpoint: string, body: Record<string, unknown>): Promise<T> {
   const url = `${ADAPTIVE_APTITUDE_API_URL}${endpoint}`;
   console.log(`📡 [QuestionGeneratorService] Calling Worker API: ${url}`);
-  
+
   const response = await fetch(url, {
     method: 'POST',
     headers: {
@@ -52,7 +53,9 @@ async function callWorkerAPI<T>(endpoint: string, body: Record<string, unknown>)
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
     console.error('❌ [QuestionGeneratorService] Worker API error:', response.status, errorData);
-    throw new Error((errorData as { error?: string }).error || `API request failed: ${response.status}`);
+    throw new Error(
+      (errorData as { error?: string }).error || `API request failed: ${response.status}`
+    );
   }
 
   return response.json() as Promise<T>;
@@ -72,7 +75,7 @@ export interface QuestionGenerationOptions {
   subtag?: Subtag;
   count?: number;
   excludeQuestionIds?: string[];
-  excludeQuestionTexts?: string[];  // Add support for excluding by question text
+  excludeQuestionTexts?: string[]; // Add support for excluding by question text
 }
 
 /**
@@ -114,63 +117,205 @@ function getFallbackQuestion(
   subtag: Subtag
 ): Question {
   // Middle school fallback questions (grades 6-8, ages 11-14)
-  const middleSchoolFallbacks: Record<Subtag, { text: string; options: Question['options']; correctAnswer: Question['correctAnswer'] }[]> = {
+  const middleSchoolFallbacks: Record<
+    Subtag,
+    { text: string; options: Question['options']; correctAnswer: Question['correctAnswer'] }[]
+  > = {
     numerical_reasoning: [
-      { text: 'If you have 24 cookies and want to share them equally among 6 friends, how many cookies does each friend get?', options: { A: '3', B: '4', C: '5', D: '6' }, correctAnswer: 'B' },
-      { text: 'A pizza has 8 slices. If you eat 2 slices, what fraction of the pizza is left?', options: { A: '1/4', B: '1/2', C: '3/4', D: '2/3' }, correctAnswer: 'C' },
-      { text: 'If a book costs $12 and you have $50, how many books can you buy?', options: { A: '3', B: '4', C: '5', D: '6' }, correctAnswer: 'B' },
+      {
+        text: 'If you have 24 cookies and want to share them equally among 6 friends, how many cookies does each friend get?',
+        options: { A: '3', B: '4', C: '5', D: '6' },
+        correctAnswer: 'B',
+      },
+      {
+        text: 'A pizza has 8 slices. If you eat 2 slices, what fraction of the pizza is left?',
+        options: { A: '1/4', B: '1/2', C: '3/4', D: '2/3' },
+        correctAnswer: 'C',
+      },
+      {
+        text: 'If a book costs $12 and you have $50, how many books can you buy?',
+        options: { A: '3', B: '4', C: '5', D: '6' },
+        correctAnswer: 'B',
+      },
     ],
     logical_reasoning: [
-      { text: 'All dogs are animals. Max is a dog. What can we conclude?', options: { A: 'Max is a cat', B: 'Max is an animal', C: 'All animals are dogs', D: 'Max is not a pet' }, correctAnswer: 'B' },
-      { text: 'If it rains, the grass gets wet. The grass is wet. What can we say?', options: { A: 'It definitely rained', B: 'It might have rained', C: 'It did not rain', D: 'The sun is out' }, correctAnswer: 'B' },
+      {
+        text: 'All dogs are animals. Max is a dog. What can we conclude?',
+        options: {
+          A: 'Max is a cat',
+          B: 'Max is an animal',
+          C: 'All animals are dogs',
+          D: 'Max is not a pet',
+        },
+        correctAnswer: 'B',
+      },
+      {
+        text: 'If it rains, the grass gets wet. The grass is wet. What can we say?',
+        options: {
+          A: 'It definitely rained',
+          B: 'It might have rained',
+          C: 'It did not rain',
+          D: 'The sun is out',
+        },
+        correctAnswer: 'B',
+      },
     ],
     verbal_reasoning: [
-      { text: 'HOT is to COLD as DAY is to:', options: { A: 'Sun', B: 'Night', C: 'Light', D: 'Morning' }, correctAnswer: 'B' },
-      { text: 'BOOK is to READ as SONG is to:', options: { A: 'Dance', B: 'Write', C: 'Listen', D: 'Play' }, correctAnswer: 'C' },
-      { text: 'Which word means the OPPOSITE of "happy"?', options: { A: 'Joyful', B: 'Excited', C: 'Sad', D: 'Cheerful' }, correctAnswer: 'C' },
+      {
+        text: 'HOT is to COLD as DAY is to:',
+        options: { A: 'Sun', B: 'Night', C: 'Light', D: 'Morning' },
+        correctAnswer: 'B',
+      },
+      {
+        text: 'BOOK is to READ as SONG is to:',
+        options: { A: 'Dance', B: 'Write', C: 'Listen', D: 'Play' },
+        correctAnswer: 'C',
+      },
+      {
+        text: 'Which word means the OPPOSITE of "happy"?',
+        options: { A: 'Joyful', B: 'Excited', C: 'Sad', D: 'Cheerful' },
+        correctAnswer: 'C',
+      },
     ],
     spatial_reasoning: [
-      { text: 'How many sides does a triangle have?', options: { A: '2', B: '3', C: '4', D: '5' }, correctAnswer: 'B' },
-      { text: 'If you fold a square piece of paper in half, what shape do you get?', options: { A: 'Triangle', B: 'Circle', C: 'Rectangle', D: 'Pentagon' }, correctAnswer: 'C' },
-      { text: 'How many corners does a rectangle have?', options: { A: '2', B: '3', C: '4', D: '5' }, correctAnswer: 'C' },
+      {
+        text: 'How many sides does a triangle have?',
+        options: { A: '2', B: '3', C: '4', D: '5' },
+        correctAnswer: 'B',
+      },
+      {
+        text: 'If you fold a square piece of paper in half, what shape do you get?',
+        options: { A: 'Triangle', B: 'Circle', C: 'Rectangle', D: 'Pentagon' },
+        correctAnswer: 'C',
+      },
+      {
+        text: 'How many corners does a rectangle have?',
+        options: { A: '2', B: '3', C: '4', D: '5' },
+        correctAnswer: 'C',
+      },
     ],
     data_interpretation: [
-      { text: 'In a class of 20 students, 8 like soccer and 12 like basketball. How many more students like basketball than soccer?', options: { A: '2', B: '4', C: '6', D: '8' }, correctAnswer: 'B' },
-      { text: 'If a graph shows Monday: 5 books, Tuesday: 3 books, Wednesday: 7 books read, which day had the most books read?', options: { A: 'Monday', B: 'Tuesday', C: 'Wednesday', D: 'All equal' }, correctAnswer: 'C' },
+      {
+        text: 'In a class of 20 students, 8 like soccer and 12 like basketball. How many more students like basketball than soccer?',
+        options: { A: '2', B: '4', C: '6', D: '8' },
+        correctAnswer: 'B',
+      },
+      {
+        text: 'If a graph shows Monday: 5 books, Tuesday: 3 books, Wednesday: 7 books read, which day had the most books read?',
+        options: { A: 'Monday', B: 'Tuesday', C: 'Wednesday', D: 'All equal' },
+        correctAnswer: 'C',
+      },
     ],
     pattern_recognition: [
-      { text: 'What comes next: 2, 4, 6, 8, ?', options: { A: '9', B: '10', C: '11', D: '12' }, correctAnswer: 'B' },
-      { text: 'What comes next: A, B, C, D, ?', options: { A: 'F', B: 'E', C: 'G', D: 'A' }, correctAnswer: 'B' },
-      { text: 'What comes next: 1, 3, 5, 7, ?', options: { A: '8', B: '9', C: '10', D: '11' }, correctAnswer: 'B' },
+      {
+        text: 'What comes next: 2, 4, 6, 8, ?',
+        options: { A: '9', B: '10', C: '11', D: '12' },
+        correctAnswer: 'B',
+      },
+      {
+        text: 'What comes next: A, B, C, D, ?',
+        options: { A: 'F', B: 'E', C: 'G', D: 'A' },
+        correctAnswer: 'B',
+      },
+      {
+        text: 'What comes next: 1, 3, 5, 7, ?',
+        options: { A: '8', B: '9', C: '10', D: '11' },
+        correctAnswer: 'B',
+      },
     ],
   };
 
   // High school fallback questions (grades 9-10, ages 14-16)
-  const highSchoolFallbacks: Record<Subtag, { text: string; options: Question['options']; correctAnswer: Question['correctAnswer'] }[]> = {
+  const highSchoolFallbacks: Record<
+    Subtag,
+    { text: string; options: Question['options']; correctAnswer: Question['correctAnswer'] }[]
+  > = {
     numerical_reasoning: [
-      { text: 'If a shirt costs $25 and is on sale for 20% off, what is the sale price?', options: { A: '$20', B: '$22', C: '$18', D: '$15' }, correctAnswer: 'A' },
-      { text: 'What is 15% of 80?', options: { A: '10', B: '12', C: '15', D: '8' }, correctAnswer: 'B' },
-      { text: 'If 3x + 7 = 22, what is x?', options: { A: '3', B: '4', C: '5', D: '6' }, correctAnswer: 'C' },
+      {
+        text: 'If a shirt costs $25 and is on sale for 20% off, what is the sale price?',
+        options: { A: '$20', B: '$22', C: '$18', D: '$15' },
+        correctAnswer: 'A',
+      },
+      {
+        text: 'What is 15% of 80?',
+        options: { A: '10', B: '12', C: '15', D: '8' },
+        correctAnswer: 'B',
+      },
+      {
+        text: 'If 3x + 7 = 22, what is x?',
+        options: { A: '3', B: '4', C: '5', D: '6' },
+        correctAnswer: 'C',
+      },
     ],
     logical_reasoning: [
-      { text: 'All roses are flowers. Some flowers fade quickly. Which conclusion is valid?', options: { A: 'All roses fade quickly', B: 'Some roses may fade quickly', C: 'No roses fade quickly', D: 'Roses never fade' }, correctAnswer: 'B' },
-      { text: 'If it rains, the ground gets wet. The ground is wet. What can we conclude?', options: { A: 'It definitely rained', B: 'It might have rained', C: 'It did not rain', D: 'The sun is shining' }, correctAnswer: 'B' },
+      {
+        text: 'All roses are flowers. Some flowers fade quickly. Which conclusion is valid?',
+        options: {
+          A: 'All roses fade quickly',
+          B: 'Some roses may fade quickly',
+          C: 'No roses fade quickly',
+          D: 'Roses never fade',
+        },
+        correctAnswer: 'B',
+      },
+      {
+        text: 'If it rains, the ground gets wet. The ground is wet. What can we conclude?',
+        options: {
+          A: 'It definitely rained',
+          B: 'It might have rained',
+          C: 'It did not rain',
+          D: 'The sun is shining',
+        },
+        correctAnswer: 'B',
+      },
     ],
     verbal_reasoning: [
-      { text: 'HAPPY is to SAD as LIGHT is to:', options: { A: 'Lamp', B: 'Dark', C: 'Bright', D: 'Sun' }, correctAnswer: 'B' },
-      { text: 'Choose the word most similar to "ABUNDANT":', options: { A: 'Scarce', B: 'Plentiful', C: 'Empty', D: 'Small' }, correctAnswer: 'B' },
+      {
+        text: 'HAPPY is to SAD as LIGHT is to:',
+        options: { A: 'Lamp', B: 'Dark', C: 'Bright', D: 'Sun' },
+        correctAnswer: 'B',
+      },
+      {
+        text: 'Choose the word most similar to "ABUNDANT":',
+        options: { A: 'Scarce', B: 'Plentiful', C: 'Empty', D: 'Small' },
+        correctAnswer: 'B',
+      },
     ],
     spatial_reasoning: [
-      { text: 'If you rotate a square 90 degrees clockwise, which corner moves to the top?', options: { A: 'Top-left', B: 'Top-right', C: 'Bottom-left', D: 'Bottom-right' }, correctAnswer: 'C' },
-      { text: 'How many faces does a cube have?', options: { A: '4', B: '6', C: '8', D: '12' }, correctAnswer: 'B' },
+      {
+        text: 'If you rotate a square 90 degrees clockwise, which corner moves to the top?',
+        options: { A: 'Top-left', B: 'Top-right', C: 'Bottom-left', D: 'Bottom-right' },
+        correctAnswer: 'C',
+      },
+      {
+        text: 'How many faces does a cube have?',
+        options: { A: '4', B: '6', C: '8', D: '12' },
+        correctAnswer: 'B',
+      },
     ],
     data_interpretation: [
-      { text: 'A bar chart shows sales of 100, 150, 200, 250 for Jan-Apr. What is the average monthly sales?', options: { A: '150', B: '175', C: '200', D: '225' }, correctAnswer: 'B' },
-      { text: 'If a pie chart shows 25% for Category A, what angle does it represent?', options: { A: '45°', B: '90°', C: '180°', D: '270°' }, correctAnswer: 'B' },
+      {
+        text: 'A bar chart shows sales of 100, 150, 200, 250 for Jan-Apr. What is the average monthly sales?',
+        options: { A: '150', B: '175', C: '200', D: '225' },
+        correctAnswer: 'B',
+      },
+      {
+        text: 'If a pie chart shows 25% for Category A, what angle does it represent?',
+        options: { A: '45°', B: '90°', C: '180°', D: '270°' },
+        correctAnswer: 'B',
+      },
     ],
     pattern_recognition: [
-      { text: 'What comes next: 2, 4, 8, 16, ?', options: { A: '24', B: '32', C: '20', D: '18' }, correctAnswer: 'B' },
-      { text: 'Complete the pattern: A, C, E, G, ?', options: { A: 'H', B: 'I', C: 'J', D: 'K' }, correctAnswer: 'B' },
+      {
+        text: 'What comes next: 2, 4, 8, 16, ?',
+        options: { A: '24', B: '32', C: '20', D: '18' },
+        correctAnswer: 'B',
+      },
+      {
+        text: 'Complete the pattern: A, C, E, G, ?',
+        options: { A: 'H', B: 'I', C: 'J', D: 'K' },
+        correctAnswer: 'B',
+      },
     ],
   };
 
@@ -192,7 +337,6 @@ function getFallbackQuestion(
     createdAt: new Date().toISOString(),
   };
 }
-
 
 // =============================================================================
 // CACHING FUNCTIONS
@@ -304,7 +448,7 @@ async function updateQuestionUsage(questionIds: string[]): Promise<void> {
 /**
  * Generates questions for the Diagnostic Screener phase via Cloudflare Worker
  * Requirements: 1.4, 6.1
- * 
+ *
  * - Generates 6 questions: 2 Easy (1-2), 2 Medium (3), 2 Hard (4-5)
  * - Ensures at least 3 different subtags
  * - Prevents consecutive same-subtag questions
@@ -314,19 +458,23 @@ export async function generateDiagnosticScreenerQuestions(
   excludeQuestionIds: string[] = [],
   excludeQuestionTexts: string[] = []
 ): Promise<QuestionGenerationResult> {
-  console.log('🎯 [QuestionGeneratorService] generateDiagnosticScreenerQuestions called:', { gradeLevel });
+  console.log('🎯 [QuestionGeneratorService] generateDiagnosticScreenerQuestions called:', {
+    gradeLevel,
+  });
   const startTime = Date.now();
-  
+
   try {
     const result = await callWorkerAPI<QuestionGenerationResult>('/generate/diagnostic', {
       gradeLevel,
       excludeQuestionIds,
       excludeQuestionTexts,
     });
-    
+
     const elapsed = Date.now() - startTime;
-    console.log(`✅ [QuestionGeneratorService] Generated ${result.questions.length} questions in ${elapsed}ms (via Worker)`);
-    
+    console.log(
+      `✅ [QuestionGeneratorService] Generated ${result.questions.length} questions in ${elapsed}ms (via Worker)`
+    );
+
     return result;
   } catch (error) {
     console.error('❌ [QuestionGeneratorService] Worker API failed, using fallback:', error);
@@ -340,15 +488,21 @@ export async function generateDiagnosticScreenerQuestions(
  */
 function generateFallbackDiagnosticQuestions(gradeLevel: GradeLevel): QuestionGenerationResult {
   const phase: TestPhase = 'diagnostic_screener';
-  const subtags: Subtag[] = ['numerical_reasoning', 'logical_reasoning', 'verbal_reasoning', 
-                             'spatial_reasoning', 'data_interpretation', 'pattern_recognition'];
+  const subtags: Subtag[] = [
+    'numerical_reasoning',
+    'logical_reasoning',
+    'verbal_reasoning',
+    'spatial_reasoning',
+    'data_interpretation',
+    'pattern_recognition',
+  ];
   // All 6 questions at Level 3 for baseline assessment
   const difficulties: DifficultyLevel[] = [3, 3, 3, 3, 3, 3];
-  
-  const questions: Question[] = difficulties.map((difficulty, i) => 
+
+  const questions: Question[] = difficulties.map((difficulty, i) =>
     getFallbackQuestion(gradeLevel, phase, difficulty, subtags[i])
   );
-  
+
   return {
     questions,
     fromCache: false,
@@ -364,7 +518,7 @@ function generateFallbackDiagnosticQuestions(gradeLevel: GradeLevel): QuestionGe
 /**
  * Generates questions for the Adaptive Core Loop phase via Cloudflare Worker
  * Requirements: 2.5, 6.2
- * 
+ *
  * - Generates 8-11 questions with adaptive difficulty
  * - Maintains subtag balance (no more than 2 consecutive same subtag)
  * - Limits consecutive difficulty jumps in same direction to 2
@@ -376,9 +530,13 @@ export async function generateAdaptiveCoreQuestions(
   excludeQuestionIds: string[] = [],
   excludeQuestionTexts: string[] = []
 ): Promise<QuestionGenerationResult> {
-  console.log('🎯 [QuestionGeneratorService] generateAdaptiveCoreQuestions called:', { gradeLevel, startingDifficulty, count });
+  console.log('🎯 [QuestionGeneratorService] generateAdaptiveCoreQuestions called:', {
+    gradeLevel,
+    startingDifficulty,
+    count,
+  });
   const startTime = Date.now();
-  
+
   try {
     const result = await callWorkerAPI<QuestionGenerationResult>('/generate/adaptive', {
       gradeLevel,
@@ -387,10 +545,12 @@ export async function generateAdaptiveCoreQuestions(
       excludeQuestionIds,
       excludeQuestionTexts,
     });
-    
+
     const elapsed = Date.now() - startTime;
-    console.log(`✅ [QuestionGeneratorService] Generated ${result.questions.length} questions in ${elapsed}ms (via Worker)`);
-    
+    console.log(
+      `✅ [QuestionGeneratorService] Generated ${result.questions.length} questions in ${elapsed}ms (via Worker)`
+    );
+
     return result;
   } catch (error) {
     console.error('❌ [QuestionGeneratorService] Worker API failed, using fallback:', error);
@@ -402,20 +562,20 @@ export async function generateAdaptiveCoreQuestions(
  * Generates fallback adaptive questions when worker is unavailable
  */
 function generateFallbackAdaptiveQuestions(
-  gradeLevel: GradeLevel, 
+  gradeLevel: GradeLevel,
   startingDifficulty: DifficultyLevel,
   count: number
 ): QuestionGenerationResult {
   const phase: TestPhase = 'adaptive_core';
   const shuffledSubtags = [...ALL_SUBTAGS].sort(() => Math.random() - 0.5);
-  
+
   const questions: Question[] = [];
   let currentDifficulty = startingDifficulty;
-  
+
   for (let i = 0; i < count; i++) {
     const subtag = shuffledSubtags[i % shuffledSubtags.length];
     questions.push(getFallbackQuestion(gradeLevel, phase, currentDifficulty, subtag));
-    
+
     // Vary difficulty slightly
     if (Math.random() > 0.5 && currentDifficulty < 5) {
       currentDifficulty = (currentDifficulty + 1) as DifficultyLevel;
@@ -423,7 +583,7 @@ function generateFallbackAdaptiveQuestions(
       currentDifficulty = (currentDifficulty - 1) as DifficultyLevel;
     }
   }
-  
+
   return {
     questions,
     fromCache: false,
@@ -432,7 +592,6 @@ function generateFallbackAdaptiveQuestions(
   };
 }
 
-
 // =============================================================================
 // STABILITY CONFIRMATION GENERATION (via Cloudflare Worker)
 // =============================================================================
@@ -440,7 +599,7 @@ function generateFallbackAdaptiveQuestions(
 /**
  * Generates questions for the Stability Confirmation phase via Cloudflare Worker
  * Requirements: 3.1, 3.2
- * 
+ *
  * - Generates 4-6 questions within ±1 of provisional band
  * - Includes at least one near-boundary item
  * - Mixes data and logic formats
@@ -452,9 +611,13 @@ export async function generateStabilityConfirmationQuestions(
   excludeQuestionIds: string[] = [],
   excludeQuestionTexts: string[] = []
 ): Promise<QuestionGenerationResult> {
-  console.log('🎯 [QuestionGeneratorService] generateStabilityConfirmationQuestions called:', { gradeLevel, provisionalBand, count });
+  console.log('🎯 [QuestionGeneratorService] generateStabilityConfirmationQuestions called:', {
+    gradeLevel,
+    provisionalBand,
+    count,
+  });
   const startTime = Date.now();
-  
+
   try {
     const result = await callWorkerAPI<QuestionGenerationResult>('/generate/stability', {
       gradeLevel,
@@ -463,10 +626,12 @@ export async function generateStabilityConfirmationQuestions(
       excludeQuestionIds,
       excludeQuestionTexts,
     });
-    
+
     const elapsed = Date.now() - startTime;
-    console.log(`✅ [QuestionGeneratorService] Generated ${result.questions.length} questions in ${elapsed}ms (via Worker)`);
-    
+    console.log(
+      `✅ [QuestionGeneratorService] Generated ${result.questions.length} questions in ${elapsed}ms (via Worker)`
+    );
+
     return result;
   } catch (error) {
     console.error('❌ [QuestionGeneratorService] Worker API failed, using fallback:', error);
@@ -478,25 +643,25 @@ export async function generateStabilityConfirmationQuestions(
  * Generates fallback stability questions when worker is unavailable
  */
 function generateFallbackStabilityQuestions(
-  gradeLevel: GradeLevel, 
+  gradeLevel: GradeLevel,
   provisionalBand: DifficultyLevel,
   count: number
 ): QuestionGenerationResult {
   const phase: TestPhase = 'stability_confirmation';
   const dataFormats: Subtag[] = ['data_interpretation', 'pattern_recognition'];
   const logicFormats: Subtag[] = ['logical_reasoning', 'numerical_reasoning'];
-  
+
   const questions: Question[] = [];
   const minDiff = Math.max(1, provisionalBand - 1) as DifficultyLevel;
   const maxDiff = Math.min(5, provisionalBand + 1) as DifficultyLevel;
-  
+
   for (let i = 0; i < count; i++) {
     const pool = i % 2 === 0 ? dataFormats : logicFormats;
     const subtag = pool[Math.floor(Math.random() * pool.length)];
     const difficulty = [minDiff, provisionalBand, maxDiff][Math.floor(Math.random() * 3)];
     questions.push(getFallbackQuestion(gradeLevel, phase, difficulty, subtag));
   }
-  
+
   return {
     questions,
     fromCache: false,
@@ -521,9 +686,14 @@ export async function generateSingleQuestion(
   excludeQuestionIds: string[] = [],
   excludeQuestionTexts: string[] = []
 ): Promise<QuestionGenerationResult> {
-  console.log('🎯 [QuestionGeneratorService] generateSingleQuestion called:', { gradeLevel, phase, difficulty, subtag });
+  console.log('🎯 [QuestionGeneratorService] generateSingleQuestion called:', {
+    gradeLevel,
+    phase,
+    difficulty,
+    subtag,
+  });
   const startTime = Date.now();
-  
+
   try {
     const result = await callWorkerAPI<QuestionGenerationResult>('/generate/single', {
       gradeLevel,
@@ -533,10 +703,12 @@ export async function generateSingleQuestion(
       excludeQuestionIds,
       excludeQuestionTexts,
     });
-    
+
     const elapsed = Date.now() - startTime;
-    console.log(`✅ [QuestionGeneratorService] Generated single question in ${elapsed}ms (via Worker)`);
-    
+    console.log(
+      `✅ [QuestionGeneratorService] Generated single question in ${elapsed}ms (via Worker)`
+    );
+
     return result;
   } catch (error) {
     console.error('❌ [QuestionGeneratorService] Worker API failed, using fallback:', error);
@@ -560,18 +732,37 @@ export async function generateSingleQuestion(
 export async function generateQuestions(
   options: QuestionGenerationOptions
 ): Promise<QuestionGenerationResult> {
-  const { gradeLevel, phase, difficulty, subtag, count = 1, excludeQuestionIds = [], excludeQuestionTexts = [] } = options;
+  const {
+    gradeLevel,
+    phase,
+    difficulty,
+    subtag,
+    count = 1,
+    excludeQuestionIds = [],
+    excludeQuestionTexts = [],
+  } = options;
 
   // If specific difficulty and subtag provided, generate single question
   if (difficulty !== undefined && subtag !== undefined) {
-    return generateSingleQuestion(gradeLevel, phase, difficulty, subtag, excludeQuestionIds, excludeQuestionTexts);
+    return generateSingleQuestion(
+      gradeLevel,
+      phase,
+      difficulty,
+      subtag,
+      excludeQuestionIds,
+      excludeQuestionTexts
+    );
   }
 
   // Phase-specific generation
   switch (phase) {
     case 'diagnostic_screener':
-      return generateDiagnosticScreenerQuestions(gradeLevel, excludeQuestionIds, excludeQuestionTexts);
-    
+      return generateDiagnosticScreenerQuestions(
+        gradeLevel,
+        excludeQuestionIds,
+        excludeQuestionTexts
+      );
+
     case 'adaptive_core':
       return generateAdaptiveCoreQuestions(
         gradeLevel,
@@ -580,7 +771,7 @@ export async function generateQuestions(
         excludeQuestionIds,
         excludeQuestionTexts
       );
-    
+
     case 'stability_confirmation':
       return generateStabilityConfirmationQuestions(
         gradeLevel,
@@ -589,7 +780,7 @@ export async function generateQuestions(
         excludeQuestionIds,
         excludeQuestionTexts
       );
-    
+
     default:
       throw new Error(`Unknown phase: ${phase}`);
   }
@@ -612,7 +803,11 @@ export class QuestionGeneratorService {
     excludeQuestionIds?: string[],
     excludeQuestionTexts?: string[]
   ): Promise<QuestionGenerationResult> {
-    return generateDiagnosticScreenerQuestions(gradeLevel, excludeQuestionIds, excludeQuestionTexts);
+    return generateDiagnosticScreenerQuestions(
+      gradeLevel,
+      excludeQuestionIds,
+      excludeQuestionTexts
+    );
   }
 
   /**
@@ -626,7 +821,13 @@ export class QuestionGeneratorService {
     excludeQuestionIds?: string[],
     excludeQuestionTexts?: string[]
   ): Promise<QuestionGenerationResult> {
-    return generateAdaptiveCoreQuestions(gradeLevel, startingDifficulty, count, excludeQuestionIds, excludeQuestionTexts);
+    return generateAdaptiveCoreQuestions(
+      gradeLevel,
+      startingDifficulty,
+      count,
+      excludeQuestionIds,
+      excludeQuestionTexts
+    );
   }
 
   /**
@@ -640,7 +841,13 @@ export class QuestionGeneratorService {
     excludeQuestionIds?: string[],
     excludeQuestionTexts?: string[]
   ): Promise<QuestionGenerationResult> {
-    return generateStabilityConfirmationQuestions(gradeLevel, provisionalBand, count, excludeQuestionIds, excludeQuestionTexts);
+    return generateStabilityConfirmationQuestions(
+      gradeLevel,
+      provisionalBand,
+      count,
+      excludeQuestionIds,
+      excludeQuestionTexts
+    );
   }
 
   /**

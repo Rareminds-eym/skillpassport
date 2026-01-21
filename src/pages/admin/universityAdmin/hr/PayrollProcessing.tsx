@@ -107,7 +107,7 @@ const PayrollProcessing: React.FC = () => {
             Processing
           </span>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div className="text-center">
             <div className="text-2xl font-bold text-gray-900">425</div>
@@ -206,7 +206,9 @@ const PayrollProcessing: React.FC = () => {
                   ₹{cycle.totalAmount.toLocaleString()}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(cycle.status)}`}>
+                  <span
+                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(cycle.status)}`}
+                  >
                     {getStatusIcon(cycle.status)}
                     <span className="ml-1">{cycle.status}</span>
                   </span>
@@ -218,9 +220,7 @@ const PayrollProcessing: React.FC = () => {
                   <button className="text-indigo-600 hover:text-indigo-900 mr-3">
                     View Details
                   </button>
-                  <button className="text-green-600 hover:text-green-900">
-                    Download
-                  </button>
+                  <button className="text-green-600 hover:text-green-900">Download</button>
                 </td>
               </tr>
             ))}
@@ -315,7 +315,9 @@ const PayrollProcessing: React.FC = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Monthly Salary</p>
-              <p className="text-2xl font-semibold text-gray-900">₹{(payrollStats.totalSalary / 100000).toFixed(1)}L</p>
+              <p className="text-2xl font-semibold text-gray-900">
+                ₹{(payrollStats.totalSalary / 100000).toFixed(1)}L
+              </p>
             </div>
           </div>
         </div>
@@ -327,7 +329,9 @@ const PayrollProcessing: React.FC = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Pending Approvals</p>
-              <p className="text-2xl font-semibold text-gray-900">{payrollStats.pendingApprovals}</p>
+              <p className="text-2xl font-semibold text-gray-900">
+                {payrollStats.pendingApprovals}
+              </p>
             </div>
           </div>
         </div>

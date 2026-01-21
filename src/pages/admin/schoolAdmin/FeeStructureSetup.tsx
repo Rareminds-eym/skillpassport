@@ -195,7 +195,7 @@
 //   const handleAdd = () => {
 //     const err = validate();
 //     setErrors(err);
-    
+
 //     if (Object.keys(err).length !== 0) {
 //       showAlert("Please fix the validation errors.", "error");
 //       return;
@@ -203,7 +203,7 @@
 
 //     if (editingId !== null) {
 //       // Update existing
-//       setFeeList(feeList.map((f) => 
+//       setFeeList(feeList.map((f) =>
 //         f.id === editingId ? { ...form, id: editingId } : f
 //       ));
 //       setEditingId(null);
@@ -275,10 +275,10 @@
 
 //   const handleClassChange = (classId: string) => {
 //     const selectedClass = CLASSES.find(c => c.id === classId);
-//     setForm({ 
-//       ...form, 
-//       classId, 
-//       className: selectedClass?.name || "" 
+//     setForm({
+//       ...form,
+//       classId,
+//       className: selectedClass?.name || ""
 //     });
 //     if (errors.classId) {
 //       setErrors({ ...errors, classId: undefined });
@@ -323,7 +323,7 @@
 //         <h3 className="text-lg font-semibold mb-4 text-gray-700">
 //           {editingId ? "Edit Fee Structure" : "Add New Fee Structure"}
 //         </h3>
-        
+
 //         <div className="space-y-4">
 //           {/* Academic Year & Class - Side by Side */}
 //           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -407,7 +407,7 @@
 //                 />
 //                 <ChevronDown className="absolute right-3 top-3 text-gray-400" size={18} />
 //               </div>
-              
+
 //               {showDropdown && (
 //                 <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
 //                   {filteredFeeHeads.length > 0 ? (
@@ -459,8 +459,6 @@
 //               )}
 //             </div>
 //           )}
-
-
 
 //           {/* Amount & Frequency - Side by Side */}
 //           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -556,7 +554,7 @@
 //               </>
 //             )}
 //           </button>
-          
+
 //           {editingId && (
 //             <button
 //               onClick={handleCancelEdit}
@@ -673,8 +671,20 @@
 //     </div>
 //   );
 // }
-import { useState, useRef, useEffect } from "react";
-import { Pencil, Trash2, Plus, AlertCircle, Calendar, Percent, Save, X, GraduationCap, Search, ChevronDown } from "lucide-react";
+import { useState, useRef, useEffect } from 'react';
+import {
+  Pencil,
+  Trash2,
+  Plus,
+  AlertCircle,
+  Calendar,
+  Percent,
+  Save,
+  X,
+  GraduationCap,
+  Search,
+  ChevronDown,
+} from 'lucide-react';
 
 interface FeeStructure {
   id: number;
@@ -709,18 +719,18 @@ interface Errors {
 }
 
 const CLASSES = [
-  { id: "class-1", name: "Class 1" },
-  { id: "class-2", name: "Class 2" },
-  { id: "class-3", name: "Class 3" },
-  { id: "class-4", name: "Class 4" },
-  { id: "class-5", name: "Class 5" },
-  { id: "class-6", name: "Class 6" },
-  { id: "class-7", name: "Class 7" },
-  { id: "class-8", name: "Class 8" },
-  { id: "class-9", name: "Class 9" },
-  { id: "class-10", name: "Class 10" },
-  { id: "class-11", name: "Class 11" },
-  { id: "class-12", name: "Class 12" },
+  { id: 'class-1', name: 'Class 1' },
+  { id: 'class-2', name: 'Class 2' },
+  { id: 'class-3', name: 'Class 3' },
+  { id: 'class-4', name: 'Class 4' },
+  { id: 'class-5', name: 'Class 5' },
+  { id: 'class-6', name: 'Class 6' },
+  { id: 'class-7', name: 'Class 7' },
+  { id: 'class-8', name: 'Class 8' },
+  { id: 'class-9', name: 'Class 9' },
+  { id: 'class-10', name: 'Class 10' },
+  { id: 'class-11', name: 'Class 11' },
+  { id: 'class-12', name: 'Class 12' },
 ];
 
 // Generate academic years
@@ -741,42 +751,67 @@ const generateAcademicYears = () => {
 const ACADEMIC_YEARS = generateAcademicYears();
 
 const FEE_HEADS = [
-  "Tuition Fee", "Admission Fee", "Registration Fee", "Term Fee", "Exam Fee",
-  "Development Fee", "Library Fee", "Laboratory Fee", "Smart Class Fee",
-  "Activity Fee", "Annual Day Fee", "Sports Fee", "Maintenance Fee",
-  "Electricity/Utility Fee", "Books & Stationery Fee", "Uniform Fee",
-  "Study Material Fee", "ID Card Fee", "School Diary Fee", "Transport Fee",
-  "Bus Fee", "Vehicle Maintenance Fee", "Hostel Fee", "Mess Fee",
-  "Laundry Fee", "Bedding Fee", "Late Fee", "Re-Admission Fee",
-  "Transfer Certificate Fee", "Duplicate ID Card Fee", "Document Verification Fee",
-  "Caution Deposit", "Security Fund", "Others",
+  'Tuition Fee',
+  'Admission Fee',
+  'Registration Fee',
+  'Term Fee',
+  'Exam Fee',
+  'Development Fee',
+  'Library Fee',
+  'Laboratory Fee',
+  'Smart Class Fee',
+  'Activity Fee',
+  'Annual Day Fee',
+  'Sports Fee',
+  'Maintenance Fee',
+  'Electricity/Utility Fee',
+  'Books & Stationery Fee',
+  'Uniform Fee',
+  'Study Material Fee',
+  'ID Card Fee',
+  'School Diary Fee',
+  'Transport Fee',
+  'Bus Fee',
+  'Vehicle Maintenance Fee',
+  'Hostel Fee',
+  'Mess Fee',
+  'Laundry Fee',
+  'Bedding Fee',
+  'Late Fee',
+  'Re-Admission Fee',
+  'Transfer Certificate Fee',
+  'Duplicate ID Card Fee',
+  'Document Verification Fee',
+  'Caution Deposit',
+  'Security Fund',
+  'Others',
 ];
 
 export default function FeeStructureSetup() {
   const [form, setForm] = useState<FormData>({
-    classId: "",
-    className: "",
+    classId: '',
+    className: '',
     academicYear: ACADEMIC_YEARS[1].value,
-    feeHead: "",
-    customFeeHead: "",
+    feeHead: '',
+    customFeeHead: '',
     amount: 0, // 🔥 updated
-    frequency: "monthly",
-    lateFee: "",
+    frequency: 'monthly',
+    lateFee: '',
   });
 
   const [errors, setErrors] = useState<Errors>({});
   const [feeList, setFeeList] = useState<FeeStructure[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [alertMessage, setAlertMessage] = useState<string>("");
-  const [alertType, setAlertType] = useState<"success" | "error" | "">("");
-  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [alertMessage, setAlertMessage] = useState<string>('');
+  const [alertType, setAlertType] = useState<'success' | 'error' | ''>('');
+  const [searchTerm, setSearchTerm] = useState<string>('');
   const [showDropdown, setShowDropdown] = useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const frequencyOptions = [
-    { value: "monthly", label: "Monthly" },
-    { value: "term", label: "Term-wise" },
-    { value: "annual", label: "Annual/Yearly" },
+    { value: 'monthly', label: 'Monthly' },
+    { value: 'term', label: 'Term-wise' },
+    { value: 'annual', label: 'Annual/Yearly' },
   ];
 
   const filteredFeeHeads = FEE_HEADS.filter((head) =>
@@ -790,38 +825,38 @@ export default function FeeStructureSetup() {
         setShowDropdown(false);
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const showAlert = (message: string, type: "success" | "error") => {
+  const showAlert = (message: string, type: 'success' | 'error') => {
     setAlertMessage(message);
     setAlertType(type);
     setTimeout(() => {
-      setAlertMessage("");
-      setAlertType("");
+      setAlertMessage('');
+      setAlertType('');
     }, 3000);
   };
 
   const validate = (): Errors => {
     const err: Errors = {};
 
-    if (!form.classId) err.classId = "Please select a class.";
+    if (!form.classId) err.classId = 'Please select a class.';
 
-    if (!form.academicYear) err.academicYear = "Please select academic year.";
+    if (!form.academicYear) err.academicYear = 'Please select academic year.';
 
-    if (!form.feeHead.trim()) err.feeHead = "Fee head is required.";
+    if (!form.feeHead.trim()) err.feeHead = 'Fee head is required.';
 
-    if (form.feeHead === "Others" && !form.customFeeHead.trim()) {
-      err.customFeeHead = "Specify custom fee head.";
+    if (form.feeHead === 'Others' && !form.customFeeHead.trim()) {
+      err.customFeeHead = 'Specify custom fee head.';
     }
 
     if (!form.amount || form.amount <= 0) {
-      err.amount = "Amount must be greater than 0.";
+      err.amount = 'Amount must be greater than 0.';
     }
 
     const lateFeeNum = parseFloat(form.lateFee);
-    if (form.lateFee && lateFeeNum > 50) err.lateFee = "Late fee cannot exceed 50%.";
+    if (form.lateFee && lateFeeNum > 50) err.lateFee = 'Late fee cannot exceed 50%.';
 
     return err;
   };
@@ -831,37 +866,36 @@ export default function FeeStructureSetup() {
     setErrors(err);
 
     if (Object.keys(err).length !== 0) {
-      showAlert("Please fix the validation errors.", "error");
+      showAlert('Please fix the validation errors.', 'error');
       return;
     }
 
     // 🔥 DUPLICATE CHECK IMPLEMENTED
-    const finalFeeHead = form.feeHead === "Others" ? form.customFeeHead : form.feeHead;
+    const finalFeeHead = form.feeHead === 'Others' ? form.customFeeHead : form.feeHead;
 
-    const isDuplicate = feeList.some((item) =>
-      item.classId === form.classId &&
-      item.academicYear === form.academicYear &&
-      (item.feeHead === form.feeHead ||
-        (item.feeHead === "Others" && item.customFeeHead === form.customFeeHead)) &&
-      item.id !== editingId
+    const isDuplicate = feeList.some(
+      (item) =>
+        item.classId === form.classId &&
+        item.academicYear === form.academicYear &&
+        (item.feeHead === form.feeHead ||
+          (item.feeHead === 'Others' && item.customFeeHead === form.customFeeHead)) &&
+        item.id !== editingId
     );
 
     if (isDuplicate) {
-      showAlert("This fee head already exists for the selected class & academic year.", "error");
+      showAlert('This fee head already exists for the selected class & academic year.', 'error');
       return;
     }
 
     if (editingId !== null) {
       // Update
-      setFeeList(
-        feeList.map((f) => (f.id === editingId ? { ...form, id: editingId } : f))
-      );
+      setFeeList(feeList.map((f) => (f.id === editingId ? { ...form, id: editingId } : f)));
       setEditingId(null);
-      showAlert("Fee structure updated!", "success");
+      showAlert('Fee structure updated!', 'success');
     } else {
       // Add
       setFeeList([...feeList, { ...form, id: Date.now() }]);
-      showAlert("Fee structure added!", "success");
+      showAlert('Fee structure added!', 'success');
     }
 
     resetForm();
@@ -887,30 +921,30 @@ export default function FeeStructureSetup() {
   };
 
   const handleDelete = (id: number) => {
-    if (window.confirm("Are you sure to delete?")) {
+    if (window.confirm('Are you sure to delete?')) {
       setFeeList(feeList.filter((f) => f.id !== id));
-      showAlert("Deleted successfully!", "success");
+      showAlert('Deleted successfully!', 'success');
     }
   };
 
   const resetForm = () => {
     setForm({
-      classId: "",
-      className: "",
+      classId: '',
+      className: '',
       academicYear: ACADEMIC_YEARS[1].value,
-      feeHead: "",
-      customFeeHead: "",
+      feeHead: '',
+      customFeeHead: '',
       amount: 0,
-      frequency: "monthly",
-      lateFee: "",
+      frequency: 'monthly',
+      lateFee: '',
     });
     setErrors({});
-    setSearchTerm("");
+    setSearchTerm('');
   };
 
   const handleClassChange = (classId: string) => {
     const selectedClass = CLASSES.find((c) => c.id === classId);
-    setForm({ ...form, classId, className: selectedClass?.name || "" });
+    setForm({ ...form, classId, className: selectedClass?.name || '' });
   };
 
   const handleInputChange = (field: keyof FormData, value: any) => {
@@ -922,7 +956,6 @@ export default function FeeStructureSetup() {
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
-
       {/* Header */}
       <h2 className="text-3xl font-bold mb-6">Fee Structure Setup</h2>
 
@@ -930,9 +963,7 @@ export default function FeeStructureSetup() {
       {alertMessage && (
         <div
           className={`p-4 mb-4 rounded-lg ${
-            alertType === "success"
-              ? "bg-green-100 text-green-700"
-              : "bg-red-100 text-red-700"
+            alertType === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
           }`}
         >
           {alertMessage}
@@ -941,20 +972,18 @@ export default function FeeStructureSetup() {
 
       {/* Form */}
       <div className="bg-white p-6 rounded-lg shadow mb-6">
-
         <h3 className="text-xl font-semibold mb-4">
-          {editingId ? "Edit Fee Structure" : "Add New Fee Structure"}
+          {editingId ? 'Edit Fee Structure' : 'Add New Fee Structure'}
         </h3>
 
         {/* Academic Year + Class */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
           {/* Academic Year */}
           <div>
             <label className="font-medium">Academic Year *</label>
             <select
               value={form.academicYear}
-              onChange={(e) => handleInputChange("academicYear", e.target.value)}
+              onChange={(e) => handleInputChange('academicYear', e.target.value)}
               className="w-full border p-2 rounded"
             >
               {ACADEMIC_YEARS.map((year) => (
@@ -1003,7 +1032,7 @@ export default function FeeStructureSetup() {
                   <div
                     key={head}
                     onClick={() => {
-                      handleInputChange("feeHead", head);
+                      handleInputChange('feeHead', head);
                       setSearchTerm(head);
                       setShowDropdown(false);
                     }}
@@ -1018,13 +1047,13 @@ export default function FeeStructureSetup() {
         </div>
 
         {/* Custom Fee Head */}
-        {form.feeHead === "Others" && (
+        {form.feeHead === 'Others' && (
           <div className="mt-4">
             <label className="font-medium">Custom Fee Head *</label>
             <input
               type="text"
               value={form.customFeeHead}
-              onChange={(e) => handleInputChange("customFeeHead", e.target.value)}
+              onChange={(e) => handleInputChange('customFeeHead', e.target.value)}
               className="w-full border p-2 rounded"
               placeholder="Enter custom name"
             />
@@ -1033,14 +1062,13 @@ export default function FeeStructureSetup() {
 
         {/* Amount + Frequency */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-
           {/* Amount */}
           <div>
             <label className="font-medium">Amount (₹) *</label>
             <input
               type="number"
               value={form.amount}
-              onChange={(e) => handleInputChange("amount", Number(e.target.value))}
+              onChange={(e) => handleInputChange('amount', Number(e.target.value))}
               className="w-full border p-2 rounded"
               min="0"
             />
@@ -1051,7 +1079,7 @@ export default function FeeStructureSetup() {
             <label className="font-medium">Frequency *</label>
             <select
               value={form.frequency}
-              onChange={(e) => handleInputChange("frequency", e.target.value)}
+              onChange={(e) => handleInputChange('frequency', e.target.value)}
               className="w-full border p-2 rounded"
             >
               {frequencyOptions.map((f) => (
@@ -1069,7 +1097,7 @@ export default function FeeStructureSetup() {
           <input
             type="number"
             value={form.lateFee}
-            onChange={(e) => handleInputChange("lateFee", e.target.value)}
+            onChange={(e) => handleInputChange('lateFee', e.target.value)}
             className="w-full border p-2 rounded"
             max="50"
             min="0"
@@ -1078,18 +1106,12 @@ export default function FeeStructureSetup() {
 
         {/* Buttons */}
         <div className="flex gap-3 mt-6">
-          <button
-            onClick={handleAdd}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg"
-          >
-            {editingId ? "Update Fee Structure" : "Add Fee Structure"}
+          <button onClick={handleAdd} className="bg-blue-600 text-white px-6 py-2 rounded-lg">
+            {editingId ? 'Update Fee Structure' : 'Add Fee Structure'}
           </button>
 
           {editingId && (
-            <button
-              onClick={handleCancelEdit}
-              className="bg-gray-300 px-6 py-2 rounded-lg"
-            >
+            <button onClick={handleCancelEdit} className="bg-gray-300 px-6 py-2 rounded-lg">
               Cancel
             </button>
           )}
@@ -1121,30 +1143,28 @@ export default function FeeStructureSetup() {
                 <tr
                   key={item.id}
                   className={`border-b ${
-                    editingId === item.id ? "bg-yellow-100" : index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                    editingId === item.id
+                      ? 'bg-yellow-100'
+                      : index % 2 === 0
+                        ? 'bg-white'
+                        : 'bg-gray-50'
                   }`}
                 >
                   <td className="p-3">{item.academicYear}</td>
                   <td className="p-3">{item.className}</td>
                   <td className="p-3">
-                    {item.feeHead === "Others" ? item.customFeeHead : item.feeHead}
+                    {item.feeHead === 'Others' ? item.customFeeHead : item.feeHead}
                   </td>
-                  <td className="p-3">₹{item.amount.toLocaleString("en-IN")}</td>
+                  <td className="p-3">₹{item.amount.toLocaleString('en-IN')}</td>
                   <td className="p-3">{item.frequency}</td>
-                  <td className="p-3">{item.lateFee || "N/A"}</td>
+                  <td className="p-3">{item.lateFee || 'N/A'}</td>
 
                   <td className="p-3 flex gap-2">
-                    <button
-                      onClick={() => handleEdit(item)}
-                      className="text-blue-600"
-                    >
+                    <button onClick={() => handleEdit(item)} className="text-blue-600">
                       <Pencil size={18} />
                     </button>
 
-                    <button
-                      onClick={() => handleDelete(item.id)}
-                      className="text-red-600"
-                    >
+                    <button onClick={() => handleDelete(item.id)} className="text-red-600">
                       <Trash2 size={18} />
                     </button>
                   </td>

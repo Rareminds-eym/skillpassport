@@ -1,10 +1,10 @@
-import React, { useState } from "react";
-import { X, Download, FileText, User, Users, Loader2 } from "lucide-react";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
-import { Faculty, CollegeClass, ScheduleSlot, TimePeriod, Break } from "../../types";
-import { DAYS } from "../../constants";
-import { formatDate, isHoliday, getHolidayName } from "../../utils";
+import React, { useState } from 'react';
+import { X, Download, FileText, User, Users, Loader2 } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { Faculty, CollegeClass, ScheduleSlot, TimePeriod, Break } from '../../types';
+import { DAYS } from '../../constants';
+import { formatDate, isHoliday, getHolidayName } from '../../utils';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -17,7 +17,7 @@ interface ExportModalProps {
   onClose: () => void;
 }
 
-type ExportType = "current" | "faculty" | "class";
+type ExportType = 'current' | 'faculty' | 'class';
 
 const ExportModal: React.FC<ExportModalProps> = ({
   isOpen,
@@ -29,73 +29,80 @@ const ExportModal: React.FC<ExportModalProps> = ({
   classes,
   onClose,
 }) => {
-  const [exportType, setExportType] = useState<ExportType>("current");
-  const [selectedFacultyId, setSelectedFacultyId] = useState<string>("");
-  const [selectedClassId, setSelectedClassId] = useState<string>("");
+  const [exportType, setExportType] = useState<ExportType>('current');
+  const [selectedFacultyId, setSelectedFacultyId] = useState<string>('');
+  const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [exporting, setExporting] = useState(false);
 
   if (!isOpen) return null;
 
   const getFacultyName = (id: string) => {
     const f = faculty.find((f) => f.id === id);
-    return f ? `${f.first_name} ${f.last_name}` : "";
+    return f ? `${f.first_name} ${f.last_name}` : '';
   };
 
   const getClassName = (id: string) => {
     const c = classes.find((c) => c.id === id);
-    return c ? `${c.grade}-${c.section}` : "";
+    return c ? `${c.grade}-${c.section}` : '';
   };
 
   const getClassFullName = (id: string) => {
     const c = classes.find((c) => c.id === id);
-    return c ? `${c.name} (${c.grade}-${c.section})` : "";
+    return c ? `${c.name} (${c.grade}-${c.section})` : '';
   };
 
   const generatePDF = async () => {
     setExporting(true);
 
     try {
-      const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
       const pageWidth = doc.internal.pageSize.getWidth();
 
       // Title
-      let title = "Timetable";
-      let subtitle = "";
+      let title = 'Timetable';
+      let subtitle = '';
 
-      if (exportType === "faculty" && selectedFacultyId) {
+      if (exportType === 'faculty' && selectedFacultyId) {
         title = `Faculty Timetable - ${getFacultyName(selectedFacultyId)}`;
-        subtitle = "Weekly Schedule";
-      } else if (exportType === "class" && selectedClassId) {
+        subtitle = 'Weekly Schedule';
+      } else if (exportType === 'class' && selectedClassId) {
         title = `Class Timetable - ${getClassFullName(selectedClassId)}`;
-        subtitle = "Weekly Schedule";
+        subtitle = 'Weekly Schedule';
       } else {
-        title = "College Timetable";
+        title = 'College Timetable';
         subtitle = `Week: ${formatDate(weekDates[0])} - ${formatDate(weekDates[5])}, ${weekDates[0].getFullYear()}`;
       }
 
       // Header
       doc.setFontSize(18);
-      doc.setFont("helvetica", "bold");
-      doc.text(title, pageWidth / 2, 15, { align: "center" });
+      doc.setFont('helvetica', 'bold');
+      doc.text(title, pageWidth / 2, 15, { align: 'center' });
 
       doc.setFontSize(11);
-      doc.setFont("helvetica", "normal");
-      doc.text(subtitle, pageWidth / 2, 22, { align: "center" });
+      doc.setFont('helvetica', 'normal');
+      doc.text(subtitle, pageWidth / 2, 22, { align: 'center' });
 
       // Filter slots based on export type
       let filteredSlots = slots;
-      if (exportType === "faculty" && selectedFacultyId) {
+      if (exportType === 'faculty' && selectedFacultyId) {
         filteredSlots = slots.filter((s) => s.educator_id === selectedFacultyId);
-      } else if (exportType === "class" && selectedClassId) {
+      } else if (exportType === 'class' && selectedClassId) {
         filteredSlots = slots.filter((s) => s.class_id === selectedClassId);
       }
 
       // Build table data
-      const tableHead = [["Time", ...DAYS.map((day, i) => {
-        const date = weekDates[i];
-        const holiday = isHoliday(date, breaks);
-        return holiday ? `${day}\n${formatDate(date)}\n(${getHolidayName(date, breaks)})` : `${day}\n${formatDate(date)}`;
-      })]];
+      const tableHead = [
+        [
+          'Time',
+          ...DAYS.map((day, i) => {
+            const date = weekDates[i];
+            const holiday = isHoliday(date, breaks);
+            return holiday
+              ? `${day}\n${formatDate(date)}\n(${getHolidayName(date, breaks)})`
+              : `${day}\n${formatDate(date)}`;
+          }),
+        ],
+      ];
 
       const tableBody = periods
         .filter((p) => !p.is_break)
@@ -107,7 +114,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
             const holiday = isHoliday(date, breaks);
 
             if (holiday) {
-              row.push("Holiday");
+              row.push('Holiday');
               return;
             }
 
@@ -116,15 +123,15 @@ const ExportModal: React.FC<ExportModalProps> = ({
               const matchesDay = s.day_of_week === dayIndex + 1;
               const matchesPeriod = s.period_number === period.period_number;
               const matchesDate =
-                s.is_recurring || s.schedule_date === date.toISOString().split("T")[0];
+                s.is_recurring || s.schedule_date === date.toISOString().split('T')[0];
               return matchesDay && matchesPeriod && matchesDate;
             });
 
             if (slot) {
               let cellContent = slot.subject_name;
-              if (exportType === "faculty") {
+              if (exportType === 'faculty') {
                 cellContent += `\n${getClassName(slot.class_id)}`;
-              } else if (exportType === "class") {
+              } else if (exportType === 'class') {
                 cellContent += `\n${getFacultyName(slot.educator_id)}`;
               } else {
                 cellContent += `\n${getFacultyName(slot.educator_id)}\n${getClassName(slot.class_id)}`;
@@ -134,7 +141,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
               }
               row.push(cellContent);
             } else {
-              row.push("-");
+              row.push('-');
             }
           });
 
@@ -147,7 +154,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
         .forEach((period) => {
           const breakRow = [
             `${period.period_name}\n${period.start_time}-${period.end_time}`,
-            ...DAYS.map(() => period.break_type === "lunch" ? "Lunch Break" : "Break"),
+            ...DAYS.map(() => (period.break_type === 'lunch' ? 'Lunch Break' : 'Break')),
           ];
           // Insert at correct position
           const insertIndex = periods.findIndex((p) => p.period_number === period.period_number);
@@ -160,37 +167,37 @@ const ExportModal: React.FC<ExportModalProps> = ({
         head: tableHead,
         body: tableBody,
         startY: 28,
-        theme: "grid",
+        theme: 'grid',
         styles: {
           fontSize: 8,
           cellPadding: 2,
-          valign: "middle",
-          halign: "center",
+          valign: 'middle',
+          halign: 'center',
           lineWidth: 0.1,
         },
         headStyles: {
           fillColor: [79, 70, 229], // Indigo
           textColor: 255,
-          fontStyle: "bold",
+          fontStyle: 'bold',
           fontSize: 9,
         },
         alternateRowStyles: {
           fillColor: [249, 250, 251],
         },
         columnStyles: {
-          0: { cellWidth: 25, halign: "left", fontStyle: "bold" },
+          0: { cellWidth: 25, halign: 'left', fontStyle: 'bold' },
         },
         didParseCell: (data) => {
           // Style break rows
           if (data.row.raw && Array.isArray(data.row.raw)) {
             const firstCell = data.row.raw[0] as string;
-            if (firstCell?.includes("Break")) {
+            if (firstCell?.includes('Break')) {
               data.cell.styles.fillColor = [254, 243, 199]; // Amber-100
               data.cell.styles.textColor = [146, 64, 14]; // Amber-800
             }
           }
           // Style holiday cells
-          if (data.cell.raw === "Holiday") {
+          if (data.cell.raw === 'Holiday') {
             data.cell.styles.fillColor = [254, 226, 226]; // Red-100
             data.cell.styles.textColor = [153, 27, 27]; // Red-800
           }
@@ -207,32 +214,32 @@ const ExportModal: React.FC<ExportModalProps> = ({
           `Generated on ${new Date().toLocaleDateString()} | Page ${i} of ${pageCount}`,
           pageWidth / 2,
           doc.internal.pageSize.getHeight() - 10,
-          { align: "center" }
+          { align: 'center' }
         );
       }
 
       // Save
-      let filename = "timetable";
-      if (exportType === "faculty" && selectedFacultyId) {
-        filename = `timetable-${getFacultyName(selectedFacultyId).replace(/\s+/g, "-").toLowerCase()}`;
-      } else if (exportType === "class" && selectedClassId) {
+      let filename = 'timetable';
+      if (exportType === 'faculty' && selectedFacultyId) {
+        filename = `timetable-${getFacultyName(selectedFacultyId).replace(/\s+/g, '-').toLowerCase()}`;
+      } else if (exportType === 'class' && selectedClassId) {
         filename = `timetable-${getClassName(selectedClassId).toLowerCase()}`;
       }
       doc.save(`${filename}.pdf`);
 
       onClose();
     } catch (error) {
-      console.error("Export error:", error);
-      alert("Failed to export PDF. Please try again.");
+      console.error('Export error:', error);
+      alert('Failed to export PDF. Please try again.');
     } finally {
       setExporting(false);
     }
   };
 
   const canExport =
-    exportType === "current" ||
-    (exportType === "faculty" && selectedFacultyId) ||
-    (exportType === "class" && selectedClassId);
+    exportType === 'current' ||
+    (exportType === 'faculty' && selectedFacultyId) ||
+    (exportType === 'class' && selectedClassId);
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -253,19 +260,19 @@ const ExportModal: React.FC<ExportModalProps> = ({
 
           <div className="grid grid-cols-3 gap-3">
             <button
-              onClick={() => setExportType("current")}
+              onClick={() => setExportType('current')}
               className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition ${
-                exportType === "current"
-                  ? "border-indigo-500 bg-indigo-50"
-                  : "border-gray-200 hover:border-gray-300"
+                exportType === 'current'
+                  ? 'border-indigo-500 bg-indigo-50'
+                  : 'border-gray-200 hover:border-gray-300'
               }`}
             >
               <FileText
-                className={`h-6 w-6 ${exportType === "current" ? "text-indigo-600" : "text-gray-400"}`}
+                className={`h-6 w-6 ${exportType === 'current' ? 'text-indigo-600' : 'text-gray-400'}`}
               />
               <span
                 className={`text-sm font-medium ${
-                  exportType === "current" ? "text-indigo-900" : "text-gray-700"
+                  exportType === 'current' ? 'text-indigo-900' : 'text-gray-700'
                 }`}
               >
                 Current View
@@ -273,19 +280,19 @@ const ExportModal: React.FC<ExportModalProps> = ({
             </button>
 
             <button
-              onClick={() => setExportType("faculty")}
+              onClick={() => setExportType('faculty')}
               className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition ${
-                exportType === "faculty"
-                  ? "border-indigo-500 bg-indigo-50"
-                  : "border-gray-200 hover:border-gray-300"
+                exportType === 'faculty'
+                  ? 'border-indigo-500 bg-indigo-50'
+                  : 'border-gray-200 hover:border-gray-300'
               }`}
             >
               <User
-                className={`h-6 w-6 ${exportType === "faculty" ? "text-indigo-600" : "text-gray-400"}`}
+                className={`h-6 w-6 ${exportType === 'faculty' ? 'text-indigo-600' : 'text-gray-400'}`}
               />
               <span
                 className={`text-sm font-medium ${
-                  exportType === "faculty" ? "text-indigo-900" : "text-gray-700"
+                  exportType === 'faculty' ? 'text-indigo-900' : 'text-gray-700'
                 }`}
               >
                 By Faculty
@@ -293,19 +300,19 @@ const ExportModal: React.FC<ExportModalProps> = ({
             </button>
 
             <button
-              onClick={() => setExportType("class")}
+              onClick={() => setExportType('class')}
               className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition ${
-                exportType === "class"
-                  ? "border-indigo-500 bg-indigo-50"
-                  : "border-gray-200 hover:border-gray-300"
+                exportType === 'class'
+                  ? 'border-indigo-500 bg-indigo-50'
+                  : 'border-gray-200 hover:border-gray-300'
               }`}
             >
               <Users
-                className={`h-6 w-6 ${exportType === "class" ? "text-indigo-600" : "text-gray-400"}`}
+                className={`h-6 w-6 ${exportType === 'class' ? 'text-indigo-600' : 'text-gray-400'}`}
               />
               <span
                 className={`text-sm font-medium ${
-                  exportType === "class" ? "text-indigo-900" : "text-gray-700"
+                  exportType === 'class' ? 'text-indigo-900' : 'text-gray-700'
                 }`}
               >
                 By Class
@@ -315,7 +322,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
         </div>
 
         {/* Faculty Selection */}
-        {exportType === "faculty" && (
+        {exportType === 'faculty' && (
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">Select Faculty</label>
             <select
@@ -334,7 +341,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
         )}
 
         {/* Class Selection */}
-        {exportType === "class" && (
+        {exportType === 'class' && (
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">Select Class</label>
             <select
@@ -357,19 +364,23 @@ const ExportModal: React.FC<ExportModalProps> = ({
           <div className="text-sm text-gray-600">
             <div className="font-medium text-gray-900 mb-1">Export Preview</div>
             <ul className="space-y-1 text-xs">
-              <li>• Week: {formatDate(weekDates[0])} - {formatDate(weekDates[5])}</li>
+              <li>
+                • Week: {formatDate(weekDates[0])} - {formatDate(weekDates[5])}
+              </li>
               <li>• {periods.filter((p) => !p.is_break).length} periods per day</li>
-              <li>• {
-                exportType === "faculty" && selectedFacultyId
-                  ? slots.filter(s => s.educator_id === selectedFacultyId).length
-                  : exportType === "class" && selectedClassId
-                    ? slots.filter(s => s.class_id === selectedClassId).length
-                    : slots.length
-              } scheduled slots</li>
-              {exportType === "faculty" && selectedFacultyId && (
+              <li>
+                •{' '}
+                {exportType === 'faculty' && selectedFacultyId
+                  ? slots.filter((s) => s.educator_id === selectedFacultyId).length
+                  : exportType === 'class' && selectedClassId
+                    ? slots.filter((s) => s.class_id === selectedClassId).length
+                    : slots.length}{' '}
+                scheduled slots
+              </li>
+              {exportType === 'faculty' && selectedFacultyId && (
                 <li>• Faculty: {getFacultyName(selectedFacultyId)}</li>
               )}
-              {exportType === "class" && selectedClassId && (
+              {exportType === 'class' && selectedClassId && (
                 <li>• Class: {getClassFullName(selectedClassId)}</li>
               )}
             </ul>

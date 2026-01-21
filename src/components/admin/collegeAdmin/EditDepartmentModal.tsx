@@ -1,8 +1,11 @@
 import { useAuth } from '@/context/AuthContext';
-import { ChevronDownIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import React, { useEffect, useState } from "react";
+import { ChevronDownIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import React, { useEffect, useState } from 'react';
 import { supabase } from '../../../lib/supabaseClient';
-import { DepartmentWithStats, departmentService } from '../../../services/college/departmentService';
+import {
+  DepartmentWithStats,
+  departmentService,
+} from '../../../services/college/departmentService';
 
 interface Faculty {
   id: string;
@@ -35,25 +38,29 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({
   facultyLoading = false,
 }) => {
   const { user } = useAuth();
-  const [name, setName] = useState("");
-  const [code, setCode] = useState("");
+  const [name, setName] = useState('');
+  const [code, setCode] = useState('');
   const [selectedFaculty, setSelectedFaculty] = useState<Faculty | null>(null);
-  const [facultySearchTerm, setFacultySearchTerm] = useState("");
+  const [facultySearchTerm, setFacultySearchTerm] = useState('');
   const [showFacultyDropdown, setShowFacultyDropdown] = useState(false);
-  const [description, setDescription] = useState("");
-  const [status, setStatus] = useState("Active");
+  const [description, setDescription] = useState('');
+  const [status, setStatus] = useState('Active');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [codeValidation, setCodeValidation] = useState<{ isValid: boolean; message?: string } | null>(null);
+  const [codeValidation, setCodeValidation] = useState<{
+    isValid: boolean;
+    message?: string;
+  } | null>(null);
   const [isValidatingCode, setIsValidatingCode] = useState(false);
   const [collegeId, setCollegeId] = useState<string | null>(null);
-  const [originalCode, setOriginalCode] = useState("");
+  const [originalCode, setOriginalCode] = useState('');
 
   // Filter faculty based on search term
-  const filteredFaculty = allFaculty.filter(faculty =>
-    faculty.name.toLowerCase().includes(facultySearchTerm.toLowerCase()) ||
-    faculty.email.toLowerCase().includes(facultySearchTerm.toLowerCase()) ||
-    faculty.designation.toLowerCase().includes(facultySearchTerm.toLowerCase())
+  const filteredFaculty = allFaculty.filter(
+    (faculty) =>
+      faculty.name.toLowerCase().includes(facultySearchTerm.toLowerCase()) ||
+      faculty.email.toLowerCase().includes(facultySearchTerm.toLowerCase()) ||
+      faculty.designation.toLowerCase().includes(facultySearchTerm.toLowerCase())
   );
 
   // Get college ID when modal opens
@@ -66,12 +73,12 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({
           .eq('organization_type', 'college')
           .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
           .maybeSingle();
-        
+
         if (!error && data) {
           setCollegeId(data.id);
         }
       };
-      
+
       fetchCollegeId();
     }
   }, [isOpen, user]);
@@ -93,8 +100,8 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({
       setIsValidatingCode(true);
       try {
         const validation = await departmentService.validateDepartmentCode(
-          collegeId, 
-          code.trim(), 
+          collegeId,
+          code.trim(),
           department.id
         );
         setCodeValidation(validation);
@@ -111,30 +118,28 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({
 
   useEffect(() => {
     if (department && isOpen) {
-      setName(department.name || "");
-      setCode(department.code || "");
-      setOriginalCode(department.code || ""); // Store original code for comparison
-      setDescription(department.description || "");
+      setName(department.name || '');
+      setCode(department.code || '');
+      setOriginalCode(department.code || ''); // Store original code for comparison
+      setDescription(department.description || '');
       // Convert database status (lowercase) to UI format (capitalized)
-      const dbStatus = department.status || "active";
+      const dbStatus = department.status || 'active';
       setStatus(dbStatus.charAt(0).toUpperCase() + dbStatus.slice(1).toLowerCase());
       setError(null);
       setSubmitting(false);
       setCodeValidation(null);
       setIsValidatingCode(false);
-      
+
       // Find and set the selected faculty based on HOD info
-      const hodName = department.hod || department.metadata?.hod || "";
-      const hodEmail = department.email || department.metadata?.email || "";
-      
+      const hodName = department.hod || department.metadata?.hod || '';
+      const hodEmail = department.email || department.metadata?.email || '';
+
       if (hodName && hodName !== 'Not Assigned') {
         // Try to find faculty by name or email
-        const faculty = allFaculty.find(f => 
-          f.name === hodName || 
-          f.email === hodEmail ||
-          f.id === department.metadata?.hod_id
+        const faculty = allFaculty.find(
+          (f) => f.name === hodName || f.email === hodEmail || f.id === department.metadata?.hod_id
         );
-        
+
         if (faculty) {
           setSelectedFaculty(faculty);
           setFacultySearchTerm(faculty.name);
@@ -145,15 +150,15 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({
             name: hodName,
             email: hodEmail,
             designation: 'Head of Department',
-            specialization: ''
+            specialization: '',
           });
           setFacultySearchTerm(hodName);
         }
       } else {
         setSelectedFaculty(null);
-        setFacultySearchTerm("");
+        setFacultySearchTerm('');
       }
-      
+
       setShowFacultyDropdown(false);
     }
   }, [department, isOpen, allFaculty]);
@@ -177,20 +182,20 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({
 
   const handleSubmit = () => {
     if (!name.trim() || !code.trim()) {
-      setError("Please fill in all required fields");
+      setError('Please fill in all required fields');
       return;
     }
 
     // Check code validation (only if code was changed)
     if (code.trim().toUpperCase() !== originalCode.toUpperCase()) {
       if (codeValidation && !codeValidation.isValid) {
-        setError(codeValidation.message || "Department code is not valid");
+        setError(codeValidation.message || 'Department code is not valid');
         return;
       }
 
       // Don't submit if still validating
       if (isValidatingCode) {
-        setError("Please wait while we validate the department code");
+        setError('Please wait while we validate the department code');
         return;
       }
     }
@@ -210,7 +215,7 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({
           hod: selectedFaculty?.name || '',
           hod_id: selectedFaculty?.id || '',
           email: selectedFaculty?.email || '',
-        }
+        },
       };
       onUpdated(updated);
       setSubmitting(false);
@@ -226,7 +231,7 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({
   const handleFacultyInputChange = (value: string) => {
     setFacultySearchTerm(value);
     setShowFacultyDropdown(true);
-    
+
     // Clear selected faculty if input doesn't match
     if (selectedFaculty && !selectedFaculty.name.toLowerCase().includes(value.toLowerCase())) {
       setSelectedFaculty(null);
@@ -250,12 +255,16 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({
           </div>
 
           {error && (
-            <div className="mt-4 rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{error}</div>
+            <div className="mt-4 rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+              {error}
+            </div>
           )}
 
           <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-xs font-medium text-gray-700">Department Name *</label>
+              <label className="mb-1 block text-xs font-medium text-gray-700">
+                Department Name *
+              </label>
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -265,18 +274,20 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-700">Department Code *</label>
+              <label className="mb-1 block text-xs font-medium text-gray-700">
+                Department Code *
+              </label>
               <div className="relative">
                 <input
                   value={code}
                   onChange={(e) => setCode(e.target.value.toUpperCase())}
                   type="text"
                   className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
-                    codeValidation === null 
+                    codeValidation === null
                       ? 'border-gray-300 focus:ring-indigo-500'
                       : codeValidation.isValid
-                      ? 'border-green-300 focus:ring-green-500'
-                      : 'border-red-300 focus:ring-red-500'
+                        ? 'border-green-300 focus:ring-green-500'
+                        : 'border-red-300 focus:ring-red-500'
                   }`}
                   placeholder="CSE"
                   maxLength={10}
@@ -295,7 +306,9 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({
               )}
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-700">Head of Department</label>
+              <label className="mb-1 block text-xs font-medium text-gray-700">
+                Head of Department
+              </label>
               <div className="relative faculty-dropdown-container">
                 <input
                   value={facultySearchTerm}
@@ -303,11 +316,13 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({
                   onFocus={() => setShowFacultyDropdown(true)}
                   type="text"
                   className="w-full rounded-md border border-gray-300 px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder={facultyLoading ? "Loading faculty..." : "Search and select faculty..."}
+                  placeholder={
+                    facultyLoading ? 'Loading faculty...' : 'Search and select faculty...'
+                  }
                   disabled={facultyLoading}
                 />
                 <ChevronDownIcon className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                
+
                 {/* Dropdown */}
                 {showFacultyDropdown && !facultyLoading && (
                   <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
@@ -320,7 +335,9 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({
                           type="button"
                         >
                           <div className="text-sm font-medium text-gray-900">{faculty.name}</div>
-                          <div className="text-xs text-gray-500">{faculty.designation} • {faculty.email}</div>
+                          <div className="text-xs text-gray-500">
+                            {faculty.designation} • {faculty.email}
+                          </div>
                         </button>
                       ))
                     ) : (
@@ -366,11 +383,21 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({
           </div>
 
           <div className="mt-6 flex items-center justify-end gap-3">
-            <button onClick={onClose} className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50" disabled={submitting} type="button">
+            <button
+              onClick={onClose}
+              className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              disabled={submitting}
+              type="button"
+            >
               Cancel
             </button>
-            <button onClick={handleSubmit} className="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-gray-300" disabled={submitting} type="button">
-              {submitting ? "Saving..." : "Save Changes"}
+            <button
+              onClick={handleSubmit}
+              className="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+              disabled={submitting}
+              type="button"
+            >
+              {submitting ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         </div>

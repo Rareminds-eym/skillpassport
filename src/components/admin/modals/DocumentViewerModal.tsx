@@ -26,7 +26,7 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
   onClose,
   documents,
   personName,
-  personType
+  personType,
 }) => {
   const [selectedDocument, setSelectedDocument] = useState<string | null>(null);
 
@@ -39,11 +39,13 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
   if (documents.degreeUrl) {
     documentList.push({
       category: 'Degree Certificate',
-      docs: [{
-        name: 'Degree Certificate',
-        url: documents.degreeUrl,
-        type: 'application/pdf'
-      }]
+      docs: [
+        {
+          name: 'Degree Certificate',
+          url: documents.degreeUrl,
+          type: 'application/pdf',
+        },
+      ],
     });
   }
 
@@ -51,11 +53,13 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
   if (documents.idProofUrl) {
     documentList.push({
       category: 'ID Proof',
-      docs: [{
-        name: 'ID Proof',
-        url: documents.idProofUrl,
-        type: 'image/jpeg'
-      }]
+      docs: [
+        {
+          name: 'ID Proof',
+          url: documents.idProofUrl,
+          type: 'image/jpeg',
+        },
+      ],
     });
   }
 
@@ -66,8 +70,8 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
       docs: documents.experienceUrls.map((url, index) => ({
         name: `Experience Letter ${index + 1}`,
         url: url,
-        type: 'application/pdf'
-      }))
+        type: 'application/pdf',
+      })),
     });
   }
 
@@ -90,35 +94,39 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
 
   const handleDirectOpen = (url: string) => {
     // ALWAYS use proxy endpoint - NO direct URL access to prevent 401 errors
-    const storageApiUrl = import.meta.env.VITE_STORAGE_API_URL || 'https://storage-api.dark-mode-d021.workers.dev';
+    const storageApiUrl =
+      import.meta.env.VITE_STORAGE_API_URL || 'https://storage-api.dark-mode-d021.workers.dev';
     const proxyUrl = `${storageApiUrl}/document-access?url=${encodeURIComponent(url)}&mode=inline`;
     window.open(proxyUrl, '_blank');
   };
 
   const handleDownload = (url: string, filename: string) => {
     // ALWAYS use proxy endpoint - NO direct URL access to prevent 401 errors
-    const storageApiUrl = import.meta.env.VITE_STORAGE_API_URL || 'https://storage-api.dark-mode-d021.workers.dev';
+    const storageApiUrl =
+      import.meta.env.VITE_STORAGE_API_URL || 'https://storage-api.dark-mode-d021.workers.dev';
     const downloadUrl = `${storageApiUrl}/document-access?url=${encodeURIComponent(url)}&mode=download`;
     window.open(downloadUrl, '_blank');
   };
 
   const getProxyUrl = (url: string, mode: string = 'inline') => {
-    const storageApiUrl = import.meta.env.VITE_STORAGE_API_URL || 'https://storage-api.dark-mode-d021.workers.dev';
+    const storageApiUrl =
+      import.meta.env.VITE_STORAGE_API_URL || 'https://storage-api.dark-mode-d021.workers.dev';
     return `${storageApiUrl}/document-access?url=${encodeURIComponent(url)}&mode=${mode}`;
   };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        <div
+          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          onClick={onClose}
+        ></div>
 
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full sm:p-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-xl font-semibold text-gray-900">
-                {personName} - Documents
-              </h3>
+              <h3 className="text-xl font-semibold text-gray-900">{personName} - Documents</h3>
               <p className="text-sm text-gray-500 mt-1">
                 {personType === 'teacher' ? 'Teacher' : 'Student'} document viewer
               </p>
@@ -132,26 +140,33 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
             <div className="text-center py-12">
               <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No Documents</h3>
-              <p className="text-gray-500">No documents have been uploaded for this {personType}.</p>
+              <p className="text-gray-500">
+                No documents have been uploaded for this {personType}.
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Document List */}
               <div className="space-y-6">
                 <h4 className="text-lg font-medium text-gray-900">Uploaded Documents</h4>
-                
+
                 {documentList.map((category, categoryIndex) => (
                   <div key={categoryIndex} className="bg-gray-50 rounded-lg p-4">
-                    <h5 className="text-sm font-semibold text-gray-700 mb-3">{category.category}</h5>
+                    <h5 className="text-sm font-semibold text-gray-700 mb-3">
+                      {category.category}
+                    </h5>
                     <div className="space-y-2">
                       {category.docs.map((doc, docIndex) => (
-                        <div key={docIndex} className="flex items-center justify-between p-3 bg-white rounded-md border border-gray-200 hover:border-gray-300 transition-colors">
+                        <div
+                          key={docIndex}
+                          className="flex items-center justify-between p-3 bg-white rounded-md border border-gray-200 hover:border-gray-300 transition-colors"
+                        >
                           <div className="flex items-center space-x-3">
                             {getFileIcon(doc.type)}
                             <div>
                               <p className="text-sm font-medium text-gray-900">{doc.name}</p>
                               <p className="text-xs text-gray-500">
-                                {doc.type.includes('pdf') ? 'PDF Document' : 'Image File'} 
+                                {doc.type.includes('pdf') ? 'PDF Document' : 'Image File'}
                                 {formatFileSize(doc.size)}
                               </p>
                             </div>
@@ -202,15 +217,13 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
                           {/* Overlay with blur effect */}
                           <div className="absolute inset-0 bg-white bg-opacity-30 backdrop-blur-sm flex items-center justify-center">
                             <div className="text-center">
-                              
-                                <FileText className="h-12 w-12 text-indigo-500 mx-auto mb-2" />
-                                <p className="text-sm font-medium text-gray-700">Document Preview</p>
-                              
+                              <FileText className="h-12 w-12 text-indigo-500 mx-auto mb-2" />
+                              <p className="text-sm font-medium text-gray-700">Document Preview</p>
                             </div>
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="space-y-4">
                         <button
                           onClick={() => handleDirectOpen(selectedDocument)}
@@ -219,7 +232,7 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
                           <ExternalLink className="h-6 w-6 mr-3" />
                           Open Document
                         </button>
-                        
+
                         <div className="flex items-center justify-center space-x-4 text-sm">
                           <button
                             onClick={() => handleDownload(selectedDocument, 'document')}
@@ -243,7 +256,6 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
                           </button> */}
                         </div>
                       </div>
-          
                     </div>
                   </div>
                 ) : (
@@ -251,7 +263,9 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
                     <div className="text-center">
                       <Eye className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                       <h5 className="text-lg font-medium text-gray-900 mb-2">Select a Document</h5>
-                      <p className="text-gray-500">Click on any document from the list to access it securely</p>
+                      <p className="text-gray-500">
+                        Click on any document from the list to access it securely
+                      </p>
                     </div>
                   </div>
                 )}
@@ -404,11 +418,11 @@ export default DocumentViewerModal;
 
 //   const handleDirectOpen = (url: string) => {
 //     console.log('🚀 Direct open requested for URL:', url);
-    
+
 //     // ALWAYS use proxy endpoint - NO direct URL access to prevent 401 errors
 //     const storageApiUrl = import.meta.env.VITE_STORAGE_API_URL || 'https://storage-api.dark-mode-d021.workers.dev';
 //     const proxyUrl = `${storageApiUrl}/document-access?url=${encodeURIComponent(url)}&mode=inline`;
-    
+
 //     console.log('🔧 Proxy configuration:', {
 //       originalUrl: url,
 //       storageApiUrl: storageApiUrl,
@@ -416,9 +430,9 @@ export default DocumentViewerModal;
 //       finalProxyUrl: proxyUrl,
 //       proxyUrlLength: proxyUrl.length
 //     });
-    
+
 //     console.log('🌐 Opening document via proxy:', proxyUrl);
-    
+
 //     try {
 //       window.open(proxyUrl, '_blank');
 //       console.log('✅ Window.open executed successfully');
@@ -434,11 +448,11 @@ export default DocumentViewerModal;
 
 //   const handleDownload = (url: string, filename: string) => {
 //     console.log('⬇️ Download requested:', { url, filename });
-    
+
 //     // ALWAYS use proxy endpoint - NO direct URL access to prevent 401 errors
 //     const storageApiUrl = import.meta.env.VITE_STORAGE_API_URL || 'https://storage-api.dark-mode-d021.workers.dev';
 //     const downloadUrl = `${storageApiUrl}/document-access?url=${encodeURIComponent(url)}&mode=download`;
-    
+
 //     console.log('🔧 Download proxy configuration:', {
 //       originalUrl: url,
 //       filename: filename,
@@ -446,9 +460,9 @@ export default DocumentViewerModal;
 //       encodedUrl: encodeURIComponent(url),
 //       finalDownloadUrl: downloadUrl
 //     });
-    
+
 //     console.log('📥 Initiating download via proxy:', downloadUrl);
-    
+
 //     try {
 //       window.open(downloadUrl, '_blank');
 //       console.log('✅ Download window.open executed successfully');
@@ -465,7 +479,7 @@ export default DocumentViewerModal;
 //   const getProxyUrl = (url: string, mode: string = 'inline') => {
 //     const storageApiUrl = import.meta.env.VITE_STORAGE_API_URL || 'https://storage-api.dark-mode-d021.workers.dev';
 //     const proxyUrl = `${storageApiUrl}/document-access?url=${encodeURIComponent(url)}&mode=${mode}`;
-    
+
 //     console.log('🔗 Proxy URL generated:', {
 //       originalUrl: url,
 //       mode: mode,
@@ -473,7 +487,7 @@ export default DocumentViewerModal;
 //       encodedUrl: encodeURIComponent(url),
 //       finalProxyUrl: proxyUrl
 //     });
-    
+
 //     return proxyUrl;
 //   };
 
@@ -509,7 +523,7 @@ export default DocumentViewerModal;
 //               {/* Document List */}
 //               <div className="space-y-6">
 //                 <h4 className="text-lg font-medium text-gray-900">Uploaded Documents</h4>
-                
+
 //                 {documentList.map((category, categoryIndex) => (
 //                   <div key={categoryIndex} className="bg-gray-50 rounded-lg p-4">
 //                     <h5 className="text-sm font-semibold text-gray-700 mb-3">{category.category}</h5>
@@ -521,7 +535,7 @@ export default DocumentViewerModal;
 //                             <div>
 //                               <p className="text-sm font-medium text-gray-900">{doc.name}</p>
 //                               <p className="text-xs text-gray-500">
-//                                 {doc.type.includes('pdf') ? 'PDF Document' : 'Image File'} 
+//                                 {doc.type.includes('pdf') ? 'PDF Document' : 'Image File'}
 //                                 {formatFileSize(doc.size)}
 //                               </p>
 //                             </div>
@@ -568,7 +582,7 @@ export default DocumentViewerModal;
 //               {/* Document Access - NO PREVIEW TO PREVENT 401 ERRORS */}
 //               <div className="bg-gray-50 rounded-lg p-4">
 //                 <h4 className="text-lg font-medium text-gray-900 mb-4">Secure Document Access</h4>
-                
+
 //                 {selectedDocument ? (
 //                   <div className="bg-white rounded-md border border-gray-200 p-8">
 //                     <div className="text-center">
@@ -577,7 +591,7 @@ export default DocumentViewerModal;
 //                         <h5 className="text-xl font-semibold text-gray-900 mb-2">Document Ready</h5>
 //                         <p className="text-gray-600 mb-6">Click the button below to securely access your document</p>
 //                       </div>
-                      
+
 //                       <div className="space-y-4">
 //                         <button
 //                           onClick={() => {
@@ -589,7 +603,7 @@ export default DocumentViewerModal;
 //                           <ExternalLink className="h-6 w-6 mr-3" />
 //                           Open Document Securely
 //                         </button>
-                        
+
 //                         <div className="flex items-center justify-center space-x-4 text-sm">
 //                           <button
 //                             onClick={() => {
@@ -606,7 +620,7 @@ export default DocumentViewerModal;
 //                               console.log('📋 Copy secure link button clicked for:', selectedDocument);
 //                               const proxyUrl = getProxyUrl(selectedDocument, 'inline');
 //                               console.log('🔗 Generated proxy URL for copying:', proxyUrl);
-                              
+
 //                               try {
 //                                 navigator.clipboard.writeText(proxyUrl);
 //                                 console.log('✅ Secure link copied to clipboard successfully');
@@ -631,7 +645,7 @@ export default DocumentViewerModal;
 //                           </button>
 //                         </div>
 //                       </div>
-                      
+
 //                       <div className="mt-8 p-4 bg-green-50 rounded-lg">
 //                         <div className="flex items-start">
 //                           <svg className="h-5 w-5 text-green-400 mt-0.5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">

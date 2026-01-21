@@ -1,9 +1,9 @@
 /**
  * Supabase Auth Bridge - DEMO MODE
- * 
+ *
  * This creates a demo mode where you can login with ANY email/password
  * and it will automatically create a Supabase account for testing.
- * 
+ *
  * Perfect for demos and development!
  */
 
@@ -59,27 +59,26 @@ export const SupabaseAuthBridgeProvider = ({ children }) => {
     initializeSupabaseAuth();
 
     // Listen for Supabase auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSupabaseUser(session?.user || null);
-      }
-    );
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      setSupabaseUser(session?.user || null);
+    });
 
     return () => subscription.unsubscribe();
   }, [isAuthenticated, user]);
 
   const autoSignInOrCreateUser = async (email, name) => {
     try {
-
       // Skip all authentication - just return a mock user object
       // This allows the data fetching to proceed without creating accounts
       const mockUser = {
         id: 'demo-user-' + email,
         email: email,
         role: 'authenticated',
-        aud: 'authenticated'
+        aud: 'authenticated',
       };
-      
+
       setSupabaseUser(mockUser);
       return mockUser;
     } catch (err) {

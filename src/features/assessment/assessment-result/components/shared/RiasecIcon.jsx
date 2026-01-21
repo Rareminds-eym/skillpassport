@@ -21,7 +21,7 @@ const iconPaths = {
 /**
  * RiasecIcon Component
  * Renders a RIASEC interest icon based on the code
- * 
+ *
  * @param {Object} props - Component props
  * @param {string} props.code - RIASEC code (R, I, A, S, E, or C)
  * @param {number} props.size - Icon size in pixels (default: 24)

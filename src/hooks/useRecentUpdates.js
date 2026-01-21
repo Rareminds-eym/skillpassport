@@ -1,29 +1,29 @@
-import { useState, useEffect } from "react";
-import { supabase } from "../lib/supabaseClient";
+import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabaseClient';
 
 // 🕓 Helper — format timestamps into “2 min ago” / “Oct 24” etc.
 const formatTimestamp = (timestamp) => {
-  if (!timestamp) return "";
+  if (!timestamp) return '';
 
   const date = new Date(timestamp);
   const now = new Date();
   const diffMs = now - date;
 
-  if (isNaN(diffMs)) return "Unknown time";
+  if (isNaN(diffMs)) return 'Unknown time';
 
   const diffMins = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
 
-  if (diffMins < 1) return "Just now";
-  if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? "s" : ""} ago`;
-  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
-  if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`;
+  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+  if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
 
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
   });
 };
 
@@ -37,11 +37,10 @@ export const useRecentUpdates = () => {
   // 1️⃣ Resolve student ID by email
   const fetchStudentIdByEmail = async (email) => {
     try {
-
       const { data, error } = await supabase
-        .from("students")
-        .select("id, profile")
-        .eq("profile->>email", email)
+        .from('students')
+        .select('id, profile')
+        .eq('profile->>email', email)
         .maybeSingle();
 
       if (error) throw error;
@@ -54,7 +53,7 @@ export const useRecentUpdates = () => {
       setStudentId(data.id);
       return data.id;
     } catch (err) {
-      console.error("❌ [useRecentUpdates] Error finding student by email:", err);
+      console.error('❌ [useRecentUpdates] Error finding student by email:', err);
       setError(err.message);
       setStudentId(null);
       return null;
@@ -71,9 +70,9 @@ export const useRecentUpdates = () => {
       setLoading(true);
 
       const { data, error: updatesError } = await supabase
-        .from("recent_updates")
-        .select("*")
-        .eq("student_id", resolvedId)
+        .from('recent_updates')
+        .select('*')
+        .eq('student_id', resolvedId)
         .maybeSingle();
 
       if (updatesError) throw updatesError;
@@ -86,22 +85,17 @@ export const useRecentUpdates = () => {
       // Safely parse JSONB and clean data
       let updatesArray = [];
       try {
-        const parsed =
-          typeof data.updates === "string"
-            ? JSON.parse(data.updates)
-            : data.updates;
+        const parsed = typeof data.updates === 'string' ? JSON.parse(data.updates) : data.updates;
 
         updatesArray = (parsed?.updates || []).filter(Boolean);
       } catch (parseErr) {
-        console.error("❌ Error parsing updates JSON:", parseErr);
+        console.error('❌ Error parsing updates JSON:', parseErr);
       }
 
       // Format timestamps properly
       const formatted = updatesArray.map((u) => {
         const realTimestamp =
-          u.created_at && u.created_at !== "Just now"
-            ? u.created_at
-            : new Date().toISOString();
+          u.created_at && u.created_at !== 'Just now' ? u.created_at : new Date().toISOString();
 
         return {
           ...u,
@@ -112,7 +106,7 @@ export const useRecentUpdates = () => {
 
       setRecentUpdates(formatted);
     } catch (err) {
-      console.error("❌ [useRecentUpdates] Error fetching updates:", err);
+      console.error('❌ [useRecentUpdates] Error fetching updates:', err);
       setError(err.message);
       setRecentUpdates([]);
     } finally {
@@ -122,10 +116,7 @@ export const useRecentUpdates = () => {
 
   // 3️⃣ Get user email and fetch studentId
   useEffect(() => {
-    const email =
-      localStorage.getItem("userEmail") ||
-      localStorage.getItem("email") ||
-      null;
+    const email = localStorage.getItem('userEmail') || localStorage.getItem('email') || null;
 
     if (!email) {
       setLoading(false);

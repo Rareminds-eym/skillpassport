@@ -1,21 +1,21 @@
 /**
  * Hook to fetch student data from Supabase JSONB profile by EMAIL
- * 
+ *
  * Works with your actual students table structure (profile JSONB column)
  */
 
 import { useEffect, useState } from 'react';
 import {
-    getStudentByEmail,
-    updateCertificatesByEmail,
-    updateEducationByEmail,
-    updateExperienceByEmail,
-    updateProjectsByEmail,
-    updateSingleTrainingById,
-    updateSoftSkillsByEmail,
-    updateStudentByEmail,
-    updateTechnicalSkillsByEmail,
-    updateTrainingByEmail
+  getStudentByEmail,
+  updateCertificatesByEmail,
+  updateEducationByEmail,
+  updateExperienceByEmail,
+  updateProjectsByEmail,
+  updateSingleTrainingById,
+  updateSoftSkillsByEmail,
+  updateStudentByEmail,
+  updateTechnicalSkillsByEmail,
+  updateTrainingByEmail,
 } from '../services/studentServiceProfile';
 // Note: Embedding regeneration is now handled automatically by database triggers
 // No need to call scheduleEmbeddingRegeneration from frontend
@@ -36,7 +36,6 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
         setLoading(true);
         setError(null);
 
-
         const result = await getStudentByEmail(email);
 
         if (result.success && result.data) {
@@ -45,9 +44,11 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
         } else {
           // Check if it's an RLS error
           const errorMsg = result.error || 'Student not found';
-          if (errorMsg.toLowerCase().includes('row-level security') ||
+          if (
+            errorMsg.toLowerCase().includes('row-level security') ||
             errorMsg.toLowerCase().includes('rls') ||
-            errorMsg.toLowerCase().includes('permission denied')) {
+            errorMsg.toLowerCase().includes('permission denied')
+          ) {
             setError('⚠️ Database access blocked. Please disable RLS in Supabase. See FIX_RLS.md');
             console.error('🔒 RLS is blocking access! Run this in Supabase SQL Editor:');
             console.error('ALTER TABLE students DISABLE ROW LEVEL SECURITY;');
@@ -126,7 +127,7 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
   const updateTraining = async (trainingData) => {
     try {
       const result = await updateTrainingByEmail(email, trainingData);
-      
+
       if (result.success) {
         setStudentData(result.data);
         // Embedding regeneration handled by database trigger
@@ -143,7 +144,7 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
   const updateSingleTraining = async (trainingId, updateData) => {
     try {
       const result = await updateSingleTrainingById(trainingId, updateData, email);
-      
+
       if (result.success) {
         // Refresh the entire student data to get updated training list
         const refreshResult = await getStudentByEmail(email);
@@ -240,7 +241,7 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
     updateExperience,
     updateTechnicalSkills,
     updateSoftSkills,
-    updateProjects,      // ADD THIS
-    updateCertificates,  // ADD THIS
+    updateProjects, // ADD THIS
+    updateCertificates, // ADD THIS
   };
 };

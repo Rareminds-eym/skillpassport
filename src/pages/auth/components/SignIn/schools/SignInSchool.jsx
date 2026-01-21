@@ -7,7 +7,7 @@ import { loginStudent } from '../../../../../services/studentAuthService';
 const SignInSchool = () => {
   const [formData, setFormData] = useState({
     email: '',
-    password: ''
+    password: '',
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -51,9 +51,9 @@ const SignInSchool = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
     validateField(name, value);
   };
@@ -61,7 +61,7 @@ const SignInSchool = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setGeneralError('');
-    
+
     // Validate all fields
     const emailValid = validateField('email', formData.email);
     const passwordValid = validateField('password', formData.password);
@@ -94,7 +94,7 @@ const SignInSchool = () => {
         university_college_id: studentData.university_college_id,
         school: studentData.schools,
         university_college: studentData.university_colleges,
-        approval_status: studentData.approval_status
+        approval_status: studentData.approval_status,
       });
 
       // Navigate to student dashboard
@@ -113,14 +113,14 @@ const SignInSchool = () => {
         {/* Logo */}
         <div className="flex justify-center mb-6">
           <div className="relative group">
-            <img 
-              src="/RMLogo.webp" 
-              alt="Logo" 
+            <img
+              src="/RMLogo.webp"
+              alt="Logo"
               className="w-20 h-20 transition-all duration-500 group-hover:scale-110"
             />
           </div>
         </div>
-        
+
         <h1 className="text-2xl font-semibold text-center mb-2 text-blue-600">
           School Student Sign In
         </h1>
@@ -135,7 +135,7 @@ const SignInSchool = () => {
             <p className="text-sm text-red-700">{generalError}</p>
           </div>
         )}
-        
+
         <form onSubmit={handleSubmit} className="space-y-5 bg-white p-6 rounded-2xl shadow-lg">
           {/* Email Field */}
           <div>
@@ -150,17 +150,15 @@ const SignInSchool = () => {
                 value={formData.email}
                 onChange={handleChange}
                 className={`w-full px-4 py-3 pl-10 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                  errors.email 
-                    ? 'border-red-500 focus:border-red-500' 
+                  errors.email
+                    ? 'border-red-500 focus:border-red-500'
                     : 'border-gray-200 focus:border-blue-500'
                 }`}
                 placeholder="Enter your email"
               />
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
             </div>
-            {errors.email && (
-              <p className="text-red-500 text-sm mt-1">{errors.email}</p>
-            )}
+            {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
           </div>
 
           {/* Password Field */}
@@ -176,8 +174,8 @@ const SignInSchool = () => {
                 value={formData.password}
                 onChange={handleChange}
                 className={`w-full px-4 py-3 pl-10 pr-10 border-2 rounded-lg focus:outline-none transition-all duration-300 ${
-                  errors.password 
-                    ? 'border-red-500 focus:border-red-500' 
+                  errors.password
+                    ? 'border-red-500 focus:border-red-500'
                     : 'border-gray-200 focus:border-blue-500'
                 }`}
                 placeholder="Enter your password"
@@ -191,9 +189,7 @@ const SignInSchool = () => {
                 {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>
             </div>
-            {errors.password && (
-              <p className="text-red-500 text-sm mt-1">{errors.password}</p>
-            )}
+            {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
           </div>
 
           {/* Sign In Button */}
@@ -214,8 +210,8 @@ const SignInSchool = () => {
 
           {/* Forgot Password */}
           <div className="text-center">
-            <Link 
-              to="/resetpassword" 
+            <Link
+              to="/resetpassword"
               className="text-blue-600 hover:text-blue-700 text-sm transition-colors duration-300"
             >
               Forgot Password?
@@ -225,10 +221,7 @@ const SignInSchool = () => {
           {/* Register Link */}
           <div className="text-center text-sm text-gray-600">
             Don't have an account?{' '}
-            <Link 
-              to="/signup/school" 
-              className="text-blue-600 hover:text-blue-700 font-medium"
-            >
+            <Link to="/signup/school" className="text-blue-600 hover:text-blue-700 font-medium">
               Register here
             </Link>
           </div>

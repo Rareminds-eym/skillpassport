@@ -44,42 +44,56 @@ const GraduationIntegration = () => {
   // KPI Data for consistent theming with Library Management
   const kpiData = [
     {
-      title: "Upcoming Graduations",
-      value: "1,247",
+      title: 'Upcoming Graduations',
+      value: '1,247',
       change: 5,
-      changeLabel: "vs last batch",
+      changeLabel: 'vs last batch',
       icon: <GraduationCap className="h-6 w-6" />,
-      color: "blue" as const,
+      color: 'blue' as const,
     },
     {
-      title: "Pending Clearances",
-      value: "89",
+      title: 'Pending Clearances',
+      value: '89',
       change: -12,
-      changeLabel: "awaiting review",
+      changeLabel: 'awaiting review',
       icon: <ClockIcon className="h-6 w-6" />,
-      color: "yellow" as const,
+      color: 'yellow' as const,
     },
     {
-      title: "Cleared Students",
-      value: "1,158",
+      title: 'Cleared Students',
+      value: '1,158',
       change: 18,
-      changeLabel: "ready to graduate",
+      changeLabel: 'ready to graduate',
       icon: <CheckCircleIcon className="h-6 w-6" />,
-      color: "green" as const,
+      color: 'green' as const,
     },
     {
-      title: "Integration Success Rate",
-      value: "98.2%",
+      title: 'Integration Success Rate',
+      value: '98.2%',
       change: 2,
-      changeLabel: "system reliability",
+      changeLabel: 'system reliability',
       icon: <Settings className="h-6 w-6" />,
-      color: "purple" as const,
+      color: 'purple' as const,
     },
   ];
 
   // Filter options
-  const colleges = ['All Colleges', 'Engineering College A', 'Arts & Science College B', 'Medical College C', 'Commerce College D'];
-  const programs = ['All Programs', 'B.Tech Computer Science', 'M.Sc Physics', 'B.Tech Mechanical', 'MBBS', 'B.Com', 'MBA'];
+  const colleges = [
+    'All Colleges',
+    'Engineering College A',
+    'Arts & Science College B',
+    'Medical College C',
+    'Commerce College D',
+  ];
+  const programs = [
+    'All Programs',
+    'B.Tech Computer Science',
+    'M.Sc Physics',
+    'B.Tech Mechanical',
+    'MBBS',
+    'B.Com',
+    'MBA',
+  ];
   const statuses = ['All Status', 'in-progress', 'completed', 'pending', 'on-hold'];
 
   const graduationBatches = [
@@ -237,7 +251,7 @@ const GraduationIntegration = () => {
       exportDate: new Date().toISOString(),
       totalStudents: graduationBatches.reduce((sum, batch) => sum + batch.totalStudents, 0),
     };
-    
+
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -250,37 +264,43 @@ const GraduationIntegration = () => {
   };
 
   const handleProcessBatch = (batchId: number) => {
-    const batch = graduationBatches.find(b => b.id === batchId);
+    const batch = graduationBatches.find((b) => b.id === batchId);
     if (batch) {
       console.log(`Processing batch: ${batch.batchName}`);
       // Simulate batch processing
-      alert(`Processing ${batch.batchName}\n\nThis will:\n• Verify all library clearances\n• Generate graduation certificates\n• Update student records\n• Send notifications\n\nEstimated time: 15-30 minutes`);
+      alert(
+        `Processing ${batch.batchName}\n\nThis will:\n• Verify all library clearances\n• Generate graduation certificates\n• Update student records\n• Send notifications\n\nEstimated time: 15-30 minutes`
+      );
     }
   };
 
   const handleViewBatchDetails = (batchId: number) => {
-    const batch = graduationBatches.find(b => b.id === batchId);
+    const batch = graduationBatches.find((b) => b.id === batchId);
     if (batch) {
       console.log(`Viewing details for batch: ${batch.batchName}`);
-      alert(`Batch Details: ${batch.batchName}\n\nLibrary Status:\n• Books Returned: ${batch.booksReturned}/${batch.totalStudents}\n• Library Cleared: ${batch.libraryCleared}\n• Pending Clearances: ${batch.libraryPending}\n• Outstanding Fines: ${batch.finesPending} students\n\nNext Steps:\n• Follow up on pending returns\n• Process fine payments\n• Generate clearance reports`);
+      alert(
+        `Batch Details: ${batch.batchName}\n\nLibrary Status:\n• Books Returned: ${batch.booksReturned}/${batch.totalStudents}\n• Library Cleared: ${batch.libraryCleared}\n• Pending Clearances: ${batch.libraryPending}\n• Outstanding Fines: ${batch.finesPending} students\n\nNext Steps:\n• Follow up on pending returns\n• Process fine payments\n• Generate clearance reports`
+      );
     }
   };
 
-  const filteredBatches = graduationBatches.filter(batch => {
-    const matchesSearch = batch.batchName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         batch.college.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         batch.program.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCollege = !filterCollege || filterCollege === 'All Colleges' || batch.college === filterCollege;
-    const matchesProgram = !filterProgram || filterProgram === 'All Programs' || batch.program === filterProgram;
-    const matchesStatus = !filterStatus || filterStatus === 'All Status' || batch.status === filterStatus;
-    
+  const filteredBatches = graduationBatches.filter((batch) => {
+    const matchesSearch =
+      batch.batchName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      batch.college.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      batch.program.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCollege =
+      !filterCollege || filterCollege === 'All Colleges' || batch.college === filterCollege;
+    const matchesProgram =
+      !filterProgram || filterProgram === 'All Programs' || batch.program === filterProgram;
+    const matchesStatus =
+      !filterStatus || filterStatus === 'All Status' || batch.status === filterStatus;
+
     return matchesSearch && matchesCollege && matchesProgram && matchesStatus;
   });
 
   const renderOverview = () => (
     <div className="space-y-6">
-      
-
       {/* ERP Requirements */}
       <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-6 shadow-sm">
         <div className="flex items-center gap-3 mb-4">
@@ -290,7 +310,7 @@ const GraduationIntegration = () => {
           <h3 className="text-lg font-semibold text-blue-900">Library Clearance Integration</h3>
         </div>
         <p className="text-blue-700 mb-6">
-          The system integrates library clearance with graduation process to ensure all students 
+          The system integrates library clearance with graduation process to ensure all students
           complete required library procedures before receiving their certificates.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -387,7 +407,7 @@ const GraduationIntegration = () => {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <button 
+          <button
             onClick={handleRefreshData}
             disabled={loading}
             className="flex items-center gap-3 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl hover:shadow-md transition-all duration-200 disabled:opacity-50"
@@ -398,8 +418,8 @@ const GraduationIntegration = () => {
               <p className="text-xs text-blue-600">Update all statistics</p>
             </div>
           </button>
-          
-          <button 
+
+          <button
             onClick={handleExportData}
             className="flex items-center gap-3 p-4 bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl hover:shadow-md transition-all duration-200"
           >
@@ -409,8 +429,8 @@ const GraduationIntegration = () => {
               <p className="text-xs text-green-600">Download reports</p>
             </div>
           </button>
-          
-          <button 
+
+          <button
             onClick={() => setActiveTab('settings')}
             className="flex items-center gap-3 p-4 bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200 rounded-xl hover:shadow-md transition-all duration-200"
           >
@@ -420,8 +440,8 @@ const GraduationIntegration = () => {
               <p className="text-xs text-purple-600">Configure integration</p>
             </div>
           </button>
-          
-          <button 
+
+          <button
             onClick={() => setActiveTab('batches')}
             className="flex items-center gap-3 p-4 bg-gradient-to-br from-yellow-50 to-orange-50 border border-yellow-200 rounded-xl hover:shadow-md transition-all duration-200"
           >
@@ -453,7 +473,7 @@ const GraduationIntegration = () => {
                 className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
               />
             </div>
-            <button 
+            <button
               onClick={() => setShowFilters(!showFilters)}
               className={`px-6 py-2.5 border border-gray-300 rounded-xl hover:bg-gray-50 flex items-center gap-2 font-medium transition-all duration-200 ${
                 showFilters ? 'bg-purple-50 border-purple-300 text-purple-700' : ''
@@ -479,7 +499,7 @@ const GraduationIntegration = () => {
                   onChange={(e) => setFilterCollege(e.target.value)}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                 >
-                  {colleges.map(college => (
+                  {colleges.map((college) => (
                     <option key={college} value={college === 'All Colleges' ? '' : college}>
                       {college}
                     </option>
@@ -493,7 +513,7 @@ const GraduationIntegration = () => {
                   onChange={(e) => setFilterProgram(e.target.value)}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                 >
-                  {programs.map(program => (
+                  {programs.map((program) => (
                     <option key={program} value={program === 'All Programs' ? '' : program}>
                       {program}
                     </option>
@@ -507,9 +527,11 @@ const GraduationIntegration = () => {
                   onChange={(e) => setFilterStatus(e.target.value)}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                 >
-                  {statuses.map(status => (
+                  {statuses.map((status) => (
                     <option key={status} value={status === 'All Status' ? '' : status}>
-                      {status === 'All Status' ? status : status.charAt(0).toUpperCase() + status.slice(1).replace('-', ' ')}
+                      {status === 'All Status'
+                        ? status
+                        : status.charAt(0).toUpperCase() + status.slice(1).replace('-', ' ')}
                     </option>
                   ))}
                 </select>
@@ -522,7 +544,10 @@ const GraduationIntegration = () => {
       {/* Batches Grid */}
       <div className="space-y-4">
         {filteredBatches.map((batch) => (
-          <div key={batch.id} className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-md hover:border-purple-300 transition-all duration-200">
+          <div
+            key={batch.id}
+            className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-md hover:border-purple-300 transition-all duration-200"
+          >
             <div className="flex justify-between items-start mb-6">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-xl">
@@ -530,14 +555,18 @@ const GraduationIntegration = () => {
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-gray-900">{batch.batchName}</h3>
-                  <p className="text-sm text-gray-600">{batch.college} - {batch.program}</p>
+                  <p className="text-sm text-gray-600">
+                    {batch.college} - {batch.program}
+                  </p>
                   <p className="text-sm text-gray-600 flex items-center gap-1">
                     <CalendarIcon className="h-4 w-4" />
                     Graduation Date: {batch.graduationDate}
                   </p>
                 </div>
               </div>
-              <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(batch.status)}`}>
+              <span
+                className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(batch.status)}`}
+              >
                 {batch.status.charAt(0).toUpperCase() + batch.status.slice(1).replace('-', ' ')}
               </span>
             </div>
@@ -571,7 +600,9 @@ const GraduationIntegration = () => {
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                 <div>
                   <p className="text-blue-700 font-medium">Books Returned</p>
-                  <p className="text-blue-900 font-bold">{batch.booksReturned}/{batch.totalStudents}</p>
+                  <p className="text-blue-900 font-bold">
+                    {batch.booksReturned}/{batch.totalStudents}
+                  </p>
                 </div>
                 <div>
                   <p className="text-blue-700 font-medium">Clearances Issued</p>
@@ -593,8 +624,8 @@ const GraduationIntegration = () => {
                 </p>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-3 shadow-inner">
-                <div 
-                  className="bg-gradient-to-r from-green-500 to-emerald-500 h-3 rounded-full shadow-sm transition-all duration-300" 
+                <div
+                  className="bg-gradient-to-r from-green-500 to-emerald-500 h-3 rounded-full shadow-sm transition-all duration-300"
                   style={{ width: `${(batch.clearedStudents / batch.totalStudents) * 100}%` }}
                 ></div>
               </div>
@@ -603,7 +634,7 @@ const GraduationIntegration = () => {
             {/* Action Buttons */}
             <div className="flex flex-wrap gap-3 justify-between items-center">
               <div className="flex gap-2">
-                <button 
+                <button
                   onClick={() => handleViewBatchDetails(batch.id)}
                   className="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-xl hover:bg-gray-200 hover:shadow-md transition-all duration-200 font-medium"
                 >
@@ -617,7 +648,7 @@ const GraduationIntegration = () => {
                 )}
               </div>
               {batch.status === 'in-progress' && (
-                <button 
+                <button
                   onClick={() => handleProcessBatch(batch.id)}
                   className="px-6 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-sm rounded-xl hover:shadow-lg transition-all duration-200 font-medium"
                 >
@@ -653,16 +684,29 @@ const GraduationIntegration = () => {
         </h3>
         <div className="space-y-4">
           {clearanceRequirements.map((req) => (
-            <div key={req.id} className="flex items-center justify-between p-6 border border-gray-200 rounded-xl hover:border-purple-300 hover:shadow-sm transition-all duration-200">
+            <div
+              key={req.id}
+              className="flex items-center justify-between p-6 border border-gray-200 rounded-xl hover:border-purple-300 hover:shadow-sm transition-all duration-200"
+            >
               <div className="flex items-center gap-4">
-                <div className={`p-3 rounded-xl ${
-                  req.priority === 'High' ? 'bg-red-100' :
-                  req.priority === 'Medium' ? 'bg-yellow-100' : 'bg-green-100'
-                }`}>
-                  <Book className={`h-5 w-5 ${
-                    req.priority === 'High' ? 'text-red-600' :
-                    req.priority === 'Medium' ? 'text-yellow-600' : 'text-green-600'
-                  }`} />
+                <div
+                  className={`p-3 rounded-xl ${
+                    req.priority === 'High'
+                      ? 'bg-red-100'
+                      : req.priority === 'Medium'
+                        ? 'bg-yellow-100'
+                        : 'bg-green-100'
+                  }`}
+                >
+                  <Book
+                    className={`h-5 w-5 ${
+                      req.priority === 'High'
+                        ? 'text-red-600'
+                        : req.priority === 'Medium'
+                          ? 'text-yellow-600'
+                          : 'text-green-600'
+                    }`}
+                  />
                 </div>
                 <div className="flex-1">
                   <h4 className="font-semibold text-gray-900">{req.requirement}</h4>
@@ -670,16 +714,24 @@ const GraduationIntegration = () => {
                 </div>
               </div>
               <div className="flex items-center gap-4">
-                <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
-                  req.priority === 'High' ? 'bg-red-100 text-red-800 border border-red-200' :
-                  req.priority === 'Medium' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
-                  'bg-green-100 text-green-800 border border-green-200'
-                }`}>
+                <span
+                  className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                    req.priority === 'High'
+                      ? 'bg-red-100 text-red-800 border border-red-200'
+                      : req.priority === 'Medium'
+                        ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                        : 'bg-green-100 text-green-800 border border-green-200'
+                  }`}
+                >
                   {req.priority} Priority
                 </span>
-                <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
-                  req.automated ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-gray-100 text-gray-800 border border-gray-200'
-                }`}>
+                <span
+                  className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                    req.automated
+                      ? 'bg-green-100 text-green-800 border border-green-200'
+                      : 'bg-gray-100 text-gray-800 border border-gray-200'
+                  }`}
+                >
                   {req.automated ? 'Automated' : 'Manual'}
                 </span>
               </div>
@@ -720,21 +772,27 @@ const GraduationIntegration = () => {
             <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
               <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">Engineering Batch - 15 clearances approved</p>
+                <p className="text-sm font-medium text-gray-900">
+                  Engineering Batch - 15 clearances approved
+                </p>
                 <p className="text-xs text-gray-500">2 hours ago</p>
               </div>
             </div>
             <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
               <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
               <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">Arts & Science - Batch processing started</p>
+                <p className="text-sm font-medium text-gray-900">
+                  Arts & Science - Batch processing started
+                </p>
                 <p className="text-xs text-gray-500">4 hours ago</p>
               </div>
             </div>
             <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
               <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
               <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">Commerce - 8 fine payments pending</p>
+                <p className="text-sm font-medium text-gray-900">
+                  Commerce - 8 fine payments pending
+                </p>
                 <p className="text-xs text-gray-500">6 hours ago</p>
               </div>
             </div>
@@ -753,14 +811,21 @@ const GraduationIntegration = () => {
         </h3>
         <div className="space-y-4">
           {integrationPoints.map((system, index) => (
-            <div key={index} className="flex items-center justify-between p-6 border border-gray-200 rounded-xl hover:border-purple-300 hover:shadow-sm transition-all duration-200">
+            <div
+              key={index}
+              className="flex items-center justify-between p-6 border border-gray-200 rounded-xl hover:border-purple-300 hover:shadow-sm transition-all duration-200"
+            >
               <div className="flex items-center gap-4">
-                <div className={`p-3 rounded-xl ${
-                  system.status === 'connected' ? 'bg-green-100' : 'bg-yellow-100'
-                }`}>
-                  <Settings className={`h-5 w-5 ${
-                    system.status === 'connected' ? 'text-green-600' : 'text-yellow-600'
-                  }`} />
+                <div
+                  className={`p-3 rounded-xl ${
+                    system.status === 'connected' ? 'bg-green-100' : 'bg-yellow-100'
+                  }`}
+                >
+                  <Settings
+                    className={`h-5 w-5 ${
+                      system.status === 'connected' ? 'text-green-600' : 'text-yellow-600'
+                    }`}
+                  />
                 </div>
                 <div className="flex-1">
                   <h4 className="font-semibold text-gray-900">{system.system}</h4>
@@ -769,7 +834,9 @@ const GraduationIntegration = () => {
                 </div>
               </div>
               <div className="flex items-center gap-4">
-                <span className={`inline-flex items-center gap-2 px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(system.status)}`}>
+                <span
+                  className={`inline-flex items-center gap-2 px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(system.status)}`}
+                >
                   {system.status === 'connected' ? (
                     <CheckCircleIcon className="h-3 w-3" />
                   ) : (
@@ -777,7 +844,7 @@ const GraduationIntegration = () => {
                   )}
                   {system.status.charAt(0).toUpperCase() + system.status.slice(1)}
                 </span>
-                <button 
+                <button
                   onClick={() => console.log(`Configuring ${system.system}`)}
                   className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-sm rounded-xl hover:shadow-lg transition-all duration-200 font-medium"
                 >
@@ -798,18 +865,22 @@ const GraduationIntegration = () => {
           <div className="flex items-center justify-between p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
             <div>
               <h4 className="font-semibold text-blue-900">Auto-process Clearances</h4>
-              <p className="text-sm text-blue-700 mt-1">Automatically process clearances when requirements are met</p>
+              <p className="text-sm text-blue-700 mt-1">
+                Automatically process clearances when requirements are met
+              </p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" className="sr-only peer" defaultChecked />
               <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
             </label>
           </div>
-          
+
           <div className="flex items-center justify-between p-6 bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl">
             <div>
               <h4 className="font-semibold text-green-900">Email Notifications</h4>
-              <p className="text-sm text-green-700 mt-1">Send email notifications for clearance status updates</p>
+              <p className="text-sm text-green-700 mt-1">
+                Send email notifications for clearance status updates
+              </p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" className="sr-only peer" defaultChecked />
@@ -820,7 +891,9 @@ const GraduationIntegration = () => {
           <div className="flex items-center justify-between p-6 bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200 rounded-xl">
             <div>
               <h4 className="font-semibold text-purple-900">Batch Processing</h4>
-              <p className="text-sm text-purple-700 mt-1">Enable batch processing for multiple graduations</p>
+              <p className="text-sm text-purple-700 mt-1">
+                Enable batch processing for multiple graduations
+              </p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" className="sr-only peer" defaultChecked />
@@ -831,7 +904,9 @@ const GraduationIntegration = () => {
           <div className="flex items-center justify-between p-6 bg-gradient-to-br from-yellow-50 to-orange-50 border border-yellow-200 rounded-xl">
             <div>
               <h4 className="font-semibold text-yellow-900">Fine Tracking</h4>
-              <p className="text-sm text-yellow-700 mt-1">Track and manage outstanding library fines</p>
+              <p className="text-sm text-yellow-700 mt-1">
+                Track and manage outstanding library fines
+              </p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" className="sr-only peer" defaultChecked />
@@ -845,7 +920,7 @@ const GraduationIntegration = () => {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
         <h3 className="text-lg font-semibold text-gray-900 mb-6">Configuration Actions</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <button 
+          <button
             onClick={() => console.log('Testing integration...')}
             className="flex items-center gap-3 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl hover:shadow-md transition-all duration-200"
           >
@@ -855,8 +930,8 @@ const GraduationIntegration = () => {
               <p className="text-xs text-blue-600">Verify connections</p>
             </div>
           </button>
-          
-          <button 
+
+          <button
             onClick={() => console.log('Syncing data...')}
             className="flex items-center gap-3 p-4 bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl hover:shadow-md transition-all duration-200"
           >
@@ -866,8 +941,8 @@ const GraduationIntegration = () => {
               <p className="text-xs text-green-600">Update all systems</p>
             </div>
           </button>
-          
-          <button 
+
+          <button
             onClick={() => console.log('Viewing logs...')}
             className="flex items-center gap-3 p-4 bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200 rounded-xl hover:shadow-md transition-all duration-200"
           >

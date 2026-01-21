@@ -73,4 +73,3 @@ export const PipelineLoadingSkeleton: React.FC = () => {
     </div>
   );
 };
-

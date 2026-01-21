@@ -1,6 +1,6 @@
 /**
  * Integration Tests: Bulk Operations
- * 
+ *
  * Tests bulk assign/unassign operations with 100+ members,
  * concurrent processing, and performance validation.
  * Requirements: 2.1, 2.2, 3.1, 3.2
@@ -20,7 +20,7 @@ describe('Bulk Operations Integration Tests', () => {
       organization_id: 'org-123',
       allocated_seats: 200,
       assigned_seats: 0,
-      member_type: 'student'
+      member_type: 'student',
     };
     assignments = new Map();
     entitlements = new Map();
@@ -32,11 +32,7 @@ describe('Bulk Operations Integration Tests', () => {
       const memberCount = 150;
       const memberIds = Array.from({ length: memberCount }, (_, i) => `user-${i + 1}`);
 
-      const bulkAssignLicenses = async (
-        poolId: string,
-        userIds: string[],
-        assignedBy: string
-      ) => {
+      const bulkAssignLicenses = async (poolId: string, userIds: string[], assignedBy: string) => {
         const results: any[] = [];
         const errors: any[] = [];
 
@@ -49,7 +45,7 @@ describe('Bulk Operations Integration Tests', () => {
         const batchSize = 50;
         for (let i = 0; i < userIds.length; i += batchSize) {
           const batch = userIds.slice(i, i + batchSize);
-          
+
           for (const userId of batch) {
             try {
               const assignment = {
@@ -59,7 +55,7 @@ describe('Bulk Operations Integration Tests', () => {
                 user_id: userId,
                 status: 'active',
                 assigned_at: new Date().toISOString(),
-                assigned_by: assignedBy
+                assigned_by: assignedBy,
               };
               assignments.set(assignment.id, assignment);
               licensePool.assigned_seats++;
@@ -97,7 +93,7 @@ describe('Bulk Operations Integration Tests', () => {
           const assignment = {
             id: `assign-${userId}`,
             user_id: userId,
-            status: 'active'
+            status: 'active',
           };
           assignments.set(assignment.id, assignment);
           results.push(assignment);
@@ -119,7 +115,7 @@ describe('Bulk Operations Integration Tests', () => {
         id: 'assign-user-1',
         user_id: 'user-1',
         organization_subscription_id: 'sub-123',
-        status: 'active'
+        status: 'active',
       };
       assignments.set(existingAssignment.id, existingAssignment);
 
@@ -132,9 +128,10 @@ describe('Bulk Operations Integration Tests', () => {
         for (const userId of userIds) {
           // Check for existing active assignment
           const existing = Array.from(assignments.values()).find(
-            a => a.user_id === userId && 
-                 a.organization_subscription_id === 'sub-123' && 
-                 a.status === 'active'
+            (a) =>
+              a.user_id === userId &&
+              a.organization_subscription_id === 'sub-123' &&
+              a.status === 'active'
           );
 
           if (existing) {
@@ -146,7 +143,7 @@ describe('Bulk Operations Integration Tests', () => {
             id: `assign-${userId}`,
             user_id: userId,
             organization_subscription_id: 'sub-123',
-            status: 'active'
+            status: 'active',
           };
           assignments.set(assignment.id, assignment);
           results.push(assignment);
@@ -169,7 +166,9 @@ describe('Bulk Operations Integration Tests', () => {
       const bulkAssignLicenses = async (userIds: string[]) => {
         const availableSeats = licensePool.allocated_seats - licensePool.assigned_seats;
         if (userIds.length > availableSeats) {
-          throw new Error(`Insufficient seats: requested ${userIds.length}, available ${availableSeats}`);
+          throw new Error(
+            `Insufficient seats: requested ${userIds.length}, available ${availableSeats}`
+          );
         }
         return { successful: [] };
       };
@@ -189,13 +188,13 @@ describe('Bulk Operations Integration Tests', () => {
           id: `assign-user-${i}`,
           user_id: `user-${i}`,
           license_pool_id: 'pool-123',
-          status: 'active'
+          status: 'active',
         });
         entitlements.set(`ent-user-${i}`, {
           id: `ent-user-${i}`,
           user_id: `user-${i}`,
           organization_subscription_id: 'sub-123',
-          is_active: true
+          is_active: true,
         });
       }
       licensePool.assigned_seats = memberCount;
@@ -302,7 +301,7 @@ describe('Bulk Operations Integration Tests', () => {
             assignments.set(`assign-${userId}`, {
               id: `assign-${userId}`,
               user_id: userId,
-              status: 'active'
+              status: 'active',
             });
             licensePool.assigned_seats++;
           }
@@ -339,7 +338,7 @@ describe('Bulk Operations Integration Tests', () => {
 
         // Simulate atomic increment
         licensePool.assigned_seats++;
-        
+
         return { userId, assigned: true };
       };
 
@@ -366,7 +365,7 @@ describe('Bulk Operations Integration Tests', () => {
   describe('Performance Validation', () => {
     it('should complete 100 assignments within acceptable time', async () => {
       const memberIds = Array.from({ length: 100 }, (_, i) => `user-${i + 1}`);
-      
+
       const startTime = Date.now();
 
       const bulkAssign = async (userIds: string[]) => {
@@ -374,14 +373,14 @@ describe('Bulk Operations Integration Tests', () => {
           assignments.set(`assign-${userId}`, {
             id: `assign-${userId}`,
             user_id: userId,
-            status: 'active'
+            status: 'active',
           });
         }
         return userIds.length;
       };
 
       await bulkAssign(memberIds);
-      
+
       const duration = Date.now() - startTime;
 
       // Should complete in under 1 second for in-memory operations
@@ -391,15 +390,15 @@ describe('Bulk Operations Integration Tests', () => {
 
     it('should batch database operations efficiently', async () => {
       const batchOperations: number[] = [];
-      
+
       const processBatch = async (items: string[], batchSize: number) => {
         const batches = Math.ceil(items.length / batchSize);
-        
+
         for (let i = 0; i < batches; i++) {
           const batch = items.slice(i * batchSize, (i + 1) * batchSize);
           batchOperations.push(batch.length);
         }
-        
+
         return { totalBatches: batches, itemsPerBatch: batchOperations };
       };
 
@@ -425,7 +424,7 @@ describe('Bulk Operations Integration Tests', () => {
           const assignment = {
             id: `assign-${userId}`,
             user_id: userId,
-            status: 'active'
+            status: 'active',
           };
           assignments.set(assignment.id, assignment);
           assignmentResults.push(assignment);
@@ -437,7 +436,7 @@ describe('Bulk Operations Integration Tests', () => {
               user_id: userId,
               feature_key: feature,
               granted_by_organization: true,
-              is_active: true
+              is_active: true,
             };
             entitlements.set(entitlement.id, entitlement);
             entitlementResults.push(entitlement);
@@ -462,14 +461,14 @@ describe('Bulk Operations Integration Tests', () => {
         assignments.set(`assign-${user}`, {
           id: `assign-${user}`,
           user_id: user,
-          status: 'active'
+          status: 'active',
         });
         for (const feature of features) {
           entitlements.set(`ent-${user}-${feature}`, {
             id: `ent-${user}-${feature}`,
             user_id: user,
             feature_key: feature,
-            is_active: true
+            is_active: true,
           });
         }
       }

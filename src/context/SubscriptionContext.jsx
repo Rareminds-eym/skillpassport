@@ -1,9 +1,9 @@
 /**
  * SubscriptionContext
- * 
+ *
  * Provides subscription access state to the entire application.
  * Used by SubscriptionProtectedRoute to gate access to /student/* routes.
- * 
+ *
  * Features:
  * - Checks subscription access via Cloudflare Worker
  * - Caches results with React Query
@@ -74,7 +74,12 @@ export const SubscriptionProvider = ({ children }) => {
   // Force refresh subscription check on route changes to protected routes
   // This ensures revoked licenses are detected immediately when navigating
   useEffect(() => {
-    if (isQueryEnabled && location.pathname.match(/^\/(student|educator|recruitment|school-admin|college-admin|university-admin)\//)) {
+    if (
+      isQueryEnabled &&
+      location.pathname.match(
+        /^\/(student|educator|recruitment|school-admin|college-admin|university-admin)\//
+      )
+    ) {
       console.log('[SubscriptionContext] Route change detected, invalidating subscription cache');
       queryClient.invalidateQueries({ queryKey: [SUBSCRIPTION_ACCESS_KEY, user?.id] });
     }
@@ -99,13 +104,13 @@ export const SubscriptionProvider = ({ children }) => {
           showWarning: false,
         };
       }
-      
+
       const result = await checkSubscriptionAccess(session.access_token);
       console.log('[SubscriptionContext] Subscription access check result:', {
         hasAccess: result.hasAccess,
         accessReason: result.accessReason,
         wasRevoked: result.subscription?.was_revoked,
-        userId: user?.id
+        userId: user?.id,
       });
       return result;
     },
@@ -131,15 +136,15 @@ export const SubscriptionProvider = ({ children }) => {
       if (!user?.id) {
         return { entitlements: [], totalCost: { monthly: 0, annual: 0 } };
       }
-      
+
       const [entitlementsResult, costResult] = await Promise.all([
         entitlementService.getUserEntitlements(user.id),
-        entitlementService.calculateTotalCost(user.id)
+        entitlementService.calculateTotalCost(user.id),
       ]);
-      
+
       return {
         entitlements: entitlementsResult.success ? entitlementsResult.data : [],
-        totalCost: costResult.success ? costResult.data : { monthly: 0, annual: 0 }
+        totalCost: costResult.success ? costResult.data : { monthly: 0, annual: 0 },
       };
     },
     enabled: !!user?.id,
@@ -176,50 +181,57 @@ export const SubscriptionProvider = ({ children }) => {
    * Check if user has access to a specific add-on feature
    * Checks both plan-based access and individual entitlements
    */
-  const hasAddOnAccess = useCallback(async (featureKey) => {
-    if (!user?.id) return false;
-    
-    const result = await entitlementService.hasFeatureAccess(user.id, featureKey);
-    return result.success && result.data?.hasAccess;
-  }, [user?.id]);
+  const hasAddOnAccess = useCallback(
+    async (featureKey) => {
+      if (!user?.id) return false;
+
+      const result = await entitlementService.hasFeatureAccess(user.id, featureKey);
+      return result.success && result.data?.hasAccess;
+    },
+    [user?.id]
+  );
 
   /**
    * Synchronous check for add-on access using cached entitlements
    * Use this for immediate UI rendering decisions
    * Includes cancelled entitlements that haven't expired yet
    */
-  const hasAddOnAccessSync = useCallback((featureKey) => {
-    if (!entitlementsData?.entitlements) return false;
-    
-    const now = new Date();
-    const validEntitlements = entitlementsData.entitlements.filter(ent => {
-      // Active or grace period entitlements
-      if (ent.status === 'active' || ent.status === 'grace_period') return true;
-      // Cancelled entitlements that haven't expired yet
-      if (ent.status === 'cancelled' && ent.end_date && new Date(ent.end_date) >= now) return true;
-      return false;
-    });
-    
-    return validEntitlements.some(ent => ent.feature_key === featureKey);
-  }, [entitlementsData?.entitlements]);
+  const hasAddOnAccessSync = useCallback(
+    (featureKey) => {
+      if (!entitlementsData?.entitlements) return false;
+
+      const now = new Date();
+      const validEntitlements = entitlementsData.entitlements.filter((ent) => {
+        // Active or grace period entitlements
+        if (ent.status === 'active' || ent.status === 'grace_period') return true;
+        // Cancelled entitlements that haven't expired yet
+        if (ent.status === 'cancelled' && ent.end_date && new Date(ent.end_date) >= now)
+          return true;
+        return false;
+      });
+
+      return validEntitlements.some((ent) => ent.feature_key === featureKey);
+    },
+    [entitlementsData?.entitlements]
+  );
 
   // Purchase add-on mutation
   const purchaseAddOnMutation = useMutation({
     mutationFn: async ({ featureKey, billingPeriod }) => {
       if (!user?.id) throw new Error('User not authenticated');
-      
+
       const result = await addOnPaymentService.createAddOnOrder({
         featureKey,
         userId: user.id,
         billingPeriod,
         userEmail: user.email,
-        userName: user.user_metadata?.full_name
+        userName: user.user_metadata?.full_name,
       });
-      
+
       if (!result.success) {
         throw new Error(result.error);
       }
-      
+
       return result.data;
     },
     onError: (error) => {
@@ -227,26 +239,26 @@ export const SubscriptionProvider = ({ children }) => {
     },
     onSuccess: () => {
       setPurchaseError(null);
-    }
+    },
   });
 
   // Purchase bundle mutation
   const purchaseBundleMutation = useMutation({
     mutationFn: async ({ bundleId, billingPeriod }) => {
       if (!user?.id) throw new Error('User not authenticated');
-      
+
       const result = await addOnPaymentService.createBundleOrder({
         bundleId,
         userId: user.id,
         billingPeriod,
         userEmail: user.email,
-        userName: user.user_metadata?.full_name
+        userName: user.user_metadata?.full_name,
       });
-      
+
       if (!result.success) {
         throw new Error(result.error);
       }
-      
+
       return result.data;
     },
     onError: (error) => {
@@ -254,60 +266,72 @@ export const SubscriptionProvider = ({ children }) => {
     },
     onSuccess: () => {
       setPurchaseError(null);
-    }
+    },
   });
 
   // Cancel add-on mutation
   const cancelAddOnMutation = useMutation({
     mutationFn: async (entitlementId) => {
       const result = await entitlementService.cancelAddOn(entitlementId);
-      
+
       if (!result.success) {
         throw new Error(result.error);
       }
-      
+
       return result.data;
     },
     onSuccess: () => {
       fetchUserEntitlements();
-    }
+    },
   });
 
   /**
    * Purchase an add-on - returns order data for Razorpay
    */
-  const purchaseAddOn = useCallback(async (featureKey, billingPeriod) => {
-    return purchaseAddOnMutation.mutateAsync({ featureKey, billingPeriod });
-  }, [purchaseAddOnMutation]);
+  const purchaseAddOn = useCallback(
+    async (featureKey, billingPeriod) => {
+      return purchaseAddOnMutation.mutateAsync({ featureKey, billingPeriod });
+    },
+    [purchaseAddOnMutation]
+  );
 
   /**
    * Purchase a bundle - returns order data for Razorpay
    */
-  const purchaseBundle = useCallback(async (bundleId, billingPeriod) => {
-    return purchaseBundleMutation.mutateAsync({ bundleId, billingPeriod });
-  }, [purchaseBundleMutation]);
+  const purchaseBundle = useCallback(
+    async (bundleId, billingPeriod) => {
+      return purchaseBundleMutation.mutateAsync({ bundleId, billingPeriod });
+    },
+    [purchaseBundleMutation]
+  );
 
   /**
    * Cancel an add-on subscription
    */
-  const cancelAddOn = useCallback(async (entitlementId) => {
-    return cancelAddOnMutation.mutateAsync(entitlementId);
-  }, [cancelAddOnMutation]);
+  const cancelAddOn = useCallback(
+    async (entitlementId) => {
+      return cancelAddOnMutation.mutateAsync(entitlementId);
+    },
+    [cancelAddOnMutation]
+  );
 
   // Memoized values
   const hasAccess = useMemo(() => accessData?.hasAccess ?? false, [accessData]);
-  const accessReason = useMemo(() => accessData?.accessReason ?? ACCESS_REASONS.NO_SUBSCRIPTION, [accessData]);
+  const accessReason = useMemo(
+    () => accessData?.accessReason ?? ACCESS_REASONS.NO_SUBSCRIPTION,
+    [accessData]
+  );
   const subscription = useMemo(() => accessData?.subscription ?? null, [accessData]);
   const showWarning = useMemo(() => accessData?.showWarning ?? false, [accessData]);
   const warningType = useMemo(() => accessData?.warningType ?? null, [accessData]);
   const warningMessage = useMemo(() => accessData?.warningMessage ?? null, [accessData]);
   const daysUntilExpiry = useMemo(() => accessData?.daysUntilExpiry ?? null, [accessData]);
-  
+
   // Add-on entitlements
   const userEntitlements = useMemo(() => entitlementsData?.entitlements ?? [], [entitlementsData]);
   const activeEntitlements = useMemo(() => {
     const now = new Date();
-    return userEntitlements.filter(ent => {
+    return userEntitlements.filter((ent) => {
       // Active or grace period entitlements
       if (ent.status === 'active' || ent.status === 'grace_period') return true;
       // Cancelled entitlements that haven't expired yet (user retains access until end_date)
@@ -315,99 +339,101 @@ export const SubscriptionProvider = ({ children }) => {
       return false;
     });
   }, [userEntitlements]);
-  const totalAddOnCost = useMemo(() => entitlementsData?.totalCost ?? { monthly: 0, annual: 0 }, [entitlementsData]);
-
-  const value = useMemo(() => ({
-    // User data (needed for feature gating)
-    user,
-    
-    // Access state
-    hasAccess,
-    accessReason,
-    // isLoading is true if:
-    // 1. The query is loading (initial fetch)
-    // 2. The query is pending (not yet enabled - waiting for session)
-    // This prevents premature redirects when session is not yet available
-    isLoading: isLoading || isPending || !isQueryEnabled,
-    error,
-    isRefetching,
-    
-    // Subscription data
-    subscription,
-    daysUntilExpiry,
-    
-    // Warning state
-    showWarning,
-    warningType,
-    warningMessage,
-    
-    // Add-on entitlements
-    userEntitlements,
-    activeEntitlements,
-    totalAddOnCost,
-    isLoadingEntitlements,
-    entitlementsError,
-    
-    // Actions
-    refreshAccess,
-    clearAccessCache,
-    fetchUserEntitlements,
-    hasAddOnAccess,
-    hasAddOnAccessSync,
-    purchaseAddOn,
-    purchaseBundle,
-    cancelAddOn,
-    
-    // Purchase state
-    isPurchasing: purchaseAddOnMutation.isPending || purchaseBundleMutation.isPending,
-    isCancelling: cancelAddOnMutation.isPending,
-    purchaseError,
-    clearPurchaseError: () => setPurchaseError(null),
-    
-    // Helper booleans
-    isActive: accessReason === ACCESS_REASONS.ACTIVE,
-    isPaused: accessReason === ACCESS_REASONS.PAUSED,
-    isInGracePeriod: accessReason === ACCESS_REASONS.GRACE_PERIOD,
-    isExpired: accessReason === ACCESS_REASONS.EXPIRED,
-    hasNoSubscription: accessReason === ACCESS_REASONS.NO_SUBSCRIPTION,
-  }), [
-    user,
-    hasAccess,
-    accessReason,
-    isLoading,
-    error,
-    isRefetching,
-    subscription,
-    daysUntilExpiry,
-    showWarning,
-    warningType,
-    warningMessage,
-    userEntitlements,
-    activeEntitlements,
-    totalAddOnCost,
-    isLoadingEntitlements,
-    entitlementsError,
-    refreshAccess,
-    clearAccessCache,
-    fetchUserEntitlements,
-    hasAddOnAccess,
-    hasAddOnAccessSync,
-    purchaseAddOn,
-    purchaseBundle,
-    cancelAddOn,
-    purchaseAddOnMutation.isPending,
-    purchaseBundleMutation.isPending,
-    cancelAddOnMutation.isPending,
-    purchaseError,
-    isPending,
-    isQueryEnabled,
-  ]);
-
-  return (
-    <SubscriptionContext.Provider value={value}>
-      {children}
-    </SubscriptionContext.Provider>
+  const totalAddOnCost = useMemo(
+    () => entitlementsData?.totalCost ?? { monthly: 0, annual: 0 },
+    [entitlementsData]
   );
+
+  const value = useMemo(
+    () => ({
+      // User data (needed for feature gating)
+      user,
+
+      // Access state
+      hasAccess,
+      accessReason,
+      // isLoading is true if:
+      // 1. The query is loading (initial fetch)
+      // 2. The query is pending (not yet enabled - waiting for session)
+      // This prevents premature redirects when session is not yet available
+      isLoading: isLoading || isPending || !isQueryEnabled,
+      error,
+      isRefetching,
+
+      // Subscription data
+      subscription,
+      daysUntilExpiry,
+
+      // Warning state
+      showWarning,
+      warningType,
+      warningMessage,
+
+      // Add-on entitlements
+      userEntitlements,
+      activeEntitlements,
+      totalAddOnCost,
+      isLoadingEntitlements,
+      entitlementsError,
+
+      // Actions
+      refreshAccess,
+      clearAccessCache,
+      fetchUserEntitlements,
+      hasAddOnAccess,
+      hasAddOnAccessSync,
+      purchaseAddOn,
+      purchaseBundle,
+      cancelAddOn,
+
+      // Purchase state
+      isPurchasing: purchaseAddOnMutation.isPending || purchaseBundleMutation.isPending,
+      isCancelling: cancelAddOnMutation.isPending,
+      purchaseError,
+      clearPurchaseError: () => setPurchaseError(null),
+
+      // Helper booleans
+      isActive: accessReason === ACCESS_REASONS.ACTIVE,
+      isPaused: accessReason === ACCESS_REASONS.PAUSED,
+      isInGracePeriod: accessReason === ACCESS_REASONS.GRACE_PERIOD,
+      isExpired: accessReason === ACCESS_REASONS.EXPIRED,
+      hasNoSubscription: accessReason === ACCESS_REASONS.NO_SUBSCRIPTION,
+    }),
+    [
+      user,
+      hasAccess,
+      accessReason,
+      isLoading,
+      error,
+      isRefetching,
+      subscription,
+      daysUntilExpiry,
+      showWarning,
+      warningType,
+      warningMessage,
+      userEntitlements,
+      activeEntitlements,
+      totalAddOnCost,
+      isLoadingEntitlements,
+      entitlementsError,
+      refreshAccess,
+      clearAccessCache,
+      fetchUserEntitlements,
+      hasAddOnAccess,
+      hasAddOnAccessSync,
+      purchaseAddOn,
+      purchaseBundle,
+      cancelAddOn,
+      purchaseAddOnMutation.isPending,
+      purchaseBundleMutation.isPending,
+      cancelAddOnMutation.isPending,
+      purchaseError,
+      isPending,
+      isQueryEnabled,
+    ]
+  );
+
+  return <SubscriptionContext.Provider value={value}>{children}</SubscriptionContext.Provider>;
 };
 
 export default SubscriptionContext;

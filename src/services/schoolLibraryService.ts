@@ -91,22 +91,24 @@ class SchoolLibraryService {
         console.error('Error parsing stored user:', e);
       }
     }
-    
+
     // If not found in localStorage, try Supabase Auth
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
-    
+
     // Check school_educators table
     const { data: educator } = await supabase
       .from('school_educators')
       .select('school_id')
       .eq('user_id', user.id)
       .maybeSingle();
-    
+
     if (educator?.school_id) {
       return educator.school_id;
     }
-    
+
     // Check organizations table by email
     const { data: org } = await supabase
       .from('organizations')
@@ -114,18 +116,18 @@ class SchoolLibraryService {
       .eq('organization_type', 'school')
       .eq('email', user.email)
       .maybeSingle();
-    
+
     if (org?.id) {
       return org.id;
     }
-    
+
     throw new Error('No school found for user');
   }
 
   // ============================================================================
   // BOOKS MANAGEMENT
   // ============================================================================
-  
+
   async getBooks(filters?: {
     search?: string;
     category?: string;
@@ -134,7 +136,7 @@ class SchoolLibraryService {
     limit?: number;
   }) {
     const schoolId = await this.getCurrentSchoolId();
-    
+
     let query = supabase
       .from('library_books_school')
       .select('*', { count: 'exact' })
@@ -142,7 +144,9 @@ class SchoolLibraryService {
       .order('title');
 
     if (filters?.search) {
-      query = query.or(`title.ilike.%${filters.search}%,author.ilike.%${filters.search}%,isbn.ilike.%${filters.search}%`);
+      query = query.or(
+        `title.ilike.%${filters.search}%,author.ilike.%${filters.search}%,isbn.ilike.%${filters.search}%`
+      );
     }
 
     if (filters?.category) {
@@ -160,14 +164,14 @@ class SchoolLibraryService {
     }
 
     const { data, error, count } = await query;
-    
+
     if (error) throw error;
     return { books: data as SchoolLibraryBook[], count };
   }
 
   async getBookById(id: string) {
     const schoolId = await this.getCurrentSchoolId();
-    
+
     const { data, error } = await supabase
       .from('library_books_school')
       .select('*')
@@ -181,7 +185,7 @@ class SchoolLibraryService {
 
   async addBook(book: Omit<SchoolLibraryBook, 'id' | 'school_id' | 'created_at' | 'updated_at'>) {
     const schoolId = await this.getCurrentSchoolId();
-    
+
     const { data, error } = await supabase
       .from('library_books_school')
       .insert([{ ...book, school_id: schoolId }])
@@ -194,7 +198,7 @@ class SchoolLibraryService {
 
   async updateBook(id: string, updates: Partial<SchoolLibraryBook>) {
     const schoolId = await this.getCurrentSchoolId();
-    
+
     const { data, error } = await supabase
       .from('library_books_school')
       .update(updates)
@@ -209,7 +213,7 @@ class SchoolLibraryService {
 
   async deleteBook(id: string) {
     const schoolId = await this.getCurrentSchoolId();
-    
+
     const { error } = await supabase
       .from('library_books_school')
       .delete()
@@ -233,11 +237,13 @@ class SchoolLibraryService {
     issued_by?: string;
   }) {
     const schoolId = await this.getCurrentSchoolId();
-    
+
     // First check if student has reached max book limit
     const settings = await this.getSettings();
-    const maxBooks = parseInt(settings.find(s => s.setting_key === 'max_books_per_student')?.setting_value || '3');
-    
+    const maxBooks = parseInt(
+      settings.find((s) => s.setting_key === 'max_books_per_student')?.setting_value || '3'
+    );
+
     const { count: currentIssues } = await supabase
       .from('library_book_issues_school')
       .select('*', { count: 'exact', head: true })
@@ -256,7 +262,9 @@ class SchoolLibraryService {
     }
 
     // Calculate due date
-    const loanPeriod = parseInt(settings.find(s => s.setting_key === 'default_loan_period_days')?.setting_value || '14');
+    const loanPeriod = parseInt(
+      settings.find((s) => s.setting_key === 'default_loan_period_days')?.setting_value || '14'
+    );
     const issueDate = new Date();
     const dueDate = new Date(issueDate);
     dueDate.setDate(dueDate.getDate() + loanPeriod);
@@ -272,23 +280,28 @@ class SchoolLibraryService {
     const { data, error } = await supabase
       .from('library_book_issues_school')
       .insert([issueData])
-      .select(`
+      .select(
+        `
         *,
         book:library_books_school(*)
-      `)
+      `
+      )
       .single();
 
     if (error) throw error;
     return data as SchoolLibraryBookIssue;
   }
 
-  async returnBook(issueId: string, returnData: {
-    return_date?: string;
-    returned_by?: string;
-    remarks?: string;
-  }) {
+  async returnBook(
+    issueId: string,
+    returnData: {
+      return_date?: string;
+      returned_by?: string;
+      remarks?: string;
+    }
+  ) {
     const schoolId = await this.getCurrentSchoolId();
-    
+
     // Get the issue record
     const { data: issue, error: fetchError } = await supabase
       .from('library_book_issues_school')
@@ -303,12 +316,11 @@ class SchoolLibraryService {
 
     // Calculate fine
     const returnDate = returnData.return_date || new Date().toISOString().split('T')[0];
-    const { data: fineData, error: fineError } = await supabase
-      .rpc('calculate_fine_school', {
-        p_school_id: schoolId,
-        issue_date: issue.issue_date,
-        return_date: returnDate
-      });
+    const { data: fineData, error: fineError } = await supabase.rpc('calculate_fine_school', {
+      p_school_id: schoolId,
+      issue_date: issue.issue_date,
+      return_date: returnDate,
+    });
 
     if (fineError) throw fineError;
 
@@ -324,10 +336,12 @@ class SchoolLibraryService {
       .update(updateData)
       .eq('id', issueId)
       .eq('school_id', schoolId)
-      .select(`
+      .select(
+        `
         *,
         book:library_books_school(*)
-      `)
+      `
+      )
       .single();
 
     if (error) throw error;
@@ -343,13 +357,15 @@ class SchoolLibraryService {
     limit?: number;
   }) {
     const schoolId = await this.getCurrentSchoolId();
-    
+
     let query = supabase
       .from('library_book_issues_school')
-      .select(`
+      .select(
+        `
         *,
         book:library_books_school(*)
-      `)
+      `
+      )
       .eq('school_id', schoolId)
       .order('issue_date', { ascending: false });
 
@@ -366,7 +382,9 @@ class SchoolLibraryService {
     }
 
     if (filters?.search) {
-      query = query.or(`student_name.ilike.%${filters.search}%,roll_number.ilike.%${filters.search}%`);
+      query = query.or(
+        `student_name.ilike.%${filters.search}%,roll_number.ilike.%${filters.search}%`
+      );
     }
 
     if (filters?.page && filters?.limit) {
@@ -376,20 +394,22 @@ class SchoolLibraryService {
     }
 
     const { data, error, count } = await query;
-    
+
     if (error) throw error;
     return { issues: data as SchoolLibraryBookIssue[], count };
   }
 
   async searchIssuedBook(bookId?: string, studentId?: string) {
     const schoolId = await this.getCurrentSchoolId();
-    
+
     let query = supabase
       .from('library_book_issues_school')
-      .select(`
+      .select(
+        `
         *,
         book:library_books_school(*)
-      `)
+      `
+      )
       .eq('school_id', schoolId)
       .eq('status', 'issued');
 
@@ -404,7 +424,7 @@ class SchoolLibraryService {
     }
 
     const { data, error } = await query.maybeSingle();
-    
+
     if (error && error.code !== 'PGRST116') throw error;
     return data as SchoolLibraryBookIssue | null;
   }
@@ -415,7 +435,7 @@ class SchoolLibraryService {
 
   async getOverdueBooks() {
     const schoolId = await this.getCurrentSchoolId();
-    
+
     const { data, error } = await supabase
       .from('overdue_books_school')
       .select('*')
@@ -432,7 +452,7 @@ class SchoolLibraryService {
 
   async getLibraryStats() {
     const schoolId = await this.getCurrentSchoolId();
-    
+
     const { data, error } = await supabase
       .from('library_stats_school')
       .select('*')
@@ -449,7 +469,7 @@ class SchoolLibraryService {
 
   async getSettings() {
     const schoolId = await this.getCurrentSchoolId();
-    
+
     const { data, error } = await supabase
       .from('library_settings_school')
       .select('*')
@@ -462,7 +482,7 @@ class SchoolLibraryService {
 
   async updateSetting(key: string, value: string) {
     const schoolId = await this.getCurrentSchoolId();
-    
+
     const { data, error } = await supabase
       .from('library_settings_school')
       .update({ setting_value: value })
@@ -481,7 +501,7 @@ class SchoolLibraryService {
 
   async getCategories() {
     const schoolId = await this.getCurrentSchoolId();
-    
+
     const { data, error } = await supabase
       .from('library_categories_school')
       .select('*')
@@ -492,9 +512,11 @@ class SchoolLibraryService {
     return data as SchoolLibraryCategory[];
   }
 
-  async addCategory(category: Omit<SchoolLibraryCategory, 'id' | 'school_id' | 'created_at' | 'updated_at'>) {
+  async addCategory(
+    category: Omit<SchoolLibraryCategory, 'id' | 'school_id' | 'created_at' | 'updated_at'>
+  ) {
     const schoolId = await this.getCurrentSchoolId();
-    
+
     const { data, error } = await supabase
       .from('library_categories_school')
       .insert([{ ...category, school_id: schoolId }])
@@ -507,7 +529,7 @@ class SchoolLibraryService {
 
   async updateCategory(id: string, updates: Partial<SchoolLibraryCategory>) {
     const schoolId = await this.getCurrentSchoolId();
-    
+
     const { data, error } = await supabase
       .from('library_categories_school')
       .update(updates)
@@ -522,7 +544,7 @@ class SchoolLibraryService {
 
   async deleteCategory(id: string) {
     const schoolId = await this.getCurrentSchoolId();
-    
+
     const { error } = await supabase
       .from('library_categories_school')
       .delete()
@@ -538,13 +560,12 @@ class SchoolLibraryService {
 
   async calculateFine(issueDate: string, returnDate?: string) {
     const schoolId = await this.getCurrentSchoolId();
-    
-    const { data, error } = await supabase
-      .rpc('calculate_fine_school', {
-        p_school_id: schoolId,
-        issue_date: issueDate,
-        return_date: returnDate || new Date().toISOString().split('T')[0]
-      });
+
+    const { data, error } = await supabase.rpc('calculate_fine_school', {
+      p_school_id: schoolId,
+      issue_date: issueDate,
+      return_date: returnDate || new Date().toISOString().split('T')[0],
+    });
 
     if (error) throw error;
     return data as number;
@@ -553,7 +574,7 @@ class SchoolLibraryService {
   // Get student's current issued books count
   async getStudentIssuedBooksCount(studentId: string) {
     const schoolId = await this.getCurrentSchoolId();
-    
+
     const { count, error } = await supabase
       .from('library_book_issues_school')
       .select('*', { count: 'exact', head: true })
@@ -568,13 +589,15 @@ class SchoolLibraryService {
   // Get borrow history for a student
   async getStudentBorrowHistory(studentId: string) {
     const schoolId = await this.getCurrentSchoolId();
-    
+
     const { data, error } = await supabase
       .from('library_book_issues_school')
-      .select(`
+      .select(
+        `
         *,
         book:library_books_school(*)
-      `)
+      `
+      )
       .eq('school_id', schoolId)
       .eq('student_id', studentId)
       .order('issue_date', { ascending: false });
@@ -586,13 +609,17 @@ class SchoolLibraryService {
   // Search students for book issuing
   async searchStudents(searchTerm: string) {
     const schoolId = await this.getCurrentSchoolId();
-    
+
     const { data, error } = await supabase
       .from('students')
-      .select('id, name, roll_number, enrollmentNumber, admission_number, contact_number, email, grade, section, course_name, semester')
+      .select(
+        'id, name, roll_number, enrollmentNumber, admission_number, contact_number, email, grade, section, course_name, semester'
+      )
       .eq('school_id', schoolId)
       .eq('is_deleted', false)
-      .or(`name.ilike.%${searchTerm}%,roll_number.ilike.%${searchTerm}%,enrollmentNumber.ilike.%${searchTerm}%,admission_number.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`)
+      .or(
+        `name.ilike.%${searchTerm}%,roll_number.ilike.%${searchTerm}%,enrollmentNumber.ilike.%${searchTerm}%,admission_number.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`
+      )
       .order('name')
       .limit(10);
 
@@ -603,10 +630,12 @@ class SchoolLibraryService {
   // Get student details by ID
   async getStudentById(studentId: string) {
     const schoolId = await this.getCurrentSchoolId();
-    
+
     const { data, error } = await supabase
       .from('students')
-      .select('id, name, roll_number, enrollmentNumber, admission_number, contact_number, email, grade, section, course_name, semester')
+      .select(
+        'id, name, roll_number, enrollmentNumber, admission_number, contact_number, email, grade, section, course_name, semester'
+      )
       .eq('id', studentId)
       .eq('school_id', schoolId)
       .eq('is_deleted', false)

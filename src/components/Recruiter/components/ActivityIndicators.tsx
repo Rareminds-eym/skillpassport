@@ -6,15 +6,20 @@ interface ActivityIndicatorsProps {
   createdAt?: string | Date;
 }
 
-export const ActivityIndicators: React.FC<ActivityIndicatorsProps> = ({ lastUpdated, createdAt }) => {
+export const ActivityIndicators: React.FC<ActivityIndicatorsProps> = ({
+  lastUpdated,
+  createdAt,
+}) => {
   const getActivityStatus = () => {
     const now = new Date();
     const updated = new Date(lastUpdated);
     const created = createdAt ? new Date(createdAt) : null;
-    
+
     const hoursSinceUpdate = (now.getTime() - updated.getTime()) / (1000 * 60 * 60);
-    const hoursSinceCreation = created ? (now.getTime() - created.getTime()) / (1000 * 60 * 60) : null;
-    
+    const hoursSinceCreation = created
+      ? (now.getTime() - created.getTime()) / (1000 * 60 * 60)
+      : null;
+
     // New candidate (created in last 24 hours)
     if (hoursSinceCreation !== null && hoursSinceCreation < 24) {
       return {
@@ -24,10 +29,10 @@ export const ActivityIndicators: React.FC<ActivityIndicatorsProps> = ({ lastUpda
             <SparklesIcon className="h-3 w-3 mr-1" />
             New
           </span>
-        )
+        ),
       };
     }
-    
+
     // Stale (no activity in 7 days)
     if (hoursSinceUpdate > 168) {
       return {
@@ -37,10 +42,10 @@ export const ActivityIndicators: React.FC<ActivityIndicatorsProps> = ({ lastUpda
             <ExclamationTriangleIcon className="h-3 w-3 mr-1" />
             {Math.floor(hoursSinceUpdate / 24)}d ago
           </span>
-        )
+        ),
       };
     }
-    
+
     // Recent activity (less than 2 days)
     if (hoursSinceUpdate < 48) {
       return {
@@ -50,15 +55,15 @@ export const ActivityIndicators: React.FC<ActivityIndicatorsProps> = ({ lastUpda
             <ClockIcon className="h-3 w-3 mr-1" />
             Active
           </span>
-        )
+        ),
       };
     }
-    
+
     return { type: 'normal', badge: null };
   };
-  
+
   const status = getActivityStatus();
-  
+
   return status.badge;
 };
 
@@ -70,7 +75,7 @@ export const formatRelativeTime = (date: string | Date): string => {
   const diffMins = Math.floor(diffMs / (1000 * 60));
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  
+
   if (diffMins < 1) return 'Just now';
   if (diffMins < 60) return `${diffMins}m ago`;
   if (diffHours < 24) return `${diffHours}h ago`;
@@ -78,4 +83,3 @@ export const formatRelativeTime = (date: string | Date): string => {
   if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
   return then.toLocaleDateString();
 };
-

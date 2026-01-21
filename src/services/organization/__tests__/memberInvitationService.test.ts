@@ -1,14 +1,11 @@
 /**
  * Unit Tests for MemberInvitationService
- * 
+ *
  * Tests for Task 21.5: Test MemberInvitationService methods
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-    MemberInvitationService,
-    type InviteMemberRequest
-} from '../memberInvitationService';
+import { MemberInvitationService, type InviteMemberRequest } from '../memberInvitationService';
 
 // Mock Supabase client
 vi.mock('@/lib/supabaseClient', () => ({
@@ -21,19 +18,19 @@ vi.mock('@/lib/supabaseClient', () => ({
       lt: vi.fn().mockReturnThis(),
       order: vi.fn().mockReturnThis(),
       limit: vi.fn().mockReturnThis(),
-      single: vi.fn()
+      single: vi.fn(),
     })),
     auth: {
-      getUser: vi.fn()
-    }
-  }
+      getUser: vi.fn(),
+    },
+  },
 }));
 
 // Mock licenseManagementService
 vi.mock('../licenseManagementService', () => ({
   licenseManagementService: {
-    assignLicense: vi.fn()
-  }
+    assignLicense: vi.fn(),
+  },
 }));
 
 import { supabase } from '@/lib/supabaseClient';
@@ -62,7 +59,7 @@ describe('MemberInvitationService', () => {
       memberType: 'educator',
       autoAssignSubscription: true,
       licensePoolId: 'pool-001',
-      invitationMessage: 'Welcome to our school!'
+      invitationMessage: 'Welcome to our school!',
     };
 
     const mockUser = { id: 'admin-456' };
@@ -83,12 +80,12 @@ describe('MemberInvitationService', () => {
         invitation_message: 'Welcome to our school!',
         metadata: {},
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       };
 
       vi.mocked(supabase.auth.getUser).mockResolvedValue({
         data: { user: mockUser },
-        error: null
+        error: null,
       } as any);
 
       let callCount = 0;
@@ -99,14 +96,14 @@ describe('MemberInvitationService', () => {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } })
+            single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } }),
           } as any;
         }
         // Create invitation
         return {
           insert: vi.fn().mockReturnThis(),
           select: vi.fn().mockReturnThis(),
-          single: vi.fn().mockResolvedValue({ data: mockInvitation, error: null })
+          single: vi.fn().mockResolvedValue({ data: mockInvitation, error: null }),
         } as any;
       });
 
@@ -122,44 +119,52 @@ describe('MemberInvitationService', () => {
       const existingInvitation = {
         id: 'existing-inv',
         email: 'teacher@school.com',
-        status: 'pending'
+        status: 'pending',
       };
 
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: existingInvitation, error: null })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(
+        () =>
+          ({
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: existingInvitation, error: null }),
+          }) as any
+      );
 
-      await expect(service.inviteMember(mockInviteRequest))
-        .rejects.toThrow('An invitation is already pending for this email');
+      await expect(service.inviteMember(mockInviteRequest)).rejects.toThrow(
+        'An invitation is already pending for this email'
+      );
     });
 
     it('should throw error when user not authenticated', async () => {
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(
+        () =>
+          ({
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } }),
+          }) as any
+      );
 
       vi.mocked(supabase.auth.getUser).mockResolvedValue({
         data: { user: null },
-        error: null
+        error: null,
       } as any);
 
-      await expect(service.inviteMember(mockInviteRequest))
-        .rejects.toThrow('User not authenticated');
+      await expect(service.inviteMember(mockInviteRequest)).rejects.toThrow(
+        'User not authenticated'
+      );
     });
 
     it('should normalize email to lowercase', async () => {
       const requestWithUppercaseEmail = {
         ...mockInviteRequest,
-        email: 'Teacher@School.COM'
+        email: 'Teacher@School.COM',
       };
 
       vi.mocked(supabase.auth.getUser).mockResolvedValue({
         data: { user: mockUser },
-        error: null
+        error: null,
       } as any);
 
       let insertedData: any = null;
@@ -172,12 +177,12 @@ describe('MemberInvitationService', () => {
             insertedData = data;
             return {
               select: vi.fn().mockReturnThis(),
-              single: vi.fn().mockResolvedValue({ 
-                data: { ...data, id: 'inv-001', invitation_token: 'token123' }, 
-                error: null 
-              })
+              single: vi.fn().mockResolvedValue({
+                data: { ...data, id: 'inv-001', invitation_token: 'token123' },
+                error: null,
+              }),
             };
-          })
+          }),
         } as any;
       });
 
@@ -195,31 +200,34 @@ describe('MemberInvitationService', () => {
           organizationType: 'school',
           email: 'teacher1@school.com',
           memberType: 'educator',
-          autoAssignSubscription: false
+          autoAssignSubscription: false,
         },
         {
           organizationId: 'org-123',
           organizationType: 'school',
           email: 'teacher2@school.com',
           memberType: 'educator',
-          autoAssignSubscription: false
-        }
+          autoAssignSubscription: false,
+        },
       ];
 
       const mockUser = { id: 'admin-456' };
 
       vi.mocked(supabase.auth.getUser).mockResolvedValue({
         data: { user: mockUser },
-        error: null
+        error: null,
       } as any);
 
       let inviteCount = 0;
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } }),
-        insert: vi.fn().mockReturnThis()
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(
+        () =>
+          ({
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } }),
+            insert: vi.fn().mockReturnThis(),
+          }) as any
+      );
 
       // Mock successful invitations
       vi.mocked(supabase.from).mockImplementation(() => {
@@ -240,12 +248,12 @@ describe('MemberInvitationService', () => {
                 status: 'pending',
                 invitation_token: `token-${inviteCount}`,
                 created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
+                updated_at: new Date().toISOString(),
               },
-              error: null
+              error: null,
             });
           }),
-          insert: vi.fn().mockReturnThis()
+          insert: vi.fn().mockReturnThis(),
         } as any;
       });
 
@@ -263,18 +271,21 @@ describe('MemberInvitationService', () => {
           organizationType: 'school',
           email: 'existing@school.com', // Will fail - already exists
           memberType: 'educator',
-          autoAssignSubscription: false
-        }
+          autoAssignSubscription: false,
+        },
       ];
 
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ 
-          data: { id: 'existing-inv' }, // Already exists
-          error: null 
-        })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(
+        () =>
+          ({
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({
+              data: { id: 'existing-inv' }, // Already exists
+              error: null,
+            }),
+          }) as any
+      );
 
       const result = await service.bulkInviteMembers(requests);
 
@@ -290,7 +301,7 @@ describe('MemberInvitationService', () => {
         email: 'teacher@school.com',
         status: 'pending',
         invitation_token: 'old-token',
-        invitation_message: 'Welcome!'
+        invitation_message: 'Welcome!',
       };
 
       let callCount = 0;
@@ -301,45 +312,50 @@ describe('MemberInvitationService', () => {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: mockInvitation, error: null })
+            single: vi.fn().mockResolvedValue({ data: mockInvitation, error: null }),
           } as any;
         }
         // Update invitation
         return {
           update: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockResolvedValue({ error: null })
+          eq: vi.fn().mockResolvedValue({ error: null }),
         } as any;
       });
 
-      await expect(service.resendInvitation('inv-001'))
-        .resolves.not.toThrow();
+      await expect(service.resendInvitation('inv-001')).resolves.not.toThrow();
     });
 
     it('should throw error when invitation not found', async () => {
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: null, error: { message: 'Not found' } })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(
+        () =>
+          ({
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: null, error: { message: 'Not found' } }),
+          }) as any
+      );
 
-      await expect(service.resendInvitation('invalid-inv'))
-        .rejects.toThrow('Invitation not found');
+      await expect(service.resendInvitation('invalid-inv')).rejects.toThrow('Invitation not found');
     });
 
     it('should throw error when invitation is not pending', async () => {
       const mockInvitation = {
         id: 'inv-001',
-        status: 'accepted' // Not pending
+        status: 'accepted', // Not pending
       };
 
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: mockInvitation, error: null })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(
+        () =>
+          ({
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: mockInvitation, error: null }),
+          }) as any
+      );
 
-      await expect(service.resendInvitation('inv-001'))
-        .rejects.toThrow('Can only resend pending invitations');
+      await expect(service.resendInvitation('inv-001')).rejects.toThrow(
+        'Can only resend pending invitations'
+      );
     });
   });
 
@@ -350,15 +366,14 @@ describe('MemberInvitationService', () => {
         const chainable: any = {};
         chainable.update = vi.fn().mockReturnValue(chainable);
         chainable.eq = vi.fn().mockImplementation(() => ({
-          eq: vi.fn().mockResolvedValue({ error: null })
+          eq: vi.fn().mockResolvedValue({ error: null }),
         }));
         return chainable;
       };
 
       vi.mocked(supabase.from).mockImplementation(() => createChainableMock());
 
-      await expect(service.cancelInvitation('inv-001'))
-        .resolves.not.toThrow();
+      await expect(service.cancelInvitation('inv-001')).resolves.not.toThrow();
     });
 
     it('should throw error on database failure', async () => {
@@ -366,15 +381,14 @@ describe('MemberInvitationService', () => {
         const chainable: any = {};
         chainable.update = vi.fn().mockReturnValue(chainable);
         chainable.eq = vi.fn().mockImplementation(() => ({
-          eq: vi.fn().mockResolvedValue({ error: { message: 'Database error' } })
+          eq: vi.fn().mockResolvedValue({ error: { message: 'Database error' } }),
         }));
         return chainable;
       };
 
       vi.mocked(supabase.from).mockImplementation(() => createChainableMock());
 
-      await expect(service.cancelInvitation('inv-001'))
-        .rejects.toThrow();
+      await expect(service.cancelInvitation('inv-001')).rejects.toThrow();
     });
   });
 
@@ -390,7 +404,7 @@ describe('MemberInvitationService', () => {
         auto_assign_subscription: false,
         status: 'pending',
         invitation_token: 'valid-token',
-        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       };
 
       let callCount = 0;
@@ -401,14 +415,14 @@ describe('MemberInvitationService', () => {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: mockInvitation, error: null })
+            single: vi.fn().mockResolvedValue({ data: mockInvitation, error: null }),
           } as any;
         }
         if (table === 'organization_invitations' && callCount === 2) {
           // Update invitation status
           return {
             update: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockResolvedValue({ error: null })
+            eq: vi.fn().mockResolvedValue({ error: null }),
           } as any;
         }
         if (table === 'organizations') {
@@ -416,13 +430,13 @@ describe('MemberInvitationService', () => {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: { name: 'Test School' }, error: null })
+            single: vi.fn().mockResolvedValue({ data: { name: 'Test School' }, error: null }),
           } as any;
         }
         // Link user operations
         return {
           update: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockResolvedValue({ error: null })
+          eq: vi.fn().mockResolvedValue({ error: null }),
         } as any;
       });
 
@@ -434,21 +448,25 @@ describe('MemberInvitationService', () => {
     });
 
     it('should throw error for invalid token', async () => {
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(
+        () =>
+          ({
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } }),
+          }) as any
+      );
 
-      await expect(service.acceptInvitation('invalid-token', 'user-123'))
-        .rejects.toThrow('Invalid or expired invitation');
+      await expect(service.acceptInvitation('invalid-token', 'user-123')).rejects.toThrow(
+        'Invalid or expired invitation'
+      );
     });
 
     it('should throw error for expired invitation', async () => {
       const expiredInvitation = {
         id: 'inv-001',
         status: 'pending',
-        expires_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() // Expired yesterday
+        expires_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // Expired yesterday
       };
 
       let callCount = 0;
@@ -458,18 +476,19 @@ describe('MemberInvitationService', () => {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: expiredInvitation, error: null })
+            single: vi.fn().mockResolvedValue({ data: expiredInvitation, error: null }),
           } as any;
         }
         // Update to expired status
         return {
           update: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockResolvedValue({ error: null })
+          eq: vi.fn().mockResolvedValue({ error: null }),
         } as any;
       });
 
-      await expect(service.acceptInvitation('expired-token', 'user-123'))
-        .rejects.toThrow('Invitation has expired');
+      await expect(service.acceptInvitation('expired-token', 'user-123')).rejects.toThrow(
+        'Invitation has expired'
+      );
     });
 
     it('should auto-assign license when configured', async () => {
@@ -484,13 +503,13 @@ describe('MemberInvitationService', () => {
         target_license_pool_id: 'pool-001',
         status: 'pending',
         invitation_token: 'valid-token',
-        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       };
 
       const mockAssignment = {
         id: 'assign-001',
         userId: 'user-123',
-        status: 'active'
+        status: 'active',
       };
 
       vi.mocked(supabase.from).mockImplementation((table: string) => {
@@ -499,7 +518,7 @@ describe('MemberInvitationService', () => {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
             single: vi.fn().mockResolvedValue({ data: mockInvitation, error: null }),
-            update: vi.fn().mockReturnThis()
+            update: vi.fn().mockReturnThis(),
           } as any;
         }
         if (table === 'organizations') {
@@ -507,12 +526,12 @@ describe('MemberInvitationService', () => {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: { name: 'Test School' }, error: null })
+            single: vi.fn().mockResolvedValue({ data: { name: 'Test School' }, error: null }),
           } as any;
         }
         return {
           update: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockResolvedValue({ error: null })
+          eq: vi.fn().mockResolvedValue({ error: null }),
         } as any;
       });
 
@@ -538,7 +557,7 @@ describe('MemberInvitationService', () => {
           email: 'teacher1@school.com',
           status: 'pending',
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         },
         {
           id: 'inv-002',
@@ -546,15 +565,18 @@ describe('MemberInvitationService', () => {
           email: 'teacher2@school.com',
           status: 'pending',
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
+          updated_at: new Date().toISOString(),
+        },
       ];
 
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        order: vi.fn().mockResolvedValue({ data: mockInvitations, error: null })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(
+        () =>
+          ({
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            order: vi.fn().mockResolvedValue({ data: mockInvitations, error: null }),
+          }) as any
+      );
 
       const result = await service.getPendingInvitations('org-123');
 
@@ -563,11 +585,14 @@ describe('MemberInvitationService', () => {
     });
 
     it('should return empty array when no pending invitations', async () => {
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        order: vi.fn().mockResolvedValue({ data: [], error: null })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(
+        () =>
+          ({
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            order: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }) as any
+      );
 
       const result = await service.getPendingInvitations('org-123');
 
@@ -580,30 +605,36 @@ describe('MemberInvitationService', () => {
       const mockInvitations = [
         { id: 'inv-001', status: 'pending', member_type: 'educator' },
         { id: 'inv-002', status: 'accepted', member_type: 'educator' },
-        { id: 'inv-003', status: 'expired', member_type: 'student' }
+        { id: 'inv-003', status: 'expired', member_type: 'student' },
       ];
 
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        order: vi.fn().mockReturnThis(),
-        limit: vi.fn().mockResolvedValue({ data: mockInvitations, error: null })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(
+        () =>
+          ({
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            order: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue({ data: mockInvitations, error: null }),
+          }) as any
+      );
 
       const result = await service.getAllInvitations('org-123', {
-        limit: 50
+        limit: 50,
       });
 
       expect(result).toHaveLength(3);
     });
 
     it('should filter by status', async () => {
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        order: vi.fn().mockReturnThis(),
-        limit: vi.fn().mockResolvedValue({ data: [], error: null })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(
+        () =>
+          ({
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            order: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }) as any
+      );
 
       await service.getAllInvitations('org-123', { status: 'pending' });
 
@@ -618,14 +649,17 @@ describe('MemberInvitationService', () => {
         invitation_token: 'valid-token',
         status: 'pending',
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       };
 
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: mockInvitation, error: null })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(
+        () =>
+          ({
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: mockInvitation, error: null }),
+          }) as any
+      );
 
       const result = await service.getInvitationByToken('valid-token');
 
@@ -634,11 +668,14 @@ describe('MemberInvitationService', () => {
     });
 
     it('should return null when token not found', async () => {
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(
+        () =>
+          ({
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } }),
+          }) as any
+      );
 
       const result = await service.getInvitationByToken('invalid-token');
 
@@ -655,13 +692,16 @@ describe('MemberInvitationService', () => {
         { status: 'accepted' },
         { status: 'accepted' },
         { status: 'expired' },
-        { status: 'cancelled' }
+        { status: 'cancelled' },
       ];
 
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockResolvedValue({ data: mockInvitations, error: null })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(
+        () =>
+          ({
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockResolvedValue({ data: mockInvitations, error: null }),
+          }) as any
+      );
 
       const result = await service.getInvitationStats('org-123');
 
@@ -675,15 +715,15 @@ describe('MemberInvitationService', () => {
     });
 
     it('should handle zero completed invitations', async () => {
-      const mockInvitations = [
-        { status: 'pending' },
-        { status: 'pending' }
-      ];
+      const mockInvitations = [{ status: 'pending' }, { status: 'pending' }];
 
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockResolvedValue({ data: mockInvitations, error: null })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(
+        () =>
+          ({
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockResolvedValue({ data: mockInvitations, error: null }),
+          }) as any
+      );
 
       const result = await service.getInvitationStats('org-123');
 
@@ -693,17 +733,17 @@ describe('MemberInvitationService', () => {
 
   describe('expireOldInvitations', () => {
     it('should expire old pending invitations', async () => {
-      const expiredInvitations = [
-        { id: 'inv-001' },
-        { id: 'inv-002' }
-      ];
+      const expiredInvitations = [{ id: 'inv-001' }, { id: 'inv-002' }];
 
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        update: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        lt: vi.fn().mockReturnThis(),
-        select: vi.fn().mockResolvedValue({ data: expiredInvitations, error: null })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(
+        () =>
+          ({
+            update: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            lt: vi.fn().mockReturnThis(),
+            select: vi.fn().mockResolvedValue({ data: expiredInvitations, error: null }),
+          }) as any
+      );
 
       const result = await service.expireOldInvitations();
 
@@ -711,12 +751,15 @@ describe('MemberInvitationService', () => {
     });
 
     it('should return 0 when no invitations to expire', async () => {
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        update: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        lt: vi.fn().mockReturnThis(),
-        select: vi.fn().mockResolvedValue({ data: [], error: null })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(
+        () =>
+          ({
+            update: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            lt: vi.fn().mockReturnThis(),
+            select: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }) as any
+      );
 
       const result = await service.expireOldInvitations();
 

@@ -1,5 +1,27 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { Award, Book, Briefcase, Camera, CheckCircle, ChevronLeft, ChevronRight, Code, Coffee, Dumbbell, Gamepad2, Globe, Mountain, Music, Palette, Plane, Shield, Star, Target, Users, XCircle } from 'lucide-react';
+import {
+  Award,
+  Book,
+  Briefcase,
+  Camera,
+  CheckCircle,
+  ChevronLeft,
+  ChevronRight,
+  Code,
+  Coffee,
+  Dumbbell,
+  Gamepad2,
+  Globe,
+  Mountain,
+  Music,
+  Palette,
+  Plane,
+  Shield,
+  Star,
+  Target,
+  Users,
+  XCircle,
+} from 'lucide-react';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePortfolio } from '../../context/PortfolioContext';
@@ -17,24 +39,50 @@ const PassportPage: React.FC = () => {
   // Function to get appropriate icon for hobby
   const getHobbyIcon = (hobby: string) => {
     const hobbyLower = hobby.toLowerCase();
-    
-    if (hobbyLower.includes('music') || hobbyLower.includes('singing') || hobbyLower.includes('guitar') || hobbyLower.includes('piano')) {
+
+    if (
+      hobbyLower.includes('music') ||
+      hobbyLower.includes('singing') ||
+      hobbyLower.includes('guitar') ||
+      hobbyLower.includes('piano')
+    ) {
       return Music;
     } else if (hobbyLower.includes('photo') || hobbyLower.includes('camera')) {
       return Camera;
-    } else if (hobbyLower.includes('paint') || hobbyLower.includes('draw') || hobbyLower.includes('art')) {
+    } else if (
+      hobbyLower.includes('paint') ||
+      hobbyLower.includes('draw') ||
+      hobbyLower.includes('art')
+    ) {
       return Palette;
     } else if (hobbyLower.includes('game') || hobbyLower.includes('gaming')) {
       return Gamepad2;
-    } else if (hobbyLower.includes('gym') || hobbyLower.includes('fitness') || hobbyLower.includes('workout') || hobbyLower.includes('exercise')) {
+    } else if (
+      hobbyLower.includes('gym') ||
+      hobbyLower.includes('fitness') ||
+      hobbyLower.includes('workout') ||
+      hobbyLower.includes('exercise')
+    ) {
       return Dumbbell;
     } else if (hobbyLower.includes('travel') || hobbyLower.includes('trip')) {
       return Plane;
-    } else if (hobbyLower.includes('coffee') || hobbyLower.includes('cooking') || hobbyLower.includes('baking')) {
+    } else if (
+      hobbyLower.includes('coffee') ||
+      hobbyLower.includes('cooking') ||
+      hobbyLower.includes('baking')
+    ) {
       return Coffee;
-    } else if (hobbyLower.includes('hiking') || hobbyLower.includes('climbing') || hobbyLower.includes('outdoor')) {
+    } else if (
+      hobbyLower.includes('hiking') ||
+      hobbyLower.includes('climbing') ||
+      hobbyLower.includes('outdoor')
+    ) {
       return Mountain;
-    } else if (hobbyLower.includes('social') || hobbyLower.includes('friend') || hobbyLower.includes('community')) {
+    } else if (
+      hobbyLower.includes('social') ||
+      hobbyLower.includes('friend') ||
+      hobbyLower.includes('community')
+    ) {
       return Users;
     } else if (hobbyLower.includes('read') || hobbyLower.includes('book')) {
       return Book;
@@ -42,7 +90,7 @@ const PassportPage: React.FC = () => {
       return Star; // Default icon for other hobbies
     }
   };
-  
+
   const minZoom = 0.7;
   const maxZoom = 1.3;
   const zoomStep = 0.1;
@@ -61,11 +109,11 @@ const PassportPage: React.FC = () => {
   };
 
   const zoomIn = () => {
-    setZoomLevel(prev => Math.min(prev + zoomStep, maxZoom));
+    setZoomLevel((prev) => Math.min(prev + zoomStep, maxZoom));
   };
 
   const zoomOut = () => {
-    setZoomLevel(prev => Math.max(prev - zoomStep, minZoom));
+    setZoomLevel((prev) => Math.max(prev - zoomStep, minZoom));
   };
 
   const resetZoom = () => {
@@ -83,11 +131,11 @@ const PassportPage: React.FC = () => {
 
   const onTouchEnd = () => {
     if (!touchStart || !touchEnd) return;
-    
+
     const distance = touchStart - touchEnd;
     const isLeftSwipe = distance > minSwipeDistance;
     const isRightSwipe = distance < -minSwipeDistance;
-    
+
     if (isLeftSwipe) {
       nextPage();
     }
@@ -105,40 +153,41 @@ const PassportPage: React.FC = () => {
         <div className="h-full flex flex-col items-center justify-center bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 text-white p-8 relative overflow-hidden">
           {/* Passport Pattern Background */}
           <div className="absolute inset-0 opacity-10">
-            <div className="absolute inset-0" style={{
-              backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.1) 10px, rgba(255,255,255,0.1) 20px)`
-            }} />
+            <div
+              className="absolute inset-0"
+              style={{
+                backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.1) 10px, rgba(255,255,255,0.1) 20px)`,
+              }}
+            />
           </div>
-          
+
           <div className="relative z-10 text-center">
             {/* Company Logo */}
             <div className="mb-8">
               <div className="w-24 h-24 bg-white/20 backdrop-blur-xl rounded-full flex items-center justify-center mx-auto border-4 border-white/40 shadow-2xl p-2">
-                <img 
-                  src="/RMLogo.webp" 
-                  alt="Rareminds Logo" 
+                <img
+                  src="/RMLogo.webp"
+                  alt="Rareminds Logo"
                   className="w-full h-full object-contain"
                 />
               </div>
             </div>
-            
+
             <h1 className="text-5xl font-bold mb-4 tracking-wider">DIGITAL</h1>
             <h1 className="text-5xl font-bold mb-8 tracking-wider">PASSPORT</h1>
-            
+
             <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/30 shadow-xl">
               <p className="text-sm uppercase tracking-widest mb-2 opacity-80">Issued by</p>
               <p className="text-2xl font-bold">RAREMINDS</p>
               <p className="text-sm mt-2 opacity-80">Student Portfolio System</p>
             </div>
 
-            <div className="mt-12 text-xs opacity-60">
-              Official Digital Credential
-            </div>
+            <div className="mt-12 text-xs opacity-60">Official Digital Credential</div>
           </div>
         </div>
-      )
+      ),
     },
-    
+
     // Page 1: Personal Info & Verification
     {
       id: 'personal',
@@ -148,13 +197,15 @@ const PassportPage: React.FC = () => {
           <div className="absolute top-4 right-4 opacity-10">
             <Shield className="w-32 h-32 text-gray-400" />
           </div>
-          
+
           <div className="relative">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 uppercase tracking-wide">Personal Details</h2>
+              <h2 className="text-2xl font-bold text-gray-900 uppercase tracking-wide">
+                Personal Details
+              </h2>
               <span className="text-xs font-mono text-gray-500">Page 01</span>
             </div>
-            
+
             <div className="flex space-x-6 mb-8">
               <div className="relative">
                 <img
@@ -170,7 +221,7 @@ const PassportPage: React.FC = () => {
                   )}
                 </div>
               </div>
-              
+
               <div className="flex-1 space-y-2">
                 <div className="border-b border-gray-300 pb-2">
                   <p className="text-xs text-gray-500 uppercase">Full Name</p>
@@ -182,25 +233,27 @@ const PassportPage: React.FC = () => {
                   </p>
                   <p className="font-semibold text-gray-800">
                     {student?.student_type === 'school-student'
-                      ? (student?.school?.name || student?.college_school_name || 'N/A')
-                      : (student?.university || student?.universityInfo?.name || 'N/A')
-                    }
+                      ? student?.school?.name || student?.college_school_name || 'N/A'
+                      : student?.university || student?.universityInfo?.name || 'N/A'}
                   </p>
                 </div>
                 <div className="border-b border-gray-300 pb-2">
                   <p className="text-xs text-gray-500 uppercase">
-                    {student?.student_type === 'school-student' ? 'Grade/Section' : 'Field of Study'}
+                    {student?.student_type === 'school-student'
+                      ? 'Grade/Section'
+                      : 'Field of Study'}
                   </p>
                   <p className="font-semibold text-gray-800">
                     {student?.student_type === 'school-student'
-                      ? (student?.grade && student?.section ? `Grade ${student.grade} - ${student.section}` : 'N/A')
-                      : (student?.branch_field || 'N/A')
-                    }
+                      ? student?.grade && student?.section
+                        ? `Grade ${student.grade} - ${student.section}`
+                        : 'N/A'
+                      : student?.branch_field || 'N/A'}
                   </p>
                 </div>
               </div>
             </div>
-            
+
             <div className="bg-white rounded-lg p-4 shadow-md border-l-4 border-blue-600 mb-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -209,15 +262,16 @@ const PassportPage: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 font-medium">Contact</p>
-                  <p className="text-sm font-medium text-gray-800">{student?.contact_number || 'N/A'}</p>
+                  <p className="text-sm font-medium text-gray-800">
+                    {student?.contact_number || 'N/A'}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 font-medium">Location</p>
                   <p className="text-sm font-medium text-gray-800">
                     {student?.city && student?.state
                       ? `${student.city}, ${student.state}${student.country ? `, ${student.country}` : ''}`
-                      : (student?.district_name || 'N/A')
-                    }
+                      : student?.district_name || 'N/A'}
                   </p>
                 </div>
                 <div>
@@ -228,7 +282,7 @@ const PassportPage: React.FC = () => {
                 </div>
               </div>
             </div>
-            
+
             {/* Verification Stamp */}
             <div className="absolute bottom-8 right-8">
               {student?.approval_status === 'approved' ? (
@@ -254,9 +308,9 @@ const PassportPage: React.FC = () => {
             </div>
           </div>
         </div>
-      )
+      ),
     },
-    
+
     // Page 2: Education
     {
       id: 'education',
@@ -270,10 +324,13 @@ const PassportPage: React.FC = () => {
             </div>
             <span className="text-xs font-mono text-gray-500">Page 02</span>
           </div>
-          
+
           <div className="space-y-4">
             {student?.profile.education?.slice(0, 2).map((edu) => (
-              <div key={edu.id} className="bg-white rounded-lg p-5 shadow-md border-l-4 border-blue-600">
+              <div
+                key={edu.id}
+                className="bg-white rounded-lg p-5 shadow-md border-l-4 border-blue-600"
+              >
                 <div className="flex justify-between items-start mb-2">
                   <h3 className="font-bold text-lg text-gray-900">{edu.degree}</h3>
                   {edu.grade && (
@@ -284,10 +341,12 @@ const PassportPage: React.FC = () => {
                 </div>
                 <p className="text-gray-700 font-medium mb-1">{edu.institution}</p>
                 <p className="text-gray-600 text-sm mb-2">{edu.field}</p>
-                <p className="text-xs text-gray-500">{edu.startDate} - {edu.endDate || 'Present'}</p>
+                <p className="text-xs text-gray-500">
+                  {edu.startDate} - {edu.endDate || 'Present'}
+                </p>
               </div>
             ))}
-            
+
             {(!student?.profile.education || student.profile.education.length === 0) && (
               <div className="text-center text-gray-500 py-8">
                 <Book className="w-12 h-12 mx-auto mb-2 opacity-30" />
@@ -296,9 +355,9 @@ const PassportPage: React.FC = () => {
             )}
           </div>
         </div>
-      )
+      ),
     },
-    
+
     // Page 3: Skills
     {
       id: 'skills',
@@ -312,10 +371,13 @@ const PassportPage: React.FC = () => {
             </div>
             <span className="text-xs font-mono text-gray-500">Page 03</span>
           </div>
-          
+
           <div className="grid grid-cols-2 gap-3">
             {student?.profile.skills?.slice(0, 8).map((skill, index) => (
-              <div key={index} className="bg-white rounded-lg p-4 shadow-sm border-l-3 border-purple-400">
+              <div
+                key={index}
+                className="bg-white rounded-lg p-4 shadow-sm border-l-3 border-purple-400"
+              >
                 <div className="flex items-center justify-between mb-1">
                   <p className="font-semibold text-gray-900">{skill.name}</p>
                 </div>
@@ -325,7 +387,7 @@ const PassportPage: React.FC = () => {
                 </div>
               </div>
             ))}
-            
+
             {(!student?.profile.skills || student.profile.skills.length === 0) && (
               <div className="col-span-2 text-center text-gray-500 py-8">
                 <Code className="w-12 h-12 mx-auto mb-2 opacity-30" />
@@ -334,9 +396,9 @@ const PassportPage: React.FC = () => {
             )}
           </div>
         </div>
-      )
+      ),
     },
-    
+
     // Page 4: Languages
     {
       id: 'languages',
@@ -350,10 +412,13 @@ const PassportPage: React.FC = () => {
             </div>
             <span className="text-xs font-mono text-gray-500">Page 04</span>
           </div>
-          
+
           <div className="space-y-3">
             {student?.profile.languages?.map((language, index) => (
-              <div key={index} className="bg-white rounded-lg p-4 shadow-sm flex items-center justify-between border-l-4 border-green-500">
+              <div
+                key={index}
+                className="bg-white rounded-lg p-4 shadow-sm flex items-center justify-between border-l-4 border-green-500"
+              >
                 <div className="flex items-center space-x-3">
                   <Globe className="w-5 h-5 text-green-600" />
                   <span className="font-semibold text-gray-900">{language.name}</span>
@@ -363,7 +428,7 @@ const PassportPage: React.FC = () => {
                 </span>
               </div>
             ))}
-            
+
             {(!student?.profile.languages || student.profile.languages.length === 0) && (
               <div className="text-center text-gray-500 py-12">
                 <Globe className="w-12 h-12 mx-auto mb-2 opacity-30" />
@@ -372,9 +437,9 @@ const PassportPage: React.FC = () => {
             )}
           </div>
         </div>
-      )
+      ),
     },
-    
+
     // Page 5: Projects
     {
       id: 'projects',
@@ -388,22 +453,28 @@ const PassportPage: React.FC = () => {
             </div>
             <span className="text-xs font-mono text-gray-500">Page 05</span>
           </div>
-          
+
           <div className="space-y-4 overflow-y-auto max-h-[500px]">
             {student?.profile.projects?.slice(0, 3).map((project) => (
-              <div key={project.id} className="bg-white rounded-lg p-4 shadow-md border-l-4 border-orange-500">
+              <div
+                key={project.id}
+                className="bg-white rounded-lg p-4 shadow-md border-l-4 border-orange-500"
+              >
                 <h3 className="font-bold text-gray-900 mb-2">{project.title}</h3>
                 <p className="text-sm text-gray-600 mb-3 line-clamp-2">{project.description}</p>
                 <div className="flex flex-wrap gap-1">
                   {project.technologies?.slice(0, 4).map((tech, i) => (
-                    <span key={i} className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded">
+                    <span
+                      key={i}
+                      className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded"
+                    >
                       {tech}
                     </span>
                   ))}
                 </div>
               </div>
             ))}
-            
+
             {(!student?.profile.projects || student.profile.projects.length === 0) && (
               <div className="text-center text-gray-500 py-12">
                 <Briefcase className="w-12 h-12 mx-auto mb-2 opacity-30" />
@@ -412,9 +483,9 @@ const PassportPage: React.FC = () => {
             )}
           </div>
         </div>
-      )
+      ),
     },
-    
+
     // Page 6: Achievements & Certifications
     {
       id: 'achievements',
@@ -428,10 +499,13 @@ const PassportPage: React.FC = () => {
             </div>
             <span className="text-xs font-mono text-gray-500">Page 06</span>
           </div>
-          
+
           <div className="space-y-3">
             {student?.profile.achievements?.slice(0, 4).map((achievement) => (
-              <div key={achievement.id} className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-yellow-500">
+              <div
+                key={achievement.id}
+                className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-yellow-500"
+              >
                 <div className="flex items-start space-x-3">
                   <Award className="w-5 h-5 text-yellow-600 mt-1 flex-shrink-0" />
                   <div className="flex-1">
@@ -442,9 +516,12 @@ const PassportPage: React.FC = () => {
                 </div>
               </div>
             ))}
-            
+
             {student?.profile.certifications?.slice(0, 2).map((cert) => (
-              <div key={cert.id} className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-blue-500">
+              <div
+                key={cert.id}
+                className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-blue-500"
+              >
                 <div className="flex items-start space-x-3">
                   <Shield className="w-5 h-5 text-blue-600 mt-1 flex-shrink-0" />
                   <div className="flex-1">
@@ -455,19 +532,19 @@ const PassportPage: React.FC = () => {
                 </div>
               </div>
             ))}
-            
+
             {(!student?.profile.achievements || student.profile.achievements.length === 0) &&
-             (!student?.profile.certifications || student.profile.certifications.length === 0) && (
-              <div className="text-center text-gray-500 py-12">
-                <Award className="w-12 h-12 mx-auto mb-2 opacity-30" />
-                <p>No achievements or certifications</p>
-              </div>
-            )}
+              (!student?.profile.certifications || student.profile.certifications.length === 0) && (
+                <div className="text-center text-gray-500 py-12">
+                  <Award className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                  <p>No achievements or certifications</p>
+                </div>
+              )}
           </div>
         </div>
-      )
+      ),
     },
-    
+
     // Page 7: Hobbies
     {
       id: 'hobbies',
@@ -481,12 +558,15 @@ const PassportPage: React.FC = () => {
             </div>
             <span className="text-xs font-mono text-gray-500">Page 07</span>
           </div>
-          
+
           <div className="grid grid-cols-2 gap-4">
             {student?.profile.hobbies?.map((hobby, index) => {
               const IconComponent = getHobbyIcon(hobby);
               return (
-                <div key={index} className="bg-white rounded-lg p-4 shadow-md border-l-4 border-slate-500 hover:shadow-lg transition-shadow">
+                <div
+                  key={index}
+                  className="bg-white rounded-lg p-4 shadow-md border-l-4 border-slate-500 hover:shadow-lg transition-shadow"
+                >
                   <div className="flex items-center space-x-3">
                     <div className="flex-shrink-0 w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center">
                       <IconComponent className="w-5 h-5 text-slate-600" />
@@ -499,7 +579,7 @@ const PassportPage: React.FC = () => {
                 </div>
               );
             })}
-            
+
             {(!student?.profile.hobbies || student.profile.hobbies.length === 0) && (
               <div className="col-span-2 text-center text-gray-500 py-12">
                 <Star className="w-12 h-12 mx-auto mb-2 opacity-30" />
@@ -508,9 +588,9 @@ const PassportPage: React.FC = () => {
             )}
           </div>
         </div>
-      )
+      ),
     },
-    
+
     // Page 8: Interests
     {
       id: 'interests',
@@ -524,17 +604,20 @@ const PassportPage: React.FC = () => {
             </div>
             <span className="text-xs font-mono text-gray-500">Page 08</span>
           </div>
-          
+
           <div className="grid grid-cols-2 gap-3">
             {student?.profile.interests?.map((interest, index) => (
-              <div key={index} className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-teal-500">
+              <div
+                key={index}
+                className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-teal-500"
+              >
                 <div className="flex items-center space-x-2">
                   <Target className="w-5 h-5 text-teal-600" />
                   <p className="font-medium text-gray-900">{interest}</p>
                 </div>
               </div>
             ))}
-            
+
             {(!student?.profile.interests || student.profile.interests.length === 0) && (
               <div className="col-span-2 text-center text-gray-500 py-12">
                 <Target className="w-12 h-12 mx-auto mb-2 opacity-30" />
@@ -543,8 +626,8 @@ const PassportPage: React.FC = () => {
             )}
           </div>
         </div>
-      )
-    }
+      ),
+    },
   ];
 
   const nextPage = () => {
@@ -591,12 +674,12 @@ const PassportPage: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:via-slate-900 dark:to-indigo-950 transition-colors duration-300">
       {/* Passport Book */}
       <div className="flex items-center justify-center min-h-screen py-8 px-4 md:px-8">
-        <div 
+        <div
           className="relative transition-transform duration-300 ease-in-out"
           style={{ transform: `scale(${zoomLevel})` }}
         >
           {/* Passport Book Container */}
-          <div 
+          <div
             className="w-full md:w-[500px] lg:w-[600px] h-[600px] md:h-[700px] bg-white dark:bg-gray-800 rounded-lg shadow-2xl border-4 border-gray-900 dark:border-gray-700 relative overflow-hidden transition-colors duration-300"
             style={{ perspective: '1000px' }}
             onTouchStart={onTouchStart}
@@ -614,7 +697,7 @@ const PassportPage: React.FC = () => {
                 exit="exit"
                 transition={{
                   rotateY: { type: 'spring', stiffness: 300, damping: 30 },
-                  opacity: { duration: 0.2 }
+                  opacity: { duration: 0.2 },
                 }}
                 className="h-full"
                 style={{ transformStyle: 'preserve-3d' }}
@@ -622,7 +705,7 @@ const PassportPage: React.FC = () => {
                 {pages[currentPage].content}
               </motion.div>
             </AnimatePresence>
-            
+
             {/* Binding Effect */}
             <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-r from-gray-800 dark:from-gray-600 to-transparent"></div>
           </div>
@@ -678,8 +761,8 @@ const PassportPage: React.FC = () => {
                 setCurrentPage(index);
               }}
               className={`transition-all ${
-                index === currentPage 
-                  ? 'w-8 h-3 bg-blue-600 dark:bg-blue-500 rounded-full' 
+                index === currentPage
+                  ? 'w-8 h-3 bg-blue-600 dark:bg-blue-500 rounded-full'
                   : 'w-3 h-3 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 rounded-full'
               }`}
               aria-label={`Go to ${page.title}`}

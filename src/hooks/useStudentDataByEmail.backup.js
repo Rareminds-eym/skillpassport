@@ -1,6 +1,6 @@
 /**
  * Hook to fetch student data from Supabase JSONB profile by EMAIL
- * 
+ *
  * Works with your actual students table structure (profile JSONB column)
  */
 
@@ -23,7 +23,6 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
         setLoading(true);
         setError(null);
 
-
         const result = await getStudentByEmail(email);
 
         if (result.success && result.data) {
@@ -32,10 +31,14 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
         } else {
           // Check if it's an RLS error
           const errorMsg = result.error || 'Student not found';
-          if (errorMsg.toLowerCase().includes('row-level security') || 
-              errorMsg.toLowerCase().includes('rls') ||
-              errorMsg.toLowerCase().includes('permission denied')) {
-            setError('\u26a0\ufe0f Database access blocked. Please disable RLS in Supabase. See FIX_RLS.md');
+          if (
+            errorMsg.toLowerCase().includes('row-level security') ||
+            errorMsg.toLowerCase().includes('rls') ||
+            errorMsg.toLowerCase().includes('permission denied')
+          ) {
+            setError(
+              '\u26a0\ufe0f Database access blocked. Please disable RLS in Supabase. See FIX_RLS.md'
+            );
             console.error('\ud83d\udd12 RLS is blocking access! Run this in Supabase SQL Editor:');
             console.error('ALTER TABLE students DISABLE ROW LEVEL SECURITY;');
           } else {
@@ -58,17 +61,17 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
 
   const refresh = async () => {
     if (!email) return;
-    
+
     setLoading(true);
     const result = await getStudentByEmail(email);
-    
+
     if (result.success) {
       setStudentData(result.data);
       setError(null);
     } else {
       setError(result.error);
     }
-    
+
     setLoading(false);
   };
 
@@ -76,6 +79,6 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
     studentData,
     loading,
     error,
-    refresh
+    refresh,
   };
 };

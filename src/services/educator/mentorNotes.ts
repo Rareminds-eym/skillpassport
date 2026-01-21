@@ -1,5 +1,5 @@
 // api/mentorNotes.js
-import { supabase } from "../../lib/supabaseClient"
+import { supabase } from '../../lib/supabaseClient';
 // export const getLoggedInMentor = async (userId) => {
 //   // 1️⃣ Check school educator
 //   let { data: school, error: schoolErr } = await supabase
@@ -26,7 +26,6 @@ import { supabase } from "../../lib/supabaseClient"
 //   return null;
 // };
 
-
 // ⭐ Save a new mentor note
 export const saveMentorNote = async ({
   student_id,
@@ -38,7 +37,7 @@ export const saveMentorNote = async ({
   action_points,
 }) => {
   const { data, error } = await supabase
-    .from("mentor_notes")
+    .from('mentor_notes')
     .insert([
       {
         student_id,
@@ -59,9 +58,9 @@ export const saveMentorNote = async ({
 // ⭐ Fetch students list
 export const getStudents = async () => {
   const { data, error } = await supabase
-    .from("students")
-    .select("id, name")
-    .order("name", { ascending: true });
+    .from('students')
+    .select('id, name')
+    .order('name', { ascending: true });
 
   if (error) throw error;
   return data;
@@ -70,8 +69,9 @@ export const getStudents = async () => {
 // ⭐ Fetch previous mentor notes with student names
 export const getMentorNotes = async () => {
   const { data, error } = await supabase
-    .from("mentor_notes")
-    .select(`
+    .from('mentor_notes')
+    .select(
+      `
       id,
       student_id,
       feedback,
@@ -79,8 +79,9 @@ export const getMentorNotes = async () => {
       quick_notes,
       note_date,
       students(name)
-    `)
-    .order("note_date", { ascending: false });
+    `
+    )
+    .order('note_date', { ascending: false });
 
   if (error) throw error;
   return data;

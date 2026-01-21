@@ -6,10 +6,10 @@
 export { default as RecruiterCopilot } from './components/RecruiterCopilot';
 export { recruiterIntelligenceEngine } from './services/recruiterIntelligenceEngine';
 export { recruiterWelcomeConfig, recruiterChatConfig } from './config/recruiterConfig';
-export { 
+export {
   CandidateInsightCard,
   JobAnalyticsCard,
-  TalentPoolCard
+  TalentPoolCard,
 } from './components/RecruiterCards';
 export { dataHealthCheck } from './utils/dataHealthCheck';
 export { advancedIntentClassifier } from './services/advancedIntentClassifier';

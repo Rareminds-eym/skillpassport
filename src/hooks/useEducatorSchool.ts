@@ -86,8 +86,8 @@
 // <<<<<<< SettingsDynamicAdmin
 //         if (schoolEducatorData && schoolEducatorData.organizations) {
 //           // They are a school educator
-//           const schoolData = Array.isArray(schoolEducatorData.organizations) 
-//             ? schoolEducatorData.organizations[0] 
+//           const schoolData = Array.isArray(schoolEducatorData.organizations)
+//             ? schoolEducatorData.organizations[0]
 //             : schoolEducatorData.organizations;
 // =======
 //         if (schoolEducatorData && schoolEducatorData.school_id) {
@@ -98,7 +98,7 @@
 //             .eq('id', schoolEducatorData.school_id)
 //             .maybeSingle();
 // >>>>>>> testing
-          
+
 //           if (schoolData) {
 //             // They are a school educator
 //             setSchool(schoolData as School);
@@ -124,7 +124,7 @@
 //               // Admins don't need class assignments - they see all students
 //               setAssignedClassIds([]);
 //             }
-            
+
 //             return;
 //           }
 //         }
@@ -195,7 +195,7 @@
 //             .select('id, name, code, city, state, country')
 //             .eq('id', collegeLecturerData.collegeId)
 //             .maybeSingle();
-          
+
 //           if (collegeData) {
 //             // They are a college lecturer
 //             setCollege(collegeData as College);
@@ -216,7 +216,7 @@
 //               const classIds = collegeClassAssignments?.map(assignment => assignment.class_id) || [];
 //               setAssignedClassIds(classIds);
 //             }
-            
+
 //             return;
 // >>>>>>> testing
 //           }
@@ -306,7 +306,8 @@ export function useEducatorSchool(): EducatorSchoolData {
         // First, check if they are a school educator
         const { data: schoolEducatorData, error: schoolEducatorError } = await supabase
           .from('school_educators')
-          .select(`
+          .select(
+            `
             id,
             school_id,
             role,
@@ -318,7 +319,8 @@ export function useEducatorSchool(): EducatorSchoolData {
               state,
               country
             )
-          `)
+          `
+          )
           .eq('email', user.email)
           .maybeSingle();
 
@@ -328,10 +330,10 @@ export function useEducatorSchool(): EducatorSchoolData {
 
         if (schoolEducatorData && schoolEducatorData.organizations) {
           // They are a school educator
-          const schoolData = Array.isArray(schoolEducatorData.organizations) 
-            ? schoolEducatorData.organizations[0] 
+          const schoolData = Array.isArray(schoolEducatorData.organizations)
+            ? schoolEducatorData.organizations[0]
             : schoolEducatorData.organizations;
-          
+
           if (schoolData) {
             setSchool(schoolData as School);
             setCollege(null);
@@ -349,14 +351,14 @@ export function useEducatorSchool(): EducatorSchoolData {
                 console.warn('Failed to fetch class assignments:', classError);
                 setAssignedClassIds([]);
               } else {
-                const classIds = classAssignments?.map(assignment => assignment.class_id) || [];
+                const classIds = classAssignments?.map((assignment) => assignment.class_id) || [];
                 setAssignedClassIds(classIds);
               }
             } else {
               // Admins don't need class assignments - they see all students
               setAssignedClassIds([]);
             }
-            
+
             setLoading(false);
             return;
           }
@@ -365,16 +367,18 @@ export function useEducatorSchool(): EducatorSchoolData {
         // If not a school educator, check if they are a college lecturer
         const { data: collegeLecturerData, error: collegeLecturerError } = await supabase
           .from('college_lecturers')
-          .select(`
+          .select(
+            `
             id,
             collegeId
-          `)
+          `
+          )
           .eq('user_id', user.id)
           .maybeSingle();
 
         console.log('📊 College lecturer query result:', {
           data: collegeLecturerData,
-          error: collegeLecturerError
+          error: collegeLecturerError,
         });
 
         if (collegeLecturerError && collegeLecturerError.code !== 'PGRST116') {
@@ -414,10 +418,11 @@ export function useEducatorSchool(): EducatorSchoolData {
               console.warn('Failed to fetch college class assignments:', collegeClassError);
               setAssignedClassIds([]);
             } else {
-              const classIds = collegeClassAssignments?.map(assignment => assignment.class_id) || [];
+              const classIds =
+                collegeClassAssignments?.map((assignment) => assignment.class_id) || [];
               setAssignedClassIds(classIds);
             }
-            
+
             setLoading(false);
             return;
           }
@@ -429,7 +434,6 @@ export function useEducatorSchool(): EducatorSchoolData {
         setEducatorType(null);
         setEducatorRole(null);
         setAssignedClassIds([]);
-
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch educator information');
         setSchool(null);

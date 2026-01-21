@@ -1,10 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  XMarkIcon,
-  PlusIcon,
-  PhotoIcon,
-  CheckIcon
-} from '@heroicons/react/24/outline';
+import { XMarkIcon, PlusIcon, PhotoIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { Course, CourseModule } from '../../../types/educator/course';
 import ImageUpload from '../../common/ImageUpload';
 
@@ -23,7 +18,7 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
   onSubmit,
   skillCategories,
   classes,
-  editingCourse
+  editingCourse,
 }) => {
   console.log('=== MODAL RENDERED ===');
   console.log('isOpen:', isOpen);
@@ -42,7 +37,7 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
     targetOutcomes: [''],
     linkedClasses: [],
     modules: [],
-    status: 'Draft'
+    status: 'Draft',
   });
 
   // Update courseData when editingCourse changes
@@ -61,7 +56,7 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
         targetOutcomes: editingCourse.targetOutcomes || [''],
         linkedClasses: editingCourse.linkedClasses || [],
         modules: editingCourse.modules || [],
-        status: editingCourse.status || 'Draft'
+        status: editingCourse.status || 'Draft',
       });
     } else {
       // Reset to empty state for new course
@@ -78,7 +73,7 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
         targetOutcomes: [''],
         linkedClasses: [],
         modules: [],
-        status: 'Draft'
+        status: 'Draft',
       });
     }
   }, [editingCourse, isOpen]);
@@ -89,28 +84,32 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
     skillTags: [],
     lessons: [],
     activities: [],
-    order: 0
+    order: 0,
   });
 
   if (!isOpen) return null;
 
-  const steps = editingCourse ? [
-    { number: 1, title: 'Basic Info' },
-    { number: 2, title: 'Skill Mapping' },
-    { number: 3, title: 'Course Structure' },
-    { number: 4, title: 'Confirmation' }
-  ] : courseSource === 'import' ? [
-    { number: 0, title: 'Course Source' },
-    { number: 1, title: 'Basic Info' },
-    { number: 2, title: 'Skill Mapping' },
-    { number: 3, title: 'Confirmation' }
-  ] : [
-    { number: 0, title: 'Course Source' },
-    { number: 1, title: 'Basic Info' },
-    { number: 2, title: 'Skill Mapping' },
-    { number: 3, title: 'Course Structure' },
-    { number: 4, title: 'Confirmation' }
-  ];
+  const steps = editingCourse
+    ? [
+        { number: 1, title: 'Basic Info' },
+        { number: 2, title: 'Skill Mapping' },
+        { number: 3, title: 'Course Structure' },
+        { number: 4, title: 'Confirmation' },
+      ]
+    : courseSource === 'import'
+      ? [
+          { number: 0, title: 'Course Source' },
+          { number: 1, title: 'Basic Info' },
+          { number: 2, title: 'Skill Mapping' },
+          { number: 3, title: 'Confirmation' },
+        ]
+      : [
+          { number: 0, title: 'Course Source' },
+          { number: 1, title: 'Basic Info' },
+          { number: 2, title: 'Skill Mapping' },
+          { number: 3, title: 'Course Structure' },
+          { number: 4, title: 'Confirmation' },
+        ];
 
   const thirdPartyPlatforms = [
     { id: 'udemy', name: 'Udemy', logo: '📚', color: 'from-purple-500 to-pink-500' },
@@ -120,67 +119,65 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
     { id: 'skillshare', name: 'Skillshare', logo: '🎨', color: 'from-green-500 to-teal-500' },
     { id: 'google', name: 'Google Courses', logo: '🔍', color: 'from-red-500 to-yellow-500' },
     { id: 'youtube', name: 'YouTube', logo: '▶️', color: 'from-red-600 to-red-400' },
-    { id: 'other', name: 'Other Platform', logo: '🌐', color: 'from-gray-500 to-gray-400' }
+    { id: 'other', name: 'Other Platform', logo: '🌐', color: 'from-gray-500 to-gray-400' },
   ];
 
   const handleSkillToggle = (skill: string) => {
     console.log('Toggling skill:', skill);
-    setCourseData(prev => {
+    setCourseData((prev) => {
       const newSkills = prev.skillsCovered?.includes(skill)
-        ? prev.skillsCovered.filter(s => s !== skill)
+        ? prev.skillsCovered.filter((s) => s !== skill)
         : [...(prev.skillsCovered || []), skill];
       console.log('New skills array:', newSkills);
       return {
         ...prev,
-        skillsCovered: newSkills
+        skillsCovered: newSkills,
       };
     });
   };
 
   const handleClassToggle = (className: string) => {
     console.log('Toggling class:', className);
-    setCourseData(prev => {
+    setCourseData((prev) => {
       const newClasses = prev.linkedClasses?.includes(className)
-        ? prev.linkedClasses.filter(c => c !== className)
+        ? prev.linkedClasses.filter((c) => c !== className)
         : [...(prev.linkedClasses || []), className];
       console.log('New classes array:', newClasses);
       return {
         ...prev,
-        linkedClasses: newClasses
+        linkedClasses: newClasses,
       };
     });
   };
 
   const handleAddOutcome = () => {
     console.log('Adding new outcome');
-    setCourseData(prev => ({
+    setCourseData((prev) => ({
       ...prev,
-      targetOutcomes: [...(prev.targetOutcomes || []), '']
+      targetOutcomes: [...(prev.targetOutcomes || []), ''],
     }));
   };
 
   const handleUpdateOutcome = (index: number, value: string) => {
     console.log('Updating outcome at index:', index, 'with value:', value);
-    setCourseData(prev => ({
+    setCourseData((prev) => ({
       ...prev,
-      targetOutcomes: prev.targetOutcomes?.map((outcome, i) =>
-        i === index ? value : outcome
-      )
+      targetOutcomes: prev.targetOutcomes?.map((outcome, i) => (i === index ? value : outcome)),
     }));
   };
 
   const handleRemoveOutcome = (index: number) => {
     console.log('Removing outcome at index:', index);
-    setCourseData(prev => ({
+    setCourseData((prev) => ({
       ...prev,
-      targetOutcomes: prev.targetOutcomes?.filter((_, i) => i !== index)
+      targetOutcomes: prev.targetOutcomes?.filter((_, i) => i !== index),
     }));
   };
 
   const handleAddModule = () => {
     console.log('Adding module:', newModule);
     if (newModule.title && newModule.description) {
-      setCourseData(prev => {
+      setCourseData((prev) => {
         const newModules = [
           ...(prev.modules || []),
           {
@@ -188,13 +185,13 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
             id: `module-${Date.now()}`,
             order: (prev.modules?.length || 0) + 1,
             lessons: [],
-            activities: []
-          } as CourseModule
+            activities: [],
+          } as CourseModule,
         ];
         console.log('New modules array:', newModules);
         return {
           ...prev,
-          modules: newModules
+          modules: newModules,
         };
       });
       setNewModule({
@@ -203,7 +200,7 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
         skillTags: [],
         lessons: [],
         activities: [],
-        order: 0
+        order: 0,
       });
     } else {
       console.log('Cannot add module - missing title or description');
@@ -212,11 +209,11 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
 
   const handleModuleSkillToggle = (skill: string) => {
     console.log('Toggling module skill:', skill);
-    setNewModule(prev => ({
+    setNewModule((prev) => ({
       ...prev,
       skillTags: prev.skillTags?.includes(skill)
-        ? prev.skillTags.filter(s => s !== skill)
-        : [...(prev.skillTags || []), skill]
+        ? prev.skillTags.filter((s) => s !== skill)
+        : [...(prev.skillTags || []), skill],
     }));
   };
 
@@ -247,7 +244,7 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
       targetOutcomes: [''],
       linkedClasses: [],
       modules: [],
-      status: 'Draft'
+      status: 'Draft',
     });
     setCurrentStep(editingCourse ? 1 : 0);
   };
@@ -260,22 +257,24 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
     switch (currentStep) {
       case 0: {
         // Step 0: Course source must be selected
-        const step0Valid = courseSource !== null && (courseSource === 'create' || importPlatform !== '');
+        const step0Valid =
+          courseSource !== null && (courseSource === 'create' || importPlatform !== '');
         console.log('Step 0 validation:', {
           courseSource,
           importPlatform,
-          isValid: step0Valid
+          isValid: step0Valid,
         });
         return step0Valid;
       }
       case 1: {
-        const step1Valid = courseData.title && courseData.code && courseData.description && courseData.duration;
+        const step1Valid =
+          courseData.title && courseData.code && courseData.description && courseData.duration;
         console.log('Step 1 validation:', {
           title: courseData.title,
           code: courseData.code,
           description: courseData.description,
           duration: courseData.duration,
-          isValid: step1Valid
+          isValid: step1Valid,
         });
         return step1Valid;
       }
@@ -284,7 +283,7 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
         console.log('Step 2 validation:', {
           skillsCovered: courseData.skillsCovered,
           count: courseData.skillsCovered?.length || 0,
-          isValid: step2Valid
+          isValid: step2Valid,
         });
         return step2Valid;
       }
@@ -308,16 +307,15 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
             </h2>
             <p className="text-sm text-gray-600 mt-1">
               {editingCourse
-                ? `Step ${currentStep} of ${steps.length}: ${steps.find(s => s.number === currentStep)?.title || ''}`
-                : `Step ${currentStep + 1} of ${steps.length}: ${steps.find(s => s.number === currentStep)?.title || ''}`
-              }
+                ? `Step ${currentStep} of ${steps.length}: ${steps.find((s) => s.number === currentStep)?.title || ''}`
+                : `Step ${currentStep + 1} of ${steps.length}: ${steps.find((s) => s.number === currentStep)?.title || ''}`}
             </p>
           </div>
           <button
-            onClick={() => { 
+            onClick={() => {
               console.log('Close button clicked');
-              onClose(); 
-              resetForm(); 
+              onClose();
+              resetForm();
             }}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
@@ -336,15 +334,11 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
                       currentStep > step.number
                         ? 'bg-indigo-600 text-white'
                         : currentStep === step.number
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-gray-200 text-gray-600'
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-gray-200 text-gray-600'
                     }`}
                   >
-                    {currentStep > step.number ? (
-                      <CheckIcon className="h-5 w-5" />
-                    ) : (
-                      step.number
-                    )}
+                    {currentStep > step.number ? <CheckIcon className="h-5 w-5" /> : step.number}
                   </div>
                   <span
                     className={`ml-2 text-sm font-medium ${
@@ -372,8 +366,12 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
           {currentStep === 0 && !editingCourse && (
             <div className="space-y-6">
               <div className="text-center mb-8">
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">How would you like to add this course?</h3>
-                <p className="text-gray-600">Choose to create from scratch or import from a third-party platform</p>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                  How would you like to add this course?
+                </h3>
+                <p className="text-gray-600">
+                  Choose to create from scratch or import from a third-party platform
+                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-6">
@@ -432,7 +430,9 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
                             : 'border-gray-200 hover:border-gray-300 bg-white'
                         }`}
                       >
-                        <div className={`text-3xl mb-2 bg-gradient-to-br ${platform.color} bg-clip-text text-transparent`}>
+                        <div
+                          className={`text-3xl mb-2 bg-gradient-to-br ${platform.color} bg-clip-text text-transparent`}
+                        >
                           {platform.logo}
                         </div>
                         <p className="text-xs font-medium text-gray-900">{platform.name}</p>
@@ -448,7 +448,7 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
                         </label>
                         <input
                           type="text"
-                          placeholder={`Enter ${thirdPartyPlatforms.find(p => p.id === importPlatform)?.name} course URL`}
+                          placeholder={`Enter ${thirdPartyPlatforms.find((p) => p.id === importPlatform)?.name} course URL`}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                         />
                       </div>
@@ -484,7 +484,7 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
                           setCourseData({ ...courseData, title: e.target.value });
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        placeholder={editingCourse?.title || "e.g., Web Development Fundamentals"}
+                        placeholder={editingCourse?.title || 'e.g., Web Development Fundamentals'}
                       />
                     </div>
                     <div>
@@ -499,13 +499,14 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
                           setCourseData({ ...courseData, code: e.target.value });
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        placeholder={editingCourse?.code || "e.g., CS301"}
+                        placeholder={editingCourse?.code || 'e.g., CS301'}
                       />
                     </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Description * {editingCourse && courseData.description && (
+                      Description *{' '}
+                      {editingCourse && courseData.description && (
                         <span className="text-xs text-gray-500">
                           ({courseData.description.length} characters)
                         </span>
@@ -519,7 +520,7 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
                       }}
                       rows={5}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                      placeholder={editingCourse?.description || "Brief description of the course"}
+                      placeholder={editingCourse?.description || 'Brief description of the course'}
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
@@ -535,7 +536,7 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
                           setCourseData({ ...courseData, duration: e.target.value });
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        placeholder={editingCourse?.duration || "e.g., 12 weeks"}
+                        placeholder={editingCourse?.duration || 'e.g., 12 weeks'}
                       />
                     </div>
                     <div>
@@ -546,7 +547,10 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
                         value={courseData.status}
                         onChange={(e) => {
                           console.log('Status changed:', e.target.value);
-                          setCourseData({ ...courseData, status: e.target.value as 'Active' | 'Draft' | 'Upcoming' | 'Archived' });
+                          setCourseData({
+                            ...courseData,
+                            status: e.target.value as 'Active' | 'Draft' | 'Upcoming' | 'Archived',
+                          });
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                       >
@@ -572,7 +576,9 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
               </div>
 
               <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-3">Target Learning Outcomes</h3>
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">
+                  Target Learning Outcomes
+                </h3>
                 <div className="space-y-2">
                   {courseData.targetOutcomes?.map((outcome, index) => (
                     <div key={index} className="flex items-center gap-2">
@@ -611,12 +617,15 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Skill Mapping</h3>
                 <p className="text-sm text-gray-600 mb-4">
-                  Select skills that students will develop in this course. This links to the Skill Passport.
+                  Select skills that students will develop in this course. This links to the Skill
+                  Passport.
                 </p>
               </div>
 
               <div>
-                <h4 className="text-sm font-semibold text-gray-900 mb-3">Select Skill Categories *</h4>
+                <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                  Select Skill Categories *
+                </h4>
                 <div className="grid grid-cols-3 gap-3">
                   {skillCategories.map((skill) => (
                     <button
@@ -671,7 +680,10 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
                 <div className="space-y-3">
                   <h4 className="text-sm font-semibold text-gray-900">Modules</h4>
                   {courseData.modules.map((module, index) => (
-                    <div key={module.id} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <div
+                      key={module.id}
+                      className="p-4 bg-gray-50 rounded-lg border border-gray-200"
+                    >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <h5 className="font-semibold text-gray-900">
@@ -778,12 +790,17 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
                     <div className="flex justify-between">
                       <dt className="text-gray-600">Status:</dt>
                       <dd className="font-medium text-gray-900">
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          courseData.status === 'Active' ? 'bg-emerald-100 text-emerald-700' :
-                          courseData.status === 'Upcoming' ? 'bg-blue-100 text-blue-700' :
-                          courseData.status === 'Archived' ? 'bg-amber-100 text-amber-700' :
-                          'bg-gray-100 text-gray-700'
-                        }`}>
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs ${
+                            courseData.status === 'Active'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : courseData.status === 'Upcoming'
+                                ? 'bg-blue-100 text-blue-700'
+                                : courseData.status === 'Archived'
+                                  ? 'bg-amber-100 text-amber-700'
+                                  : 'bg-gray-100 text-gray-700'
+                          }`}
+                        >
                           {courseData.status}
                         </span>
                       </dd>
@@ -845,7 +862,7 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
             }}
             className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
           >
-            {(currentStep === 0 || (currentStep === 1 && editingCourse)) ? 'Cancel' : 'Back'}
+            {currentStep === 0 || (currentStep === 1 && editingCourse) ? 'Cancel' : 'Back'}
           </button>
 
           <div className="flex items-center gap-3">

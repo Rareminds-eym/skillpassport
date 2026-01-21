@@ -14,7 +14,7 @@ export const useOfflineSync = () => {
     // Subscribe to sync events
     const unsubscribe = progressSyncManager.addListener((event) => {
       setLastSyncEvent(event);
-      
+
       switch (event.type) {
         case 'online':
           setIsOnline(true);
@@ -56,10 +56,13 @@ export const useOfflineSync = () => {
     }
   }, [updatePendingCount]);
 
-  const queueProgress = useCallback(async (type, data) => {
-    await progressSyncManager.queueProgress(type, data);
-    await updatePendingCount();
-  }, [updatePendingCount]);
+  const queueProgress = useCallback(
+    async (type, data) => {
+      await progressSyncManager.queueProgress(type, data);
+      await updatePendingCount();
+    },
+    [updatePendingCount]
+  );
 
   return {
     isOnline,
@@ -68,7 +71,7 @@ export const useOfflineSync = () => {
     lastSyncEvent,
     forceSync,
     queueProgress,
-    refreshStatus: updatePendingCount
+    refreshStatus: updatePendingCount,
   };
 };
 

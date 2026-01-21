@@ -1,4 +1,4 @@
-import { supabase } from "@/utils/supabase";
+import { supabase } from '@/utils/supabase';
 
 export interface MentorPeriod {
   id: string;
@@ -36,7 +36,14 @@ export interface MentorNote {
   title?: string;
   note_text: string;
   outcome?: string;
-  intervention_type: 'academic' | 'personal' | 'career' | 'attendance' | 'behavioral' | 'financial' | 'other';
+  intervention_type:
+    | 'academic'
+    | 'personal'
+    | 'career'
+    | 'attendance'
+    | 'behavioral'
+    | 'financial'
+    | 'other';
   status: 'pending' | 'acknowledged' | 'in_progress' | 'action_taken' | 'completed' | 'escalated'; // Workflow: pending → acknowledged → in_progress → action_taken → completed
   is_private: boolean;
   note_date: string;
@@ -139,7 +146,7 @@ export const getMentors = async (collegeId: string): Promise<Mentor[]> => {
     throw error;
   }
 
-  return (data || []).map(mentor => ({
+  return (data || []).map((mentor) => ({
     id: mentor.id,
     college_id: mentor.collegeId,
     employee_id: mentor.employeeId,
@@ -164,11 +171,8 @@ export const getMentors = async (collegeId: string): Promise<Mentor[]> => {
 // Get all students for a college - simplified direct fetch
 export const getStudents = async (collegeId: string): Promise<Student[]> => {
   console.log('🔍 [getStudents] Fetching students for college:', collegeId);
-  
-  const { data, error } = await supabase
-    .from('students')
-    .select('*')
-    .eq('college_id', collegeId);
+
+  const { data, error } = await supabase.from('students').select('*').eq('college_id', collegeId);
 
   if (error) {
     console.error('❌ [getStudents] Error fetching students:', error);
@@ -177,7 +181,7 @@ export const getStudents = async (collegeId: string): Promise<Student[]> => {
 
   console.log('✅ [getStudents] Raw student data:', data?.length || 0, 'students found');
 
-  return (data || []).map(student => {
+  return (data || []).map((student) => {
     // Calculate batch from enrollment date or expected graduation
     let batch = '';
     if (student.enrollmentDate && student.expectedGraduationDate) {
@@ -197,10 +201,11 @@ export const getStudents = async (collegeId: string): Promise<Student[]> => {
     // Determine if student is at risk based on CGPA
     const cgpa = parseFloat(student.currentCgpa || student.current_cgpa || '0');
     const atRisk = cgpa < 7.0 || (student.semester && student.semester > 4 && cgpa < 7.5);
-    
+
     const riskFactors = [];
     if (cgpa < 6.5) riskFactors.push('Low CGPA');
-    if (cgpa < 7.0 && student.semester && student.semester > 2) riskFactors.push('Academic Struggles');
+    if (cgpa < 7.0 && student.semester && student.semester > 2)
+      riskFactors.push('Academic Struggles');
 
     console.log('📊 [getStudents] Processing student:', {
       id: student.id,
@@ -208,14 +213,15 @@ export const getStudents = async (collegeId: string): Promise<Student[]> => {
       cgpa: cgpa,
       semester: student.semester,
       atRisk: atRisk,
-      batch: batch
+      batch: batch,
     });
 
     return {
       id: student.id,
       name: student.name || '',
       email: student.email,
-      roll_number: student.roll_number || student.registration_number || student.enrollmentNumber || '',
+      roll_number:
+        student.roll_number || student.registration_number || student.enrollmentNumber || '',
       semester: student.semester || 1,
       current_cgpa: cgpa,
       college_id: student.college_id,
@@ -245,12 +251,14 @@ export const getStudents = async (collegeId: string): Promise<Student[]> => {
 export const getMentorAllocations = async (collegeId: string): Promise<MentorAllocation[]> => {
   const { data, error } = await supabase
     .from('college_mentor_student_allocations')
-    .select(`
+    .select(
+      `
       *,
       college_mentor_periods!inner (
         college_id
       )
-    `)
+    `
+    )
     .eq('college_mentor_periods.college_id', collegeId);
 
   if (error) {
@@ -263,8 +271,8 @@ export const getMentorAllocations = async (collegeId: string): Promise<MentorAll
 
 // Find allocation ID for a specific mentor-student pair
 export const findAllocationId = async (
-  mentorId: string, 
-  studentId: string, 
+  mentorId: string,
+  studentId: string,
   status: string = 'active'
 ): Promise<string | null> => {
   const { data, error } = await supabase
@@ -288,16 +296,18 @@ export const findAllocationId = async (
 // Get mentor notes for a college
 export const getMentorNotes = async (collegeId: string): Promise<MentorNote[]> => {
   console.log('🔍 [getMentorNotes] Fetching notes for college:', collegeId);
-  
+
   // First, get all allocation IDs for this college
   const { data: allocations, error: allocError } = await supabase
     .from('college_mentor_student_allocations')
-    .select(`
+    .select(
+      `
       id,
       college_mentor_periods!inner (
         college_id
       )
-    `)
+    `
+    )
     .eq('college_mentor_periods.college_id', collegeId);
 
   if (allocError) {
@@ -310,7 +320,7 @@ export const getMentorNotes = async (collegeId: string): Promise<MentorNote[]> =
     return [];
   }
 
-  const allocationIds = allocations.map(a => a.id);
+  const allocationIds = allocations.map((a) => a.id);
   console.log('🔍 [getMentorNotes] Found allocation IDs:', allocationIds.length);
 
   // Now get notes for these allocations
@@ -329,7 +339,9 @@ export const getMentorNotes = async (collegeId: string): Promise<MentorNote[]> =
 };
 
 // Create a new mentor period
-export const createMentorPeriod = async (period: Omit<MentorPeriod, 'id' | 'created_at'>): Promise<MentorPeriod> => {
+export const createMentorPeriod = async (
+  period: Omit<MentorPeriod, 'id' | 'created_at'>
+): Promise<MentorPeriod> => {
   const { data, error } = await supabase
     .from('college_mentor_periods')
     .insert([period])
@@ -362,7 +374,9 @@ export const createMentorAllocations = async (
 };
 
 // Create a mentor note
-export const createMentorNote = async (note: Omit<MentorNote, 'id' | 'created_at'>): Promise<MentorNote> => {
+export const createMentorNote = async (
+  note: Omit<MentorNote, 'id' | 'created_at'>
+): Promise<MentorNote> => {
   const { data, error } = await supabase
     .from('college_mentor_notes')
     .insert([note])
@@ -379,7 +393,7 @@ export const createMentorNote = async (note: Omit<MentorNote, 'id' | 'created_at
 
 // Update mentor allocation status
 export const updateMentorAllocation = async (
-  id: string, 
+  id: string,
   updates: Partial<MentorAllocation>
 ): Promise<MentorAllocation> => {
   const { data, error } = await supabase
@@ -399,7 +413,7 @@ export const updateMentorAllocation = async (
 
 // Update mentor period configuration
 export const updateMentorPeriod = async (
-  periodId: string, 
+  periodId: string,
   updates: Partial<MentorPeriod>
 ): Promise<MentorPeriod> => {
   const { data, error } = await supabase
@@ -418,7 +432,9 @@ export const updateMentorPeriod = async (
 };
 
 // Get departments for a college
-export const getDepartments = async (collegeId: string): Promise<Array<{id: string; name: string}>> => {
+export const getDepartments = async (
+  collegeId: string
+): Promise<Array<{ id: string; name: string }>> => {
   const { data, error } = await supabase
     .from('departments')
     .select('id, name')
@@ -433,17 +449,21 @@ export const getDepartments = async (collegeId: string): Promise<Array<{id: stri
 };
 
 // Get programs for a college
-export const getPrograms = async (collegeId: string): Promise<Array<{id: string; name: string; code: string; department_name: string}>> => {
+export const getPrograms = async (
+  collegeId: string
+): Promise<Array<{ id: string; name: string; code: string; department_name: string }>> => {
   const { data, error } = await supabase
     .from('programs')
-    .select(`
+    .select(
+      `
       id,
       name,
       code,
       departments:department_id (
         name
       )
-    `)
+    `
+    )
     .eq('departments.college_id', collegeId);
 
   if (error) {
@@ -451,14 +471,13 @@ export const getPrograms = async (collegeId: string): Promise<Array<{id: string;
     throw error;
   }
 
-  return (data || []).map(program => ({
+  return (data || []).map((program) => ({
     id: program.id,
     name: program.name,
     code: program.code,
     department_name: (program.departments as any)?.name || '',
   }));
 };
-
 
 // Update mentor note with educator response (ONE-TIME ONLY)
 export const updateMentorNoteResponse = async (
@@ -484,7 +503,9 @@ export const updateMentorNoteResponse = async (
 
   // Validation 1: Check if status is 'pending'
   if (currentNote.status !== 'pending') {
-    throw new Error(`Cannot respond: Note status must be 'pending' (current: '${currentNote.status}')`);
+    throw new Error(
+      `Cannot respond: Note status must be 'pending' (current: '${currentNote.status}')`
+    );
   }
 
   // Validation 2: Check if response already exists
@@ -541,7 +562,9 @@ export const updateMentorNoteFeedback = async (
 
   // Validation: Check if status is 'acknowledged'
   if (currentNote.status !== 'acknowledged') {
-    throw new Error(`Cannot give feedback: Note must be in 'acknowledged' status (current: '${currentNote.status}')`);
+    throw new Error(
+      `Cannot give feedback: Note must be in 'acknowledged' status (current: '${currentNote.status}')`
+    );
   }
 
   // Update with auto-status change to 'in_progress'
@@ -569,10 +592,7 @@ export const updateMentorNoteFeedback = async (
 };
 
 // Mark note as resolved (ONLY when in_progress)
-export const resolveNote = async (
-  noteId: string,
-  resolvedBy: string
-): Promise<MentorNote> => {
+export const resolveNote = async (noteId: string, resolvedBy: string): Promise<MentorNote> => {
   // First, fetch the current note to validate
   const { data: currentNote, error: fetchError } = await supabase
     .from('college_mentor_notes')
@@ -587,7 +607,9 @@ export const resolveNote = async (
 
   // Validation: Check if status is 'in_progress'
   if (currentNote.status !== 'in_progress') {
-    throw new Error(`Cannot resolve: Note must be in 'in_progress' status (current: '${currentNote.status}')`);
+    throw new Error(
+      `Cannot resolve: Note must be in 'in_progress' status (current: '${currentNote.status}')`
+    );
   }
 
   const { data, error } = await supabase
@@ -638,8 +660,7 @@ export const escalateNote = async (
 
 // Get pending follow-ups for a mentor
 export const getPendingFollowUps = async (mentorId: string) => {
-  const { data, error } = await supabase
-    .rpc('get_pending_follow_ups', { p_mentor_id: mentorId });
+  const { data, error } = await supabase.rpc('get_pending_follow_ups', { p_mentor_id: mentorId });
 
   if (error) {
     console.error('Error fetching pending follow-ups:', error);

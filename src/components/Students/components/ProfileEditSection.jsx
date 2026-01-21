@@ -8,7 +8,7 @@ import {
   TrainingEditModal,
   ExperienceEditModal,
   SkillsEditModal,
-  PersonalInfoEditModal
+  PersonalInfoEditModal,
 } from './ProfileEditModals';
 import { useStudentDataByEmail } from '../../../hooks/useStudentDataByEmail';
 import { useAuth } from '../../../context/AuthContext';
@@ -23,21 +23,21 @@ import {
   trainingData,
   experienceData,
   technicalSkills,
-  softSkills
+  softSkills,
 } from '../data/mockData';
 
 const ProfileEditSection = ({ profileEmail }) => {
   const [activeModal, setActiveModal] = useState(null);
   const [refreshCounter, setRefreshCounter] = useState(0);
   const [showResumeParser, setShowResumeParser] = useState(false);
-  
+
   // Get user email from auth context
   const { user } = useAuth();
   const userEmail = user?.email;
-  
+
   // Determine which email to fetch data for
   const displayEmail = profileEmail || userEmail;
-  
+
   // Check if viewing own profile or someone else's
   const isOwnProfile = !profileEmail || profileEmail === userEmail;
 
@@ -54,7 +54,7 @@ const ProfileEditSection = ({ profileEmail }) => {
     updateTechnicalSkills,
     updateSoftSkills,
     updateProjects,
-    updateCertificates
+    updateCertificates,
   } = useStudentDataByEmail(displayEmail);
 
   // Extract data from Supabase or use fallback
@@ -69,7 +69,7 @@ const ProfileEditSection = ({ profileEmail }) => {
     training: training,
     experience: experience,
     technicalSkills: techSkills,
-    softSkills: soft
+    softSkills: soft,
   });
 
   // Update local state when Supabase data changes
@@ -79,21 +79,19 @@ const ProfileEditSection = ({ profileEmail }) => {
       training: training,
       experience: experience,
       technicalSkills: techSkills,
-      softSkills: soft
+      softSkills: soft,
     });
   }, [studentData, education, training, experience, techSkills, soft]);
 
   const handleSave = async (section, data) => {
-    
-    setUserData(prev => ({
+    setUserData((prev) => ({
       ...prev,
-      [section]: data
+      [section]: data,
     }));
-    
+
     // Save to Supabase if user is logged in
     if (userEmail && studentData?.profile) {
       try {
-        
         let result;
         switch (section) {
           case 'education':
@@ -122,7 +120,7 @@ const ProfileEditSection = ({ profileEmail }) => {
             // Refresh the data after updating personal info
             if (result?.success) {
               await refresh();
-              setRefreshCounter(prev => prev + 1); // Force re-render of modal
+              setRefreshCounter((prev) => prev + 1); // Force re-render of modal
             } else {
               console.error('🔵 Update failed:', result?.error);
             }
@@ -143,13 +141,11 @@ const ProfileEditSection = ({ profileEmail }) => {
   };
 
   const handleResumeDataExtracted = async (parsedData) => {
-    
     try {
       // Merge parsed data with existing profile data
       const currentProfile = studentData?.profile || {};
       const mergedData = mergeResumeData(currentProfile, parsedData);
-      
-      
+
       // Update profile with merged data
       if (userEmail && studentData?.profile) {
         // Update personal info
@@ -169,50 +165,49 @@ const ProfileEditSection = ({ profileEmail }) => {
           course: mergedData.course,
           alternate_number: mergedData.alternate_number,
           contact_number_dial_code: mergedData.contact_number_dial_code,
-          skill: mergedData.skill
+          skill: mergedData.skill,
         });
-        
+
         // Update education if present
         if (mergedData.education && mergedData.education.length > 0) {
           await handleSave('education', mergedData.education);
         }
-        
+
         // Update training if present
         if (mergedData.training && mergedData.training.length > 0) {
           await handleSave('training', mergedData.training);
         }
-        
+
         // Update experience if present
         if (mergedData.experience && mergedData.experience.length > 0) {
           await handleSave('experience', mergedData.experience);
         }
-        
+
         // Update projects if present
         if (mergedData.projects && mergedData.projects.length > 0) {
           await handleSave('projects', mergedData.projects);
         }
-        
+
         // Update certificates if present
         if (mergedData.certificates && mergedData.certificates.length > 0) {
           await handleSave('certificates', mergedData.certificates);
         }
-        
+
         // Update technical skills if present
         if (mergedData.technicalSkills && mergedData.technicalSkills.length > 0) {
           await handleSave('technicalSkills', mergedData.technicalSkills);
         }
-        
+
         // Update soft skills if present
         if (mergedData.softSkills && mergedData.softSkills.length > 0) {
           await handleSave('softSkills', mergedData.softSkills);
         }
-        
+
         // Refresh the data
         await refresh();
-        setRefreshCounter(prev => prev + 1);
-        
+        setRefreshCounter((prev) => prev + 1);
       }
-      
+
       // Close the resume parser modal
       setShowResumeParser(false);
     } catch (error) {
@@ -229,7 +224,7 @@ const ProfileEditSection = ({ profileEmail }) => {
       iconBg: 'bg-blue-50',
       iconColor: 'text-blue-600',
       data: studentData?.profile || {},
-      count: 1 // Always show as having data since it's basic profile info
+      count: 1, // Always show as having data since it's basic profile info
     },
     {
       id: 'education',
@@ -239,7 +234,9 @@ const ProfileEditSection = ({ profileEmail }) => {
       iconBg: 'bg-blue-100',
       iconColor: 'text-blue-700',
       data: userData.education,
-      count: Array.isArray(userData.education) ? userData.education.filter(item => item.enabled !== false).length : 0
+      count: Array.isArray(userData.education)
+        ? userData.education.filter((item) => item.enabled !== false).length
+        : 0,
     },
     {
       id: 'training',
@@ -249,7 +246,9 @@ const ProfileEditSection = ({ profileEmail }) => {
       iconBg: 'bg-blue-50',
       iconColor: 'text-blue-600',
       data: userData.training,
-      count: Array.isArray(userData.training) ? userData.training.filter(item => item.enabled !== false).length : 0
+      count: Array.isArray(userData.training)
+        ? userData.training.filter((item) => item.enabled !== false).length
+        : 0,
     },
     {
       id: 'experience',
@@ -259,7 +258,9 @@ const ProfileEditSection = ({ profileEmail }) => {
       iconBg: 'bg-blue-100',
       iconColor: 'text-blue-700',
       data: userData.experience,
-      count: Array.isArray(userData.experience) ? userData.experience.filter(item => item.enabled !== false).length : 0
+      count: Array.isArray(userData.experience)
+        ? userData.experience.filter((item) => item.enabled !== false).length
+        : 0,
     },
     {
       id: 'softSkills',
@@ -269,7 +270,9 @@ const ProfileEditSection = ({ profileEmail }) => {
       iconBg: 'bg-blue-50',
       iconColor: 'text-blue-600',
       data: userData.softSkills,
-      count: Array.isArray(userData.softSkills) ? userData.softSkills.filter(item => item.enabled !== false).length : 0
+      count: Array.isArray(userData.softSkills)
+        ? userData.softSkills.filter((item) => item.enabled !== false).length
+        : 0,
     },
     {
       id: 'technicalSkills',
@@ -279,8 +282,8 @@ const ProfileEditSection = ({ profileEmail }) => {
       iconBg: 'bg-blue-100',
       iconColor: 'text-blue-700',
       data: userData.technicalSkills,
-      count: Array.isArray(userData.technicalSkills) ? userData.technicalSkills.length : 0
-    }
+      count: Array.isArray(userData.technicalSkills) ? userData.technicalSkills.length : 0,
+    },
   ];
 
   // Show loading state
@@ -378,7 +381,9 @@ const ProfileEditSection = ({ profileEmail }) => {
                 <CardContent className="p-6 flex flex-col h-full">
                   {/* Icon Section */}
                   <div className="flex items-start justify-between mb-4">
-                    <div className={`w-12 h-12 rounded-lg ${section.iconBg} flex items-center justify-center group-hover:scale-105 transition-transform duration-200`}>
+                    <div
+                      className={`w-12 h-12 rounded-lg ${section.iconBg} flex items-center justify-center group-hover:scale-105 transition-transform duration-200`}
+                    >
                       <IconComponent className={`w-6 h-6 ${section.iconColor}`} />
                     </div>
                   </div>
@@ -433,7 +438,9 @@ const ProfileEditSection = ({ profileEmail }) => {
                     </div>
                     <div>
                       <h2 className="text-2xl font-bold text-slate-900">Personal Information</h2>
-                      <p className="text-sm text-slate-600 mt-1">Complete overview of your profile details</p>
+                      <p className="text-sm text-slate-600 mt-1">
+                        Complete overview of your profile details
+                      </p>
                     </div>
                   </div>
                   <button
@@ -441,7 +448,12 @@ const ProfileEditSection = ({ profileEmail }) => {
                     className="w-10 h-10 rounded-full bg-white/90 hover:bg-white flex items-center justify-center text-slate-400 hover:text-slate-600 transition-all duration-200 shadow-sm hover:shadow-md"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
                     </svg>
                   </button>
                 </div>

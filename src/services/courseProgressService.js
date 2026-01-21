@@ -24,11 +24,10 @@ export const courseProgressService = {
         return { success: false, error: 'Invalid position value' };
       }
 
-      const videoCompleted = durationSeconds > 0 && (positionSeconds / durationSeconds) >= 0.9;
+      const videoCompleted = durationSeconds > 0 && positionSeconds / durationSeconds >= 0.9;
 
-      const { error } = await supabase
-        .from('student_course_progress')
-        .upsert({
+      const { error } = await supabase.from('student_course_progress').upsert(
+        {
           student_id: studentId,
           course_id: courseId,
           lesson_id: lessonId,
@@ -36,10 +35,12 @@ export const courseProgressService = {
           video_duration_seconds: Math.floor(durationSeconds || 0),
           video_completed: videoCompleted,
           last_accessed: new Date().toISOString(),
-          status: videoCompleted ? 'completed' : 'in_progress'
-        }, {
-          onConflict: 'student_id,course_id,lesson_id'
-        });
+          status: videoCompleted ? 'completed' : 'in_progress',
+        },
+        {
+          onConflict: 'student_id,course_id,lesson_id',
+        }
+      );
 
       if (error) throw error;
       return { success: true };
@@ -77,19 +78,20 @@ export const courseProgressService = {
    */
   async markVideoCompleted(studentId, courseId, lessonId) {
     try {
-      const { error } = await supabase
-        .from('student_course_progress')
-        .upsert({
+      const { error } = await supabase.from('student_course_progress').upsert(
+        {
           student_id: studentId,
           course_id: courseId,
           lesson_id: lessonId,
           video_completed: true,
           status: 'completed',
           completed_at: new Date().toISOString(),
-          last_accessed: new Date().toISOString()
-        }, {
-          onConflict: 'student_id,course_id,lesson_id'
-        });
+          last_accessed: new Date().toISOString(),
+        },
+        {
+          onConflict: 'student_id,course_id,lesson_id',
+        }
+      );
 
       if (error) throw error;
       return { success: true };
@@ -106,13 +108,26 @@ export const courseProgressService = {
   /**
    * Save current position for session restore
    */
-  async saveRestorePoint(studentId, courseId, moduleIndex, lessonIndex, lessonId, videoPosition = 0) {
+  async saveRestorePoint(
+    studentId,
+    courseId,
+    moduleIndex,
+    lessonIndex,
+    lessonId,
+    videoPosition = 0
+  ) {
     try {
       if (!studentId || !courseId) {
         return { success: false, error: 'Missing required parameters' };
       }
 
-      console.log('💾 Saving restore point:', { studentId, courseId, moduleIndex, lessonIndex, lessonId });
+      console.log('💾 Saving restore point:', {
+        studentId,
+        courseId,
+        moduleIndex,
+        lessonIndex,
+        lessonId,
+      });
 
       const { error } = await supabase
         .from('course_enrollments')
@@ -121,7 +136,7 @@ export const courseProgressService = {
           last_lesson_index: lessonIndex,
           last_lesson_id: lessonId,
           last_video_position: Math.floor(videoPosition),
-          last_accessed: new Date().toISOString()
+          last_accessed: new Date().toISOString(),
         })
         .eq('student_id', studentId)
         .eq('course_id', courseId);
@@ -130,7 +145,7 @@ export const courseProgressService = {
         console.error('❌ Error saving restore point:', error);
         throw error;
       }
-      
+
       console.log('✅ Restore point saved successfully');
       return { success: true };
     } catch (error) {
@@ -148,7 +163,8 @@ export const courseProgressService = {
 
       const { data, error } = await supabase
         .from('course_enrollments')
-        .select(`
+        .select(
+          `
           course_id,
           last_module_index,
           last_lesson_index,
@@ -158,13 +174,14 @@ export const courseProgressService = {
           last_accessed,
           status,
           course_title
-        `)
+        `
+        )
         .eq('student_id', studentId)
         .eq('course_id', courseId)
         .maybeSingle();
 
       if (error) throw error;
-      
+
       // Only return restore point if there's actual progress
       if (data && data.progress > 0 && data.progress < 100) {
         return {
@@ -175,7 +192,7 @@ export const courseProgressService = {
           lastVideoPosition: data.last_video_position || 0,
           progress: data.progress,
           lastAccessed: data.last_accessed,
-          courseTitle: data.course_title
+          courseTitle: data.course_title,
         };
       }
       return null;
@@ -196,7 +213,7 @@ export const courseProgressService = {
           last_module_index: 0,
           last_lesson_index: 0,
           last_lesson_id: null,
-          last_video_position: 0
+          last_video_position: 0,
         })
         .eq('student_id', studentId)
         .eq('course_id', courseId);
@@ -246,18 +263,16 @@ export const courseProgressService = {
         course_id: courseId,
         lesson_id: lessonId,
         status: status,
-        last_accessed: new Date().toISOString()
+        last_accessed: new Date().toISOString(),
       };
 
       if (status === 'completed') {
         updateData.completed_at = new Date().toISOString();
       }
 
-      const { error } = await supabase
-        .from('student_course_progress')
-        .upsert(updateData, {
-          onConflict: 'student_id,course_id,lesson_id'
-        });
+      const { error } = await supabase.from('student_course_progress').upsert(updateData, {
+        onConflict: 'student_id,course_id,lesson_id',
+      });
 
       if (error) throw error;
       return { success: true };
@@ -284,17 +299,18 @@ export const courseProgressService = {
       const currentTime = existing?.time_spent_seconds || 0;
       const newTime = currentTime + additionalSeconds;
 
-      const { error } = await supabase
-        .from('student_course_progress')
-        .upsert({
+      const { error } = await supabase.from('student_course_progress').upsert(
+        {
           student_id: studentId,
           course_id: courseId,
           lesson_id: lessonId,
           time_spent_seconds: newTime,
-          last_accessed: new Date().toISOString()
-        }, {
-          onConflict: 'student_id,course_id,lesson_id'
-        });
+          last_accessed: new Date().toISOString(),
+        },
+        {
+          onConflict: 'student_id,course_id,lesson_id',
+        }
+      );
 
       if (error) throw error;
       return { success: true, totalTime: newTime };
@@ -351,7 +367,7 @@ export const courseProgressService = {
           attempt_number: attemptNumber,
           total_questions: totalQuestions,
           status: 'in_progress',
-          started_at: new Date().toISOString()
+          started_at: new Date().toISOString(),
         })
         .select()
         .single();
@@ -386,7 +402,7 @@ export const courseProgressService = {
         .update({
           answers: answers,
           current_question_index: (current?.current_question_index || 0) + 1,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('student_id', studentId)
         .eq('quiz_id', quizId)
@@ -428,9 +444,7 @@ export const courseProgressService = {
    */
   async submitQuiz(studentId, quizId, attemptNumber, correctAnswers, totalQuestions) {
     try {
-      const scorePercentage = totalQuestions > 0 
-        ? (correctAnswers / totalQuestions) * 100 
-        : 0;
+      const scorePercentage = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
       const passed = scorePercentage >= 70;
 
       const { data, error } = await supabase
@@ -441,7 +455,7 @@ export const courseProgressService = {
           score_percentage: scorePercentage,
           passed: passed,
           completed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('student_id', studentId)
         .eq('quiz_id', quizId)
@@ -489,8 +503,9 @@ export const courseProgressService = {
       if (progressError) throw progressError;
 
       // Calculate totals
-      const completedLessons = lessonProgress?.filter(l => l.status === 'completed').length || 0;
-      const totalTimeSpent = lessonProgress?.reduce((acc, l) => acc + (l.time_spent_seconds || 0), 0) || 0;
+      const completedLessons = lessonProgress?.filter((l) => l.status === 'completed').length || 0;
+      const totalTimeSpent =
+        lessonProgress?.reduce((acc, l) => acc + (l.time_spent_seconds || 0), 0) || 0;
 
       return {
         courseId,
@@ -500,13 +515,15 @@ export const courseProgressService = {
         totalTimeSpent,
         lastAccessed: enrollment?.last_accessed,
         status: enrollment?.status || 'not_started',
-        restorePoint: enrollment ? {
-          lastModuleIndex: enrollment.last_module_index || 0,
-          lastLessonIndex: enrollment.last_lesson_index || 0,
-          lastLessonId: enrollment.last_lesson_id,
-          lastVideoPosition: enrollment.last_video_position || 0
-        } : null,
-        lessonProgress: lessonProgress || []
+        restorePoint: enrollment
+          ? {
+              lastModuleIndex: enrollment.last_module_index || 0,
+              lastLessonIndex: enrollment.last_lesson_index || 0,
+              lastLessonId: enrollment.last_lesson_id,
+              lastVideoPosition: enrollment.last_video_position || 0,
+            }
+          : null,
+        lessonProgress: lessonProgress || [],
       };
     } catch (error) {
       console.error('Error getting course progress summary:', error);
@@ -521,7 +538,8 @@ export const courseProgressService = {
     try {
       const { data, error } = await supabase
         .from('course_enrollments')
-        .select(`
+        .select(
+          `
           course_id,
           course_title,
           progress,
@@ -531,7 +549,8 @@ export const courseProgressService = {
           last_lesson_index,
           total_lessons,
           completed_lessons
-        `)
+        `
+        )
         .eq('student_id', studentId)
         .order('last_accessed', { ascending: false });
 
@@ -561,7 +580,7 @@ export const courseProgressService = {
         .from('course_enrollments')
         .update({
           total_time_spent_seconds: newTotal,
-          last_accessed: new Date().toISOString()
+          last_accessed: new Date().toISOString(),
         })
         .eq('student_id', studentId)
         .eq('course_id', courseId);
@@ -572,7 +591,7 @@ export const courseProgressService = {
       console.error('Error updating course total time:', error);
       return { success: false, error: error.message };
     }
-  }
+  },
 };
 
 export default courseProgressService;

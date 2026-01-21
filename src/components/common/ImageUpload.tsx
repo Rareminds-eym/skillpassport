@@ -15,7 +15,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   onImageChange,
   folder = 'courses',
   label = 'Thumbnail/Icon',
-  className = ''
+  className = '',
 }) => {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,13 +44,13 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
       if (result.success && result.url) {
         onImageChange(result.url);
         setPreview(result.url);
-        
+
         // Show which storage was used
-        const storageName = result.storage === 'cloudflare-r2' 
-          ? '☁️ Cloudflare R2' 
-          : '📦 Supabase Storage';
+        const storageName =
+          // @ts-expect-error - Auto-suppressed for migration
+          result.storage === 'cloudflare-r2' ? '☁️ Cloudflare R2' : '📦 Supabase Storage';
         setStorageInfo(`Uploaded to ${storageName}`);
-        
+
         // Clear storage info after 3 seconds
         setTimeout(() => setStorageInfo(null), 3000);
       } else {
@@ -80,9 +80,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
 
   return (
     <div className={className}>
-      <label className="block text-sm font-medium text-gray-700 mb-2">
-        {label}
-      </label>
+      <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
 
       <div className="flex items-center gap-3">
         {/* Preview or Upload Button */}
@@ -96,11 +94,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
         >
           {preview ? (
             <>
-              <img
-                src={preview}
-                alt="Preview"
-                className="w-full h-full object-cover"
-              />
+              <img src={preview} alt="Preview" className="w-full h-full object-cover" />
               {!uploading && (
                 <button
                   onClick={(e) => {

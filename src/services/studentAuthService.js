@@ -1,22 +1,22 @@
 import { supabase } from '../lib/supabaseClient';
 import {
-    AUTH_ERROR_CODES,
-    buildErrorResponse,
-    generateCorrelationId,
-    handleAuthError,
-    logAuthEvent,
-    mapSupabaseError,
-    validateCredentials,
-    validateEmail,
-    withRetry,
-    withTimeout,
+  AUTH_ERROR_CODES,
+  buildErrorResponse,
+  generateCorrelationId,
+  handleAuthError,
+  logAuthEvent,
+  mapSupabaseError,
+  validateCredentials,
+  validateEmail,
+  withRetry,
+  withTimeout,
 } from '../utils/authErrorHandler';
 import { unifiedSignup } from './userApiService';
 
 /**
  * Student Authentication Service
  * Industrial-grade authentication for students using Supabase Auth
- * 
+ *
  * Features:
  * - Comprehensive input validation
  * - Standardized error codes and messages
@@ -45,20 +45,20 @@ const MAX_RETRIES = 2;
  */
 export const loginStudent = async (email, password) => {
   const correlationId = generateCorrelationId();
-  
+
   try {
     // Validate inputs
     const validation = validateCredentials(email, password);
     if (!validation.valid) {
-      logAuthEvent('warn', 'Student login validation failed', { 
-        correlationId, 
+      logAuthEvent('warn', 'Student login validation failed', {
+        correlationId,
         field: validation.field,
       });
       const response = buildErrorResponse(validation.code);
-      return { 
-        success: false, 
-        student: null, 
-        session: null, 
+      return {
+        success: false,
+        student: null,
+        session: null,
         error: response.error,
         errorCode: response.errorCode,
         correlationId,
@@ -100,7 +100,7 @@ export const loginStudent = async (email, password) => {
     } catch (authError) {
       const errorCode = mapSupabaseError(authError);
       logAuthEvent('error', 'Student auth failed', { correlationId, errorCode });
-      
+
       // Return user-friendly error
       if (errorCode === AUTH_ERROR_CODES.INVALID_CREDENTIALS) {
         return {
@@ -112,8 +112,11 @@ export const loginStudent = async (email, password) => {
           correlationId,
         };
       }
-      
-      if (errorCode === AUTH_ERROR_CODES.RATE_LIMITED || errorCode === AUTH_ERROR_CODES.TOO_MANY_ATTEMPTS) {
+
+      if (
+        errorCode === AUTH_ERROR_CODES.RATE_LIMITED ||
+        errorCode === AUTH_ERROR_CODES.TOO_MANY_ATTEMPTS
+      ) {
         return {
           success: false,
           student: null,
@@ -123,12 +126,12 @@ export const loginStudent = async (email, password) => {
           correlationId,
         };
       }
-      
+
       const response = handleAuthError(authError, { correlationId, operation: 'studentLogin' });
-      return { 
-        success: false, 
-        student: null, 
-        session: null, 
+      return {
+        success: false,
+        student: null,
+        session: null,
         error: response.error,
         errorCode: response.errorCode,
         correlationId,
@@ -137,10 +140,10 @@ export const loginStudent = async (email, password) => {
 
     if (!authData.user) {
       logAuthEvent('error', 'Student auth returned no user', { correlationId });
-      return { 
-        success: false, 
-        student: null, 
-        session: null, 
+      return {
+        success: false,
+        student: null,
+        session: null,
         error: 'Authentication failed. Please try again.',
         errorCode: AUTH_ERROR_CODES.UNEXPECTED_ERROR,
         correlationId,
@@ -153,7 +156,8 @@ export const loginStudent = async (email, password) => {
       const { data: studentData, error: studentError } = await withTimeout(
         supabase
           .from('students')
-          .select(`
+          .select(
+            `
             id,
             user_id,
             email,
@@ -173,7 +177,8 @@ export const loginStudent = async (email, password) => {
               id,
               name
             )
-          `)
+          `
+          )
           .eq('user_id', authData.user.id)
           .maybeSingle(),
         AUTH_TIMEOUT_MS
@@ -185,18 +190,18 @@ export const loginStudent = async (email, password) => {
 
       student = studentData;
     } catch (dbError) {
-      logAuthEvent('error', 'Student profile fetch failed', { 
-        correlationId, 
+      logAuthEvent('error', 'Student profile fetch failed', {
+        correlationId,
         errorCode: mapSupabaseError(dbError),
       });
-      
+
       // Sign out since we couldn't get the student profile
       await safeSignOut();
-      
-      return { 
-        success: false, 
-        student: null, 
-        session: null, 
+
+      return {
+        success: false,
+        student: null,
+        session: null,
         error: 'Unable to load your profile. Please try again later.',
         errorCode: AUTH_ERROR_CODES.DATABASE_ERROR,
         correlationId,
@@ -204,18 +209,18 @@ export const loginStudent = async (email, password) => {
     }
 
     if (!student) {
-      logAuthEvent('warn', 'No student profile found for authenticated user', { 
-        correlationId, 
+      logAuthEvent('warn', 'No student profile found for authenticated user', {
+        correlationId,
         userId: authData.user.id,
       });
-      
+
       // User exists in auth but not in students table - wrong portal
       await safeSignOut();
-      
-      return { 
-        success: false, 
-        student: null, 
-        session: null, 
+
+      return {
+        success: false,
+        student: null,
+        session: null,
         error: 'No student account found. Please check if you are using the correct login portal.',
         errorCode: AUTH_ERROR_CODES.WRONG_PORTAL,
         correlationId,
@@ -226,12 +231,13 @@ export const loginStudent = async (email, password) => {
     if (student.approval_status === 'pending') {
       logAuthEvent('warn', 'Student account pending approval', { correlationId });
       await safeSignOut();
-      
+
       return {
         success: false,
         student: null,
         session: null,
-        error: 'Your account is pending approval. Please wait for confirmation from your institution.',
+        error:
+          'Your account is pending approval. Please wait for confirmation from your institution.',
         errorCode: AUTH_ERROR_CODES.ACCOUNT_PENDING_APPROVAL,
         correlationId,
       };
@@ -240,40 +246,40 @@ export const loginStudent = async (email, password) => {
     if (student.approval_status === 'rejected') {
       logAuthEvent('warn', 'Student account rejected', { correlationId });
       await safeSignOut();
-      
+
       return {
         success: false,
         student: null,
         session: null,
-        error: 'Your account registration was not approved. Please contact your institution for more information.',
+        error:
+          'Your account registration was not approved. Please contact your institution for more information.',
         errorCode: AUTH_ERROR_CODES.ACCOUNT_REJECTED,
         correlationId,
       };
     }
 
-    logAuthEvent('info', 'Student login successful', { 
-      correlationId, 
+    logAuthEvent('info', 'Student login successful', {
+      correlationId,
       studentId: student.id,
     });
 
-    return { 
-      success: true, 
-      student, 
-      session: authData.session, 
+    return {
+      success: true,
+      student,
+      session: authData.session,
       error: null,
     };
-
   } catch (err) {
-    logAuthEvent('error', 'Unexpected student login error', { 
-      correlationId, 
+    logAuthEvent('error', 'Unexpected student login error', {
+      correlationId,
       errorCode: mapSupabaseError(err),
     });
-    
+
     const response = handleAuthError(err, { correlationId, operation: 'studentLogin' });
-    return { 
-      success: false, 
-      student: null, 
-      session: null, 
+    return {
+      success: false,
+      student: null,
+      session: null,
       error: response.error,
       errorCode: response.errorCode,
       correlationId,
@@ -292,14 +298,18 @@ export const loginStudent = async (email, password) => {
  */
 export const signupStudent = async (studentData) => {
   const correlationId = generateCorrelationId();
-  
+
   try {
-    const { email, password, name, school_id, university_college_id, ...additionalData } = studentData;
+    const { email, password, name, school_id, university_college_id, ...additionalData } =
+      studentData;
 
     // Validate credentials
     const validation = validateCredentials(email, password);
     if (!validation.valid) {
-      logAuthEvent('warn', 'Student signup validation failed', { correlationId, field: validation.field });
+      logAuthEvent('warn', 'Student signup validation failed', {
+        correlationId,
+        field: validation.field,
+      });
       const response = buildErrorResponse(validation.code);
       return {
         success: false,
@@ -358,11 +368,15 @@ export const signupStudent = async (studentData) => {
         country: additionalData.country || null,
         state: additionalData.state || null,
         city: additionalData.city || null,
-        preferredLanguage: additionalData.preferredLanguage || additionalData.preferred_language || null,
+        preferredLanguage:
+          additionalData.preferredLanguage || additionalData.preferred_language || null,
         referralCode: additionalData.referralCode || additionalData.referral_code || null,
       });
     } catch (apiError) {
-      logAuthEvent('error', 'Student signup API failed', { correlationId, error: apiError.message });
+      logAuthEvent('error', 'Student signup API failed', {
+        correlationId,
+        error: apiError.message,
+      });
 
       if (apiError.message?.includes('already registered')) {
         return {
@@ -411,7 +425,8 @@ export const signupStudent = async (studentData) => {
 
     // Add any additional fields from additionalData
     if (additionalData.gender) updateData.gender = additionalData.gender;
-    if (additionalData.enrollmentNumber) updateData.enrollmentNumber = additionalData.enrollmentNumber;
+    if (additionalData.enrollmentNumber)
+      updateData.enrollmentNumber = additionalData.enrollmentNumber;
     if (additionalData.course_name) updateData.course_name = additionalData.course_name;
 
     const { data: updatedStudent, error: updateError } = await supabase
@@ -422,12 +437,15 @@ export const signupStudent = async (studentData) => {
       .single();
 
     if (updateError) {
-      logAuthEvent('warn', 'Student record update failed', { correlationId, error: updateError.message });
+      logAuthEvent('warn', 'Student record update failed', {
+        correlationId,
+        error: updateError.message,
+      });
       // Don't fail the signup, just log the warning
     }
 
-    logAuthEvent('info', 'Student signup successful', { 
-      correlationId, 
+    logAuthEvent('info', 'Student signup successful', {
+      correlationId,
       studentId: updatedStudent?.id || userId,
     });
 
@@ -438,7 +456,6 @@ export const signupStudent = async (studentData) => {
       error: null,
       message: 'Account created successfully. Please wait for approval from your institution.',
     };
-
   } catch (error) {
     logAuthEvent('error', 'Unexpected student signup error', { correlationId });
     const response = handleAuthError(error, { correlationId, operation: 'studentSignup' });
@@ -463,13 +480,13 @@ export const signupStudent = async (studentData) => {
  */
 export const getCurrentStudent = async () => {
   const correlationId = generateCorrelationId();
-  
+
   try {
     // Check if user is authenticated
-    const { data: { user }, error: authError } = await withTimeout(
-      supabase.auth.getUser(),
-      AUTH_TIMEOUT_MS
-    );
+    const {
+      data: { user },
+      error: authError,
+    } = await withTimeout(supabase.auth.getUser(), AUTH_TIMEOUT_MS);
 
     if (authError || !user) {
       return {
@@ -484,7 +501,8 @@ export const getCurrentStudent = async () => {
     const { data: studentData, error: studentError } = await withTimeout(
       supabase
         .from('students')
-        .select(`
+        .select(
+          `
           *,
           school:organizations!students_school_id_fkey (
             id,
@@ -492,7 +510,8 @@ export const getCurrentStudent = async () => {
             code,
             organization_type
           )
-        `)
+        `
+        )
         .eq('user_id', user.id)
         .single(),
       AUTH_TIMEOUT_MS
@@ -513,7 +532,6 @@ export const getCurrentStudent = async () => {
       student: studentData,
       error: null,
     };
-
   } catch (error) {
     logAuthEvent('error', 'Get current student failed', { correlationId });
     return {
@@ -549,7 +567,7 @@ const safeSignOut = async () => {
  */
 export const getStudentByEmail = async (email) => {
   const correlationId = generateCorrelationId();
-  
+
   try {
     const emailValidation = validateEmail(email);
     if (!emailValidation.valid) {
@@ -563,7 +581,8 @@ export const getStudentByEmail = async (email) => {
     const { data: studentData, error } = await withTimeout(
       supabase
         .from('students')
-        .select(`
+        .select(
+          `
           *,
           school:organizations!students_school_id_fkey (
             id,
@@ -571,7 +590,8 @@ export const getStudentByEmail = async (email) => {
             code,
             organization_type
           )
-        `)
+        `
+        )
         .eq('email', emailValidation.sanitized)
         .single(),
       AUTH_TIMEOUT_MS
@@ -590,7 +610,6 @@ export const getStudentByEmail = async (email) => {
       student: studentData,
       error: null,
     };
-
   } catch (error) {
     logAuthEvent('error', 'Get student by email failed', { correlationId });
     return {
@@ -664,7 +683,7 @@ export const getStudentsByUniversityCollege = async (universityCollegeId) => {
  */
 export const updateStudentProfile = async (studentId, updates) => {
   const correlationId = generateCorrelationId();
-  
+
   try {
     if (!studentId) {
       return { success: false, student: null, error: 'Student ID is required' };
@@ -699,7 +718,7 @@ export const updateStudentProfile = async (studentId, updates) => {
  */
 export const logoutStudent = async () => {
   const correlationId = generateCorrelationId();
-  
+
   try {
     logAuthEvent('info', 'Student logout', { correlationId });
     const { error } = await supabase.auth.signOut();
@@ -719,7 +738,11 @@ export const logoutStudent = async () => {
 /**
  * Validate student credentials
  */
-export const validateStudentCredentials = async (email, schoolId = null, universityCollegeId = null) => {
+export const validateStudentCredentials = async (
+  email,
+  schoolId = null,
+  universityCollegeId = null
+) => {
   try {
     const emailValidation = validateEmail(email);
     if (!emailValidation.valid) {
@@ -743,7 +766,12 @@ export const validateStudentCredentials = async (email, schoolId = null, univers
     const { data, error } = await withTimeout(query.single(), AUTH_TIMEOUT_MS);
 
     if (error || !data) {
-      return { success: false, valid: false, student: null, error: 'Student not found or not approved' };
+      return {
+        success: false,
+        valid: false,
+        student: null,
+        error: 'Student not found or not approved',
+      };
     }
 
     return { success: true, valid: true, student: data, error: null };

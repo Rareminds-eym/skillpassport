@@ -29,21 +29,21 @@ describe('TransactionGrid Component', () => {
     referenceNumber: 'pay_ABC123XYZ',
     paymentTime: 'January 15, 2024',
     paymentMethod: 'Credit Card',
-    senderName: 'John Doe'
+    senderName: 'John Doe',
   };
 
   it('should render all transaction details', () => {
     render(<TransactionGrid {...mockTransactionData} />);
-    
+
     expect(screen.getByText('Reference Number')).toBeInTheDocument();
     expect(screen.getByText('pay_ABC123XYZ')).toBeInTheDocument();
-    
+
     expect(screen.getByText('Payment Time')).toBeInTheDocument();
     expect(screen.getByText('January 15, 2024')).toBeInTheDocument();
-    
+
     expect(screen.getByText('Payment Method')).toBeInTheDocument();
     expect(screen.getByText('Credit Card')).toBeInTheDocument();
-    
+
     expect(screen.getByText('Sender Name')).toBeInTheDocument();
     expect(screen.getByText('John Doe')).toBeInTheDocument();
   });
@@ -60,54 +60,38 @@ describe('ReceiptCard Component', () => {
     referenceNumber: 'pay_ABC123XYZ',
     paymentTime: 'January 15, 2024',
     paymentMethod: 'Credit Card',
-    senderName: 'John Doe'
+    senderName: 'John Doe',
   };
 
   it('should render total amount prominently', () => {
-    render(
-      <ReceiptCard 
-        totalAmount="₹1,000" 
-        transactionDetails={mockTransactionDetails}
-      />
-    );
-    
+    render(<ReceiptCard totalAmount="₹1,000" transactionDetails={mockTransactionDetails} />);
+
     expect(screen.getByText('Total Amount')).toBeInTheDocument();
     expect(screen.getByText('₹1,000')).toBeInTheDocument();
   });
 
   it('should render transaction details section', () => {
-    render(
-      <ReceiptCard 
-        totalAmount="₹1,000" 
-        transactionDetails={mockTransactionDetails}
-      />
-    );
-    
+    render(<ReceiptCard totalAmount="₹1,000" transactionDetails={mockTransactionDetails} />);
+
     expect(screen.getByText('Transaction Details')).toBeInTheDocument();
     expect(screen.getByText('pay_ABC123XYZ')).toBeInTheDocument();
   });
 
   it('should render children content when provided', () => {
     render(
-      <ReceiptCard 
-        totalAmount="₹1,000" 
-        transactionDetails={mockTransactionDetails}
-      >
+      <ReceiptCard totalAmount="₹1,000" transactionDetails={mockTransactionDetails}>
         <div>Additional Content</div>
       </ReceiptCard>
     );
-    
+
     expect(screen.getByText('Additional Content')).toBeInTheDocument();
   });
 
   it('should not render children section when no children provided', () => {
     const { container } = render(
-      <ReceiptCard 
-        totalAmount="₹1,000" 
-        transactionDetails={mockTransactionDetails}
-      />
+      <ReceiptCard totalAmount="₹1,000" transactionDetails={mockTransactionDetails} />
     );
-    
+
     // Check that there's no additional content section
     const contentSections = container.querySelectorAll('.space-y-6');
     expect(contentSections.length).toBe(0);

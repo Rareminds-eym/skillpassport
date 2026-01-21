@@ -1,23 +1,29 @@
-import { motion } from "framer-motion";
-import { AlertCircle, BarChart3, CheckCircle, Zap } from "lucide-react";
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import loginIllustration from "../../../../../assets/images/auth/Recruiter-illustration.png";
-import SignupFormFields from "../../../../../components/Subscription/shared/SignupFormFields";
-import { capitalizeFirstLetter, formatOtp, formatPhoneNumber, getInitialFormData, validateSignupFields } from "../../../../../components/Subscription/shared/signupValidation";
-import { supabase } from "../../../../../lib/supabaseClient";
-import FeatureCard from "../../ui/FeatureCard";
+import { motion } from 'framer-motion';
+import { AlertCircle, BarChart3, CheckCircle, Zap } from 'lucide-react';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import loginIllustration from '../../../../../assets/images/auth/Recruiter-illustration.png';
+import SignupFormFields from '../../../../../components/Subscription/shared/SignupFormFields';
+import {
+  capitalizeFirstLetter,
+  formatOtp,
+  formatPhoneNumber,
+  getInitialFormData,
+  validateSignupFields,
+} from '../../../../../components/Subscription/shared/signupValidation';
+import { supabase } from '../../../../../lib/supabaseClient';
+import FeatureCard from '../../ui/FeatureCard';
 
 export default function SignupRecruiter() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     ...getInitialFormData(),
-    workspaceId: ''
+    workspaceId: '',
   });
-  
+
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
@@ -25,22 +31,22 @@ export default function SignupRecruiter() {
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
 
-  const primary = "#0a6aba";
-  const secondary = "#09277f";
+  const primary = '#0a6aba';
+  const secondary = '#09277f';
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     let processedValue = type === 'checkbox' ? checked : value;
-    
+
     if (name === 'phone') {
       processedValue = formatPhoneNumber(value);
     } else if (name === 'otp') {
       processedValue = formatOtp(value);
     }
-    
-    setFormData(prev => ({ ...prev, [name]: processedValue }));
+
+    setFormData((prev) => ({ ...prev, [name]: processedValue }));
     if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
+      setErrors((prev) => ({ ...prev, [name]: '' }));
     }
   };
 
@@ -51,12 +57,12 @@ export default function SignupRecruiter() {
       const result = await sendOtp(formData.phone);
       if (result.success) {
         setOtpSent(true);
-        setErrors(prev => ({ ...prev, phone: '' }));
+        setErrors((prev) => ({ ...prev, phone: '' }));
       } else {
-        setErrors(prev => ({ ...prev, phone: result.error || 'Failed to send OTP.' }));
+        setErrors((prev) => ({ ...prev, phone: result.error || 'Failed to send OTP.' }));
       }
     } catch {
-      setErrors(prev => ({ ...prev, phone: 'Failed to send OTP.' }));
+      setErrors((prev) => ({ ...prev, phone: 'Failed to send OTP.' }));
     } finally {
       setSendingOtp(false);
     }
@@ -69,13 +75,13 @@ export default function SignupRecruiter() {
       const result = await verifyOtpApi(formData.phone, formData.otp);
       if (result.success) {
         setOtpVerified(true);
-        setFormData(prev => ({ ...prev, otpVerified: true }));
-        setErrors(prev => ({ ...prev, otp: '' }));
+        setFormData((prev) => ({ ...prev, otpVerified: true }));
+        setErrors((prev) => ({ ...prev, otp: '' }));
       } else {
-        setErrors(prev => ({ ...prev, otp: result.error || 'Invalid OTP.' }));
+        setErrors((prev) => ({ ...prev, otp: result.error || 'Invalid OTP.' }));
       }
     } catch {
-      setErrors(prev => ({ ...prev, otp: 'Invalid OTP.' }));
+      setErrors((prev) => ({ ...prev, otp: 'Invalid OTP.' }));
     } finally {
       setVerifyingOtp(false);
     }
@@ -85,7 +91,7 @@ export default function SignupRecruiter() {
     const validationErrors = validateSignupFields(formData, {
       requirePhone: true,
       requireOtp: false,
-      requireLocation: true
+      requireLocation: true,
     });
 
     if (!formData.workspaceId || formData.workspaceId.length < 6) {
@@ -98,19 +104,20 @@ export default function SignupRecruiter() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
-    
+    setError('');
+
     if (!validateForm()) return;
 
     setLoading(true);
-    
+
     try {
       const firstName = capitalizeFirstLetter(formData.firstName);
       const lastName = capitalizeFirstLetter(formData.lastName);
-      
+
       // Use the worker API for signup with proper rollback support
-      const USER_API_URL = import.meta.env.VITE_USER_API_URL || 'https://user-api.dark-mode-d021.workers.dev';
-      
+      const USER_API_URL =
+        import.meta.env.VITE_USER_API_URL || 'https://user-api.dark-mode-d021.workers.dev';
+
       const response = await fetch(`${USER_API_URL}/signup/recruiter`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -149,7 +156,6 @@ export default function SignupRecruiter() {
 
       alert('Account created successfully! Please check your email to verify your account.');
       navigate('/login/recruiter');
-      
     } catch (err) {
       console.error('Signup error:', err);
       setError(err.message || 'Signup failed. Please try again.');
@@ -157,7 +163,6 @@ export default function SignupRecruiter() {
       setLoading(false);
     }
   };
-
 
   // Workspace ID field component
   const workspaceIdField = (
@@ -191,18 +196,38 @@ export default function SignupRecruiter() {
         {/* Left Side - Illustration */}
         <div className="hidden lg:flex relative p-10 text-white flex-col justify-between rounded-3xl shadow-lg bg-gradient-to-br from-[#0a6aba] to-[#09277f]">
           <div className="relative z-10">
-            <h2 className="text-3xl md:text-4xl font-bold leading-tight">Join Your Team. Start Hiring Smarter.</h2>
-            <p className="mt-4 max-w-xl text-[#edf2f9]">Access verified Skill Passports and connect with top talent across India & beyond.</p>
+            <h2 className="text-3xl md:text-4xl font-bold leading-tight">
+              Join Your Team. Start Hiring Smarter.
+            </h2>
+            <p className="mt-4 max-w-xl text-[#edf2f9]">
+              Access verified Skill Passports and connect with top talent across India & beyond.
+            </p>
           </div>
           <div className="relative z-10 flex justify-start items-end h-full mt-12">
-            <img src={loginIllustration} alt="Recruiter illustration" className="w-80 lg:w-[24rem] object-contain drop-shadow-xl -ml-10" />
-            <motion.div className="absolute top-1 lg:left-[8rem] xl:left-[12rem]" animate={{ y: [0, -10, 0] }} transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}>
+            <img
+              src={loginIllustration}
+              alt="Recruiter illustration"
+              className="w-80 lg:w-[24rem] object-contain drop-shadow-xl -ml-10"
+            />
+            <motion.div
+              className="absolute top-1 lg:left-[8rem] xl:left-[12rem]"
+              animate={{ y: [0, -10, 0] }}
+              transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
+            >
               <FeatureCard title="Verified Skills" Icon={CheckCircle} />
             </motion.div>
-            <motion.div className="absolute top-40 lg:-right-8 xl:-right-4" animate={{ y: [0, -12, 0] }} transition={{ repeat: Infinity, duration: 3.5, ease: "easeInOut" }}>
+            <motion.div
+              className="absolute top-40 lg:-right-8 xl:-right-4"
+              animate={{ y: [0, -12, 0] }}
+              transition={{ repeat: Infinity, duration: 3.5, ease: 'easeInOut' }}
+            >
               <FeatureCard title="Faster Hiring" Icon={Zap} />
             </motion.div>
-            <motion.div className="absolute bottom-8 lg:left-[8rem] xl:left-[12rem]" animate={{ y: [0, -8, 0] }} transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}>
+            <motion.div
+              className="absolute bottom-8 lg:left-[8rem] xl:left-[12rem]"
+              animate={{ y: [0, -8, 0] }}
+              transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
+            >
               <FeatureCard title="AI Recommendations" Icon={BarChart3} />
             </motion.div>
           </div>
@@ -210,14 +235,24 @@ export default function SignupRecruiter() {
 
         {/* Right Side - Form */}
         <div className="relative flex items-center justify-center px-4 sm:px-8 md:px-12 py-10 lg:py-8">
-          <div className="absolute inset-0 lg:hidden" style={{ background: `linear-gradient(135deg, ${primary}, ${secondary})` }} aria-hidden />
-          <img src={loginIllustration} alt="" className="absolute inset-0 h-full w-full object-contain lg:hidden opacity-60 pointer-events-none" />
+          <div
+            className="absolute inset-0 lg:hidden"
+            style={{ background: `linear-gradient(135deg, ${primary}, ${secondary})` }}
+            aria-hidden
+          />
+          <img
+            src={loginIllustration}
+            alt=""
+            className="absolute inset-0 h-full w-full object-contain lg:hidden opacity-60 pointer-events-none"
+          />
           <div className="hidden lg:block absolute inset-0 bg-white" />
 
           <div className="relative w-full max-w-md">
             <div className="text-center mb-6">
               <h3 className="text-3xl font-bold text-gray-900 lg:text-gray-900">Join Workspace</h3>
-              <p className="text-sm text-gray-600 mt-2">Create your recruiter account to join your team</p>
+              <p className="text-sm text-gray-600 mt-2">
+                Create your recruiter account to join your team
+              </p>
             </div>
 
             <div className="rounded-2xl bg-white shadow-xl p-6 sm:p-8 max-h-[70vh] overflow-y-auto">
@@ -230,7 +265,7 @@ export default function SignupRecruiter() {
 
               <form onSubmit={handleSubmit}>
                 {workspaceIdField}
-                
+
                 <SignupFormFields
                   formData={formData}
                   errors={errors}
@@ -254,7 +289,7 @@ export default function SignupRecruiter() {
                   className="w-full mt-6 py-3 text-white font-medium rounded-lg shadow-sm transition disabled:opacity-60 disabled:cursor-not-allowed"
                   style={{ background: `linear-gradient(90deg, ${primary}, ${secondary})` }}
                 >
-                  {loading ? "Creating Account..." : "Join Workspace"}
+                  {loading ? 'Creating Account...' : 'Join Workspace'}
                 </button>
                 {!otpVerified && (
                   <p className="mt-2 text-xs text-amber-600 text-center">
@@ -264,7 +299,10 @@ export default function SignupRecruiter() {
 
                 <div className="text-center mt-4 text-sm">
                   <span className="text-gray-600">Already have an account? </span>
-                  <Link to="/login/recruiter" className="text-blue-600 font-semibold hover:text-blue-700">
+                  <Link
+                    to="/login/recruiter"
+                    className="text-blue-600 font-semibold hover:text-blue-700"
+                  >
                     Login here
                   </Link>
                 </div>

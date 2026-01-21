@@ -15,7 +15,7 @@ interface ResetPasswordState {
 
 const ResetPassword = () => {
   const navigate = useNavigate();
-  
+
   const [state, setState] = useState<ResetPasswordState>({
     password: '',
     confirmPassword: '',
@@ -23,23 +23,23 @@ const ResetPassword = () => {
     showConfirmPassword: false,
     loading: false,
     error: '',
-    success: false
+    success: false,
   });
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       [name]: value,
-      error: ''
+      error: '',
     }));
   };
 
   const togglePasswordVisibility = (field: 'password' | 'confirmPassword') => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
-      [field === 'password' ? 'showPassword' : 'showConfirmPassword']: 
-        !prev[field === 'password' ? 'showPassword' : 'showConfirmPassword']
+      [field === 'password' ? 'showPassword' : 'showConfirmPassword']:
+        !prev[field === 'password' ? 'showPassword' : 'showConfirmPassword'],
     }));
   };
 
@@ -48,60 +48,59 @@ const ResetPassword = () => {
 
     // Validate inputs
     if (!state.password || !state.confirmPassword) {
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
-        error: 'Please enter and confirm your new password'
+        error: 'Please enter and confirm your new password',
       }));
       return;
     }
 
     if (state.password.length < 6) {
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
-        error: 'Password must be at least 6 characters long'
+        error: 'Password must be at least 6 characters long',
       }));
       return;
     }
 
     if (state.password !== state.confirmPassword) {
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
-        error: 'Passwords do not match'
+        error: 'Passwords do not match',
       }));
       return;
     }
 
-    setState(prev => ({ ...prev, loading: true, error: '' }));
+    setState((prev) => ({ ...prev, loading: true, error: '' }));
 
     try {
       const result = await updatePassword(state.password);
 
       if (!result.success) {
-        setState(prev => ({
+        setState((prev) => ({
           ...prev,
           loading: false,
-          error: result.error || 'Failed to update password'
+          error: result.error || 'Failed to update password',
         }));
         return;
       }
 
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         loading: false,
-        success: true
+        success: true,
       }));
 
       // Redirect to login after 2 seconds
       setTimeout(() => {
         navigate('/login');
       }, 2000);
-
     } catch (error) {
       console.error('Password reset error:', error);
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         loading: false,
-        error: 'An unexpected error occurred. Please try again'
+        error: 'An unexpected error occurred. Please try again',
       }));
     }
   };
@@ -178,7 +177,10 @@ const ResetPassword = () => {
 
               {/* Confirm Password Input */}
               <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="confirmPassword"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Confirm New Password
                 </label>
                 <div className="relative">

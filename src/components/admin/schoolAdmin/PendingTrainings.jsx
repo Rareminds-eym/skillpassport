@@ -11,7 +11,7 @@ const PendingTrainings = ({ schoolId, onTrainingAction, currentUserId }) => {
   // Fetch pending trainings
   const fetchPendingTrainings = async () => {
     if (!schoolId) return;
-    
+
     setLoading(true);
     try {
       const data = await SchoolAdminNotificationService.getPendingTrainings(schoolId);
@@ -31,15 +31,15 @@ const PendingTrainings = ({ schoolId, onTrainingAction, currentUserId }) => {
       return;
     }
 
-    setActionLoading(prev => ({ ...prev, [training.id]: 'approving' }));
-    
+    setActionLoading((prev) => ({ ...prev, [training.id]: 'approving' }));
+
     try {
       const result = await SchoolAdminNotificationService.approveTraining(
         training.id,
         currentUserId,
         'Approved by School Admin'
       );
-      
+
       toast.success(result.message || `Training "${training.title}" approved successfully!`);
       fetchPendingTrainings(); // Refresh list
       onTrainingAction && onTrainingAction('approved', training);
@@ -47,7 +47,7 @@ const PendingTrainings = ({ schoolId, onTrainingAction, currentUserId }) => {
       console.error('Error approving training:', error);
       toast.error(error.message || 'Failed to approve training');
     } finally {
-      setActionLoading(prev => ({ ...prev, [training.id]: null }));
+      setActionLoading((prev) => ({ ...prev, [training.id]: null }));
     }
   };
 
@@ -61,15 +61,15 @@ const PendingTrainings = ({ schoolId, onTrainingAction, currentUserId }) => {
       return;
     }
 
-    setActionLoading(prev => ({ ...prev, [training.id]: 'rejecting' }));
-    
+    setActionLoading((prev) => ({ ...prev, [training.id]: 'rejecting' }));
+
     try {
       const result = await SchoolAdminNotificationService.rejectTraining(
         training.id,
         currentUserId,
         reason
       );
-      
+
       toast.success(result.message || `Training "${training.title}" rejected.`);
       fetchPendingTrainings(); // Refresh list
       onTrainingAction && onTrainingAction('rejected', training);
@@ -77,7 +77,7 @@ const PendingTrainings = ({ schoolId, onTrainingAction, currentUserId }) => {
       console.error('Error rejecting training:', error);
       toast.error(error.message || 'Failed to reject training');
     } finally {
-      setActionLoading(prev => ({ ...prev, [training.id]: null }));
+      setActionLoading((prev) => ({ ...prev, [training.id]: null }));
     }
   };
 
@@ -97,12 +97,12 @@ const PendingTrainings = ({ schoolId, onTrainingAction, currentUserId }) => {
 
   const formatDuration = (startDate, endDate) => {
     if (!startDate || !endDate) return 'Duration not specified';
-    
+
     const start = new Date(startDate);
     const end = new Date(endDate);
     const diffTime = Math.abs(end - start);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays < 30) return `${diffDays} days`;
     const months = Math.floor(diffDays / 30);
     return `${months} month${months > 1 ? 's' : ''}`;
@@ -129,11 +129,12 @@ const PendingTrainings = ({ schoolId, onTrainingAction, currentUserId }) => {
           <div>
             <h2 className="text-lg font-bold text-gray-900">Pending Trainings</h2>
             <p className="text-sm text-gray-600">
-              {pendingTrainings.length} training{pendingTrainings.length !== 1 ? 's' : ''} awaiting approval
+              {pendingTrainings.length} training{pendingTrainings.length !== 1 ? 's' : ''} awaiting
+              approval
             </p>
           </div>
         </div>
-        
+
         {pendingTrainings.length > 0 && (
           <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-sm font-medium">
             {pendingTrainings.length} Pending
@@ -166,7 +167,7 @@ const PendingTrainings = ({ schoolId, onTrainingAction, currentUserId }) => {
                     <p className="text-sm text-gray-600">{training.student_email}</p>
                   </div>
                 </div>
-                
+
                 <div className="text-right">
                   <p className="text-xs text-gray-400">Submitted</p>
                   <p className="text-sm font-medium text-gray-600">
@@ -190,7 +191,7 @@ const PendingTrainings = ({ schoolId, onTrainingAction, currentUserId }) => {
                     </p>
                   </div>
                 </div>
-                
+
                 {training.description && (
                   <div className="mt-3">
                     <p className="text-gray-500 text-sm">Description</p>
@@ -209,7 +210,7 @@ const PendingTrainings = ({ schoolId, onTrainingAction, currentUserId }) => {
                     {formatDate(training.start_date)} - {formatDate(training.end_date)}
                   </span>
                 </div>
-                
+
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleViewDetails(training)}
@@ -218,7 +219,7 @@ const PendingTrainings = ({ schoolId, onTrainingAction, currentUserId }) => {
                     <Eye className="h-4 w-4" />
                     View
                   </button>
-                  
+
                   <button
                     onClick={() => handleReject(training)}
                     disabled={actionLoading[training.id]}
@@ -231,7 +232,7 @@ const PendingTrainings = ({ schoolId, onTrainingAction, currentUserId }) => {
                     )}
                     Reject
                   </button>
-                  
+
                   <button
                     onClick={() => handleApprove(training)}
                     disabled={actionLoading[training.id]}

@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { XMarkIcon, ArrowUpTrayIcon, LockClosedIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import {
+  XMarkIcon,
+  ArrowUpTrayIcon,
+  LockClosedIcon,
+  CheckCircleIcon,
+} from '@heroicons/react/24/outline';
 import { Save, Upload } from 'lucide-react';
 import type { MarkEntry } from '../../../../types/college';
 
@@ -42,17 +47,20 @@ const MarkEntryGrid: React.FC<MarkEntryGridProps> = ({
   useEffect(() => {
     // Initialize marks from existing data or create empty entries
     const marksMap = new Map<string, Partial<MarkEntry>>();
-    
-    students.forEach(student => {
-      const existing = existingMarks.find(m => m.student_id === student.id);
-      marksMap.set(student.id, existing || {
-        assessment_id: assessmentId,
-        student_id: student.id,
-        marks_obtained: 0,
-        is_absent: false,
-        is_exempt: false,
-        remarks: '',
-      });
+
+    students.forEach((student) => {
+      const existing = existingMarks.find((m) => m.student_id === student.id);
+      marksMap.set(
+        student.id,
+        existing || {
+          assessment_id: assessmentId,
+          student_id: student.id,
+          marks_obtained: 0,
+          is_absent: false,
+          is_exempt: false,
+          remarks: '',
+        }
+      );
     });
 
     setMarks(marksMap);
@@ -73,8 +81,12 @@ const MarkEntryGrid: React.FC<MarkEntryGridProps> = ({
     // Validate marks
     for (const [studentId, mark] of marks.entries()) {
       if (!mark.is_absent && !mark.is_exempt) {
-        if (mark.marks_obtained === undefined || mark.marks_obtained < 0 || mark.marks_obtained > totalMarks) {
-          const student = students.find(s => s.id === studentId);
+        if (
+          mark.marks_obtained === undefined ||
+          mark.marks_obtained < 0 ||
+          mark.marks_obtained > totalMarks
+        ) {
+          const student = students.find((s) => s.id === studentId);
           setError(`Invalid marks for ${student?.name}. Must be between 0 and ${totalMarks}`);
           setLoading(false);
           return;
@@ -95,7 +107,9 @@ const MarkEntryGrid: React.FC<MarkEntryGridProps> = ({
   };
 
   const handleSubmit = async () => {
-    if (!confirm('Submit marks for moderation? You will not be able to edit them after submission.')) {
+    if (
+      !confirm('Submit marks for moderation? You will not be able to edit them after submission.')
+    ) {
       return;
     }
 
@@ -132,10 +146,7 @@ const MarkEntryGrid: React.FC<MarkEntryGridProps> = ({
                 {assessmentName} • Total Marks: {totalMarks}
               </p>
             </div>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-lg transition"
-            >
+            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition">
               <XMarkIcon className="h-5 w-5 text-gray-500" />
             </button>
           </div>
@@ -164,7 +175,13 @@ const MarkEntryGrid: React.FC<MarkEntryGridProps> = ({
 
           <div className="flex justify-between items-center">
             <p className="text-sm text-gray-600">
-              {students.length} students • {Array.from(marks.values()).filter(m => m.marks_obtained !== undefined && m.marks_obtained > 0).length} marks entered
+              {students.length} students •{' '}
+              {
+                Array.from(marks.values()).filter(
+                  (m) => m.marks_obtained !== undefined && m.marks_obtained > 0
+                ).length
+              }{' '}
+              marks entered
             </p>
             <button
               onClick={handleBulkUpload}
@@ -211,22 +228,24 @@ const MarkEntryGrid: React.FC<MarkEntryGridProps> = ({
 
                   return (
                     <tr key={student.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        {index + 1}
-                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{index + 1}</td>
                       <td className="px-4 py-3 text-sm font-medium text-gray-900">
                         {student.roll_number}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-900">
-                        {student.name}
-                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900">{student.name}</td>
                       <td className="px-4 py-3">
                         <input
                           type="number"
                           min="0"
                           max={totalMarks}
                           value={mark.marks_obtained || ''}
-                          onChange={(e) => updateMark(student.id, 'marks_obtained', parseFloat(e.target.value) || 0)}
+                          onChange={(e) =>
+                            updateMark(
+                              student.id,
+                              'marks_obtained',
+                              parseFloat(e.target.value) || 0
+                            )
+                          }
                           disabled={isLocked || isAbsent || isExempt}
                           className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                           placeholder="0"

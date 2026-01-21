@@ -16,23 +16,23 @@ export const suppressRechartsWarnings = () => {
 
   console.warn = (...args) => {
     const message = args[0];
-    
+
     // Suppress specific Recharts dimension warnings
     if (typeof message === 'string') {
-      const isRechartsWarning = 
-        message.includes('width') && 
-        message.includes('height') && 
-        (message.includes('chart should be greater than 0') || 
-         message.includes('minWidth') || 
-         message.includes('minHeight'));
-      
+      const isRechartsWarning =
+        message.includes('width') &&
+        message.includes('height') &&
+        (message.includes('chart should be greater than 0') ||
+          message.includes('minWidth') ||
+          message.includes('minHeight'));
+
       if (isRechartsWarning) {
         // Log a single suppressed message instead of the full warning
         console.log('📊 Recharts dimension warning suppressed (chart initializing...)');
         return;
       }
     }
-    
+
     // Allow all other warnings through
     originalWarn.apply(console, args);
   };

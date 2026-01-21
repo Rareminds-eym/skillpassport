@@ -1,11 +1,4 @@
-import {
-    Award,
-    Briefcase,
-    Calendar,
-    Clock,
-    Target,
-    TrendingUp
-} from 'lucide-react';
+import { Award, Briefcase, Calendar, Clock, Target, TrendingUp } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import ReactApexChart from 'react-apexcharts';
 import { useNavigate } from 'react-router-dom';
@@ -39,7 +32,8 @@ const AnalyticsView = ({ studentId, userEmail }) => {
       setLoading(true);
       const { data: appliedJobs, error: jobsError } = await supabase
         .from('applied_jobs')
-        .select(`
+        .select(
+          `
           *,
           opportunities!fk_applied_jobs_opportunity (
             id,
@@ -52,7 +46,8 @@ const AnalyticsView = ({ studentId, userEmail }) => {
             salary_range_max,
             mode
           )
-        `)
+        `
+        )
         .eq('student_id', studentId)
         .order('applied_at', { ascending: false });
 
@@ -90,7 +85,10 @@ const AnalyticsView = ({ studentId, userEmail }) => {
     }, {});
 
     const applicationsByMonth = applications.reduce((acc, app) => {
-      const month = new Date(app.applied_at).toLocaleString('default', { month: 'short', year: 'numeric' });
+      const month = new Date(app.applied_at).toLocaleString('default', {
+        month: 'short',
+        year: 'numeric',
+      });
       acc[month] = (acc[month] || 0) + 1;
       return acc;
     }, {});
@@ -107,19 +105,20 @@ const AnalyticsView = ({ studentId, userEmail }) => {
       return acc;
     }, {});
 
-    const respondedApps = applications.filter(app => app.responded_at).length;
+    const respondedApps = applications.filter((app) => app.responded_at).length;
     const responseRate = applications.length > 0 ? (respondedApps / applications.length) * 100 : 0;
 
     const responseTimes = applications
-      .filter(app => app.responded_at)
-      .map(app => {
+      .filter((app) => app.responded_at)
+      .map((app) => {
         const applied = new Date(app.applied_at);
         const responded = new Date(app.responded_at);
         return (responded - applied) / (1000 * 60 * 60 * 24);
       });
-    const averageResponseTime = responseTimes.length > 0 
-      ? responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length 
-      : 0;
+    const averageResponseTime =
+      responseTimes.length > 0
+        ? responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length
+        : 0;
 
     return {
       totalApplications: applications.length,
@@ -143,33 +142,53 @@ const AnalyticsView = ({ studentId, userEmail }) => {
         hollow: { margin: 5, size: '30%', background: 'transparent' },
         dataLabels: {
           name: { show: true, fontSize: '14px', fontWeight: 600, offsetY: -10 },
-          value: { show: true, fontSize: '22px', fontWeight: 700, offsetY: 5, formatter: (val) => Math.round(val) + '%' }
-        }
-      }
+          value: {
+            show: true,
+            fontSize: '22px',
+            fontWeight: 700,
+            offsetY: 5,
+            formatter: (val) => Math.round(val) + '%',
+          },
+        },
+      },
     },
     colors: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'],
     labels: ['Accepted', 'Under Review', 'Pending', 'Rejected'],
-    legend: { show: true, floating: true, fontSize: '13px', position: 'left', offsetX: 10, offsetY: 10 }
+    legend: {
+      show: true,
+      floating: true,
+      fontSize: '13px',
+      position: 'left',
+      offsetX: 10,
+      offsetY: 10,
+    },
   };
 
   const statusRadialChartSeries = [
-    ((analytics.statusCounts['accepted'] || 0) / analytics.totalApplications * 100) || 0,
-    ((analytics.statusCounts['under_review'] || 0) / analytics.totalApplications * 100) || 0,
-    ((analytics.statusCounts['applied'] || analytics.statusCounts['pending'] || 0) / analytics.totalApplications * 100) || 0,
-    ((analytics.statusCounts['rejected'] || 0) / analytics.totalApplications * 100) || 0
+    ((analytics.statusCounts['accepted'] || 0) / analytics.totalApplications) * 100 || 0,
+    ((analytics.statusCounts['under_review'] || 0) / analytics.totalApplications) * 100 || 0,
+    ((analytics.statusCounts['applied'] || analytics.statusCounts['pending'] || 0) /
+      analytics.totalApplications) *
+      100 || 0,
+    ((analytics.statusCounts['rejected'] || 0) / analytics.totalApplications) * 100 || 0,
   ];
 
   const timelineColumnChartOptions = {
     chart: { type: 'bar', toolbar: { show: true }, zoom: { enabled: false } },
     plotOptions: { bar: { borderRadius: 8, columnWidth: '60%', dataLabels: { position: 'top' } } },
-    dataLabels: { enabled: true, offsetY: -20, style: { fontSize: '12px', colors: ["#304758"] } },
+    dataLabels: { enabled: true, offsetY: -20, style: { fontSize: '12px', colors: ['#304758'] } },
     colors: ['#6366f1'],
-    xaxis: { categories: Object.keys(analytics.applicationsByMonth), labels: { style: { fontSize: '12px' } } },
+    xaxis: {
+      categories: Object.keys(analytics.applicationsByMonth),
+      labels: { style: { fontSize: '12px' } },
+    },
     yaxis: { title: { text: 'Number of Applications' } },
-    grid: { borderColor: '#f1f1f1' }
+    grid: { borderColor: '#f1f1f1' },
   };
 
-  const timelineColumnChartSeries = [{ name: 'Applications', data: Object.values(analytics.applicationsByMonth) }];
+  const timelineColumnChartSeries = [
+    { name: 'Applications', data: Object.values(analytics.applicationsByMonth) },
+  ];
 
   if (loading) {
     return (
@@ -187,7 +206,9 @@ const AnalyticsView = ({ studentId, userEmail }) => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Total Applications</p>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                  Total Applications
+                </p>
                 <p className="text-3xl font-bold text-gray-900">{analytics.totalApplications}</p>
               </div>
               <div className="h-12 w-12 bg-indigo-50 rounded-lg flex items-center justify-center">
@@ -201,8 +222,13 @@ const AnalyticsView = ({ studentId, userEmail }) => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Response Rate</p>
-                <p className="text-3xl font-bold text-gray-900">{analytics.responseRate}<span className="text-xl text-gray-600">%</span></p>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                  Response Rate
+                </p>
+                <p className="text-3xl font-bold text-gray-900">
+                  {analytics.responseRate}
+                  <span className="text-xl text-gray-600">%</span>
+                </p>
               </div>
               <div className="h-12 w-12 bg-indigo-50 rounded-lg flex items-center justify-center">
                 <Target className="w-6 h-6 text-indigo-600" />
@@ -215,8 +241,13 @@ const AnalyticsView = ({ studentId, userEmail }) => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Avg Response Time</p>
-                <p className="text-3xl font-bold text-gray-900">{analytics.averageResponseTime} <span className="text-sm text-gray-500 font-normal">days</span></p>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                  Avg Response Time
+                </p>
+                <p className="text-3xl font-bold text-gray-900">
+                  {analytics.averageResponseTime}{' '}
+                  <span className="text-sm text-gray-500 font-normal">days</span>
+                </p>
               </div>
               <div className="h-12 w-12 bg-indigo-50 rounded-lg flex items-center justify-center">
                 <Clock className="w-6 h-6 text-indigo-600" />
@@ -229,8 +260,12 @@ const AnalyticsView = ({ studentId, userEmail }) => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Offers Received</p>
-                <p className="text-3xl font-bold text-gray-900">{analytics.statusCounts['accepted'] || 0}</p>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                  Offers Received
+                </p>
+                <p className="text-3xl font-bold text-gray-900">
+                  {analytics.statusCounts['accepted'] || 0}
+                </p>
               </div>
               <div className="h-12 w-12 bg-green-50 rounded-lg flex items-center justify-center">
                 <Award className="w-6 h-6 text-green-600" />
@@ -252,7 +287,12 @@ const AnalyticsView = ({ studentId, userEmail }) => {
           </CardHeader>
           <CardContent className="p-6">
             {analytics.totalApplications > 0 ? (
-              <ReactApexChart options={statusRadialChartOptions} series={statusRadialChartSeries} type="radialBar" height={350} />
+              <ReactApexChart
+                options={statusRadialChartOptions}
+                series={statusRadialChartSeries}
+                type="radialBar"
+                height={350}
+              />
             ) : (
               <div className="h-[350px] flex items-center justify-center">
                 <p className="text-gray-500 text-sm">No application data available</p>
@@ -271,7 +311,12 @@ const AnalyticsView = ({ studentId, userEmail }) => {
           </CardHeader>
           <CardContent className="p-6">
             {Object.keys(analytics.applicationsByMonth).length > 0 ? (
-              <ReactApexChart options={timelineColumnChartOptions} series={timelineColumnChartSeries} type="bar" height={350} />
+              <ReactApexChart
+                options={timelineColumnChartOptions}
+                series={timelineColumnChartSeries}
+                type="bar"
+                height={350}
+              />
             ) : (
               <div className="h-[350px] flex items-center justify-center">
                 <p className="text-gray-500 text-sm">No timeline data available</p>
@@ -281,11 +326,7 @@ const AnalyticsView = ({ studentId, userEmail }) => {
         </Card>
 
         {/* Skills in Demand */}
-        <TopSkillsInDemand 
-          limit={5} 
-          className="lg:col-span-2" 
-          showHeader={true}
-        />
+        <TopSkillsInDemand limit={5} className="lg:col-span-2" showHeader={true} />
       </div>
 
       {/* Empty State */}
@@ -297,8 +338,10 @@ const AnalyticsView = ({ studentId, userEmail }) => {
                 <TrendingUp className="w-12 h-12 text-indigo-600" />
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-2">No Applications Yet</h3>
-              <p className="text-gray-600 text-sm mb-6">Start applying to jobs to see your analytics dashboard</p>
-              <button 
+              <p className="text-gray-600 text-sm mb-6">
+                Start applying to jobs to see your analytics dashboard
+              </p>
+              <button
                 onClick={() => navigate('/student/opportunities')}
                 className="px-6 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors duration-200"
               >

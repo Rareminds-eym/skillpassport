@@ -14,11 +14,11 @@ class ProgressSyncManager {
     this.isOnline = navigator.onLine;
     this.syncInProgress = false;
     this.listeners = new Set();
-    
+
     // Listen for online/offline events
     window.addEventListener('online', () => this.handleOnline());
     window.addEventListener('offline', () => this.handleOffline());
-    
+
     // Initialize database
     this.initDB();
   }
@@ -37,7 +37,7 @@ class ProgressSyncManager {
         this.db = request.result;
         console.log('📦 IndexedDB initialized for offline progress');
         resolve(this.db);
-        
+
         // Sync any pending items if online
         if (this.isOnline) {
           this.syncPendingProgress();
@@ -46,11 +46,11 @@ class ProgressSyncManager {
 
       request.onupgradeneeded = (event) => {
         const db = event.target.result;
-        
+
         if (!db.objectStoreNames.contains(STORE_NAME)) {
-          const store = db.createObjectStore(STORE_NAME, { 
-            keyPath: 'id', 
-            autoIncrement: true 
+          const store = db.createObjectStore(STORE_NAME, {
+            keyPath: 'id',
+            autoIncrement: true,
           });
           store.createIndex('timestamp', 'timestamp', { unique: false });
           store.createIndex('type', 'type', { unique: false });
@@ -82,7 +82,7 @@ class ProgressSyncManager {
 
   // Notify all listeners
   notifyListeners(event) {
-    this.listeners.forEach(callback => callback(event));
+    this.listeners.forEach((callback) => callback(event));
   }
 
   // Queue progress update for sync
@@ -94,7 +94,7 @@ class ProgressSyncManager {
       data,
       timestamp: Date.now(),
       synced: false,
-      retryCount: 0
+      retryCount: 0,
     };
 
     return new Promise((resolve, reject) => {
@@ -105,7 +105,7 @@ class ProgressSyncManager {
       request.onsuccess = () => {
         console.log('📝 Progress queued:', type);
         resolve(request.result);
-        
+
         // Try to sync immediately if online
         if (this.isOnline) {
           this.syncPendingProgress();
@@ -129,7 +129,7 @@ class ProgressSyncManager {
       const request = store.getAll();
 
       request.onsuccess = () => {
-        const pending = request.result.filter(item => !item.synced);
+        const pending = request.result.filter((item) => !item.synced);
         resolve(pending);
       };
 
@@ -140,20 +140,20 @@ class ProgressSyncManager {
   // Sync all pending progress to server
   async syncPendingProgress() {
     if (this.syncInProgress || !this.isOnline) return;
-    
+
     this.syncInProgress = true;
     this.notifyListeners({ type: 'syncStart' });
 
     try {
       const pending = await this.getPendingProgress();
-      
+
       if (pending.length === 0) {
         this.syncInProgress = false;
         return;
       }
 
       console.log(`🔄 Syncing ${pending.length} pending progress items...`);
-      
+
       let synced = 0;
       let failed = 0;
 
@@ -174,7 +174,6 @@ class ProgressSyncManager {
 
       // Clean up old synced items
       await this.cleanupSyncedItems();
-
     } catch (error) {
       console.error('Sync error:', error);
       this.notifyListeners({ type: 'syncError', error });
@@ -186,7 +185,7 @@ class ProgressSyncManager {
   // Sync individual item to server
   async syncItem(item) {
     const { courseProgressService } = await import('./courseProgressService');
-    
+
     switch (item.type) {
       case 'videoPosition':
         return courseProgressService.saveVideoPosition(
@@ -196,7 +195,7 @@ class ProgressSyncManager {
           item.data.position,
           item.data.duration
         );
-      
+
       case 'lessonStatus':
         return courseProgressService.updateLessonStatus(
           item.data.studentId,
@@ -204,7 +203,7 @@ class ProgressSyncManager {
           item.data.lessonId,
           item.data.status
         );
-      
+
       case 'timeSpent':
         return courseProgressService.saveTimeSpent(
           item.data.studentId,
@@ -212,7 +211,7 @@ class ProgressSyncManager {
           item.data.lessonId,
           item.data.seconds
         );
-      
+
       case 'restorePoint':
         return courseProgressService.saveRestorePoint(
           item.data.studentId,
@@ -222,7 +221,7 @@ class ProgressSyncManager {
           item.data.lessonId,
           item.data.videoPosition
         );
-      
+
       case 'quizAnswer':
         return courseProgressService.saveQuizAnswer(
           item.data.studentId,
@@ -231,7 +230,7 @@ class ProgressSyncManager {
           item.data.questionId,
           item.data.answer
         );
-      
+
       default:
         console.warn('Unknown progress type:', item.type);
         return Promise.resolve();
@@ -275,7 +274,7 @@ class ProgressSyncManager {
         if (item) {
           item.retryCount = (item.retryCount || 0) + 1;
           item.lastRetry = Date.now();
-          
+
           // Remove items that have failed too many times
           if (item.retryCount >= 5) {
             store.delete(id);
@@ -294,7 +293,7 @@ class ProgressSyncManager {
   async cleanupSyncedItems() {
     if (!this.db) return;
 
-    const cutoff = Date.now() - (24 * 60 * 60 * 1000);
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
 
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction([STORE_NAME], 'readwrite');
@@ -323,7 +322,7 @@ class ProgressSyncManager {
     return {
       isOnline: this.isOnline,
       pendingCount: pending.length,
-      syncInProgress: this.syncInProgress
+      syncInProgress: this.syncInProgress,
     };
   }
 

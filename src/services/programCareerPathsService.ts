@@ -55,14 +55,16 @@ export async function generateProgramCareerPaths(
   request: GenerateCareerPathsRequest
 ): Promise<CareerPath[]> {
   try {
-    const API_URL = import.meta.env.VITE_ANALYZE_ASSESSMENT_API_URL || 'https://analyze-assessment-api.rareminds.workers.dev';
+    const API_URL =
+      import.meta.env.VITE_ANALYZE_ASSESSMENT_API_URL ||
+      'https://analyze-assessment-api.rareminds.workers.dev';
 
     const response = await fetch(`${API_URL}/generate-program-career-paths`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify(request)
+      body: JSON.stringify(request),
     });
 
     if (!response.ok) {
@@ -76,7 +78,11 @@ export async function generateProgramCareerPaths(
       throw new Error(data.error || 'Failed to generate career paths');
     }
 
-    console.log('[CAREER_PATHS_SERVICE] Successfully generated', data.careerPaths.length, 'career paths');
+    console.log(
+      '[CAREER_PATHS_SERVICE] Successfully generated',
+      data.careerPaths.length,
+      'career paths'
+    );
 
     return data.careerPaths;
   } catch (error) {

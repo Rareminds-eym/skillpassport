@@ -34,7 +34,8 @@ const ExamCreationStep: React.FC<ExamCreationStepProps> = ({ exam, setActiveStep
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Grade/Class</label>
             <p className="text-sm font-medium text-gray-900">
-              Class {exam.grade}{exam.section ? ` - Section ${exam.section}` : " (All Sections)"}
+              Class {exam.grade}
+              {exam.section ? ` - Section ${exam.section}` : ' (All Sections)'}
             </p>
           </div>
           <div>
@@ -47,7 +48,8 @@ const ExamCreationStep: React.FC<ExamCreationStepProps> = ({ exam, setActiveStep
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Exam Period</label>
             <p className="text-sm font-medium text-gray-900">
-              {new Date(exam.startDate).toLocaleDateString()} - {new Date(exam.endDate).toLocaleDateString()}
+              {new Date(exam.startDate).toLocaleDateString()} -{' '}
+              {new Date(exam.endDate).toLocaleDateString()}
             </p>
           </div>
           <div>
@@ -79,10 +81,15 @@ const ExamCreationStep: React.FC<ExamCreationStepProps> = ({ exam, setActiveStep
 
       {/* Subjects List */}
       <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-3">Subjects ({exam.subjects.length})</label>
+        <label className="block text-sm font-semibold text-gray-700 mb-3">
+          Subjects ({exam.subjects.length})
+        </label>
         <div className="space-y-2">
           {exam.subjects.map((subject, index) => (
-            <div key={subject.id} className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-lg">
+            <div
+              key={subject.id}
+              className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-lg"
+            >
               <div className="flex items-center gap-3">
                 <span className="flex items-center justify-center w-8 h-8 bg-indigo-100 text-indigo-600 rounded-full text-sm font-bold">
                   {index + 1}
@@ -90,7 +97,8 @@ const ExamCreationStep: React.FC<ExamCreationStepProps> = ({ exam, setActiveStep
                 <div>
                   <p className="text-sm font-medium text-gray-900">{subject.name}</p>
                   <p className="text-xs text-gray-500">
-                    Total: {subject.totalMarks} marks • Pass: {subject.passingMarks} marks • Duration: {subject.duration} min
+                    Total: {subject.totalMarks} marks • Pass: {subject.passingMarks} marks •
+                    Duration: {subject.duration} min
                   </p>
                 </div>
               </div>
@@ -100,8 +108,8 @@ const ExamCreationStep: React.FC<ExamCreationStepProps> = ({ exam, setActiveStep
       </div>
 
       <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
-        <button 
-          onClick={() => setActiveStep("timetable")} 
+        <button
+          onClick={() => setActiveStep('timetable')}
           className="px-5 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 inline-flex items-center gap-2"
         >
           Next: Create Timetable

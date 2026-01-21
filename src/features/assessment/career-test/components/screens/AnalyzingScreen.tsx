@@ -1,28 +1,36 @@
 /**
  * AnalyzingScreen Component
- * 
+ *
  * Shows a dynamic progress screen that tracks real API call status.
  * Uses a global event system to receive progress updates from the submission process.
- * 
+ *
  * @module features/assessment/career-test/components/screens/AnalyzingScreen
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Brain, 
-  Sparkles, 
-  Target, 
-  Briefcase, 
+import {
+  Brain,
+  Sparkles,
+  Target,
+  Briefcase,
   FileText,
   CheckCircle,
   Lightbulb,
   AlertCircle,
-  Loader2
+  Loader2,
 } from 'lucide-react';
 
 // Analysis stage type
-type AnalysisStageId = 'preparing' | 'sending' | 'analyzing' | 'processing' | 'courses' | 'saving' | 'complete' | 'error';
+type AnalysisStageId =
+  | 'preparing'
+  | 'sending'
+  | 'analyzing'
+  | 'processing'
+  | 'courses'
+  | 'saving'
+  | 'complete'
+  | 'error';
 
 interface AnalyzingScreenProps {
   /** Grade level for customizing messages */
@@ -36,12 +44,15 @@ interface AnalyzingScreenProps {
 }
 
 // Analysis stages with descriptions
-const ANALYSIS_STAGES: Record<AnalysisStageId, {
-  title: string;
-  description: string;
-  icon: React.ComponentType<any>;
-  progressRange: [number, number];
-}> = {
+const ANALYSIS_STAGES: Record<
+  AnalysisStageId,
+  {
+    title: string;
+    description: string;
+    icon: React.ComponentType<any>;
+    progressRange: [number, number];
+  }
+> = {
   preparing: {
     title: 'Preparing your responses',
     description: 'Organizing assessment data for analysis...',
@@ -93,18 +104,26 @@ const ANALYSIS_STAGES: Record<AnalysisStageId, {
 };
 
 // Stage order for tracking
-const STAGE_ORDER: AnalysisStageId[] = ['preparing', 'sending', 'analyzing', 'processing', 'courses', 'saving', 'complete'];
+const STAGE_ORDER: AnalysisStageId[] = [
+  'preparing',
+  'sending',
+  'analyzing',
+  'processing',
+  'courses',
+  'saving',
+  'complete',
+];
 
 // Fun facts to show while waiting
 const FUN_FACTS = [
-  "Did you know? The average person changes careers 5-7 times during their working life.",
-  "Tip: Your interests and personality are just as important as skills for career success.",
+  'Did you know? The average person changes careers 5-7 times during their working life.',
+  'Tip: Your interests and personality are just as important as skills for career success.',
   "Fun fact: 85% of jobs that will exist in 2030 haven't been invented yet!",
-  "Insight: People who align their career with their values report higher job satisfaction.",
-  "Did you know? Soft skills like communication are now the most in-demand by employers.",
-  "Tip: Career assessments help you discover paths you might never have considered.",
+  'Insight: People who align their career with their values report higher job satisfaction.',
+  'Did you know? Soft skills like communication are now the most in-demand by employers.',
+  'Tip: Career assessments help you discover paths you might never have considered.',
   "Fun fact: The concept of 'career' only emerged in the 20th century!",
-  "Insight: Your unique combination of traits makes you suited for specific career clusters.",
+  'Insight: Your unique combination of traits makes you suited for specific career clusters.',
 ];
 
 // Global event emitter for analysis progress
@@ -130,11 +149,11 @@ if (typeof window !== 'undefined' && !window.setAnalysisProgress) {
 /**
  * Analyzing Screen with real-time progress tracking
  */
-export const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({ 
+export const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
   gradeLevel: _gradeLevel,
   currentStage: controlledStage,
   progressPercent: controlledProgress,
-  errorMessage 
+  errorMessage,
 }) => {
   const [stage, setStage] = useState<AnalysisStageId>(controlledStage || 'preparing');
   const [progress, setProgress] = useState(controlledProgress || 0);
@@ -144,14 +163,16 @@ export const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
 
   // Listen for progress updates from the submission process
   useEffect(() => {
-    const handleProgressUpdate = (event: CustomEvent<{ stage: AnalysisStageId; message?: string }>) => {
+    const handleProgressUpdate = (
+      event: CustomEvent<{ stage: AnalysisStageId; message?: string }>
+    ) => {
       const { stage: newStage } = event.detail;
       console.log('📊 Analysis progress update:', newStage);
       setStage(newStage);
     };
 
     window.addEventListener('analysisProgressUpdate', handleProgressUpdate as EventListener);
-    
+
     // Check for initial progress
     if (window.analysisProgress?.stage) {
       setStage(window.analysisProgress.stage);
@@ -174,24 +195,24 @@ export const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
     if (!stageConfig) return;
 
     const [minProgress, maxProgress] = stageConfig.progressRange;
-    
+
     // Animate progress within the stage range
     const interval = setInterval(() => {
-      setProgress(prev => {
+      setProgress((prev) => {
         // If we're at the analyzing stage, progress slowly (AI takes time)
         const increment = stage === 'analyzing' ? 0.3 : 1;
         const next = prev + increment;
-        
+
         // Don't exceed the max for this stage (unless complete)
         if (stage === 'complete') return 100;
         if (stage === 'error') return prev;
-        
+
         return Math.min(next, maxProgress - 2); // Leave room for next stage
       });
     }, 200);
 
     // Jump to minimum progress for this stage
-    setProgress(prev => Math.max(prev, minProgress));
+    setProgress((prev) => Math.max(prev, minProgress));
 
     return () => clearInterval(interval);
   }, [stage]);
@@ -207,7 +228,7 @@ export const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
   // Rotate fun facts
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentFactIndex(prev => (prev + 1) % FUN_FACTS.length);
+      setCurrentFactIndex((prev) => (prev + 1) % FUN_FACTS.length);
     }, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -243,18 +264,24 @@ export const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
           {/* Animated Icon */}
           <div className="flex justify-center mb-8">
             <motion.div
-              animate={isError ? {} : { 
-                scale: [1, 1.1, 1],
-                rotate: [0, 5, -5, 0]
-              }}
-              transition={{ 
+              animate={
+                isError
+                  ? {}
+                  : {
+                      scale: [1, 1.1, 1],
+                      rotate: [0, 5, -5, 0],
+                    }
+              }
+              transition={{
                 duration: 2,
                 repeat: isError ? 0 : Infinity,
-                ease: "easeInOut"
+                ease: 'easeInOut',
               }}
               className="relative"
             >
-              <div className={`w-24 h-24 ${isError ? 'bg-red-500' : 'bg-gradient-to-br from-indigo-500 to-purple-600'} rounded-2xl flex items-center justify-center shadow-lg ${isError ? 'shadow-red-500/30' : 'shadow-indigo-500/30'}`}>
+              <div
+                className={`w-24 h-24 ${isError ? 'bg-red-500' : 'bg-gradient-to-br from-indigo-500 to-purple-600'} rounded-2xl flex items-center justify-center shadow-lg ${isError ? 'shadow-red-500/30' : 'shadow-indigo-500/30'}`}
+              >
                 {stage === 'analyzing' ? (
                   <Loader2 className="w-12 h-12 text-white animate-spin" />
                 ) : (
@@ -265,11 +292,11 @@ export const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
               {!isError && (
                 <>
                   <motion.div
-                    animate={{ 
+                    animate={{
                       opacity: [0, 1, 0],
                       scale: [0.5, 1, 0.5],
                       x: [-10, -20, -10],
-                      y: [-10, -20, -10]
+                      y: [-10, -20, -10],
                     }}
                     transition={{ duration: 2, repeat: Infinity, delay: 0 }}
                     className="absolute -top-2 -left-2"
@@ -277,11 +304,11 @@ export const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
                     <Sparkles className="w-6 h-6 text-amber-400" />
                   </motion.div>
                   <motion.div
-                    animate={{ 
+                    animate={{
                       opacity: [0, 1, 0],
                       scale: [0.5, 1, 0.5],
                       x: [10, 20, 10],
-                      y: [-10, -20, -10]
+                      y: [-10, -20, -10],
                     }}
                     transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
                     className="absolute -top-2 -right-2"
@@ -295,14 +322,15 @@ export const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
 
           {/* Title */}
           <div className="text-center mb-8">
-            <h1 className={`text-2xl md:text-3xl font-bold ${isError ? 'text-red-600' : 'text-gray-800'} mb-2`}>
+            <h1
+              className={`text-2xl md:text-3xl font-bold ${isError ? 'text-red-600' : 'text-gray-800'} mb-2`}
+            >
               {isError ? 'Analysis Failed' : 'Analyzing Your Assessment'}
             </h1>
             <p className="text-gray-500">
-              {isError 
-                ? (errorMessage || 'Something went wrong. Please try again.')
-                : 'Our AI is creating your personalized career profile'
-              }
+              {isError
+                ? errorMessage || 'Something went wrong. Please try again.'
+                : 'Our AI is creating your personalized career profile'}
             </p>
           </div>
 
@@ -334,11 +362,15 @@ export const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
               className={`${isError ? 'bg-red-50' : 'bg-indigo-50'} rounded-xl p-4 mb-6`}
             >
               <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 ${isError ? 'bg-red-100' : 'bg-indigo-100'} rounded-lg flex items-center justify-center`}>
+                <div
+                  className={`w-10 h-10 ${isError ? 'bg-red-100' : 'bg-indigo-100'} rounded-lg flex items-center justify-center`}
+                >
                   {stage === 'analyzing' ? (
                     <Loader2 className="w-5 h-5 text-indigo-600 animate-spin" />
                   ) : (
-                    <StageIcon className={`w-5 h-5 ${isError ? 'text-red-600' : 'text-indigo-600'}`} />
+                    <StageIcon
+                      className={`w-5 h-5 ${isError ? 'text-red-600' : 'text-indigo-600'}`}
+                    />
                   )}
                 </div>
                 <div>
@@ -361,7 +393,7 @@ export const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
                 const isCompleted = completedStages.includes(stageId);
                 const isCurrent = stageId === stage;
                 const Icon = config.icon;
-                
+
                 return (
                   <div
                     key={stageId}
@@ -370,10 +402,12 @@ export const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
                       ${isCompleted ? 'bg-green-50' : isCurrent ? 'bg-indigo-50' : 'bg-gray-50'}
                     `}
                   >
-                    <div className={`
+                    <div
+                      className={`
                       w-8 h-8 rounded-full flex items-center justify-center mb-1
                       ${isCompleted ? 'bg-green-500' : isCurrent ? 'bg-indigo-500' : 'bg-gray-200'}
-                    `}>
+                    `}
+                    >
                       {isCompleted ? (
                         <CheckCircle className="w-4 h-4 text-white" />
                       ) : isCurrent ? (
@@ -382,10 +416,12 @@ export const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
                         <Icon className="w-4 h-4 text-gray-400" />
                       )}
                     </div>
-                    <span className={`
+                    <span
+                      className={`
                       text-[10px] text-center leading-tight
                       ${isCompleted ? 'text-green-600' : isCurrent ? 'text-indigo-600' : 'text-gray-400'}
-                    `}>
+                    `}
+                    >
                       {config.title.split(' ').slice(0, 2).join(' ')}
                     </span>
                   </div>
@@ -415,10 +451,9 @@ export const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
 
         {/* Bottom Note */}
         <p className="text-center text-gray-500 text-sm mt-6">
-          {isError 
+          {isError
             ? 'Please refresh the page and try again, or contact support if the issue persists.'
-            : "Please don't close this page. Your results will be ready shortly."
-          }
+            : "Please don't close this page. Your results will be ready shortly."}
         </p>
       </div>
     </div>

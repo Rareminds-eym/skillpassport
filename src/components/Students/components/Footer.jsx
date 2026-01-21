@@ -6,13 +6,16 @@ const Footer = () => {
     <footer className="relative bg-black text-white mt-auto overflow-hidden">
       {/* Futuristic Background Pattern */}
       <div className="absolute inset-0 opacity-10">
-        <div className="absolute inset-0" style={{
-          backgroundImage: `
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage: `
             linear-gradient(to right, rgb(168, 85, 247) 1px, transparent 1px),
             linear-gradient(to bottom, rgb(168, 85, 247) 1px, transparent 1px)
           `,
-          backgroundSize: '80px 80px'
-        }}></div>
+            backgroundSize: '80px 80px',
+          }}
+        ></div>
       </div>
 
       {/* Glowing Orbs */}
@@ -35,7 +38,8 @@ const Footer = () => {
               </div>
             </Link>
             <p className="text-gray-300 text-sm leading-relaxed mb-6">
-              Empowering the next generation of talent with digital credentials that unlock infinite possibilities.
+              Empowering the next generation of talent with digital credentials that unlock infinite
+              possibilities.
             </p>
             <div className="flex items-center space-x-1">
               <div className="h-1 w-12 bg-gradient-to-r from-purple-500 to-amber-400 rounded-full"></div>
@@ -46,9 +50,7 @@ const Footer = () => {
 
           {/* Quick Links */}
           <div>
-            <h4 className="text-lg font-bold mb-6 text-white">
-              Quick Links
-            </h4>
+            <h4 className="text-lg font-bold mb-6 text-white">Quick Links</h4>
             <ul className="space-y-3">
               <li>
                 <Link
@@ -91,9 +93,7 @@ const Footer = () => {
 
           {/* Connect Section */}
           <div>
-            <h4 className="text-lg font-bold mb-6 text-white">
-              Connect With Us
-            </h4>
+            <h4 className="text-lg font-bold mb-6 text-white">Connect With Us</h4>
             <div className="flex flex-wrap gap-3">
               <a
                 href="https://www.linkedin.com/company/rareminds/"
@@ -140,11 +140,10 @@ const Footer = () => {
 
           {/* Mission Statement */}
           <div>
-            <h4 className="text-lg font-bold mb-6 text-white">
-              Our Mission
-            </h4>
+            <h4 className="text-lg font-bold mb-6 text-white">Our Mission</h4>
             <p className="text-gray-300 text-sm leading-relaxed mb-4">
-              Building a future where skills speak louder than credentials, connecting extraordinary talent with transformative opportunities.
+              Building a future where skills speak louder than credentials, connecting extraordinary
+              talent with transformative opportunities.
             </p>
           </div>
         </div>
@@ -178,12 +177,14 @@ const Footer = () => {
               Cookie Policy
             </Link>
             <span>•</span>
-            <Link to="/accessibility" className="hover:text-purple-400 transition-colors duration-200">
+            <Link
+              to="/accessibility"
+              className="hover:text-purple-400 transition-colors duration-200"
+            >
               Accessibility
             </Link>
           </div>
         </div>
-
       </div>
     </footer>
   );

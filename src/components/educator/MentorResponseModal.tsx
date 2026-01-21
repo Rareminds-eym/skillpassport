@@ -88,7 +88,9 @@ const MentorResponseModal: React.FC<MentorResponseModalProps> = ({
       completed: 'bg-emerald-100 text-emerald-700 border-emerald-200',
       escalated: 'bg-red-100 text-red-700 border-red-200',
     };
-    return colors[note.status as keyof typeof colors] || 'bg-gray-100 text-gray-700 border-gray-200';
+    return (
+      colors[note.status as keyof typeof colors] || 'bg-gray-100 text-gray-700 border-gray-200'
+    );
   };
 
   const getStatusLabel = () => {
@@ -104,7 +106,10 @@ const MentorResponseModal: React.FC<MentorResponseModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-      <div className="bg-white rounded-lg shadow-xl w-full flex flex-col overflow-hidden" style={{ maxWidth: '75rem', maxHeight: '90vh' }}>
+      <div
+        className="bg-white rounded-lg shadow-xl w-full flex flex-col overflow-hidden"
+        style={{ maxWidth: '75rem', maxHeight: '90vh' }}
+      >
         {/* Header - Clean and Professional */}
         <div className="bg-white border-b-2 border-gray-200 px-6 py-4">
           <div className="flex items-start justify-between gap-4">
@@ -119,7 +124,7 @@ const MentorResponseModal: React.FC<MentorResponseModalProps> = ({
                   <p className="text-sm text-gray-600">Intervention Note</p>
                 </div>
               </div>
-              
+
               {/* Meta Information */}
               <div className="flex items-center gap-4 flex-wrap">
                 <div className="flex items-center gap-2">
@@ -131,7 +136,9 @@ const MentorResponseModal: React.FC<MentorResponseModalProps> = ({
                 {note.priority && (
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold text-gray-500 uppercase">Priority:</span>
-                    <span className={`px-2.5 py-1 rounded text-xs font-semibold ${getPriorityBadge()}`}>
+                    <span
+                      className={`px-2.5 py-1 rounded text-xs font-semibold ${getPriorityBadge()}`}
+                    >
                       {note.priority.toUpperCase()}
                     </span>
                   </div>
@@ -144,15 +151,15 @@ const MentorResponseModal: React.FC<MentorResponseModalProps> = ({
                 </div>
                 <div className="flex items-center gap-1.5 text-sm text-gray-600">
                   <CalendarIcon className="h-4 w-4" />
-                  {new Date(note.note_date).toLocaleDateString('en-US', { 
-                    month: 'long', 
+                  {new Date(note.note_date).toLocaleDateString('en-US', {
+                    month: 'long',
                     day: 'numeric',
-                    year: 'numeric'
+                    year: 'numeric',
                   })}
                 </div>
               </div>
             </div>
-            
+
             {/* Close Button */}
             <button
               onClick={onClose}
@@ -184,10 +191,11 @@ const MentorResponseModal: React.FC<MentorResponseModalProps> = ({
                     <div>
                       <p className="text-sm font-semibold text-amber-900">Follow-up Required</p>
                       <p className="text-sm text-amber-700 mt-1">
-                        Due: {new Date(note.follow_up_date).toLocaleDateString('en-US', { 
-                          month: 'long', 
+                        Due:{' '}
+                        {new Date(note.follow_up_date).toLocaleDateString('en-US', {
+                          month: 'long',
                           day: 'numeric',
-                          year: 'numeric'
+                          year: 'numeric',
                         })}
                       </p>
                     </div>
@@ -199,7 +207,9 @@ const MentorResponseModal: React.FC<MentorResponseModalProps> = ({
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <ChatBubbleLeftRightIcon className="h-4 w-4 text-gray-500" />
-                  <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wide">Intervention Note</h4>
+                  <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wide">
+                    Intervention Note
+                  </h4>
                 </div>
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
@@ -213,7 +223,9 @@ const MentorResponseModal: React.FC<MentorResponseModalProps> = ({
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <CheckCircleIcon className="h-4 w-4 text-gray-500" />
-                    <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wide">Expected Outcome</h4>
+                    <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wide">
+                      Expected Outcome
+                    </h4>
                   </div>
                   <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
                     <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
@@ -228,7 +240,9 @@ const MentorResponseModal: React.FC<MentorResponseModalProps> = ({
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <ArrowPathIcon className="h-4 w-4 text-gray-500" />
-                    <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wide">Admin's Feedback</h4>
+                    <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wide">
+                      Admin's Feedback
+                    </h4>
                   </div>
                   <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                     <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
@@ -251,11 +265,13 @@ const MentorResponseModal: React.FC<MentorResponseModalProps> = ({
 
               {/* Status Alert - Only for Read-Only */}
               {isReadOnly && (
-                <div className={`border-l-4 p-4 ${
-                  note.educator_response 
-                    ? 'bg-green-50 border-green-400' 
-                    : 'bg-yellow-50 border-yellow-400'
-                }`}>
+                <div
+                  className={`border-l-4 p-4 ${
+                    note.educator_response
+                      ? 'bg-green-50 border-green-400'
+                      : 'bg-yellow-50 border-yellow-400'
+                  }`}
+                >
                   <div className="flex items-start gap-3">
                     {note.educator_response ? (
                       <CheckCircleIcon className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
@@ -263,18 +279,20 @@ const MentorResponseModal: React.FC<MentorResponseModalProps> = ({
                       <LockClosedIcon className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
                     )}
                     <div>
-                      <p className={`text-sm font-semibold ${
-                        note.educator_response ? 'text-green-900' : 'text-yellow-900'
-                      }`}>
-                        {note.educator_response 
-                          ? 'Response Submitted' 
-                          : 'Response Not Available'}
+                      <p
+                        className={`text-sm font-semibold ${
+                          note.educator_response ? 'text-green-900' : 'text-yellow-900'
+                        }`}
+                      >
+                        {note.educator_response ? 'Response Submitted' : 'Response Not Available'}
                       </p>
-                      <p className={`text-sm mt-1 ${
-                        note.educator_response ? 'text-green-700' : 'text-yellow-700'
-                      }`}>
-                        {note.educator_response 
-                          ? 'Your response has been submitted and locked.' 
+                      <p
+                        className={`text-sm mt-1 ${
+                          note.educator_response ? 'text-green-700' : 'text-yellow-700'
+                        }`}
+                      >
+                        {note.educator_response
+                          ? 'Your response has been submitted and locked.'
                           : `Status is "${getStatusLabel()}" - you can only respond when status is "Pending".`}
                       </p>
                     </div>
@@ -340,7 +358,9 @@ const MentorResponseModal: React.FC<MentorResponseModalProps> = ({
                     <div>
                       <div className="flex items-center gap-2 mb-3">
                         <LockClosedIcon className="h-4 w-4 text-gray-500" />
-                        <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wide">Your Response</h4>
+                        <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wide">
+                          Your Response
+                        </h4>
                       </div>
                       <div className="bg-white border border-gray-300 rounded-lg p-4">
                         <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
@@ -353,7 +373,9 @@ const MentorResponseModal: React.FC<MentorResponseModalProps> = ({
                   {/* Read-Only Action Taken */}
                   {note.action_taken && (
                     <div>
-                      <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-3">Action Taken</h4>
+                      <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-3">
+                        Action Taken
+                      </h4>
                       <div className="bg-white border border-gray-300 rounded-lg p-4">
                         <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
                           {note.action_taken}
@@ -365,7 +387,9 @@ const MentorResponseModal: React.FC<MentorResponseModalProps> = ({
                   {/* Read-Only Next Steps */}
                   {note.next_steps && (
                     <div>
-                      <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-3">Next Steps</h4>
+                      <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-3">
+                        Next Steps
+                      </h4>
                       <div className="bg-white border border-gray-300 rounded-lg p-4">
                         <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
                           {note.next_steps}

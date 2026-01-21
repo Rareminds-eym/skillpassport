@@ -1,4 +1,4 @@
-import { supabase } from "../lib/supabaseClient";
+import { supabase } from '../lib/supabaseClient';
 import {
   AUTH_ERROR_CODES,
   validateCredentials,
@@ -15,7 +15,7 @@ import {
 /**
  * Educator Profile Service
  * Industrial-grade authentication and profile management for educators
- * 
+ *
  * Features:
  * - Comprehensive input validation
  * - Standardized error codes
@@ -43,13 +43,13 @@ const DB_QUERY_TIMEOUT_MS = 15000;
  */
 export async function getEducatorByEmail(email) {
   const correlationId = generateCorrelationId();
-  
+
   try {
     // Validate email
     const emailValidation = validateEmail(email);
     if (!emailValidation.valid) {
-      return { 
-        success: false, 
+      return {
+        success: false,
         data: null,
         error: 'Please enter a valid email address.',
         errorCode: emailValidation.code,
@@ -58,17 +58,20 @@ export async function getEducatorByEmail(email) {
 
     const { data, error } = await withTimeout(
       supabase
-        .from("school_educators")
-        .select("*")
-        .eq("email", emailValidation.sanitized)
+        .from('school_educators')
+        .select('*')
+        .eq('email', emailValidation.sanitized)
         .maybeSingle(),
       DB_QUERY_TIMEOUT_MS
     );
 
     if (error) {
-      logAuthEvent('error', 'Educator lookup by email failed', { correlationId, errorCode: error.code });
-      return { 
-        success: false, 
+      logAuthEvent('error', 'Educator lookup by email failed', {
+        correlationId,
+        errorCode: error.code,
+      });
+      return {
+        success: false,
         data: null,
         error: 'Unable to find educator. Please try again.',
         errorCode: mapSupabaseError(error),
@@ -76,10 +79,11 @@ export async function getEducatorByEmail(email) {
     }
 
     if (!data) {
-      return { 
-        success: false, 
+      return {
+        success: false,
         data: null,
-        error: 'No educator account found with this email. Please check your email or contact support.',
+        error:
+          'No educator account found with this email. Please check your email or contact support.',
         errorCode: AUTH_ERROR_CODES.USER_NOT_FOUND,
       };
     }
@@ -87,8 +91,8 @@ export async function getEducatorByEmail(email) {
     return { success: true, data, error: null };
   } catch (err) {
     logAuthEvent('error', 'Unexpected error in getEducatorByEmail', { correlationId });
-    return { 
-      success: false, 
+    return {
+      success: false,
       data: null,
       error: 'Unable to find educator. Please try again later.',
       errorCode: mapSupabaseError(err),
@@ -108,15 +112,18 @@ export async function getEducatorByEmail(email) {
  */
 export async function loginEducator(email, password) {
   const correlationId = generateCorrelationId();
-  
+
   try {
     // Validate inputs
     const validation = validateCredentials(email, password);
     if (!validation.valid) {
-      logAuthEvent('warn', 'Educator login validation failed', { correlationId, field: validation.field });
+      logAuthEvent('warn', 'Educator login validation failed', {
+        correlationId,
+        field: validation.field,
+      });
       const response = buildErrorResponse(validation.code);
-      return { 
-        success: false, 
+      return {
+        success: false,
         data: null,
         session: null,
         error: response.error,
@@ -157,7 +164,7 @@ export async function loginEducator(email, password) {
     } catch (authError) {
       const errorCode = mapSupabaseError(authError);
       logAuthEvent('error', 'Educator auth failed', { correlationId, errorCode });
-      
+
       if (errorCode === AUTH_ERROR_CODES.INVALID_CREDENTIALS) {
         return {
           success: false,
@@ -168,8 +175,11 @@ export async function loginEducator(email, password) {
           correlationId,
         };
       }
-      
-      if (errorCode === AUTH_ERROR_CODES.RATE_LIMITED || errorCode === AUTH_ERROR_CODES.TOO_MANY_ATTEMPTS) {
+
+      if (
+        errorCode === AUTH_ERROR_CODES.RATE_LIMITED ||
+        errorCode === AUTH_ERROR_CODES.TOO_MANY_ATTEMPTS
+      ) {
         return {
           success: false,
           data: null,
@@ -179,10 +189,10 @@ export async function loginEducator(email, password) {
           correlationId,
         };
       }
-      
+
       const response = handleAuthError(authError, { correlationId, operation: 'educatorLogin' });
-      return { 
-        success: false, 
+      return {
+        success: false,
         data: null,
         session: null,
         error: response.error,
@@ -193,8 +203,8 @@ export async function loginEducator(email, password) {
 
     if (!authData.user) {
       logAuthEvent('error', 'Educator auth returned no user', { correlationId });
-      return { 
-        success: false, 
+      return {
+        success: false,
         data: null,
         session: null,
         error: 'Authentication failed. Please try again.',
@@ -207,21 +217,20 @@ export async function loginEducator(email, password) {
     let educator;
     try {
       const { data, error } = await withTimeout(
-        supabase
-          .from("school_educators")
-          .select("*")
-          .eq("user_id", authData.user.id)
-          .maybeSingle(),
+        supabase.from('school_educators').select('*').eq('user_id', authData.user.id).maybeSingle(),
         DB_QUERY_TIMEOUT_MS
       );
 
       if (error) throw error;
       educator = data;
     } catch (dbError) {
-      logAuthEvent('error', 'Educator profile fetch failed', { correlationId, errorCode: mapSupabaseError(dbError) });
+      logAuthEvent('error', 'Educator profile fetch failed', {
+        correlationId,
+        errorCode: mapSupabaseError(dbError),
+      });
       await safeSignOut();
-      return { 
-        success: false, 
+      return {
+        success: false,
         data: null,
         session: null,
         error: 'Unable to load your profile. Please try again later.',
@@ -234,23 +243,19 @@ export async function loginEducator(email, password) {
     if (!educator) {
       try {
         const { data, error } = await withTimeout(
-          supabase
-            .from("school_educators")
-            .select("*")
-            .eq("email", validation.email)
-            .maybeSingle(),
+          supabase.from('school_educators').select('*').eq('email', validation.email).maybeSingle(),
           DB_QUERY_TIMEOUT_MS
         );
 
         if (!error && data) {
           educator = data;
-          
+
           // Update the user_id for future logins
           try {
             await supabase
-              .from("school_educators")
+              .from('school_educators')
               .update({ user_id: authData.user.id })
-              .eq("id", data.id);
+              .eq('id', data.id);
           } catch {
             // Non-critical, continue
             logAuthEvent('warn', 'Failed to update educator user_id', { correlationId });
@@ -262,10 +267,13 @@ export async function loginEducator(email, password) {
     }
 
     if (!educator) {
-      logAuthEvent('warn', 'No educator profile found for authenticated user', { correlationId, userId: authData.user.id });
+      logAuthEvent('warn', 'No educator profile found for authenticated user', {
+        correlationId,
+        userId: authData.user.id,
+      });
       await safeSignOut();
-      return { 
-        success: false, 
+      return {
+        success: false,
         data: null,
         session: null,
         error: 'No educator account found. Please check if you are using the correct login portal.',
@@ -276,7 +284,10 @@ export async function loginEducator(email, password) {
 
     // Step 3: Check account status
     if (educator.account_status === 'deactivated' || educator.account_status === 'suspended') {
-      logAuthEvent('warn', 'Educator account deactivated/suspended', { correlationId, educatorId: educator.id });
+      logAuthEvent('warn', 'Educator account deactivated/suspended', {
+        correlationId,
+        educatorId: educator.id,
+      });
       await safeSignOut();
       return {
         success: false,
@@ -309,9 +320,10 @@ export async function loginEducator(email, password) {
       data: {
         id: educator.id,
         user_id: authData.user.id,
-        name: educator.first_name && educator.last_name 
-          ? `${educator.first_name} ${educator.last_name}`
-          : educator.first_name || "Educator",
+        name:
+          educator.first_name && educator.last_name
+            ? `${educator.first_name} ${educator.last_name}`
+            : educator.first_name || 'Educator',
         email: educator.email,
         school_id: educator.school_id,
         specialization: educator.specialization,
@@ -319,18 +331,20 @@ export async function loginEducator(email, password) {
         experience_years: educator.experience_years,
         designation: educator.designation,
         department: educator.department,
-        verification_status: educator.verification_status || "Pending",
-        account_status: educator.account_status || "active",
+        verification_status: educator.verification_status || 'Pending',
+        account_status: educator.account_status || 'active',
       },
       session: authData.session,
       error: null,
     };
-
   } catch (err) {
-    logAuthEvent('error', 'Unexpected educator login error', { correlationId, errorCode: mapSupabaseError(err) });
+    logAuthEvent('error', 'Unexpected educator login error', {
+      correlationId,
+      errorCode: mapSupabaseError(err),
+    });
     const response = handleAuthError(err, { correlationId, operation: 'educatorLogin' });
-    return { 
-      success: false, 
+    return {
+      success: false,
       data: null,
       session: null,
       error: response.error,
@@ -351,7 +365,7 @@ export async function loginEducator(email, password) {
  */
 export async function createEducatorProfile(educatorData) {
   const correlationId = generateCorrelationId();
-  
+
   try {
     // Validate required fields
     if (!educatorData.email) {
@@ -396,7 +410,7 @@ export async function createEducatorProfile(educatorData) {
 
     const { data, error } = await withTimeout(
       supabase
-        .from("school_educators")
+        .from('school_educators')
         .insert([
           {
             first_name: educatorData.first_name || '',
@@ -410,9 +424,9 @@ export async function createEducatorProfile(educatorData) {
             department: educatorData.department || null,
             school_id: educatorData.school_id,
             user_id: educatorData.user_id,
-            account_status: "active",
-            verification_status: "Pending",
-          }
+            account_status: 'active',
+            verification_status: 'Pending',
+          },
         ])
         .select()
         .single(),
@@ -420,8 +434,11 @@ export async function createEducatorProfile(educatorData) {
     );
 
     if (error) {
-      logAuthEvent('error', 'Educator profile creation failed', { correlationId, errorCode: error.code });
-      
+      logAuthEvent('error', 'Educator profile creation failed', {
+        correlationId,
+        errorCode: error.code,
+      });
+
       // Check for duplicate email
       if (error.code === '23505' || error.message?.includes('duplicate')) {
         return {
@@ -431,7 +448,7 @@ export async function createEducatorProfile(educatorData) {
           errorCode: AUTH_ERROR_CODES.INVALID_CREDENTIALS,
         };
       }
-      
+
       return {
         success: false,
         data: null,

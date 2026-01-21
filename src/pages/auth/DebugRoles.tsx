@@ -22,7 +22,7 @@ const DebugRoles = () => {
       // Sign in
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
-        password
+        password,
       });
 
       if (authError || !authData.user) {
@@ -37,7 +37,7 @@ const DebugRoles = () => {
       const checks = {
         userId,
         email: authData.user.email,
-        roles: [] as any[]
+        roles: [] as any[],
       };
 
       // Students
@@ -51,7 +51,7 @@ const DebugRoles = () => {
         checks.roles.push({
           role: 'student',
           table: 'students',
-          data: studentData
+          data: studentData,
         });
       }
 
@@ -66,7 +66,7 @@ const DebugRoles = () => {
         checks.roles.push({
           role: 'recruiter',
           table: 'recruiters',
-          data: recruiterData
+          data: recruiterData,
         });
       }
 
@@ -81,7 +81,7 @@ const DebugRoles = () => {
         checks.roles.push({
           role: 'educator',
           table: 'school_educators',
-          data: educatorData
+          data: educatorData,
         });
       }
 
@@ -91,7 +91,7 @@ const DebugRoles = () => {
       // Users (admin roles)
       // Note: users table uses 'id' column that references auth.users(id) directly
       console.log('Checking users table for userId:', userId);
-      
+
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('*')
@@ -106,7 +106,7 @@ const DebugRoles = () => {
           checks.roles.push({
             role: userData.role,
             table: 'users',
-            data: userData
+            data: userData,
           });
         } else {
           console.log('User has role but not an admin role:', userData.role);
@@ -122,12 +122,11 @@ const DebugRoles = () => {
 
       setResult({
         ...checks,
-        roleLookupResult
+        roleLookupResult,
       });
 
       // Sign out
       await supabase.auth.signOut();
-
     } catch (err: any) {
       setError(err.message || 'An error occurred');
     } finally {
@@ -140,12 +139,10 @@ const DebugRoles = () => {
       <div className="max-w-4xl mx-auto">
         <div className="bg-white rounded-lg shadow-lg p-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-6">Debug User Roles</h1>
-          
+
           <div className="space-y-4 mb-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
               <input
                 type="email"
                 value={email}
@@ -156,9 +153,7 @@ const DebugRoles = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Password
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
               <input
                 type="password"
                 value={password}
@@ -187,7 +182,7 @@ const DebugRoles = () => {
             <div className="space-y-6">
               <div className="border-t pt-6">
                 <h2 className="text-xl font-semibold mb-4">Results</h2>
-                
+
                 <div className="bg-gray-50 p-4 rounded-lg mb-4">
                   <p className="text-sm text-gray-600">User ID:</p>
                   <p className="font-mono text-sm">{result.userId}</p>
@@ -199,9 +194,7 @@ const DebugRoles = () => {
                 </div>
 
                 <div className="mb-6">
-                  <h3 className="font-semibold mb-2">
-                    Found Roles: {result.roles.length}
-                  </h3>
+                  <h3 className="font-semibold mb-2">Found Roles: {result.roles.length}</h3>
                   {result.roles.length === 0 ? (
                     <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                       <p className="text-yellow-800">⚠️ No roles found for this user!</p>

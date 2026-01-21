@@ -2,7 +2,7 @@ import { supabase } from '../../../lib/supabaseClient';
 
 /**
  * Pipeline Intelligence Service
- * 
+ *
  * Analyzes recruitment pipeline data from pipeline_candidates table
  * Provides insights on:
  * - Candidate progression through stages
@@ -55,23 +55,20 @@ export interface PipelineInsights {
 }
 
 class PipelineIntelligenceService {
-  
   /**
    * Get comprehensive pipeline insights
    */
   async getPipelineInsights(recruiterId?: string): Promise<PipelineInsights> {
     try {
       // Build query for recruiter's opportunities
-      let opportunitiesQuery = supabase
-        .from('opportunities')
-        .select('id');
-      
+      let opportunitiesQuery = supabase.from('opportunities').select('id');
+
       if (recruiterId) {
         opportunitiesQuery = opportunitiesQuery.eq('recruiter_id', recruiterId);
       }
 
       const { data: opportunities } = await opportunitiesQuery;
-      const opportunityIds = opportunities?.map(o => o.id) || [];
+      const opportunityIds = opportunities?.map((o) => o.id) || [];
 
       if (opportunityIds.length === 0) {
         return this.getEmptyInsights();
@@ -100,9 +97,8 @@ class PipelineIntelligenceService {
         stage_metrics,
         bottlenecks,
         at_risk_candidates,
-        success_patterns
+        success_patterns,
       };
-
     } catch (error) {
       console.error('Error getting pipeline insights:', error);
       return this.getEmptyInsights();
@@ -116,13 +112,15 @@ class PipelineIntelligenceService {
     try {
       const { data: pipelineCandidates, error } = await supabase
         .from('pipeline_candidates')
-        .select(`
+        .select(
+          `
           *,
           opportunities:opportunity_id (
             job_title,
             company_name
           )
-        `)
+        `
+        )
         .eq('opportunity_id', opportunityId)
         .order('stage_changed_at', { ascending: false });
 
@@ -132,7 +130,6 @@ class PipelineIntelligenceService {
       }
 
       return this.enrichPipelineStatus(pipelineCandidates);
-
     } catch (error) {
       console.error('Error getting opportunity pipeline:', error);
       return [];
@@ -152,13 +149,15 @@ class PipelineIntelligenceService {
 
       const { data: candidates, error } = await supabase
         .from('pipeline_candidates')
-        .select(`
+        .select(
+          `
           *,
           opportunities:opportunity_id (
             job_title,
             company_name
           )
-        `)
+        `
+        )
         .eq('stage', stage)
         .eq('status', 'active')
         .lt('stage_changed_at', thresholdDate.toISOString());
@@ -168,7 +167,6 @@ class PipelineIntelligenceService {
       }
 
       return this.enrichPipelineStatus(candidates);
-
     } catch (error) {
       console.error('Error getting stuck candidates:', error);
       return [];
@@ -184,13 +182,15 @@ class PipelineIntelligenceService {
 
       const { data: candidates, error } = await supabase
         .from('pipeline_candidates')
-        .select(`
+        .select(
+          `
           *,
           opportunities:opportunity_id (
             job_title,
             company_name
           )
-        `)
+        `
+        )
         .eq('status', 'active')
         .or(`next_action_date.lte.${today},next_action_date.is.null`)
         .not('next_action', 'is', null);
@@ -200,7 +200,6 @@ class PipelineIntelligenceService {
       }
 
       return this.enrichPipelineStatus(candidates);
-
     } catch (error) {
       console.error('Error getting candidates needing action:', error);
       return [];
@@ -211,8 +210,8 @@ class PipelineIntelligenceService {
    * Calculate overview metrics
    */
   private calculateOverview(candidates: any[]): PipelineInsights['overview'] {
-    const activeCandidates = candidates.filter(c => c.status === 'active');
-    const hiredCandidates = candidates.filter(c => c.stage === 'hired');
+    const activeCandidates = candidates.filter((c) => c.status === 'active');
+    const hiredCandidates = candidates.filter((c) => c.stage === 'hired');
 
     // Calculate average time to hire for hired candidates
     let avgTimeToHire = 0;
@@ -220,21 +219,22 @@ class PipelineIntelligenceService {
       const totalDays = hiredCandidates.reduce((sum, c) => {
         const addedDate = new Date(c.added_at);
         const hiredDate = new Date(c.stage_changed_at);
-        const days = Math.floor((hiredDate.getTime() - addedDate.getTime()) / (1000 * 60 * 60 * 24));
+        const days = Math.floor(
+          (hiredDate.getTime() - addedDate.getTime()) / (1000 * 60 * 60 * 24)
+        );
         return sum + days;
       }, 0);
       avgTimeToHire = Math.round(totalDays / hiredCandidates.length);
     }
 
-    const conversionRate = candidates.length > 0 
-      ? (hiredCandidates.length / candidates.length) * 100 
-      : 0;
+    const conversionRate =
+      candidates.length > 0 ? (hiredCandidates.length / candidates.length) * 100 : 0;
 
     return {
       total_candidates: candidates.length,
       active_candidates: activeCandidates.length,
       avg_time_to_hire: avgTimeToHire,
-      overall_conversion_rate: Math.round(conversionRate * 10) / 10
+      overall_conversion_rate: Math.round(conversionRate * 10) / 10,
     };
   }
 
@@ -246,7 +246,7 @@ class PipelineIntelligenceService {
     const metrics: PipelineStageMetrics[] = [];
 
     stages.forEach((stage, idx) => {
-      const candidatesInStage = candidates.filter(c => c.stage === stage);
+      const candidatesInStage = candidates.filter((c) => c.stage === stage);
       const count = candidatesInStage.length;
 
       // Calculate avg days in stage
@@ -264,16 +264,14 @@ class PipelineIntelligenceService {
       // Calculate conversion rate (to next stage)
       let conversionRate = 0;
       if (idx < stages.length - 1) {
-        const candidatesMoved = candidates.filter(c => 
-          c.previous_stage === stage && stages.indexOf(c.stage) > idx
+        const candidatesMoved = candidates.filter(
+          (c) => c.previous_stage === stage && stages.indexOf(c.stage) > idx
         );
         conversionRate = count > 0 ? (candidatesMoved.length / count) * 100 : 0;
       }
 
       // Calculate drop-off rate
-      const droppedOff = candidates.filter(c => 
-        c.stage === stage && c.status !== 'active'
-      );
+      const droppedOff = candidates.filter((c) => c.stage === stage && c.status !== 'active');
       const dropOffRate = count > 0 ? (droppedOff.length / count) * 100 : 0;
 
       metrics.push({
@@ -281,7 +279,7 @@ class PipelineIntelligenceService {
         count,
         avg_days_in_stage: avgDaysInStage,
         conversion_rate: Math.round(conversionRate * 10) / 10,
-        drop_off_rate: Math.round(dropOffRate * 10) / 10
+        drop_off_rate: Math.round(dropOffRate * 10) / 10,
       });
     });
 
@@ -297,14 +295,14 @@ class PipelineIntelligenceService {
   ): PipelineInsights['bottlenecks'] {
     const bottlenecks: PipelineInsights['bottlenecks'] = [];
 
-    stageMetrics.forEach(metric => {
+    stageMetrics.forEach((metric) => {
       // High time in stage
       if (metric.avg_days_in_stage > 10 && metric.count > 3) {
         bottlenecks.push({
           stage: metric.stage,
           issue: `Candidates spending average ${metric.avg_days_in_stage} days in ${metric.stage}`,
           impact: metric.count > 10 ? 'high' : 'medium',
-          recommendation: `Review ${metric.stage} process to reduce time. Consider automating or streamlining steps.`
+          recommendation: `Review ${metric.stage} process to reduce time. Consider automating or streamlining steps.`,
         });
       }
 
@@ -314,7 +312,7 @@ class PipelineIntelligenceService {
           stage: metric.stage,
           issue: `Low conversion rate from ${metric.stage} (${metric.conversion_rate}%)`,
           impact: 'high',
-          recommendation: `Improve candidate quality at ${metric.stage} or adjust evaluation criteria.`
+          recommendation: `Improve candidate quality at ${metric.stage} or adjust evaluation criteria.`,
         });
       }
 
@@ -324,7 +322,7 @@ class PipelineIntelligenceService {
           stage: metric.stage,
           issue: `High candidate drop-off at ${metric.stage} (${metric.drop_off_rate}%)`,
           impact: 'high',
-          recommendation: `Investigate why candidates are leaving at ${metric.stage}. Consider improving communication or offer competitiveness.`
+          recommendation: `Investigate why candidates are leaving at ${metric.stage}. Consider improving communication or offer competitiveness.`,
         });
       }
     });
@@ -335,23 +333,23 @@ class PipelineIntelligenceService {
   /**
    * Identify at-risk candidates
    */
-  private async identifyAtRiskCandidates(
-    candidates: any[]
-  ): Promise<CandidatePipelineStatus[]> {
-    const activeCandidates = candidates.filter(c => c.status === 'active');
+  private async identifyAtRiskCandidates(candidates: any[]): Promise<CandidatePipelineStatus[]> {
+    const activeCandidates = candidates.filter((c) => c.status === 'active');
     const atRisk: any[] = [];
 
     const now = new Date();
 
-    activeCandidates.forEach(candidate => {
+    activeCandidates.forEach((candidate) => {
       const stageChangedDate = new Date(candidate.stage_changed_at);
-      const daysInStage = Math.floor((now.getTime() - stageChangedDate.getTime()) / (1000 * 60 * 60 * 24));
+      const daysInStage = Math.floor(
+        (now.getTime() - stageChangedDate.getTime()) / (1000 * 60 * 60 * 24)
+      );
 
       // Candidate is at risk if:
       // 1. Been in stage > 14 days
       // 2. Has overdue action item
       // 3. Low recruiter rating
-      
+
       let riskLevel: 'low' | 'medium' | 'high' = 'low';
       let recommendation = 'Monitor progress';
 
@@ -381,7 +379,7 @@ class PipelineIntelligenceService {
           ...candidate,
           risk_level: riskLevel,
           recommendation,
-          days_in_stage: daysInStage
+          days_in_stage: daysInStage,
         });
       }
     });
@@ -394,29 +392,35 @@ class PipelineIntelligenceService {
    */
   private identifySuccessPatterns(candidates: any[]): string[] {
     const patterns: string[] = [];
-    const hiredCandidates = candidates.filter(c => c.stage === 'hired');
+    const hiredCandidates = candidates.filter((c) => c.stage === 'hired');
 
     if (hiredCandidates.length === 0) return patterns;
 
     // Analyze common traits
-    const avgRating = hiredCandidates.reduce((sum, c) => sum + (c.recruiter_rating || 0), 0) / hiredCandidates.length;
+    const avgRating =
+      hiredCandidates.reduce((sum, c) => sum + (c.recruiter_rating || 0), 0) /
+      hiredCandidates.length;
     if (avgRating > 4) {
-      patterns.push(`Hired candidates typically have high recruiter ratings (avg ${avgRating.toFixed(1)}/5)`);
+      patterns.push(
+        `Hired candidates typically have high recruiter ratings (avg ${avgRating.toFixed(1)}/5)`
+      );
     }
 
     // Analyze source
-    const sources = hiredCandidates.map(c => c.source).filter(Boolean);
+    const sources = hiredCandidates.map((c) => c.source).filter(Boolean);
     if (sources.length > 0) {
       const sourceCount = new Map<string, number>();
-      sources.forEach(s => sourceCount.set(s, (sourceCount.get(s) || 0) + 1));
+      sources.forEach((s) => sourceCount.set(s, (sourceCount.get(s) || 0) + 1));
       const topSource = Array.from(sourceCount.entries()).sort((a, b) => b[1] - a[1])[0];
       if (topSource && topSource[1] > hiredCandidates.length * 0.3) {
-        patterns.push(`${topSource[0]} has been the most successful source (${topSource[1]} hires)`);
+        patterns.push(
+          `${topSource[0]} has been the most successful source (${topSource[1]} hires)`
+        );
       }
     }
 
     // Analyze time to hire
-    const fastHires = hiredCandidates.filter(c => {
+    const fastHires = hiredCandidates.filter((c) => {
       const addedDate = new Date(c.added_at);
       const hiredDate = new Date(c.stage_changed_at);
       const days = Math.floor((hiredDate.getTime() - addedDate.getTime()) / (1000 * 60 * 60 * 24));
@@ -436,14 +440,14 @@ class PipelineIntelligenceService {
   private enrichPipelineStatus(candidates: any[]): CandidatePipelineStatus[] {
     const now = new Date();
 
-    return candidates.map(c => {
+    return candidates.map((c) => {
       const stageChangedDate = new Date(c.stage_changed_at);
       const addedDate = new Date(c.added_at);
-      
+
       const daysInCurrentStage = Math.floor(
         (now.getTime() - stageChangedDate.getTime()) / (1000 * 60 * 60 * 24)
       );
-      
+
       const daysSinceAdded = Math.floor(
         (now.getTime() - addedDate.getTime()) / (1000 * 60 * 60 * 24)
       );
@@ -470,7 +474,7 @@ class PipelineIntelligenceService {
         opportunity_title: c.opportunities?.job_title || 'Unknown',
         recruiter_rating: c.recruiter_rating,
         risk_level: riskLevel,
-        recommendation
+        recommendation,
       };
     });
   }
@@ -515,12 +519,12 @@ class PipelineIntelligenceService {
         total_candidates: 0,
         active_candidates: 0,
         avg_time_to_hire: 0,
-        overall_conversion_rate: 0
+        overall_conversion_rate: 0,
       },
       stage_metrics: [],
       bottlenecks: [],
       at_risk_candidates: [],
-      success_patterns: []
+      success_patterns: [],
     };
   }
 }

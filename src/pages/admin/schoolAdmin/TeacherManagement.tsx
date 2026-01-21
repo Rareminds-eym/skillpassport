@@ -1,5 +1,5 @@
-import React from "react";
-import TeacherManagementDashboard from "./components/TeacherManagementDashboard";
+import React from 'react';
+import TeacherManagementDashboard from './components/TeacherManagementDashboard';
 
 const TeacherManagement: React.FC = () => {
   return (

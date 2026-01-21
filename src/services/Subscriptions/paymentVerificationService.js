@@ -1,9 +1,9 @@
 /**
  * Payment Verification Service
- * 
+ *
  * Handles payment verification via Cloudflare Worker.
  * Worker handles: signature verification + subscription creation + transaction logging
- * 
+ *
  * This service provides:
  * - verifyPaymentSignature() - Verify payment via Worker
  * - extractPaymentParams()   - Extract params from URL
@@ -21,7 +21,7 @@ const CACHE_TTL = 5 * 60 * 1000;
 /**
  * Verify payment signature via Cloudflare Worker
  * Worker handles: verification + subscription creation + transaction logging
- * 
+ *
  * @param {Object} paymentData - Payment verification data
  * @param {string} paymentData.razorpay_payment_id - Payment ID from Razorpay
  * @param {string} paymentData.razorpay_order_id - Order ID from Razorpay
@@ -39,7 +39,7 @@ export const verifyPaymentSignature = async (paymentData) => {
         success: false,
         verified: false,
         error: 'Missing required payment parameters',
-        errorCode: 'MISSING_PARAMETERS'
+        errorCode: 'MISSING_PARAMETERS',
       };
     }
 
@@ -52,21 +52,26 @@ export const verifyPaymentSignature = async (paymentData) => {
     }
 
     // Get auth token (optional - Worker can verify via order)
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     const token = session?.access_token;
 
     // Call Worker - handles verification + subscription creation
-    const result = await paymentsApiService.verifyPayment({
-      razorpay_order_id,
-      razorpay_payment_id,
-      razorpay_signature,
-      plan,
-    }, token);
+    const result = await paymentsApiService.verifyPayment(
+      {
+        razorpay_order_id,
+        razorpay_payment_id,
+        razorpay_signature,
+        plan,
+      },
+      token
+    );
 
     // Cache the result
     verificationCache.set(cacheKey, {
       result,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     });
 
     return result;
@@ -76,7 +81,7 @@ export const verifyPaymentSignature = async (paymentData) => {
       success: false,
       verified: false,
       error: error.message || 'Payment verification failed',
-      errorCode: 'VERIFICATION_ERROR'
+      errorCode: 'VERIFICATION_ERROR',
     };
   }
 };
@@ -92,8 +97,9 @@ export const extractPaymentParams = (searchParams) => {
     razorpay_order_id: searchParams.get('razorpay_order_id') || searchParams.get('order_id'),
     razorpay_signature: searchParams.get('razorpay_signature') || searchParams.get('signature'),
     error_code: searchParams.get('error[code]') || searchParams.get('error_code'),
-    error_description: searchParams.get('error[description]') || searchParams.get('error_description'),
-    error_reason: searchParams.get('error[reason]') || searchParams.get('error_reason')
+    error_description:
+      searchParams.get('error[description]') || searchParams.get('error_description'),
+    error_reason: searchParams.get('error[reason]') || searchParams.get('error_reason'),
   };
 };
 
@@ -112,7 +118,7 @@ export const validatePaymentParams = (params) => {
 
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
   };
 };
 
@@ -131,10 +137,13 @@ export const clearVerificationCache = () => {
  */
 export const logFailedTransaction = async (transactionData) => {
   try {
-    const { razorpay_payment_id, razorpay_order_id, amount, currency, error, error_description } = transactionData;
-    
+    const { razorpay_payment_id, razorpay_order_id, amount, currency, error, error_description } =
+      transactionData;
+
     // Get current user if available
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     const userId = session?.user?.id;
 
     // Log to console for debugging
@@ -146,12 +155,12 @@ export const logFailedTransaction = async (transactionData) => {
       error,
       error_description,
       user_id: userId,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
     // Optionally log to database if needed
     // This can be expanded to store in a failed_transactions table
-    
+
     return { success: true, logged: true };
   } catch (err) {
     console.error('Error logging failed transaction:', err);

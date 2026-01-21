@@ -1,6 +1,6 @@
 /**
  * 🎓 ADAPTIVE LEARNING PATH SERVICE
- * 
+ *
  * Features:
  * - Tracks student progress over time
  * - Adjusts difficulty dynamically based on performance
@@ -47,7 +47,6 @@ export interface AdaptivePath {
 }
 
 class AdaptiveLearningService {
-  
   /**
    * 📊 Generate Adaptive Learning Path
    * Creates a personalized path based on current progress and learning patterns
@@ -57,13 +56,12 @@ class AdaptiveLearningService {
     learningProgress?: LearningProgress,
     goals?: string[]
   ): Promise<AdaptivePath> {
-    
     try {
       console.log('🎓 Adaptive Learning: Generating personalized path...');
-      
+
       const skills = studentProfile.profile?.technicalSkills?.map((s: any) => s.name) || [];
       const skillCount = skills.length;
-      
+
       const prompt = `You are an adaptive learning AI that creates PERSONALIZED learning paths based on student progress and patterns.
 
 **STUDENT PROFILE:**
@@ -72,7 +70,9 @@ Current Skills: ${skills.join(', ') || 'Beginner'}
 Skill Count: ${skillCount}
 Department: ${studentProfile.department}
 
-${learningProgress ? `
+${
+  learningProgress
+    ? `
 **LEARNING ANALYTICS:**
 Learning Velocity: ${learningProgress.learningVelocity}
 Learning Style: ${learningProgress.learningStyle}
@@ -80,11 +80,16 @@ Consistency: ${learningProgress.consistencyScore}/100
 Last Active: ${learningProgress.lastActive}
 
 **SKILL PROGRESSION:**
-${learningProgress.skillProgression.map(sp => 
-  `- ${sp.skill}: ${sp.currentLevel} (${sp.masteryScore}% mastery, ${sp.projectsCompleted} projects, ${sp.timeSpent}h spent)
+${learningProgress.skillProgression
+  .map(
+    (sp) =>
+      `- ${sp.skill}: ${sp.currentLevel} (${sp.masteryScore}% mastery, ${sp.projectsCompleted} projects, ${sp.timeSpent}h spent)
    ${sp.strugglingAreas.length > 0 ? `  Struggling with: ${sp.strugglingAreas.join(', ')}` : ''}`
-).join('\n')}
-` : 'No learning history available'}
+  )
+  .join('\n')}
+`
+    : 'No learning history available'
+}
 
 ${goals ? `**STUDENT GOALS:** ${goals.join(', ')}` : ''}
 
@@ -180,31 +185,31 @@ ${learningProgress?.learningStyle === 'visual' ? '- Visual learner → Include d
         messages: [
           {
             role: 'system',
-            content: 'You are an adaptive learning AI that creates personalized, dynamic learning paths. You adjust difficulty and pacing based on individual student patterns. You are data-driven and educational.'
+            content:
+              'You are an adaptive learning AI that creates personalized, dynamic learning paths. You adjust difficulty and pacing based on individual student patterns. You are data-driven and educational.',
           },
-          { role: 'user', content: prompt }
+          { role: 'user', content: prompt },
         ],
         temperature: 0.6,
         max_tokens: 2000,
-        response_format: { type: 'json_object' }
+        response_format: { type: 'json_object' },
       });
-      
+
       const result = JSON.parse(completion.choices[0]?.message?.content || '{}');
-      
+
       console.log('🎓 Adaptive Path Generated');
       console.log('📍 Current Stage:', result.currentStage);
       console.log('📊 Difficulty:', result.recommendedDifficulty);
       console.log('🎯 Next Steps:', result.nextSteps?.length || 0);
       console.log('🏆 Milestones:', result.milestones?.length || 0);
-      
+
       return result as AdaptivePath;
-      
     } catch (error) {
       console.error('Adaptive path generation error:', error);
       throw new Error('Failed to generate adaptive learning path');
     }
   }
-  
+
   /**
    * 📈 Analyze Learning Progress
    * Tracks how student is progressing and identifies patterns
@@ -224,14 +229,16 @@ ${learningProgress?.learningStyle === 'visual' ? '- Visual learner → Include d
     strugglingWith: string[];
     recommendation: string;
   }> {
-    
     try {
       const prompt = `Analyze student learning patterns from recent activity:
 
 **RECENT ACTIVITY (last 30 days):**
-${recentActivity.map(a => 
-  `- ${a.type}: ${a.topic} (${a.completed ? 'Completed' : 'Incomplete'}) - ${a.date.toLocaleDateString()}`
-).join('\n')}
+${recentActivity
+  .map(
+    (a) =>
+      `- ${a.type}: ${a.topic} (${a.completed ? 'Completed' : 'Incomplete'}) - ${a.date.toLocaleDateString()}`
+  )
+  .join('\n')}
 
 Analyze:
 1. What patterns do you see?
@@ -251,22 +258,24 @@ Analyze:
       const completion = await client.chat.completions.create({
         model: DEFAULT_MODEL,
         messages: [
-          { role: 'system', content: 'You analyze learning patterns to provide actionable insights.' },
-          { role: 'user', content: prompt }
+          {
+            role: 'system',
+            content: 'You analyze learning patterns to provide actionable insights.',
+          },
+          { role: 'user', content: prompt },
         ],
         temperature: 0.5,
         max_tokens: 800,
-        response_format: { type: 'json_object' }
+        response_format: { type: 'json_object' },
       });
-      
+
       return JSON.parse(completion.choices[0]?.message?.content || '{}');
-      
     } catch (error) {
       console.error('Pattern analysis error:', error);
       throw new Error('Failed to analyze learning patterns');
     }
   }
-  
+
   /**
    * 🎯 Calculate Next Best Step
    * Determines the single most impactful next action
@@ -280,39 +289,38 @@ Analyze:
     impact: 'high' | 'medium' | 'low';
     reasoning: string;
   } {
-    
     // If struggling with something, fix that first
     if (strugglingWith.length > 0) {
       return {
         action: `Master ${strugglingWith[0]} before moving forward`,
         impact: 'high',
-        reasoning: 'Addressing struggles prevents knowledge gaps and builds confidence'
+        reasoning: 'Addressing struggles prevents knowledge gaps and builds confidence',
       };
     }
-    
+
     // If few skills, focus on fundamentals
     if (currentSkills.length < 3) {
       return {
         action: 'Build strong fundamentals with 2-3 small projects',
         impact: 'high',
-        reasoning: 'Solid foundation is crucial for long-term success'
+        reasoning: 'Solid foundation is crucial for long-term success',
       };
     }
-    
+
     // If decent skills, time for integration
     if (currentSkills.length >= 3 && currentSkills.length < 7) {
       return {
         action: 'Build a full-stack project combining all your skills',
         impact: 'high',
-        reasoning: 'Integration projects demonstrate real-world capability'
+        reasoning: 'Integration projects demonstrate real-world capability',
       };
     }
-    
+
     // If advanced, specialize or deploy
     return {
       action: 'Specialize in a domain or contribute to open source',
       impact: 'high',
-      reasoning: 'Specialization and real-world contribution set you apart'
+      reasoning: 'Specialization and real-world contribution set you apart',
     };
   }
 }

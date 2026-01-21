@@ -1,6 +1,6 @@
 /**
  * EditPoolModal Component
- * 
+ *
  * Modal for editing an existing license pool.
  */
 
@@ -62,37 +62,37 @@ function EditPoolModal({
     }
   }, [pool]);
 
-  const handleInputChange = useCallback((
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : 
-               type === 'number' ? parseInt(value) || 0 : value,
-    }));
-    if (error) setError('');
-  }, [error]);
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const { name, value, type, checked } = e.target;
+      setFormData((prev) => ({
+        ...prev,
+        [name]: type === 'checkbox' ? checked : type === 'number' ? parseInt(value) || 0 : value,
+      }));
+      if (error) setError('');
+    },
+    [error]
+  );
 
   const handleSubmit = useCallback(async () => {
     if (!pool) return;
-    
+
     if (!formData.poolName?.trim()) {
       setError('Pool name is required');
       return;
     }
-    
+
     if ((formData.allocatedSeats || 0) < (pool.assignedSeats || 0)) {
       setError(`Cannot reduce seats below ${pool.assignedSeats} (currently assigned)`);
       return;
     }
-    
+
     const maxAllowed = pool.allocatedSeats + maxAdditionalSeats;
     if ((formData.allocatedSeats || 0) > maxAllowed) {
       setError(`Cannot allocate more than ${maxAllowed} seats`);
       return;
     }
-    
+
     try {
       setError('');
       await onSubmit(pool.id, formData);
@@ -111,7 +111,7 @@ function EditPoolModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleClose} />
-      
+
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
@@ -129,9 +129,7 @@ function EditPoolModal({
         {/* Content */}
         <div className="p-6 space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Pool Name
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Pool Name</label>
             <input
               type="text"
               name="poolName"
@@ -155,7 +153,8 @@ function EditPoolModal({
               className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
             />
             <p className="text-xs text-gray-500 mt-1">
-              Min: {pool.assignedSeats} (assigned) | Max: {pool.allocatedSeats + maxAdditionalSeats} (available)
+              Min: {pool.assignedSeats} (assigned) | Max: {pool.allocatedSeats + maxAdditionalSeats}{' '}
+              (available)
             </p>
           </div>
 

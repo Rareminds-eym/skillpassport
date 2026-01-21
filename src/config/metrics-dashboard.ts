@@ -1,6 +1,6 @@
 /**
  * Metrics Dashboard Configuration
- * 
+ *
  * Defines key metrics and dashboard widgets for monitoring
  * organization subscription management.
  */
@@ -68,7 +68,7 @@ export const METRICS: MetricDefinition[] = [
     aggregation: 'count',
     category: 'business',
   },
-  
+
   // Performance Metrics
   {
     id: 'api_latency_p50',
@@ -102,7 +102,7 @@ export const METRICS: MetricDefinition[] = [
     aggregation: 'avg',
     category: 'performance',
   },
-  
+
   // Error Metrics
   {
     id: 'error_rate',
@@ -128,7 +128,7 @@ export const METRICS: MetricDefinition[] = [
     aggregation: 'count',
     category: 'error',
   },
-  
+
   // Usage Metrics
   {
     id: 'active_admins',
@@ -155,7 +155,6 @@ export const METRICS: MetricDefinition[] = [
     category: 'usage',
   },
 ];
-
 
 // ============================================================================
 // DASHBOARD WIDGETS
@@ -204,7 +203,7 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
     size: 'small',
     refreshInterval: 300,
   },
-  
+
   // Performance Row
   {
     id: 'api-latency-chart',
@@ -222,7 +221,7 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
     size: 'medium',
     refreshInterval: 30,
   },
-  
+
   // Business Metrics Row
   {
     id: 'subscription-trend',
@@ -232,7 +231,7 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
     size: 'large',
     refreshInterval: 300,
   },
-  
+
   // Activity Row
   {
     id: 'recent-activity',
@@ -307,9 +306,9 @@ class MetricCollector {
    * Get aggregated metric value
    */
   getAggregated(metricId: string): number | null {
-    const definition = METRICS.find(m => m.id === metricId);
+    const definition = METRICS.find((m) => m.id === metricId);
     const values = this.metrics.get(metricId);
-    
+
     if (!definition || !values || values.length === 0) {
       return null;
     }
@@ -339,7 +338,7 @@ class MetricCollector {
    */
   getAllMetrics(): Record<string, number | null> {
     const result: Record<string, number | null> = {};
-    METRICS.forEach(m => {
+    METRICS.forEach((m) => {
       result[m.id] = this.getAggregated(m.id);
     });
     return result;

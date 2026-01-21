@@ -2,7 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { X, Search, ShieldCheck, MessageCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 
-const NewEducatorAdminConversationModal = ({ isOpen, onClose, educatorId, onConversationCreated }) => {
+const NewEducatorAdminConversationModal = ({
+  isOpen,
+  onClose,
+  educatorId,
+  onConversationCreated,
+}) => {
   const [school, setSchool] = useState(null);
   const [loading, setLoading] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState('');
@@ -19,7 +24,7 @@ const NewEducatorAdminConversationModal = ({ isOpen, onClose, educatorId, onConv
     'Training Request',
     'Facility Issue',
     'Schedule Conflict',
-    'Other'
+    'Other',
   ];
 
   // Fetch educator's school information
@@ -37,11 +42,12 @@ const NewEducatorAdminConversationModal = ({ isOpen, onClose, educatorId, onConv
     setLoading(true);
     try {
       console.log('🔍 Fetching school for educator ID:', educatorId);
-      
+
       // First try: Get educator's school information by user_id
       let { data: educatorData, error } = await supabase
         .from('school_educators')
-        .select(`
+        .select(
+          `
           school_id,
           schools (
             id,
@@ -50,7 +56,8 @@ const NewEducatorAdminConversationModal = ({ isOpen, onClose, educatorId, onConv
             phone,
             email
           )
-        `)
+        `
+        )
         .eq('user_id', educatorId)
         .single();
 
@@ -59,16 +66,20 @@ const NewEducatorAdminConversationModal = ({ isOpen, onClose, educatorId, onConv
       // If first attempt fails, try by email (in case user_id doesn't match)
       if (error && error.code === 'PGRST116') {
         console.log('🔄 First attempt failed, trying by email...');
-        
+
         // Get current user email from auth
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+
         if (!userError && user?.email) {
           console.log('📧 Trying with email:', user.email);
-          
+
           const { data: educatorByEmail, error: emailError } = await supabase
             .from('school_educators')
-            .select(`
+            .select(
+              `
               school_id,
               user_id,
               schools (
@@ -78,21 +89,22 @@ const NewEducatorAdminConversationModal = ({ isOpen, onClose, educatorId, onConv
                 phone,
                 email
               )
-            `)
+            `
+            )
             .eq('email', user.email)
             .single();
-          
+
           console.log('📋 Email attempt result:', { educatorByEmail, emailError });
-          
+
           if (!emailError && educatorByEmail) {
             educatorData = educatorByEmail;
             error = null;
-            
+
             // Update the user_id in the auth system if it doesn't match
             if (educatorByEmail.user_id !== educatorId) {
               console.log('⚠️ User ID mismatch detected:', {
                 authUserId: educatorId,
-                dbUserId: educatorByEmail.user_id
+                dbUserId: educatorByEmail.user_id,
               });
             }
           } else {
@@ -103,13 +115,13 @@ const NewEducatorAdminConversationModal = ({ isOpen, onClose, educatorId, onConv
 
       if (error) {
         console.error('❌ Database error:', error);
-        
+
         if (error.code === 'PGRST116') {
           console.log('🔄 No educator record found for this user');
           setSchool(null);
           return;
         }
-        
+
         throw error;
       }
 
@@ -133,7 +145,7 @@ const NewEducatorAdminConversationModal = ({ isOpen, onClose, educatorId, onConv
       onConversationCreated({
         schoolId: school.id,
         subject: selectedSubject,
-        initialMessage: initialMessage.trim()
+        initialMessage: initialMessage.trim(),
       });
       handleClose();
     }
@@ -195,7 +207,8 @@ const NewEducatorAdminConversationModal = ({ isOpen, onClose, educatorId, onConv
                 <ShieldCheck className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                 <p className="text-gray-500 text-sm">Unable to load school information</p>
                 <p className="text-gray-400 text-xs mt-2">
-                  This might happen if you're not registered as an educator or there's a connection issue.
+                  This might happen if you're not registered as an educator or there's a connection
+                  issue.
                 </p>
                 <button
                   onClick={fetchEducatorSchool}
@@ -217,18 +230,14 @@ const NewEducatorAdminConversationModal = ({ isOpen, onClose, educatorId, onConv
                       <p className="text-sm text-gray-600">School Administration</p>
                     </div>
                   </div>
-                  
+
                   {school.address && (
                     <p className="text-sm text-gray-600 mb-2">📍 {school.address}</p>
                   )}
-                  
+
                   <div className="flex flex-wrap gap-4 text-sm text-gray-600">
-                    {school.phone && (
-                      <span>📞 {school.phone}</span>
-                    )}
-                    {school.email && (
-                      <span>✉️ {school.email}</span>
-                    )}
+                    {school.phone && <span>📞 {school.phone}</span>}
+                    {school.email && <span>✉️ {school.email}</span>}
                   </div>
                 </div>
 
@@ -285,7 +294,7 @@ const NewEducatorAdminConversationModal = ({ isOpen, onClose, educatorId, onConv
                   Subject: <span className="font-medium text-green-700">{selectedSubject}</span>
                 </div>
               </div>
-              
+
               <textarea
                 value={initialMessage}
                 onChange={(e) => setInitialMessage(e.target.value)}
@@ -294,21 +303,21 @@ const NewEducatorAdminConversationModal = ({ isOpen, onClose, educatorId, onConv
                 className="w-full px-4 py-4 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 resize-none text-base bg-white shadow-sm"
                 maxLength={1000}
               />
-              
+
               <div className="flex justify-between items-center mt-3">
                 <div className="text-sm text-gray-600 font-medium">
                   {initialMessage.length}/1000 characters
                 </div>
                 {initialMessage.length > 1000 && (
-                  <div className="text-sm text-red-600 font-medium">
-                    ⚠️ Message too long
-                  </div>
+                  <div className="text-sm text-red-600 font-medium">⚠️ Message too long</div>
                 )}
               </div>
 
               {/* Message Guidelines */}
               <div className="mt-4 p-3 bg-white rounded-lg border border-green-200">
-                <h4 className="text-sm font-semibold text-gray-800 mb-2">💡 Tips for effective communication:</h4>
+                <h4 className="text-sm font-semibold text-gray-800 mb-2">
+                  💡 Tips for effective communication:
+                </h4>
                 <ul className="text-xs text-gray-600 space-y-1">
                   <li>• Be clear and specific about your request</li>
                   <li>• Include relevant details (class, subject, student names if applicable)</li>
@@ -330,7 +339,9 @@ const NewEducatorAdminConversationModal = ({ isOpen, onClose, educatorId, onConv
           </button>
           <button
             onClick={handleCreateConversation}
-            disabled={!school || !selectedSubject || !initialMessage.trim() || initialMessage.length > 1000}
+            disabled={
+              !school || !selectedSubject || !initialMessage.trim() || initialMessage.length > 1000
+            }
             className="px-6 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium flex items-center gap-2"
           >
             <MessageCircle className="w-4 h-4" />

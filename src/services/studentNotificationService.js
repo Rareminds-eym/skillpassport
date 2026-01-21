@@ -77,7 +77,7 @@ export class StudentNotificationService {
         .from('student_notifications')
         .update({
           is_read: true,
-          read_at: new Date().toISOString()
+          read_at: new Date().toISOString(),
         })
         .eq('id', notificationId)
         .eq('student_id', studentId)
@@ -104,7 +104,7 @@ export class StudentNotificationService {
         .from('student_notifications')
         .update({
           is_read: true,
-          read_at: new Date().toISOString()
+          read_at: new Date().toISOString(),
         })
         .eq('student_id', studentId)
         .eq('is_read', false);
@@ -127,17 +127,19 @@ export class StudentNotificationService {
     try {
       const { data, error } = await supabase
         .from('student_notifications')
-        .insert([{
-          student_id: notificationData.student_id,
-          notification_type: notificationData.notification_type,
-          title: notificationData.title,
-          message: notificationData.message,
-          pipeline_candidate_id: notificationData.pipeline_candidate_id || null,
-          opportunity_id: notificationData.opportunity_id || null,
-          interview_id: notificationData.interview_id || null,
-          application_id: notificationData.application_id || null,
-          metadata: notificationData.metadata || null
-        }])
+        .insert([
+          {
+            student_id: notificationData.student_id,
+            notification_type: notificationData.notification_type,
+            title: notificationData.title,
+            message: notificationData.message,
+            pipeline_candidate_id: notificationData.pipeline_candidate_id || null,
+            opportunity_id: notificationData.opportunity_id || null,
+            interview_id: notificationData.interview_id || null,
+            application_id: notificationData.application_id || null,
+            metadata: notificationData.metadata || null,
+          },
+        ])
         .select()
         .single();
 
@@ -188,7 +190,7 @@ export class StudentNotificationService {
           event: 'INSERT',
           schema: 'public',
           table: 'student_notifications',
-          filter: `student_id=eq.${studentId}`
+          filter: `student_id=eq.${studentId}`,
         },
         (payload) => {
           onNotification(payload.new);
@@ -200,7 +202,7 @@ export class StudentNotificationService {
           event: 'UPDATE',
           schema: 'public',
           table: 'student_notifications',
-          filter: `student_id=eq.${studentId}`
+          filter: `student_id=eq.${studentId}`,
         },
         (payload) => {
           onNotification(payload.new);
@@ -231,28 +233,28 @@ export class StudentNotificationService {
       stage_change: {
         icon: 'ArrowRight',
         color: 'text-blue-600',
-        bgColor: 'bg-blue-100'
+        bgColor: 'bg-blue-100',
       },
       interview_scheduled: {
         icon: 'Video',
         color: 'text-indigo-600',
-        bgColor: 'bg-indigo-100'
+        bgColor: 'bg-indigo-100',
       },
       offer_received: {
         icon: 'Award',
         color: 'text-green-600',
-        bgColor: 'bg-green-100'
+        bgColor: 'bg-green-100',
       },
       application_status: {
         icon: 'FileText',
         color: 'text-purple-600',
-        bgColor: 'bg-purple-100'
+        bgColor: 'bg-purple-100',
       },
       message: {
         icon: 'MessageSquare',
         color: 'text-gray-600',
-        bgColor: 'bg-gray-100'
-      }
+        bgColor: 'bg-gray-100',
+      },
     };
 
     return configs[type] || configs.application_status;

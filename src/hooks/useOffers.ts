@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useMemo, useState } from "react";
-import { supabase } from "../lib/supabaseClient";
-import { useAuth } from "../context/AuthContext";
-import { NotificationType } from "./useNotifications";
-import { createNotification } from "../services/notificationService.ts"; 
+import { useEffect, useMemo, useState } from 'react';
+import { supabase } from '../lib/supabaseClient';
+import { useAuth } from '../context/AuthContext';
+import { NotificationType } from './useNotifications';
+import { createNotification } from '../services/notificationService.ts';
 
 // -------------------- OFFER TYPES --------------------
 export interface Offer {
@@ -19,7 +19,7 @@ export interface Offer {
   offered_ctc: string | null;
   offer_date: string | null;
   expiry_date: string;
-  status: "pending" | "accepted" | "rejected" | "expired" | "withdrawn";
+  status: 'pending' | 'accepted' | 'rejected' | 'expired' | 'withdrawn';
   sent_via: string | null;
   benefits: string[] | null;
   notes: string | null;
@@ -58,11 +58,27 @@ export interface OfferFilters {
 }
 
 export interface OfferSortOptions {
-  field: 'inserted_at' | 'updated_at' | 'offer_date' | 'expiry_date' | 'candidate_name' | 'job_title' | 'offered_ctc' | 'status' | 'template' | 'response_date';
+  field:
+    | 'inserted_at'
+    | 'updated_at'
+    | 'offer_date'
+    | 'expiry_date'
+    | 'candidate_name'
+    | 'job_title'
+    | 'offered_ctc'
+    | 'status'
+    | 'template'
+    | 'response_date';
   direction: 'asc' | 'desc';
   nullsPosition?: 'first' | 'last'; // Where to place NULL values
   secondarySort?: {
-    field: 'inserted_at' | 'updated_at' | 'offer_date' | 'expiry_date' | 'candidate_name' | 'job_title';
+    field:
+      | 'inserted_at'
+      | 'updated_at'
+      | 'offer_date'
+      | 'expiry_date'
+      | 'candidate_name'
+      | 'job_title';
     direction: 'asc' | 'desc';
   };
 }
@@ -81,7 +97,7 @@ export const useOffers = (filters?: OfferFilters, sort?: OfferSortOptions) => {
       setError(null);
 
       // Start building the query
-      let query = supabase.from("offers").select("*");
+      let query = supabase.from('offers').select('*');
 
       // Apply filters at SQL level for optimization
       if (currentFilters) {
@@ -134,17 +150,17 @@ export const useOffers = (filters?: OfferFilters, sort?: OfferSortOptions) => {
       const sortField = currentSort?.field || 'inserted_at';
       const sortDirection = currentSort?.direction || 'desc';
       const nullsPosition = currentSort?.nullsPosition || 'last';
-      
+
       // Apply primary sort with nulls handling
-      query = query.order(sortField, { 
+      query = query.order(sortField, {
         ascending: sortDirection === 'asc',
-        nullsFirst: nullsPosition === 'first'
+        nullsFirst: nullsPosition === 'first',
       });
-      
+
       // Apply secondary sort for tie-breaking (improves user experience)
       if (currentSort?.secondarySort) {
         query = query.order(currentSort.secondarySort.field, {
-          ascending: currentSort.secondarySort.direction === 'asc'
+          ascending: currentSort.secondarySort.direction === 'asc',
         });
       } else {
         // Default secondary sort by inserted_at for consistent ordering
@@ -156,34 +172,46 @@ export const useOffers = (filters?: OfferFilters, sort?: OfferSortOptions) => {
       const { data, error: fetchError } = await query;
 
       if (fetchError) throw fetchError;
-      
+
       // Client-side filtering for complex conditions
       let filteredData = data || [];
-      
+
       if (currentFilters) {
         // CTC range filtering (client-side due to string parsing)
-        if (currentFilters.offeredCtcMin !== undefined || currentFilters.offeredCtcMax !== undefined) {
-          filteredData = filteredData.filter(offer => {
+        if (
+          currentFilters.offeredCtcMin !== undefined ||
+          currentFilters.offeredCtcMax !== undefined
+        ) {
+          filteredData = filteredData.filter((offer) => {
             if (!offer.offered_ctc) return false;
-            const ctcValue = parseFloat(offer.offered_ctc.replace(/[^\d.]/g, "") || "0");
-            if (currentFilters.offeredCtcMin !== undefined && ctcValue < currentFilters.offeredCtcMin) return false;
-            if (currentFilters.offeredCtcMax !== undefined && ctcValue > currentFilters.offeredCtcMax) return false;
+            const ctcValue = parseFloat(offer.offered_ctc.replace(/[^\d.]/g, '') || '0');
+            if (
+              currentFilters.offeredCtcMin !== undefined &&
+              ctcValue < currentFilters.offeredCtcMin
+            )
+              return false;
+            if (
+              currentFilters.offeredCtcMax !== undefined &&
+              ctcValue > currentFilters.offeredCtcMax
+            )
+              return false;
             return true;
           });
         }
 
         // Benefits filtering (client-side for array contains)
         if (currentFilters.benefits && currentFilters.benefits.length > 0) {
-          filteredData = filteredData.filter(offer => 
-            offer.benefits && offer.benefits.some(b => currentFilters.benefits!.includes(b))
+          filteredData = filteredData.filter(
+            (offer) =>
+              offer.benefits && offer.benefits.some((b) => currentFilters.benefits!.includes(b))
           );
         }
       }
 
       setOffers(filteredData);
     } catch (err: any) {
-      console.error("Error fetching offers:", err);
-      setError(err.message || "Failed to fetch offers");
+      console.error('Error fetching offers:', err);
+      setError(err.message || 'Failed to fetch offers');
     } finally {
       setLoading(false);
     }
@@ -193,7 +221,7 @@ export const useOffers = (filters?: OfferFilters, sort?: OfferSortOptions) => {
   const createOffer = async (offerData: Partial<Offer>) => {
     try {
       const { data, error: createError } = await supabase
-        .from("offers")
+        .from('offers')
         .insert([offerData])
         .select()
         .single();
@@ -205,16 +233,16 @@ export const useOffers = (filters?: OfferFilters, sort?: OfferSortOptions) => {
       if (data && user) {
         await createNotification(
           user.email ?? user.id,
-          "offer_created",
-          "New Offer Created",
+          'offer_created',
+          'New Offer Created',
           `Offer created for ${data.candidate_name}`
         );
       }
 
       return { success: true, data };
     } catch (err: any) {
-      console.error("Error creating offer:", err);
-      return { success: false, error: err.message || "Failed to create offer" };
+      console.error('Error creating offer:', err);
+      return { success: false, error: err.message || 'Failed to create offer' };
     }
   };
 
@@ -222,12 +250,12 @@ export const useOffers = (filters?: OfferFilters, sort?: OfferSortOptions) => {
   const updateOffer = async (id: string, updates: Partial<Offer>) => {
     try {
       const { data, error: updateError } = await supabase
-        .from("offers")
+        .from('offers')
         .update({
           ...updates,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", id)
+        .eq('id', id)
         .select()
         .single();
 
@@ -237,20 +265,20 @@ export const useOffers = (filters?: OfferFilters, sort?: OfferSortOptions) => {
       // 🔹 Notification per status change
       if (data && user) {
         let type: NotificationType | null = null;
-        let title = "";
-        let message = "";
+        let title = '';
+        let message = '';
 
-        if (data.status === "accepted") {
-          type = "offer_accepted";
-          title = "Offer Accepted";
+        if (data.status === 'accepted') {
+          type = 'offer_accepted';
+          title = 'Offer Accepted';
           message = `${data.candidate_name} accepted the offer`;
-        } else if (data.status === "rejected") {
-          type = "offer_declined";
-          title = "Offer Rejected";
+        } else if (data.status === 'rejected') {
+          type = 'offer_declined';
+          title = 'Offer Rejected';
           message = `${data.candidate_name} rejected the offer`;
-        } else if (data.status === "withdrawn") {
-          type = "offer_withdrawn";
-          title = "Offer Withdrawn";
+        } else if (data.status === 'withdrawn') {
+          type = 'offer_withdrawn';
+          title = 'Offer Withdrawn';
           message = `Offer for ${data.candidate_name} was withdrawn`;
         }
 
@@ -261,18 +289,15 @@ export const useOffers = (filters?: OfferFilters, sort?: OfferSortOptions) => {
 
       return { success: true, data };
     } catch (err: any) {
-      console.error("Error updating offer:", err);
-      return { success: false, error: err.message || "Failed to update offer" };
+      console.error('Error updating offer:', err);
+      return { success: false, error: err.message || 'Failed to update offer' };
     }
   };
 
   // Delete an offer
   const deleteOffer = async (id: string) => {
     try {
-      const { error: deleteError } = await supabase
-        .from("offers")
-        .delete()
-        .eq("id", id);
+      const { error: deleteError } = await supabase.from('offers').delete().eq('id', id);
       if (deleteError) throw deleteError;
 
       setOffers((prev) => prev.filter((o) => o.id !== id));
@@ -280,23 +305,23 @@ export const useOffers = (filters?: OfferFilters, sort?: OfferSortOptions) => {
       if (user) {
         await createNotification(
           user.email ?? user.id,
-          "offer_declined",
-          "Offer Deleted",
-          "An offer was deleted"
+          'offer_declined',
+          'Offer Deleted',
+          'An offer was deleted'
         );
       }
 
       return { success: true };
     } catch (err: any) {
-      console.error("Error deleting offer:", err);
-      return { success: false, error: err.message || "Failed to delete offer" };
+      console.error('Error deleting offer:', err);
+      return { success: false, error: err.message || 'Failed to delete offer' };
     }
   };
 
   // Withdraw an offer
   const withdrawOffer = async (id: string) => {
     return updateOffer(id, {
-      status: "withdrawn",
+      status: 'withdrawn',
       response_date: new Date().toISOString(),
     });
   };
@@ -305,9 +330,9 @@ export const useOffers = (filters?: OfferFilters, sort?: OfferSortOptions) => {
   const extendOfferExpiry = async (id: string, days: number) => {
     try {
       const { data: offer, error: fetchError } = await supabase
-        .from("offers")
-        .select("expiry_date, candidate_name")
-        .eq("id", id)
+        .from('offers')
+        .select('expiry_date, candidate_name')
+        .eq('id', id)
         .single();
 
       if (fetchError) throw fetchError;
@@ -323,23 +348,23 @@ export const useOffers = (filters?: OfferFilters, sort?: OfferSortOptions) => {
       if (user) {
         await createNotification(
           user.email ?? user.id,
-          "offer_expiring",
-          "Offer Expiry Extended",
+          'offer_expiring',
+          'Offer Expiry Extended',
           `Offer for ${offer.candidate_name} was extended`
         );
       }
 
       return result;
     } catch (err: any) {
-      console.error("Error extending offer:", err);
-      return { success: false, error: err.message || "Failed to extend offer" };
+      console.error('Error extending offer:', err);
+      return { success: false, error: err.message || 'Failed to extend offer' };
     }
   };
 
   // Accept an offer
   const acceptOffer = async (id: string, acceptanceNotes?: string) => {
     return updateOffer(id, {
-      status: "accepted",
+      status: 'accepted',
       response_date: new Date().toISOString(),
       acceptance_notes: acceptanceNotes,
     });
@@ -348,7 +373,7 @@ export const useOffers = (filters?: OfferFilters, sort?: OfferSortOptions) => {
   // Reject an offer
   const rejectOffer = async (id: string, rejectionNotes?: string) => {
     return updateOffer(id, {
-      status: "rejected",
+      status: 'rejected',
       response_date: new Date().toISOString(),
       acceptance_notes: rejectionNotes,
     });
@@ -357,35 +382,32 @@ export const useOffers = (filters?: OfferFilters, sort?: OfferSortOptions) => {
   // Stats
   const stats: OfferStats = useMemo(() => {
     const total = offers.length;
-    const pending = offers.filter((o) => o.status === "pending").length;
-    const accepted = offers.filter((o) => o.status === "accepted").length;
-    const rejected = offers.filter((o) => o.status === "rejected").length;
-    const expired = offers.filter((o) => o.status === "expired").length;
-    const withdrawn = offers.filter((o) => o.status === "withdrawn").length;
+    const pending = offers.filter((o) => o.status === 'pending').length;
+    const accepted = offers.filter((o) => o.status === 'accepted').length;
+    const rejected = offers.filter((o) => o.status === 'rejected').length;
+    const expired = offers.filter((o) => o.status === 'expired').length;
+    const withdrawn = offers.filter((o) => o.status === 'withdrawn').length;
 
     const now = new Date();
     const expiring_soon = offers.filter((o) => {
-      if (o.status !== "pending") return false;
+      if (o.status !== 'pending') return false;
       const expiryDate = new Date(o.expiry_date);
-      const diffDays = Math.ceil(
-        (expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-      );
+      const diffDays = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
       return diffDays <= 2 && diffDays > 0;
     }).length;
 
     const responded = accepted + rejected;
-    const acceptanceRate =
-      responded > 0 ? Math.round((accepted / responded) * 100) : 0;
+    const acceptanceRate = responded > 0 ? Math.round((accepted / responded) * 100) : 0;
 
     const ctcValues = offers
       .filter((o) => o.offered_ctc)
-      .map((o) => parseFloat(o.offered_ctc?.replace(/[^\d.]/g, "") || "0"))
+      .map((o) => parseFloat(o.offered_ctc?.replace(/[^\d.]/g, '') || '0'))
       .filter((v) => v > 0);
 
     const avgCTC =
       ctcValues.length > 0
         ? (ctcValues.reduce((sum, val) => sum + val, 0) / ctcValues.length).toFixed(1)
-        : "0";
+        : '0';
 
     return {
       total,
@@ -403,7 +425,6 @@ export const useOffers = (filters?: OfferFilters, sort?: OfferSortOptions) => {
   // Load offers on mount and when filters/sort change
   useEffect(() => {
     fetchOffers(filters, sort);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters, sort]);
 
   return {

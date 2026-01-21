@@ -26,7 +26,7 @@ export const mockContracts: ProjectContract[] = [
         submission_notes: 'Completed all design mockups and architecture diagrams',
         submitted_at: '2025-12-03T14:00:00Z',
         approved_at: '2025-12-04T10:30:00Z',
-        paid_at: '2025-12-04T15:00:00Z'
+        paid_at: '2025-12-04T15:00:00Z',
       },
       {
         id: 'mile-002',
@@ -37,7 +37,7 @@ export const mockContracts: ProjectContract[] = [
         order_index: 2,
         status: 'in_progress',
         submission_url: '',
-        submission_notes: ''
+        submission_notes: '',
       },
       {
         id: 'mile-003',
@@ -46,7 +46,7 @@ export const mockContracts: ProjectContract[] = [
         amount: 25000,
         deadline: '2026-01-05',
         order_index: 3,
-        status: 'pending'
+        status: 'pending',
       },
       {
         id: 'mile-004',
@@ -55,8 +55,8 @@ export const mockContracts: ProjectContract[] = [
         amount: 15000,
         deadline: '2026-01-15',
         order_index: 4,
-        status: 'pending'
-      }
+        status: 'pending',
+      },
     ],
     total_paid: 20000,
     payment_schedule: 'milestone_based',
@@ -64,7 +64,7 @@ export const mockContracts: ProjectContract[] = [
     completion_percentage: 25,
     signed_at: '2025-11-08T09:00:00Z',
     started_at: '2025-11-08T10:00:00Z',
-    updated_at: '2025-12-04T15:00:00Z'
+    updated_at: '2025-12-04T15:00:00Z',
   },
   {
     id: 'contract-002',
@@ -89,7 +89,7 @@ export const mockContracts: ProjectContract[] = [
         submission_notes: 'Delivered 3 unique brand concepts with mood boards',
         submitted_at: '2025-11-26T16:00:00Z',
         approved_at: '2025-11-27T11:00:00Z',
-        paid_at: '2025-11-27T14:00:00Z'
+        paid_at: '2025-11-27T14:00:00Z',
       },
       {
         id: 'mile-006',
@@ -103,7 +103,7 @@ export const mockContracts: ProjectContract[] = [
         submission_notes: 'All screens designed with interactive prototype',
         submitted_at: '2025-12-08T18:00:00Z',
         approved_at: '2025-12-09T10:00:00Z',
-        paid_at: '2025-12-09T15:00:00Z'
+        paid_at: '2025-12-09T15:00:00Z',
       },
       {
         id: 'mile-007',
@@ -117,8 +117,8 @@ export const mockContracts: ProjectContract[] = [
         submission_notes: 'Complete style guide and design system delivered',
         submitted_at: '2025-12-14T17:00:00Z',
         approved_at: '2025-12-15T09:00:00Z',
-        paid_at: '2025-12-15T14:00:00Z'
-      }
+        paid_at: '2025-12-15T14:00:00Z',
+      },
     ],
     total_paid: 38000,
     payment_schedule: 'milestone_based',
@@ -128,41 +128,40 @@ export const mockContracts: ProjectContract[] = [
     signed_at: '2025-11-01T08:00:00Z',
     started_at: '2025-11-01T09:00:00Z',
     completed_at: '2025-12-15T14:00:00Z',
-    updated_at: '2025-12-15T14:00:00Z'
-  }
+    updated_at: '2025-12-15T14:00:00Z',
+  },
 ];
 
 export const getContractById = (id: string): ProjectContract | undefined => {
-  return mockContracts.find(contract => contract.id === id);
+  return mockContracts.find((contract) => contract.id === id);
 };
 
 export const getContractByProjectId = (projectId: string): ProjectContract | undefined => {
-  return mockContracts.find(contract => contract.project_id === projectId);
+  return mockContracts.find((contract) => contract.project_id === projectId);
 };
 
 export const getActiveContracts = (): ProjectContract[] => {
-  return mockContracts.filter(contract => contract.status === 'active');
+  return mockContracts.filter((contract) => contract.status === 'active');
 };
 
 export const getCompletedContracts = (): ProjectContract[] => {
-  return mockContracts.filter(contract => contract.status === 'completed');
+  return mockContracts.filter((contract) => contract.status === 'completed');
 };
 
 export const getContractStats = () => {
   return {
     total: mockContracts.length,
-    active: mockContracts.filter(c => c.status === 'active').length,
-    completed: mockContracts.filter(c => c.status === 'completed').length,
+    active: mockContracts.filter((c) => c.status === 'active').length,
+    completed: mockContracts.filter((c) => c.status === 'completed').length,
     totalPaid: mockContracts.reduce((sum, c) => sum + c.total_paid, 0),
     avgCompletion: Math.round(
       mockContracts.reduce((sum, c) => sum + c.completion_percentage, 0) / mockContracts.length
-    )
+    ),
   };
 };
 
 export const getMilestonesByStatus = (status: string): ContractMilestone[] => {
-  const allMilestones = mockContracts.flatMap(c => c.agreed_milestones);
+  const allMilestones = mockContracts.flatMap((c) => c.agreed_milestones);
   if (status === 'all') return allMilestones;
-  return allMilestones.filter(m => m.status === status);
+  return allMilestones.filter((m) => m.status === status);
 };
-

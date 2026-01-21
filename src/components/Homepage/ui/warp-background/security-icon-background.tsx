@@ -1,7 +1,16 @@
-import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
-import React, { HTMLAttributes, useCallback, useMemo } from "react";
-import { Shield, Lock, Key, FileCheck, ShieldCheck, Database, UserCheck, Fingerprint } from "lucide-react";
+import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
+import React, { HTMLAttributes, useCallback, useMemo } from 'react';
+import {
+  Shield,
+  Lock,
+  Key,
+  FileCheck,
+  ShieldCheck,
+  Database,
+  UserCheck,
+  Fingerprint,
+} from 'lucide-react';
 
 interface SecurityIconBackgroundProps extends HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
@@ -31,20 +40,20 @@ const IconBeam = ({
     <motion.div
       style={{
         left: `${x}`,
-        position: "absolute",
+        position: 'absolute',
         top: 0,
       }}
       className="flex items-center justify-center"
-      initial={{ y: "100cqmax", x: "-50%" }}
-      animate={{ 
-        y: "-100%", 
-        x: "-50%"
+      initial={{ y: '100cqmax', x: '-50%' }}
+      animate={{
+        y: '-100%',
+        x: '-50%',
       }}
       transition={{
         duration,
         delay,
         repeat: Infinity,
-        ease: "linear",
+        ease: 'linear',
       }}
     >
       <Icon size={40} className="text-gray-600 drop-shadow-lg" strokeWidth={2} />
@@ -61,7 +70,7 @@ export const SecurityIconBackground: React.FC<SecurityIconBackgroundProps> = ({
   iconDelayMax = 3,
   iconDelayMin = 0,
   iconDuration = 5,
-  gridColor = "hsl(var(--border))",
+  gridColor = 'hsl(var(--border))',
   ...props
 }) => {
   const generateIconPositions = useCallback(() => {
@@ -71,8 +80,7 @@ export const SecurityIconBackground: React.FC<SecurityIconBackgroundProps> = ({
 
     for (let i = 0; i < iconsPerSide; i++) {
       const x = Math.floor(i * step);
-      const delay =
-        Math.random() * (iconDelayMax - iconDelayMin) + iconDelayMin;
+      const delay = Math.random() * (iconDelayMax - iconDelayMin) + iconDelayMin;
       positions.push({ x, delay });
     }
     return positions;
@@ -84,17 +92,17 @@ export const SecurityIconBackground: React.FC<SecurityIconBackgroundProps> = ({
   const leftIcons = useMemo(() => generateIconPositions(), [generateIconPositions]);
 
   return (
-    <div className={cn("relative rounded border p-20", className)} {...props}>
+    <div className={cn('relative rounded border p-20', className)} {...props}>
       <div
         style={
           {
-            "--perspective": `${perspective}px`,
-            "--grid-color": gridColor,
-            "--icon-size": `${iconSize}%`,
+            '--perspective': `${perspective}px`,
+            '--grid-color': gridColor,
+            '--icon-size': `${iconSize}%`,
           } as React.CSSProperties
         }
         className={
-          "pointer-events-none absolute left-0 top-0 size-full overflow-hidden [clip-path:inset(0)] [container-type:size] [perspective:var(--perspective)] [transform-style:preserve-3d]"
+          'pointer-events-none absolute left-0 top-0 size-full overflow-hidden [clip-path:inset(0)] [container-type:size] [perspective:var(--perspective)] [transform-style:preserve-3d]'
         }
       >
         {/* top side */}

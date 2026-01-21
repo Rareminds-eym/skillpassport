@@ -1,12 +1,4 @@
-import {
-    Award,
-    Briefcase,
-    Calendar,
-    Clock,
-    MapPin,
-    Target,
-    TrendingUp
-} from 'lucide-react';
+import { Award, Briefcase, Calendar, Clock, MapPin, Target, TrendingUp } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import ReactApexChart from 'react-apexcharts';
 import { supabase } from '../../lib/supabaseClient';
@@ -26,8 +18,7 @@ const Analytics = () => {
   const fetchApplicationData = async () => {
     try {
       setLoading(true);
-      
-      
+
       // Get student ID from email
       const { data: student, error: studentError } = await supabase
         .from('students')
@@ -39,12 +30,12 @@ const Analytics = () => {
         console.error('❌ Analytics: Error fetching student:', studentError);
         return;
       }
-      
 
       // Fetch applied jobs with opportunity details
       const { data: appliedJobs, error: jobsError } = await supabase
         .from('applied_jobs')
-        .select(`
+        .select(
+          `
           *,
           opportunities!fk_applied_jobs_opportunity (
             id,
@@ -57,7 +48,8 @@ const Analytics = () => {
             salary_range_max,
             mode
           )
-        `)
+        `
+        )
         .eq('student_id', student.id)
         .order('applied_at', { ascending: false });
 
@@ -65,7 +57,6 @@ const Analytics = () => {
         console.error('❌ Analytics: Error fetching applications:', jobsError);
         return;
       }
-      
 
       setApplications(appliedJobs || []);
     } catch (error) {
@@ -77,16 +68,14 @@ const Analytics = () => {
 
   const fetchSkillsData = async () => {
     try {
-      
       const { data, error } = await supabase.rpc('analyze_skills_demand');
-      
+
       if (error) {
         console.error('❌ Error fetching skills data:', error);
         console.error('Error details:', JSON.stringify(error));
         return;
       }
-      
-      
+
       if (data && Array.isArray(data) && data.length > 0) {
         setSkillsData(data);
       } else {
@@ -107,7 +96,7 @@ const Analytics = () => {
         locationDistribution: {},
         responseRate: 0,
         averageResponseTime: 0,
-        skillsMatch: {}
+        skillsMatch: {},
       };
     }
 
@@ -119,7 +108,10 @@ const Analytics = () => {
 
     // Applications by month
     const applicationsByMonth = applications.reduce((acc, app) => {
-      const month = new Date(app.applied_at).toLocaleString('default', { month: 'short', year: 'numeric' });
+      const month = new Date(app.applied_at).toLocaleString('default', {
+        month: 'short',
+        year: 'numeric',
+      });
       acc[month] = (acc[month] || 0) + 1;
       return acc;
     }, {});
@@ -139,20 +131,21 @@ const Analytics = () => {
     }, {});
 
     // Response rate
-    const respondedApps = applications.filter(app => app.responded_at).length;
+    const respondedApps = applications.filter((app) => app.responded_at).length;
     const responseRate = applications.length > 0 ? (respondedApps / applications.length) * 100 : 0;
 
     // Average response time (in days)
     const responseTimes = applications
-      .filter(app => app.responded_at)
-      .map(app => {
+      .filter((app) => app.responded_at)
+      .map((app) => {
         const applied = new Date(app.applied_at);
         const responded = new Date(app.responded_at);
         return (responded - applied) / (1000 * 60 * 60 * 24);
       });
-    const averageResponseTime = responseTimes.length > 0 
-      ? responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length 
-      : 0;
+    const averageResponseTime =
+      responseTimes.length > 0
+        ? responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length
+        : 0;
 
     // Skills match analysis - using skillsData from state
     const skillsMatch = {};
@@ -165,7 +158,7 @@ const Analytics = () => {
       locationDistribution,
       responseRate: Math.round(responseRate),
       averageResponseTime: Math.round(averageResponseTime * 10) / 10,
-      skillsMatch
+      skillsMatch,
     };
   }, [applications]);
 
@@ -187,7 +180,7 @@ const Analytics = () => {
   const statusRadialChartOptions = {
     chart: {
       type: 'radialBar',
-      toolbar: { show: false }
+      toolbar: { show: false },
     },
     plotOptions: {
       radialBar: {
@@ -204,7 +197,7 @@ const Analytics = () => {
             show: true,
             fontSize: '14px',
             fontWeight: 600,
-            offsetY: -10
+            offsetY: -10,
           },
           value: {
             show: true,
@@ -213,10 +206,10 @@ const Analytics = () => {
             offsetY: 5,
             formatter: function (val) {
               return Math.round(val) + '%';
-            }
-          }
-        }
-      }
+            },
+          },
+        },
+      },
     },
     colors: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'],
     labels: ['Accepted', 'Under Review', 'Pending', 'Rejected'],
@@ -231,22 +224,24 @@ const Analytics = () => {
         useSeriesColors: true,
       },
       markers: {
-        size: 0
+        size: 0,
       },
-      formatter: function(seriesName, opts) {
-        return seriesName + ":  " + opts.w.globals.series[opts.seriesIndex];
+      formatter: function (seriesName, opts) {
+        return seriesName + ':  ' + opts.w.globals.series[opts.seriesIndex];
       },
       itemMargin: {
-        vertical: 3
-      }
-    }
+        vertical: 3,
+      },
+    },
   };
 
   const statusRadialChartSeries = [
-    ((analytics.statusCounts['accepted'] || 0) / analytics.totalApplications * 100) || 0,
-    ((analytics.statusCounts['under_review'] || 0) / analytics.totalApplications * 100) || 0,
-    ((analytics.statusCounts['applied'] || analytics.statusCounts['pending'] || 0) / analytics.totalApplications * 100) || 0,
-    ((analytics.statusCounts['rejected'] || 0) / analytics.totalApplications * 100) || 0
+    ((analytics.statusCounts['accepted'] || 0) / analytics.totalApplications) * 100 || 0,
+    ((analytics.statusCounts['under_review'] || 0) / analytics.totalApplications) * 100 || 0,
+    ((analytics.statusCounts['applied'] || analytics.statusCounts['pending'] || 0) /
+      analytics.totalApplications) *
+      100 || 0,
+    ((analytics.statusCounts['rejected'] || 0) / analytics.totalApplications) * 100 || 0,
   ];
 
   // Applications Timeline - Column Chart
@@ -254,55 +249,57 @@ const Analytics = () => {
     chart: {
       type: 'bar',
       toolbar: { show: true },
-      zoom: { enabled: false }
+      zoom: { enabled: false },
     },
     plotOptions: {
       bar: {
         borderRadius: 8,
         columnWidth: '60%',
         dataLabels: {
-          position: 'top'
-        }
-      }
+          position: 'top',
+        },
+      },
     },
     dataLabels: {
       enabled: true,
       offsetY: -20,
       style: {
         fontSize: '12px',
-        colors: ["#304758"]
-      }
+        colors: ['#304758'],
+      },
     },
     colors: ['#6366f1'],
     xaxis: {
       categories: Object.keys(analytics.applicationsByMonth),
       labels: {
         style: {
-          fontSize: '12px'
-        }
-      }
+          fontSize: '12px',
+        },
+      },
     },
     yaxis: {
       title: {
-        text: 'Number of Applications'
-      }
+        text: 'Number of Applications',
+      },
     },
     grid: {
-      borderColor: '#f1f1f1'
+      borderColor: '#f1f1f1',
     },
     tooltip: {
       y: {
         formatter: function (val) {
-          return val + " applications";
-        }
-      }
-    }
+          return val + ' applications';
+        },
+      },
+    },
   };
 
-  const timelineColumnChartSeries = [{
-    name: 'Applications',
-    data: Object.values(analytics.applicationsByMonth)
-  }];
+  const timelineColumnChartSeries = [
+    {
+      name: 'Applications',
+      data: Object.values(analytics.applicationsByMonth),
+    },
+  ];
 
   // Job Type Distribution - Multiple Series Radar Chart
   const jobTypeRadarChartOptions = {
@@ -314,39 +311,39 @@ const Analytics = () => {
         blur: 4,
         left: 0,
         top: 0,
-        opacity: 0.1
-      }
+        opacity: 0.1,
+      },
     },
     colors: ['#6366f1', '#10b981', '#f59e0b'],
     stroke: {
-      width: 2
+      width: 2,
     },
     fill: {
-      opacity: 0.2
+      opacity: 0.2,
     },
     markers: {
       size: 5,
       hover: {
-        size: 7
-      }
+        size: 7,
+      },
     },
     xaxis: {
       categories: Object.keys(analytics.jobTypeDistribution),
       labels: {
         style: {
           fontSize: '11px',
-          fontWeight: 500
-        }
-      }
+          fontWeight: 500,
+        },
+      },
     },
     yaxis: {
       show: true,
       tickAmount: 4,
       labels: {
-        formatter: function(val) {
+        formatter: function (val) {
           return Math.round(val);
-        }
-      }
+        },
+      },
     },
     legend: {
       show: true,
@@ -356,51 +353,53 @@ const Analytics = () => {
       markers: {
         width: 12,
         height: 12,
-        radius: 2
+        radius: 2,
       },
       itemMargin: {
-        horizontal: 10
-      }
+        horizontal: 10,
+      },
     },
     tooltip: {
       y: {
-        formatter: function(val) {
+        formatter: function (val) {
           return val + ' applications';
-        }
-      }
-    }
+        },
+      },
+    },
   };
 
   const jobTypeRadarChartSeries = [
     {
       name: 'Total Applied',
-      data: Object.values(analytics.jobTypeDistribution)
+      data: Object.values(analytics.jobTypeDistribution),
     },
     {
       name: 'Accepted',
-      data: Object.keys(analytics.jobTypeDistribution).map(type => {
-        return applications.filter(app => 
-          (app.opportunities?.employment_type === type || app.opportunities?.mode === type) && 
-          app.application_status === 'accepted'
+      data: Object.keys(analytics.jobTypeDistribution).map((type) => {
+        return applications.filter(
+          (app) =>
+            (app.opportunities?.employment_type === type || app.opportunities?.mode === type) &&
+            app.application_status === 'accepted'
         ).length;
-      })
+      }),
     },
     {
       name: 'In Progress',
-      data: Object.keys(analytics.jobTypeDistribution).map(type => {
-        return applications.filter(app => 
-          (app.opportunities?.employment_type === type || app.opportunities?.mode === type) && 
-          ['applied', 'under_review', 'interview_scheduled'].includes(app.application_status)
+      data: Object.keys(analytics.jobTypeDistribution).map((type) => {
+        return applications.filter(
+          (app) =>
+            (app.opportunities?.employment_type === type || app.opportunities?.mode === type) &&
+            ['applied', 'under_review', 'interview_scheduled'].includes(app.application_status)
         ).length;
-      })
-    }
+      }),
+    },
   ];
 
   // Location Distribution - Radial Chart
   const locationRadialChartOptions = {
     chart: {
       type: 'radialBar',
-      toolbar: { show: false }
+      toolbar: { show: false },
     },
     plotOptions: {
       radialBar: {
@@ -421,7 +420,7 @@ const Analytics = () => {
             show: true,
             fontSize: '12px',
             fontWeight: 600,
-            offsetY: 20
+            offsetY: 20,
           },
           value: {
             show: true,
@@ -430,17 +429,17 @@ const Analytics = () => {
             offsetY: -10,
             formatter: function (val) {
               return Math.round(val);
-            }
+            },
           },
           total: {
             show: true,
             label: 'Total',
             formatter: function (w) {
               return analytics.totalApplications;
-            }
-          }
-        }
-      }
+            },
+          },
+        },
+      },
     },
     colors: ['#06b6d4', '#ec4899', '#f97316', '#84cc16', '#a855f7'],
     labels: Object.keys(analytics.locationDistribution).slice(0, 5),
@@ -453,72 +452,74 @@ const Analytics = () => {
     chart: {
       type: 'bar',
       toolbar: { show: false },
-      horizontal: true
+      horizontal: true,
     },
     plotOptions: {
       bar: {
         borderRadius: 6,
         horizontal: true,
         dataLabels: {
-          position: 'top'
-        }
-      }
+          position: 'top',
+        },
+      },
     },
     dataLabels: {
       enabled: true,
       offsetX: 30,
       style: {
         fontSize: '11px',
-        colors: ['#304758']
+        colors: ['#304758'],
       },
-      formatter: function(val) {
+      formatter: function (val) {
         return Math.round(val);
-      }
+      },
     },
     colors: ['#10b981'],
     xaxis: {
       categories: Object.keys(skillsMatch).slice(0, 5),
       title: {
-        text: 'Number of Jobs'
+        text: 'Number of Jobs',
       },
       labels: {
-        formatter: function(val) {
+        formatter: function (val) {
           return Math.round(val);
-        }
+        },
       },
       tickAmount: 'dataPoints',
       forceNiceScale: false,
-      decimalsInFloat: 0
+      decimalsInFloat: 0,
     },
     yaxis: {
       labels: {
         style: {
-          fontSize: '12px'
-        }
-      }
+          fontSize: '12px',
+        },
+      },
     },
     grid: {
-      borderColor: '#f1f1f1'
+      borderColor: '#f1f1f1',
     },
     tooltip: {
       y: {
-        formatter: function(val) {
+        formatter: function (val) {
           return Math.round(val) + ' jobs';
-        }
-      }
-    }
+        },
+      },
+    },
   };
 
-  const skillsColumnChartSeries = [{
-    name: 'Jobs',
-    data: Object.values(skillsMatch).slice(0, 5)
-  }];
+  const skillsColumnChartSeries = [
+    {
+      name: 'Jobs',
+      data: Object.values(skillsMatch).slice(0, 5),
+    },
+  ];
 
   // Response Rate - Radial Chart
   const responseRateChartOptions = {
     chart: {
       type: 'radialBar',
-      toolbar: { show: false }
+      toolbar: { show: false },
     },
     plotOptions: {
       radialBar: {
@@ -533,7 +534,7 @@ const Analytics = () => {
             show: true,
             fontSize: '14px',
             fontWeight: 600,
-            offsetY: -10
+            offsetY: -10,
           },
           value: {
             show: true,
@@ -542,13 +543,13 @@ const Analytics = () => {
             offsetY: 10,
             formatter: function (val) {
               return Math.round(val) + '%';
-            }
-          }
-        }
-      }
+            },
+          },
+        },
+      },
     },
     colors: ['#3b82f6'],
-    labels: ['Response Rate']
+    labels: ['Response Rate'],
   };
 
   const responseRateChartSeries = [analytics.responseRate];
@@ -571,10 +572,10 @@ const Analytics = () => {
               <TrendingUp className="w-8 h-8 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                Analytics Dashboard
-              </h1>
-              <p className="text-gray-600 mt-1 text-sm">Track and analyze your job application performance</p>
+              <h1 className="text-3xl font-bold text-gray-900">Analytics Dashboard</h1>
+              <p className="text-gray-600 mt-1 text-sm">
+                Track and analyze your job application performance
+              </p>
             </div>
           </div>
           <button
@@ -591,7 +592,9 @@ const Analytics = () => {
         <div className="group bg-white rounded-xl p-6 shadow-sm border border-gray-200 hover:shadow-md transition-all duration-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Total Applications</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                Total Applications
+              </p>
               <p className="text-3xl font-bold text-gray-900">{analytics.totalApplications}</p>
             </div>
             <div className="h-12 w-12 bg-indigo-50 rounded-lg flex items-center justify-center">
@@ -603,8 +606,13 @@ const Analytics = () => {
         <div className="group bg-white rounded-xl p-6 shadow-sm border border-gray-200 hover:shadow-md transition-all duration-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Response Rate</p>
-              <p className="text-3xl font-bold text-gray-900">{analytics.responseRate}<span className="text-xl text-gray-600">%</span></p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                Response Rate
+              </p>
+              <p className="text-3xl font-bold text-gray-900">
+                {analytics.responseRate}
+                <span className="text-xl text-gray-600">%</span>
+              </p>
             </div>
             <div className="h-12 w-12 bg-indigo-50 rounded-lg flex items-center justify-center">
               <Target className="w-6 h-6 text-indigo-600" />
@@ -615,8 +623,13 @@ const Analytics = () => {
         <div className="group bg-white rounded-xl p-6 shadow-sm border border-gray-200 hover:shadow-md transition-all duration-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Avg Response Time</p>
-              <p className="text-3xl font-bold text-gray-900">{analytics.averageResponseTime} <span className="text-sm text-gray-500 font-normal">days</span></p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                Avg Response Time
+              </p>
+              <p className="text-3xl font-bold text-gray-900">
+                {analytics.averageResponseTime}{' '}
+                <span className="text-sm text-gray-500 font-normal">days</span>
+              </p>
             </div>
             <div className="h-12 w-12 bg-indigo-50 rounded-lg flex items-center justify-center">
               <Clock className="w-6 h-6 text-indigo-600" />
@@ -627,8 +640,12 @@ const Analytics = () => {
         <div className="group bg-white rounded-xl p-6 shadow-sm border border-gray-200 hover:shadow-md transition-all duration-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Offers Received</p>
-              <p className="text-3xl font-bold text-gray-900">{analytics.statusCounts['accepted'] || 0}</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                Offers Received
+              </p>
+              <p className="text-3xl font-bold text-gray-900">
+                {analytics.statusCounts['accepted'] || 0}
+              </p>
             </div>
             <div className="h-12 w-12 bg-green-50 rounded-lg flex items-center justify-center">
               <Award className="w-6 h-6 text-green-600" />
@@ -646,7 +663,9 @@ const Analytics = () => {
               <div className="p-1.5 bg-indigo-100 rounded-lg">
                 <Target className="w-4 h-4 text-indigo-600" />
               </div>
-              <h3 className="text-sm font-semibold text-gray-900">Application Status Distribution</h3>
+              <h3 className="text-sm font-semibold text-gray-900">
+                Application Status Distribution
+              </h3>
             </div>
           </div>
           <div className="p-6">
@@ -805,7 +824,6 @@ const Analytics = () => {
         </div>
       </div>
 
-
       {/* Empty State */}
       {analytics.totalApplications === 0 && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden text-center py-16">
@@ -814,8 +832,10 @@ const Analytics = () => {
               <TrendingUp className="w-12 h-12 text-indigo-600" />
             </div>
             <h3 className="text-xl font-bold text-gray-900 mb-2">No Applications Yet</h3>
-            <p className="text-gray-600 text-sm mb-6">Start applying to jobs to see your analytics dashboard</p>
-            <button 
+            <p className="text-gray-600 text-sm mb-6">
+              Start applying to jobs to see your analytics dashboard
+            </p>
+            <button
               onClick={() => navigate('/student/opportunities')}
               className="px-6 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors duration-200"
             >

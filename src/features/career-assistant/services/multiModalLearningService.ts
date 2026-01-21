@@ -1,6 +1,6 @@
 /**
  * 📊 MULTI-MODAL LEARNING SERVICE
- * 
+ *
  * Generates:
  * - Mermaid diagrams (flowcharts, architecture, sequences)
  * - Visual comparisons and tables
@@ -45,7 +45,6 @@ export interface VisualLearningContent {
 }
 
 class MultiModalLearningService {
-  
   /**
    * 📊 Generate Visual Learning Content
    * Creates diagrams, examples, and visual aids for any concept
@@ -55,10 +54,9 @@ class MultiModalLearningService {
     context?: string,
     studentLevel?: 'beginner' | 'intermediate' | 'advanced'
   ): Promise<VisualLearningContent> {
-    
     try {
       console.log('📊 Multi-Modal: Generating visual learning content...');
-      
+
       const prompt = `You are an educational content creator who makes complex concepts easy through visuals.
 
 **TOPIC:** ${topic}
@@ -165,31 +163,31 @@ Create multi-modal learning content that includes:
         messages: [
           {
             role: 'system',
-            content: 'You are an expert educational content creator. You make learning visual, interactive, and engaging. You create valid Mermaid.js diagrams and clear code examples.'
+            content:
+              'You are an expert educational content creator. You make learning visual, interactive, and engaging. You create valid Mermaid.js diagrams and clear code examples.',
           },
-          { role: 'user', content: prompt }
+          { role: 'user', content: prompt },
         ],
         temperature: 0.6,
         max_tokens: 2500,
-        response_format: { type: 'json_object' }
+        response_format: { type: 'json_object' },
       });
-      
+
       const result = JSON.parse(completion.choices[0]?.message?.content || '{}');
-      
+
       console.log('📊 Visual Content Generated');
       console.log('🎨 Has Diagram:', !!result.diagram);
       console.log('💻 Has Code Example:', !!result.codeExample);
       console.log('📋 Has Comparison:', !!result.visualComparison);
       console.log('📝 Has Steps:', !!result.interactiveSteps);
-      
+
       return result as VisualLearningContent;
-      
     } catch (error) {
       console.error('Visual content generation error:', error);
       throw new Error('Failed to generate visual learning content');
     }
   }
-  
+
   /**
    * 🗺️ Generate Learning Roadmap with Visual Timeline
    */
@@ -207,7 +205,6 @@ Create multi-modal learning content that includes:
       projects: string[];
     }>;
   }> {
-    
     try {
       const prompt = `Create a visual learning roadmap for: ${goal}
 
@@ -237,22 +234,24 @@ Generate:
       const completion = await client.chat.completions.create({
         model: DEFAULT_MODEL,
         messages: [
-          { role: 'system', content: 'You create detailed learning roadmaps with visual timelines.' },
-          { role: 'user', content: prompt }
+          {
+            role: 'system',
+            content: 'You create detailed learning roadmaps with visual timelines.',
+          },
+          { role: 'user', content: prompt },
         ],
         temperature: 0.6,
         max_tokens: 2000,
-        response_format: { type: 'json_object' }
+        response_format: { type: 'json_object' },
       });
-      
+
       return JSON.parse(completion.choices[0]?.message?.content || '{}');
-      
     } catch (error) {
       console.error('Roadmap generation error:', error);
       throw new Error('Failed to generate learning roadmap');
     }
   }
-  
+
   /**
    * 🏗️ Generate Architecture Diagram
    */
@@ -268,7 +267,6 @@ Generate:
       technology: string;
     }>;
   }> {
-    
     try {
       const prompt = `Generate system architecture diagram for:
 
@@ -300,67 +298,63 @@ Create a Mermaid flowchart showing:
         model: DEFAULT_MODEL,
         messages: [
           { role: 'system', content: 'You create clear, professional architecture diagrams.' },
-          { role: 'user', content: prompt }
+          { role: 'user', content: prompt },
         ],
         temperature: 0.5,
         max_tokens: 1500,
-        response_format: { type: 'json_object' }
+        response_format: { type: 'json_object' },
       });
-      
+
       return JSON.parse(completion.choices[0]?.message?.content || '{}');
-      
     } catch (error) {
       console.error('Architecture diagram error:', error);
       throw new Error('Failed to generate architecture diagram');
     }
   }
-  
+
   /**
    * 📈 Format Response with Visuals
    * Takes text response and enhances with visuals where appropriate
    */
-  formatWithVisuals(
-    textResponse: string,
-    visualContent: VisualLearningContent
-  ): string {
+  formatWithVisuals(textResponse: string, visualContent: VisualLearningContent): string {
     let formatted = textResponse;
-    
+
     // Add diagram if available
     if (visualContent.diagram) {
       formatted += `\n\n### 📊 Visual Diagram\n\n`;
       formatted += `${visualContent.diagram.description}\n\n`;
       formatted += `\`\`\`mermaid\n${visualContent.diagram.mermaidCode}\n\`\`\`\n`;
     }
-    
+
     // Add code example if available
     if (visualContent.codeExample) {
       formatted += `\n\n### 💻 Code Example\n\n`;
       formatted += `${visualContent.codeExample.explanation}\n\n`;
       formatted += `\`\`\`${visualContent.codeExample.language}\n${visualContent.codeExample.code}\n\`\`\`\n`;
-      
+
       if (visualContent.codeExample.highlights.length > 0) {
         formatted += `\n**Key Points:**\n`;
-        visualContent.codeExample.highlights.forEach(h => {
+        visualContent.codeExample.highlights.forEach((h) => {
           formatted += `- Line ${h.line}: ${h.note}\n`;
         });
       }
     }
-    
+
     // Add comparison table if available
     if (visualContent.visualComparison) {
       formatted += `\n\n### ⚖️ Comparison\n\n`;
-      formatted += `| Feature | ${visualContent.visualComparison.items.map(i => i.name).join(' | ')} |\n`;
+      formatted += `| Feature | ${visualContent.visualComparison.items.map((i) => i.name).join(' | ')} |\n`;
       formatted += `|---------|${visualContent.visualComparison.items.map(() => '---').join('|')}|\n`;
-      
-      const maxRows = Math.max(...visualContent.visualComparison.items.map(i => 
-        Math.max(i.pros.length, i.cons.length)
-      ));
-      
-      visualContent.visualComparison.items.forEach(item => {
+
+      const maxRows = Math.max(
+        ...visualContent.visualComparison.items.map((i) => Math.max(i.pros.length, i.cons.length))
+      );
+
+      visualContent.visualComparison.items.forEach((item) => {
         formatted += `| **Best For** | ${item.bestFor} |\n`;
       });
     }
-    
+
     return formatted;
   }
 }

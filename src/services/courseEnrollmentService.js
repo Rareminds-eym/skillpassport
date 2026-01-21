@@ -25,11 +25,13 @@ export const courseEnrollmentService = {
       // Get course details with educator name - join directly to users since admin_users.id = users.id
       const { data: courseData, error: courseError } = await supabase
         .from('courses')
-        .select(`
+        .select(
+          `
           course_id, 
           title, 
           educator_id
-        `)
+        `
+        )
         .eq('course_id', courseId)
         .single();
 
@@ -44,9 +46,12 @@ export const courseEnrollmentService = {
           .select('firstName, lastName, email')
           .eq('id', courseData.educator_id)
           .single();
-        
+
         if (educatorData) {
-          educatorName = `${educatorData.firstName || ''} ${educatorData.lastName || ''}`.trim() || educatorData.email || 'Unknown Educator';
+          educatorName =
+            `${educatorData.firstName || ''} ${educatorData.lastName || ''}`.trim() ||
+            educatorData.email ||
+            'Unknown Educator';
         }
       }
 
@@ -68,25 +73,25 @@ export const courseEnrollmentService = {
       if (existingEnrollment) {
         console.log('Student already enrolled, returning existing enrollment');
         // Update last_accessed and ensure progress is at least 1 (so it shows in My Learning)
-        const updateData = { 
+        const updateData = {
           last_accessed: new Date().toISOString(),
-          status: existingEnrollment.status === 'completed' ? 'completed' : 'in_progress'
+          status: existingEnrollment.status === 'completed' ? 'completed' : 'in_progress',
         };
-        
+
         // If progress is 0, set it to 1 to indicate the student has started the course
         if (existingEnrollment.progress === 0) {
           updateData.progress = 1;
         }
-        
+
         await supabase
           .from('course_enrollments')
           .update(updateData)
           .eq('id', existingEnrollment.id);
-        
+
         return {
           success: true,
           message: 'Already enrolled',
-          data: { ...existingEnrollment, ...updateData }
+          data: { ...existingEnrollment, ...updateData },
         };
       }
 
@@ -95,14 +100,16 @@ export const courseEnrollmentService = {
       // Get total lessons count from course modules
       const { data: modulesData } = await supabase
         .from('course_modules')
-        .select(`
+        .select(
+          `
           module_id,
           lessons!fk_module (lesson_id)
-        `)
+        `
+        )
         .eq('course_id', courseId);
 
-      const totalLessons = modulesData?.reduce((acc, module) => 
-        acc + (module.lessons?.length || 0), 0) || 0;
+      const totalLessons =
+        modulesData?.reduce((acc, module) => acc + (module.lessons?.length || 0), 0) || 0;
 
       console.log('📚 Course has', totalLessons, 'total lessons');
 
@@ -118,11 +125,11 @@ export const courseEnrollmentService = {
           educator_id: courseData.educator_id,
           educator_name: educatorName,
           enrolled_at: new Date().toISOString(),
-          progress: 1,  // Start with 1% so it shows in My Learning
+          progress: 1, // Start with 1% so it shows in My Learning
           completed_lessons: [],
           total_lessons: totalLessons,
           status: 'active',
-          last_accessed: new Date().toISOString()
+          last_accessed: new Date().toISOString(),
         })
         .select()
         .single();
@@ -136,12 +143,12 @@ export const courseEnrollmentService = {
           .eq('student_id', studentData.id)
           .eq('course_id', courseId)
           .maybeSingle();
-        
+
         if (existingRecord) {
           return {
             success: true,
             message: 'Already enrolled',
-            data: existingRecord
+            data: existingRecord,
           };
         }
       }
@@ -151,7 +158,7 @@ export const courseEnrollmentService = {
       // Update course enrollment count (ignore if RPC doesn't exist)
       try {
         await supabase.rpc('increment_course_enrollment', {
-          course_id_param: courseId
+          course_id_param: courseId,
         });
       } catch (rpcError) {
         // Ignore - RPC may not exist
@@ -160,7 +167,7 @@ export const courseEnrollmentService = {
       return {
         success: true,
         message: 'Enrolled successfully',
-        data: enrollment
+        data: enrollment,
       };
     } catch (error) {
       console.error('Error enrolling student:', error);
@@ -168,11 +175,11 @@ export const courseEnrollmentService = {
         message: error.message,
         code: error.code,
         details: error.details,
-        hint: error.hint
+        hint: error.hint,
       });
       return {
         success: false,
-        error: error.message || 'Failed to enroll student'
+        error: error.message || 'Failed to enroll student',
       };
     }
   },
@@ -226,7 +233,7 @@ export const courseEnrollmentService = {
           progress: progress,
           status: status,
           last_accessed: new Date().toISOString(),
-          completed_at: progress >= 100 ? new Date().toISOString() : null
+          completed_at: progress >= 100 ? new Date().toISOString() : null,
         })
         .eq('id', enrollment.id)
         .select()
@@ -234,19 +241,24 @@ export const courseEnrollmentService = {
 
       if (updateError) throw updateError;
 
-      console.log('📊 Progress updated:', { progress, completedLessons: completedLessons.length, totalLessons, status });
+      console.log('📊 Progress updated:', {
+        progress,
+        completedLessons: completedLessons.length,
+        totalLessons,
+        status,
+      });
 
       // Embedding regeneration handled by database trigger on course_enrollments
 
       return {
         success: true,
-        data: updated
+        data: updated,
       };
     } catch (error) {
       console.error('Error updating progress:', error);
       return {
         success: false,
-        error: error.message
+        error: error.message,
       };
     }
   },
@@ -278,13 +290,13 @@ export const courseEnrollmentService = {
 
       return {
         success: true,
-        data: data || null
+        data: data || null,
       };
     } catch (error) {
       console.error('Error getting enrollment:', error);
       return {
         success: false,
-        error: error.message
+        error: error.message,
       };
     }
   },
@@ -314,14 +326,14 @@ export const courseEnrollmentService = {
 
       return {
         success: true,
-        data: data || []
+        data: data || [],
       };
     } catch (error) {
       console.error('Error getting student enrollments:', error);
       return {
         success: false,
         error: error.message,
-        data: []
+        data: [],
       };
     }
   },
@@ -343,14 +355,14 @@ export const courseEnrollmentService = {
 
       return {
         success: true,
-        data: data || []
+        data: data || [],
       };
     } catch (error) {
       console.error('Error getting course enrollments:', error);
       return {
         success: false,
         error: error.message,
-        data: []
+        data: [],
       };
     }
   },
@@ -373,28 +385,31 @@ export const courseEnrollmentService = {
 
       const stats = {
         total_enrollments: enrollments.length,
-        active_students: enrollments.filter(e => e.status === 'active').length,
-        completed_students: enrollments.filter(e => e.status === 'completed').length,
-        average_progress: enrollments.length > 0
-          ? Math.round(enrollments.reduce((acc, e) => acc + (e.progress || 0), 0) / enrollments.length)
-          : 0,
+        active_students: enrollments.filter((e) => e.status === 'active').length,
+        completed_students: enrollments.filter((e) => e.status === 'completed').length,
+        average_progress:
+          enrollments.length > 0
+            ? Math.round(
+                enrollments.reduce((acc, e) => acc + (e.progress || 0), 0) / enrollments.length
+              )
+            : 0,
         recent_enrollments: enrollments
           .sort((a, b) => new Date(b.enrolled_at) - new Date(a.enrolled_at))
-          .slice(0, 10)
+          .slice(0, 10),
       };
 
       return {
         success: true,
-        data: stats
+        data: stats,
       };
     } catch (error) {
       console.error('Error getting educator stats:', error);
       return {
         success: false,
-        error: error.message
+        error: error.message,
       };
     }
-  }
+  },
 };
 
 export default courseEnrollmentService;

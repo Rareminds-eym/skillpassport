@@ -1,6 +1,6 @@
 /**
  * Integration Tests: Payment Webhook Handling
- * 
+ *
  * Tests Razorpay webhook processing for subscription payments,
  * failures, refunds, and subscription lifecycle events.
  * Requirements: 11.1, 11.2, 11.3, 11.4, 11.5
@@ -22,11 +22,7 @@ describe('Payment Webhook Integration Tests', () => {
 
   describe('Webhook Signature Verification', () => {
     it('should verify valid webhook signature', async () => {
-      const verifyWebhookSignature = (
-        payload: string,
-        signature: string,
-        secret: string
-      ) => {
+      const verifyWebhookSignature = (payload: string, signature: string, secret: string) => {
         // Simplified signature verification
         const expectedSignature = `sha256=${Buffer.from(payload + secret).toString('base64')}`;
         return signature === expectedSignature;
@@ -58,7 +54,7 @@ describe('Payment Webhook Integration Tests', () => {
       const subscription = {
         id: 'sub-123',
         status: 'pending_payment',
-        razorpay_order_id: 'order_123'
+        razorpay_order_id: 'order_123',
       };
       subscriptions.set(subscription.id, subscription);
 
@@ -91,14 +87,14 @@ describe('Payment Webhook Integration Tests', () => {
           razorpay_order_id: order_id,
           amount: amount / 100, // Convert from paise
           status: 'captured',
-          captured_at: new Date().toISOString()
+          captured_at: new Date().toISOString(),
         };
         payments.set(payment.id, payment);
 
         webhookLogs.push({
           event: 'payment.captured',
           subscription_id: targetSub.id,
-          processed_at: new Date().toISOString()
+          processed_at: new Date().toISOString(),
         });
 
         return { subscription: targetSub, payment };
@@ -112,10 +108,10 @@ describe('Payment Webhook Integration Tests', () => {
               id: 'pay_razorpay_123',
               order_id: 'order_123',
               amount: 5310000, // ₹53,100 in paise
-              status: 'captured'
-            }
-          }
-        }
+              status: 'captured',
+            },
+          },
+        },
       };
 
       const result = await handlePaymentCaptured(webhookData);
@@ -131,7 +127,7 @@ describe('Payment Webhook Integration Tests', () => {
         id: 'sub-123',
         status: 'active',
         razorpay_order_id: 'order_123',
-        razorpay_payment_id: 'pay_razorpay_123'
+        razorpay_payment_id: 'pay_razorpay_123',
       };
       subscriptions.set(subscription.id, subscription);
 
@@ -155,10 +151,10 @@ describe('Payment Webhook Integration Tests', () => {
             entity: {
               id: 'pay_razorpay_123',
               payment_id: 'pay_razorpay_123',
-              order_id: 'order_123'
-            }
-          }
-        }
+              order_id: 'order_123',
+            },
+          },
+        },
       };
 
       const result = await handlePaymentCaptured(webhookData);
@@ -174,7 +170,7 @@ describe('Payment Webhook Integration Tests', () => {
         id: 'sub-123',
         status: 'pending_payment',
         razorpay_order_id: 'order_123',
-        payment_attempts: 0
+        payment_attempts: 0,
       };
       subscriptions.set(subscription.id, subscription);
 
@@ -197,7 +193,7 @@ describe('Payment Webhook Integration Tests', () => {
         targetSub.last_payment_error = {
           code: error_code,
           description: error_description,
-          occurred_at: new Date().toISOString()
+          occurred_at: new Date().toISOString(),
         };
 
         if (targetSub.payment_attempts >= 3) {
@@ -207,7 +203,7 @@ describe('Payment Webhook Integration Tests', () => {
         webhookLogs.push({
           event: 'payment.failed',
           subscription_id: targetSub.id,
-          attempt: targetSub.payment_attempts
+          attempt: targetSub.payment_attempts,
         });
 
         return { subscription: targetSub, shouldRetry: targetSub.payment_attempts < 3 };
@@ -220,10 +216,10 @@ describe('Payment Webhook Integration Tests', () => {
             entity: {
               order_id: 'order_123',
               error_code: 'BAD_REQUEST_ERROR',
-              error_description: 'Card declined'
-            }
-          }
-        }
+              error_description: 'Card declined',
+            },
+          },
+        },
       };
 
       const result = await handlePaymentFailed(webhookData);
@@ -238,7 +234,7 @@ describe('Payment Webhook Integration Tests', () => {
         id: 'sub-123',
         status: 'active',
         razorpay_order_id: 'order_123',
-        payment_attempts: 2
+        payment_attempts: 2,
       };
       subscriptions.set(subscription.id, subscription);
 
@@ -267,8 +263,8 @@ describe('Payment Webhook Integration Tests', () => {
       const webhookData = {
         event: 'payment.failed',
         payload: {
-          payment: { entity: { order_id: 'order_123' } }
-        }
+          payment: { entity: { order_id: 'order_123' } },
+        },
       };
 
       const result = await handlePaymentFailed(webhookData);
@@ -285,7 +281,7 @@ describe('Payment Webhook Integration Tests', () => {
         id: 'sub-123',
         status: 'active',
         razorpay_payment_id: 'pay_123',
-        final_amount: 53100
+        final_amount: 53100,
       };
       subscriptions.set(subscription.id, subscription);
 
@@ -294,7 +290,7 @@ describe('Payment Webhook Integration Tests', () => {
         subscription_id: 'sub-123',
         razorpay_payment_id: 'pay_123',
         amount: 53100,
-        status: 'captured'
+        status: 'captured',
       };
       payments.set(payment.id, payment);
 
@@ -340,10 +336,10 @@ describe('Payment Webhook Integration Tests', () => {
           refund: {
             entity: {
               payment_id: 'pay_123',
-              amount: 5310000 // Full refund
-            }
-          }
-        }
+              amount: 5310000, // Full refund
+            },
+          },
+        },
       };
 
       const result = await handleRefund(webhookData);
@@ -357,7 +353,7 @@ describe('Payment Webhook Integration Tests', () => {
       const subscription = {
         id: 'sub-123',
         status: 'active',
-        final_amount: 53100
+        final_amount: 53100,
       };
       subscriptions.set(subscription.id, subscription);
 
@@ -366,7 +362,7 @@ describe('Payment Webhook Integration Tests', () => {
         subscription_id: 'sub-123',
         razorpay_payment_id: 'pay_123',
         amount: 53100,
-        status: 'captured'
+        status: 'captured',
       };
       payments.set(payment.id, payment);
 
@@ -396,10 +392,10 @@ describe('Payment Webhook Integration Tests', () => {
           refund: {
             entity: {
               payment_id: 'pay_123',
-              amount: 1000000 // Partial refund (₹10,000)
-            }
-          }
-        }
+              amount: 1000000, // Partial refund (₹10,000)
+            },
+          },
+        },
       };
 
       const result = await handleRefund(webhookData);
@@ -416,7 +412,7 @@ describe('Payment Webhook Integration Tests', () => {
         id: 'sub-123',
         status: 'active',
         razorpay_subscription_id: 'sub_razorpay_123',
-        end_date: new Date().toISOString()
+        end_date: new Date().toISOString(),
       };
       subscriptions.set(subscription.id, subscription);
 
@@ -450,7 +446,7 @@ describe('Payment Webhook Integration Tests', () => {
           razorpay_payment_id: payment_id,
           amount: amount / 100,
           type: 'renewal',
-          status: 'captured'
+          status: 'captured',
         };
         payments.set(payment.id, payment);
 
@@ -465,10 +461,10 @@ describe('Payment Webhook Integration Tests', () => {
               id: 'sub_razorpay_123',
               subscription_id: 'sub_razorpay_123',
               payment_id: 'pay_renewal_123',
-              amount: 5310000
-            }
-          }
-        }
+              amount: 5310000,
+            },
+          },
+        },
       };
 
       const result = await handleSubscriptionCharged(webhookData);
@@ -481,7 +477,7 @@ describe('Payment Webhook Integration Tests', () => {
       const subscription = {
         id: 'sub-123',
         status: 'active',
-        razorpay_subscription_id: 'sub_razorpay_123'
+        razorpay_subscription_id: 'sub_razorpay_123',
       };
       subscriptions.set(subscription.id, subscription);
 
@@ -513,10 +509,10 @@ describe('Payment Webhook Integration Tests', () => {
           subscription: {
             entity: {
               id: 'sub_razorpay_123',
-              subscription_id: 'sub_razorpay_123'
-            }
-          }
-        }
+              subscription_id: 'sub_razorpay_123',
+            },
+          },
+        },
       };
 
       const result = await handleSubscriptionCancelled(webhookData);
@@ -529,7 +525,7 @@ describe('Payment Webhook Integration Tests', () => {
       const subscription = {
         id: 'sub-123',
         status: 'active',
-        razorpay_subscription_id: 'sub_razorpay_123'
+        razorpay_subscription_id: 'sub_razorpay_123',
       };
       subscriptions.set(subscription.id, subscription);
 
@@ -546,7 +542,7 @@ describe('Payment Webhook Integration Tests', () => {
 
         targetSub.status = 'grace_period';
         targetSub.grace_period_start = new Date().toISOString();
-        
+
         const graceEnd = new Date();
         graceEnd.setDate(graceEnd.getDate() + 7);
         targetSub.grace_period_end = graceEnd.toISOString();
@@ -558,9 +554,9 @@ describe('Payment Webhook Integration Tests', () => {
         event: 'subscription.pending',
         payload: {
           subscription: {
-            entity: { subscription_id: 'sub_razorpay_123' }
-          }
-        }
+            entity: { subscription_id: 'sub_razorpay_123' },
+          },
+        },
       };
 
       const result = await handleSubscriptionPending(webhookData);
@@ -578,7 +574,7 @@ describe('Payment Webhook Integration Tests', () => {
           'payment.failed',
           'refund.created',
           'subscription.charged',
-          'subscription.cancelled'
+          'subscription.cancelled',
         ];
 
         if (!knownEvents.includes(webhookData.event)) {
@@ -586,7 +582,7 @@ describe('Payment Webhook Integration Tests', () => {
             event: webhookData.event,
             status: 'ignored',
             reason: 'Unknown event type',
-            received_at: new Date().toISOString()
+            received_at: new Date().toISOString(),
           });
           return { processed: false, reason: 'Unknown event type' };
         }
@@ -617,7 +613,7 @@ describe('Payment Webhook Integration Tests', () => {
             event: 'payment.captured',
             status: 'error',
             error: 'Subscription not found',
-            order_id
+            order_id,
           });
           throw new Error(`Subscription not found for order: ${order_id}`);
         }
@@ -628,8 +624,8 @@ describe('Payment Webhook Integration Tests', () => {
       const webhookData = {
         event: 'payment.captured',
         payload: {
-          payment: { entity: { order_id: 'nonexistent_order' } }
-        }
+          payment: { entity: { order_id: 'nonexistent_order' } },
+        },
       };
 
       await expect(handlePaymentCaptured(webhookData)).rejects.toThrow(
@@ -656,7 +652,7 @@ describe('Payment Webhook Integration Tests', () => {
               throw error;
             }
             // Wait before retry (simulated)
-            await new Promise(resolve => setTimeout(resolve, 10));
+            await new Promise((resolve) => setTimeout(resolve, 10));
           }
         }
       };
@@ -676,7 +672,7 @@ describe('Payment Webhook Integration Tests', () => {
           event,
           status,
           details,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         });
       };
 
@@ -694,7 +690,7 @@ describe('Payment Webhook Integration Tests', () => {
         const startTime = Date.now();
 
         // Simulate processing
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await new Promise((resolve) => setTimeout(resolve, 50));
 
         const endTime = Date.now();
         const processingTime = endTime - startTime;
@@ -702,7 +698,7 @@ describe('Payment Webhook Integration Tests', () => {
         webhookLogs.push({
           event: webhookData.event,
           processing_time_ms: processingTime,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         });
 
         return { processingTime };

@@ -19,14 +19,14 @@ const EmbeddedAssessment = ({ onClose }) => {
     // In production, this would be the deployed URL of RM_Assessment
     // For development, it could be localhost:5174 or similar
     const baseUrl = import.meta.env.VITE_ASSESSMENT_URL || 'http://localhost:5174';
-    
+
     // Pass user data as query parameters to pre-fill information
     const params = new URLSearchParams({
       userId: user?.id || '',
       email: user?.email || '',
       name: user?.user_metadata?.full_name || user?.email?.split('@')[0] || '',
       source: 'skillpassport',
-      embedded: 'true'
+      embedded: 'true',
     });
 
     setAssessmentUrl(`${baseUrl}?${params.toString()}`);
@@ -40,10 +40,9 @@ const EmbeddedAssessment = ({ onClose }) => {
   useEffect(() => {
     const handleMessage = (event) => {
       // Verify origin for security
-      const allowedOrigins = [
-        'http://localhost:5174',
-        import.meta.env.VITE_ASSESSMENT_URL
-      ].filter(Boolean);
+      const allowedOrigins = ['http://localhost:5174', import.meta.env.VITE_ASSESSMENT_URL].filter(
+        Boolean
+      );
 
       if (!allowedOrigins.includes(event.origin)) {
         return;
@@ -59,11 +58,11 @@ const EmbeddedAssessment = ({ onClose }) => {
           if (onClose) {
             onClose(data);
           } else {
-            navigate('/student/dashboard', { 
-              state: { 
+            navigate('/student/dashboard', {
+              state: {
                 assessmentCompleted: true,
-                results: data 
-              } 
+                results: data,
+              },
             });
           }
           break;
@@ -95,7 +94,11 @@ const EmbeddedAssessment = ({ onClose }) => {
   }, [navigate, onClose]);
 
   const handleClose = () => {
-    if (window.confirm('Are you sure you want to exit the assessment? Your progress may not be saved.')) {
+    if (
+      window.confirm(
+        'Are you sure you want to exit the assessment? Your progress may not be saved.'
+      )
+    ) {
       if (onClose) {
         onClose();
       } else {
@@ -110,9 +113,9 @@ const EmbeddedAssessment = ({ onClose }) => {
       <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 shadow-lg z-10 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center">
-            <img 
-              src="/assets/HomePage/RMLogo.webp" 
-              alt="RareMinds" 
+            <img
+              src="/assets/HomePage/RMLogo.webp"
+              alt="RareMinds"
               className="w-6 h-6 object-contain"
             />
           </div>

@@ -149,7 +149,7 @@ export interface AIResponse {
   error?: string;
 }
 
-export type Intent = 
+export type Intent =
   | 'find-jobs'
   | 'skill-gap'
   | 'interview-prep'

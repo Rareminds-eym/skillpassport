@@ -9,13 +9,13 @@ export const parseResumeWithAI = async (resumeText) => {
     try {
       const result = await parseWithClaude(resumeText);
 
-      const hasData = result && (
-        result.education?.length > 0 ||
-        result.experience?.length > 0 ||
-        result.technicalSkills?.length > 0 ||
-        result.softSkills?.length > 0 ||
-        result.projects?.length > 0
-      );
+      const hasData =
+        result &&
+        (result.education?.length > 0 ||
+          result.experience?.length > 0 ||
+          result.technicalSkills?.length > 0 ||
+          result.softSkills?.length > 0 ||
+          result.projects?.length > 0);
 
       if (!hasData) {
         console.log('⚠️ AI returned empty data, using fallback parser');
@@ -41,10 +41,13 @@ export const parseResumeWithAI = async (resumeText) => {
  */
 const parseWithClaude = async (resumeText) => {
   try {
-    const API_URL = import.meta.env.VITE_CAREER_API_URL || 'https://career-api.rareminds.workers.dev';
+    const API_URL =
+      import.meta.env.VITE_CAREER_API_URL || 'https://career-api.rareminds.workers.dev';
 
     // Get current session for auth token
-    const { data: { session } } = await import('../lib/supabaseClient').then(m => m.supabase.auth.getSession());
+    const {
+      data: { session },
+    } = await import('../lib/supabaseClient').then((m) => m.supabase.auth.getSession());
     const token = session?.access_token;
 
     if (!token) {
@@ -55,9 +58,9 @@ const parseWithClaude = async (resumeText) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ resumeText })
+      body: JSON.stringify({ resumeText }),
     });
 
     if (!response.ok) {
@@ -73,7 +76,7 @@ const parseWithClaude = async (resumeText) => {
 
     console.log('✅ Resume parsing successful via backend');
 
-    let parsedData = result.data;
+    const parsedData = result.data;
 
     if (parsedData.name && parsedData.name.length > 100) {
       parsedData.name = extractNameFromText(parsedData.name);
@@ -112,7 +115,7 @@ const addMetadata = (data) => {
   const addIds = (arr, prefix) => {
     return (arr || []).map((item, idx) => ({
       ...item,
-      id: item.id || `${prefix}_${timestamp}_${idx + 1}`
+      id: item.id || `${prefix}_${timestamp}_${idx + 1}`,
     }));
   };
 
@@ -125,7 +128,7 @@ const addMetadata = (data) => {
     softSkills: addIds(data.softSkills, 'soft'),
     certificates: addIds(data.certificates, 'cert'),
     training: addIds(data.training, 'train'),
-    imported_at: new Date().toISOString()
+    imported_at: new Date().toISOString(),
   };
 };
 
@@ -147,7 +150,7 @@ const parseFallback = (resumeText) => {
     technicalSkills: [],
     softSkills: [],
     certificates: [],
-    imported_at: new Date().toISOString()
+    imported_at: new Date().toISOString(),
   };
 
   // Extract email
@@ -159,7 +162,10 @@ const parseFallback = (resumeText) => {
   result.contact_number = phoneMatch?.[0]?.replace(/\s+/g, ' ').trim() || '';
 
   // Extract name from first few lines
-  const lines = resumeText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  const lines = resumeText
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
   for (const line of lines.slice(0, 5)) {
     if (line.length > 2 && line.length < 50 && !line.includes('@') && !/\d{10}/.test(line)) {
       const words = line.split(/\s+/);
@@ -186,29 +192,50 @@ export const mergeResumeData = (existingData, parsedData) => {
   const merged = { ...existingData };
 
   // Merge simple string fields (only if existing is empty)
-  const stringFields = ['name', 'email', 'contact_number', 'college_school_name', 'university', 'branch_field'];
-  stringFields.forEach(field => {
+  const stringFields = [
+    'name',
+    'email',
+    'contact_number',
+    'college_school_name',
+    'university',
+    'branch_field',
+  ];
+  stringFields.forEach((field) => {
     if (parsedData[field] && (!existingData[field] || existingData[field].trim() === '')) {
       merged[field] = parsedData[field];
     }
   });
 
   // Merge array fields (append new items, avoid duplicates)
-  const arrayFields = ['education', 'experience', 'projects', 'technicalSkills', 'softSkills', 'certificates', 'training'];
-  arrayFields.forEach(field => {
+  const arrayFields = [
+    'education',
+    'experience',
+    'projects',
+    'technicalSkills',
+    'softSkills',
+    'certificates',
+    'training',
+  ];
+  arrayFields.forEach((field) => {
     const existing = existingData[field] || [];
     const parsed = parsedData[field] || [];
 
     if (parsed.length > 0) {
       // Simple deduplication by checking if item already exists
-      const newItems = parsed.filter(newItem => {
-        return !existing.some(existingItem => {
+      const newItems = parsed.filter((newItem) => {
+        return !existing.some((existingItem) => {
           // Check by title/name/degree depending on field type
           if (field === 'education') {
-            return existingItem.degree === newItem.degree && existingItem.university === newItem.university;
+            return (
+              existingItem.degree === newItem.degree &&
+              existingItem.university === newItem.university
+            );
           }
           if (field === 'experience') {
-            return existingItem.organization === newItem.organization && existingItem.role === newItem.role;
+            return (
+              existingItem.organization === newItem.organization &&
+              existingItem.role === newItem.role
+            );
           }
           if (field === 'projects') {
             return existingItem.title === newItem.title;

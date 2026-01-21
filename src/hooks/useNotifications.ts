@@ -1,44 +1,44 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useRef, useState } from "react";
-import { supabase } from "../lib/supabaseClient";
+import { useEffect, useRef, useState } from 'react';
+import { supabase } from '../lib/supabaseClient';
 
 export type NotificationType =
   // Opportunity notifications
-  | "new_opportunity"
-  | "opportunity_closed"
-  | "offer_accepted"
-  | "offer_declined"
-  | "offer_created"
-  | "offer_withdrawn"
-  | "offer_expiring"
+  | 'new_opportunity'
+  | 'opportunity_closed'
+  | 'offer_accepted'
+  | 'offer_declined'
+  | 'offer_created'
+  | 'offer_withdrawn'
+  | 'offer_expiring'
   // Interview notifications
-  | "interview_scheduled"
-  | "interview_rescheduled"
-  | "interview_completed"
-  | "interview_reminder"
+  | 'interview_scheduled'
+  | 'interview_rescheduled'
+  | 'interview_completed'
+  | 'interview_reminder'
   // Pipeline notifications
-  | "pipeline_stage_changed"
-  | "candidate_shortlisted"
-  | "candidate_rejected"
-  | "new_application"
+  | 'pipeline_stage_changed'
+  | 'candidate_shortlisted'
+  | 'candidate_rejected'
+  | 'new_application'
   // Educator notifications
-  | "student_verification_required"
-  | "assignment_submitted"
-  | "class_activity_pending"
-  | "student_achievement"
-  | "new_student_enrolled"
-  | "attendance_reminder"
+  | 'student_verification_required'
+  | 'assignment_submitted'
+  | 'class_activity_pending'
+  | 'student_achievement'
+  | 'new_student_enrolled'
+  | 'attendance_reminder'
   // Course notifications
-  | "course_added"
-  | "course_updated"
+  | 'course_added'
+  | 'course_updated'
   // Message notifications
-  | "new_message"
-  | "message_reply"
+  | 'new_message'
+  | 'message_reply'
   // Admin notifications
-  | "approval_required"
-  | "system_alert"
+  | 'approval_required'
+  | 'system_alert'
   // General
-  | "system_maintenance"
+  | 'system_maintenance'
   | string;
 
 export type Notification = {
@@ -63,35 +63,35 @@ async function resolveUserId(identifier: string): Promise<string | null> {
 
   // Try educators first
   const { data: educatorData } = await supabase
-    .from("school_educators")
-    .select("id")
-    .ilike("email", identifier)
+    .from('school_educators')
+    .select('id')
+    .ilike('email', identifier)
     .maybeSingle();
 
   if (educatorData?.id) return educatorData.id;
 
   // Try students
   const { data: studentData } = await supabase
-    .from("students")
-    .select("id")
-    .ilike("email", identifier)
+    .from('students')
+    .select('id')
+    .ilike('email', identifier)
     .maybeSingle();
 
   if (studentData?.id) return studentData.id;
 
   // Try recruiters
   const { data: recruiter } = await supabase
-    .from("recruiters")
-    .select("id")
-    .eq("email", identifier)
+    .from('recruiters')
+    .select('id')
+    .eq('email', identifier)
     .maybeSingle();
   if (recruiter?.id) return recruiter.id;
 
   // Try users (admins)
   const { data: userData } = await supabase
-    .from("users")
-    .select("id")
-    .ilike("email", identifier)
+    .from('users')
+    .select('id')
+    .ilike('email', identifier)
     .maybeSingle();
 
   return userData?.id ?? null;
@@ -111,16 +111,14 @@ type UseNotificationsReturn = {
   refresh: () => Promise<void>;
 };
 
-export function useNotifications(
-  userIdentifier?: string | null
-): UseNotificationsReturn {
+export function useNotifications(userIdentifier?: string | null): UseNotificationsReturn {
   const PAGE_SIZE = 20;
   const [items, setItems] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
-  const [connectionStatus, setConnectionStatus] = useState("disconnected");
+  const [connectionStatus, setConnectionStatus] = useState('disconnected');
 
   const lastCursorRef = useRef<string | null>(null);
   const channelRef = useRef<any | null>(null);
@@ -151,14 +149,14 @@ export function useNotifications(
       setError(null);
 
       let query = supabase
-        .from("notifications")
-        .select("*")
-        .eq("recipient_id", userId)
-        .order("created_at", { ascending: false })
+        .from('notifications')
+        .select('*')
+        .eq('recipient_id', userId)
+        .order('created_at', { ascending: false })
         .limit(PAGE_SIZE);
 
       if (!reset && lastCursorRef.current) {
-        query = query.lt("created_at", lastCursorRef.current);
+        query = query.lt('created_at', lastCursorRef.current);
       }
 
       const { data, error } = await query;
@@ -174,7 +172,7 @@ export function useNotifications(
       }
     } catch (err: any) {
       console.error('❌ [useNotifications] Error:', err);
-      setError(err.message || "Failed to fetch notifications");
+      setError(err.message || 'Failed to fetch notifications');
     } finally {
       setLoading(false);
     }
@@ -202,23 +200,21 @@ export function useNotifications(
       const channel = supabase
         .channel(`notifications-${userId}`)
         .on(
-          "postgres_changes",
+          'postgres_changes',
           {
-            event: "*",
-            schema: "public",
-            table: "notifications",
+            event: '*',
+            schema: 'public',
+            table: 'notifications',
             filter: `recipient_id=eq.${userId}`,
           },
           (payload) => {
             const row = payload.new as Notification;
 
-            if (payload.eventType === "INSERT") {
+            if (payload.eventType === 'INSERT') {
               setItems((prev) => [row, ...prev]);
-            } else if (payload.eventType === "UPDATE") {
-              setItems((prev) =>
-                prev.map((n) => (n.id === row.id ? row : n))
-              );
-            } else if (payload.eventType === "DELETE") {
+            } else if (payload.eventType === 'UPDATE') {
+              setItems((prev) => prev.map((n) => (n.id === row.id ? row : n)));
+            } else if (payload.eventType === 'DELETE') {
               const oldRow = payload.old as Notification;
               setItems((prev) => prev.filter((n) => n.id !== oldRow.id));
             }
@@ -227,14 +223,14 @@ export function useNotifications(
         .subscribe((status) => {
           setConnectionStatus(status);
 
-          if (status === "CLOSED" || status === "CHANNEL_ERROR") {
+          if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
             if (isSubscribed && retryCount < MAX_RETRIES) {
               retryCount++;
               reconnectTimeoutRef.current = setTimeout(() => {
                 setupSubscription();
               }, 2000 * retryCount);
             }
-          } else if (status === "SUBSCRIBED") {
+          } else if (status === 'SUBSCRIBED') {
             retryCount = 0;
           }
         });
@@ -254,7 +250,7 @@ export function useNotifications(
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }
-      setConnectionStatus("disconnected");
+      setConnectionStatus('disconnected');
     };
   }, [userId]);
 
@@ -265,20 +261,17 @@ export function useNotifications(
 
   // ✅ Actions
   const markRead = async (id: string) => {
-    await supabase.from("notifications").update({ read: true }).eq("id", id);
+    await supabase.from('notifications').update({ read: true }).eq('id', id);
     setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
   };
 
   const markAllRead = async () => {
-    await supabase
-      .from("notifications")
-      .update({ read: true })
-      .eq("recipient_id", userId);
+    await supabase.from('notifications').update({ read: true }).eq('recipient_id', userId);
     setItems((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 
   const remove = async (id: string) => {
-    await supabase.from("notifications").delete().eq("id", id);
+    await supabase.from('notifications').delete().eq('id', id);
     setItems((prev) => prev.filter((n) => n.id !== id));
   };
 

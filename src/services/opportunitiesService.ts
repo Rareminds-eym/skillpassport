@@ -71,7 +71,9 @@ class OpportunitiesService {
 
       // Apply filters
       if (filters?.search) {
-        query = query.or(`title.ilike.%${filters.search}%,company_name.ilike.%${filters.search}%,department.ilike.%${filters.search}%,job_title.ilike.%${filters.search}%`);
+        query = query.or(
+          `title.ilike.%${filters.search}%,company_name.ilike.%${filters.search}%,department.ilike.%${filters.search}%,job_title.ilike.%${filters.search}%`
+        );
       }
 
       if (filters?.status) {
@@ -171,10 +173,7 @@ class OpportunitiesService {
 
   async deleteOpportunity(id: number): Promise<void> {
     try {
-      const { error } = await supabase
-        .from('opportunities')
-        .delete()
-        .eq('id', id);
+      const { error } = await supabase.from('opportunities').delete().eq('id', id);
 
       if (error) {
         console.error('Error deleting opportunity:', error);
@@ -201,7 +200,7 @@ class OpportunitiesService {
       }
 
       const currentCount = currentData?.views_count || 0;
-      
+
       // Then update with incremented count
       const { error } = await supabase
         .from('opportunities')
@@ -223,34 +222,37 @@ class OpportunitiesService {
     if (opportunity.stipend_or_salary) {
       return opportunity.stipend_or_salary;
     }
-    
+
     if (opportunity.salary_range_min && opportunity.salary_range_max) {
       const minLakhs = (opportunity.salary_range_min / 100000).toFixed(1);
       const maxLakhs = (opportunity.salary_range_max / 100000).toFixed(1);
       return `₹${minLakhs}L - ₹${maxLakhs}L`;
     }
-    
+
     if (opportunity.salary_range_min) {
       const lakhs = (opportunity.salary_range_min / 100000).toFixed(1);
       return `₹${lakhs}L+`;
     }
-    
+
     return 'Not specified';
   }
 
   // Helper method to format skills
   formatSkills(skills: string[] | string | null | undefined): string[] {
     if (!skills) return [];
-    
+
     if (typeof skills === 'string') {
       // Handle comma-separated string or single skill
-      return skills.split(',').map(skill => skill.trim()).filter(skill => skill.length > 0);
+      return skills
+        .split(',')
+        .map((skill) => skill.trim())
+        .filter((skill) => skill.length > 0);
     }
-    
+
     if (Array.isArray(skills)) {
-      return skills.filter(skill => skill && skill.trim().length > 0);
+      return skills.filter((skill) => skill && skill.trim().length > 0);
     }
-    
+
     return [];
   }
 
@@ -291,7 +293,9 @@ class OpportunitiesService {
       const { data, error } = await supabase
         .from('opportunities')
         .select('*')
-        .or(`title.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,department.ilike.%${searchTerm}%`)
+        .or(
+          `title.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,department.ilike.%${searchTerm}%`
+        )
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -327,16 +331,14 @@ class OpportunitiesService {
         searchTerm = '',
         sortBy = 'newest',
         filters = {},
-        activeOnly = true
+        activeOnly = true,
       } = options;
 
       // Calculate offset
       const offset = (page - 1) * pageSize;
 
       // Build query
-      let query = supabase
-        .from('opportunities')
-        .select('*', { count: 'exact' });
+      let query = supabase.from('opportunities').select('*', { count: 'exact' });
 
       // Apply active filter
       if (activeOnly) {
@@ -345,7 +347,9 @@ class OpportunitiesService {
 
       // Apply search term
       if (searchTerm && searchTerm.trim()) {
-        query = query.or(`title.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,department.ilike.%${searchTerm}%`);
+        query = query.or(
+          `title.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,department.ilike.%${searchTerm}%`
+        );
       }
 
       // Apply filters
@@ -396,7 +400,7 @@ class OpportunitiesService {
 
       return {
         data: data || [],
-        count: count || 0
+        count: count || 0,
       };
     } catch (error) {
       console.error('Error in getPaginatedOpportunities:', error);

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { Sparkles, Save, Send, AlertTriangle, Building2, Filter } from "lucide-react";
-import { supabase } from "../../../../lib/supabaseClient";
+import React, { useState, useEffect } from 'react';
+import { Sparkles, Save, Send, AlertTriangle, Building2, Filter } from 'lucide-react';
+import { supabase } from '../../../../lib/supabaseClient';
 
 interface Department {
   id: string;
@@ -50,31 +50,38 @@ interface FacultyTimetableProps {
 
 const FacultyTimetable: React.FC<FacultyTimetableProps> = ({ collegeId }) => {
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [selectedDepartment, setSelectedDepartment] = useState<string>("");
+  const [selectedDepartment, setSelectedDepartment] = useState<string>('');
   const [faculty, setFaculty] = useState<Faculty[]>([]);
   const [filteredFaculty, setFilteredFaculty] = useState<Faculty[]>([]);
   const [classes, setClasses] = useState<CollegeClass[]>([]);
   const [filteredClasses, setFilteredClasses] = useState<CollegeClass[]>([]);
-  const [timetableId, setTimetableId] = useState<string>("");
+  const [timetableId, setTimetableId] = useState<string>('');
   const [allSlots, setAllSlots] = useState<TimetableSlot[]>([]);
   const [draggedSlot, setDraggedSlot] = useState<TimetableSlot | null>(null);
   const [loading, setLoading] = useState(false);
-  const [publishStatus, setPublishStatus] = useState<"draft" | "published">("draft");
+  const [publishStatus, setPublishStatus] = useState<'draft' | 'published'>('draft');
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedCell, setSelectedCell] = useState<{ day: number; period: number } | null>(null);
   const [newSlot, setNewSlot] = useState({
-    faculty_id: "",
-    class_id: "",
-    subject_name: "",
-    room_number: "",
+    faculty_id: '',
+    class_id: '',
+    subject_name: '',
+    room_number: '',
   });
 
-  const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const periods = Array.from({ length: 10 }, (_, i) => i + 1);
   const timeSlots = [
-    "09:00-10:00", "10:00-11:00", "11:00-12:00", "12:00-13:00",
-    "13:00-14:00", "14:00-15:00", "15:00-16:00", "16:00-17:00",
-    "17:00-18:00", "18:00-19:00"
+    '09:00-10:00',
+    '10:00-11:00',
+    '11:00-12:00',
+    '12:00-13:00',
+    '13:00-14:00',
+    '14:00-15:00',
+    '15:00-16:00',
+    '16:00-17:00',
+    '17:00-18:00',
+    '18:00-19:00',
   ];
 
   useEffect(() => {
@@ -96,15 +103,15 @@ const FacultyTimetable: React.FC<FacultyTimetableProps> = ({ collegeId }) => {
   useEffect(() => {
     if (selectedDepartment) {
       // Filter faculty by department
-      const deptFaculty = faculty.filter(f => f.department_id === selectedDepartment);
+      const deptFaculty = faculty.filter((f) => f.department_id === selectedDepartment);
       setFilteredFaculty(deptFaculty);
-      
+
       // Filter classes by department
-      const deptClasses = classes.filter(c => c.department_id === selectedDepartment);
+      const deptClasses = classes.filter((c) => c.department_id === selectedDepartment);
       setFilteredClasses(deptClasses);
-      
+
       // Reset selections when department changes
-      setNewSlot(prev => ({ ...prev, faculty_id: "", class_id: "" }));
+      setNewSlot((prev) => ({ ...prev, faculty_id: '', class_id: '' }));
     } else {
       setFilteredFaculty(faculty);
       setFilteredClasses(classes);
@@ -115,12 +122,12 @@ const FacultyTimetable: React.FC<FacultyTimetableProps> = ({ collegeId }) => {
     if (!collegeId) return;
 
     const { data } = await supabase
-      .from("departments")
-      .select("id, name, code")
-      .eq("college_id", collegeId)
-      .eq("status", "active")
-      .order("name");
-    
+      .from('departments')
+      .select('id, name, code')
+      .eq('college_id', collegeId)
+      .eq('status', 'active')
+      .order('name');
+
     if (data) setDepartments(data);
   };
 
@@ -129,28 +136,28 @@ const FacultyTimetable: React.FC<FacultyTimetableProps> = ({ collegeId }) => {
 
     // Load faculty with their department assignments
     const { data: lecturers } = await supabase
-      .from("college_lecturers")
-      .select("id, employeeId, first_name, last_name")
-      .eq("collegeId", collegeId)
-      .eq("accountStatus", "active")
-      .order("first_name");
-    
+      .from('college_lecturers')
+      .select('id, employeeId, first_name, last_name')
+      .eq('collegeId', collegeId)
+      .eq('accountStatus', 'active')
+      .order('first_name');
+
     if (lecturers) {
       // Get department assignments for each faculty
       const { data: assignments } = await supabase
-        .from("department_faculty_assignments")
-        .select("lecturer_id, department_id, is_hod")
-        .eq("is_active", true);
-      
-      const facultyWithDept = lecturers.map(f => {
-        const assignment = assignments?.find(a => a.lecturer_id === f.id);
+        .from('department_faculty_assignments')
+        .select('lecturer_id, department_id, is_hod')
+        .eq('is_active', true);
+
+      const facultyWithDept = lecturers.map((f) => {
+        const assignment = assignments?.find((a) => a.lecturer_id === f.id);
         return {
           ...f,
           department_id: assignment?.department_id || null,
-          is_hod: assignment?.is_hod || false
+          is_hod: assignment?.is_hod || false,
         };
       });
-      
+
       setFaculty(facultyWithDept);
       setFilteredFaculty(facultyWithDept);
     }
@@ -160,13 +167,13 @@ const FacultyTimetable: React.FC<FacultyTimetableProps> = ({ collegeId }) => {
     if (!collegeId) return;
 
     const { data } = await supabase
-      .from("college_classes")
-      .select("id, name, grade, section, department_id")
-      .eq("college_id", collegeId)
-      .eq("status", "active")
-      .order("grade")
-      .order("section");
-    
+      .from('college_classes')
+      .select('id, name, grade, section, department_id')
+      .eq('college_id', collegeId)
+      .eq('status', 'active')
+      .order('grade')
+      .order('section');
+
     if (data) {
       setClasses(data);
       setFilteredClasses(data);
@@ -176,10 +183,10 @@ const FacultyTimetable: React.FC<FacultyTimetableProps> = ({ collegeId }) => {
   const loadOrCreateTimetable = async () => {
     const currentYear = new Date().getFullYear();
     const { data: existing } = await supabase
-      .from("college_timetables")
-      .select("id, status")
-      .eq("academic_year", `${currentYear}-${currentYear + 1}`)
-      .eq("college_id", collegeId)
+      .from('college_timetables')
+      .select('id, status')
+      .eq('academic_year', `${currentYear}-${currentYear + 1}`)
+      .eq('college_id', collegeId)
       .single();
 
     if (existing) {
@@ -187,102 +194,102 @@ const FacultyTimetable: React.FC<FacultyTimetableProps> = ({ collegeId }) => {
       setPublishStatus(existing.status);
     } else {
       const { data: newTimetable } = await supabase
-        .from("college_timetables")
+        .from('college_timetables')
         .insert({
           college_id: collegeId,
           academic_year: `${currentYear}-${currentYear + 1}`,
-          term: "Term 1",
+          term: 'Term 1',
           start_date: `${currentYear}-06-01`,
           end_date: `${currentYear}-12-31`,
-          status: "draft",
+          status: 'draft',
         })
-        .select("id")
+        .select('id')
         .single();
-      
+
       if (newTimetable) setTimetableId(newTimetable.id);
     }
   };
 
   const loadAllSlots = async () => {
     const { data } = await supabase
-      .from("college_timetable_slots")
-      .select("*")
-      .eq("timetable_id", timetableId)
-      .order("day_of_week")
-      .order("period_number");
-    
+      .from('college_timetable_slots')
+      .select('*')
+      .eq('timetable_id', timetableId)
+      .order('day_of_week')
+      .order('period_number');
+
     if (data) {
-      const slotsWithNames = data.map(slot => ({
+      const slotsWithNames = data.map((slot) => ({
         ...slot,
         faculty_name: getFacultyName(slot.educator_id),
-        class_name: getClassName(slot.class_id)
+        class_name: getClassName(slot.class_id),
       }));
       setAllSlots(slotsWithNames);
     }
   };
 
   const getFacultyName = (facultyId: string) => {
-    const f = faculty.find(f => f.id === facultyId);
-    return f ? `${f.first_name || f.metadata?.first_name || ''} ${f.last_name || f.metadata?.last_name || ''}`.trim() : '';
+    const f = faculty.find((f) => f.id === facultyId);
+    return f
+      ? `${f.first_name || f.metadata?.first_name || ''} ${f.last_name || f.metadata?.last_name || ''}`.trim()
+      : '';
   };
 
   const getClassName = (classId: string) => {
-    const c = classes.find(c => c.id === classId);
+    const c = classes.find((c) => c.id === classId);
     return c ? c.name : '';
   };
 
   const getSlotForCell = (day: number, period: number) => {
-    return allSlots.find(s => s.day_of_week === day && s.period_number === period);
+    return allSlots.find((s) => s.day_of_week === day && s.period_number === period);
   };
 
   const getFacultyLoad = (facultyId: string) => {
-    return allSlots.filter(s => s.educator_id === facultyId).length;
+    return allSlots.filter((s) => s.educator_id === facultyId).length;
   };
 
   const handleCellClick = (day: number, period: number) => {
     const existingSlot = getSlotForCell(day, period);
     if (existingSlot) return;
-    
+
     if (!newSlot.faculty_id || !newSlot.class_id) {
-      alert("Please select a Faculty and Class from the dropdowns above first.");
+      alert('Please select a Faculty and Class from the dropdowns above first.');
       return;
     }
-    
+
     setSelectedCell({ day, period });
     setNewSlot({
       ...newSlot,
-      subject_name: "",
-      room_number: "",
+      subject_name: '',
+      room_number: '',
     });
     setShowAddModal(true);
   };
 
   const handleAddSlot = async () => {
     if (!selectedCell || !newSlot.faculty_id || !newSlot.class_id || !newSlot.subject_name) {
-      alert("Please fill all required fields");
+      alert('Please fill all required fields');
       return;
     }
 
     setLoading(true);
     try {
-      const [startTime, endTime] = timeSlots[selectedCell.period - 1].split("-");
-      
-      const { error } = await supabase
-        .from("college_timetable_slots")
-        .insert({
-          timetable_id: timetableId,
-          educator_id: newSlot.faculty_id,
-          class_id: newSlot.class_id,
-          day_of_week: selectedCell.day,
-          period_number: selectedCell.period,
-          start_time: startTime,
-          end_time: endTime,
-          subject_name: newSlot.subject_name,
-          room_number: newSlot.room_number || `R${selectedCell.period}`,
-        });
+      const [startTime, endTime] = timeSlots[selectedCell.period - 1].split('-');
+
+      const { error } = await supabase.from('college_timetable_slots').insert({
+        timetable_id: timetableId,
+        educator_id: newSlot.faculty_id,
+        class_id: newSlot.class_id,
+        day_of_week: selectedCell.day,
+        period_number: selectedCell.period,
+        start_time: startTime,
+        end_time: endTime,
+        subject_name: newSlot.subject_name,
+        room_number: newSlot.room_number || `R${selectedCell.period}`,
+      });
 
       if (error) throw error;
-      
+
       await loadAllSlots();
       setShowAddModal(false);
       setSelectedCell(null);
@@ -294,17 +301,14 @@ const FacultyTimetable: React.FC<FacultyTimetableProps> = ({ collegeId }) => {
   };
 
   const handleDeleteSlot = async (slotId: string) => {
-    if (!confirm("Delete this slot?")) return;
-    
+    if (!confirm('Delete this slot?')) return;
+
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from("college_timetable_slots")
-        .delete()
-        .eq("id", slotId);
+      const { error } = await supabase.from('college_timetable_slots').delete().eq('id', slotId);
 
       if (error) throw error;
-      
+
       await loadAllSlots();
     } catch (error: any) {
       alert(error.message);
@@ -314,19 +318,19 @@ const FacultyTimetable: React.FC<FacultyTimetableProps> = ({ collegeId }) => {
   };
 
   const publishTimetable = async () => {
-    if (!confirm("Publish this timetable? It will be visible to all faculty.")) return;
-    
+    if (!confirm('Publish this timetable? It will be visible to all faculty.')) return;
+
     setLoading(true);
     try {
       const { error } = await supabase
-        .from("college_timetables")
-        .update({ status: "published" })
-        .eq("id", timetableId);
+        .from('college_timetables')
+        .update({ status: 'published' })
+        .eq('id', timetableId);
 
       if (error) throw error;
-      
-      setPublishStatus("published");
-      alert("Timetable published successfully!");
+
+      setPublishStatus('published');
+      alert('Timetable published successfully!');
     } catch (error: any) {
       alert(error.message);
     } finally {
@@ -340,20 +344,20 @@ const FacultyTimetable: React.FC<FacultyTimetableProps> = ({ collegeId }) => {
       <div className="bg-gray-50 rounded-lg p-6">
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-1">
-              Timetable Builder
-            </h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-1">Timetable Builder</h1>
             <p className="text-gray-600 text-sm">
               Drag & drop to build timetable with automatic conflict detection
             </p>
           </div>
           <div className="flex gap-2">
-            <span className={`px-4 py-2 rounded-lg font-medium text-sm ${
-              publishStatus === "published" 
-                ? "bg-green-100 text-green-800" 
-                : "bg-yellow-100 text-yellow-800"
-            }`}>
-              {publishStatus === "published" ? "Published" : "Draft"}
+            <span
+              className={`px-4 py-2 rounded-lg font-medium text-sm ${
+                publishStatus === 'published'
+                  ? 'bg-green-100 text-green-800'
+                  : 'bg-yellow-100 text-yellow-800'
+              }`}
+            >
+              {publishStatus === 'published' ? 'Published' : 'Draft'}
             </span>
           </div>
         </div>
@@ -371,7 +375,7 @@ const FacultyTimetable: React.FC<FacultyTimetableProps> = ({ collegeId }) => {
         </button>
         <button
           onClick={publishTimetable}
-          disabled={loading || publishStatus === "published"}
+          disabled={loading || publishStatus === 'published'}
           className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 transition text-sm"
         >
           <Send className="h-4 w-4" />
@@ -416,10 +420,12 @@ const FacultyTimetable: React.FC<FacultyTimetableProps> = ({ collegeId }) => {
             <option value="">-- Select Faculty --</option>
             {filteredFaculty.map((f) => {
               const load = getFacultyLoad(f.id);
-              const hodBadge = f.is_hod ? " (HOD)" : "";
+              const hodBadge = f.is_hod ? ' (HOD)' : '';
               return (
                 <option key={f.id} value={f.id}>
-                  {f.first_name || f.metadata?.first_name || ''} {f.last_name || f.metadata?.last_name || ''}{hodBadge} ({load}/30 periods)
+                  {f.first_name || f.metadata?.first_name || ''}{' '}
+                  {f.last_name || f.metadata?.last_name || ''}
+                  {hodBadge} ({load}/30 periods)
                 </option>
               );
             })}
@@ -430,7 +436,9 @@ const FacultyTimetable: React.FC<FacultyTimetableProps> = ({ collegeId }) => {
         </div>
 
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <h3 className="font-semibold text-gray-900 mb-3 text-sm">Classes in {selectedDepartment ? "Department" : "College"}</h3>
+          <h3 className="font-semibold text-gray-900 mb-3 text-sm">
+            Classes in {selectedDepartment ? 'Department' : 'College'}
+          </h3>
           <select
             value={newSlot.class_id}
             onChange={(e) => setNewSlot({ ...newSlot, class_id: e.target.value })}
@@ -439,7 +447,8 @@ const FacultyTimetable: React.FC<FacultyTimetableProps> = ({ collegeId }) => {
             <option value="">-- Select Class --</option>
             {filteredClasses.map((cls) => (
               <option key={cls.id} value={cls.id}>
-                {cls.grade}{cls.section ? `-${cls.section}` : ''} ({cls.name})
+                {cls.grade}
+                {cls.section ? `-${cls.section}` : ''} ({cls.name})
               </option>
             ))}
           </select>
@@ -458,7 +467,10 @@ const FacultyTimetable: React.FC<FacultyTimetableProps> = ({ collegeId }) => {
                 Period / Day
               </th>
               {days.map((day) => (
-                <th key={day} className="border border-gray-200 px-4 py-3 text-center text-xs font-semibold text-gray-900 min-w-[150px]">
+                <th
+                  key={day}
+                  className="border border-gray-200 px-4 py-3 text-center text-xs font-semibold text-gray-900 min-w-[150px]"
+                >
                   {day}
                 </th>
               ))}
@@ -476,12 +488,12 @@ const FacultyTimetable: React.FC<FacultyTimetableProps> = ({ collegeId }) => {
                 {days.map((day, dayIndex) => {
                   const slot = getSlotForCell(dayIndex + 1, period);
                   const isFree = !slot;
-                  
+
                   return (
                     <td
                       key={`${day}-${period}`}
                       className={`border border-gray-200 px-2 py-2 text-sm ${
-                        isFree ? "bg-green-50 cursor-pointer hover:bg-green-100" : "bg-white"
+                        isFree ? 'bg-green-50 cursor-pointer hover:bg-green-100' : 'bg-white'
                       }`}
                       onClick={() => isFree && handleCellClick(dayIndex + 1, period)}
                     >
@@ -529,15 +541,11 @@ const FacultyTimetable: React.FC<FacultyTimetableProps> = ({ collegeId }) => {
             <h3 className="text-xl font-bold text-gray-900 mb-2">
               Add Slot - {days[selectedCell.day - 1]} Period {selectedCell.period}
             </h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Time: {timeSlots[selectedCell.period - 1]}
-            </p>
+            <p className="text-sm text-gray-600 mb-4">Time: {timeSlots[selectedCell.period - 1]}</p>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Subject *
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Subject *</label>
                 <input
                   type="text"
                   value={newSlot.subject_name}
@@ -550,9 +558,7 @@ const FacultyTimetable: React.FC<FacultyTimetableProps> = ({ collegeId }) => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Room Number
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Room Number</label>
                 <input
                   type="text"
                   value={newSlot.room_number}
@@ -578,7 +584,7 @@ const FacultyTimetable: React.FC<FacultyTimetableProps> = ({ collegeId }) => {
                 disabled={loading}
                 className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 transition"
               >
-                {loading ? "Adding..." : "Add Slot"}
+                {loading ? 'Adding...' : 'Add Slot'}
               </button>
             </div>
           </div>

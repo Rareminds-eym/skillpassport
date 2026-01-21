@@ -1,44 +1,35 @@
-import { motion } from "framer-motion";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import loginIllustration from "../../assets/images/auth/Recruiter-illustration.png";
-import { useAuth } from "../../context/AuthContext";
+import { motion } from 'framer-motion';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import loginIllustration from '../../assets/images/auth/Recruiter-illustration.png';
+import { useAuth } from '../../context/AuthContext';
 
-import {
-    AlertCircle,
-    BarChart3,
-    CheckCircle,
-    Eye,
-    EyeOff,
-    Lock,
-    Mail,
-    Zap,
-} from "lucide-react";
-import { loginRecruiter } from "../../services/recruiterProfile";
-import FeatureCard from "./components/ui/FeatureCard";
+import { AlertCircle, BarChart3, CheckCircle, Eye, EyeOff, Lock, Mail, Zap } from 'lucide-react';
+import { loginRecruiter } from '../../services/recruiterProfile';
+import FeatureCard from './components/ui/FeatureCard';
 
 export default function LoginRecruiter() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const primary = "#0a6aba";
-  const secondary = "#09277f";
+  const primary = '#0a6aba';
+  const secondary = '#09277f';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
+    setError('');
     setLoading(true);
 
     try {
       // Validate inputs
       if (!email || !password) {
-        setError("Please enter both email and password.");
+        setError('Please enter both email and password.');
         setLoading(false);
         return;
       }
@@ -47,7 +38,7 @@ export default function LoginRecruiter() {
       const { success, data, error: errMsg } = await loginRecruiter(email, password);
 
       if (!success) {
-        setError(errMsg || "Login failed. Please check your credentials.");
+        setError(errMsg || 'Login failed. Please check your credentials.');
         setLoading(false);
         return;
       }
@@ -58,13 +49,13 @@ export default function LoginRecruiter() {
         user_id: data.user_id,
         name: data.name,
         email: data.email,
-        role: "recruiter",
+        role: 'recruiter',
       });
 
-      navigate("/recruitment");
+      navigate('/recruitment');
     } catch (err) {
-      console.error("Login error:", err);
-      setError("An error occurred during login. Please try again.");
+      console.error('Login error:', err);
+      setError('An error occurred during login. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -77,7 +68,7 @@ export default function LoginRecruiter() {
         <label
           htmlFor="email"
           className={`block text-sm font-medium ${
-            isLg ? "text-gray-800 lg:text-gray-700" : "text-white/90"
+            isLg ? 'text-gray-800 lg:text-gray-700' : 'text-white/90'
           }`}
         >
           Email ID
@@ -92,9 +83,7 @@ export default function LoginRecruiter() {
             placeholder="Enter email ID"
             autoComplete="username"
             className={`w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-[#5378f1] focus:outline-none transition border-gray-300/90 hover:border-gray-400/90 placeholder:text-white/70 lg:placeholder:text-gray-400 ${
-              isLg
-                ? "bg-white/90"
-                : "bg-white/20 border-2 border-white/15 backdrop-blur-sm"
+              isLg ? 'bg-white/90' : 'bg-white/20 border-2 border-white/15 backdrop-blur-sm'
             }`}
           />
           <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60 lg:text-gray-400" />
@@ -106,14 +95,14 @@ export default function LoginRecruiter() {
         <label
           htmlFor="password"
           className={`block text-sm font-medium ${
-            isLg ? "text-gray-800 lg:text-gray-700" : "text-white/90"
+            isLg ? 'text-gray-800 lg:text-gray-700' : 'text-white/90'
           }`}
         >
           Password
         </label>
         <div className="relative">
           <input
-            type={showPassword ? "text" : "password"}
+            type={showPassword ? 'text' : 'password'}
             id="password"
             required
             value={password}
@@ -121,9 +110,7 @@ export default function LoginRecruiter() {
             placeholder="Enter your password"
             autoComplete="current-password"
             className={`w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-[#5378f1] focus:outline-none transition border-gray-300/90 hover:border-gray-400/90 placeholder:text-white/80 lg:placeholder:text-gray-400 ${
-              isLg
-                ? "bg-white/90"
-                : "bg-white/20 border-2 border-white/15 backdrop-blur-sm"
+              isLg ? 'bg-white/90' : 'bg-white/20 border-2 border-white/15 backdrop-blur-sm'
             }`}
           />
           <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60 lg:text-gray-400" />
@@ -131,7 +118,7 @@ export default function LoginRecruiter() {
             type="button"
             onClick={() => setShowPassword(!showPassword)}
             className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700"
-            aria-label={showPassword ? "Hide password" : "Show password"}
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
           >
             {showPassword ? (
               <EyeOff className="w-5 h-5 text-white/60 lg:text-gray-400" />
@@ -153,7 +140,7 @@ export default function LoginRecruiter() {
               background: `linear-gradient(90deg, ${primary}, ${secondary})`,
             }}
           >
-            {loading ? "Signing in..." : "Login"}
+            {loading ? 'Signing in...' : 'Login'}
           </button>
         ) : (
           <button
@@ -164,7 +151,7 @@ export default function LoginRecruiter() {
               background: `linear-gradient(90deg, #1d8ad1, #0a6aba)`,
             }}
           >
-            {loading ? "Signing in..." : "Login"}
+            {loading ? 'Signing in...' : 'Login'}
           </button>
         )}
       </div>
@@ -175,17 +162,14 @@ export default function LoginRecruiter() {
           to="/resetpassword"
           className={
             isLg
-              ? "text-[#e32a18] font-semibold hover:text-[#000000]"
-              : "text-white/90 font-semibold hover:opacity-90"
+              ? 'text-[#e32a18] font-semibold hover:text-[#000000]'
+              : 'text-white/90 font-semibold hover:opacity-90'
           }
         >
           Forgot password?
         </Link>
         {isLg ? (
-          <Link
-            to="/request-demo"
-            className="text-[#1d8ad1] font-semibold hover:text-[#5378f1]"
-          >
+          <Link to="/request-demo" className="text-[#1d8ad1] font-semibold hover:text-[#5378f1]">
             Request Demo
           </Link>
         ) : null}
@@ -203,7 +187,7 @@ export default function LoginRecruiter() {
               Hire Smarter. Trust Skills, Not Just Resumes.
             </h2>
             <p className="mt-4 max-w-xl text-[#edf2f9]">
-Access Verified Skill Passports Of Students Across India & Beyond.
+              Access Verified Skill Passports Of Students Across India & Beyond.
             </p>
           </div>
 
@@ -217,7 +201,7 @@ Access Verified Skill Passports Of Students Across India & Beyond.
             <motion.div
               className="absolute top-1 lg:left-[8rem] xl:left-[12rem]"
               animate={{ y: [0, -10, 0] }}
-              transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+              transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
             >
               <FeatureCard title="Verified Skills" Icon={CheckCircle} />
             </motion.div>
@@ -228,7 +212,7 @@ Access Verified Skill Passports Of Students Across India & Beyond.
               transition={{
                 repeat: Infinity,
                 duration: 3.5,
-                ease: "easeInOut",
+                ease: 'easeInOut',
               }}
             >
               <FeatureCard title="Faster Hiring" Icon={Zap} />
@@ -237,7 +221,7 @@ Access Verified Skill Passports Of Students Across India & Beyond.
             <motion.div
               className="absolute bottom-8 lg:left-[8rem] xl:left-[12rem]"
               animate={{ y: [0, -8, 0] }}
-              transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+              transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
             >
               <FeatureCard title="AI Recommendations" Icon={BarChart3} />
             </motion.div>
@@ -287,9 +271,7 @@ Access Verified Skill Passports Of Students Across India & Beyond.
           {/* DESKTOP */}
           <div className="relative w-full max-w-md hidden lg:block">
             <div className="text-center mb-8">
-              <h3 className="text-3xl font-bold text-[#000000]">
-                Recruiter Login
-              </h3>
+              <h3 className="text-3xl font-bold text-[#000000]">Recruiter Login</h3>
               <p className="text-sm text-gray-700/90 lg:text-gray-500 mt-2">
                 Access your recruiter dashboard with verified student profiles.
               </p>

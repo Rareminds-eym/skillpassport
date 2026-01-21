@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import React, { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   HomeIcon,
   UserGroupIcon,
@@ -16,13 +16,13 @@ import {
   FolderIcon,
   BookOpenIcon,
   SparklesIcon,
-  ClipboardDocumentCheckIcon
+  ClipboardDocumentCheckIcon,
   // Icons from Heroicons
-} from "@heroicons/react/24/outline";
-import { useEducatorSchool } from "../../hooks/useEducatorSchool";
+} from '@heroicons/react/24/outline';
+import { useEducatorSchool } from '../../hooks/useEducatorSchool';
 
 function classNames(...classes: string[]) {
-  return classes.filter(Boolean).join(" ");
+  return classes.filter(Boolean).join(' ');
 }
 
 interface SidebarProps {
@@ -40,10 +40,10 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   // Get educator school/college info to determine if they are a "rareminds" educator
   const { school, college, educatorType, loading: educatorLoading } = useEducatorSchool();
-  
+
   // Educator is "rareminds" if they are not associated with any school or college
   const isRaremindsEducator = !educatorLoading && !school && !college && educatorType === null;
 
@@ -65,103 +65,121 @@ const Sidebar: React.FC<SidebarProps> = ({
   };
 
   // collapsible groups - only shown for school/college educators
-  const navGroups = isRaremindsEducator ? [] : [
-    {
-      title: "Classroom Management",
-      key: "management",
-      items: [
-        { name: "Students", path: "/educator/students", icon: UserGroupIcon },
-        // Show different navigation based on educator type
-        ...(educatorType === 'college' 
-          ? [{ name: "Program Sections", path: "/educator/classes", icon: AcademicCapIcon }]
-          : [{ name: "Classes", path: "/educator/classes", icon: AcademicCapIcon }]
-        ),
-        { name: "TimeTable", path: "/educator/my-timetable", icon: AcademicCapIcon },
-        { name: "Mark Attendance", path: "/educator/mark-attendance", icon: ClipboardDocumentCheckIcon },
-        { name: "Assessment Results", path: "/educator/assessment-results", icon: ClipboardDocumentListIcon },
-        // { name: "Courses", path: "/educator/courses", icon: BookOpenIcon },
-        { name: "Courses", path: "/educator/browse-courses", icon: BookOpenIcon },
-      ],
-    },
-    {
-      title: "Learning & Evaluation",
-      key: "learning",
-      items: [
-        // {
-        //   name: "Assignments",
-        //   path: "/educator/assignments",
-        //   icon: ClipboardDocumentListIcon,
-        // },
-        // Show different navigation based on educator type
-        ...(educatorType === 'college' 
-          ? [{ name: "College Assignments", path: "/educator/college-assignments", icon: AcademicCapIcon }]
-          : [{ name: "Assignments", path: "/educator/assignments", icon: AcademicCapIcon }]
-        ),
+  const navGroups = isRaremindsEducator
+    ? []
+    : [
         {
-          name: "Mentor Notes",
-          path: "/educator/mentornotes",
-          icon: PencilSquareIcon,
+          title: 'Classroom Management',
+          key: 'management',
+          items: [
+            { name: 'Students', path: '/educator/students', icon: UserGroupIcon },
+            // Show different navigation based on educator type
+            ...(educatorType === 'college'
+              ? [{ name: 'Program Sections', path: '/educator/classes', icon: AcademicCapIcon }]
+              : [{ name: 'Classes', path: '/educator/classes', icon: AcademicCapIcon }]),
+            { name: 'TimeTable', path: '/educator/my-timetable', icon: AcademicCapIcon },
+            {
+              name: 'Mark Attendance',
+              path: '/educator/mark-attendance',
+              icon: ClipboardDocumentCheckIcon,
+            },
+            {
+              name: 'Assessment Results',
+              path: '/educator/assessment-results',
+              icon: ClipboardDocumentListIcon,
+            },
+            // { name: "Courses", path: "/educator/courses", icon: BookOpenIcon },
+            { name: 'Courses', path: '/educator/browse-courses', icon: BookOpenIcon },
+          ],
         },
         {
-          name: "My Mentees",
-          path: "/educator/my-mentees",
-          icon: UserGroupIcon,
+          title: 'Learning & Evaluation',
+          key: 'learning',
+          items: [
+            // {
+            //   name: "Assignments",
+            //   path: "/educator/assignments",
+            //   icon: ClipboardDocumentListIcon,
+            // },
+            // Show different navigation based on educator type
+            ...(educatorType === 'college'
+              ? [
+                  {
+                    name: 'College Assignments',
+                    path: '/educator/college-assignments',
+                    icon: AcademicCapIcon,
+                  },
+                ]
+              : [{ name: 'Assignments', path: '/educator/assignments', icon: AcademicCapIcon }]),
+            {
+              name: 'Mentor Notes',
+              path: '/educator/mentornotes',
+              icon: PencilSquareIcon,
+            },
+            {
+              name: 'My Mentees',
+              path: '/educator/my-mentees',
+              icon: UserGroupIcon,
+            },
+            {
+              name: 'Verification',
+              path: '/educator/activities',
+              icon: CheckCircleIcon,
+            },
+          ],
         },
         {
-          name: "Verification",
-          path: "/educator/activities",
-          icon: CheckCircleIcon,
+          title: 'Skill & Co-Curriculm',
+          key: 'cocurricular',
+          items: [
+            {
+              name: 'Clubs & Compitetion',
+              path: '/educator/clubs',
+              icon: ClipboardDocumentListIcon,
+            },
+            {
+              name: 'badges',
+              path: '/educator/badges',
+              icon: PencilSquareIcon,
+            },
+          ],
         },
-      ],
-    },
-    {
-      title: "Skill & Co-Curriculm",
-      key: "cocurricular",
-      items: [
-        {
-          name: "Clubs & Compitetion",
-          path: "/educator/clubs",
-          icon: ClipboardDocumentListIcon,
-        },
-        {
-          name: "badges",
-          path: "/educator/badges",
-          icon: PencilSquareIcon,
-        },
-      ],
-    },
-  ];
+      ];
 
   // single items before & after dropdowns
-  const topItem = { name: "Dashboard", path: "/educator/dashboard", icon: HomeIcon };
-  const aiCopilotItem = { name: "Teaching Intelligence", path: "/educator/ai-copilot", icon: SparklesIcon };
-  
+  const topItem = { name: 'Dashboard', path: '/educator/dashboard', icon: HomeIcon };
+  const aiCopilotItem = {
+    name: 'Teaching Intelligence',
+    path: '/educator/ai-copilot',
+    icon: SparklesIcon,
+  };
+
   // For rareminds educators: only show Courses, Dashboard, Teaching Intelligence, Digital Portfolio, Communication, Settings
   // For school/college educators: show all items
-  const coursesItem = { name: "Courses", path: "/educator/browse-courses", icon: BookOpenIcon };
-  
-  const bottomItems = isRaremindsEducator 
+  const coursesItem = { name: 'Courses', path: '/educator/browse-courses', icon: BookOpenIcon };
+
+  const bottomItems = isRaremindsEducator
     ? [
         // Rareminds educators only see these items
-        { name: "Digital Portfolio", path: "/educator/digital-portfolio", icon: FolderIcon },
-        { name: "Communication", path: "/educator/communication", icon: ChatBubbleLeftRightIcon },
-        { name: "Settings", path: "/educator/settings", icon: Cog6ToothIcon },
+        { name: 'Digital Portfolio', path: '/educator/digital-portfolio', icon: FolderIcon },
+        { name: 'Communication', path: '/educator/communication', icon: ChatBubbleLeftRightIcon },
+        { name: 'Settings', path: '/educator/settings', icon: Cog6ToothIcon },
       ]
     : [
         // School/College educators see all items
-        { name: "Digital Portfolio", path: "/educator/digital-portfolio", icon: FolderIcon },
-        { name: "Analytics", path: "/educator/analytics", icon: ChartBarIcon },
-        { name: "Reports", path: "/educator/reports", icon: DocumentChartBarIcon },
-        { name: "Media Manager", path: "/educator/media", icon: PhotoIcon },
-        { name: "Communication", path: "/educator/communication", icon: ChatBubbleLeftRightIcon },
-        { name: "Settings", path: "/educator/settings", icon: Cog6ToothIcon },
+        { name: 'Digital Portfolio', path: '/educator/digital-portfolio', icon: FolderIcon },
+        { name: 'Analytics', path: '/educator/analytics', icon: ChartBarIcon },
+        { name: 'Reports', path: '/educator/reports', icon: DocumentChartBarIcon },
+        { name: 'Media Manager', path: '/educator/media', icon: PhotoIcon },
+        { name: 'Communication', path: '/educator/communication', icon: ChatBubbleLeftRightIcon },
+        { name: 'Settings', path: '/educator/settings', icon: Cog6ToothIcon },
       ];
 
   return (
     <aside
       className={classNames(
-        "h-full w-64 bg-white border-r border-gray-200 flex flex-col shadow-sm transition-transform duration-300",
-        showMobileMenu ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        'h-full w-64 bg-white border-r border-gray-200 flex flex-col shadow-sm transition-transform duration-300',
+        showMobileMenu ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
       )}
     >
       <nav className="flex-1 overflow-y-auto px-3 py-5 space-y-3">
@@ -170,17 +188,17 @@ const Sidebar: React.FC<SidebarProps> = ({
           onClick={() => handleNavigation(topItem.name, topItem.path)}
           className={classNames(
             location.pathname.startsWith(topItem.path)
-              ? "bg-indigo-50 text-indigo-600 border-l-2 border-indigo-500"
-              : "text-gray-600 hover:bg-gray-50 hover:text-indigo-600",
-            "group w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-all duration-200"
+              ? 'bg-indigo-50 text-indigo-600 border-l-2 border-indigo-500'
+              : 'text-gray-600 hover:bg-gray-50 hover:text-indigo-600',
+            'group w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-all duration-200'
           )}
         >
           <topItem.icon
             className={classNames(
               location.pathname.startsWith(topItem.path)
-                ? "text-indigo-600"
-                : "text-gray-400 group-hover:text-indigo-500",
-              "h-5 w-5 flex-shrink-0"
+                ? 'text-indigo-600'
+                : 'text-gray-400 group-hover:text-indigo-500',
+              'h-5 w-5 flex-shrink-0'
             )}
           />
           <span>{topItem.name}</span>
@@ -191,21 +209,23 @@ const Sidebar: React.FC<SidebarProps> = ({
           onClick={() => handleNavigation(aiCopilotItem.name, aiCopilotItem.path)}
           className={classNames(
             location.pathname.startsWith(aiCopilotItem.path)
-              ? "bg-gradient-to-r from-purple-50 to-indigo-50 text-purple-600 border-l-2 border-purple-500"
-              : "text-gray-600 hover:bg-gradient-to-r hover:from-purple-50 hover:to-indigo-50 hover:text-purple-600",
-            "group w-full flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 relative overflow-hidden"
+              ? 'bg-gradient-to-r from-purple-50 to-indigo-50 text-purple-600 border-l-2 border-purple-500'
+              : 'text-gray-600 hover:bg-gradient-to-r hover:from-purple-50 hover:to-indigo-50 hover:text-purple-600',
+            'group w-full flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 relative overflow-hidden'
           )}
         >
           <aiCopilotItem.icon
             className={classNames(
               location.pathname.startsWith(aiCopilotItem.path)
-                ? "text-purple-600"
-                : "text-gray-400 group-hover:text-purple-500",
-              "h-5 w-5 flex-shrink-0"
+                ? 'text-purple-600'
+                : 'text-gray-400 group-hover:text-purple-500',
+              'h-5 w-5 flex-shrink-0'
             )}
           />
           <span className="whitespace-nowrap flex-1 truncate">{aiCopilotItem.name}</span>
-          <span className="ml-auto text-xs font-semibold px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full flex-shrink-0">NEW</span>
+          <span className="ml-auto text-xs font-semibold px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full flex-shrink-0">
+            NEW
+          </span>
         </button>
 
         {/* 📚 Courses - Only shown as standalone for Rareminds educators */}
@@ -214,17 +234,17 @@ const Sidebar: React.FC<SidebarProps> = ({
             onClick={() => handleNavigation(coursesItem.name, coursesItem.path)}
             className={classNames(
               location.pathname.startsWith(coursesItem.path)
-                ? "bg-indigo-50 text-indigo-600 border-l-2 border-indigo-500"
-                : "text-gray-600 hover:bg-gray-50 hover:text-indigo-600",
-              "group w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-all duration-200"
+                ? 'bg-indigo-50 text-indigo-600 border-l-2 border-indigo-500'
+                : 'text-gray-600 hover:bg-gray-50 hover:text-indigo-600',
+              'group w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-all duration-200'
             )}
           >
             <coursesItem.icon
               className={classNames(
                 location.pathname.startsWith(coursesItem.path)
-                  ? "text-indigo-600"
-                  : "text-gray-400 group-hover:text-indigo-500",
-                "h-5 w-5 flex-shrink-0"
+                  ? 'text-indigo-600'
+                  : 'text-gray-400 group-hover:text-indigo-500',
+                'h-5 w-5 flex-shrink-0'
               )}
             />
             <span>{coursesItem.name}</span>
@@ -241,16 +261,16 @@ const Sidebar: React.FC<SidebarProps> = ({
               <span>{group.title}</span>
               <ChevronDownIcon
                 className={classNames(
-                  "h-4 w-4 text-gray-400 transition-transform duration-300",
-                  openGroups[group.key] ? "rotate-180 text-indigo-500" : ""
+                  'h-4 w-4 text-gray-400 transition-transform duration-300',
+                  openGroups[group.key] ? 'rotate-180 text-indigo-500' : ''
                 )}
               />
             </button>
 
             <div
               className={classNames(
-                "overflow-hidden transition-all duration-500 ease-in-out",
-                openGroups[group.key] ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+                'overflow-hidden transition-all duration-500 ease-in-out',
+                openGroups[group.key] ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
               )}
             >
               <div className="mt-1 space-y-1 pl-2 border-l border-gray-100">
@@ -262,17 +282,17 @@ const Sidebar: React.FC<SidebarProps> = ({
                       onClick={() => handleNavigation(item.name, item.path)}
                       className={classNames(
                         isActive
-                          ? "bg-indigo-50 text-indigo-600 border-l-2 border-indigo-500"
-                          : "text-gray-600 hover:bg-gray-50 hover:text-indigo-600",
-                        "group w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-all duration-200"
+                          ? 'bg-indigo-50 text-indigo-600 border-l-2 border-indigo-500'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-indigo-600',
+                        'group w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-all duration-200'
                       )}
                     >
                       <item.icon
                         className={classNames(
                           isActive
-                            ? "text-indigo-600"
-                            : "text-gray-400 group-hover:text-indigo-500",
-                          "h-5 w-5 flex-shrink-0"
+                            ? 'text-indigo-600'
+                            : 'text-gray-400 group-hover:text-indigo-500',
+                          'h-5 w-5 flex-shrink-0'
                         )}
                       />
                       <span>{item.name}</span>
@@ -294,17 +314,15 @@ const Sidebar: React.FC<SidebarProps> = ({
                 onClick={() => handleNavigation(item.name, item.path)}
                 className={classNames(
                   isActive
-                    ? "bg-indigo-50 text-indigo-600 border-l-2 border-indigo-500"
-                    : "text-gray-600 hover:bg-gray-50 hover:text-indigo-600",
-                  "group w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-all duration-200"
+                    ? 'bg-indigo-50 text-indigo-600 border-l-2 border-indigo-500'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-indigo-600',
+                  'group w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-all duration-200'
                 )}
               >
                 <item.icon
                   className={classNames(
-                    isActive
-                      ? "text-indigo-600"
-                      : "text-gray-400 group-hover:text-indigo-500",
-                    "h-5 w-5 flex-shrink-0"
+                    isActive ? 'text-indigo-600' : 'text-gray-400 group-hover:text-indigo-500',
+                    'h-5 w-5 flex-shrink-0'
                   )}
                 />
                 <span>{item.name}</span>

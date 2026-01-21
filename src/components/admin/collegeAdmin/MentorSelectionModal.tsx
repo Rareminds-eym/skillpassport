@@ -67,25 +67,25 @@ const MentorSelectionModal: React.FC<MentorSelectionModalProps> = ({
   getMentorActiveAllocations,
 }) => {
   const [selectedMentorId, setSelectedMentorId] = useState<number | null>(initialSelectedMentorId);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState('');
 
   const availableMentors = mentors.filter((m: Mentor) => {
     const currentLoad = getMentorCurrentLoad(m.id);
     const activeAllocations = getMentorActiveAllocations(m.id);
-    
+
     // For mentors with no allocations, assume default capacity of 15
-    const maxCapacity = activeAllocations.length > 0 
-      ? Math.max(...activeAllocations.map(a => a.capacity))
-      : 15; // Default capacity for new mentors
-    
+    const maxCapacity =
+      activeAllocations.length > 0 ? Math.max(...activeAllocations.map((a) => a.capacity)) : 15; // Default capacity for new mentors
+
     // Allow mentors with sufficient capacity (including new mentors with no allocations)
     return currentLoad + selectedStudents.length <= maxCapacity;
   });
 
-  const filteredMentors = availableMentors.filter((m: Mentor) =>
-    m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    m.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    m.designation.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredMentors = availableMentors.filter(
+    (m: Mentor) =>
+      m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      m.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      m.designation.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleNext = () => {
@@ -102,9 +102,7 @@ const MentorSelectionModal: React.FC<MentorSelectionModalProps> = ({
             <h2 className="text-xl font-bold text-gray-900">
               Select Mentor for {selectedStudents.length} Student(s)
             </h2>
-            <p className="text-sm text-gray-600 mt-1">
-              Choose a mentor with sufficient capacity
-            </p>
+            <p className="text-sm text-gray-600 mt-1">Choose a mentor with sufficient capacity</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <XMarkIcon className="h-6 w-6" />
@@ -140,7 +138,9 @@ const MentorSelectionModal: React.FC<MentorSelectionModalProps> = ({
           {/* Mentor Selection */}
           <div className="lg:col-span-2 flex flex-col min-h-0">
             <div className="flex items-center justify-between mb-4 flex-shrink-0">
-              <h3 className="text-lg font-semibold text-gray-900">Available Mentors ({filteredMentors.length})</h3>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Available Mentors ({filteredMentors.length})
+              </h3>
               <div className="flex-1 max-w-md ml-4">
                 <SearchBar
                   value={searchTerm}
@@ -157,7 +157,9 @@ const MentorSelectionModal: React.FC<MentorSelectionModalProps> = ({
                   <div className="text-center py-8 text-gray-500">
                     <UserGroupIcon className="h-12 w-12 mx-auto mb-3 text-gray-300" />
                     <p>No mentors available with sufficient capacity</p>
-                    <p className="text-sm mt-1">Required capacity: {selectedStudents.length} students</p>
+                    <p className="text-sm mt-1">
+                      Required capacity: {selectedStudents.length} students
+                    </p>
                   </div>
                 ) : (
                   filteredMentors.map((mentor: Mentor) => {
@@ -165,7 +167,9 @@ const MentorSelectionModal: React.FC<MentorSelectionModalProps> = ({
                       <label
                         key={mentor.id}
                         className={`flex items-start gap-4 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors ${
-                          selectedMentorId === mentor.id ? 'border-indigo-300 bg-indigo-50' : 'border-gray-200'
+                          selectedMentorId === mentor.id
+                            ? 'border-indigo-300 bg-indigo-50'
+                            : 'border-gray-200'
                         }`}
                       >
                         <input
@@ -182,16 +186,23 @@ const MentorSelectionModal: React.FC<MentorSelectionModalProps> = ({
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-gray-900">{mentor.name}</p>
-                            <p className="text-sm text-gray-600">{mentor.designation} • {mentor.department}</p>
+                            <p className="text-sm text-gray-600">
+                              {mentor.designation} • {mentor.department}
+                            </p>
                             {mentor.specializations && mentor.specializations.length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-2">
                                 {mentor.specializations.slice(0, 3).map((spec, index) => (
-                                  <span key={index} className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">
+                                  <span
+                                    key={index}
+                                    className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded"
+                                  >
                                     {spec}
                                   </span>
                                 ))}
                                 {mentor.specializations.length > 3 && (
-                                  <span className="text-xs text-gray-500">+{mentor.specializations.length - 3} more</span>
+                                  <span className="text-xs text-gray-500">
+                                    +{mentor.specializations.length - 3} more
+                                  </span>
                                 )}
                               </div>
                             )}

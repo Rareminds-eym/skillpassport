@@ -122,51 +122,60 @@ const PayrollManagement: React.FC = () => {
   // KPI Data
   const kpiData = [
     {
-      title: "Total Payroll",
+      title: 'Total Payroll',
       value: `₹${(payrollStats.totalPayroll / 100000).toFixed(1)}L`,
       change: 3.2,
-      changeLabel: "vs last month",
+      changeLabel: 'vs last month',
       icon: <DollarSign className="h-6 w-6" />,
-      color: "blue" as const,
+      color: 'blue' as const,
     },
     {
-      title: "Processed Salaries",
+      title: 'Processed Salaries',
       value: payrollStats.processedSalaries.toLocaleString(),
       change: 5,
-      changeLabel: "completed this month",
+      changeLabel: 'completed this month',
       icon: <CheckCircle className="h-6 w-6" />,
-      color: "green" as const,
+      color: 'green' as const,
     },
     {
-      title: "Pending Salaries",
+      title: 'Pending Salaries',
       value: payrollStats.pendingSalaries.toLocaleString(),
       change: -12,
-      changeLabel: "awaiting approval",
+      changeLabel: 'awaiting approval',
       icon: <Clock className="h-6 w-6" />,
-      color: "yellow" as const,
+      color: 'yellow' as const,
     },
     {
-      title: "Average Salary",
+      title: 'Average Salary',
       value: `₹${Math.round(payrollStats.totalPayroll / payrollStats.totalEmployees / 1000)}K`,
       change: 2.8,
-      changeLabel: "per employee",
+      changeLabel: 'per employee',
       icon: <TrendingUp className="h-6 w-6" />,
-      color: "purple" as const,
+      color: 'purple' as const,
     },
   ];
 
-  const departments = ['All', 'Computer Science', 'Mathematics', 'Administration', 'Physics', 'Chemistry'];
+  const departments = [
+    'All',
+    'Computer Science',
+    'Mathematics',
+    'Administration',
+    'Physics',
+    'Chemistry',
+  ];
   const statuses = ['All', 'Processed', 'Pending', 'On Hold', 'Approved'];
   const payPeriods = ['All', 'January 2025', 'December 2024', 'November 2024'];
 
-  const filteredRecords = payrollRecords.filter(record => {
-    const matchesSearch = record.employeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         record.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         record.department.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredRecords = payrollRecords.filter((record) => {
+    const matchesSearch =
+      record.employeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      record.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      record.department.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = selectedStatus === 'All' || record.status === selectedStatus;
-    const matchesDepartment = selectedDepartment === 'All' || record.department === selectedDepartment;
+    const matchesDepartment =
+      selectedDepartment === 'All' || record.department === selectedDepartment;
     const matchesPayPeriod = selectedPayPeriod === 'All' || record.payPeriod === selectedPayPeriod;
-    
+
     return matchesSearch && matchesStatus && matchesDepartment && matchesPayPeriod;
   });
 
@@ -206,11 +215,15 @@ const PayrollManagement: React.FC = () => {
   };
 
   const handleProcessSalary = (record: PayrollRecord) => {
-    alert(`Processing salary for ${record.employeeName}...\nThis would typically trigger the salary processing workflow.`);
+    alert(
+      `Processing salary for ${record.employeeName}...\nThis would typically trigger the salary processing workflow.`
+    );
   };
 
   const handleGeneratePayslip = (record: PayrollRecord) => {
-    alert(`Generating payslip for ${record.employeeName}...\nThis would typically generate and download a PDF payslip.`);
+    alert(
+      `Generating payslip for ${record.employeeName}...\nThis would typically generate and download a PDF payslip.`
+    );
   };
 
   const renderOverview = () => (
@@ -228,7 +241,7 @@ const PayrollManagement: React.FC = () => {
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-gray-800">Recent Payroll Activity</h3>
-            <button 
+            <button
               onClick={() => setActiveTab('payroll')}
               className="text-sm text-purple-600 hover:text-purple-700 font-medium"
             >
@@ -237,16 +250,29 @@ const PayrollManagement: React.FC = () => {
           </div>
           <div className="space-y-4">
             {payrollRecords.slice(0, 3).map((record) => (
-              <div key={record.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div
+                key={record.id}
+                className="flex items-center justify-between p-4 bg-gray-50 rounded-xl"
+              >
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${
-                    record.status === 'Processed' ? 'bg-green-100' :
-                    record.status === 'Pending' ? 'bg-yellow-100' : 'bg-blue-100'
-                  }`}>
-                    <DollarSign className={`h-4 w-4 ${
-                      record.status === 'Processed' ? 'text-green-600' :
-                      record.status === 'Pending' ? 'text-yellow-600' : 'text-blue-600'
-                    }`} />
+                  <div
+                    className={`p-2 rounded-lg ${
+                      record.status === 'Processed'
+                        ? 'bg-green-100'
+                        : record.status === 'Pending'
+                          ? 'bg-yellow-100'
+                          : 'bg-blue-100'
+                    }`}
+                  >
+                    <DollarSign
+                      className={`h-4 w-4 ${
+                        record.status === 'Processed'
+                          ? 'text-green-600'
+                          : record.status === 'Pending'
+                            ? 'text-yellow-600'
+                            : 'text-blue-600'
+                      }`}
+                    />
                   </div>
                   <div>
                     <p className="font-medium text-gray-900">{record.employeeName}</p>
@@ -254,8 +280,12 @@ const PayrollManagement: React.FC = () => {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-medium text-gray-900">₹{record.netSalary.toLocaleString()}</p>
-                  <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full border ${getStatusColor(record.status)}`}>
+                  <p className="text-sm font-medium text-gray-900">
+                    ₹{record.netSalary.toLocaleString()}
+                  </p>
+                  <span
+                    className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full border ${getStatusColor(record.status)}`}
+                  >
                     {getStatusIcon(record.status)}
                     {record.status}
                   </span>
@@ -269,25 +299,34 @@ const PayrollManagement: React.FC = () => {
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-gray-800">Department Distribution</h3>
-            <span className="text-sm text-purple-600 font-medium">₹{(payrollStats.totalPayroll / 100000).toFixed(1)}L total</span>
+            <span className="text-sm text-purple-600 font-medium">
+              ₹{(payrollStats.totalPayroll / 100000).toFixed(1)}L total
+            </span>
           </div>
           <div className="space-y-4">
             {departments.slice(1, 4).map((dept) => (
-              <div key={dept} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div
+                key={dept}
+                className="flex items-center justify-between p-4 bg-gray-50 rounded-xl"
+              >
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-purple-100 rounded-lg">
                     <Users className="h-4 w-4 text-purple-600" />
                   </div>
                   <div>
                     <p className="font-medium text-gray-900">{dept}</p>
-                    <p className="text-sm text-gray-600">{Math.floor(Math.random() * 50 + 20)} employees</p>
+                    <p className="text-sm text-gray-600">
+                      {Math.floor(Math.random() * 50 + 20)} employees
+                    </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-medium text-gray-900">₹{(Math.random() * 30 + 10).toFixed(1)}L</p>
+                  <p className="text-sm font-medium text-gray-900">
+                    ₹{(Math.random() * 30 + 10).toFixed(1)}L
+                  </p>
                   <div className="w-20 bg-gray-200 rounded-full h-2 mt-1">
-                    <div 
-                      className="bg-gradient-to-r from-purple-600 to-indigo-600 h-2 rounded-full" 
+                    <div
+                      className="bg-gradient-to-r from-purple-600 to-indigo-600 h-2 rounded-full"
                       style={{ width: `${Math.random() * 80 + 20}%` }}
                     ></div>
                   </div>
@@ -303,8 +342,10 @@ const PayrollManagement: React.FC = () => {
   const renderPayroll = () => (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h3 className="text-lg font-semibold text-gray-800">Payroll Records ({filteredRecords.length})</h3>
-        <button 
+        <h3 className="text-lg font-semibold text-gray-800">
+          Payroll Records ({filteredRecords.length})
+        </h3>
+        <button
           onClick={() => console.log('Process payroll functionality would be implemented here')}
           className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-medium"
         >
@@ -328,7 +369,7 @@ const PayrollManagement: React.FC = () => {
                 className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
               />
             </div>
-            <button 
+            <button
               onClick={() => setShowFilters(!showFilters)}
               className={`px-6 py-2.5 border border-gray-300 rounded-xl hover:bg-gray-50 flex items-center gap-2 font-medium transition-all duration-200 ${
                 showFilters ? 'bg-purple-50 border-purple-300 text-purple-700' : ''
@@ -336,7 +377,9 @@ const PayrollManagement: React.FC = () => {
             >
               <Filter className="h-4 w-4" />
               Filters
-              {(selectedStatus !== 'All' || selectedDepartment !== 'All' || selectedPayPeriod !== 'All') && (
+              {(selectedStatus !== 'All' ||
+                selectedDepartment !== 'All' ||
+                selectedPayPeriod !== 'All') && (
                 <span className="bg-purple-100 text-purple-700 px-2 py-0.5 text-xs rounded-full">
                   Active
                 </span>
@@ -354,7 +397,7 @@ const PayrollManagement: React.FC = () => {
                   onChange={(e) => setSelectedStatus(e.target.value)}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                 >
-                  {statuses.map(status => (
+                  {statuses.map((status) => (
                     <option key={status} value={status}>
                       {status}
                     </option>
@@ -368,7 +411,7 @@ const PayrollManagement: React.FC = () => {
                   onChange={(e) => setSelectedDepartment(e.target.value)}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                 >
-                  {departments.map(dept => (
+                  {departments.map((dept) => (
                     <option key={dept} value={dept}>
                       {dept}
                     </option>
@@ -382,7 +425,7 @@ const PayrollManagement: React.FC = () => {
                   onChange={(e) => setSelectedPayPeriod(e.target.value)}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                 >
-                  {payPeriods.map(period => (
+                  {payPeriods.map((period) => (
                     <option key={period} value={period}>
                       {period}
                     </option>
@@ -397,7 +440,10 @@ const PayrollManagement: React.FC = () => {
       {/* Payroll Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredRecords.map((record) => (
-          <div key={record.id} className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md hover:border-purple-300 transition-all duration-200">
+          <div
+            key={record.id}
+            className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md hover:border-purple-300 transition-all duration-200"
+          >
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="p-3 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-xl">
@@ -405,11 +451,13 @@ const PayrollManagement: React.FC = () => {
                 </div>
                 <div className="flex-1">
                   <h4 className="font-bold text-gray-900 text-lg">{record.employeeName}</h4>
-                  <p className="text-sm text-gray-600">{record.employeeId} • {record.designation}</p>
+                  <p className="text-sm text-gray-600">
+                    {record.employeeId} • {record.designation}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button 
+                <button
                   onClick={() => handleViewRecord(record)}
                   className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
                 >
@@ -423,15 +471,19 @@ const PayrollManagement: React.FC = () => {
                 <span className="text-sm text-gray-600">Department:</span>
                 <span className="text-sm font-medium text-gray-900">{record.department}</span>
               </div>
-              
+
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Basic Salary:</span>
-                <span className="text-sm font-medium text-gray-900">₹{record.basicSalary.toLocaleString()}</span>
+                <span className="text-sm font-medium text-gray-900">
+                  ₹{record.basicSalary.toLocaleString()}
+                </span>
               </div>
-              
+
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Net Salary:</span>
-                <span className="text-sm font-bold text-green-600">₹{record.netSalary.toLocaleString()}</span>
+                <span className="text-sm font-bold text-green-600">
+                  ₹{record.netSalary.toLocaleString()}
+                </span>
               </div>
 
               <div className="flex justify-between items-center">
@@ -440,7 +492,9 @@ const PayrollManagement: React.FC = () => {
               </div>
 
               <div className="pt-4 border-t border-gray-100">
-                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(record.status)}`}>
+                <span
+                  className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(record.status)}`}
+                >
                   {getStatusIcon(record.status)}
                   {record.status}
                 </span>
@@ -448,7 +502,7 @@ const PayrollManagement: React.FC = () => {
             </div>
 
             <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100">
-              <button 
+              <button
                 onClick={() => handleGeneratePayslip(record)}
                 className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-xl hover:bg-gray-200 flex items-center justify-center gap-1 font-medium transition-all duration-200"
               >
@@ -456,7 +510,7 @@ const PayrollManagement: React.FC = () => {
                 Payslip
               </button>
               {record.status === 'Pending' && (
-                <button 
+                <button
                   onClick={() => handleProcessSalary(record)}
                   className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-sm rounded-xl hover:shadow-lg transition-all duration-200 font-medium flex items-center justify-center gap-1"
                 >
@@ -483,7 +537,9 @@ const PayrollManagement: React.FC = () => {
     <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
       <Calculator className="h-12 w-12 mx-auto mb-4 text-gray-300" />
       <p className="text-gray-500 mb-2">Salary Processing Center</p>
-      <p className="text-sm text-gray-400">Automated salary calculation, tax computation, and payment processing</p>
+      <p className="text-sm text-gray-400">
+        Automated salary calculation, tax computation, and payment processing
+      </p>
     </div>
   );
 
@@ -491,7 +547,9 @@ const PayrollManagement: React.FC = () => {
     <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
       <Activity className="h-12 w-12 mx-auto mb-4 text-gray-300" />
       <p className="text-gray-500 mb-2">Payroll Reports & Analytics</p>
-      <p className="text-sm text-gray-400">Comprehensive payroll analytics, tax reports, and compliance documentation</p>
+      <p className="text-sm text-gray-400">
+        Comprehensive payroll analytics, tax reports, and compliance documentation
+      </p>
     </div>
   );
 
@@ -518,7 +576,8 @@ const PayrollManagement: React.FC = () => {
           Payroll Management
         </h1>
         <p className="text-gray-600 mt-2">
-          Comprehensive payroll management system for all faculty and staff across affiliated colleges
+          Comprehensive payroll management system for all faculty and staff across affiliated
+          colleges
         </p>
       </div>
 
@@ -549,7 +608,10 @@ const PayrollManagement: React.FC = () => {
       {showModal && selectedRecord && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setShowModal(false)}></div>
+            <div
+              className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+              onClick={() => setShowModal(false)}
+            ></div>
 
             <span className="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
 
@@ -562,7 +624,9 @@ const PayrollManagement: React.FC = () => {
                     </div>
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900">Payroll Details</h3>
-                      <p className="text-sm text-gray-600">{selectedRecord.employeeName} - {selectedRecord.payPeriod}</p>
+                      <p className="text-sm text-gray-600">
+                        {selectedRecord.employeeName} - {selectedRecord.payPeriod}
+                      </p>
                     </div>
                   </div>
                   <button
@@ -576,23 +640,33 @@ const PayrollManagement: React.FC = () => {
                 <div className="space-y-6">
                   {/* Employee Info */}
                   <div className="bg-gray-50 rounded-xl p-4">
-                    <h4 className="text-sm font-semibold text-gray-900 mb-4">Employee Information</h4>
+                    <h4 className="text-sm font-semibold text-gray-900 mb-4">
+                      Employee Information
+                    </h4>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="text-sm font-medium text-gray-700">Name</label>
-                        <p className="text-sm text-gray-900 font-medium">{selectedRecord.employeeName}</p>
+                        <p className="text-sm text-gray-900 font-medium">
+                          {selectedRecord.employeeName}
+                        </p>
                       </div>
                       <div>
                         <label className="text-sm font-medium text-gray-700">Employee ID</label>
-                        <p className="text-sm text-gray-900 font-medium">{selectedRecord.employeeId}</p>
+                        <p className="text-sm text-gray-900 font-medium">
+                          {selectedRecord.employeeId}
+                        </p>
                       </div>
                       <div>
                         <label className="text-sm font-medium text-gray-700">Department</label>
-                        <p className="text-sm text-gray-900 font-medium">{selectedRecord.department}</p>
+                        <p className="text-sm text-gray-900 font-medium">
+                          {selectedRecord.department}
+                        </p>
                       </div>
                       <div>
                         <label className="text-sm font-medium text-gray-700">Designation</label>
-                        <p className="text-sm text-gray-900 font-medium">{selectedRecord.designation}</p>
+                        <p className="text-sm text-gray-900 font-medium">
+                          {selectedRecord.designation}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -603,47 +677,67 @@ const PayrollManagement: React.FC = () => {
                     <div className="space-y-3">
                       <div className="flex justify-between items-center p-3 bg-white rounded-lg">
                         <span className="text-sm font-medium text-gray-700">Basic Salary</span>
-                        <span className="text-sm font-bold text-gray-900">₹{selectedRecord.basicSalary.toLocaleString()}</span>
+                        <span className="text-sm font-bold text-gray-900">
+                          ₹{selectedRecord.basicSalary.toLocaleString()}
+                        </span>
                       </div>
                       <div className="flex justify-between items-center p-3 bg-white rounded-lg">
                         <span className="text-sm font-medium text-gray-700">Allowances</span>
-                        <span className="text-sm font-bold text-green-600">+₹{selectedRecord.allowances.toLocaleString()}</span>
+                        <span className="text-sm font-bold text-green-600">
+                          +₹{selectedRecord.allowances.toLocaleString()}
+                        </span>
                       </div>
                       <div className="flex justify-between items-center p-3 bg-white rounded-lg">
                         <span className="text-sm font-medium text-gray-700">Deductions</span>
-                        <span className="text-sm font-bold text-red-600">-₹{selectedRecord.deductions.toLocaleString()}</span>
+                        <span className="text-sm font-bold text-red-600">
+                          -₹{selectedRecord.deductions.toLocaleString()}
+                        </span>
                       </div>
                       <div className="flex justify-between items-center p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border border-purple-200">
                         <span className="text-sm font-bold text-gray-900">Net Salary</span>
-                        <span className="text-lg font-bold text-purple-600">₹{selectedRecord.netSalary.toLocaleString()}</span>
+                        <span className="text-lg font-bold text-purple-600">
+                          ₹{selectedRecord.netSalary.toLocaleString()}
+                        </span>
                       </div>
                     </div>
                   </div>
 
                   {/* Payment Info */}
                   <div className="bg-gray-50 rounded-xl p-4">
-                    <h4 className="text-sm font-semibold text-gray-900 mb-4">Payment Information</h4>
+                    <h4 className="text-sm font-semibold text-gray-900 mb-4">
+                      Payment Information
+                    </h4>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="text-sm font-medium text-gray-700">Pay Period</label>
-                        <p className="text-sm text-gray-900 font-medium">{selectedRecord.payPeriod}</p>
+                        <p className="text-sm text-gray-900 font-medium">
+                          {selectedRecord.payPeriod}
+                        </p>
                       </div>
                       <div>
                         <label className="text-sm font-medium text-gray-700">Payment Date</label>
-                        <p className="text-sm text-gray-900 font-medium">{new Date(selectedRecord.paymentDate).toLocaleDateString()}</p>
+                        <p className="text-sm text-gray-900 font-medium">
+                          {new Date(selectedRecord.paymentDate).toLocaleDateString()}
+                        </p>
                       </div>
                       <div>
                         <label className="text-sm font-medium text-gray-700">Status</label>
-                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(selectedRecord.status)}`}>
+                        <span
+                          className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(selectedRecord.status)}`}
+                        >
                           {getStatusIcon(selectedRecord.status)}
                           {selectedRecord.status}
                         </span>
                       </div>
                       <div>
                         <label className="text-sm font-medium text-gray-700">Employee Type</label>
-                        <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full border ${
-                          selectedRecord.type === 'Faculty' ? 'bg-blue-100 text-blue-800 border-blue-200' : 'bg-green-100 text-green-800 border-green-200'
-                        }`}>
+                        <span
+                          className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full border ${
+                            selectedRecord.type === 'Faculty'
+                              ? 'bg-blue-100 text-blue-800 border-blue-200'
+                              : 'bg-green-100 text-green-800 border-green-200'
+                          }`}
+                        >
                           {selectedRecord.type}
                         </span>
                       </div>

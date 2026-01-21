@@ -19,7 +19,14 @@ export interface Company {
   contactPersonDesignation?: string;
   contactPersonEmail?: string;
   contactPersonPhone?: string;
-  accountStatus?: 'pending' | 'approved' | 'rejected' | 'active' | 'inactive' | 'suspended' | 'blacklisted';
+  accountStatus?:
+    | 'pending'
+    | 'approved'
+    | 'rejected'
+    | 'active'
+    | 'inactive'
+    | 'suspended'
+    | 'blacklisted';
   approvalStatus?: 'pending' | 'approved' | 'rejected';
   createdAt?: string;
   updatedAt?: string;
@@ -85,13 +92,13 @@ class CompanyService {
     accountStatus?: string;
   }): Promise<Company[]> {
     try {
-      let query = supabase
-        .from('companies')
-        .select('*');
+      let query = supabase.from('companies').select('*');
 
       // Apply search filter
       if (filters.searchTerm) {
-        query = query.or(`name.ilike.%${filters.searchTerm}%,code.ilike.%${filters.searchTerm}%,industry.ilike.%${filters.searchTerm}%`);
+        query = query.or(
+          `name.ilike.%${filters.searchTerm}%,code.ilike.%${filters.searchTerm}%,industry.ilike.%${filters.searchTerm}%`
+        );
       }
 
       // Apply industry filter
@@ -157,8 +164,8 @@ class CompanyService {
         metadata: {
           companyDescription: companyData.companyDescription || '',
           specialRequirements: companyData.specialRequirements || '',
-          registrationDate: new Date().toISOString()
-        }
+          registrationDate: new Date().toISOString(),
+        },
       };
 
       const { data, error } = await supabase
@@ -184,10 +191,10 @@ class CompanyService {
     try {
       // Separate metadata fields from regular fields
       const { companyDescription, specialRequirements, ...regularFields } = companyData;
-      
+
       const updateData: any = {
         ...regularFields,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       };
 
       // Convert establishedYear to number if provided
@@ -205,11 +212,11 @@ class CompanyService {
           .single();
 
         const currentMetadata = currentCompany?.metadata || {};
-        
+
         updateData.metadata = {
           ...currentMetadata,
           ...(companyDescription !== undefined && { companyDescription }),
-          ...(specialRequirements !== undefined && { specialRequirements })
+          ...(specialRequirements !== undefined && { specialRequirements }),
         };
       }
 
@@ -239,7 +246,7 @@ class CompanyService {
         .from('companies')
         .update({
           accountStatus: status,
-          updatedAt: new Date().toISOString()
+          updatedAt: new Date().toISOString(),
         })
         .eq('id', id)
         .select()
@@ -260,10 +267,7 @@ class CompanyService {
   // Delete company
   async deleteCompany(id: string): Promise<void> {
     try {
-      const { error } = await supabase
-        .from('companies')
-        .delete()
-        .eq('id', id);
+      const { error } = await supabase.from('companies').delete().eq('id', id);
 
       if (error) {
         console.error('Error deleting company:', error);
@@ -278,11 +282,7 @@ class CompanyService {
   // Get company by ID
   async getCompanyById(id: string): Promise<Company | null> {
     try {
-      const { data, error } = await supabase
-        .from('companies')
-        .select('*')
-        .eq('id', id)
-        .single();
+      const { data, error } = await supabase.from('companies').select('*').eq('id', id).single();
 
       if (error) {
         console.error('Error fetching company by ID:', error);
@@ -308,9 +308,7 @@ class CompanyService {
     blacklisted: number;
   }> {
     try {
-      const { data, error } = await supabase
-        .from('companies')
-        .select('accountStatus');
+      const { data, error } = await supabase.from('companies').select('accountStatus');
 
       if (error) {
         console.error('Error fetching companies stats:', error);
@@ -325,10 +323,10 @@ class CompanyService {
         rejected: 0,
         inactive: 0,
         suspended: 0,
-        blacklisted: 0
+        blacklisted: 0,
       };
 
-      data?.forEach(company => {
+      data?.forEach((company) => {
         if (company.accountStatus) {
           stats[company.accountStatus as keyof typeof stats]++;
         }

@@ -63,7 +63,7 @@ export interface Break {
   id?: string;
   college_id: string;
   timetable_id?: string;
-  break_type: "lunch" | "short" | "holiday" | "exam" | "event";
+  break_type: 'lunch' | 'short' | 'holiday' | 'exam' | 'event';
   name: string;
   description?: string;
   start_time?: string;

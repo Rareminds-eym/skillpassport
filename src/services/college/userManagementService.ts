@@ -58,7 +58,9 @@ export const userManagementService = {
       }
 
       // Get auth token for worker API
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session?.access_token) {
         return {
           success: false,
@@ -70,7 +72,9 @@ export const userManagementService = {
       }
 
       // Get college ID from current user context
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const {
+        data: { user: currentUser },
+      } = await supabase.auth.getUser();
       let collegeId = null;
 
       if (currentUser?.id || currentUser?.email) {
@@ -92,13 +96,21 @@ export const userManagementService = {
           .eq('organization_type', 'college')
           .limit(1)
           .maybeSingle();
-        
+
         collegeId = firstCollege?.id;
       }
 
       // Determine role for worker API
-      const isStaff = userData.roles.some(role => 
-        ['College Admin', 'HoD', 'Faculty', 'Exam Cell', 'Finance Admin', 'Placement Officer', 'Lecturer'].includes(role)
+      const isStaff = userData.roles.some((role) =>
+        [
+          'College Admin',
+          'HoD',
+          'Faculty',
+          'Exam Cell',
+          'Finance Admin',
+          'Placement Officer',
+          'Lecturer',
+        ].includes(role)
       );
 
       if (isStaff) {
@@ -107,15 +119,18 @@ export const userManagementService = {
         const firstName = nameParts[0] || '';
         const lastName = nameParts.slice(1).join(' ') || '';
 
-        const staffResult = await userApiService.createCollegeStaff({
-          email: userData.email,
-          firstName,
-          lastName,
-          collegeId: collegeId,
-          employeeId: userData.employee_id,
-          department: userData.department_id,
-          role: userData.roles[0]?.toLowerCase().replace(' ', '_') || 'lecturer',
-        }, session.access_token);
+        const staffResult = await userApiService.createCollegeStaff(
+          {
+            email: userData.email,
+            firstName,
+            lastName,
+            collegeId: collegeId,
+            employeeId: userData.employee_id,
+            department: userData.department_id,
+            role: userData.roles[0]?.toLowerCase().replace(' ', '_') || 'lecturer',
+          },
+          session.access_token
+        );
 
         if (!staffResult.success) {
           return {
@@ -197,18 +212,18 @@ export const userManagementService = {
     try {
       // Prepare update data for college_lecturers
       const updateData: any = {};
-      
+
       if (updates.name) {
         const nameParts = updates.name.trim().split(' ');
         updateData.first_name = nameParts[0];
         updateData.last_name = nameParts.slice(1).join(' ') || '';
       }
-      
+
       if (updates.email) updateData.email = updates.email;
       if (updates.employee_id) updateData.employeeId = updates.employee_id;
       if (updates.department_id) updateData.department = updates.department_id;
       if (updates.status) updateData.accountStatus = updates.status;
-      
+
       if (updates.roles) {
         updateData.metadata = {
           role: updates.roles[0].toLowerCase().replace(/ /g, '_'),
@@ -371,7 +386,8 @@ export const userManagementService = {
       }
 
       // Generate new temporary password
-      const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8).toUpperCase();
+      const tempPassword =
+        Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8).toUpperCase();
 
       // Update temporary password in college_lecturers
       const { error: updateError } = await supabase
@@ -441,9 +457,7 @@ export const userManagementService = {
       const users: User[] = [];
 
       // Fetch lecturers from college_lecturers table
-      let lecturersQuery = supabase
-        .from('college_lecturers')
-        .select(`
+      let lecturersQuery = supabase.from('college_lecturers').select(`
           id,
           user_id,
           collegeId,
@@ -472,21 +486,19 @@ export const userManagementService = {
 
       const { data: lecturers, error: lecturersError } = await lecturersQuery;
 
-      console.log('📚 Lecturers query result:', { 
-        count: lecturers?.length || 0, 
-        error: lecturersError 
+      console.log('📚 Lecturers query result:', {
+        count: lecturers?.length || 0,
+        error: lecturersError,
       });
 
       if (lecturersError) {
         console.error('❌ Error fetching lecturers:', lecturersError);
       } else if (lecturers && lecturers.length > 0) {
         // Fetch user details separately for each lecturer
-        const userIds = lecturers
-          .map(l => l.user_id)
-          .filter(Boolean);
+        const userIds = lecturers.map((l) => l.user_id).filter(Boolean);
 
         let usersMap: Record<string, any> = {};
-        
+
         if (userIds.length > 0) {
           const { data: usersData } = await supabase
             .from('users')
@@ -494,10 +506,13 @@ export const userManagementService = {
             .in('id', userIds);
 
           if (usersData) {
-            usersMap = usersData.reduce((acc, user) => {
-              acc[user.id] = user;
-              return acc;
-            }, {} as Record<string, any>);
+            usersMap = usersData.reduce(
+              (acc, user) => {
+                acc[user.id] = user;
+                return acc;
+              },
+              {} as Record<string, any>
+            );
           }
         }
 
@@ -506,36 +521,41 @@ export const userManagementService = {
           const userId = lecturer.user_id;
           const userData = userId ? usersMap[userId] : null;
           const metadata = lecturer.metadata || {};
-          
+
           // Get name from direct columns or metadata or users table
           const firstName = lecturer.first_name || metadata.first_name || '';
           const lastName = lecturer.last_name || metadata.last_name || '';
-          const fullName = firstName && lastName 
-            ? `${firstName} ${lastName}` 
-            : userData?.full_name || userData?.name || lecturer.employeeId || 'Unknown';
-          
+          const fullName =
+            firstName && lastName
+              ? `${firstName} ${lastName}`
+              : userData?.full_name || userData?.name || lecturer.employeeId || 'Unknown';
+
           // Get email from direct column or metadata or users table
-          const email = lecturer.email || metadata.email || userData?.email || `lecturer-${lecturer.id}@unknown.com`;
-          
+          const email =
+            lecturer.email ||
+            metadata.email ||
+            userData?.email ||
+            `lecturer-${lecturer.id}@unknown.com`;
+
           // Determine roles from metadata
           let roles: string[] = [];
           if (metadata.role) {
             const roleMap: Record<string, string> = {
-              'college_admin': 'College Admin',
-              'dean': 'Dean',
-              'hod': 'HoD',
-              'professor': 'Faculty',
-              'assistant_professor': 'Faculty',
-              'lecturer': 'Lecturer',
-              'exam_cell': 'Exam Cell',
-              'finance_admin': 'Finance Admin',
-              'placement_officer': 'Placement Officer',
+              college_admin: 'College Admin',
+              dean: 'Dean',
+              hod: 'HoD',
+              professor: 'Faculty',
+              assistant_professor: 'Faculty',
+              lecturer: 'Lecturer',
+              exam_cell: 'Exam Cell',
+              finance_admin: 'Finance Admin',
+              placement_officer: 'Placement Officer',
             };
             roles = [roleMap[metadata.role] || 'Faculty'];
           } else {
             roles = ['Faculty', 'Lecturer'];
           }
-          
+
           const user: User = {
             id: userId || lecturer.id,
             name: fullName,
@@ -577,8 +597,8 @@ export const userManagementService = {
       // Apply role filter
       let filteredUsers = users;
       if (filters.role) {
-        filteredUsers = users.filter(user => 
-          user.roles?.some(role => role.toLowerCase().includes(filters.role!.toLowerCase()))
+        filteredUsers = users.filter((user) =>
+          user.roles?.some((role) => role.toLowerCase().includes(filters.role!.toLowerCase()))
         );
       }
 
@@ -586,13 +606,13 @@ export const userManagementService = {
         total: users.length,
         filtered: filteredUsers.length,
         byRole: {
-          'College Admin': filteredUsers.filter(u => u.roles?.includes('College Admin')).length,
-          'HoD': filteredUsers.filter(u => u.roles?.includes('HoD')).length,
-          'Faculty': filteredUsers.filter(u => u.roles?.includes('Faculty')).length,
-          'Lecturer': filteredUsers.filter(u => u.roles?.includes('Lecturer')).length,
-          'Exam Cell': filteredUsers.filter(u => u.roles?.includes('Exam Cell')).length,
-          'Finance Admin': filteredUsers.filter(u => u.roles?.includes('Finance Admin')).length,
-        }
+          'College Admin': filteredUsers.filter((u) => u.roles?.includes('College Admin')).length,
+          HoD: filteredUsers.filter((u) => u.roles?.includes('HoD')).length,
+          Faculty: filteredUsers.filter((u) => u.roles?.includes('Faculty')).length,
+          Lecturer: filteredUsers.filter((u) => u.roles?.includes('Lecturer')).length,
+          'Exam Cell': filteredUsers.filter((u) => u.roles?.includes('Exam Cell')).length,
+          'Finance Admin': filteredUsers.filter((u) => u.roles?.includes('Finance Admin')).length,
+        },
       });
 
       return { success: true, data: filteredUsers };

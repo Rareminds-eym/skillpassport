@@ -1,9 +1,9 @@
 /**
  * SectionCompleteScreen Component
- * 
+ *
  * Displays the completion screen after finishing a section
  * with success animation and next section preview.
- * 
+ *
  * @module features/assessment/career-test/components/screens/SectionCompleteScreen
  */
 
@@ -29,7 +29,7 @@ export const SectionCompleteScreen: React.FC<SectionCompleteScreenProps> = ({
   nextSectionTitle,
   elapsedTime,
   isLastSection,
-  onContinue
+  onContinue,
 }) => {
   return (
     <motion.div
@@ -43,13 +43,13 @@ export const SectionCompleteScreen: React.FC<SectionCompleteScreenProps> = ({
       <motion.div
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
-        transition={{ type: "spring", stiffness: 200, damping: 12, delay: 0.1 }}
+        transition={{ type: 'spring', stiffness: 200, damping: 12, delay: 0.1 }}
         className="w-24 h-24 rounded-full bg-green-100 flex items-center justify-center mb-6"
       >
         <motion.div
           initial={{ scale: 0, rotate: -90 }}
           animate={{ scale: 1, rotate: 0 }}
-          transition={{ type: "spring", stiffness: 200, damping: 10, delay: 0.3 }}
+          transition={{ type: 'spring', stiffness: 200, damping: 10, delay: 0.3 }}
         >
           <CheckCircle2 className="w-12 h-12 text-green-600" />
         </motion.div>
@@ -84,9 +84,7 @@ export const SectionCompleteScreen: React.FC<SectionCompleteScreenProps> = ({
           className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-full mb-4 border border-emerald-200"
         >
           <Clock className="w-4 h-4" />
-          <span className="text-sm font-medium">
-            Completed in {formatElapsedTime(elapsedTime)}
-          </span>
+          <span className="text-sm font-medium">Completed in {formatElapsedTime(elapsedTime)}</span>
         </motion.div>
       )}
 

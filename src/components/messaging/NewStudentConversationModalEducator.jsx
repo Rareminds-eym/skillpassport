@@ -1,9 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { XMarkIcon, MagnifyingGlassIcon, AcademicCapIcon, UserIcon } from '@heroicons/react/24/outline';
+import {
+  XMarkIcon,
+  MagnifyingGlassIcon,
+  AcademicCapIcon,
+  UserIcon,
+} from '@heroicons/react/24/outline';
 import { supabase } from '../../lib/supabaseClient';
 import toast from 'react-hot-toast';
 
-const NewStudentConversationModalEducator = ({ isOpen, onClose, onCreateConversation, educatorId }) => {
+const NewStudentConversationModalEducator = ({
+  isOpen,
+  onClose,
+  onCreateConversation,
+  educatorId,
+}) => {
   const [students, setStudents] = useState([]);
   const [filteredStudents, setFilteredStudents] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -16,13 +26,15 @@ const NewStudentConversationModalEducator = ({ isOpen, onClose, onCreateConversa
   useEffect(() => {
     const fetchStudents = async () => {
       if (!isOpen || !educatorId) return;
-      
+
       setLoading(true);
       try {
         console.log('🔍 Fetching students for educator:', educatorId);
-        
+
         // Get current user to access email
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) {
           console.log('❌ No authenticated user found');
           setStudents([]);
@@ -30,11 +42,11 @@ const NewStudentConversationModalEducator = ({ isOpen, onClose, onCreateConversa
           setLoading(false);
           return;
         }
-        
+
         let schoolId = null;
         let educatorData = null;
         let userData = null;
-        
+
         // Strategy 1: Try to get school from school_educators table using user_id
         const { data: educatorResult } = await supabase
           .from('school_educators')
@@ -49,42 +61,42 @@ const NewStudentConversationModalEducator = ({ isOpen, onClose, onCreateConversa
           console.log('✅ Found school from school_educators (user_id):', schoolId);
         } else {
           console.log('⚠️ No school found in school_educators by user_id, trying by email...');
-          
+
           // Strategy 2: Try using email (like useEducatorSchool hook)
           const { data: educatorByEmailResult } = await supabase
             .from('school_educators')
             .select('school_id, user_id, id')
             .eq('email', user.email)
             .maybeSingle();
-          
+
           if (educatorByEmailResult?.school_id) {
             schoolId = educatorByEmailResult.school_id;
             console.log('✅ Found school from school_educators (email):', schoolId);
           } else {
             console.log('⚠️ No school found by email, trying by id...');
-            
+
             // Strategy 3: Try using educatorId as the school_educators.id directly
             const { data: educatorByIdResult } = await supabase
               .from('school_educators')
               .select('school_id, user_id')
               .eq('id', educatorId)
               .maybeSingle();
-            
+
             if (educatorByIdResult?.school_id) {
               schoolId = educatorByIdResult.school_id;
               console.log('✅ Found school from school_educators (id):', schoolId);
             } else {
               console.log('⚠️ No school found in school_educators by id, trying users table...');
-              
+
               // Strategy 4: Fallback to users table if it has school_id
               const { data: userResult } = await supabase
                 .from('users')
                 .select('school_id')
                 .eq('id', educatorId)
                 .maybeSingle();
-              
+
               userData = userResult;
-              
+
               if (userData?.school_id) {
                 schoolId = userData.school_id;
                 console.log('✅ Found school from users table:', schoolId);
@@ -95,16 +107,20 @@ const NewStudentConversationModalEducator = ({ isOpen, onClose, onCreateConversa
 
         if (!schoolId) {
           console.log('❌ No school found for educator');
-          toast.error('No school assignment found. Please contact your school administrator to assign you to a school.');
-          
+          toast.error(
+            'No school assignment found. Please contact your school administrator to assign you to a school.'
+          );
+
           // Show detailed error in console for debugging
           console.log('🔍 Debugging info:');
           console.log('- Educator ID:', educatorId);
           console.log('- Email:', user.email);
           console.log('- School educators query (user_id) result:', educatorData);
           console.log('- Users table fallback result:', userData);
-          console.log('💡 To fix this issue, ensure the educator has a school_id in either school_educators or users table');
-          
+          console.log(
+            '💡 To fix this issue, ensure the educator has a school_id in either school_educators or users table'
+          );
+
           setStudents([]);
           setFilteredStudents([]);
           setLoading(false);
@@ -114,7 +130,8 @@ const NewStudentConversationModalEducator = ({ isOpen, onClose, onCreateConversa
         // Then fetch students from the same school
         const { data: studentsData, error: studentsError } = await supabase
           .from('students')
-          .select(`
+          .select(
+            `
             id,
             name,
             email,
@@ -124,7 +141,8 @@ const NewStudentConversationModalEducator = ({ isOpen, onClose, onCreateConversa
             grade,
             section,
             contact_number
-          `)
+          `
+          )
           .eq('school_id', schoolId)
           .order('name');
 
@@ -155,14 +173,15 @@ const NewStudentConversationModalEducator = ({ isOpen, onClose, onCreateConversa
     }
 
     const query = searchQuery.toLowerCase();
-    const filtered = students.filter(student => 
-      student.name?.toLowerCase().includes(query) ||
-      student.email?.toLowerCase().includes(query) ||
-      student.university?.toLowerCase().includes(query) ||
-      student.branch_field?.toLowerCase().includes(query) ||
-      student.contact_number?.toLowerCase().includes(query) ||
-      student.grade?.toString().toLowerCase().includes(query) ||
-      student.section?.toLowerCase().includes(query)
+    const filtered = students.filter(
+      (student) =>
+        student.name?.toLowerCase().includes(query) ||
+        student.email?.toLowerCase().includes(query) ||
+        student.university?.toLowerCase().includes(query) ||
+        student.branch_field?.toLowerCase().includes(query) ||
+        student.contact_number?.toLowerCase().includes(query) ||
+        student.grade?.toString().toLowerCase().includes(query) ||
+        student.section?.toLowerCase().includes(query)
     );
     setFilteredStudents(filtered);
   }, [searchQuery, students]);
@@ -245,10 +264,9 @@ const NewStudentConversationModalEducator = ({ isOpen, onClose, onCreateConversa
                     {searchQuery ? 'No students found' : 'No students available'}
                   </p>
                   <p className="text-gray-400 text-sm mt-1">
-                    {searchQuery 
-                      ? 'Try adjusting your search terms' 
-                      : 'Make sure you are assigned to a school and students are enrolled'
-                    }
+                    {searchQuery
+                      ? 'Try adjusting your search terms'
+                      : 'Make sure you are assigned to a school and students are enrolled'}
                   </p>
                   {!searchQuery && (
                     <div className="text-center space-y-3 mt-3">
@@ -270,20 +288,25 @@ const NewStudentConversationModalEducator = ({ isOpen, onClose, onCreateConversa
                     key={student.id}
                     onClick={() => setSelectedStudent(student)}
                     className={`w-full p-4 flex items-center gap-3 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0 ${
-                      selectedStudent?.id === student.id ? 'bg-blue-50 border-l-4 border-l-blue-600' : ''
+                      selectedStudent?.id === student.id
+                        ? 'bg-blue-50 border-l-4 border-l-blue-600'
+                        : ''
                     }`}
                   >
                     <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
                       {student.name?.charAt(0)?.toUpperCase() || 'S'}
                     </div>
                     <div className="flex-1 text-left">
-                      <h4 className="font-semibold text-gray-900">{student.name || 'Unnamed Student'}</h4>
+                      <h4 className="font-semibold text-gray-900">
+                        {student.name || 'Unnamed Student'}
+                      </h4>
                       <p className="text-sm text-gray-600">{student.email}</p>
                       {(student.university || student.branch_field || student.grade) && (
                         <p className="text-xs text-blue-600 mt-1">
                           {student.university && `${student.university}`}
                           {student.branch_field && ` • ${student.branch_field}`}
-                          {student.grade && ` • Grade ${student.grade}${student.section ? `-${student.section}` : ''}`}
+                          {student.grade &&
+                            ` • Grade ${student.grade}${student.section ? `-${student.section}` : ''}`}
                         </p>
                       )}
                     </div>
@@ -311,9 +334,7 @@ const NewStudentConversationModalEducator = ({ isOpen, onClose, onCreateConversa
               className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               maxLength={100}
             />
-            <p className="text-xs text-gray-500">
-              {subject.length}/100 characters
-            </p>
+            <p className="text-xs text-gray-500">{subject.length}/100 characters</p>
           </div>
 
           {/* Selected Student Preview */}

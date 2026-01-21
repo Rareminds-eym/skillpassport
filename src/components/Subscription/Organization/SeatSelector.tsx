@@ -1,6 +1,6 @@
 /**
  * SeatSelector Component
- * 
+ *
  * Allows organization admins to select the number of seats for bulk subscription purchase.
  * Shows volume discount tiers and real-time price calculation.
  */
@@ -133,9 +133,7 @@ function SeatSelector({
   }, []);
 
   const currentDiscount = calculateVolumeDiscount(seatCount);
-  const currentTier = VOLUME_DISCOUNT_TIERS.find(
-    (tier) => seatCount >= tier.minSeats
-  );
+  const currentTier = VOLUME_DISCOUNT_TIERS.find((tier) => seatCount >= tier.minSeats);
 
   return (
     <div className="space-y-4">
@@ -202,18 +200,14 @@ function SeatSelector({
           <span className="text-green-700 font-medium">
             🎉 {currentDiscount}% volume discount applied!
           </span>
-          <span className="text-green-600 text-sm ml-2">
-            ({currentTier?.label})
-          </span>
+          <span className="text-green-600 text-sm ml-2">({currentTier?.label})</span>
         </div>
       )}
 
       {/* Volume Discount Tiers */}
       {showVolumeDiscounts && (
         <div className="mt-4">
-          <h4 className="text-sm font-medium text-gray-700 mb-2 text-center">
-            Volume Discounts
-          </h4>
+          <h4 className="text-sm font-medium text-gray-700 mb-2 text-center">Volume Discounts</h4>
           <div className="grid grid-cols-4 gap-2">
             {VOLUME_DISCOUNT_TIERS.map((tier) => (
               <div
@@ -222,9 +216,8 @@ function SeatSelector({
                   seatCount >= tier.minSeats &&
                   (tier.minSeats === 500 ||
                     seatCount <
-                      (VOLUME_DISCOUNT_TIERS.find(
-                        (t) => t.minSeats > tier.minSeats
-                      )?.minSeats || Infinity))
+                      (VOLUME_DISCOUNT_TIERS.find((t) => t.minSeats > tier.minSeats)?.minSeats ||
+                        Infinity))
                     ? 'bg-blue-100 border-2 border-blue-500'
                     : 'bg-gray-50 border border-gray-200'
                 }`}

@@ -15,7 +15,7 @@ import {
   SparklesIcon,
   BoltIcon,
   ArrowDownTrayIcon,
-  UserGroupIcon
+  UserGroupIcon,
 } from '@heroicons/react/24/outline';
 import { candidates } from '../../data/sampleData';
 import {
@@ -25,9 +25,16 @@ import {
   ExportButton,
   InfoIcon,
   DrillDownModal,
-  SectionHeaderWithActions
+  SectionHeaderWithActions,
 } from '../../components/Recruiter/components/AnalyticsComponents';
-import { TrendLineChart, AreaChart, ColumnChart, BarChart, ProgressRing, Sparkline as AdvancedSparkline } from '../../components/Recruiter/components/AdvancedCharts';
+import {
+  TrendLineChart,
+  AreaChart,
+  ColumnChart,
+  BarChart,
+  ProgressRing,
+  Sparkline as AdvancedSparkline,
+} from '../../components/Recruiter/components/AdvancedCharts';
 import { exportSectionToCSV, exportComprehensiveAnalytics } from '../../utils/exportUtils';
 import { getDataForPeriod, getPeriodDisplayName } from '../../utils/mockDataGenerator';
 
@@ -58,7 +65,15 @@ interface KpiCardProps {
   trendLabel?: string;
 }
 
-const KpiCard: React.FC<KpiCardProps> = ({ title, value, icon: Icon, iconColor, iconBg, trend, trendLabel }) => {
+const KpiCard: React.FC<KpiCardProps> = ({
+  title,
+  value,
+  icon: Icon,
+  iconColor,
+  iconBg,
+  trend,
+  trendLabel,
+}) => {
   const isPositive = trend && trend > 0;
   const isNegative = trend && trend < 0;
   const showTrend = trend !== undefined && trend !== 0;
@@ -66,12 +81,21 @@ const KpiCard: React.FC<KpiCardProps> = ({ title, value, icon: Icon, iconColor, 
   return (
     <div className="group bg-white rounded-xl border border-gray-200/60 p-5 hover:shadow-lg hover:border-gray-300 transition-all duration-200 relative">
       <div className="flex items-start justify-between mb-4">
-        <div className={`w-12 h-12 rounded-xl ${iconBg} flex items-center justify-center shadow-sm`}>
+        <div
+          className={`w-12 h-12 rounded-xl ${iconBg} flex items-center justify-center shadow-sm`}
+        >
           <Icon className={`h-6 w-6 ${iconColor}`} />
         </div>
         {showTrend && (
-          <div className={`flex items-center gap-1 px-2.5 py-1 rounded-lg ${isPositive ? 'bg-green-50 text-green-700' : isNegative ? 'bg-red-50 text-red-700' : 'bg-gray-50 text-gray-700'
-            }`}>
+          <div
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg ${
+              isPositive
+                ? 'bg-green-50 text-green-700'
+                : isNegative
+                  ? 'bg-red-50 text-red-700'
+                  : 'bg-gray-50 text-gray-700'
+            }`}
+          >
             {isPositive && <ArrowUpIcon className="h-3 w-3" />}
             {isNegative && <ArrowDownIcon className="h-3 w-3" />}
             <span className="text-xs font-semibold">{Math.abs(trend)}%</span>
@@ -79,7 +103,9 @@ const KpiCard: React.FC<KpiCardProps> = ({ title, value, icon: Icon, iconColor, 
         )}
       </div>
       <div>
-        <div className="text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">{title}</div>
+        <div className="text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">
+          {title}
+        </div>
         <p className="text-2xl font-bold text-gray-900 mb-1">{value}</p>
         <p className="text-xs text-gray-500">{trendLabel}</p>
       </div>
@@ -88,12 +114,18 @@ const KpiCard: React.FC<KpiCardProps> = ({ title, value, icon: Icon, iconColor, 
 };
 
 // Simple horizontal bar used in charts without external libs
-const HBar = ({ percent, color = 'primary' }: { percent: number; color?: 'primary' | 'success' | 'warning' | 'danger' }) => {
+const HBar = ({
+  percent,
+  color = 'primary',
+}: {
+  percent: number;
+  color?: 'primary' | 'success' | 'warning' | 'danger';
+}) => {
   const colors: Record<string, string> = {
     primary: 'bg-primary-500',
     success: 'bg-success-500',
     warning: 'bg-warning-500',
-    danger: 'bg-danger-500'
+    danger: 'bg-danger-500',
   };
   const p = Math.max(0, Math.min(100, percent));
   return (
@@ -136,8 +168,14 @@ const Analytics: React.FC = () => {
     (searchParams.get('range') as any) || '30d'
   );
   const [loading, setLoading] = useState(false);
-  const [drillDownModal, setDrillDownModal] = useState<{ isOpen: boolean; title: string; data: any }>({
-    isOpen: false, title: '', data: null
+  const [drillDownModal, setDrillDownModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    data: any;
+  }>({
+    isOpen: false,
+    title: '',
+    data: null,
   });
   const [chartType, setChartType] = useState<'line' | 'area' | 'column'>(
     (searchParams.get('chart') as any) || 'line'
@@ -149,14 +187,14 @@ const Analytics: React.FC = () => {
     dateRange: {
       preset: '30d',
       startDate: '',
-      endDate: ''
+      endDate: '',
     },
     departments: [],
     jobLevels: [],
     sources: [],
     skills: [],
     locations: [],
-    recruiters: []
+    recruiters: [],
   });
 
   // Get dynamic data based on selected period and filters (for sections other than funnel)
@@ -166,7 +204,10 @@ const Analytics: React.FC = () => {
     return baseData;
   }, [range]);
 
-  const periodName = useMemo(() => getPeriodDisplayName(range === 'custom' ? '30d' : range), [range]);
+  const periodName = useMemo(
+    () => getPeriodDisplayName(range === 'custom' ? '30d' : range),
+    [range]
+  );
 
   // Live Funnel from DB via React Query + Realtime
   const funnelPreset = (range as FunnelRangePreset) || '30d';
@@ -228,7 +269,6 @@ const Analytics: React.FC = () => {
     setSearchParams(params);
   }, [range, chartType]);
 
-
   // Drill-down handlers
   const handleDrillDown = (title: string, data: any) => {
     setDrillDownModal({ isOpen: true, title, data });
@@ -248,28 +288,35 @@ const Analytics: React.FC = () => {
       sources: [],
       skills: [],
       locations: [],
-      recruiters: []
+      recruiters: [],
     });
     setRange('30d');
   };
 
-  const handleDateRangeChange = (preset: '7d' | '30d' | '90d' | 'ytd' | 'custom', startDate?: string, endDate?: string) => {
+  const handleDateRangeChange = (
+    preset: '7d' | '30d' | '90d' | 'ytd' | 'custom',
+    startDate?: string,
+    endDate?: string
+  ) => {
     setRange(preset);
     setFilters({
       ...filters,
-      dateRange: { preset, startDate: startDate || '', endDate: endDate || '' }
+      dateRange: { preset, startDate: startDate || '', endDate: endDate || '' },
     });
   };
 
   // Phase 1: Export handler
   const handleComprehensiveExport = () => {
-    exportComprehensiveAnalytics({
-      funnel: periodData.funnel,
-      quality: periodData.qualityMetrics,
-      speed: periodData.speedMetrics,
-      geography: periodData.geography,
-      attribution: periodData.attribution
-    }, 'excel');
+    exportComprehensiveAnalytics(
+      {
+        funnel: periodData.funnel,
+        quality: periodData.qualityMetrics,
+        speed: periodData.speedMetrics,
+        geography: periodData.geography,
+        attribution: periodData.attribution,
+      },
+      'excel'
+    );
   };
 
   // Calculate funnel stages from live data (without conversions)
@@ -280,14 +327,39 @@ const Analytics: React.FC = () => {
     const offered = liveFunnel?.offered || 0;
     const hired = liveFunnel?.hired || 0;
 
-    const calcConv = (curr: number, prev: number) => prev > 0 ? Math.round((curr / prev) * 100) : 0;
+    const calcConv = (curr: number, prev: number) =>
+      prev > 0 ? Math.round((curr / prev) * 100) : 0;
 
     return [
       { key: 'sourced', label: 'Sourced', value: sourced, color: 'bg-gray-600', conversion: 100 },
-      { key: 'screened', label: 'Screened', value: screened, color: 'bg-blue-500', conversion: calcConv(screened, sourced) },
-      { key: 'interviewed', label: 'Interviewed', value: interviewed, color: 'bg-yellow-500', conversion: calcConv(interviewed, screened) },
-      { key: 'offered', label: 'Offered', value: offered, color: 'bg-green-500', conversion: calcConv(offered, interviewed) },
-      { key: 'hired', label: 'Hired', value: hired, color: 'bg-purple-600', conversion: calcConv(hired, offered) }
+      {
+        key: 'screened',
+        label: 'Screened',
+        value: screened,
+        color: 'bg-blue-500',
+        conversion: calcConv(screened, sourced),
+      },
+      {
+        key: 'interviewed',
+        label: 'Interviewed',
+        value: interviewed,
+        color: 'bg-yellow-500',
+        conversion: calcConv(interviewed, screened),
+      },
+      {
+        key: 'offered',
+        label: 'Offered',
+        value: offered,
+        color: 'bg-green-500',
+        conversion: calcConv(offered, interviewed),
+      },
+      {
+        key: 'hired',
+        label: 'Hired',
+        value: hired,
+        color: 'bg-purple-600',
+        conversion: calcConv(hired, offered),
+      },
     ];
   }, [liveFunnel]);
 
@@ -307,19 +379,19 @@ const Analytics: React.FC = () => {
         insights.push({
           type: 'success',
           text: `High-quality talent pool with ${kpiMetrics.qualityScore} average quality score`,
-          priority: 1
+          priority: 1,
         });
       } else if (kpiMetrics.qualityScore >= 75) {
         insights.push({
           type: 'info',
           text: `Quality score of ${kpiMetrics.qualityScore} meets industry standards`,
-          priority: 2
+          priority: 2,
         });
       } else {
         insights.push({
           type: 'warning',
           text: `Quality score (${kpiMetrics.qualityScore}) below target - review screening criteria`,
-          priority: 1
+          priority: 1,
         });
       }
     }
@@ -332,13 +404,13 @@ const Analytics: React.FC = () => {
         insights.push({
           type: 'success',
           text: `Hiring process is ${improvement}% faster than industry average (${speedData.timeToHire} vs ${industryAvg} days)`,
-          priority: 1
+          priority: 1,
         });
       } else if (speedData.timeToHire > 30) {
         insights.push({
           type: 'warning',
           text: `Time to hire (${speedData.timeToHire} days) exceeds target - identify bottlenecks`,
-          priority: 1
+          priority: 1,
         });
       }
     }
@@ -348,7 +420,7 @@ const Analytics: React.FC = () => {
       insights.push({
         type: 'info',
         text: `${topColleges[0].name} is top talent source with ${topColleges[0].count} candidates (${topColleges[0].percentage}%)`,
-        priority: 2
+        priority: 2,
       });
     }
 
@@ -358,7 +430,7 @@ const Analytics: React.FC = () => {
       insights.push({
         type: 'success',
         text: `Top performing course: ${topCourse.name} with ${topCourse.successRate}% success rate (${topCourse.hiredCandidates}/${topCourse.totalCandidates} hired)`,
-        priority: 2
+        priority: 2,
       });
     }
 
@@ -369,13 +441,13 @@ const Analytics: React.FC = () => {
         insights.push({
           type: 'success',
           text: `Strong geographic diversity across ${geographicData.length} regions with ${totalCandidates} total candidates`,
-          priority: 2
+          priority: 2,
         });
       } else if (geographicData[0] && geographicData[0].percentage > 60) {
         insights.push({
           type: 'info',
           text: `High concentration in ${geographicData[0].city} (${geographicData[0].percentage}%) - consider expanding to other regions`,
-          priority: 3
+          priority: 3,
         });
       }
     }
@@ -386,13 +458,13 @@ const Analytics: React.FC = () => {
         insights.push({
           type: 'success',
           text: `Strong hiring momentum with ${Math.abs(kpiMetrics.successfulHiresTrend)}% increase in successful hires`,
-          priority: 1
+          priority: 1,
         });
       } else if (kpiMetrics.successfulHiresTrend < -10) {
         insights.push({
           type: 'warning',
           text: `Hiring declined by ${Math.abs(kpiMetrics.successfulHiresTrend)}% - review pipeline strategy`,
-          priority: 1
+          priority: 1,
         });
       }
     }
@@ -400,25 +472,23 @@ const Analytics: React.FC = () => {
     // Insight 7: Pipeline Growth
     if (kpiMetrics?.totalCandidatesTrend && kpiMetrics.totalCandidatesTrend > 15) {
       insights.push({
-          type: 'success',
-          text: `Pipeline growing rapidly with ${kpiMetrics.totalCandidatesTrend}% increase in candidates`,
-          priority: 2
+        type: 'success',
+        text: `Pipeline growing rapidly with ${kpiMetrics.totalCandidatesTrend}% increase in candidates`,
+        priority: 2,
       });
     }
 
     // Insight 8: Speed Improvement
     if (speedData?.fastestHire && speedData.fastestHire < 15) {
       insights.push({
-          type: 'info',
-          text: `Fastest hire completed in just ${speedData.fastestHire} days - excellent process efficiency`,
-          priority: 3
+        type: 'info',
+        text: `Fastest hire completed in just ${speedData.fastestHire} days - excellent process efficiency`,
+        priority: 3,
       });
     }
 
     // Sort by priority and return top 5 insights
-    return insights
-      .sort((a, b) => a.priority - b.priority)
-      .slice(0, 5);
+    return insights.sort((a, b) => a.priority - b.priority).slice(0, 5);
   }, [kpiMetrics, speedData, topColleges, coursePerformance, geographicData]);
 
   return (
@@ -430,7 +500,6 @@ const Analytics: React.FC = () => {
             <h1 className="text-xl font-bold text-gray-900">Analytics Dashboard</h1>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-
             {/* Phase 1: Date Range Picker */}
             <DateRangePicker
               startDate={filters.dateRange.startDate || ''}
@@ -463,7 +532,9 @@ const Analytics: React.FC = () => {
         {/* KPI Cards */}
         {loading || kpiLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-            {[1, 2, 3, 4].map((i) => <SkeletonCard key={i} />)}
+            {[1, 2, 3, 4].map((i) => (
+              <SkeletonCard key={i} />
+            ))}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -507,7 +578,11 @@ const Analytics: React.FC = () => {
               iconColor="text-indigo-600"
               iconBg="bg-indigo-50"
               trend={kpiMetrics?.timeToHireTrend ?? 0}
-              trendLabel={kpiMetrics?.timeToHireTrend && kpiMetrics.timeToHireTrend < 0 ? 'faster than last period' : 'from last period'}
+              trendLabel={
+                kpiMetrics?.timeToHireTrend && kpiMetrics.timeToHireTrend < 0
+                  ? 'faster than last period'
+                  : 'from last period'
+              }
             />
             <KpiCard
               title={
@@ -531,17 +606,27 @@ const Analytics: React.FC = () => {
           {/* Left Column: Metrics Sections */}
           <div className="space-y-6">
             {/* Quality Metrics */}
-            <div id="quality-metrics-section" className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+            <div
+              id="quality-metrics-section"
+              className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm"
+            >
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-semibold text-gray-900">Quality Metrics</h2>
                 <ChartDownloadButton
                   chartId="quality-metrics-section"
                   chartName="Quality_Metrics"
-                  data={qualityMetrics ? [
-                    { metric: 'Total Hired', value: qualityMetrics.totalHired || 0 },
-                    { metric: 'Avg CGPA', value: qualityMetrics.avgCgpa || 0 },
-                    { metric: 'Gender Diversity', value: `${qualityMetrics.genderDiversity?.femalePercent || 0}% Female` }
-                  ] : []}
+                  data={
+                    qualityMetrics
+                      ? [
+                          { metric: 'Total Hired', value: qualityMetrics.totalHired || 0 },
+                          { metric: 'Avg CGPA', value: qualityMetrics.avgCgpa || 0 },
+                          {
+                            metric: 'Gender Diversity',
+                            value: `${qualityMetrics.genderDiversity?.femalePercent || 0}% Female`,
+                          },
+                        ]
+                      : []
+                  }
                   compact
                 />
               </div>
@@ -585,12 +670,16 @@ const Analytics: React.FC = () => {
                       </div>
                       <div className="flex items-center justify-center gap-3 mb-1">
                         <div className="text-center">
-                          <span className="text-lg font-bold text-gray-900">{qualityMetrics.genderDiversity?.malePercent || 0}%</span>
+                          <span className="text-lg font-bold text-gray-900">
+                            {qualityMetrics.genderDiversity?.malePercent || 0}%
+                          </span>
                           <span className="text-[10px] block text-gray-500">Male</span>
                         </div>
                         <div className="h-8 w-px bg-gray-300"></div>
                         <div className="text-center">
-                          <span className="text-lg font-bold text-gray-900">{qualityMetrics.genderDiversity?.femalePercent || 0}%</span>
+                          <span className="text-lg font-bold text-gray-900">
+                            {qualityMetrics.genderDiversity?.femalePercent || 0}%
+                          </span>
                           <span className="text-[10px] block text-gray-500">Female</span>
                         </div>
                       </div>
@@ -607,7 +696,9 @@ const Analytics: React.FC = () => {
                         <div className="flex items-center justify-between mb-4">
                           <div>
                             <p className="text-xs text-gray-500">Average Age</p>
-                            <p className="text-xl font-bold text-gray-900">{qualityMetrics.ageDemographics?.averageAge || 0} years</p>
+                            <p className="text-xl font-bold text-gray-900">
+                              {qualityMetrics.ageDemographics?.averageAge || 0} years
+                            </p>
                           </div>
                         </div>
                         <div className="space-y-3">
@@ -615,7 +706,9 @@ const Analytics: React.FC = () => {
                             <div key={group.range}>
                               <div className="flex justify-between text-xs mb-1">
                                 <span className="text-gray-600">{group.range}</span>
-                                <span className="font-medium text-gray-900">{group.count} ({group.percentage}%)</span>
+                                <span className="font-medium text-gray-900">
+                                  {group.count} ({group.percentage}%)
+                                </span>
                               </div>
                               <div className="w-full bg-gray-200 rounded-full h-2">
                                 <div
@@ -625,7 +718,8 @@ const Analytics: React.FC = () => {
                               </div>
                             </div>
                           ))}
-                          {(!qualityMetrics.ageDemographics?.ageRanges || qualityMetrics.ageDemographics.ageRanges.length === 0) && (
+                          {(!qualityMetrics.ageDemographics?.ageRanges ||
+                            qualityMetrics.ageDemographics.ageRanges.length === 0) && (
                             <div className="text-center py-8 text-gray-500 text-sm">
                               No age distribution data available
                             </div>
@@ -636,7 +730,9 @@ const Analytics: React.FC = () => {
 
                     {/* Top Courses */}
                     <div>
-                      <h3 className="text-sm font-semibold text-gray-900 mb-4">Top Courses / Branches</h3>
+                      <h3 className="text-sm font-semibold text-gray-900 mb-4">
+                        Top Courses / Branches
+                      </h3>
                       <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 h-full">
                         <div className="space-y-3">
                           {qualityMetrics.topCourses?.map((course, index) => (
@@ -645,7 +741,10 @@ const Analytics: React.FC = () => {
                                 <div className="flex-shrink-0 w-6 h-6 rounded-full bg-white border border-gray-200 flex items-center justify-center text-xs font-medium text-gray-600">
                                   {index + 1}
                                 </div>
-                                <span className="text-sm text-gray-700 truncate max-w-[180px]" title={course.name}>
+                                <span
+                                  className="text-sm text-gray-700 truncate max-w-[180px]"
+                                  title={course.name}
+                                >
                                   {course.name}
                                 </span>
                               </div>
@@ -656,11 +755,14 @@ const Analytics: React.FC = () => {
                                     style={{ width: `${course.percentage}%` }}
                                   ></div>
                                 </div>
-                                <span className="text-xs font-medium text-gray-900 w-8 text-right">{course.count}</span>
+                                <span className="text-xs font-medium text-gray-900 w-8 text-right">
+                                  {course.count}
+                                </span>
                               </div>
                             </div>
                           ))}
-                          {(!qualityMetrics.topCourses || qualityMetrics.topCourses.length === 0) && (
+                          {(!qualityMetrics.topCourses ||
+                            qualityMetrics.topCourses.length === 0) && (
                             <div className="text-center py-8 text-gray-500 text-sm">
                               No course data available
                             </div>
@@ -678,18 +780,25 @@ const Analytics: React.FC = () => {
             </div>
 
             {/* Speed Analytics */}
-            <div id="speed-analytics-section" className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+            <div
+              id="speed-analytics-section"
+              className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm"
+            >
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-semibold text-gray-900">Speed Analytics</h2>
                 <ChartDownloadButton
                   chartId="speed-analytics-section"
                   chartName="Speed_Analytics"
-                  data={speedData ? [
-                    { metric: 'Time to First Response', days: speedData.timeToFirstResponse },
-                    { metric: 'Time to Hire', days: speedData.timeToHire },
-                    { metric: 'Interview to Offer', days: speedData.interviewToOffer },
-                    { metric: 'Fastest Hire', days: speedData.fastestHire }
-                  ] : []}
+                  data={
+                    speedData
+                      ? [
+                          { metric: 'Time to First Response', days: speedData.timeToFirstResponse },
+                          { metric: 'Time to Hire', days: speedData.timeToHire },
+                          { metric: 'Interview to Offer', days: speedData.interviewToOffer },
+                          { metric: 'Fastest Hire', days: speedData.fastestHire },
+                        ]
+                      : []
+                  }
                   compact
                 />
               </div>
@@ -765,11 +874,16 @@ const Analytics: React.FC = () => {
             </div>
 
             {/* Diversity & Geography Section */}
-            <div id="geography-section" className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+            <div
+              id="geography-section"
+              className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm"
+            >
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900">Diversity & Geography</h2>
-                  <p className="text-sm text-gray-600 mt-1">Understanding where your talent comes from</p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Understanding where your talent comes from
+                  </p>
                 </div>
                 <button
                   onClick={() => setDiversityExportModalOpen(true)}
@@ -789,7 +903,9 @@ const Analytics: React.FC = () => {
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                 {/* Geographic Distribution */}
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-900 mb-4">Geographic Distribution</h3>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-4">
+                    Geographic Distribution
+                  </h3>
                   {geoLoading ? (
                     <div className="space-y-4">
                       {[1, 2, 3, 4].map((i) => (
@@ -821,7 +937,12 @@ const Analytics: React.FC = () => {
                         ))}
                       </div>
                       <div className="mt-4 pt-4 border-t border-gray-200">
-                        <p className="text-xs text-gray-500">Total Candidates: <span className="font-bold text-gray-900">{geographicData.reduce((sum, l) => sum + l.count, 0)}</span></p>
+                        <p className="text-xs text-gray-500">
+                          Total Candidates:{' '}
+                          <span className="font-bold text-gray-900">
+                            {geographicData.reduce((sum, l) => sum + l.count, 0)}
+                          </span>
+                        </p>
                       </div>
                     </>
                   ) : (
@@ -844,7 +965,10 @@ const Analytics: React.FC = () => {
                     <>
                       <div className="space-y-3">
                         {topColleges.map((c, idx) => (
-                          <div key={c.name} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div
+                            key={c.name}
+                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                          >
                             <div className="flex items-center gap-3">
                               <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold">
                                 {idx + 1}
@@ -853,16 +977,23 @@ const Analytics: React.FC = () => {
                             </div>
                             <div className="flex items-center gap-2">
                               <div className="w-16 bg-gray-200 h-1.5 rounded-full">
-                                <div className="bg-green-500 h-1.5 rounded-full" style={{ width: `${c.percentage}%` }} />
+                                <div
+                                  className="bg-green-500 h-1.5 rounded-full"
+                                  style={{ width: `${c.percentage}%` }}
+                                />
                               </div>
-                              <span className="text-sm font-bold text-gray-900 w-6 text-right">{c.count}</span>
+                              <span className="text-sm font-bold text-gray-900 w-6 text-right">
+                                {c.count}
+                              </span>
                             </div>
                           </div>
                         ))}
                       </div>
                       <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                         <p className="text-xs text-blue-700 font-medium">Diversity Index</p>
-                        <p className="text-sm text-blue-900 mt-1">Good distribution across {topColleges.length} institutions</p>
+                        <p className="text-sm text-blue-900 mt-1">
+                          Good distribution across {topColleges.length} institutions
+                        </p>
                       </div>
                     </>
                   ) : (
@@ -875,11 +1006,16 @@ const Analytics: React.FC = () => {
             </div>
 
             {/* Attribution Analysis */}
-            <div id="attribution-section" className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm" >
+            <div
+              id="attribution-section"
+              className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm"
+            >
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900">Attribution Analysis</h2>
-                  <p className="text-sm text-gray-600 mt-1">Which programs and events yield the best hires</p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Which programs and events yield the best hires
+                  </p>
                 </div>
                 <ChartDownloadButton
                   chartId="attribution-section"
@@ -892,7 +1028,9 @@ const Analytics: React.FC = () => {
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                 {/* Hackathon Performance */}
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-900 mb-4">Hackathon Performance</h3>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-4">
+                    Hackathon Performance
+                  </h3>
                   <div className="space-y-3">
                     {periodData.attribution.hackathons.map((h: any) => (
                       <div key={h.name} className="p-4 bg-gray-50 rounded-lg">
@@ -913,7 +1051,9 @@ const Analytics: React.FC = () => {
                           </div>
                           <div>
                             <p className="text-xs text-gray-500">Success Rate</p>
-                            <p className="text-lg font-bold text-purple-600">{((h.hires / h.applications) * 100).toFixed(1)}%</p>
+                            <p className="text-lg font-bold text-purple-600">
+                              {((h.hires / h.applications) * 100).toFixed(1)}%
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -947,7 +1087,9 @@ const Analytics: React.FC = () => {
                             </div>
                             <div>
                               <p className="text-xs text-gray-500">Hired</p>
-                              <p className="text-lg font-bold text-green-600">{c.hiredCandidates}/{c.totalCandidates}</p>
+                              <p className="text-lg font-bold text-green-600">
+                                {c.hiredCandidates}/{c.totalCandidates}
+                              </p>
                             </div>
                             <div>
                               <p className="text-xs text-gray-500">Success Rate</p>
@@ -967,21 +1109,25 @@ const Analytics: React.FC = () => {
             </div>
 
             {/* Executive Summary */}
-            <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm" >
+            <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
               <h2 className="text-lg font-semibold text-gray-900 mb-6">Executive Summary</h2>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
                 <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
                   <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-yellow-100 mb-3">
                     <StarIcon className="h-6 w-6 text-yellow-600" />
                   </div>
-                  <p className="text-2xl font-bold text-gray-900 mb-1">{periodData.qualityMetrics.external_audited_percentage}%</p>
+                  <p className="text-2xl font-bold text-gray-900 mb-1">
+                    {periodData.qualityMetrics.external_audited_percentage}%
+                  </p>
                   <p className="text-xs font-medium text-gray-600">Premium Quality</p>
                 </div>
                 <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
                   <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-green-100 mb-3">
                     <ClockIcon className="h-6 w-6 text-green-600" />
                   </div>
-                  <p className="text-2xl font-bold text-gray-900 mb-1">{periodData.speedMetrics.median_time_to_hire}d</p>
+                  <p className="text-2xl font-bold text-gray-900 mb-1">
+                    {periodData.speedMetrics.median_time_to_hire}d
+                  </p>
                   <p className="text-xs font-medium text-gray-600">Avg Time to Hire</p>
                 </div>
                 <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
@@ -995,39 +1141,43 @@ const Analytics: React.FC = () => {
             </div>
 
             {/* Key Insights */}
-            <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm" >
+            <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Key Insights</h2>
-              {
-                keyInsights.length > 0 ? (
-                  <ul className="space-y-3">
-                    {keyInsights.map((insight, index) => {
-                      const iconBgColor =
-                        insight.type === 'success' ? 'bg-green-100' :
-                          insight.type === 'warning' ? 'bg-yellow-100' :
-                            'bg-blue-100';
-                      const iconColor =
-                        insight.type === 'success' ? 'text-green-600' :
-                          insight.type === 'warning' ? 'text-yellow-600' :
-                            'text-blue-600';
+              {keyInsights.length > 0 ? (
+                <ul className="space-y-3">
+                  {keyInsights.map((insight, index) => {
+                    const iconBgColor =
+                      insight.type === 'success'
+                        ? 'bg-green-100'
+                        : insight.type === 'warning'
+                          ? 'bg-yellow-100'
+                          : 'bg-blue-100';
+                    const iconColor =
+                      insight.type === 'success'
+                        ? 'text-green-600'
+                        : insight.type === 'warning'
+                          ? 'text-yellow-600'
+                          : 'text-blue-600';
 
-                      return (
-                        <li key={index} className="flex items-start gap-3">
-                          <div className={`flex-shrink-0 w-6 h-6 rounded-full ${iconBgColor} flex items-center justify-center mt-0.5`}>
-                            <CheckCircleIcon className={`h-4 w-4 ${iconColor}`} />
-                          </div>
-                          <p className="text-sm text-gray-700">
-                            <span className="font-semibold">{insight.text}</span>
-                          </p>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-gray-500 text-center py-4">
-                    No insights available yet. Data will appear as your pipeline grows.
-                  </p>
-                )
-              }
+                    return (
+                      <li key={index} className="flex items-start gap-3">
+                        <div
+                          className={`flex-shrink-0 w-6 h-6 rounded-full ${iconBgColor} flex items-center justify-center mt-0.5`}
+                        >
+                          <CheckCircleIcon className={`h-4 w-4 ${iconColor}`} />
+                        </div>
+                        <p className="text-sm text-gray-700">
+                          <span className="font-semibold">{insight.text}</span>
+                        </p>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <p className="text-sm text-gray-500 text-center py-4">
+                  No insights available yet. Data will appear as your pipeline grows.
+                </p>
+              )}
             </div>
 
             {/* Diversity Export Modal */}
@@ -1044,56 +1194,76 @@ const Analytics: React.FC = () => {
               onClose={() => setDrillDownModal({ isOpen: false, title: '', data: null })}
               title={drillDownModal.title}
             >
-              {
-                drillDownModal.data && Array.isArray(drillDownModal.data) && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <p className="text-sm text-gray-600">
-                        Showing {drillDownModal.data.length} {drillDownModal.data.length === 1 ? 'candidate' : 'candidates'}
-                      </p>
-                      <ExportButton
-                        onClick={() => exportSectionToCSV(drillDownModal.title, drillDownModal.data)}
-                        label="Export List"
-                        variant="primary"
-                      />
-                    </div>
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">College</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">AI Score</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {drillDownModal.data.map((candidate: any) => (
-                            <tr key={candidate.id} className="hover:bg-gray-50">
-                              <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{candidate.name}</td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{candidate.college}</td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{candidate.location}</td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 font-semibold">{candidate.ai_score_overall}</td>
-                              <td className="px-4 py-3 whitespace-nowrap">
-                                <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
-                                  Active
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+              {drillDownModal.data && Array.isArray(drillDownModal.data) && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-sm text-gray-600">
+                      Showing {drillDownModal.data.length}{' '}
+                      {drillDownModal.data.length === 1 ? 'candidate' : 'candidates'}
+                    </p>
+                    <ExportButton
+                      onClick={() => exportSectionToCSV(drillDownModal.title, drillDownModal.data)}
+                      label="Export List"
+                      variant="primary"
+                    />
                   </div>
-                )
-              }
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Name
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            College
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Location
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            AI Score
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Status
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {drillDownModal.data.map((candidate: any) => (
+                          <tr key={candidate.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {candidate.name}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                              {candidate.college}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                              {candidate.location}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 font-semibold">
+                              {candidate.ai_score_overall}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                                Active
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </DrillDownModal>
           </div>
 
           {/* Right Column: Recruitment Funnel */}
           <div>
-            <div id="recruitment-funnel-section" className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+            <div
+              id="recruitment-funnel-section"
+              className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm"
+            >
               <SectionHeaderWithActions
                 title="Recruitment Funnel"
                 description="Track candidates through each stage of your hiring process"
@@ -1121,35 +1291,55 @@ const Analytics: React.FC = () => {
                   <div className="flex items-center gap-1 bg-white rounded-lg p-1 border border-gray-300 shadow-sm">
                     <button
                       onClick={() => setChartType('line')}
-                      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${chartType === 'line'
-                        ? 'bg-blue-600 text-white'
-                        : 'text-gray-600 hover:bg-gray-100'
-                        }`}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                        chartType === 'line'
+                          ? 'bg-blue-600 text-white'
+                          : 'text-gray-600 hover:bg-gray-100'
+                      }`}
                       title="Line Chart"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4" />
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M7 12l3-3 3 3 4-4"
+                        />
                       </svg>
                     </button>
                     <button
                       onClick={() => setChartType('area')}
-                      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${chartType === 'area'
-                        ? 'bg-blue-600 text-white'
-                        : 'text-gray-600 hover:bg-gray-100'
-                        }`}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                        chartType === 'area'
+                          ? 'bg-blue-600 text-white'
+                          : 'text-gray-600 hover:bg-gray-100'
+                      }`}
                       title="Area Chart"
                     >
                       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M3 21h18v-2L18 14l-3 3-6-6-6 6v4z" opacity="0.5" />
-                        <path d="M3 21l6-6 6 6 3-3 3 5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        <path
+                          d="M3 21l6-6 6 6 3-3 3 5"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
                       </svg>
                     </button>
                     <button
                       onClick={() => setChartType('column')}
-                      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${chartType === 'column'
-                        ? 'bg-blue-600 text-white'
-                        : 'text-gray-600 hover:bg-gray-100'
-                        }`}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                        chartType === 'column'
+                          ? 'bg-blue-600 text-white'
+                          : 'text-gray-600 hover:bg-gray-100'
+                      }`}
                       title="Column Chart"
                     >
                       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -1169,8 +1359,12 @@ const Analytics: React.FC = () => {
                 ) : !liveFunnel?.hiresTrend || liveFunnel.hiresTrend.length === 0 ? (
                   <div className="w-full h-[150px] bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center">
                     <div className="text-center px-4">
-                      <p className="text-sm text-gray-500 font-medium mb-1">No hiring trend data available</p>
-                      <p className="text-xs text-gray-400">Trend will appear when hires are recorded in the selected period</p>
+                      <p className="text-sm text-gray-500 font-medium mb-1">
+                        No hiring trend data available
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        Trend will appear when hires are recorded in the selected period
+                      </p>
                     </div>
                   </div>
                 ) : (
@@ -1183,18 +1377,10 @@ const Analytics: React.FC = () => {
                       />
                     )}
                     {chartType === 'area' && (
-                      <AreaChart
-                        data={liveFunnel.hiresTrend}
-                        labels={trendLabels}
-                        height={150}
-                      />
+                      <AreaChart data={liveFunnel.hiresTrend} labels={trendLabels} height={150} />
                     )}
                     {chartType === 'column' && (
-                      <ColumnChart
-                        data={liveFunnel.hiresTrend}
-                        labels={trendLabels}
-                        height={150}
-                      />
+                      <ColumnChart data={liveFunnel.hiresTrend} labels={trendLabels} height={150} />
                     )}
                   </>
                 )}

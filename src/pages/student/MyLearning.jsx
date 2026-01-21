@@ -1,18 +1,33 @@
-import { ArrowRight, ArrowUpDown, Award, BarChart3, BookOpen, Filter, GraduationCap, Grid3X3, List, Plus, RefreshCw, Search, TrendingUp, X } from "lucide-react";
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import Pagination from "../../components/educator/Pagination";
-import LearningAnalyticsDashboard from "../../components/Students/components/LearningAnalyticsDashboard";
-import ModernLearningCard from "../../components/Students/components/ModernLearningCard";
-import { TrainingEditModal } from "../../components/Students/components/ProfileEditModals";
-import SelectCourseModal from "../../components/Students/components/SelectCourseModal";
-import { Button } from "../../components/Students/components/ui/button";
-import { Card, CardContent } from "../../components/Students/components/ui/card";
-import { useAuth } from "../../context/AuthContext";
-import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
-import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNotifications";
-import { useStudentTrainings } from "../../hooks/useStudentTrainings";
-import { supabase } from "../../lib/supabaseClient";
+import {
+  ArrowRight,
+  ArrowUpDown,
+  Award,
+  BarChart3,
+  BookOpen,
+  Filter,
+  GraduationCap,
+  Grid3X3,
+  List,
+  Plus,
+  RefreshCw,
+  Search,
+  TrendingUp,
+  X,
+} from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import Pagination from '../../components/educator/Pagination';
+import LearningAnalyticsDashboard from '../../components/Students/components/LearningAnalyticsDashboard';
+import ModernLearningCard from '../../components/Students/components/ModernLearningCard';
+import { TrainingEditModal } from '../../components/Students/components/ProfileEditModals';
+import SelectCourseModal from '../../components/Students/components/SelectCourseModal';
+import { Button } from '../../components/Students/components/ui/button';
+import { Card, CardContent } from '../../components/Students/components/ui/card';
+import { useAuth } from '../../context/AuthContext';
+import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
+import { useStudentMessageNotifications } from '../../hooks/useStudentMessageNotifications';
+import { useStudentTrainings } from '../../hooks/useStudentTrainings';
+import { supabase } from '../../lib/supabaseClient';
 
 const StatCardSkeleton = () => (
   <div className="bg-white rounded-2xl border border-slate-200/60 p-6 shadow-sm animate-pulse">
@@ -67,11 +82,12 @@ const APPROVAL_OPTIONS = [
 const ContinueLearningSection = ({ course, onContinue }) => {
   if (!course) return null;
 
-  const progress = course.status === "completed"
-    ? 100
-    : course.totalModules > 0
-      ? Math.round(((course.completedModules || 0) / course.totalModules) * 100)
-      : course.progress || 0;
+  const progress =
+    course.status === 'completed'
+      ? 100
+      : course.totalModules > 0
+        ? Math.round(((course.completedModules || 0) / course.totalModules) * 100)
+        : course.progress || 0;
 
   return (
     <div className="relative mb-6 sm:mb-8">
@@ -89,17 +105,19 @@ const ContinueLearningSection = ({ course, onContinue }) => {
                 <div className="p-1 sm:p-1.5 bg-white/20 rounded-lg backdrop-blur-sm">
                   <RefreshCw className="w-3 sm:w-4 h-3 sm:h-4 text-white" />
                 </div>
-                <span className="text-blue-50 text-xs font-semibold tracking-wide uppercase">Continue Learning</span>
+                <span className="text-blue-50 text-xs font-semibold tracking-wide uppercase">
+                  Continue Learning
+                </span>
               </div>
-              
+
               <h2 className="text-white text-lg sm:text-xl font-bold mb-1 leading-tight line-clamp-1">
-                {course.course || course.title || "Untitled Course"}
+                {course.course || course.title || 'Untitled Course'}
               </h2>
-              
+
               <p className="text-blue-50 text-xs sm:text-sm mb-3 opacity-90 line-clamp-1">
                 Pick up where you left off and continue your learning journey
               </p>
-              
+
               <div className="flex items-center gap-3">
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-1">
@@ -115,7 +133,7 @@ const ContinueLearningSection = ({ course, onContinue }) => {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex-shrink-0">
               <button
                 onClick={() => onContinue?.(course)}
@@ -136,7 +154,13 @@ const MyLearning = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const userEmail = user?.email;
-  const { studentData, updateTraining, updateSingleTraining, refresh: refreshStudentData, loading: studentLoading } = useStudentDataByEmail(userEmail, false);
+  const {
+    studentData,
+    updateTraining,
+    updateSingleTraining,
+    refresh: refreshStudentData,
+    loading: studentLoading,
+  } = useStudentDataByEmail(userEmail, false);
   const studentId = studentData?.id;
 
   // State for view toggle and layout
@@ -159,12 +183,22 @@ const MyLearning = () => {
   const [deletingItem, setDeletingItem] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const { trainings = [], loading: trainingsLoading, stats = { total: 0, completed: 0, ongoing: 0 }, refetch: refetchTrainings } = useStudentTrainings(studentId, {
-    sortBy, sortDirection, status: statusFilter, approvalStatus: approvalFilter, searchTerm,
+  const {
+    trainings = [],
+    loading: trainingsLoading,
+    stats = { total: 0, completed: 0, ongoing: 0 },
+    refetch: refetchTrainings,
+  } = useStudentTrainings(studentId, {
+    sortBy,
+    sortDirection,
+    status: statusFilter,
+    approvalStatus: approvalFilter,
+    searchTerm,
   });
 
   const loading = studentLoading || trainingsLoading;
-  const hasActiveFilters = statusFilter !== 'all' || approvalFilter !== 'all' || searchTerm.trim() !== '';
+  const hasActiveFilters =
+    statusFilter !== 'all' || approvalFilter !== 'all' || searchTerm.trim() !== '';
 
   // Continue learning course - optimized selection of most complete (but not 100%) INTERNAL course
   const continueLearningCourse = useMemo(() => {
@@ -178,25 +212,26 @@ const MyLearning = () => {
 
     // Filter and map in single pass for better performance
     const candidateCourses = trainings
-      .filter(t => {
+      .filter((t) => {
         // Quick early returns for performance
         if (t.status === 'completed') return false;
-        
-        const isInternalCourse = t.type === 'course_enrollment' || 
-                                t.source === 'course_enrollment' || 
-                                !!(t.course_id && t.source === "internal_course");
+
+        const isInternalCourse =
+          t.type === 'course_enrollment' ||
+          t.source === 'course_enrollment' ||
+          !!(t.course_id && t.source === 'internal_course');
         if (!isInternalCourse) return false;
 
         const progress = calculateCourseProgress(t);
         const hasValidProgress = progress > 0 && progress < 100;
         const hasContent = t.totalModules > 0 || (t.progress !== undefined && t.progress !== null);
-        
+
         return hasValidProgress && hasContent;
       })
-      .map(course => ({
+      .map((course) => ({
         course,
         progress: calculateCourseProgress(course),
-        lastAccessTime: new Date(course.lastAccessed || course.updatedAt || 0).getTime()
+        lastAccessTime: new Date(course.lastAccessed || course.updatedAt || 0).getTime(),
       }))
       .sort((a, b) => {
         // Primary sort: highest progress first
@@ -206,7 +241,7 @@ const MyLearning = () => {
         // Secondary sort: most recent access
         return b.lastAccessTime - a.lastAccessTime;
       });
-    
+
     return candidateCourses.length > 0 ? candidateCourses[0].course : null;
   }, [trainings]);
 
@@ -219,7 +254,7 @@ const MyLearning = () => {
   // Centralized filter handler that resets pagination
   const handleFilterChange = (filterType, value) => {
     setCurrentPage(1); // Reset to first page when filters change
-    
+
     switch (filterType) {
       case 'status':
         setStatusFilter(value);
@@ -242,34 +277,31 @@ const MyLearning = () => {
   useStudentMessageNotifications({ studentId, enabled: !!studentId, playSound: true });
 
   const toggleSkillExpand = (id) => setExpandedSkills((prev) => ({ ...prev, [id]: !prev[id] }));
-  const handleEditItem = (item) => { setEditingItem(item); setActiveModal("edit"); };
-  const handleDeleteItem = (item) => { setDeletingItem(item); setActiveModal("delete"); };
-  
+  const handleEditItem = (item) => {
+    setEditingItem(item);
+    setActiveModal('edit');
+  };
+  const handleDeleteItem = (item) => {
+    setDeletingItem(item);
+    setActiveModal('delete');
+  };
+
   const confirmDelete = async () => {
     if (!deletingItem) return;
-    
+
     setIsDeleting(true);
     try {
       // Delete from certificates table first (if exists)
-      await supabase
-        .from('certificates')
-        .delete()
-        .eq('training_id', deletingItem.id);
-      
+      await supabase.from('certificates').delete().eq('training_id', deletingItem.id);
+
       // Delete from skills table (if exists)
-      await supabase
-        .from('skills')
-        .delete()
-        .eq('training_id', deletingItem.id);
-      
+      await supabase.from('skills').delete().eq('training_id', deletingItem.id);
+
       // Delete from trainings table
-      const { error } = await supabase
-        .from('trainings')
-        .delete()
-        .eq('id', deletingItem.id);
-      
+      const { error } = await supabase.from('trainings').delete().eq('id', deletingItem.id);
+
       if (error) throw error;
-      
+
       // Refresh the list
       await refresh();
     } catch (error) {
@@ -281,25 +313,30 @@ const MyLearning = () => {
       setActiveModal(null);
     }
   };
-  
-  const toggleSortDirection = () => handleFilterChange('sortDirection', sortDirection === 'asc' ? 'desc' : 'asc');
-  
-  const clearFilters = () => { 
-    setStatusFilter('all'); 
-    setApprovalFilter('all'); 
-    setSearchTerm(''); 
-    setSortBy('created_at'); 
+
+  const toggleSortDirection = () =>
+    handleFilterChange('sortDirection', sortDirection === 'asc' ? 'desc' : 'asc');
+
+  const clearFilters = () => {
+    setStatusFilter('all');
+    setApprovalFilter('all');
+    setSearchTerm('');
+    setSortBy('created_at');
     setSortDirection('desc');
     setCurrentPage(1); // Reset pagination when clearing filters
   };
-  
-  const refresh = async () => { await refreshStudentData(); refetchTrainings(); };
-  
+
+  const refresh = async () => {
+    await refreshStudentData();
+    refetchTrainings();
+  };
+
   const handleContinueLearning = (course) => {
     // Check if this is an internal course that can be continued on the platform
-    const isInternalCourse = !!(course.course_id && course.source === "internal_course");
-    const isCourseEnrollment = course.type === 'course_enrollment' || course.source === 'course_enrollment';
-    
+    const isInternalCourse = !!(course.course_id && course.source === 'internal_course');
+    const isCourseEnrollment =
+      course.type === 'course_enrollment' || course.source === 'course_enrollment';
+
     if (isInternalCourse || isCourseEnrollment) {
       // Use the course_id from the course object
       const courseId = course.course_id || course.id;
@@ -336,8 +373,8 @@ const MyLearning = () => {
 
             {/* Action Buttons */}
             <div className="flex justify-center sm:justify-end flex-shrink-0">
-              <Button 
-                onClick={() => setActiveModal("learning")} 
+              <Button
+                onClick={() => setActiveModal('learning')}
                 className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-300 text-sm sm:text-base"
               >
                 <Plus className="w-4 sm:w-5 h-4 sm:h-5 mr-1.5 sm:mr-2" />
@@ -393,7 +430,10 @@ const MyLearning = () => {
           <>
             {/* Continue Learning Section */}
             {!loading && continueLearningCourse && (
-              <ContinueLearningSection course={continueLearningCourse} onContinue={handleContinueLearning} />
+              <ContinueLearningSection
+                course={continueLearningCourse}
+                onContinue={handleContinueLearning}
+              />
             )}
 
             {/* Enhanced Filter and Controls Section */}
@@ -405,16 +445,16 @@ const MyLearning = () => {
                 {/* Search Bar */}
                 <div className="relative flex-1">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                  <input 
-                    type="text" 
-                    placeholder="Search courses, skills, or organizations..." 
-                    value={searchTerm} 
+                  <input
+                    type="text"
+                    placeholder="Search courses, skills, or organizations..."
+                    value={searchTerm}
                     onChange={(e) => handleFilterChange('search', e.target.value)}
                     className="w-full h-12 pl-12 pr-12 bg-white border border-slate-200/60 rounded-2xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-300 shadow-sm"
                   />
                   {searchTerm && (
-                    <button 
-                      onClick={() => handleFilterChange('search', '')} 
+                    <button
+                      onClick={() => handleFilterChange('search', '')}
                       className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                     >
                       <X className="w-5 h-5" />
@@ -426,10 +466,10 @@ const MyLearning = () => {
                 <div className="flex flex-col sm:flex-row lg:flex-row items-stretch sm:items-center gap-3 lg:flex-shrink-0">
                   {/* Filters Toggle */}
                   <button
-                    onClick={() => setShowFilters(!showFilters)} 
+                    onClick={() => setShowFilters(!showFilters)}
                     className={`flex items-center justify-center gap-2 px-4 h-12 rounded-2xl border-2 transition-all duration-300 font-medium ${
-                      showFilters || hasActiveFilters 
-                        ? 'bg-blue-50 border-blue-200 text-blue-600 shadow-sm' 
+                      showFilters || hasActiveFilters
+                        ? 'bg-blue-50 border-blue-200 text-blue-600 shadow-sm'
                         : 'bg-white border-slate-200 text-slate-700 hover:bg-blue-50 hover:border-blue-200'
                     }`}
                   >
@@ -443,7 +483,9 @@ const MyLearning = () => {
                     <button
                       onClick={() => setViewMode('grid')}
                       className={`flex-1 sm:flex-none p-2.5 rounded-xl transition-all duration-200 ${
-                        viewMode === 'grid' ? 'bg-blue-100 text-blue-600' : 'text-slate-400 hover:text-slate-600'
+                        viewMode === 'grid'
+                          ? 'bg-blue-100 text-blue-600'
+                          : 'text-slate-400 hover:text-slate-600'
                       }`}
                     >
                       <Grid3X3 className="w-4 h-4 mx-auto" />
@@ -451,7 +493,9 @@ const MyLearning = () => {
                     <button
                       onClick={() => setViewMode('list')}
                       className={`flex-1 sm:flex-none p-2.5 rounded-xl transition-all duration-200 ${
-                        viewMode === 'list' ? 'bg-blue-100 text-blue-600' : 'text-slate-400 hover:text-slate-600'
+                        viewMode === 'list'
+                          ? 'bg-blue-100 text-blue-600'
+                          : 'text-slate-400 hover:text-slate-600'
                       }`}
                     >
                       <List className="w-4 h-4 mx-auto" />
@@ -460,21 +504,25 @@ const MyLearning = () => {
 
                   {/* Sort Controls */}
                   <div className="flex items-center gap-2 flex-1 sm:flex-none lg:flex-none">
-                    <select 
-                      value={sortBy} 
-                      onChange={(e) => handleFilterChange('sort', e.target.value)} 
+                    <select
+                      value={sortBy}
+                      onChange={(e) => handleFilterChange('sort', e.target.value)}
                       className="flex-1 sm:flex-none lg:w-auto px-4 h-12 bg-white border border-slate-200/60 rounded-2xl text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-300 shadow-sm min-w-0 sm:min-w-[140px] lg:min-w-[140px]"
                     >
-                      {SORT_OPTIONS.map(opt => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      {SORT_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
                       ))}
                     </select>
                     <button
-                      onClick={toggleSortDirection} 
-                      className="flex items-center justify-center w-12 h-12 bg-white border border-slate-200/60 rounded-2xl hover:bg-blue-50 hover:border-blue-200 transition-all duration-300 shadow-sm flex-shrink-0" 
+                      onClick={toggleSortDirection}
+                      className="flex items-center justify-center w-12 h-12 bg-white border border-slate-200/60 rounded-2xl hover:bg-blue-50 hover:border-blue-200 transition-all duration-300 shadow-sm flex-shrink-0"
                       title={sortDirection === 'asc' ? 'Ascending' : 'Descending'}
                     >
-                      <ArrowUpDown className={`w-4 h-4 transition-transform duration-300 ${sortDirection === 'asc' ? 'rotate-180' : ''}`} />
+                      <ArrowUpDown
+                        className={`w-4 h-4 transition-transform duration-300 ${sortDirection === 'asc' ? 'rotate-180' : ''}`}
+                      />
                     </button>
                   </div>
                 </div>
@@ -486,33 +534,37 @@ const MyLearning = () => {
                   <div className="flex flex-wrap items-center gap-6">
                     <div className="flex items-center gap-3">
                       <span className="text-sm font-medium text-slate-700">Status:</span>
-                      <select 
-                        value={statusFilter} 
-                        onChange={(e) => handleFilterChange('status', e.target.value)} 
+                      <select
+                        value={statusFilter}
+                        onChange={(e) => handleFilterChange('status', e.target.value)}
                         className="px-3 py-2 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/20 min-w-[120px]"
                       >
-                        {STATUS_OPTIONS.map(opt => (
-                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        {STATUS_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
                         ))}
                       </select>
                     </div>
-                    
+
                     <div className="flex items-center gap-3">
                       <span className="text-sm font-medium text-slate-700">Approval:</span>
-                      <select 
-                        value={approvalFilter} 
-                        onChange={(e) => handleFilterChange('approval', e.target.value)} 
+                      <select
+                        value={approvalFilter}
+                        onChange={(e) => handleFilterChange('approval', e.target.value)}
                         className="px-3 py-2 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/20 min-w-[120px]"
                       >
-                        {APPROVAL_OPTIONS.map(opt => (
-                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        {APPROVAL_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
                         ))}
                       </select>
                     </div>
-                    
+
                     {hasActiveFilters && (
                       <button
-                        onClick={clearFilters} 
+                        onClick={clearFilters}
                         className="flex items-center gap-2 px-4 py-2 h-10 text-sm text-slate-500 hover:text-slate-700 hover:bg-slate-50 rounded-xl transition-all duration-200 ml-auto"
                       >
                         <X className="w-4 h-4" />
@@ -529,7 +581,7 @@ const MyLearning = () => {
                   <span className="text-sm font-medium text-slate-600">Active filters:</span>
                   {statusFilter !== 'all' && (
                     <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-sm font-medium">
-                      {STATUS_OPTIONS.find(o => o.value === statusFilter)?.label}
+                      {STATUS_OPTIONS.find((o) => o.value === statusFilter)?.label}
                       <button onClick={() => handleFilterChange('status', 'all')}>
                         <X className="w-3 h-3" />
                       </button>
@@ -537,7 +589,7 @@ const MyLearning = () => {
                   )}
                   {approvalFilter !== 'all' && (
                     <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
-                      {APPROVAL_OPTIONS.find(o => o.value === approvalFilter)?.label}
+                      {APPROVAL_OPTIONS.find((o) => o.value === approvalFilter)?.label}
                       <button onClick={() => handleFilterChange('approval', 'all')}>
                         <X className="w-3 h-3" />
                       </button>
@@ -587,11 +639,13 @@ const MyLearning = () => {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="bg-white rounded-2xl border border-slate-200/60 p-6 shadow-sm hover:shadow-md transition-all duration-300">
                       <div className="flex items-center justify-between">
                         <div className="space-y-2">
-                          <p className="text-3xl font-bold text-slate-900">{stats?.completed ?? 0}</p>
+                          <p className="text-3xl font-bold text-slate-900">
+                            {stats?.completed ?? 0}
+                          </p>
                           <p className="text-sm font-medium text-slate-600">Completed</p>
                         </div>
                         <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center">
@@ -599,7 +653,7 @@ const MyLearning = () => {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="bg-white rounded-2xl border border-slate-200/60 p-6 shadow-sm hover:shadow-md transition-all duration-300">
                       <div className="flex items-center justify-between">
                         <div className="space-y-2">
@@ -612,14 +666,12 @@ const MyLearning = () => {
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Courses Section */}
                   <div data-courses-section>
                     <div className="flex items-center justify-between mb-6">
                       <div className="flex items-center gap-4">
-                        <h2 className="text-xl font-bold text-slate-900">
-                          Your Courses
-                        </h2>
+                        <h2 className="text-xl font-bold text-slate-900">Your Courses</h2>
                         {hasActiveFilters && (
                           <span className="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-sm font-medium">
                             {trainings.length} results
@@ -627,27 +679,29 @@ const MyLearning = () => {
                         )}
                       </div>
                     </div>
-                    
+
                     {/* Courses Grid/List */}
-                    <div className={`mb-8 ${
-                      viewMode === 'grid' 
-                        ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' 
-                        : 'space-y-4'
-                    }`}>
+                    <div
+                      className={`mb-8 ${
+                        viewMode === 'grid'
+                          ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
+                          : 'space-y-4'
+                      }`}
+                    >
                       {paginatedTrainings.map((item, idx) => (
-                        <ModernLearningCard 
-                          key={item.id || idx} 
-                          item={item} 
+                        <ModernLearningCard
+                          key={item.id || idx}
+                          item={item}
                           onEdit={handleEditItem}
                           onDelete={handleDeleteItem}
                           onContinue={handleContinueLearning}
-                          expandedSkills={expandedSkills} 
+                          expandedSkills={expandedSkills}
                           onToggleSkills={toggleSkillExpand}
                           viewMode={viewMode}
                         />
                       ))}
                     </div>
-                    
+
                     {/* Enhanced Pagination */}
                     {totalPages > 1 && (
                       <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm">
@@ -668,12 +722,15 @@ const MyLearning = () => {
                     <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
                       <Search className="w-8 h-8 text-slate-400" />
                     </div>
-                    <h3 className="text-2xl font-bold text-slate-900 mb-3">No matching courses found</h3>
+                    <h3 className="text-2xl font-bold text-slate-900 mb-3">
+                      No matching courses found
+                    </h3>
                     <p className="text-slate-600 mb-8 max-w-md mx-auto">
-                      We couldn't find any courses matching your current filters. Try adjusting your search criteria.
+                      We couldn't find any courses matching your current filters. Try adjusting your
+                      search criteria.
                     </p>
-                    <Button 
-                      onClick={clearFilters} 
+                    <Button
+                      onClick={clearFilters}
                       variant="outline"
                       className="px-6 py-3 rounded-2xl border-2 border-blue-200 hover:border-blue-300 text-blue-600 hover:text-blue-600 hover:bg-blue-50"
                     >
@@ -687,12 +744,15 @@ const MyLearning = () => {
                     <div className="w-20 h-20 bg-blue-100 rounded-3xl flex items-center justify-center mx-auto mb-8">
                       <BookOpen className="w-10 h-10 text-blue-600" />
                     </div>
-                    <h3 className="text-3xl font-bold text-slate-900 mb-4">Start Your Learning Journey</h3>
+                    <h3 className="text-3xl font-bold text-slate-900 mb-4">
+                      Start Your Learning Journey
+                    </h3>
                     <p className="text-slate-600 mb-10 text-lg max-w-md mx-auto">
-                      Add your first course and begin tracking your professional development and skill growth.
+                      Add your first course and begin tracking your professional development and
+                      skill growth.
                     </p>
-                    <Button 
-                      onClick={() => setActiveModal("learning")} 
+                    <Button
+                      onClick={() => setActiveModal('learning')}
                       className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-8 py-4 rounded-2xl text-lg font-semibold shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-300"
                     >
                       <Plus className="w-6 h-6 mr-3" />
@@ -706,49 +766,57 @@ const MyLearning = () => {
         )}
 
         {/* Modals */}
-        <SelectCourseModal 
-          isOpen={activeModal === "learning"} 
-          onClose={() => setActiveModal(null)} 
-          studentId={studentId} 
-          onSuccess={refresh} 
+        <SelectCourseModal
+          isOpen={activeModal === 'learning'}
+          onClose={() => setActiveModal(null)}
+          studentId={studentId}
+          onSuccess={refresh}
         />
-        
-        {activeModal === "edit" && editingItem && (
-          <TrainingEditModal 
-            isOpen={true} 
-            onClose={() => { 
-              setActiveModal(null); 
-              setEditingItem(null); 
+
+        {activeModal === 'edit' && editingItem && (
+          <TrainingEditModal
+            isOpen={true}
+            onClose={() => {
+              setActiveModal(null);
+              setEditingItem(null);
               // Don't call refresh() here - only refresh when data is actually saved
             }}
-            onSave={async (updatedItems) => { 
-              const item = updatedItems[0]; 
-              if (!item) return; 
-              
+            onSave={async (updatedItems) => {
+              const item = updatedItems[0];
+              if (!item) return;
+
               // Use the single training update function instead of updating all trainings
               await updateSingleTraining(item.id, item);
-              await refresh(); 
+              await refresh();
             }}
-            data={[editingItem]} 
-            singleEditMode={true} 
+            data={[editingItem]}
+            singleEditMode={true}
           />
         )}
 
         {/* Delete Confirmation Modal */}
-        {activeModal === "delete" && deletingItem && (
+        {activeModal === 'delete' && deletingItem && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl">
               <div className="p-6">
                 <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <X className="w-8 h-8 text-red-600" />
                 </div>
-                <h3 className="text-xl font-bold text-slate-900 text-center mb-2">Delete Certificate?</h3>
+                <h3 className="text-xl font-bold text-slate-900 text-center mb-2">
+                  Delete Certificate?
+                </h3>
                 <p className="text-slate-600 text-center mb-6">
-                  Are you sure you want to delete "<span className="font-semibold">{deletingItem.course || deletingItem.title}</span>"? This will also remove any associated skills and assessment data. This action cannot be undone.
+                  Are you sure you want to delete "
+                  <span className="font-semibold">{deletingItem.course || deletingItem.title}</span>
+                  "? This will also remove any associated skills and assessment data. This action
+                  cannot be undone.
                 </p>
                 <div className="flex gap-3">
                   <button
-                    onClick={() => { setDeletingItem(null); setActiveModal(null); }}
+                    onClick={() => {
+                      setDeletingItem(null);
+                      setActiveModal(null);
+                    }}
                     disabled={isDeleting}
                     className="flex-1 px-4 py-3 border border-slate-200 text-slate-700 rounded-xl font-semibold hover:bg-slate-50 transition-colors disabled:opacity-50"
                   >

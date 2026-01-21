@@ -1,6 +1,6 @@
 /**
  * Integration Tests: Complete Purchase Flow
- * 
+ *
  * Tests the end-to-end purchase flow from plan selection through payment to assignment.
  * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 8.1, 8.2, 8.3
  */
@@ -11,15 +11,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mockSupabaseClient = {
   from: vi.fn(),
   auth: {
-    getUser: vi.fn()
-  }
+    getUser: vi.fn(),
+  },
 };
 
 // Mock data
 const mockOrganization = {
   id: 'org-123',
   name: 'Test School',
-  type: 'school'
+  type: 'school',
 };
 
 const mockPlan = {
@@ -27,14 +27,14 @@ const mockPlan = {
   name: 'Premium Plan',
   price_monthly: 1000,
   price_yearly: 10000,
-  features: ['feature1', 'feature2']
+  features: ['feature1', 'feature2'],
 };
 
 const mockUser = {
   id: 'admin-123',
   email: 'admin@test.com',
   role: 'school_admin',
-  school_id: 'org-123'
+  school_id: 'org-123',
 };
 
 describe('Purchase Flow Integration Tests', () => {
@@ -53,7 +53,7 @@ describe('Purchase Flow Integration Tests', () => {
       const mockPlansQuery = {
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: mockPlan, error: null })
+        single: vi.fn().mockResolvedValue({ data: mockPlan, error: null }),
       };
       mockSupabaseClient.from.mockReturnValue(mockPlansQuery);
 
@@ -68,12 +68,12 @@ describe('Purchase Flow Integration Tests', () => {
         if (seats >= 500) discountPercentage = 30;
         else if (seats >= 100) discountPercentage = 20;
         else if (seats >= 50) discountPercentage = 10;
-        
+
         const discountAmount = (subtotal * discountPercentage) / 100;
         const afterDiscount = subtotal - discountAmount;
         const taxAmount = afterDiscount * 0.18;
         const finalAmount = afterDiscount + taxAmount;
-        
+
         return {
           basePrice,
           seatCount: seats,
@@ -82,12 +82,12 @@ describe('Purchase Flow Integration Tests', () => {
           discountAmount,
           taxAmount,
           finalAmount,
-          pricePerSeat: finalAmount / seats
+          pricePerSeat: finalAmount / seats,
         };
       };
 
       const pricing = calculatePricing(selectedPlan.price_monthly, seatCount);
-      
+
       // Verify pricing calculation
       expect(pricing.discountPercentage).toBe(10); // 50 seats = 10% discount
       expect(pricing.subtotal).toBe(50000); // 1000 * 50
@@ -109,13 +109,13 @@ describe('Purchase Flow Integration Tests', () => {
         price_per_seat: pricing.pricePerSeat,
         total_amount: pricing.subtotal,
         discount_percentage: pricing.discountPercentage,
-        final_amount: pricing.finalAmount
+        final_amount: pricing.finalAmount,
       };
 
       const mockInsertQuery = {
         insert: vi.fn().mockReturnThis(),
         select: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: mockSubscription, error: null })
+        single: vi.fn().mockResolvedValue({ data: mockSubscription, error: null }),
       };
       mockSupabaseClient.from.mockReturnValue(mockInsertQuery);
 
@@ -130,7 +130,7 @@ describe('Purchase Flow Integration Tests', () => {
         id: 'sub-123',
         organization_id: 'org-123',
         total_seats: 50,
-        assigned_seats: 0
+        assigned_seats: 0,
       };
 
       const mockPool = {
@@ -140,13 +140,13 @@ describe('Purchase Flow Integration Tests', () => {
         pool_name: 'Default Pool',
         member_type: 'educator',
         allocated_seats: 25,
-        assigned_seats: 0
+        assigned_seats: 0,
       };
 
       const mockInsertQuery = {
         insert: vi.fn().mockReturnThis(),
         select: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: mockPool, error: null })
+        single: vi.fn().mockResolvedValue({ data: mockPool, error: null }),
       };
       mockSupabaseClient.from.mockReturnValue(mockInsertQuery);
 
@@ -157,19 +157,19 @@ describe('Purchase Flow Integration Tests', () => {
 
     it('should handle payment failure gracefully', async () => {
       const paymentError = new Error('Payment declined');
-      
+
       // Simulate payment failure
       const handlePaymentFailure = async (error: Error) => {
         return {
           success: false,
           error: error.message,
           retryable: true,
-          suggestedAction: 'Please try a different payment method'
+          suggestedAction: 'Please try a different payment method',
         };
       };
 
       const result = await handlePaymentFailure(paymentError);
-      
+
       expect(result.success).toBe(false);
       expect(result.error).toBe('Payment declined');
       expect(result.retryable).toBe(true);
@@ -178,17 +178,17 @@ describe('Purchase Flow Integration Tests', () => {
     it('should rollback subscription on payment failure', async () => {
       const mockSubscription = {
         id: 'sub-123',
-        status: 'pending_payment'
+        status: 'pending_payment',
       };
 
       // Simulate rollback
       const rollbackSubscription = async (subscriptionId: string) => {
         const mockDeleteQuery = {
           delete: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockResolvedValue({ error: null })
+          eq: vi.fn().mockResolvedValue({ error: null }),
         };
         mockSupabaseClient.from.mockReturnValue(mockDeleteQuery);
-        
+
         return { success: true, deletedId: subscriptionId };
       };
 
@@ -207,7 +207,7 @@ describe('Purchase Flow Integration Tests', () => {
       { seats: 100, expectedDiscount: 20 },
       { seats: 499, expectedDiscount: 20 },
       { seats: 500, expectedDiscount: 30 },
-      { seats: 1000, expectedDiscount: 30 }
+      { seats: 1000, expectedDiscount: 30 },
     ];
 
     testCases.forEach(({ seats, expectedDiscount }) => {
@@ -228,7 +228,7 @@ describe('Purchase Flow Integration Tests', () => {
     it('should set correct start and end dates for monthly subscription', () => {
       const startDate = new Date('2026-01-09');
       const billingCycle = 'monthly';
-      
+
       const calculateEndDate = (start: Date, cycle: string) => {
         const end = new Date(start);
         if (cycle === 'annual') {
@@ -247,7 +247,7 @@ describe('Purchase Flow Integration Tests', () => {
     it('should set correct start and end dates for annual subscription', () => {
       const startDate = new Date('2026-01-09');
       const billingCycle = 'annual';
-      
+
       const calculateEndDate = (start: Date, cycle: string) => {
         const end = new Date(start);
         if (cycle === 'annual') {

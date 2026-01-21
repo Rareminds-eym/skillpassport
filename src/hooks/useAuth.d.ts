@@ -33,7 +33,7 @@ export interface UseAuthReturn {
   loading: boolean;
   error: string | null;
   errorCode: string | null;
-  
+
   // Role checks
   hasRole: (requiredRole: string) => boolean;
   isStudent: () => boolean;
@@ -43,7 +43,7 @@ export interface UseAuthReturn {
   isSchoolAdmin: () => boolean;
   isCollegeAdmin: () => boolean;
   isUniversityAdmin: () => boolean;
-  
+
   // Actions
   refresh: () => Promise<void>;
   clearError: () => void;

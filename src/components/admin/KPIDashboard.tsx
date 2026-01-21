@@ -1,11 +1,11 @@
 import {
-    AcademicCapIcon,
-    BanknotesIcon,
-    BookOpenIcon,
-    ChartBarIcon,
-    ClipboardDocumentCheckIcon,
-    ClockIcon,
-    UsersIcon
+  AcademicCapIcon,
+  BanknotesIcon,
+  BookOpenIcon,
+  ChartBarIcon,
+  ClipboardDocumentCheckIcon,
+  ClockIcon,
+  UsersIcon,
 } from '@heroicons/react/24/outline';
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
@@ -31,9 +31,9 @@ interface KPIDashboardProps {
   refreshInterval?: number; // in milliseconds, default 15 minutes
 }
 
-const KPIDashboard: React.FC<KPIDashboardProps> = ({ 
+const KPIDashboard: React.FC<KPIDashboardProps> = ({
   schoolId,
-  refreshInterval = 15 * 60 * 1000 // 15 minutes
+  refreshInterval = 15 * 60 * 1000, // 15 minutes
 }) => {
   const [kpiData, setKpiData] = useState<KPIData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,9 +44,9 @@ const KPIDashboard: React.FC<KPIDashboardProps> = ({
     try {
       setError(null);
       setLoading(true);
-      
+
       console.log('Fetching KPI data for school:', schoolId);
-      
+
       // Initialize with default values
       let totalStudents = 0;
       let attendancePercentage = 0;
@@ -57,20 +57,20 @@ const KPIDashboard: React.FC<KPIDashboardProps> = ({
       let monthlyTotal = 0;
       let avgCareerReadiness = 0;
       let libraryOverdue = 0;
-      
+
       // Fetch Total Students (with error handling)
       try {
         // Only fetch if schoolId is provided, otherwise show 0
         if (!schoolId) {
           totalStudents = 0;
         } else {
-          let studentsQuery = supabase
+          const studentsQuery = supabase
             .from('students')
             .select('*', { count: 'exact', head: true })
             .eq('school_id', schoolId);
-          
+
           const { count, error: studentsError } = await studentsQuery;
-          
+
           if (studentsError) {
             console.warn('Students query error:', studentsError.message);
           } else {
@@ -88,17 +88,17 @@ const KPIDashboard: React.FC<KPIDashboardProps> = ({
           .from('attendance_records')
           .select('status')
           .eq('date', today);
-        
+
         if (schoolId) {
           attendanceQuery = attendanceQuery.eq('school_id', schoolId);
         }
-        
+
         const { data: attendanceData, error: attendanceError } = await attendanceQuery;
 
         if (attendanceError) {
           console.warn('Attendance query error:', attendanceError.message);
         } else {
-          const presentCount = attendanceData?.filter(a => a.status === 'present').length || 0;
+          const presentCount = attendanceData?.filter((a) => a.status === 'present').length || 0;
           const totalAttendance = attendanceData?.length || 1;
           attendancePercentage = Math.round((presentCount / totalAttendance) * 100);
         }
@@ -113,11 +113,11 @@ const KPIDashboard: React.FC<KPIDashboardProps> = ({
           .from('exam_timetable')
           .select('*', { count: 'exact', head: true })
           .gte('exam_date', today);
-        
+
         if (schoolId) {
           examsQuery = examsQuery.eq('school_id', schoolId);
         }
-        
+
         const { count, error: examsError } = await examsQuery;
 
         if (examsError) {
@@ -136,11 +136,11 @@ const KPIDashboard: React.FC<KPIDashboardProps> = ({
           .from('assessments')
           .select('*', { count: 'exact', head: true })
           .eq('is_published', false);
-        
+
         if (schoolId) {
           assessmentsQuery = assessmentsQuery.eq('school_id', schoolId);
         }
-        
+
         const { count, error: assessmentsError } = await assessmentsQuery;
 
         if (assessmentsError) {
@@ -162,9 +162,9 @@ const KPIDashboard: React.FC<KPIDashboardProps> = ({
           .eq('status', 'success')
           .gte('payment_date', today)
           .lt('payment_date', `${today}T23:59:59`);
-        
+
         // Note: school_id filter removed as fee_payments table doesn't have this column
-        
+
         const { data: dailyFees, error: dailyFeesError } = await dailyFeesQuery;
 
         if (dailyFeesError) {
@@ -184,9 +184,9 @@ const KPIDashboard: React.FC<KPIDashboardProps> = ({
           .select('amount')
           .eq('status', 'success')
           .gte('payment_date', weekAgo.toISOString());
-        
+
         // Note: school_id filter removed as fee_payments table doesn't have this column
-        
+
         const { data: weeklyFees, error: weeklyFeesError } = await weeklyFeesQuery;
 
         if (weeklyFeesError) {
@@ -206,9 +206,9 @@ const KPIDashboard: React.FC<KPIDashboardProps> = ({
           .select('amount')
           .eq('status', 'success')
           .gte('payment_date', monthAgo.toISOString());
-        
+
         // Note: school_id filter removed as fee_payments table doesn't have this column
-        
+
         const { data: monthlyFees, error: monthlyFeesError } = await monthlyFeesQuery;
 
         if (monthlyFeesError) {
@@ -227,7 +227,9 @@ const KPIDashboard: React.FC<KPIDashboardProps> = ({
         // Career readiness could be calculated from personal_assessment_results
         // For now, we'll just set it to 0 as the table doesn't exist
         avgCareerReadiness = 0;
-        console.log('Career readiness: using placeholder (career_recommendations table not available)');
+        console.log(
+          'Career readiness: using placeholder (career_recommendations table not available)'
+        );
       } catch (err) {
         console.warn('Failed to fetch career data:', err);
       }
@@ -240,11 +242,11 @@ const KPIDashboard: React.FC<KPIDashboardProps> = ({
           .select('*', { count: 'exact', head: true })
           .lt('due_date', today)
           .is('return_date', null);
-        
+
         if (schoolId) {
           libraryQuery = libraryQuery.eq('school_id', schoolId);
         }
-        
+
         const { count, error: libraryError } = await libraryQuery;
 
         if (libraryError) {
@@ -326,10 +328,7 @@ const KPIDashboard: React.FC<KPIDashboardProps> = ({
             <ClockIcon className="h-4 w-4" />
             <span>Last updated: {lastUpdated.toLocaleTimeString()}</span>
           </div>
-          <button
-            onClick={fetchKPIData}
-            className="text-blue-600 hover:text-blue-700 font-medium"
-          >
+          <button onClick={fetchKPIData} className="text-blue-600 hover:text-blue-700 font-medium">
             Refresh Now
           </button>
         </div>
@@ -352,8 +351,11 @@ const KPIDashboard: React.FC<KPIDashboardProps> = ({
           value={`${kpiData?.attendanceToday || 0}%`}
           icon={<ClipboardDocumentCheckIcon className="h-6 w-6" />}
           color={
-            (kpiData?.attendanceToday || 0) >= 90 ? 'green' :
-            (kpiData?.attendanceToday || 0) >= 75 ? 'yellow' : 'red'
+            (kpiData?.attendanceToday || 0) >= 90
+              ? 'green'
+              : (kpiData?.attendanceToday || 0) >= 75
+                ? 'yellow'
+                : 'red'
           }
           loading={loading}
         />
@@ -400,8 +402,11 @@ const KPIDashboard: React.FC<KPIDashboardProps> = ({
           value={`${kpiData?.careerReadinessIndex || 0}/100`}
           icon={<ChartBarIcon className="h-6 w-6" />}
           color={
-            (kpiData?.careerReadinessIndex || 0) >= 75 ? 'green' :
-            (kpiData?.careerReadinessIndex || 0) >= 50 ? 'yellow' : 'red'
+            (kpiData?.careerReadinessIndex || 0) >= 75
+              ? 'green'
+              : (kpiData?.careerReadinessIndex || 0) >= 50
+                ? 'yellow'
+                : 'red'
           }
           loading={loading}
         />
@@ -423,6 +428,7 @@ const KPIDashboard: React.FC<KPIDashboardProps> = ({
  * Wrapped KPIDashboard with FeatureGate for kpi_dashboard add-on
  */
 const GatedKPIDashboard: React.FC<KPIDashboardProps> = (props) => (
+  // @ts-expect-error - Auto-suppressed for migration
   <FeatureGate featureKey="kpi_dashboard" showUpgradePrompt={true}>
     <KPIDashboard {...props} />
   </FeatureGate>

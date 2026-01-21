@@ -1,9 +1,9 @@
 /**
  * useAdaptiveAptitude React Hook
- * 
+ *
  * Provides state management and actions for the adaptive aptitude test.
  * Handles test initialization, question flow, answer submission, and result display.
- * 
+ *
  * Requirements: 5.2, 5.3, 7.3
  */
 
@@ -87,7 +87,7 @@ export interface UseAdaptiveAptitudeReturn {
   results: TestResults | null;
   /** Time when current question was shown (for response time tracking) */
   questionStartTime: number | null;
-  
+
   // Actions
   /** Start a new test */
   startTest: () => Promise<void>;
@@ -111,13 +111,13 @@ export interface UseAdaptiveAptitudeReturn {
 
 /** Estimated questions per phase for progress calculation */
 const ESTIMATED_QUESTIONS_PER_PHASE: Record<TestPhase, number> = {
-  diagnostic_screener: 6,  // Phase 1: 6 questions at Level 3
-  adaptive_core: 11,       // Phase 2: 11 adaptive questions
+  diagnostic_screener: 6, // Phase 1: 6 questions at Level 3
+  adaptive_core: 11, // Phase 2: 11 adaptive questions
   stability_confirmation: 4, // Phase 3: 4 stability questions
 };
 
 /** Total estimated questions (21 = 6 + 11 + 4) */
-const ESTIMATED_TOTAL_QUESTIONS = 
+const ESTIMATED_TOTAL_QUESTIONS =
   ESTIMATED_QUESTIONS_PER_PHASE.diagnostic_screener +
   ESTIMATED_QUESTIONS_PER_PHASE.adaptive_core +
   ESTIMATED_QUESTIONS_PER_PHASE.stability_confirmation;
@@ -166,9 +166,9 @@ function calculateProgress(
 
 /**
  * React hook for managing adaptive aptitude test state and actions
- * 
+ *
  * Requirements: 5.2, 5.3, 7.3
- * 
+ *
  * @param options - Hook options including studentId and gradeLevel
  * @returns Hook state and actions
  */
@@ -186,21 +186,21 @@ export function useAdaptiveAptitude(
   const [session, setSession] = useState<TestSession | null>(null);
   const [progress, setProgress] = useState<TestProgress | null>(null);
   const [phase, setPhase] = useState<TestPhase | null>(null);
-  
+
   // Loading states
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  
+
   // Error state
   const [error, setError] = useState<string | null>(null);
-  
+
   // Completion state
   const [isTestComplete, setIsTestComplete] = useState(false);
   const [results, setResults] = useState<TestResults | null>(null);
-  
+
   // Question timing
   const [questionStartTime, setQuestionStartTime] = useState<number | null>(null);
-  
+
   // Ref to track current session ID for async operations
   const sessionIdRef = useRef<string | null>(null);
 
@@ -211,38 +211,43 @@ export function useAdaptiveAptitude(
   /**
    * Updates state from a NextQuestionResult
    */
-  const updateStateFromNextQuestion = useCallback((
-    result: NextQuestionResult,
-    currentSession: TestSession
-  ) => {
-    console.log('🔄 [useAdaptiveAptitude] updateStateFromNextQuestion:', {
-      hasQuestion: !!result.question,
-      questionId: result.question?.id,
-      questionText: result.question?.text?.substring(0, 50),
-      isTestComplete: result.isTestComplete,
-      currentPhase: result.currentPhase,
-    });
-    
-    setCurrentQuestion(result.question);
-    setPhase(result.currentPhase);
-    setIsTestComplete(result.isTestComplete);
-    setQuestionStartTime(result.question ? Date.now() : null);
-    
-    setProgress(calculateProgress(
-      currentSession,
-      result.progress.currentQuestionIndex,
-      result.progress.totalQuestionsInPhase
-    ));
-  }, []);
+  const updateStateFromNextQuestion = useCallback(
+    (result: NextQuestionResult, currentSession: TestSession) => {
+      console.log('🔄 [useAdaptiveAptitude] updateStateFromNextQuestion:', {
+        hasQuestion: !!result.question,
+        questionId: result.question?.id,
+        questionText: result.question?.text?.substring(0, 50),
+        isTestComplete: result.isTestComplete,
+        currentPhase: result.currentPhase,
+      });
+
+      setCurrentQuestion(result.question);
+      setPhase(result.currentPhase);
+      setIsTestComplete(result.isTestComplete);
+      setQuestionStartTime(result.question ? Date.now() : null);
+
+      setProgress(
+        calculateProgress(
+          currentSession,
+          result.progress.currentQuestionIndex,
+          result.progress.totalQuestionsInPhase
+        )
+      );
+    },
+    []
+  );
 
   /**
    * Handles errors consistently
    */
-  const handleError = useCallback((err: unknown, context: string) => {
-    const errorMessage = err instanceof Error ? err.message : `${context} failed`;
-    setError(errorMessage);
-    onError?.(err instanceof Error ? err : new Error(errorMessage));
-  }, [onError]);
+  const handleError = useCallback(
+    (err: unknown, context: string) => {
+      const errorMessage = err instanceof Error ? err.message : `${context} failed`;
+      setError(errorMessage);
+      onError?.(err instanceof Error ? err : new Error(errorMessage));
+    },
+    [onError]
+  );
 
   // ==========================================================================
   // ACTIONS
@@ -250,7 +255,7 @@ export function useAdaptiveAptitude(
 
   /**
    * Starts a new adaptive aptitude test
-   * 
+   *
    * Requirements: 1.1
    * - Initializes test session via service
    * - Loads first question
@@ -259,7 +264,7 @@ export function useAdaptiveAptitude(
     console.log('🚀 [useAdaptiveAptitude] startTest called:', { studentId, gradeLevel });
     setLoading(true);
     setError(null);
-    
+
     try {
       // Initialize the test
       console.log('📡 [useAdaptiveAptitude] Calling AdaptiveAptitudeService.initializeTest...');
@@ -282,13 +287,11 @@ export function useAdaptiveAptitude(
       setIsTestComplete(false);
       setResults(null);
       setQuestionStartTime(Date.now());
-      
+
       // Calculate initial progress
-      setProgress(calculateProgress(
-        initResult.session,
-        0,
-        initResult.session.currentPhaseQuestions.length
-      ));
+      setProgress(
+        calculateProgress(initResult.session, 0, initResult.session.currentPhaseQuestions.length)
+      );
       console.log('✅ [useAdaptiveAptitude] State updated successfully');
     } catch (err) {
       console.error('❌ [useAdaptiveAptitude] startTest error:', err);
@@ -300,141 +303,153 @@ export function useAdaptiveAptitude(
 
   /**
    * Submits an answer for the current question
-   * 
+   *
    * Requirements: 5.2
    * - Submits answer to service
    * - Updates progress and loads next question
    * - Handles test completion
    */
-  const submitAnswer = useCallback(async (
-    selectedAnswer: 'A' | 'B' | 'C' | 'D'
-  ): Promise<AnswerResult | null> => {
-    console.log('📝 [useAdaptiveAptitude] submitAnswer called:', {
-      selectedAnswer,
-      hasSession: !!session,
-      sessionId: session?.id,
-      hasCurrentQuestion: !!currentQuestion,
-      questionId: currentQuestion?.id,
-      submitting,
-    });
-    
-    if (!session || !currentQuestion || submitting) {
-      console.warn('⚠️ [useAdaptiveAptitude] Cannot submit - missing requirements:', {
+  const submitAnswer = useCallback(
+    async (selectedAnswer: 'A' | 'B' | 'C' | 'D'): Promise<AnswerResult | null> => {
+      console.log('📝 [useAdaptiveAptitude] submitAnswer called:', {
+        selectedAnswer,
         hasSession: !!session,
+        sessionId: session?.id,
         hasCurrentQuestion: !!currentQuestion,
+        questionId: currentQuestion?.id,
         submitting,
       });
-      return null;
-    }
 
-    setSubmitting(true);
-    setError(null);
-
-    try {
-      // Calculate response time
-      const responseTimeMs = questionStartTime 
-        ? Date.now() - questionStartTime 
-        : 0;
-      
-      console.log('📡 [useAdaptiveAptitude] Calling AdaptiveAptitudeService.submitAnswer...');
-
-      // Submit the answer
-      const answerResult = await AdaptiveAptitudeService.submitAnswer({
-        sessionId: session.id,
-        questionId: currentQuestion.id,
-        selectedAnswer,
-        responseTimeMs,
-      });
-      
-      console.log('✅ [useAdaptiveAptitude] Answer submitted:', {
-        isCorrect: answerResult.isCorrect,
-        testComplete: answerResult.testComplete,
-        phaseComplete: answerResult.phaseComplete,
-        newDifficulty: answerResult.newDifficulty,
-      });
-
-      // Update session state
-      setSession(answerResult.updatedSession);
-
-      // Check if test is complete
-      if (answerResult.testComplete) {
-        console.log('🏁 [useAdaptiveAptitude] Test complete, fetching results...');
-        // Complete the test and get results
-        const testResults = await AdaptiveAptitudeService.completeTest(session.id);
-        setResults(testResults);
-        setIsTestComplete(true);
-        setCurrentQuestion(null);
-        setQuestionStartTime(null);
-        onTestComplete?.(testResults);
-      } else {
-        console.log('📋 [useAdaptiveAptitude] Getting next question...');
-        // Get next question
-        const nextQuestionResult = await AdaptiveAptitudeService.getNextQuestion(session.id);
-        console.log('✅ [useAdaptiveAptitude] Next question result:', {
-          hasQuestion: !!nextQuestionResult.question,
-          questionId: nextQuestionResult.question?.id,
-          isTestComplete: nextQuestionResult.isTestComplete,
-          currentPhase: nextQuestionResult.currentPhase,
+      if (!session || !currentQuestion || submitting) {
+        console.warn('⚠️ [useAdaptiveAptitude] Cannot submit - missing requirements:', {
+          hasSession: !!session,
+          hasCurrentQuestion: !!currentQuestion,
+          submitting,
         });
-        updateStateFromNextQuestion(nextQuestionResult, answerResult.updatedSession);
+        return null;
       }
 
-      return answerResult;
-    } catch (err) {
-      handleError(err, 'Failed to submit answer');
-      return null;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [session, currentQuestion, submitting, questionStartTime, onTestComplete, handleError, updateStateFromNextQuestion]);
+      setSubmitting(true);
+      setError(null);
+
+      try {
+        // Calculate response time
+        const responseTimeMs = questionStartTime ? Date.now() - questionStartTime : 0;
+
+        console.log('📡 [useAdaptiveAptitude] Calling AdaptiveAptitudeService.submitAnswer...');
+
+        // Submit the answer
+        const answerResult = await AdaptiveAptitudeService.submitAnswer({
+          sessionId: session.id,
+          questionId: currentQuestion.id,
+          selectedAnswer,
+          responseTimeMs,
+        });
+
+        console.log('✅ [useAdaptiveAptitude] Answer submitted:', {
+          isCorrect: answerResult.isCorrect,
+          testComplete: answerResult.testComplete,
+          phaseComplete: answerResult.phaseComplete,
+          newDifficulty: answerResult.newDifficulty,
+        });
+
+        // Update session state
+        setSession(answerResult.updatedSession);
+
+        // Check if test is complete
+        if (answerResult.testComplete) {
+          console.log('🏁 [useAdaptiveAptitude] Test complete, fetching results...');
+          // Complete the test and get results
+          const testResults = await AdaptiveAptitudeService.completeTest(session.id);
+          setResults(testResults);
+          setIsTestComplete(true);
+          setCurrentQuestion(null);
+          setQuestionStartTime(null);
+          onTestComplete?.(testResults);
+        } else {
+          console.log('📋 [useAdaptiveAptitude] Getting next question...');
+          // Get next question
+          const nextQuestionResult = await AdaptiveAptitudeService.getNextQuestion(session.id);
+          console.log('✅ [useAdaptiveAptitude] Next question result:', {
+            hasQuestion: !!nextQuestionResult.question,
+            questionId: nextQuestionResult.question?.id,
+            isTestComplete: nextQuestionResult.isTestComplete,
+            currentPhase: nextQuestionResult.currentPhase,
+          });
+          updateStateFromNextQuestion(nextQuestionResult, answerResult.updatedSession);
+        }
+
+        return answerResult;
+      } catch (err) {
+        handleError(err, 'Failed to submit answer');
+        return null;
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [
+      session,
+      currentQuestion,
+      submitting,
+      questionStartTime,
+      onTestComplete,
+      handleError,
+      updateStateFromNextQuestion,
+    ]
+  );
 
   /**
    * Resumes an existing test session
-   * 
+   *
    * Requirements: 7.3
    * - Restores session from database
    * - Continues from saved position
    */
-  const resumeTest = useCallback(async (sessionId: string) => {
-    setLoading(true);
-    setError(null);
+  const resumeTest = useCallback(
+    async (sessionId: string) => {
+      setLoading(true);
+      setError(null);
 
-    try {
-      // Resume the session
-      const resumeResult: ResumeTestResult = await AdaptiveAptitudeService.resumeTest(sessionId);
+      try {
+        // Resume the session
+        const resumeResult: ResumeTestResult = await AdaptiveAptitudeService.resumeTest(sessionId);
 
-      // Update state
-      setSession(resumeResult.session);
-      sessionIdRef.current = resumeResult.session.id;
-      setCurrentQuestion(resumeResult.currentQuestion);
-      setPhase(resumeResult.session.currentPhase);
-      setIsTestComplete(resumeResult.isTestComplete);
-      setQuestionStartTime(resumeResult.currentQuestion ? Date.now() : null);
+        // Update state
+        setSession(resumeResult.session);
+        sessionIdRef.current = resumeResult.session.id;
+        setCurrentQuestion(resumeResult.currentQuestion);
+        setPhase(resumeResult.session.currentPhase);
+        setIsTestComplete(resumeResult.isTestComplete);
+        setQuestionStartTime(resumeResult.currentQuestion ? Date.now() : null);
 
-      // If test is complete, fetch results
-      if (resumeResult.isTestComplete) {
-        const testResults = await AdaptiveAptitudeService.getTestResults(sessionId);
-        setResults(testResults);
-      } else {
-        setResults(null);
+        // If test is complete, fetch results
+        if (resumeResult.isTestComplete) {
+          const testResults = await AdaptiveAptitudeService.getTestResults(sessionId);
+          setResults(testResults);
+        } else {
+          setResults(null);
+        }
+
+        // Calculate progress
+        setProgress(
+          calculateProgress(
+            resumeResult.session,
+            resumeResult.session.currentQuestionIndex,
+            resumeResult.session.currentPhaseQuestions.length
+          )
+        );
+      } catch (err) {
+        handleError(err, 'Failed to resume test');
+      } finally {
+        setLoading(false);
       }
-
-      // Calculate progress
-      setProgress(calculateProgress(
-        resumeResult.session,
-        resumeResult.session.currentQuestionIndex,
-        resumeResult.session.currentPhaseQuestions.length
-      ));
-    } catch (err) {
-      handleError(err, 'Failed to resume test');
-    } finally {
-      setLoading(false);
-    }
-  }, [handleError]);
+    },
+    [handleError]
+  );
 
   /**
    * Checks for and resumes any in-progress session for the student
-   * 
+   *
    * @returns true if a session was found and resumed, false otherwise
    */
   const checkAndResumeSession = useCallback(async (): Promise<boolean> => {
@@ -474,7 +489,7 @@ export function useAdaptiveAptitude(
 
     try {
       await AdaptiveAptitudeService.abandonSession(session.id);
-      
+
       // Reset state
       setSession(null);
       sessionIdRef.current = null;
@@ -531,7 +546,7 @@ export function useAdaptiveAptitude(
     isTestComplete,
     results,
     questionStartTime,
-    
+
     // Actions
     startTest,
     submitAnswer,

@@ -6,18 +6,19 @@ const Features = () => {
         backgroundImage: 'url(/assets/HomePage/Vector.svg)',
         backgroundRepeat: 'no-repeat',
         backgroundPosition: 'bottom center',
-        backgroundSize: 'contain'
+        backgroundSize: 'contain',
       }}
     >
       <div className="relative z-10 mx-auto max-w-7xl text-center">
         {/* Main Heading */}
         <h2 className="font-bold mb-6 text-black leading-tight">
-         Move Beyond Attendance Sheets & Completion Certificates.
+          Move Beyond Attendance Sheets & Completion Certificates.
         </h2>
 
         {/* Subheading */}
         <p className="mx-auto mb-10 max-w-3xl text-gray-600 leading-relaxed">
-          The Skill Passport Captures And Verifies Every Competenc Developed Inside Your Organization, Linking Learning To Performance And Business Results.
+          The Skill Passport Captures And Verifies Every Competenc Developed Inside Your
+          Organization, Linking Learning To Performance And Business Results.
         </p>
 
         {/* CTA Button */}

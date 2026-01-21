@@ -19,7 +19,9 @@ const TestHeader: React.FC<TestHeaderProps> = ({ timeLeft, totalMarks, formatTim
         </div>
         <div className="flex items-center mt-2 md:mt-0">
           <Clock className={`h-5 w-5 ${timeLeft < 1800 ? 'text-red-500' : 'text-gray-500'} mr-2`} />
-          <span className={`font-mono font-medium ${timeLeft < 1800 ? 'text-red-600' : 'text-gray-700'}`}>
+          <span
+            className={`font-mono font-medium ${timeLeft < 1800 ? 'text-red-600' : 'text-gray-700'}`}
+          >
             {formatTime(timeLeft)}
           </span>
         </div>

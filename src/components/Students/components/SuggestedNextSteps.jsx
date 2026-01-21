@@ -1,11 +1,6 @@
-import React from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "./ui/card";
-import { Badge } from "./ui/badge";
+import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Badge } from './ui/badge';
 import {
   Sparkles,
   Target,
@@ -15,7 +10,7 @@ import {
   MapPin,
   Clock,
   TrendingUp,
-} from "lucide-react";
+} from 'lucide-react';
 
 /**
  * Reusable Suggested Next Steps Component
@@ -39,13 +34,11 @@ const SuggestedNextSteps = ({
               <Sparkles className="w-5 h-5 text-amber-600" />
             </div>
             <div>
-              <span className="text-lg font-semibold text-gray-900">
-                Suggested Next Steps
-              </span>
+              <span className="text-lg font-semibold text-gray-900">Suggested Next Steps</span>
               <p className="text-xs text-gray-500 font-normal mt-0.5">
                 {matchedJobs.length > 0
-                  ? "AI-matched job opportunities for you"
-                  : "Recommendations to enhance your profile"}
+                  ? 'AI-matched job opportunities for you'
+                  : 'Recommendations to enhance your profile'}
               </p>
             </div>
           </div>
@@ -96,7 +89,9 @@ const SuggestedNextSteps = ({
                   </h4>
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Building2 className="w-4 h-4" />
-                    <span className="font-medium">{match.company_name || match.opportunity?.company_name}</span>
+                    <span className="font-medium">
+                      {match.company_name || match.opportunity?.company_name}
+                    </span>
                   </div>
                 </div>
 
@@ -118,7 +113,9 @@ const SuggestedNextSteps = ({
                     {match.opportunity.deadline && (
                       <div className="flex items-center gap-1 text-orange-600">
                         <Clock className="w-3.5 h-3.5" />
-                        <span>Apply by {new Date(match.opportunity.deadline).toLocaleDateString()}</span>
+                        <span>
+                          Apply by {new Date(match.opportunity.deadline).toLocaleDateString()}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -134,9 +131,7 @@ const SuggestedNextSteps = ({
                 {/* Recommendation */}
                 {match.recommendation && (
                   <div className="mt-2 pt-2 border-t border-amber-200">
-                    <p className="text-xs text-amber-800 font-medium">
-                      ✨ {match.recommendation}
-                    </p>
+                    <p className="text-xs text-amber-800 font-medium">✨ {match.recommendation}</p>
                   </div>
                 )}
               </div>
@@ -159,7 +154,9 @@ const SuggestedNextSteps = ({
           <div className="text-center py-8">
             <TrendingUp className="w-12 h-12 mx-auto text-gray-300 mb-3" />
             <p className="text-gray-500 font-medium">No suggestions available</p>
-            <p className="text-gray-400 text-sm mt-1">Complete your profile to get personalized recommendations</p>
+            <p className="text-gray-400 text-sm mt-1">
+              Complete your profile to get personalized recommendations
+            </p>
           </div>
         )}
       </CardContent>

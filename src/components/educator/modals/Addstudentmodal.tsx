@@ -1,71 +1,86 @@
-import { ArrowDownTrayIcon, CheckCircleIcon, DocumentArrowUpIcon, ExclamationTriangleIcon, UserPlusIcon, XMarkIcon } from '@heroicons/react/24/outline'
-import Papa from 'papaparse'
-import React, { useEffect, useState } from 'react'
-import { supabase } from '../../../lib/supabaseClient'
-import storageService from '../../../services/storageService'
-import userApiService from '../../../services/userApiService'
-import { usePermission } from '../../../hooks/usePermissions'
+import {
+  ArrowDownTrayIcon,
+  CheckCircleIcon,
+  DocumentArrowUpIcon,
+  ExclamationTriangleIcon,
+  UserPlusIcon,
+  XMarkIcon,
+} from '@heroicons/react/24/outline';
+import Papa from 'papaparse';
+import React, { useEffect, useState } from 'react';
+import { supabase } from '../../../lib/supabaseClient';
+import storageService from '../../../services/storageService';
+import userApiService from '../../../services/userApiService';
+import { usePermission } from '../../../hooks/usePermissions';
 
 interface DocumentUploadProgress {
-  file: string
-  progress: number
-  status: 'uploading' | 'completed' | 'error'
-  error?: string
+  file: string;
+  progress: number;
+  status: 'uploading' | 'completed' | 'error';
+  error?: string;
 }
 
 // Validated row interface for enhanced preview
 interface ValidatedStudent {
-  rowNumber: number
-  data: any
-  isValid: boolean
-  errors: string[]
+  rowNumber: number;
+  data: any;
+  isValid: boolean;
+  errors: string[];
 }
 
 interface Props {
-  isOpen: boolean
-  onClose: () => void
-  onSuccess?: () => void
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess?: () => void;
 }
 
 interface StudentFormData {
-  name: string
-  email: string
-  contactNumber: string
-  dateOfBirth: string
-  gender: string
-  enrollmentNumber: string
-  rollNumber: string
-  category: string
-  quota: string
-  guardianName: string
-  guardianPhone: string
-  guardianEmail: string
-  guardianRelation: string
-  address: string
-  city: string
-  state: string
-  country: string
-  pincode: string
-  bloodGroup: string
-  district: string
-  documents: File[]
+  name: string;
+  email: string;
+  contactNumber: string;
+  dateOfBirth: string;
+  gender: string;
+  enrollmentNumber: string;
+  rollNumber: string;
+  category: string;
+  quota: string;
+  guardianName: string;
+  guardianPhone: string;
+  guardianEmail: string;
+  guardianRelation: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  pincode: string;
+  bloodGroup: string;
+  district: string;
+  documents: File[];
 }
 
 const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
-  const [mode, setMode] = useState<'manual' | 'csv'>('csv')
-  const [csvFile, setCsvFile] = useState<File | null>(null)
-  const [validatedStudents, setValidatedStudents] = useState<ValidatedStudent[]>([])
-  const [showEnhancedPreview, setShowEnhancedPreview] = useState(false)
-  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null)
-  const [documentUploadProgress, setDocumentUploadProgress] = useState<DocumentUploadProgress[]>([])
-  const [isUploadingDocuments, setIsUploadingDocuments] = useState(false)
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [mode, setMode] = useState<'manual' | 'csv'>('csv');
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [validatedStudents, setValidatedStudents] = useState<ValidatedStudent[]>([]);
+  const [showEnhancedPreview, setShowEnhancedPreview] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(
+    null
+  );
+  const [documentUploadProgress, setDocumentUploadProgress] = useState<DocumentUploadProgress[]>(
+    []
+  );
+  const [isUploadingDocuments, setIsUploadingDocuments] = useState(false);
 
   // Permission check - allow school_admin and college_admin by default
-  const { allowed: canAddStudents, reason: addReason, loading: permissionLoading } = usePermission('Students', 'create');
-  
+  const {
+    allowed: canAddStudents,
+    reason: addReason,
+    loading: permissionLoading,
+  } = usePermission('Students', 'create');
+
   // Check if user is an admin (school_admin or college_admin should always be allowed)
   const [isAdmin, setIsAdmin] = useState(false);
   useEffect(() => {
@@ -105,8 +120,8 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
     pincode: '',
     bloodGroup: '',
     district: '',
-    documents: []
-  })
+    documents: [],
+  });
 
   useEffect(() => {
     if (!isOpen) {
@@ -131,19 +146,19 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
         pincode: '',
         bloodGroup: '',
         district: '',
-        documents: []
-      })
-      setError(null)
-      setSuccess(null)
-      setLoading(false)
-      setMode('manual')
-      setCsvFile(null)
-      setValidatedStudents([])
-      setShowEnhancedPreview(false)
-      setDocumentUploadProgress([])
-      setIsUploadingDocuments(false)
+        documents: [],
+      });
+      setError(null);
+      setSuccess(null);
+      setLoading(false);
+      setMode('manual');
+      setCsvFile(null);
+      setValidatedStudents([]);
+      setShowEnhancedPreview(false);
+      setDocumentUploadProgress([]);
+      setIsUploadingDocuments(false);
     }
-  }, [isOpen])
+  }, [isOpen]);
 
   // Don't render modal if user doesn't have permission (unless they're an admin)
   if (!permissionLoading && !canAddStudents && !isAdmin) {
@@ -153,245 +168,473 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   // Download sample CSV template
   const downloadSampleCSV = () => {
     // Determine context (college vs school) from localStorage
-    const userStr = localStorage.getItem('user')
-    let isCollegeContext = false
-    let userRole = null
+    const userStr = localStorage.getItem('user');
+    let isCollegeContext = false;
+    let userRole = null;
 
     try {
-      const userData = JSON.parse(userStr || '{}')
-      const collegeId = userData.collegeId || null
-      userRole = userData.role || null
-      isCollegeContext = !!(collegeId || userRole === 'college_admin')
+      const userData = JSON.parse(userStr || '{}');
+      const collegeId = userData.collegeId || null;
+      userRole = userData.role || null;
+      isCollegeContext = !!(collegeId || userRole === 'college_admin');
     } catch (e) {
-      console.warn('Could not parse user data from localStorage')
+      console.warn('Could not parse user data from localStorage');
     }
 
-    let sampleData
-    let filename
+    let sampleData;
+    let filename;
 
     if (isCollegeContext) {
       // University/College template
-      filename = 'university_student_import_template.csv'
+      filename = 'university_student_import_template.csv';
       sampleData = [
-        ['name', 'email', 'contactNumber', 'alternateNumber', 'dateOfBirth', 'gender', 'enrollmentNumber', 'registrationNumber', 'rollNumber', 'admissionNumber', 'category', 'quota', 'academicYear', 'bloodGroup', 'district', 'university', 'profilePicture', 'guardianName', 'guardianPhone', 'guardianEmail', 'guardianRelation', 'address', 'city', 'state', 'country', 'pincode'],
-        ['Priya Sharma', 'priya.sharma@university.edu', '919876501234', '919876543299', '2002-04-15', 'Female', 'UNI2024101', 'REG2024101', 'CS2024001', 'ADM2024101', 'General', 'Merit', '2024-25', 'O+', 'Mumbai', 'Mumbai University', 'https://i.pravatar.cc/150?img=25', 'Rajesh Sharma', '919877654321', 'rajesh.sharma@parent.com', 'Father', 'Flat 301 Sunrise Apartments Andheri West', 'Mumbai', 'Maharashtra', 'India', '400053'],
-        ['Arjun Patel', 'arjun.patel@university.edu', '919876502345', '', '2001-08-22', 'Male', 'UNI2024102', 'REG2024102', 'ME2024002', 'ADM2024102', 'OBC', 'Merit', '2024-25', 'A+', 'Pune', 'Pune University', 'https://i.pravatar.cc/150?img=33', 'Priya Patel', '919877654322', 'priya.patel@parent.com', 'Mother', 'Bungalow 12 Green Valley Society Borivali', 'Pune', 'Maharashtra', 'India', '411001'],
-        ['Meera Reddy', 'meera.reddy@university.edu', '919876503456', '919876543298', '2003-12-10', 'Female', 'UNI2024103', 'REG2024103', 'EC2024003', 'ADM2024103', 'SC', 'Sports', '2024-25', 'B+', 'Bangalore', 'Bangalore University', 'https://i.pravatar.cc/150?img=47', 'Venkatesh Reddy', '919877654323', 'venkatesh.reddy@parent.com', 'Father', 'Tower B 1502 Oberoi Heights Electronic City', 'Bangalore', 'Karnataka', 'India', '560100']
-      ]
+        [
+          'name',
+          'email',
+          'contactNumber',
+          'alternateNumber',
+          'dateOfBirth',
+          'gender',
+          'enrollmentNumber',
+          'registrationNumber',
+          'rollNumber',
+          'admissionNumber',
+          'category',
+          'quota',
+          'academicYear',
+          'bloodGroup',
+          'district',
+          'university',
+          'profilePicture',
+          'guardianName',
+          'guardianPhone',
+          'guardianEmail',
+          'guardianRelation',
+          'address',
+          'city',
+          'state',
+          'country',
+          'pincode',
+        ],
+        [
+          'Priya Sharma',
+          'priya.sharma@university.edu',
+          '919876501234',
+          '919876543299',
+          '2002-04-15',
+          'Female',
+          'UNI2024101',
+          'REG2024101',
+          'CS2024001',
+          'ADM2024101',
+          'General',
+          'Merit',
+          '2024-25',
+          'O+',
+          'Mumbai',
+          'Mumbai University',
+          'https://i.pravatar.cc/150?img=25',
+          'Rajesh Sharma',
+          '919877654321',
+          'rajesh.sharma@parent.com',
+          'Father',
+          'Flat 301 Sunrise Apartments Andheri West',
+          'Mumbai',
+          'Maharashtra',
+          'India',
+          '400053',
+        ],
+        [
+          'Arjun Patel',
+          'arjun.patel@university.edu',
+          '919876502345',
+          '',
+          '2001-08-22',
+          'Male',
+          'UNI2024102',
+          'REG2024102',
+          'ME2024002',
+          'ADM2024102',
+          'OBC',
+          'Merit',
+          '2024-25',
+          'A+',
+          'Pune',
+          'Pune University',
+          'https://i.pravatar.cc/150?img=33',
+          'Priya Patel',
+          '919877654322',
+          'priya.patel@parent.com',
+          'Mother',
+          'Bungalow 12 Green Valley Society Borivali',
+          'Pune',
+          'Maharashtra',
+          'India',
+          '411001',
+        ],
+        [
+          'Meera Reddy',
+          'meera.reddy@university.edu',
+          '919876503456',
+          '919876543298',
+          '2003-12-10',
+          'Female',
+          'UNI2024103',
+          'REG2024103',
+          'EC2024003',
+          'ADM2024103',
+          'SC',
+          'Sports',
+          '2024-25',
+          'B+',
+          'Bangalore',
+          'Bangalore University',
+          'https://i.pravatar.cc/150?img=47',
+          'Venkatesh Reddy',
+          '919877654323',
+          'venkatesh.reddy@parent.com',
+          'Father',
+          'Tower B 1502 Oberoi Heights Electronic City',
+          'Bangalore',
+          'Karnataka',
+          'India',
+          '560100',
+        ],
+      ];
     } else {
       // School template
-      filename = 'school_student_import_template.csv'
+      filename = 'school_student_import_template.csv';
       sampleData = [
-        ['name', 'email', 'contactNumber', 'alternateNumber', 'dateOfBirth', 'gender', 'enrollmentNumber', 'registrationNumber', 'rollNumber', 'admissionNumber', 'category', 'quota', 'grade', 'section', 'academicYear', 'bloodGroup', 'district', 'collegeSchoolName', 'profilePicture', 'guardianName', 'guardianPhone', 'guardianEmail', 'guardianRelation', 'address', 'city', 'state', 'country', 'pincode'],
-        ['Aarav Sharma', 'aarav.sharma@school.com', '919876501234', '919876543299', '2010-04-15', 'Male', 'ENR2024101', 'REG2024101', '1', 'ADM2024101', 'General', 'Merit', '10', 'A', '2024-25', 'O+', 'Mumbai', 'Delhi Public School Mumbai', 'https://i.pravatar.cc/150?img=12', 'Rajesh Sharma', '919877654321', 'rajesh.sharma@parent.com', 'Father', 'Flat 301 Sunrise Apartments Andheri West', 'Mumbai', 'Maharashtra', 'India', '400053'],
-        ['Diya Patel', 'diya.patel@school.com', '919876502345', '', '2011-08-22', 'Female', 'ENR2024102', 'REG2024102', '2', 'ADM2024102', 'OBC', 'Merit', '9', 'B', '2024-25', 'A+', 'Mumbai', 'Delhi Public School Mumbai', 'https://i.pravatar.cc/150?img=47', 'Priya Patel', '919877654322', 'priya.patel@parent.com', 'Mother', 'Bungalow 12 Green Valley Society Borivali', 'Mumbai', 'Maharashtra', 'India', '400092'],
-        ['Arjun Reddy', 'arjun.reddy@school.com', '919876503456', '919876543298', '2012-12-10', 'Male', 'ENR2024103', 'REG2024103', '3', 'ADM2024103', 'SC', 'Sports', '8', 'C', '2024-25', 'B+', 'Mumbai', 'Delhi Public School Mumbai', 'https://i.pravatar.cc/150?img=33', 'Venkatesh Reddy', '919877654323', 'venkatesh.reddy@parent.com', 'Father', 'Tower B 1502 Oberoi Heights Goregaon East', 'Mumbai', 'Maharashtra', 'India', '400063']
-      ]
+        [
+          'name',
+          'email',
+          'contactNumber',
+          'alternateNumber',
+          'dateOfBirth',
+          'gender',
+          'enrollmentNumber',
+          'registrationNumber',
+          'rollNumber',
+          'admissionNumber',
+          'category',
+          'quota',
+          'grade',
+          'section',
+          'academicYear',
+          'bloodGroup',
+          'district',
+          'collegeSchoolName',
+          'profilePicture',
+          'guardianName',
+          'guardianPhone',
+          'guardianEmail',
+          'guardianRelation',
+          'address',
+          'city',
+          'state',
+          'country',
+          'pincode',
+        ],
+        [
+          'Aarav Sharma',
+          'aarav.sharma@school.com',
+          '919876501234',
+          '919876543299',
+          '2010-04-15',
+          'Male',
+          'ENR2024101',
+          'REG2024101',
+          '1',
+          'ADM2024101',
+          'General',
+          'Merit',
+          '10',
+          'A',
+          '2024-25',
+          'O+',
+          'Mumbai',
+          'Delhi Public School Mumbai',
+          'https://i.pravatar.cc/150?img=12',
+          'Rajesh Sharma',
+          '919877654321',
+          'rajesh.sharma@parent.com',
+          'Father',
+          'Flat 301 Sunrise Apartments Andheri West',
+          'Mumbai',
+          'Maharashtra',
+          'India',
+          '400053',
+        ],
+        [
+          'Diya Patel',
+          'diya.patel@school.com',
+          '919876502345',
+          '',
+          '2011-08-22',
+          'Female',
+          'ENR2024102',
+          'REG2024102',
+          '2',
+          'ADM2024102',
+          'OBC',
+          'Merit',
+          '9',
+          'B',
+          '2024-25',
+          'A+',
+          'Mumbai',
+          'Delhi Public School Mumbai',
+          'https://i.pravatar.cc/150?img=47',
+          'Priya Patel',
+          '919877654322',
+          'priya.patel@parent.com',
+          'Mother',
+          'Bungalow 12 Green Valley Society Borivali',
+          'Mumbai',
+          'Maharashtra',
+          'India',
+          '400092',
+        ],
+        [
+          'Arjun Reddy',
+          'arjun.reddy@school.com',
+          '919876503456',
+          '919876543298',
+          '2012-12-10',
+          'Male',
+          'ENR2024103',
+          'REG2024103',
+          '3',
+          'ADM2024103',
+          'SC',
+          'Sports',
+          '8',
+          'C',
+          '2024-25',
+          'B+',
+          'Mumbai',
+          'Delhi Public School Mumbai',
+          'https://i.pravatar.cc/150?img=33',
+          'Venkatesh Reddy',
+          '919877654323',
+          'venkatesh.reddy@parent.com',
+          'Father',
+          'Tower B 1502 Oberoi Heights Goregaon East',
+          'Mumbai',
+          'Maharashtra',
+          'India',
+          '400063',
+        ],
+      ];
     }
 
-    const csv = sampleData.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n')
-    const blob = new Blob([csv], { type: 'text/csv' })
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = filename
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    window.URL.revokeObjectURL(url)
-  }
+    const csv = sampleData.map((row) => row.map((cell) => `"${cell}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
 
   const handleInputChange = (field: keyof StudentFormData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
-    setError(null)
-    setSuccess(null)
-  }
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    setError(null);
+    setSuccess(null);
+  };
 
   const validateEmail = (email: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    return emailRegex.test(email)
-  }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
 
   const validateForm = (): boolean => {
     // Basic Information - Required fields
     if (!formData.name.trim()) {
-      setError('Full Name is required')
-      return false
+      setError('Full Name is required');
+      return false;
     }
     if (!formData.email.trim()) {
-      setError('Email is required')
-      return false
+      setError('Email is required');
+      return false;
     }
     if (!validateEmail(formData.email)) {
-      setError('Invalid email format')
-      return false
+      setError('Invalid email format');
+      return false;
     }
     if (!formData.contactNumber.trim()) {
-      setError('Contact Number is required')
-      return false
+      setError('Contact Number is required');
+      return false;
     }
     if (!validatePhoneFormat(formData.contactNumber)) {
-      setError('Invalid contact number format')
-      return false
+      setError('Invalid contact number format');
+      return false;
     }
-    
+
     // Enrollment Information - Required fields
     if (!formData.enrollmentNumber.trim()) {
-      setError('Enrollment Number is required')
-      return false
+      setError('Enrollment Number is required');
+      return false;
     }
     if (!formData.rollNumber.trim()) {
-      setError('Roll Number is required')
-      return false
+      setError('Roll Number is required');
+      return false;
     }
     if (!validateRollNumber(formData.rollNumber)) {
-      setError('Roll number must be 3-20 characters long and contain only letters, numbers, and hyphens')
-      return false
+      setError(
+        'Roll number must be 3-20 characters long and contain only letters, numbers, and hyphens'
+      );
+      return false;
     }
-    
+
     // Category & Quota Information - Required fields
     if (!formData.category.trim()) {
-      setError('Category is required')
-      return false
+      setError('Category is required');
+      return false;
     }
     if (!formData.quota.trim()) {
-      setError('Quota is required')
-      return false
+      setError('Quota is required');
+      return false;
     }
-    
+
     // Personal Information - Required fields
     if (!formData.dateOfBirth.trim()) {
-      setError('Date of Birth is required')
-      return false
+      setError('Date of Birth is required');
+      return false;
     }
     if (!formData.gender.trim()) {
-      setError('Gender is required')
-      return false
+      setError('Gender is required');
+      return false;
     }
     if (!formData.bloodGroup.trim()) {
-      setError('Blood Group is required')
-      return false
+      setError('Blood Group is required');
+      return false;
     }
-    
+
     // Guardian Information - Required fields
     if (!formData.guardianName.trim()) {
-      setError('Guardian Name is required')
-      return false
+      setError('Guardian Name is required');
+      return false;
     }
     if (!formData.guardianPhone.trim()) {
-      setError('Guardian Phone is required')
-      return false
+      setError('Guardian Phone is required');
+      return false;
     }
     if (!validatePhoneFormat(formData.guardianPhone)) {
-      setError('Invalid guardian phone number format')
-      return false
+      setError('Invalid guardian phone number format');
+      return false;
     }
     if (!formData.guardianEmail.trim()) {
-      setError('Guardian Email is required')
-      return false
+      setError('Guardian Email is required');
+      return false;
     }
     if (!validateEmail(formData.guardianEmail)) {
-      setError('Invalid guardian email format')
-      return false
+      setError('Invalid guardian email format');
+      return false;
     }
     if (!formData.guardianRelation.trim()) {
-      setError('Guardian Relation is required')
-      return false
+      setError('Guardian Relation is required');
+      return false;
     }
-    
+
     // Address Information - Required fields
     if (!formData.address.trim()) {
-      setError('Address is required')
-      return false
+      setError('Address is required');
+      return false;
     }
     if (!formData.city.trim()) {
-      setError('City is required')
-      return false
+      setError('City is required');
+      return false;
     }
     if (!formData.state.trim()) {
-      setError('State is required')
-      return false
+      setError('State is required');
+      return false;
     }
     if (!formData.country.trim()) {
-      setError('Country is required')
-      return false
+      setError('Country is required');
+      return false;
     }
     if (!formData.pincode.trim()) {
-      setError('Pincode is required')
-      return false
+      setError('Pincode is required');
+      return false;
     }
     if (!formData.district.trim()) {
-      setError('District is required')
-      return false
+      setError('District is required');
+      return false;
     }
-    
+
     // Document Upload - Required (at least one document)
     if (formData.documents.length === 0) {
-      setError('At least one document is required')
-      return false
+      setError('At least one document is required');
+      return false;
     }
-    
-    return true
-  }
+
+    return true;
+  };
 
   const handleSubmit = async () => {
-    if (!validateForm()) return
+    if (!validateForm()) return;
 
-    setLoading(true)
-    setError(null)
-    setSuccess(null)
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
 
     try {
       // Get current user from localStorage (custom auth - same as teacher onboarding)
-      const userEmail = localStorage.getItem('userEmail')
-      const userStr = localStorage.getItem('user')
+      const userEmail = localStorage.getItem('userEmail');
+      const userStr = localStorage.getItem('user');
 
-      console.log('Current user from localStorage:', { userEmail, user: userStr })
+      console.log('Current user from localStorage:', { userEmail, user: userStr });
 
       if (!userEmail) {
-        throw new Error('You are not logged in. Please login and try again.')
+        throw new Error('You are not logged in. Please login and try again.');
       }
 
       // Get schoolId or collegeId from localStorage
-      let schoolId = null
-      let collegeId = null
-      let userRole = null
+      let schoolId = null;
+      let collegeId = null;
+      let userRole = null;
       try {
-        const userData = JSON.parse(userStr || '{}')
-        schoolId = userData.schoolId || null
-        collegeId = userData.collegeId || null
-        userRole = userData.role || null
+        const userData = JSON.parse(userStr || '{}');
+        schoolId = userData.schoolId || null;
+        collegeId = userData.collegeId || null;
+        userRole = userData.role || null;
       } catch (e) {
-        console.warn('Could not parse user data from localStorage')
+        console.warn('Could not parse user data from localStorage');
       }
 
       // If schoolId not in localStorage but user is school_admin, fetch from organizations table
       if (!schoolId && userRole === 'school_admin' && userEmail) {
-        console.log('🔍 Fetching schoolId from organizations table for school admin:', userEmail)
+        console.log('🔍 Fetching schoolId from organizations table for school admin:', userEmail);
         const { data: org } = await supabase
           .from('organizations')
           .select('id')
           .eq('organization_type', 'school')
           .ilike('email', userEmail)
-          .maybeSingle()
+          .maybeSingle();
 
         if (org?.id) {
-          schoolId = org.id
-          console.log('✅ Found schoolId from organizations:', schoolId)
+          schoolId = org.id;
+          console.log('✅ Found schoolId from organizations:', schoolId);
         } else {
           // Also try school_educators table
-          console.log('🔍 Trying school_educators table...')
-          const { data: { user: authUser } } = await supabase.auth.getUser()
+          console.log('🔍 Trying school_educators table...');
+          const {
+            data: { user: authUser },
+          } = await supabase.auth.getUser();
           if (authUser?.id) {
             const { data: educator } = await supabase
               .from('school_educators')
               .select('school_id')
               .eq('user_id', authUser.id)
-              .maybeSingle()
-            
+              .maybeSingle();
+
             if (educator?.school_id) {
-              schoolId = educator.school_id
-              console.log('✅ Found schoolId from school_educators:', schoolId)
+              schoolId = educator.school_id;
+              console.log('✅ Found schoolId from school_educators:', schoolId);
             }
           }
         }
@@ -399,662 +642,735 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
       // If collegeId not in localStorage but user is college_admin, fetch from organizations table
       if (!collegeId && userRole === 'college_admin' && userEmail) {
-        console.log('🔍 Fetching collegeId from organizations table for college admin:', userEmail)
+        console.log('🔍 Fetching collegeId from organizations table for college admin:', userEmail);
         const { data: org } = await supabase
           .from('organizations')
           .select('id')
           .eq('organization_type', 'college')
           .ilike('email', userEmail)
-          .maybeSingle()
+          .maybeSingle();
 
         if (org?.id) {
-          collegeId = org.id
-          console.log('✅ Found collegeId:', collegeId)
+          collegeId = org.id;
+          console.log('✅ Found collegeId:', collegeId);
         }
       }
 
-      console.log('✅ User authenticated:', userEmail, 'School ID:', schoolId, 'College ID:', collegeId, 'Role:', userRole)
+      console.log(
+        '✅ User authenticated:',
+        userEmail,
+        'School ID:',
+        schoolId,
+        'College ID:',
+        collegeId,
+        'Role:',
+        userRole
+      );
 
       // Refresh session to ensure we have a valid token
-      console.log('🔄 Refreshing session...')
-      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
-      
+      console.log('🔄 Refreshing session...');
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+
       if (refreshError) {
-        console.warn('Session refresh failed:', refreshError)
+        console.warn('Session refresh failed:', refreshError);
         // Try to get existing session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-        
+        const {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession();
+
         if (sessionError || !session) {
-          console.error('No valid session available')
-          throw new Error('Authentication expired. Please login again.')
+          console.error('No valid session available');
+          throw new Error('Authentication expired. Please login again.');
         }
-        
-        console.log('🔑 Using existing session')
+
+        console.log('🔑 Using existing session');
       } else {
-        console.log('✅ Session refreshed successfully')
+        console.log('✅ Session refreshed successfully');
       }
 
-      const finalSession = refreshData?.session || (await supabase.auth.getSession()).data.session
-      
+      const finalSession = refreshData?.session || (await supabase.auth.getSession()).data.session;
+
       if (!finalSession) {
-        throw new Error('No active session. Please login again.')
+        throw new Error('No active session. Please login again.');
       }
 
-      const token = finalSession.access_token
+      const token = finalSession.access_token;
 
       if (!token) {
-        console.error('No access token in session')
-        throw new Error('No authentication token available')
+        console.error('No access token in session');
+        throw new Error('No authentication token available');
       }
 
-      console.log('🔑 Token obtained, length:', token.length)
-      console.log('🌐 API URL:', import.meta.env.VITE_USER_API_URL)
+      console.log('🔑 Token obtained, length:', token.length);
+      console.log('🌐 API URL:', import.meta.env.VITE_USER_API_URL);
 
       // Call Cloudflare Worker via userApiService
       console.log('Calling create-student via userApiService with data:', {
         name: formData.name,
         email: formData.email,
-        contactNumber: formData.contactNumber
-      })
+        contactNumber: formData.contactNumber,
+      });
 
-      const data = await userApiService.createStudent({
-        userEmail: userEmail,
-        schoolId: schoolId, // Send schoolId from localStorage (for school admins)
-        collegeId: collegeId, // Send collegeId from localStorage (for college admins)
-        student: {
-          name: formData.name.trim(),
-          email: formData.email.trim().toLowerCase(),
-          contactNumber: formData.contactNumber.trim(),
-          dateOfBirth: formData.dateOfBirth || null,
-          gender: formData.gender || null,
-          enrollmentNumber: formData.enrollmentNumber.trim() || null,
-          rollNumber: formData.rollNumber.trim() || null,
-          category: formData.category || null,
-          quota: formData.quota || null,
-          guardianName: formData.guardianName.trim() || null,
-          guardianPhone: formData.guardianPhone.trim() || null,
-          guardianEmail: formData.guardianEmail.trim() || null,
-          guardianRelation: formData.guardianRelation.trim() || null,
-          address: formData.address.trim() || null,
-          city: formData.city.trim() || null,
-          state: formData.state.trim() || null,
-          country: formData.country || 'India',
-          pincode: formData.pincode.trim() || null,
-          district: formData.district.trim() || null,
-          bloodGroup: formData.bloodGroup || null,
-          approval_status: 'approved',
-          student_type: 'educator_added'
-          // Note: No documents sent initially
-        }
-      }, token)
-      console.log('Edge Function Response:', JSON.stringify(data, null, 2))
+      const data = await userApiService.createStudent(
+        {
+          userEmail: userEmail,
+          schoolId: schoolId, // Send schoolId from localStorage (for school admins)
+          collegeId: collegeId, // Send collegeId from localStorage (for college admins)
+          student: {
+            name: formData.name.trim(),
+            email: formData.email.trim().toLowerCase(),
+            contactNumber: formData.contactNumber.trim(),
+            dateOfBirth: formData.dateOfBirth || null,
+            gender: formData.gender || null,
+            enrollmentNumber: formData.enrollmentNumber.trim() || null,
+            rollNumber: formData.rollNumber.trim() || null,
+            category: formData.category || null,
+            quota: formData.quota || null,
+            guardianName: formData.guardianName.trim() || null,
+            guardianPhone: formData.guardianPhone.trim() || null,
+            guardianEmail: formData.guardianEmail.trim() || null,
+            guardianRelation: formData.guardianRelation.trim() || null,
+            address: formData.address.trim() || null,
+            city: formData.city.trim() || null,
+            state: formData.state.trim() || null,
+            country: formData.country || 'India',
+            pincode: formData.pincode.trim() || null,
+            district: formData.district.trim() || null,
+            bloodGroup: formData.bloodGroup || null,
+            approval_status: 'approved',
+            student_type: 'educator_added',
+            // Note: No documents sent initially
+          },
+        },
+        token
+      );
+      console.log('Edge Function Response:', JSON.stringify(data, null, 2));
 
       // Check if operation failed
       if (!data?.success) {
-        console.error('Function returned error:', data)
-        throw new Error(data?.error || data?.details || 'Failed to create student')
+        console.error('Function returned error:', data);
+        throw new Error(data?.error || data?.details || 'Failed to create student');
       }
 
-      const studentId = data.data?.studentId || data.data?.authUserId
+      const studentId = data.data?.studentId || data.data?.authUserId;
       if (!studentId) {
-        throw new Error('Student created but no ID returned')
+        throw new Error('Student created but no ID returned');
       }
 
-      console.log('✅ Student created with ID:', studentId)
+      console.log('✅ Student created with ID:', studentId);
 
       // Step 2: Upload documents if any exist
-      let uploadedDocuments: Array<{name: string, url: string, size: number, type: string}> = []
+      let uploadedDocuments: Array<{ name: string; url: string; size: number; type: string }> = [];
       if (formData.documents.length > 0) {
-        console.log(`📁 Uploading ${formData.documents.length} documents...`)
-        
+        console.log(`📁 Uploading ${formData.documents.length} documents...`);
+
         try {
-          uploadedDocuments = await uploadDocumentsAfterStudentCreation(formData.documents, studentId)
-          console.log('✅ Documents uploaded:', uploadedDocuments.length)
+          uploadedDocuments = await uploadDocumentsAfterStudentCreation(
+            formData.documents,
+            studentId
+          );
+          console.log('✅ Documents uploaded:', uploadedDocuments.length);
         } catch (uploadError) {
-          console.warn('⚠️ Document upload failed:', uploadError)
+          console.warn('⚠️ Document upload failed:', uploadError);
           // Don't fail the entire operation if document upload fails
-          setError(`Student created successfully, but some documents failed to upload: ${uploadError instanceof Error ? uploadError.message : 'Unknown error'}`)
+          setError(
+            `Student created successfully, but some documents failed to upload: ${uploadError instanceof Error ? uploadError.message : 'Unknown error'}`
+          );
         }
       }
 
       // Step 3: Update student record with document URLs (if any were uploaded)
       if (uploadedDocuments.length > 0) {
         try {
-          await updateStudentDocuments(studentId, uploadedDocuments)
-          console.log('✅ Student record updated with document URLs')
+          await updateStudentDocuments(studentId, uploadedDocuments);
+          console.log('✅ Student record updated with document URLs');
         } catch (updateError) {
-          console.warn('⚠️ Failed to update student record with document URLs:', updateError)
+          console.warn('⚠️ Failed to update student record with document URLs:', updateError);
           // Don't fail the operation, documents are uploaded but not linked
         }
       }
 
       // Show success message
-      const successMsg = uploadedDocuments.length > 0 
-        ? `✅ Student "${formData.name}" created successfully with ${uploadedDocuments.length} document${uploadedDocuments.length > 1 ? 's' : ''}!`
-        : `✅ Student "${formData.name}" created successfully!`
+      const successMsg =
+        uploadedDocuments.length > 0
+          ? `✅ Student "${formData.name}" created successfully with ${uploadedDocuments.length} document${uploadedDocuments.length > 1 ? 's' : ''}!`
+          : `✅ Student "${formData.name}" created successfully!`;
 
-      setSuccess(successMsg)
-      setError(null)
+      setSuccess(successMsg);
+      setError(null);
 
       // Call onSuccess and close modal after a brief delay
-      onSuccess?.()
+      onSuccess?.();
       setTimeout(() => {
-        onClose()
-      }, 1500)
+        onClose();
+      }, 1500);
 
-      console.log('✅ Student created successfully!')
+      console.log('✅ Student created successfully!');
     } catch (err: any) {
-      setError(err.message || 'Failed to create student. Please try again.')
-      setSuccess(null)
+      setError(err.message || 'Failed to create student. Please try again.');
+      setSuccess(null);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   // Validation helper functions
   const validateEmailFormat = (email: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    return emailRegex.test(email)
-  }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
 
   const validatePhoneFormat = (phone: string): boolean => {
-    const cleaned = phone.replace(/[\s-]/g, '')
-    const phoneRegex = /^(\+?\d{1,3})?\d{10}$/
-    return phoneRegex.test(cleaned)
-  }
+    const cleaned = phone.replace(/[\s-]/g, '');
+    const phoneRegex = /^(\+?\d{1,3})?\d{10}$/;
+    return phoneRegex.test(cleaned);
+  };
 
   const validateRollNumber = (rollNumber: string): boolean => {
     // Roll number validation rules:
     // - Must be alphanumeric
     // - Length between 3-20 characters
     // - Can contain letters, numbers, and hyphens
-    if (!rollNumber.trim()) return true // Optional field
-    const rollRegex = /^[A-Za-z0-9\-]{3,20}$/
-    return rollRegex.test(rollNumber.trim())
-  }
+    if (!rollNumber.trim()) return true; // Optional field
+    const rollRegex = /^[A-Za-z0-9\-]{3,20}$/;
+    return rollRegex.test(rollNumber.trim());
+  };
 
   // Convert date from DD-MM-YYYY or DD/MM/YYYY to YYYY-MM-DD format
   const convertDateFormat = (dateStr: string): string | null => {
-    if (!dateStr || dateStr.trim() === '') return null
-    
-    const trimmed = dateStr.trim()
-    
+    if (!dateStr || dateStr.trim() === '') return null;
+
+    const trimmed = dateStr.trim();
+
     // If already in YYYY-MM-DD format, return as-is
     if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-      return trimmed
+      return trimmed;
     }
-    
+
     // Handle DD-MM-YYYY or DD/MM/YYYY format
-    const ddmmyyyyRegex = /^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/
-    const match = trimmed.match(ddmmyyyyRegex)
-    
+    const ddmmyyyyRegex = /^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/;
+    const match = trimmed.match(ddmmyyyyRegex);
+
     if (match) {
-      const [, day, month, year] = match
+      const [, day, month, year] = match;
       // Pad day and month with leading zeros if needed
-      const paddedDay = day.padStart(2, '0')
-      const paddedMonth = month.padStart(2, '0')
-      const convertedDate = `${year}-${paddedMonth}-${paddedDay}`
-      
+      const paddedDay = day.padStart(2, '0');
+      const paddedMonth = month.padStart(2, '0');
+      const convertedDate = `${year}-${paddedMonth}-${paddedDay}`;
+
       // Validate the converted date
-      const dateObj = new Date(convertedDate)
-      if (dateObj.getFullYear() == parseInt(year) && 
-          dateObj.getMonth() == parseInt(month) - 1 && 
-          dateObj.getDate() == parseInt(day)) {
-        return convertedDate
+      const dateObj = new Date(convertedDate);
+      if (
+        dateObj.getFullYear() == parseInt(year) &&
+        dateObj.getMonth() == parseInt(month) - 1 &&
+        dateObj.getDate() == parseInt(day)
+      ) {
+        return convertedDate;
       }
     }
-    
+
     // If no pattern matches, try to parse as-is and convert
     try {
-      const dateObj = new Date(trimmed)
+      const dateObj = new Date(trimmed);
       if (!isNaN(dateObj.getTime())) {
-        return dateObj.toISOString().split('T')[0]
+        return dateObj.toISOString().split('T')[0];
       }
     } catch (e) {
-      console.warn('Failed to parse date:', trimmed)
+      console.warn('Failed to parse date:', trimmed);
     }
-    
-    return null
-  }
 
+    return null;
+  };
 
   const removeDocument = (index: number) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      documents: prev.documents.filter((_, i) => i !== index)
-    }))
-  }
+      documents: prev.documents.filter((_, i) => i !== index),
+    }));
+  };
 
   // Simple document selection (no immediate upload)
   const handleDocumentSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    const validFiles = files.filter(file => {
-      const validTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg']
-      const maxSize = 5 * 1024 * 1024 // 5MB
-      return validTypes.includes(file.type) && file.size <= maxSize
-    })
+    const files = Array.from(e.target.files || []);
+    const validFiles = files.filter((file) => {
+      const validTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      return validTypes.includes(file.type) && file.size <= maxSize;
+    });
 
     if (validFiles.length !== files.length) {
-      setError('Some files were rejected. Only PDF, JPG, PNG files under 5MB are allowed.')
+      setError('Some files were rejected. Only PDF, JPG, PNG files under 5MB are allowed.');
     }
 
-    if (validFiles.length === 0) return
+    if (validFiles.length === 0) return;
 
     // Add files to local state (keep in browser memory)
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      documents: [...prev.documents, ...validFiles].slice(0, 5) // Max 5 files
-    }))
+      documents: [...prev.documents, ...validFiles].slice(0, 5), // Max 5 files
+    }));
 
-    setError(null) // Clear any previous errors
-  }
+    setError(null); // Clear any previous errors
+  };
 
   // Upload documents after student creation
-  const uploadDocumentsAfterStudentCreation = async (files: File[], studentId: string): Promise<Array<{name: string, url: string, size: number, type: string}>> => {
-    if (files.length === 0) return []
+  const uploadDocumentsAfterStudentCreation = async (
+    files: File[],
+    studentId: string
+  ): Promise<Array<{ name: string; url: string; size: number; type: string }>> => {
+    if (files.length === 0) return [];
 
-    setIsUploadingDocuments(true)
-    const uploadedDocs: Array<{name: string, url: string, size: number, type: string}> = []
-    
+    setIsUploadingDocuments(true);
+    const uploadedDocs: Array<{ name: string; url: string; size: number; type: string }> = [];
+
     // Initialize progress tracking
-    const progressTracking: DocumentUploadProgress[] = files.map(file => ({
+    const progressTracking: DocumentUploadProgress[] = files.map((file) => ({
       file: file.name,
       progress: 0,
-      status: 'uploading'
-    }))
-    setDocumentUploadProgress(progressTracking)
+      status: 'uploading',
+    }));
+    setDocumentUploadProgress(progressTracking);
 
     try {
       for (let i = 0; i < files.length; i++) {
-        const file = files[i]
-        
+        const file = files[i];
+
         // Update progress
-        setDocumentUploadProgress(prev => 
-          prev.map((item, idx) => 
+        setDocumentUploadProgress((prev) =>
+          prev.map((item, idx) =>
             idx === i ? { ...item, progress: 10, status: 'uploading' } : item
           )
-        )
+        );
 
         try {
           // Upload to storage service with real student ID
-          const result = await storageService.uploadStudentDocument(file, studentId, 'general')
-          
+          const result = await storageService.uploadStudentDocument(file, studentId, 'general');
+
           if (result.success && result.url) {
             uploadedDocs.push({
               name: file.name,
               url: result.url,
               size: file.size,
-              type: file.type
-            })
+              type: file.type,
+            });
 
             // Update progress to completed
-            setDocumentUploadProgress(prev => 
-              prev.map((item, idx) => 
+            setDocumentUploadProgress((prev) =>
+              prev.map((item, idx) =>
                 idx === i ? { ...item, progress: 100, status: 'completed' } : item
               )
-            )
+            );
           } else {
             // Update progress to error
-            setDocumentUploadProgress(prev => 
-              prev.map((item, idx) => 
-                idx === i ? { 
-                  ...item, 
-                  progress: 0, 
-                  status: 'error', 
-                  error: result.error || 'Upload failed' 
-                } : item
+            setDocumentUploadProgress((prev) =>
+              prev.map((item, idx) =>
+                idx === i
+                  ? {
+                      ...item,
+                      progress: 0,
+                      status: 'error',
+                      error: result.error || 'Upload failed',
+                    }
+                  : item
               )
-            )
+            );
           }
         } catch (error) {
-          console.error(`Error uploading ${file.name}:`, error)
-          setDocumentUploadProgress(prev => 
-            prev.map((item, idx) => 
-              idx === i ? { 
-                ...item, 
-                progress: 0, 
-                status: 'error', 
-                error: error instanceof Error ? error.message : 'Upload failed' 
-              } : item
+          console.error(`Error uploading ${file.name}:`, error);
+          setDocumentUploadProgress((prev) =>
+            prev.map((item, idx) =>
+              idx === i
+                ? {
+                    ...item,
+                    progress: 0,
+                    status: 'error',
+                    error: error instanceof Error ? error.message : 'Upload failed',
+                  }
+                : item
             )
-          )
+          );
         }
       }
     } finally {
-      setIsUploadingDocuments(false)
+      setIsUploadingDocuments(false);
     }
 
-    return uploadedDocs
-  }
+    return uploadedDocs;
+  };
 
   // Update student record with document URLs
-  const updateStudentDocuments = async (studentId: string, documents: Array<{name: string, url: string, size: number, type: string}>) => {
+  const updateStudentDocuments = async (
+    studentId: string,
+    documents: Array<{ name: string; url: string; size: number; type: string }>
+  ) => {
     try {
       // Get fresh token
-      const { data: { session } } = await supabase.auth.getSession()
-      const token = session?.access_token
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const token = session?.access_token;
 
       if (!token) {
-        throw new Error('No authentication token available for document update')
+        throw new Error('No authentication token available for document update');
       }
 
       // Use the API service to update documents
-      await userApiService.updateStudentDocuments(studentId, documents, token)
+      await userApiService.updateStudentDocuments(studentId, documents, token);
     } catch (error) {
-      console.error('Error updating student documents:', error)
-      throw error
+      console.error('Error updating student documents:', error);
+      throw error;
     }
-  }
+  };
 
   const handleCSVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-    setCsvFile(file)
-    setError(null)
-    setSuccess(null)
-    setValidatedStudents([])
-    setShowEnhancedPreview(false)
-    setLoading(true)
+    setCsvFile(file);
+    setError(null);
+    setSuccess(null);
+    setValidatedStudents([]);
+    setShowEnhancedPreview(false);
+    setLoading(true);
 
     // Parse CSV using PapaParse
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
-      transformHeader: (header) => header.trim().toLowerCase().replace(/[^a-z0-9]/g, ''),
+      transformHeader: (header) =>
+        header
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, ''),
       complete: async (results) => {
         try {
           if (results.errors.length > 0) {
-            const errorMsg = results.errors.map(e => `Row ${(e.row ?? 0) + 1}: ${e.message}`).join(', ')
-            setError(`CSV parsing errors: ${errorMsg}`)
-            setLoading(false)
-            return
+            const errorMsg = results.errors
+              .map((e) => `Row ${(e.row ?? 0) + 1}: ${e.message}`)
+              .join(', ');
+            setError(`CSV parsing errors: ${errorMsg}`);
+            setLoading(false);
+            return;
           }
 
           if (!results.data || results.data.length === 0) {
-            setError('CSV file is empty or contains no valid data')
-            setLoading(false)
-            return
+            setError('CSV file is empty or contains no valid data');
+            setLoading(false);
+            return;
           }
 
           // Validate required columns
-          const firstRow: any = results.data[0]
-          const hasName = 'name' in firstRow
-          const hasEmail = 'email' in firstRow
-          const hasContact = 'contactnumber' in firstRow
+          const firstRow: any = results.data[0];
+          const hasName = 'name' in firstRow;
+          const hasEmail = 'email' in firstRow;
+          const hasContact = 'contactnumber' in firstRow;
 
           if (!hasName || !hasEmail || !hasContact) {
-            setError('CSV must contain required columns: name, email, contactNumber')
-            setLoading(false)
-            return
+            setError('CSV must contain required columns: name, email, contactNumber');
+            setLoading(false);
+            return;
           }
 
           // Get school ID for class validation
-          const userStr = localStorage.getItem('user')
-          const userEmail = localStorage.getItem('userEmail')
-          let schoolId: string | null = null
-          let collegeId: string | null = null
-          let userRole: string | null = null
+          const userStr = localStorage.getItem('user');
+          const userEmail = localStorage.getItem('userEmail');
+          let schoolId: string | null = null;
+          let collegeId: string | null = null;
+          let userRole: string | null = null;
 
           try {
-            const userData = JSON.parse(userStr || '{}')
-            schoolId = userData.schoolId || null
-            collegeId = userData.collegeId || null
-            userRole = userData.role || null
+            const userData = JSON.parse(userStr || '{}');
+            schoolId = userData.schoolId || null;
+            collegeId = userData.collegeId || null;
+            userRole = userData.role || null;
           } catch (e) {
-            console.warn('Could not parse user data from localStorage')
+            console.warn('Could not parse user data from localStorage');
           }
 
-          console.log('🔍 DEBUG: Initial schoolId from localStorage:', schoolId)
-          console.log('🔍 DEBUG: Initial collegeId from localStorage:', collegeId)
-          console.log('🔍 DEBUG: User role:', userRole)
-          console.log('🔍 DEBUG: User email:', userEmail)
+          console.log('🔍 DEBUG: Initial schoolId from localStorage:', schoolId);
+          console.log('🔍 DEBUG: Initial collegeId from localStorage:', collegeId);
+          console.log('🔍 DEBUG: User role:', userRole);
+          console.log('🔍 DEBUG: User email:', userEmail);
 
           // If collegeId not in localStorage but user is college_admin, fetch from organizations table
           if (!collegeId && userRole === 'college_admin' && userEmail) {
-            console.log('🔍 DEBUG: Fetching collegeId from organizations table for college admin:', userEmail)
+            console.log(
+              '🔍 DEBUG: Fetching collegeId from organizations table for college admin:',
+              userEmail
+            );
             const { data: org } = await supabase
               .from('organizations')
               .select('id')
               .eq('organization_type', 'college')
               .ilike('email', userEmail)
-              .maybeSingle()
+              .maybeSingle();
 
             if (org?.id) {
-              collegeId = org.id
-              console.log('✅ Found collegeId:', collegeId)
+              collegeId = org.id;
+              console.log('✅ Found collegeId:', collegeId);
             }
           }
 
           // If schoolId not in localStorage but user is school_admin, fetch from organizations table
           if (!schoolId && userRole === 'school_admin' && userEmail) {
-            console.log('🔍 DEBUG: Fetching schoolId from organizations table for school admin:', userEmail)
+            console.log(
+              '🔍 DEBUG: Fetching schoolId from organizations table for school admin:',
+              userEmail
+            );
             const { data: org } = await supabase
               .from('organizations')
               .select('id')
               .eq('organization_type', 'school')
               .ilike('email', userEmail)
-              .maybeSingle()
+              .maybeSingle();
 
             if (org?.id) {
-              schoolId = org.id
-              console.log('✅ Found schoolId from organizations:', schoolId)
+              schoolId = org.id;
+              console.log('✅ Found schoolId from organizations:', schoolId);
             }
           }
 
           // If schoolId not in localStorage, fetch from database (for educators)
           if (!schoolId && !collegeId && userEmail) {
-            console.log('🔍 DEBUG: Fetching schoolId from database for user:', userEmail)
+            console.log('🔍 DEBUG: Fetching schoolId from database for user:', userEmail);
 
             // Check school_educators table
             const { data: educatorData, error: educatorError } = await supabase
               .from('school_educators')
               .select('school_id')
               .eq('email', userEmail)
-              .maybeSingle()
+              .maybeSingle();
 
             if (!educatorError && educatorData) {
-              schoolId = educatorData.school_id
-              console.log('🔍 DEBUG: Found schoolId from school_educators:', schoolId)
+              schoolId = educatorData.school_id;
+              console.log('🔍 DEBUG: Found schoolId from school_educators:', schoolId);
             } else {
-              console.log('🔍 DEBUG: No educator found, checking users table...')
+              console.log('🔍 DEBUG: No educator found, checking users table...');
 
               // Check users.organizationId
               const { data: userData, error: userError } = await supabase
                 .from('users')
                 .select('organizationId')
                 .eq('email', userEmail)
-                .maybeSingle()
+                .maybeSingle();
 
               if (!userError && userData) {
-                schoolId = userData.organizationId
-                console.log('🔍 DEBUG: Found schoolId from users.organizationId:', schoolId)
+                schoolId = userData.organizationId;
+                console.log('🔍 DEBUG: Found schoolId from users.organizationId:', schoolId);
               }
             }
           }
 
           // Collect unique class combinations from CSV
-          const classesToCheck = new Map<string, { grade: string; section: string }>()
-            ; (results.data as any[]).forEach((student) => {
-              const grade = student.grade || student.class
-              const section = student.section || student.division
-              if (grade && section) {
-                const key = `${grade}-${section}`
-                if (!classesToCheck.has(key)) {
-                  classesToCheck.set(key, { grade, section })
-                }
+          const classesToCheck = new Map<string, { grade: string; section: string }>();
+          (results.data as any[]).forEach((student) => {
+            const grade = student.grade || student.class;
+            const section = student.section || student.division;
+            if (grade && section) {
+              const key = `${grade}-${section}`;
+              if (!classesToCheck.has(key)) {
+                classesToCheck.set(key, { grade, section });
               }
-            })
+            }
+          });
 
-          console.log('🔍 DEBUG: Classes to check from CSV:', Array.from(classesToCheck.entries()))
-          console.log('🔍 DEBUG: School ID:', schoolId)
-          console.log('🔍 DEBUG: College ID:', collegeId)
+          console.log('🔍 DEBUG: Classes to check from CSV:', Array.from(classesToCheck.entries()));
+          console.log('🔍 DEBUG: School ID:', schoolId);
+          console.log('🔍 DEBUG: College ID:', collegeId);
 
           // Check which classes exist in database and store their IDs (only for schools)
-          const existingClasses = new Set<string>()
-          const classIdMap = new Map<string, string>() // Map of "grade-section" to class_id
+          const existingClasses = new Set<string>();
+          const classIdMap = new Map<string, string>(); // Map of "grade-section" to class_id
 
           if (schoolId && classesToCheck.size > 0) {
-            console.log('🔍 DEBUG: Checking classes in database for school:', schoolId)
+            console.log('🔍 DEBUG: Checking classes in database for school:', schoolId);
 
             const { data: classes, error: classError } = await supabase
               .from('school_classes')
               .select('id, grade, section, name, academic_year')
               .eq('school_id', schoolId)
-              .eq('account_status', 'active')
+              .eq('account_status', 'active');
 
-            console.log('🔍 DEBUG: Database query result:', { classes, error: classError })
+            console.log('🔍 DEBUG: Database query result:', { classes, error: classError });
 
             if (!classError && classes) {
-              classes.forEach((cls: { id: string; grade: string; section: string; name: string; academic_year: string }) => {
-                const key = `${cls.grade}-${cls.section}`
-                existingClasses.add(key)
-                classIdMap.set(key, cls.id)
-                console.log(`🔍 DEBUG: Found class in DB: ${key} (id: ${cls.id}, name: ${cls.name}, year: ${cls.academic_year})`)
-              })
-              console.log('🔍 DEBUG: All existing classes:', Array.from(existingClasses))
-              console.log('🔍 DEBUG: Class ID map:', Array.from(classIdMap.entries()))
+              classes.forEach(
+                (cls: {
+                  id: string;
+                  grade: string;
+                  section: string;
+                  name: string;
+                  academic_year: string;
+                }) => {
+                  const key = `${cls.grade}-${cls.section}`;
+                  existingClasses.add(key);
+                  classIdMap.set(key, cls.id);
+                  console.log(
+                    `🔍 DEBUG: Found class in DB: ${key} (id: ${cls.id}, name: ${cls.name}, year: ${cls.academic_year})`
+                  );
+                }
+              );
+              console.log('🔍 DEBUG: All existing classes:', Array.from(existingClasses));
+              console.log('🔍 DEBUG: Class ID map:', Array.from(classIdMap.entries()));
             } else if (classError) {
-              console.error('🔍 DEBUG: Error fetching classes:', classError)
+              console.error('🔍 DEBUG: Error fetching classes:', classError);
             }
           } else {
-            console.log('🔍 DEBUG: Skipping class check - schoolId:', schoolId, 'classesToCheck.size:', classesToCheck.size)
+            console.log(
+              '🔍 DEBUG: Skipping class check - schoolId:',
+              schoolId,
+              'classesToCheck.size:',
+              classesToCheck.size
+            );
           }
 
           // Validate ALL rows and create enhanced preview
           const validated: ValidatedStudent[] = (results.data as any[]).map((student, index) => {
-            const rowNum = index + 2 // +2 for header row and 0-index
-            const errors: string[] = []
+            const rowNum = index + 2; // +2 for header row and 0-index
+            const errors: string[] = [];
 
             // Validate required fields
             if (!student.name || !student.name.trim()) {
-              errors.push('Name is required')
+              errors.push('Name is required');
             }
             if (!student.email || !student.email.trim()) {
-              errors.push('Email is required')
+              errors.push('Email is required');
             } else if (!validateEmailFormat(student.email)) {
-              errors.push('Invalid email format')
+              errors.push('Invalid email format');
             }
             if (!student.contactnumber || !student.contactnumber.trim()) {
-              errors.push('Contact number is required')
+              errors.push('Contact number is required');
             } else if (!validatePhoneFormat(student.contactnumber)) {
-              errors.push('Invalid phone format')
+              errors.push('Invalid phone format');
             }
 
             // Validate class exists if grade and section provided
-            const grade = student.grade || student.class
-            const section = student.section || student.division
-            let schoolClassId: string | null = null
+            const grade = student.grade || student.class;
+            const section = student.section || student.division;
+            let schoolClassId: string | null = null;
 
-            console.log(`🔍 DEBUG Row ${rowNum}: grade="${grade}", section="${section}", student.grade="${student.grade}", student.section="${student.section}"`)
+            console.log(
+              `🔍 DEBUG Row ${rowNum}: grade="${grade}", section="${section}", student.grade="${student.grade}", student.section="${student.section}"`
+            );
 
             if (grade && section) {
-              const classKey = `${grade}-${section}`
-              const exists = existingClasses.has(classKey)
-              console.log(`🔍 DEBUG Row ${rowNum}: Checking class "${classKey}" - exists: ${exists}`)
+              const classKey = `${grade}-${section}`;
+              const exists = existingClasses.has(classKey);
+              console.log(
+                `🔍 DEBUG Row ${rowNum}: Checking class "${classKey}" - exists: ${exists}`
+              );
               if (!exists) {
-                errors.push(`Class ${grade}-${section} does not exist. Please create the class first.`)
-                console.log(`🔍 DEBUG Row ${rowNum}: Added error - class not found`)
+                errors.push(
+                  `Class ${grade}-${section} does not exist. Please create the class first.`
+                );
+                console.log(`🔍 DEBUG Row ${rowNum}: Added error - class not found`);
               } else {
                 // Get the class ID
-                schoolClassId = classIdMap.get(classKey) || null
-                console.log(`🔍 DEBUG Row ${rowNum}: Found class ID: ${schoolClassId}`)
+                schoolClassId = classIdMap.get(classKey) || null;
+                console.log(`🔍 DEBUG Row ${rowNum}: Found class ID: ${schoolClassId}`);
               }
             } else if (grade && !section) {
-              errors.push('Section is required when grade is provided')
-              console.log(`🔍 DEBUG Row ${rowNum}: Missing section`)
+              errors.push('Section is required when grade is provided');
+              console.log(`🔍 DEBUG Row ${rowNum}: Missing section`);
             } else if (!grade && section) {
-              errors.push('Grade is required when section is provided')
-              console.log(`🔍 DEBUG Row ${rowNum}: Missing grade`)
+              errors.push('Grade is required when section is provided');
+              console.log(`🔍 DEBUG Row ${rowNum}: Missing grade`);
             }
 
             // Validate date format if provided
             if (student.dateofbirth && student.dateofbirth.trim()) {
-              const convertedDate = convertDateFormat(student.dateofbirth)
+              const convertedDate = convertDateFormat(student.dateofbirth);
               if (!convertedDate) {
-                errors.push('Invalid date format. Use DD-MM-YYYY, DD/MM/YYYY, or YYYY-MM-DD')
+                errors.push('Invalid date format. Use DD-MM-YYYY, DD/MM/YYYY, or YYYY-MM-DD');
               }
             }
 
             // Store the schoolClassId in the student data
-            student.schoolClassId = schoolClassId
+            student.schoolClassId = schoolClassId;
 
             return {
               rowNumber: rowNum,
               data: { ...student, grade, section },
               isValid: errors.length === 0,
-              errors
-            }
-          })
+              errors,
+            };
+          });
 
-          setValidatedStudents(validated)
-          setShowEnhancedPreview(true)
+          setValidatedStudents(validated);
+          setShowEnhancedPreview(true);
         } catch (err: any) {
-          setError(`Error validating CSV: ${err.message}`)
+          setError(`Error validating CSV: ${err.message}`);
         } finally {
-          setLoading(false)
+          setLoading(false);
         }
       },
       error: (error) => {
-        setError(`Failed to parse CSV: ${error.message}`)
-        setLoading(false)
-      }
-    })
-  }
+        setError(`Failed to parse CSV: ${error.message}`);
+        setLoading(false);
+      },
+    });
+  };
 
   const handleCSVSubmit = async () => {
     if (!csvFile) {
-      setError('Please select a CSV file')
-      return
+      setError('Please select a CSV file');
+      return;
     }
 
-    setLoading(true)
-    setError(null)
-    setSuccess(null)
-    setUploadProgress(null)
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+    setUploadProgress(null);
 
     try {
       // Refresh session
-      const { data: { session } } = await supabase.auth.getSession()
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (session) {
-        await supabase.auth.refreshSession()
+        await supabase.auth.refreshSession();
       }
 
       // Parse CSV using PapaParse
       Papa.parse(csvFile, {
         header: true,
         skipEmptyLines: true,
-        transformHeader: (header) => header.trim().toLowerCase().replace(/[^a-z0-9]/g, ''),
+        transformHeader: (header) =>
+          header
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, ''),
         complete: async (results) => {
           try {
-            const students: any[] = results.data as any[]
+            const students: any[] = results.data as any[];
 
             if (students.length === 0) {
-              setError('CSV file contains no valid data')
-              setLoading(false)
-              return
+              setError('CSV file contains no valid data');
+              setLoading(false);
+              return;
             }
 
             // Get userEmail and schoolId FIRST (moved up)
-            const userEmail = localStorage.getItem('userEmail')
-            const userStr = localStorage.getItem('user')
+            const userEmail = localStorage.getItem('userEmail');
+            const userStr = localStorage.getItem('user');
 
             if (!userEmail) {
-              setError('You are not logged in. Please login and try again.')
-              setLoading(false)
-              return
+              setError('You are not logged in. Please login and try again.');
+              setLoading(false);
+              return;
             }
 
-            let schoolId: string | null = null
-            let collegeId: string | null = null
-            let userRole: string | null = null
+            let schoolId: string | null = null;
+            let collegeId: string | null = null;
+            let userRole: string | null = null;
             try {
-              const userData = JSON.parse(userStr || '{}')
-              schoolId = userData.schoolId || null
-              collegeId = userData.collegeId || null
-              userRole = userData.role || null
+              const userData = JSON.parse(userStr || '{}');
+              schoolId = userData.schoolId || null;
+              collegeId = userData.collegeId || null;
+              userRole = userData.role || null;
             } catch (e) {
-              console.warn('Could not parse user data from localStorage')
+              console.warn('Could not parse user data from localStorage');
             }
 
             // If collegeId not in localStorage but user is college_admin, fetch from organizations table
@@ -1064,10 +1380,10 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 .select('id')
                 .eq('organization_type', 'college')
                 .ilike('email', userEmail)
-                .maybeSingle()
+                .maybeSingle();
 
               if (org?.id) {
-                collegeId = org.id
+                collegeId = org.id;
               }
             }
 
@@ -1078,10 +1394,10 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 .select('id')
                 .eq('organization_type', 'school')
                 .ilike('email', userEmail)
-                .maybeSingle()
+                .maybeSingle();
 
               if (org?.id) {
-                schoolId = org.id
+                schoolId = org.id;
               }
             }
 
@@ -1091,17 +1407,19 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 .from('school_educators')
                 .select('school_id')
                 .eq('email', userEmail)
-                .maybeSingle()
+                .maybeSingle();
 
               if (educatorData) {
-                schoolId = educatorData.school_id
+                schoolId = educatorData.school_id;
               }
             }
 
             if (!schoolId && !collegeId) {
-              setError('School/College ID not found. Please ensure you are logged in as a school or college admin.')
-              setLoading(false)
-              return
+              setError(
+                'School/College ID not found. Please ensure you are logged in as a school or college admin.'
+              );
+              setLoading(false);
+              return;
             }
 
             // Fetch class IDs for mapping
@@ -1109,62 +1427,65 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
               .from('school_classes')
               .select('id, grade, section')
               .eq('school_id', schoolId)
-              .eq('account_status', 'active')
+              .eq('account_status', 'active');
 
-            const classIdMap = new Map<string, string>()
+            const classIdMap = new Map<string, string>();
             if (classes) {
               classes.forEach((cls: { id: string; grade: string; section: string }) => {
-                const key = `${cls.grade}-${cls.section}`
-                classIdMap.set(key, cls.id)
-              })
+                const key = `${cls.grade}-${cls.section}`;
+                classIdMap.set(key, cls.id);
+              });
             }
 
-            console.log('🔍 CSV SUBMIT: Class ID map:', Array.from(classIdMap.entries()))
+            console.log('🔍 CSV SUBMIT: Class ID map:', Array.from(classIdMap.entries()));
 
             // Validate and prepare students data
-            const validStudents: any[] = []
-            const errors: string[] = []
+            const validStudents: any[] = [];
+            const errors: string[] = [];
 
             students.forEach((student, index) => {
-              const rowNum = index + 2 // +2 because index starts at 0 and there's a header row
+              const rowNum = index + 2; // +2 because index starts at 0 and there's a header row
 
               // Validate required fields
               if (!student.name || !student.name.trim()) {
-                errors.push(`Row ${rowNum}: Name is required`)
-                return
+                errors.push(`Row ${rowNum}: Name is required`);
+                return;
               }
               if (!student.email || !student.email.trim()) {
-                errors.push(`Row ${rowNum}: Email is required`)
-                return
+                errors.push(`Row ${rowNum}: Email is required`);
+                return;
               }
               if (!student.contactnumber || !student.contactnumber.trim()) {
-                errors.push(`Row ${rowNum}: Contact number is required`)
-                return
+                errors.push(`Row ${rowNum}: Contact number is required`);
+                return;
               }
 
               // Email validation
-              const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+              const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
               if (!emailRegex.test(student.email)) {
-                errors.push(`Row ${rowNum}: Invalid email format`)
-                return
+                errors.push(`Row ${rowNum}: Invalid email format`);
+                return;
               }
 
               // Support both 'parent' and 'guardian' prefixes for parent/guardian fields
-              const guardianName = student.guardianname || student.parentname || null
-              const guardianPhone = student.guardianphone || student.parentphone || null
-              const guardianEmail = student.guardianemail || student.parentemail || null
-              const guardianRelation = student.guardianrelation || student.parentrelation || 'Parent'
+              const guardianName = student.guardianname || student.parentname || null;
+              const guardianPhone = student.guardianphone || student.parentphone || null;
+              const guardianEmail = student.guardianemail || student.parentemail || null;
+              const guardianRelation =
+                student.guardianrelation || student.parentrelation || 'Parent';
 
               // Get grade and section
-              const grade = student.grade || student.class || null
-              const section = student.section || student.division || null
+              const grade = student.grade || student.class || null;
+              const section = student.section || student.division || null;
 
               // Look up the class ID
-              let schoolClassId: string | null = null
+              let schoolClassId: string | null = null;
               if (grade && section) {
-                const classKey = `${grade}-${section}`
-                schoolClassId = classIdMap.get(classKey) || null
-                console.log(`🔍 CSV SUBMIT Row ${rowNum}: grade=${grade}, section=${section}, classKey=${classKey}, schoolClassId=${schoolClassId}`)
+                const classKey = `${grade}-${section}`;
+                schoolClassId = classIdMap.get(classKey) || null;
+                console.log(
+                  `🔍 CSV SUBMIT Row ${rowNum}: grade=${grade}, section=${section}, classKey=${classKey}, schoolClassId=${schoolClassId}`
+                );
               }
 
               validStudents.push({
@@ -1201,43 +1522,50 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                   country: student.country || 'India',
                   pincode: student.pincode || null,
                   approval_status: 'approved',
-                  student_type: 'csv_import'
-                }
-              })
-            })
+                  student_type: 'csv_import',
+                },
+              });
+            });
 
             if (validStudents.length === 0) {
-              setError(`❌ No valid students to import. Errors:\n${errors.slice(0, 10).join('\n')}`)
-              setLoading(false)
-              return
+              setError(
+                `❌ No valid students to import. Errors:\n${errors.slice(0, 10).join('\n')}`
+              );
+              setLoading(false);
+              return;
             }
 
             // Batch process students (10 at a time)
-            const BATCH_SIZE = 10
-            let successCount = 0
-            let failureCount = 0
-            const processingErrors: string[] = [...errors]
+            const BATCH_SIZE = 10;
+            let successCount = 0;
+            let failureCount = 0;
+            const processingErrors: string[] = [...errors];
 
-            setUploadProgress({ current: 0, total: validStudents.length })
+            setUploadProgress({ current: 0, total: validStudents.length });
 
             for (let i = 0; i < validStudents.length; i += BATCH_SIZE) {
-              const batch = validStudents.slice(i, i + BATCH_SIZE)
+              const batch = validStudents.slice(i, i + BATCH_SIZE);
 
               const batchPromises = batch.map(async ({ row, data }) => {
                 try {
-                  const { data: { session } } = await supabase.auth.getSession()
-                  const token = session?.access_token
+                  const {
+                    data: { session },
+                  } = await supabase.auth.getSession();
+                  const token = session?.access_token;
 
                   if (!token) {
-                    throw new Error('No authentication token available')
+                    throw new Error('No authentication token available');
                   }
 
-                  const response = await userApiService.createStudent({
-                    userEmail: userEmail,
-                    schoolId: schoolId,
-                    collegeId: collegeId,
-                    student: data
-                  }, token)
+                  const response = await userApiService.createStudent(
+                    {
+                      userEmail: userEmail,
+                      schoolId: schoolId,
+                      collegeId: collegeId,
+                      student: data,
+                    },
+                    token
+                  );
 
                   // Map response to match expected format if needed, or adjust check below
                   // userApiService returns { success: true, data: ... } or { success: false, error: ... }
@@ -1253,71 +1581,87 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                   const result = response; // userApiService returns the result object directly
 
                   if (!result?.success) {
-                    const errorMsg = result?.error || 'Failed to create student'
-                    processingErrors.push(`Row ${row}: ${errorMsg}`)
-                    return false
+                    const errorMsg = result?.error || 'Failed to create student';
+                    processingErrors.push(`Row ${row}: ${errorMsg}`);
+                    return false;
                   }
-                  return true
+                  return true;
                 } catch (err: any) {
-                  processingErrors.push(`Row ${row}: ${err.message}`)
-                  return false
+                  processingErrors.push(`Row ${row}: ${err.message}`);
+                  return false;
                 }
-              })
+              });
 
-              const batchResults = await Promise.all(batchPromises)
-              successCount += batchResults.filter(Boolean).length
-              failureCount += batchResults.filter(r => !r).length
+              const batchResults = await Promise.all(batchPromises);
+              successCount += batchResults.filter(Boolean).length;
+              failureCount += batchResults.filter((r) => !r).length;
 
-              setUploadProgress({ current: Math.min(i + BATCH_SIZE, validStudents.length), total: validStudents.length })
+              setUploadProgress({
+                current: Math.min(i + BATCH_SIZE, validStudents.length),
+                total: validStudents.length,
+              });
             }
 
             // Display results
-            setUploadProgress(null)
+            setUploadProgress(null);
 
             if (successCount > 0 && failureCount === 0) {
-              setSuccess(`✅ Successfully imported ${successCount} student${successCount > 1 ? 's' : ''}!`)
-              setError(null)
-              onSuccess?.()
+              setSuccess(
+                `✅ Successfully imported ${successCount} student${successCount > 1 ? 's' : ''}!`
+              );
+              setError(null);
+              onSuccess?.();
               setTimeout(() => {
-                onClose()
-              }, 2000)
+                onClose();
+              }, 2000);
             } else if (successCount > 0 && failureCount > 0) {
-              setSuccess(`✅ Imported ${successCount} student${successCount > 1 ? 's' : ''} successfully`)
-              setError(`⚠️ ${failureCount} failed:\n${processingErrors.slice(0, 5).join('\n')}${processingErrors.length > 5 ? `\n...and ${processingErrors.length - 5} more` : ''}`)
-              onSuccess?.()
+              setSuccess(
+                `✅ Imported ${successCount} student${successCount > 1 ? 's' : ''} successfully`
+              );
+              setError(
+                `⚠️ ${failureCount} failed:\n${processingErrors.slice(0, 5).join('\n')}${processingErrors.length > 5 ? `\n...and ${processingErrors.length - 5} more` : ''}`
+              );
+              onSuccess?.();
             } else {
-              setError(`❌ All imports failed. Errors:\n${processingErrors.slice(0, 10).join('\n')}${processingErrors.length > 10 ? `\n...and ${processingErrors.length - 10} more` : ''}`)
-              setSuccess(null)
+              setError(
+                `❌ All imports failed. Errors:\n${processingErrors.slice(0, 10).join('\n')}${processingErrors.length > 10 ? `\n...and ${processingErrors.length - 10} more` : ''}`
+              );
+              setSuccess(null);
             }
           } catch (err: any) {
-            setError(err.message || 'Failed to process CSV file')
+            setError(err.message || 'Failed to process CSV file');
           } finally {
-            setLoading(false)
+            setLoading(false);
           }
         },
         error: (error) => {
-          setError(`Failed to parse CSV: ${error.message}`)
-          setLoading(false)
-        }
-      })
+          setError(`Failed to parse CSV: ${error.message}`);
+          setLoading(false);
+        },
+      });
     } catch (err: any) {
-      setError(err.message || 'Failed to upload CSV')
-      setLoading(false)
+      setError(err.message || 'Failed to upload CSV');
+      setLoading(false);
     }
-  }
+  };
 
-  if (!isOpen) return null
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        <div
+          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          onClick={onClose}
+        ></div>
 
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="text-xl font-semibold text-gray-900">Add New Student</h3>
-              <p className="text-sm text-gray-500 mt-1">Add students manually or bulk upload via CSV</p>
+              <p className="text-sm text-gray-500 mt-1">
+                Add students manually or bulk upload via CSV
+              </p>
             </div>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
               <XMarkIcon className="h-6 w-6" />
@@ -1328,20 +1672,22 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
           <div className="flex space-x-2 mb-6">
             <button
               onClick={() => setMode('manual')}
-              className={`flex-1 px-4 py-2 text-sm font-medium rounded-md ${mode === 'manual'
-                ? 'bg-primary-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+              className={`flex-1 px-4 py-2 text-sm font-medium rounded-md ${
+                mode === 'manual'
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
             >
               <UserPlusIcon className="h-5 w-5 inline mr-2" />
               Manual Entry
             </button>
             <button
               onClick={() => setMode('csv')}
-              className={`flex-1 px-4 py-2 text-sm font-medium rounded-md ${mode === 'csv'
-                ? 'bg-primary-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+              className={`flex-1 px-4 py-2 text-sm font-medium rounded-md ${
+                mode === 'csv'
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
             >
               <DocumentArrowUpIcon className="h-5 w-5 inline mr-2" />
               CSV Upload
@@ -1353,14 +1699,23 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             <div className="mb-4 p-4 bg-green-50 border-l-4 border-green-400 rounded-md transition-all duration-300 ease-in-out">
               <div className="flex items-start">
                 <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
+                  <svg
+                    className="h-5 w-5 text-green-400"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                 </div>
                 <div className="ml-3 flex-1">
-                  <p className="text-sm font-medium text-green-800 whitespace-pre-line">{success}</p>
-
-
+                  <p className="text-sm font-medium text-green-800 whitespace-pre-line">
+                    {success}
+                  </p>
                 </div>
               </div>
             </div>
@@ -1371,8 +1726,17 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             <div className="mb-4 p-4 bg-red-50 border-l-4 border-red-400 rounded-md transition-all duration-300 ease-in-out">
               <div className="flex items-start">
                 <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" />
+                  <svg
+                    className="h-5 w-5 text-red-400"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                 </div>
                 <div className="ml-3">
@@ -1387,7 +1751,9 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Basic Information */}
                 <div className="md:col-span-2">
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3 border-b pb-2">Basic Information</h4>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3 border-b pb-2">
+                    Basic Information
+                  </h4>
                 </div>
 
                 <div>
@@ -1430,7 +1796,9 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Enrollment Number<span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Enrollment Number<span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
                     value={formData.enrollmentNumber}
@@ -1444,32 +1812,40 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Roll Number
                     <span className="text-red-500">*</span>
-                    <span className="text-xs text-gray-500 ml-1">(3-20 chars, letters/numbers/hyphens only)</span>
+                    <span className="text-xs text-gray-500 ml-1">
+                      (3-20 chars, letters/numbers/hyphens only)
+                    </span>
                   </label>
                   <input
                     type="text"
                     value={formData.rollNumber}
                     onChange={(e) => handleInputChange('rollNumber', e.target.value)}
-                    className={`w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 ${formData.rollNumber && !validateRollNumber(formData.rollNumber)
-                      ? 'border-red-300 focus:ring-red-500'
-                      : 'border-gray-300 focus:ring-primary-500'
-                      }`}
+                    className={`w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
+                      formData.rollNumber && !validateRollNumber(formData.rollNumber)
+                        ? 'border-red-300 focus:ring-red-500'
+                        : 'border-gray-300 focus:ring-primary-500'
+                    }`}
                     placeholder="ROLL2024001"
                   />
                   {formData.rollNumber && !validateRollNumber(formData.rollNumber) && (
                     <p className="text-xs text-red-600 mt-1">
-                      Roll number must be 3-20 characters long and contain only letters, numbers, and hyphens
+                      Roll number must be 3-20 characters long and contain only letters, numbers,
+                      and hyphens
                     </p>
                   )}
                 </div>
 
                 {/* Category & Quota Information */}
                 <div className="md:col-span-2 mt-4">
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3 border-b pb-2">Category & Quota Information</h4>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3 border-b pb-2">
+                    Category & Quota Information
+                  </h4>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Category<span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Category<span className="text-red-500">*</span>
+                  </label>
                   <select
                     value={formData.category}
                     onChange={(e) => handleInputChange('category', e.target.value)}
@@ -1486,7 +1862,9 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Quota<span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Quota<span className="text-red-500">*</span>
+                  </label>
                   <select
                     value={formData.quota}
                     onChange={(e) => handleInputChange('quota', e.target.value)}
@@ -1555,7 +1933,9 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
                 {/* Guardian Information */}
                 <div className="md:col-span-2 mt-4">
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3 border-b pb-2">Guardian Information</h4>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3 border-b pb-2">
+                    Guardian Information
+                  </h4>
                 </div>
 
                 <div>
@@ -1616,7 +1996,9 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
                 {/* Address Information */}
                 <div className="md:col-span-2 mt-4">
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3 border-b pb-2">Address Information</h4>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3 border-b pb-2">
+                    Address Information
+                  </h4>
                 </div>
 
                 <div className="md:col-span-2">
@@ -1707,7 +2089,9 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Upload Documents <span className="text-red-500">*</span>
-                    <span className="text-xs text-gray-500 ml-1">(PDF, JPG, PNG - Max 5MB each, up to 5 files)</span>
+                    <span className="text-xs text-gray-500 ml-1">
+                      (PDF, JPG, PNG - Max 5MB each, up to 5 files)
+                    </span>
                   </label>
 
                   <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-gray-400 transition-colors">
@@ -1736,25 +2120,33 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                   {/* Document Upload Progress (shown during upload after student creation) */}
                   {isUploadingDocuments && documentUploadProgress.length > 0 && (
                     <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                      <p className="text-sm font-medium text-blue-900 mb-2">Uploading Documents...</p>
+                      <p className="text-sm font-medium text-blue-900 mb-2">
+                        Uploading Documents...
+                      </p>
                       <div className="space-y-2">
                         {documentUploadProgress.map((progress, index) => (
                           <div key={index} className="flex items-center space-x-2">
                             <div className="flex-1">
                               <div className="flex items-center justify-between mb-1">
-                                <span className="text-xs text-gray-700 truncate max-w-xs">{progress.file}</span>
+                                <span className="text-xs text-gray-700 truncate max-w-xs">
+                                  {progress.file}
+                                </span>
                                 <span className="text-xs text-gray-500">
-                                  {progress.status === 'completed' ? '✓' : 
-                                   progress.status === 'error' ? '✗' : 
-                                   `${progress.progress}%`}
+                                  {progress.status === 'completed'
+                                    ? '✓'
+                                    : progress.status === 'error'
+                                      ? '✗'
+                                      : `${progress.progress}%`}
                                 </span>
                               </div>
                               <div className="w-full bg-gray-200 rounded-full h-1.5">
                                 <div
                                   className={`h-1.5 rounded-full transition-all duration-300 ${
-                                    progress.status === 'completed' ? 'bg-green-500' :
-                                    progress.status === 'error' ? 'bg-red-500' :
-                                    'bg-blue-500'
+                                    progress.status === 'completed'
+                                      ? 'bg-green-500'
+                                      : progress.status === 'error'
+                                        ? 'bg-red-500'
+                                        : 'bg-blue-500'
                                   }`}
                                   style={{ width: `${progress.progress}%` }}
                                 ></div>
@@ -1774,7 +2166,10 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                     <div className="mt-3 space-y-2">
                       <p className="text-sm font-medium text-gray-700">Selected Documents:</p>
                       {formData.documents.map((file, index) => (
-                        <div key={index} className="flex items-center justify-between p-2 bg-blue-50 border border-blue-200 rounded-md">
+                        <div
+                          key={index}
+                          className="flex items-center justify-between p-2 bg-blue-50 border border-blue-200 rounded-md"
+                        >
                           <div className="flex items-center space-x-2">
                             <DocumentArrowUpIcon className="h-4 w-4 text-blue-600" />
                             <span className="text-sm text-gray-700 truncate max-w-xs">
@@ -1783,7 +2178,9 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                             <span className="text-xs text-gray-500">
                               ({(file.size / 1024 / 1024).toFixed(2)} MB)
                             </span>
-                            <span className="text-xs text-blue-600 font-medium">Ready to upload</span>
+                            <span className="text-xs text-blue-600 font-medium">
+                              Ready to upload
+                            </span>
                           </div>
                           <button
                             type="button"
@@ -1806,19 +2203,23 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             <div>
               {/* CSV Format Requirements */}
               <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <h4 className="text-sm font-semibold text-blue-900 mb-2">CSV Format Requirements</h4>
-                <p className="text-sm text-blue-800 mb-3">Your CSV file should include these columns:</p>
+                <h4 className="text-sm font-semibold text-blue-900 mb-2">
+                  CSV Format Requirements
+                </h4>
+                <p className="text-sm text-blue-800 mb-3">
+                  Your CSV file should include these columns:
+                </p>
                 {(() => {
                   // Determine context (college vs school) from localStorage
-                  const userStr = localStorage.getItem('user')
-                  let isCollegeContext = false
-                  let userRole = null
+                  const userStr = localStorage.getItem('user');
+                  let isCollegeContext = false;
+                  let userRole = null;
 
                   try {
-                    const userData = JSON.parse(userStr || '{}')
-                    const collegeId = userData.collegeId || null
-                    userRole = userData.role || null
-                    isCollegeContext = !!(collegeId || userRole === 'college_admin')
+                    const userData = JSON.parse(userStr || '{}');
+                    const collegeId = userData.collegeId || null;
+                    userRole = userData.role || null;
+                    isCollegeContext = !!(collegeId || userRole === 'college_admin');
                   } catch (e) {
                     // Default to school context if can't determine
                   }
@@ -1833,28 +2234,40 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                         <>
                           <li className="flex items-start">
                             <span className="font-semibold mr-2">• University Students:</span>
-                            <span>university, registrationNumber, rollNumber <span className="text-amber-600">(leave grade/section empty)</span></span>
+                            <span>
+                              university, registrationNumber, rollNumber{' '}
+                              <span className="text-amber-600">(leave grade/section empty)</span>
+                            </span>
                           </li>
                           <li className="flex items-start">
                             <span className="font-semibold mr-2">• Academic Info:</span>
-                            <span>enrollmentNumber, admissionNumber, category, quota, academicYear</span>
+                            <span>
+                              enrollmentNumber, admissionNumber, category, quota, academicYear
+                            </span>
                           </li>
                         </>
                       ) : (
                         <>
                           <li className="flex items-start">
                             <span className="font-semibold mr-2">• School Students:</span>
-                            <span>grade, section, rollNumber, collegeSchoolName <span className="text-amber-600">(class must exist)</span></span>
+                            <span>
+                              grade, section, rollNumber, collegeSchoolName{' '}
+                              <span className="text-amber-600">(class must exist)</span>
+                            </span>
                           </li>
                           <li className="flex items-start">
                             <span className="font-semibold mr-2">• Academic Info:</span>
-                            <span>enrollmentNumber, admissionNumber, category, quota, academicYear</span>
+                            <span>
+                              enrollmentNumber, admissionNumber, category, quota, academicYear
+                            </span>
                           </li>
                         </>
                       )}
                       <li className="flex items-start">
                         <span className="font-semibold mr-2">• Optional:</span>
-                        <span>alternateNumber, dateOfBirth, gender, bloodGroup, profilePicture</span>
+                        <span>
+                          alternateNumber, dateOfBirth, gender, bloodGroup, profilePicture
+                        </span>
                       </li>
                       <li className="flex items-start">
                         <span className="font-semibold mr-2">• Guardian:</span>
@@ -1865,7 +2278,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                         <span>address, city, state, country, pincode, district</span>
                       </li>
                     </ul>
-                  )
+                  );
                 })()}
 
                 {/* Download Sample CSV Button */}
@@ -1875,15 +2288,17 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 >
                   <ArrowDownTrayIcon className="h-4 w-4 mr-1" />
                   {(() => {
-                    const userStr = localStorage.getItem('user')
-                    let isCollegeContext = false
+                    const userStr = localStorage.getItem('user');
+                    let isCollegeContext = false;
                     try {
-                      const userData = JSON.parse(userStr || '{}')
-                      const collegeId = userData.collegeId || null
-                      const userRole = userData.role || null
-                      isCollegeContext = !!(collegeId || userRole === 'college_admin')
-                    } catch (e) { }
-                    return isCollegeContext ? 'Download University CSV Template' : 'Download School CSV Template'
+                      const userData = JSON.parse(userStr || '{}');
+                      const collegeId = userData.collegeId || null;
+                      const userRole = userData.role || null;
+                      isCollegeContext = !!(collegeId || userRole === 'college_admin');
+                    } catch (e) {}
+                    return isCollegeContext
+                      ? 'Download University CSV Template'
+                      : 'Download School CSV Template';
                   })()}
                 </button>
               </div>
@@ -1914,11 +2329,29 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
               {loading && !uploadProgress && csvFile && (
                 <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
                   <div className="flex items-center">
-                    <svg className="animate-spin h-5 w-5 text-blue-600 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <svg
+                      className="animate-spin h-5 w-5 text-blue-600 mr-3"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
                     </svg>
-                    <span className="text-sm font-medium text-blue-900">Validating CSV and checking classes...</span>
+                    <span className="text-sm font-medium text-blue-900">
+                      Validating CSV and checking classes...
+                    </span>
                   </div>
                 </div>
               )}
@@ -1949,120 +2382,193 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                   {/* Summary Stats */}
                   <div className="grid grid-cols-3 gap-3">
                     <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
-                      <div className="text-lg font-semibold text-gray-900">{validatedStudents.length}</div>
+                      <div className="text-lg font-semibold text-gray-900">
+                        {validatedStudents.length}
+                      </div>
                       <div className="text-xs text-gray-500">Total Rows</div>
                     </div>
                     <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
-                      <div className="text-lg font-semibold text-green-700">{validatedStudents.filter(s => s.isValid).length}</div>
+                      <div className="text-lg font-semibold text-green-700">
+                        {validatedStudents.filter((s) => s.isValid).length}
+                      </div>
                       <div className="text-xs text-green-600">Valid</div>
                     </div>
                     <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
-                      <div className="text-lg font-semibold text-red-700">{validatedStudents.filter(s => !s.isValid).length}</div>
+                      <div className="text-lg font-semibold text-red-700">
+                        {validatedStudents.filter((s) => !s.isValid).length}
+                      </div>
                       <div className="text-xs text-red-600">Invalid</div>
                     </div>
                   </div>
 
                   {/* Valid Students */}
-                  {validatedStudents.filter(s => s.isValid).length > 0 && (
+                  {validatedStudents.filter((s) => s.isValid).length > 0 && (
                     <div>
                       <h4 className="text-sm font-medium text-gray-900 mb-2 flex items-center">
                         <CheckCircleIcon className="h-4 w-4 text-green-500 mr-1" />
-                        Valid Students ({validatedStudents.filter(s => s.isValid).length})
+                        Valid Students ({validatedStudents.filter((s) => s.isValid).length})
                       </h4>
                       <div className="overflow-x-auto border border-green-200 rounded-md max-h-96">
                         <table className="min-w-full divide-y divide-gray-200 text-xs">
                           <thead className="bg-green-50 sticky top-0">
                             <tr>
-                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">Row</th>
-                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">Photo</th>
-                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">Name</th>
-                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">Email</th>
-                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">Phone</th>
-                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">Alt. Phone</th>
-                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">Type</th>
-                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">Class</th>
-                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">School Name</th>
-                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">University</th>
-                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">Reg No.</th>
-                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">Roll</th>
-                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">Gender</th>
-                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">Blood</th>
-                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">Guardian</th>
-                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">Status</th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">
+                                Row
+                              </th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">
+                                Photo
+                              </th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">
+                                Name
+                              </th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">
+                                Email
+                              </th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">
+                                Phone
+                              </th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">
+                                Alt. Phone
+                              </th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">
+                                Type
+                              </th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">
+                                Class
+                              </th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">
+                                School Name
+                              </th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">
+                                University
+                              </th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">
+                                Reg No.
+                              </th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">
+                                Roll
+                              </th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">
+                                Gender
+                              </th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">
+                                Blood
+                              </th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">
+                                Guardian
+                              </th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 text-nowrap">
+                                Status
+                              </th>
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
-                            {validatedStudents.filter(s => s.isValid).slice(0, 15).map((student) => {
-                              const isSchoolStudent = student.data.grade && student.data.section;
-                              const isUniversityStudent = student.data.university;
-                              const hasProfilePicture = student.data.profilepicture && student.data.profilepicture.trim();
-                              return (
-                                <tr key={student.rowNumber} className="hover:bg-gray-50">
-                                  <td className="px-2 py-2 text-gray-500 font-medium">{student.rowNumber}</td>
-                                  <td className="px-2 py-2">
-                                    {hasProfilePicture ? (
-                                      <img
-                                        src={student.data.profilepicture}
-                                        alt={student.data.name}
-                                        className="w-8 h-8 rounded-full object-cover border border-gray-200"
-                                        onError={(e) => {
-                                          e.currentTarget.style.display = 'none';
-                                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                                        }}
-                                      />
-                                    ) : null}
-                                    <div className={`w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-600 ${hasProfilePicture ? 'hidden' : ''}`}>
-                                      {student.data.name?.charAt(0)?.toUpperCase() || '?'}
-                                    </div>
-                                  </td>
-                                  <td className="px-2 py-2 font-medium text-gray-900 whitespace-nowrap">{student.data.name}</td>
-                                  <td className="px-2 py-2 text-gray-600 text-xs">{student.data.email}</td>
-                                  <td className="px-2 py-2 text-gray-600 whitespace-nowrap">{student.data.contactnumber || '-'}</td>
-                                  <td className="px-2 py-2 text-gray-600 whitespace-nowrap">
-                                    {student.data.alternatenumber ? (
-                                      <span className="text-blue-600">{student.data.alternatenumber}</span>
-                                    ) : (
-                                      <span className="text-gray-400">-</span>
-                                    )}
-                                  </td>
-                                  <td className="px-2 py-2">
-                                    {isSchoolStudent ? (
-                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                                        School
+                            {validatedStudents
+                              .filter((s) => s.isValid)
+                              .slice(0, 15)
+                              .map((student) => {
+                                const isSchoolStudent = student.data.grade && student.data.section;
+                                const isUniversityStudent = student.data.university;
+                                const hasProfilePicture =
+                                  student.data.profilepicture && student.data.profilepicture.trim();
+                                return (
+                                  <tr key={student.rowNumber} className="hover:bg-gray-50">
+                                    <td className="px-2 py-2 text-gray-500 font-medium">
+                                      {student.rowNumber}
+                                    </td>
+                                    <td className="px-2 py-2">
+                                      {hasProfilePicture ? (
+                                        <img
+                                          src={student.data.profilepicture}
+                                          alt={student.data.name}
+                                          className="w-8 h-8 rounded-full object-cover border border-gray-200"
+                                          onError={(e) => {
+                                            e.currentTarget.style.display = 'none';
+                                            e.currentTarget.nextElementSibling?.classList.remove(
+                                              'hidden'
+                                            );
+                                          }}
+                                        />
+                                      ) : null}
+                                      <div
+                                        className={`w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-600 ${hasProfilePicture ? 'hidden' : ''}`}
+                                      >
+                                        {student.data.name?.charAt(0)?.toUpperCase() || '?'}
+                                      </div>
+                                    </td>
+                                    <td className="px-2 py-2 font-medium text-gray-900 whitespace-nowrap">
+                                      {student.data.name}
+                                    </td>
+                                    <td className="px-2 py-2 text-gray-600 text-xs">
+                                      {student.data.email}
+                                    </td>
+                                    <td className="px-2 py-2 text-gray-600 whitespace-nowrap">
+                                      {student.data.contactnumber || '-'}
+                                    </td>
+                                    <td className="px-2 py-2 text-gray-600 whitespace-nowrap">
+                                      {student.data.alternatenumber ? (
+                                        <span className="text-blue-600">
+                                          {student.data.alternatenumber}
+                                        </span>
+                                      ) : (
+                                        <span className="text-gray-400">-</span>
+                                      )}
+                                    </td>
+                                    <td className="px-2 py-2">
+                                      {isSchoolStudent ? (
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                          School
+                                        </span>
+                                      ) : isUniversityStudent ? (
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                                          University
+                                        </span>
+                                      ) : (
+                                        <span className="text-gray-400">-</span>
+                                      )}
+                                    </td>
+                                    <td className="px-2 py-2 text-gray-600 whitespace-nowrap">
+                                      {student.data.grade && student.data.section ? (
+                                        `${student.data.grade}-${student.data.section}`
+                                      ) : (
+                                        <span className="text-gray-400">-</span>
+                                      )}
+                                    </td>
+                                    <td className="px-2 py-2 text-gray-600 whitespace-nowrap">
+                                      {student.data.collegeschoolname || '-'}
+                                    </td>
+                                    <td className="px-2 py-2 text-gray-600 whitespace-nowrap">
+                                      {student.data.university || '-'}
+                                    </td>
+                                    <td className="px-2 py-2 text-gray-600 whitespace-nowrap">
+                                      {student.data.registrationnumber || '-'}
+                                    </td>
+                                    <td className="px-2 py-2 text-gray-600">
+                                      {student.data.rollnumber || '-'}
+                                    </td>
+                                    <td className="px-2 py-2 text-gray-600">
+                                      {student.data.gender || '-'}
+                                    </td>
+                                    <td className="px-2 py-2 text-gray-600">
+                                      {student.data.bloodgroup || '-'}
+                                    </td>
+                                    <td className="px-2 py-2 text-gray-600 whitespace-nowrap">
+                                      {student.data.guardianname || student.data.parentname || '-'}
+                                    </td>
+                                    <td className="px-2 py-2">
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                        ✓
                                       </span>
-                                    ) : isUniversityStudent ? (
-                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
-                                        University
-                                      </span>
-                                    ) : (
-                                      <span className="text-gray-400">-</span>
-                                    )}
-                                  </td>
-                                  <td className="px-2 py-2 text-gray-600 whitespace-nowrap">
-                                    {student.data.grade && student.data.section
-                                      ? `${student.data.grade}-${student.data.section}`
-                                      : <span className="text-gray-400">-</span>}
-                                  </td>
-                                  <td className="px-2 py-2 text-gray-600 whitespace-nowrap">{student.data.collegeschoolname || '-'}</td>
-                                  <td className="px-2 py-2 text-gray-600 whitespace-nowrap">{student.data.university || '-'}</td>
-                                  <td className="px-2 py-2 text-gray-600 whitespace-nowrap">{student.data.registrationnumber || '-'}</td>
-                                  <td className="px-2 py-2 text-gray-600">{student.data.rollnumber || '-'}</td>
-                                  <td className="px-2 py-2 text-gray-600">{student.data.gender || '-'}</td>
-                                  <td className="px-2 py-2 text-gray-600">{student.data.bloodgroup || '-'}</td>
-                                  <td className="px-2 py-2 text-gray-600 whitespace-nowrap">{student.data.guardianname || student.data.parentname || '-'}</td>
-                                  <td className="px-2 py-2">
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                                      ✓
-                                    </span>
-                                  </td>
-                                </tr>
-                              );
-                            })}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
                           </tbody>
                         </table>
-                        {validatedStudents.filter(s => s.isValid).length > 15 && (
+                        {validatedStudents.filter((s) => s.isValid).length > 15 && (
                           <div className="px-3 py-2 text-xs text-gray-500 bg-gray-50">
-                            ...and {validatedStudents.filter(s => s.isValid).length - 15} more valid students
+                            ...and {validatedStudents.filter((s) => s.isValid).length - 15} more
+                            valid students
                           </div>
                         )}
                       </div>
@@ -2070,80 +2576,125 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                   )}
 
                   {/* Invalid Students */}
-                  {validatedStudents.filter(s => !s.isValid).length > 0 && (
+                  {validatedStudents.filter((s) => !s.isValid).length > 0 && (
                     <div>
                       <h4 className="text-sm font-medium text-gray-900 mb-2 flex items-center">
                         <ExclamationTriangleIcon className="h-4 w-4 text-red-500 mr-1" />
-                        Invalid Students ({validatedStudents.filter(s => !s.isValid).length}) - Will Not Be Imported
+                        Invalid Students ({validatedStudents.filter((s) => !s.isValid).length}) -
+                        Will Not Be Imported
                       </h4>
                       <div className="overflow-x-auto border border-red-200 rounded-md max-h-96">
                         <table className="min-w-full divide-y divide-gray-200 text-xs">
                           <thead className="bg-red-50 sticky top-0">
                             <tr>
-                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">Row</th>
-                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">Name</th>
-                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">Email</th>
-                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">Phone</th>
-                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">Alt. Phone</th>
-                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">Type</th>
-                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">Class</th>
-                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">School/Univ</th>
-                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">Errors</th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">
+                                Row
+                              </th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">
+                                Name
+                              </th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">
+                                Email
+                              </th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">
+                                Phone
+                              </th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">
+                                Alt. Phone
+                              </th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">
+                                Type
+                              </th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">
+                                Class
+                              </th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">
+                                School/Univ
+                              </th>
+                              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">
+                                Errors
+                              </th>
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
-                            {validatedStudents.filter(s => !s.isValid).slice(0, 10).map((student) => {
-                              const isSchoolStudent = student.data.grade && student.data.section;
-                              const isUniversityStudent = student.data.university;
-                              return (
-                                <tr key={student.rowNumber} className="hover:bg-red-50">
-                                  <td className="px-2 py-2 text-gray-500 font-medium">{student.rowNumber}</td>
-                                  <td className="px-2 py-2 font-medium text-gray-900">{student.data.name || <span className="text-gray-400 italic">Missing</span>}</td>
-                                  <td className="px-2 py-2 text-gray-600 text-xs">{student.data.email || <span className="text-gray-400 italic">Missing</span>}</td>
-                                  <td className="px-2 py-2 text-gray-600">{student.data.contactnumber || <span className="text-gray-400 italic">Missing</span>}</td>
-                                  <td className="px-2 py-2 text-gray-600">
-                                    {student.data.alternatenumber ? (
-                                      <span className="text-blue-600">{student.data.alternatenumber}</span>
-                                    ) : (
-                                      <span className="text-gray-400">-</span>
-                                    )}
-                                  </td>
-                                  <td className="px-2 py-2">
-                                    {isSchoolStudent ? (
-                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                                        School
-                                      </span>
-                                    ) : isUniversityStudent ? (
-                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
-                                        University
-                                      </span>
-                                    ) : (
-                                      <span className="text-gray-400">-</span>
-                                    )}
-                                  </td>
-                                  <td className="px-2 py-2 text-gray-600">
-                                    {student.data.grade && student.data.section
-                                      ? `${student.data.grade}-${student.data.section}`
-                                      : <span className="text-gray-400">-</span>}
-                                  </td>
-                                  <td className="px-2 py-2 text-gray-600 whitespace-nowrap">
-                                    {student.data.collegeschoolname || student.data.university || '-'}
-                                  </td>
-                                  <td className="px-2 py-2">
-                                    <div className="space-y-1">
-                                      {student.errors.map((err, i) => (
-                                        <div key={i} className="text-xs text-red-600">• {err}</div>
-                                      ))}
-                                    </div>
-                                  </td>
-                                </tr>
-                              );
-                            })}
+                            {validatedStudents
+                              .filter((s) => !s.isValid)
+                              .slice(0, 10)
+                              .map((student) => {
+                                const isSchoolStudent = student.data.grade && student.data.section;
+                                const isUniversityStudent = student.data.university;
+                                return (
+                                  <tr key={student.rowNumber} className="hover:bg-red-50">
+                                    <td className="px-2 py-2 text-gray-500 font-medium">
+                                      {student.rowNumber}
+                                    </td>
+                                    <td className="px-2 py-2 font-medium text-gray-900">
+                                      {student.data.name || (
+                                        <span className="text-gray-400 italic">Missing</span>
+                                      )}
+                                    </td>
+                                    <td className="px-2 py-2 text-gray-600 text-xs">
+                                      {student.data.email || (
+                                        <span className="text-gray-400 italic">Missing</span>
+                                      )}
+                                    </td>
+                                    <td className="px-2 py-2 text-gray-600">
+                                      {student.data.contactnumber || (
+                                        <span className="text-gray-400 italic">Missing</span>
+                                      )}
+                                    </td>
+                                    <td className="px-2 py-2 text-gray-600">
+                                      {student.data.alternatenumber ? (
+                                        <span className="text-blue-600">
+                                          {student.data.alternatenumber}
+                                        </span>
+                                      ) : (
+                                        <span className="text-gray-400">-</span>
+                                      )}
+                                    </td>
+                                    <td className="px-2 py-2">
+                                      {isSchoolStudent ? (
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                          School
+                                        </span>
+                                      ) : isUniversityStudent ? (
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                                          University
+                                        </span>
+                                      ) : (
+                                        <span className="text-gray-400">-</span>
+                                      )}
+                                    </td>
+                                    <td className="px-2 py-2 text-gray-600">
+                                      {student.data.grade && student.data.section ? (
+                                        `${student.data.grade}-${student.data.section}`
+                                      ) : (
+                                        <span className="text-gray-400">-</span>
+                                      )}
+                                    </td>
+                                    <td className="px-2 py-2 text-gray-600 whitespace-nowrap">
+                                      {student.data.collegeschoolname ||
+                                        student.data.university ||
+                                        '-'}
+                                    </td>
+                                    <td className="px-2 py-2">
+                                      <div className="space-y-1">
+                                        {student.errors.map((err, i) => (
+                                          <div key={i} className="text-xs text-red-600">
+                                            • {err}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
                           </tbody>
                         </table>
-                        {validatedStudents.filter(s => !s.isValid).length > 10 && (
+                        {validatedStudents.filter((s) => !s.isValid).length > 10 && (
                           <div className="px-3 py-2 text-xs text-red-600 bg-red-50">
-                            ...and {validatedStudents.filter(s => !s.isValid).length - 10} more invalid students
+                            ...and {validatedStudents.filter((s) => !s.isValid).length - 10} more
+                            invalid students
                           </div>
                         )}
                       </div>
@@ -2151,10 +2702,14 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                   )}
 
                   {/* No valid students warning */}
-                  {validatedStudents.filter(s => s.isValid).length === 0 && (
+                  {validatedStudents.filter((s) => s.isValid).length === 0 && (
                     <div className="p-4 bg-amber-50 border border-amber-200 rounded-md">
-                      <p className="text-sm text-amber-800 font-medium">⚠️ No valid students to import</p>
-                      <p className="text-xs text-amber-700 mt-1">Please fix the errors above and re-upload the CSV file.</p>
+                      <p className="text-sm text-amber-800 font-medium">
+                        ⚠️ No valid students to import
+                      </p>
+                      <p className="text-xs text-amber-700 mt-1">
+                        Please fix the errors above and re-upload the CSV file.
+                      </p>
                     </div>
                   )}
                 </div>
@@ -2172,25 +2727,47 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             </button>
             <button
               onClick={mode === 'manual' ? handleSubmit : handleCSVSubmit}
-              disabled={loading || (mode === 'csv' && !csvFile) || (mode === 'csv' && showEnhancedPreview && validatedStudents.filter(s => s.isValid).length === 0)}
+              disabled={
+                loading ||
+                (mode === 'csv' && !csvFile) ||
+                (mode === 'csv' &&
+                  showEnhancedPreview &&
+                  validatedStudents.filter((s) => s.isValid).length === 0)
+              }
               className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed inline-flex items-center"
             >
               {loading ? (
                 <>
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <svg
+                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
                   </svg>
                   {mode === 'manual' ? 'Adding Student...' : 'Uploading...'}
                 </>
               ) : (
                 <>
                   <UserPlusIcon className="h-4 w-4 mr-1" />
-                  {mode === 'manual' ? 'Add Student' : (
-                    showEnhancedPreview && validatedStudents.length > 0
-                      ? `Import ${validatedStudents.filter(s => s.isValid).length} Valid Student${validatedStudents.filter(s => s.isValid).length !== 1 ? 's' : ''}`
-                      : 'Upload CSV'
-                  )}
+                  {mode === 'manual'
+                    ? 'Add Student'
+                    : showEnhancedPreview && validatedStudents.length > 0
+                      ? `Import ${validatedStudents.filter((s) => s.isValid).length} Valid Student${validatedStudents.filter((s) => s.isValid).length !== 1 ? 's' : ''}`
+                      : 'Upload CSV'}
                 </>
               )}
             </button>
@@ -2198,7 +2775,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default AddStudentModal
+export default AddStudentModal;

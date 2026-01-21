@@ -24,19 +24,19 @@ import StudentProfileDrawer from '@/components/shared/StudentProfileDrawer';
   userRole="school_admin" // or "college_admin", "university_admin", "educator"
   schoolId={schoolId} // optional
   collegeId={collegeId} // optional
-/>
+/>;
 ```
 
 ## Props
 
-| Prop | Type | Required | Description |
-|------|------|----------|-------------|
-| `student` | `Student \| null` | Yes | Student data object |
-| `isOpen` | `boolean` | Yes | Whether drawer is open |
-| `onClose` | `() => void` | Yes | Close handler |
-| `userRole` | `'school_admin' \| 'college_admin' \| 'university_admin' \| 'educator'` | No | User role (default: 'school_admin') |
-| `schoolId` | `string` | No | School ID for context |
-| `collegeId` | `string` | No | College ID for context |
+| Prop        | Type                                                                    | Required | Description                         |
+| ----------- | ----------------------------------------------------------------------- | -------- | ----------------------------------- |
+| `student`   | `Student \| null`                                                       | Yes      | Student data object                 |
+| `isOpen`    | `boolean`                                                               | Yes      | Whether drawer is open              |
+| `onClose`   | `() => void`                                                            | Yes      | Close handler                       |
+| `userRole`  | `'school_admin' \| 'college_admin' \| 'university_admin' \| 'educator'` | No       | User role (default: 'school_admin') |
+| `schoolId`  | `string`                                                                | No       | School ID for context               |
+| `collegeId` | `string`                                                                | No       | College ID for context              |
 
 ## Architecture
 
@@ -84,13 +84,16 @@ src/components/shared/StudentProfileDrawer/
 ### Key Components
 
 #### Main Component
+
 - `StudentProfileDrawer.tsx`: Main drawer component with header, tabs, and content
 
 #### Hooks
+
 - `useStudentData`: Fetches and manages student-related data (assessments, curriculum, courses, notes)
 - `useStudentActions`: Handles student actions (approval, promotion, graduation)
 
 #### Tabs
+
 - `OverviewTab`: Basic student information and timeline
 - `AcademicTab`: Academic details and education history
 - `CoursesTab`: Enrolled courses with progress
@@ -101,6 +104,7 @@ src/components/shared/StudentProfileDrawer/
 - `NotesTab`: Admission notes (admin only)
 
 #### Modals
+
 - `AdmissionNoteModal`: Add admission notes
 - `MessageModal`: Contact student via WhatsApp, SMS, or email
 - `ExportModal`: Export student data as PDF or CSV
@@ -111,22 +115,26 @@ src/components/shared/StudentProfileDrawer/
 ## Role-based Features
 
 ### School Admin
+
 - All tabs except projects and certificates
 - Curriculum and lesson plans
 - Student approval actions
 - Admission notes
 
 ### College Admin
+
 - All tabs including projects and certificates
 - Student verification and promotion
 - Graduation management
 - Export and messaging
 
 ### University Admin
+
 - Same as college admin
 - Advanced academic progress tracking
 
 ### Educator
+
 - Read-only access to most tabs
 - Limited action buttons
 - Focus on academic and course information
@@ -134,12 +142,14 @@ src/components/shared/StudentProfileDrawer/
 ## Student Type Adaptations
 
 ### School Students
+
 - Grade-based organization
 - Guardian information
 - Curriculum and lesson plans
 - Subject-based learning
 
 ### College/University Students
+
 - Semester-based progress
 - CGPA tracking
 - Projects and certificates
@@ -148,6 +158,7 @@ src/components/shared/StudentProfileDrawer/
 ## Data Sources
 
 The component fetches data from multiple Supabase tables:
+
 - `students`: Main student information
 - `personal_assessment_results`: Assessment scores
 - `trainings` & `course_enrollments`: Course data
@@ -157,18 +168,21 @@ The component fetches data from multiple Supabase tables:
 ## Customization
 
 ### Adding New Tabs
+
 1. Create tab component in `tabs/` directory
 2. Add tab configuration in `getTabsConfig()`
 3. Add case in `renderTabContent()`
 4. Export from `tabs/index.ts`
 
 ### Adding New Actions
+
 1. Create modal component in `modals/` directory
 2. Add action configuration in `getActionsConfig()`
 3. Add button in action buttons section
 4. Add modal state and handlers
 
 ### Extending Student Types
+
 1. Update `Student` interface in `types/index.ts`
 2. Add new fields to relevant tab components
 3. Update role-based configurations

@@ -15,16 +15,16 @@ import { PipelineFilters, PipelineSortOptions } from '../../types/recruiter';
 
 // Pipeline components
 import {
-    AIRecommendation,
-    AIRecommendedColumn,
-    AddFromTalentPoolModal,
-    KanbanColumn,
-    NextActionModal,
-    PipelineBulkActionsBar,
-    PipelineCandidate,
-    PipelineHeader,
-    PipelineQuickFilters,
-    STAGES
+  AIRecommendation,
+  AIRecommendedColumn,
+  AddFromTalentPoolModal,
+  KanbanColumn,
+  NextActionModal,
+  PipelineBulkActionsBar,
+  PipelineCandidate,
+  PipelineHeader,
+  PipelineQuickFilters,
+  STAGES,
 } from '../../components/Recruiter/components/pipeline';
 
 interface PipelinesProps {
@@ -33,7 +33,7 @@ interface PipelinesProps {
 
 /**
  * Pipelines - Recruitment pipeline management
- * 
+ *
  * Wrapped with FeatureGate for pipeline_management add-on access control
  */
 const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
@@ -53,7 +53,8 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
   const [showAddFromTalentPool, setShowAddFromTalentPool] = useState(false);
   const [addToStage, setAddToStage] = useState<string | null>(null);
   const [showNextActionModal, setShowNextActionModal] = useState(false);
-  const [selectedCandidateForAction, setSelectedCandidateForAction] = useState<PipelineCandidate | null>(null);
+  const [selectedCandidateForAction, setSelectedCandidateForAction] =
+    useState<PipelineCandidate | null>(null);
 
   // Filter states
   const [filters, setFilters] = useState<PipelineFilters>({
@@ -67,12 +68,12 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
     hasNextAction: null,
     assignedTo: [],
     dateAdded: { preset: undefined, startDate: undefined, endDate: undefined },
-    lastUpdated: { preset: undefined, startDate: undefined, endDate: undefined }
+    lastUpdated: { preset: undefined, startDate: undefined, endDate: undefined },
   });
 
   const [sortOptions, setSortOptions] = useState<PipelineSortOptions>({
     field: 'updated_at',
-    direction: 'desc'
+    direction: 'desc',
   });
 
   // Custom hook for pipeline data
@@ -84,7 +85,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
     loadingRecommendations,
     allPipelineCandidatesForAI,
     getTotalCandidates,
-    getConversionRate
+    getConversionRate,
   } = usePipelineData(selectedJob, filters, sortOptions);
 
   // Get current recruiter ID
@@ -119,8 +120,10 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
     let movedCandidate: PipelineCandidate | null = null;
     let oldStage: string | null = null;
 
-    Object.keys(pipelineData).forEach(stage => {
-      const candidate = pipelineData[stage as keyof typeof pipelineData].find(c => c.id === candidateId);
+    Object.keys(pipelineData).forEach((stage) => {
+      const candidate = pipelineData[stage as keyof typeof pipelineData].find(
+        (c) => c.id === candidateId
+      );
       if (candidate) {
         movedCandidate = candidate;
         oldStage = stage;
@@ -129,13 +132,15 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
 
     if (!movedCandidate) return;
 
-    setMovingCandidates(prev => [...prev, candidateId]);
+    setMovingCandidates((prev) => [...prev, candidateId]);
 
     // Optimistic update
-    setPipelineData(prev => {
+    setPipelineData((prev) => {
       const newData = { ...prev };
-      Object.keys(newData).forEach(stage => {
-        newData[stage as keyof typeof newData] = newData[stage as keyof typeof newData].filter(c => c.id !== candidateId);
+      Object.keys(newData).forEach((stage) => {
+        newData[stage as keyof typeof newData] = newData[stage as keyof typeof newData].filter(
+          (c) => c.id !== candidateId
+        );
       });
       if (newData[newStage as keyof typeof newData]) {
         newData[newStage as keyof typeof newData].push({
@@ -151,9 +156,11 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
 
       if (result.error) {
         // Revert on error
-        setPipelineData(prev => {
+        setPipelineData((prev) => {
           const newData = { ...prev };
-          newData[newStage as keyof typeof newData] = newData[newStage as keyof typeof newData].filter(c => c.id !== candidateId);
+          newData[newStage as keyof typeof newData] = newData[
+            newStage as keyof typeof newData
+          ].filter((c) => c.id !== candidateId);
           if (oldStage && newData[oldStage as keyof typeof newData]) {
             newData[oldStage as keyof typeof newData].push(movedCandidate!);
           }
@@ -163,21 +170,27 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
         return;
       }
 
-      addToast('success', 'Candidate Moved!', `Successfully moved to ${newStage.replace('_', ' ')}`);
+      addToast(
+        'success',
+        'Candidate Moved!',
+        `Successfully moved to ${newStage.replace('_', ' ')}`
+      );
 
       if (currentRecruiterId && movedCandidate) {
         await createNotification(
           currentRecruiterId,
-          "pipeline_stage_changed",
+          'pipeline_stage_changed',
           `Candidate moved to ${newStage}`,
           `${(movedCandidate as PipelineCandidate).name} has been moved to the "${newStage}" stage.`
         );
       }
     } catch (error) {
       // Revert on error
-      setPipelineData(prev => {
+      setPipelineData((prev) => {
         const newData = { ...prev };
-        newData[newStage as keyof typeof newData] = newData[newStage as keyof typeof newData].filter(c => c.id !== candidateId);
+        newData[newStage as keyof typeof newData] = newData[
+          newStage as keyof typeof newData
+        ].filter((c) => c.id !== candidateId);
         if (oldStage && newData[oldStage as keyof typeof newData]) {
           newData[oldStage as keyof typeof newData].push(movedCandidate!);
         }
@@ -185,22 +198,30 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
       });
       addToast('error', 'Error', 'Failed to move candidate. Please try again.');
     } finally {
-      setMovingCandidates(prev => prev.filter(id => id !== candidateId));
+      setMovingCandidates((prev) => prev.filter((id) => id !== candidateId));
     }
   };
 
   const handleBulkEmail = () => {
-    const candidateNames = selectedCandidates.map(id => {
-      const candidate = Object.values(pipelineData).flat().find(c => c.id === id);
-      return candidate?.name;
-    }).filter(Boolean);
+    const candidateNames = selectedCandidates
+      .map((id) => {
+        const candidate = Object.values(pipelineData)
+          .flat()
+          .find((c) => c.id === id);
+        return candidate?.name;
+      })
+      .filter(Boolean);
 
     if (candidateNames.length === 0) {
       addToast('warning', 'No Selection', 'Please select candidates first');
       return;
     }
 
-    addToast('success', 'Bulk Email Sent!', `Emails queued for ${candidateNames.length} candidate(s)`);
+    addToast(
+      'success',
+      'Bulk Email Sent!',
+      `Emails queued for ${candidateNames.length} candidate(s)`
+    );
     setSelectedCandidates([]);
   };
 
@@ -220,7 +241,11 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
       addToast('warning', 'No Selection', 'Please select candidates first');
       return;
     }
-    addToast('success', 'Interviewer Assignment', `Ready to assign interviewer to ${count} candidate(s)`);
+    addToast(
+      'success',
+      'Interviewer Assignment',
+      `Ready to assign interviewer to ${count} candidate(s)`
+    );
     setSelectedCandidates([]);
   };
 
@@ -231,14 +256,18 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
       return;
     }
 
-    const confirmed = window.confirm(`Are you sure you want to reject ${count} candidate(s)?\n\nThis action cannot be undone.`);
+    const confirmed = window.confirm(
+      `Are you sure you want to reject ${count} candidate(s)?\n\nThis action cannot be undone.`
+    );
 
     if (confirmed) {
-      setPipelineData(prev => {
+      setPipelineData((prev) => {
         const newData = { ...prev };
-        selectedCandidates.forEach(candidateId => {
-          Object.keys(newData).forEach(stage => {
-            newData[stage as keyof typeof newData] = newData[stage as keyof typeof newData].filter(c => c.id !== candidateId);
+        selectedCandidates.forEach((candidateId) => {
+          Object.keys(newData).forEach((stage) => {
+            newData[stage as keyof typeof newData] = newData[stage as keyof typeof newData].filter(
+              (c) => c.id !== candidateId
+            );
           });
         });
         return newData;
@@ -249,8 +278,8 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
       if (selectedJob) {
         await createNotification(
           selectedJob.toString(),
-          "candidate_rejected",
-          "Candidates Rejected",
+          'candidate_rejected',
+          'Candidates Rejected',
           `${count} candidate(s) were rejected from ${jobTitle}.`
         );
       }
@@ -271,25 +300,33 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
 
     const csvContent = [
       'Name,Department,College,Location,Stage,AI Score,Skills,Last Updated',
-      ...allCandidates.map(candidate =>
-        `"${candidate.name}","${candidate.dept}","${candidate.college}","${candidate.location}","${candidate.stage}",${candidate.ai_score_overall},"${candidate.skills.join('; ')}","${new Date(candidate.last_updated).toLocaleDateString()}"`
-      )
+      ...allCandidates.map(
+        (candidate) =>
+          `"${candidate.name}","${candidate.dept}","${candidate.college}","${candidate.location}","${candidate.stage}",${candidate.ai_score_overall},"${candidate.skills.join('; ')}","${new Date(candidate.last_updated).toLocaleDateString()}"`
+      ),
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.setAttribute('href', URL.createObjectURL(blob));
-    link.setAttribute('download', `pipeline_${jobTitle.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute(
+      'download',
+      `pipeline_${jobTitle.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`
+    );
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 
-    addToast('success', 'Pipeline Exported!', `${allCandidates.length} candidates exported successfully`);
+    addToast(
+      'success',
+      'Pipeline Exported!',
+      `${allCandidates.length} candidates exported successfully`
+    );
   };
 
   const toggleCandidateSelection = (candidateId: number) => {
-    setSelectedCandidates(prev =>
-      prev.includes(candidateId) ? prev.filter(id => id !== candidateId) : [...prev, candidateId]
+    setSelectedCandidates((prev) =>
+      prev.includes(candidateId) ? prev.filter((id) => id !== candidateId) : [...prev, candidateId]
     );
   };
 
@@ -303,7 +340,10 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
   };
 
   // Handle moving AI recommended candidate to screened stage
-  const handleMoveAIRecommendedToScreened = async (rec: AIRecommendation, pipelineCandidate: any) => {
+  const handleMoveAIRecommendedToScreened = async (
+    rec: AIRecommendation,
+    pipelineCandidate: any
+  ) => {
     if (!selectedJob) {
       addToast('error', 'Error', 'Please select a job first');
       return;
@@ -313,10 +353,10 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
       // Check if candidate already exists in pipeline by looking in pipelineData
       let existingPipelineId: number | null = null;
       let existingStage: string | null = null;
-      
-      Object.keys(pipelineData).forEach(stage => {
+
+      Object.keys(pipelineData).forEach((stage) => {
         const found = pipelineData[stage as keyof typeof pipelineData].find(
-          c => c.student_id === pipelineCandidate?.student_id
+          (c) => c.student_id === pipelineCandidate?.student_id
         );
         if (found) {
           existingPipelineId = found.id;
@@ -338,7 +378,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
           candidate_email: pipelineCandidate?.email || '',
           stage: 'screened',
           source: 'ai_recommended',
-          added_by: currentRecruiterId || undefined
+          added_by: currentRecruiterId || undefined,
         });
 
         if (result.error) {
@@ -353,7 +393,11 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
 
         // Refresh pipeline data
         loadPipelineCandidates();
-        addToast('success', 'Moved to Screened', `${rec.studentName} has been added to Screened stage`);
+        addToast(
+          'success',
+          'Moved to Screened',
+          `${rec.studentName} has been added to Screened stage`
+        );
       }
     } catch (error) {
       console.error('Error moving AI recommended candidate:', error);
@@ -383,41 +427,45 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
       hasNextAction: null,
       assignedTo: [],
       dateAdded: { preset: undefined, startDate: undefined, endDate: undefined },
-      lastUpdated: { preset: undefined, startDate: undefined, endDate: undefined }
+      lastUpdated: { preset: undefined, startDate: undefined, endDate: undefined },
     });
   };
 
   // Filtered pipeline data
   const getFilteredPipelineData = () => {
-    let filtered = { ...pipelineData };
-    
+    const filtered = { ...pipelineData };
+
     if (showAIRecommendedOnly) {
-      Object.keys(filtered).forEach(stage => {
+      Object.keys(filtered).forEach((stage) => {
         if (stage === 'sourced' || stage === 'screened') {
-          filtered[stage as keyof typeof filtered] = filtered[stage as keyof typeof filtered].filter(c => c.ai_score_overall >= 70);
+          filtered[stage as keyof typeof filtered] = filtered[
+            stage as keyof typeof filtered
+          ].filter((c) => c.ai_score_overall >= 70);
         }
       });
     }
-    
+
     if (globalSearch.trim()) {
       const searchLower = globalSearch.toLowerCase();
-      Object.keys(filtered).forEach(stage => {
-        filtered[stage as keyof typeof filtered] = filtered[stage as keyof typeof filtered].filter(candidate => 
-          candidate.name?.toLowerCase().includes(searchLower) ||
-          candidate.email?.toLowerCase().includes(searchLower) ||
-          candidate.dept?.toLowerCase().includes(searchLower) ||
-          candidate.college?.toLowerCase().includes(searchLower) ||
-          candidate.skills?.some(skill => skill.toLowerCase().includes(searchLower))
+      Object.keys(filtered).forEach((stage) => {
+        filtered[stage as keyof typeof filtered] = filtered[stage as keyof typeof filtered].filter(
+          (candidate) =>
+            candidate.name?.toLowerCase().includes(searchLower) ||
+            candidate.email?.toLowerCase().includes(searchLower) ||
+            candidate.dept?.toLowerCase().includes(searchLower) ||
+            candidate.college?.toLowerCase().includes(searchLower) ||
+            candidate.skills?.some((skill) => skill.toLowerCase().includes(searchLower))
         );
       });
     }
-    
+
     return filtered;
   };
 
   const filteredPipelineData = getFilteredPipelineData();
-  const totalAIRecommended = aiRecommendations?.topRecommendations?.length || 
-    ((pipelineData.sourced?.length || 0) + (pipelineData.screened?.length || 0));
+  const totalAIRecommended =
+    aiRecommendations?.topRecommendations?.length ||
+    (pipelineData.sourced?.length || 0) + (pipelineData.screened?.length || 0);
 
   return (
     <div className="flex flex-col h-screen">
@@ -429,7 +477,9 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
         selectedJob={selectedJob}
         setSelectedJob={setSelectedJob}
         getTotalCandidates={getTotalCandidates}
-        onAddCandidates={() => addToast('info', 'Feature Coming Soon', 'Add candidates modal will be available shortly')}
+        onAddCandidates={() =>
+          addToast('info', 'Feature Coming Soon', 'Add candidates modal will be available shortly')
+        }
         onExportPipeline={handleExportPipeline}
         onRefresh={() => {
           loadPipelineCandidates();
@@ -445,15 +495,22 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
             company={selectedJobDetails?.company_name || 'Unassigned'}
             daysAging={
               selectedJobDetails?.created_at
-                ? Math.floor((Date.now() - new Date(selectedJobDetails.created_at).getTime()) / (1000 * 60 * 60 * 24))
+                ? Math.floor(
+                    (Date.now() - new Date(selectedJobDetails.created_at).getTime()) /
+                      (1000 * 60 * 60 * 24)
+                  )
                 : 0
             }
-            activeStages={Object.values(pipelineData).filter(stage => stage.length > 0).length}
+            activeStages={Object.values(pipelineData).filter((stage) => stage.length > 0).length}
           />
 
           <div className="flex items-center gap-3">
             <PipelineSortMenu sortOptions={sortOptions} onSortChange={setSortOptions} />
-            <PipelineAdvancedFilters filters={filters} onFiltersChange={setFilters} onReset={handleResetFilters} />
+            <PipelineAdvancedFilters
+              filters={filters}
+              onFiltersChange={setFilters}
+              onReset={handleResetFilters}
+            />
           </div>
         </div>
 
@@ -465,7 +522,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
               to: 'screened',
               rate: getConversionRate('sourced', 'screened'),
               fromCount: pipelineData.sourced?.length || 0,
-              toCount: pipelineData.screened?.length || 0
+              toCount: pipelineData.screened?.length || 0,
             },
             {
               label: 'Interview → Offer',
@@ -473,7 +530,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
               to: 'offer',
               rate: getConversionRate('interview_1', 'offer'),
               fromCount: pipelineData.interview_1?.length || 0,
-              toCount: pipelineData.offer?.length || 0
+              toCount: pipelineData.offer?.length || 0,
             },
             {
               label: 'Offer → Hired',
@@ -481,8 +538,8 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
               to: 'hired',
               rate: getConversionRate('offer', 'hired'),
               fromCount: pipelineData.offer?.length || 0,
-              toCount: pipelineData.hired?.length || 0
-            }
+              toCount: pipelineData.hired?.length || 0,
+            },
           ]}
         />
       </div>
@@ -506,9 +563,13 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
               <KanbanColumn
                 stageKey={stage.key}
                 title={stage.label}
-                count={filteredPipelineData[stage.key as keyof typeof filteredPipelineData]?.length || 0}
+                count={
+                  filteredPipelineData[stage.key as keyof typeof filteredPipelineData]?.length || 0
+                }
                 color={stage.color}
-                candidates={filteredPipelineData[stage.key as keyof typeof filteredPipelineData] || []}
+                candidates={
+                  filteredPipelineData[stage.key as keyof typeof filteredPipelineData] || []
+                }
                 onCandidateMove={handleCandidateMove}
                 onCandidateView={handleCandidateView}
                 selectedCandidates={selectedCandidates}
@@ -568,7 +629,9 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
           if (selectedCandidate) onViewProfile(selectedCandidate);
         }}
         onSendEmail={handleSendEmail}
-        onScheduleCall={(candidate: PipelineCandidate) => addToast('info', 'Schedule Call', `Opening calendar for ${candidate.name}`)}
+        onScheduleCall={(candidate: PipelineCandidate) =>
+          addToast('info', 'Schedule Call', `Opening calendar for ${candidate.name}`)
+        }
         onNextAction={(candidate) => {
           setShowQuickView(false);
           handleNextAction(candidate);
@@ -582,6 +645,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
  * Wrapped Pipelines with FeatureGate for pipeline_management add-on
  */
 const Pipelines: React.FC<PipelinesProps> = (props) => (
+  // @ts-expect-error - Auto-suppressed for migration
   <FeatureGate featureKey="pipeline_management" showUpgradePrompt={true}>
     <PipelinesContent {...props} />
   </FeatureGate>

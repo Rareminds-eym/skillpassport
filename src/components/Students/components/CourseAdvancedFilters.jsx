@@ -25,7 +25,7 @@ const CourseAdvancedFilters = ({ onApplyFilters, initialFilters = {} }) => {
     const fetchFilterOptions = async () => {
       try {
         setLoadingOptions(true);
-        
+
         // Fetch distinct categories
         const { data: categories } = await supabase
           .from('courses')
@@ -48,15 +48,20 @@ const CourseAdvancedFilters = ({ onApplyFilters, initialFilters = {} }) => {
           .is('deleted_at', null);
 
         setAvailableOptions({
-          categories: [...new Set(categories?.map(c => c.category).filter(Boolean))] || [],
-          skillTypes: [...new Set(skillTypes?.map(s => s.skill_type).filter(Boolean))] || [],
-          durations: [...new Set(durations?.map(d => d.duration).filter(Boolean))] || [],
+          categories: [...new Set(categories?.map((c) => c.category).filter(Boolean))] || [],
+          skillTypes: [...new Set(skillTypes?.map((s) => s.skill_type).filter(Boolean))] || [],
+          durations: [...new Set(durations?.map((d) => d.duration).filter(Boolean))] || [],
         });
       } catch (error) {
         console.error('Error fetching filter options:', error);
         // Fallback to static options
         setAvailableOptions({
-          categories: ['Corporate Training', 'Academic', 'Professional Development', 'Certification'],
+          categories: [
+            'Corporate Training',
+            'Academic',
+            'Professional Development',
+            'Certification',
+          ],
           skillTypes: ['technical', 'soft'],
           durations: ['2 weeks', '3 weeks', '4 weeks', '5 weeks', '6 weeks', '8 weeks'],
         });
@@ -85,11 +90,11 @@ const CourseAdvancedFilters = ({ onApplyFilters, initialFilters = {} }) => {
   ];
 
   const handleCheckboxChange = (category, value) => {
-    setFilters(prev => ({
+    setFilters((prev) => ({
       ...prev,
       [category]: prev[category].includes(value)
-        ? prev[category].filter(item => item !== value)
-        : [...prev[category], value]
+        ? prev[category].filter((item) => item !== value)
+        : [...prev[category], value],
     }));
   };
 
@@ -110,10 +115,10 @@ const CourseAdvancedFilters = ({ onApplyFilters, initialFilters = {} }) => {
     onApplyFilters(resetFilters);
   };
 
-  const activeFilterCount = 
-    filters.category.length + 
-    filters.skillType.length + 
-    filters.duration.length + 
+  const activeFilterCount =
+    filters.category.length +
+    filters.skillType.length +
+    filters.duration.length +
     (filters.enrollmentRange ? 1 : 0) +
     (filters.postedWithin ? 1 : 0);
 
@@ -123,8 +128,8 @@ const CourseAdvancedFilters = ({ onApplyFilters, initialFilters = {} }) => {
       <button
         onClick={() => setIsOpen(true)}
         className={`flex items-center gap-2 px-4 py-2.5 border rounded-lg transition-colors text-sm font-medium h-12 shadow-sm ${
-          activeFilterCount > 0 
-            ? 'border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100' 
+          activeFilterCount > 0
+            ? 'border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
             : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
         }`}
       >
@@ -141,11 +146,11 @@ const CourseAdvancedFilters = ({ onApplyFilters, initialFilters = {} }) => {
       {isOpen && (
         <>
           {/* Backdrop */}
-          <div 
+          <div
             className="fixed inset-0 bg-black bg-opacity-50 z-50 transition-opacity"
             onClick={() => setIsOpen(false)}
           />
-          
+
           {/* Panel */}
           <div className="fixed inset-y-0 left-0 z-50 w-full max-w-lg bg-white shadow-2xl flex flex-col animate-slide-in">
             <style jsx>{`
@@ -165,7 +170,9 @@ const CourseAdvancedFilters = ({ onApplyFilters, initialFilters = {} }) => {
             <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-white">
               <div className="flex-1">
                 <h2 className="text-2xl font-bold text-gray-900">Advanced Course Filters</h2>
-                <p className="text-sm text-gray-500 mt-1">Refine your course search with detailed criteria</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  Refine your course search with detailed criteria
+                </p>
               </div>
               <button
                 onClick={() => setIsOpen(false)}
@@ -189,15 +196,20 @@ const CourseAdvancedFilters = ({ onApplyFilters, initialFilters = {} }) => {
                     <h3 className="text-sm font-semibold text-gray-900 mb-3">Category</h3>
                     {availableOptions.categories.length > 0 ? (
                       <div className="grid grid-cols-1 gap-2">
-                        {availableOptions.categories.map(category => (
-                          <label key={category} className="flex items-center gap-2 cursor-pointer group">
+                        {availableOptions.categories.map((category) => (
+                          <label
+                            key={category}
+                            className="flex items-center gap-2 cursor-pointer group"
+                          >
                             <input
                               type="checkbox"
                               checked={filters.category.includes(category)}
                               onChange={() => handleCheckboxChange('category', category)}
                               className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
                             />
-                            <span className="text-sm text-gray-700 group-hover:text-gray-900">{category}</span>
+                            <span className="text-sm text-gray-700 group-hover:text-gray-900">
+                              {category}
+                            </span>
                           </label>
                         ))}
                       </div>
@@ -211,15 +223,20 @@ const CourseAdvancedFilters = ({ onApplyFilters, initialFilters = {} }) => {
                     <h3 className="text-sm font-semibold text-gray-900 mb-3">Skill Type</h3>
                     {availableOptions.skillTypes.length > 0 ? (
                       <div className="grid grid-cols-2 gap-2">
-                        {availableOptions.skillTypes.map(type => (
-                          <label key={type} className="flex items-center gap-2 cursor-pointer group">
+                        {availableOptions.skillTypes.map((type) => (
+                          <label
+                            key={type}
+                            className="flex items-center gap-2 cursor-pointer group"
+                          >
                             <input
                               type="checkbox"
                               checked={filters.skillType.includes(type)}
                               onChange={() => handleCheckboxChange('skillType', type)}
                               className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
                             />
-                            <span className="text-sm text-gray-700 group-hover:text-gray-900 capitalize">{type}</span>
+                            <span className="text-sm text-gray-700 group-hover:text-gray-900 capitalize">
+                              {type}
+                            </span>
                           </label>
                         ))}
                       </div>
@@ -233,15 +250,20 @@ const CourseAdvancedFilters = ({ onApplyFilters, initialFilters = {} }) => {
                     <h3 className="text-sm font-semibold text-gray-900 mb-3">Duration</h3>
                     {availableOptions.durations.length > 0 ? (
                       <div className="grid grid-cols-2 gap-2">
-                        {availableOptions.durations.map(duration => (
-                          <label key={duration} className="flex items-center gap-2 cursor-pointer group">
+                        {availableOptions.durations.map((duration) => (
+                          <label
+                            key={duration}
+                            className="flex items-center gap-2 cursor-pointer group"
+                          >
                             <input
                               type="checkbox"
                               checked={filters.duration.includes(duration)}
                               onChange={() => handleCheckboxChange('duration', duration)}
                               className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
                             />
-                            <span className="text-sm text-gray-700 group-hover:text-gray-900">{duration}</span>
+                            <span className="text-sm text-gray-700 group-hover:text-gray-900">
+                              {duration}
+                            </span>
                           </label>
                         ))}
                       </div>
@@ -254,10 +276,12 @@ const CourseAdvancedFilters = ({ onApplyFilters, initialFilters = {} }) => {
                   <div>
                     <h3 className="text-sm font-semibold text-gray-900 mb-3">Course Popularity</h3>
                     <div className="space-y-2">
-                      {enrollmentRangeOptions.map(option => (
+                      {enrollmentRangeOptions.map((option) => (
                         <button
                           key={option.value}
-                          onClick={() => setFilters(prev => ({ ...prev, enrollmentRange: option.value }))}
+                          onClick={() =>
+                            setFilters((prev) => ({ ...prev, enrollmentRange: option.value }))
+                          }
                           className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors border ${
                             filters.enrollmentRange === option.value
                               ? 'bg-indigo-600 text-white border-indigo-600'
@@ -274,10 +298,12 @@ const CourseAdvancedFilters = ({ onApplyFilters, initialFilters = {} }) => {
                   <div>
                     <h3 className="text-sm font-semibold text-gray-900 mb-3">Posted Within</h3>
                     <div className="flex flex-wrap gap-2">
-                      {postedWithinOptions.map(option => (
+                      {postedWithinOptions.map((option) => (
                         <button
                           key={option.value}
-                          onClick={() => setFilters(prev => ({ ...prev, postedWithin: option.value }))}
+                          onClick={() =>
+                            setFilters((prev) => ({ ...prev, postedWithin: option.value }))
+                          }
                           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                             filters.postedWithin === option.value
                               ? 'bg-indigo-600 text-white'

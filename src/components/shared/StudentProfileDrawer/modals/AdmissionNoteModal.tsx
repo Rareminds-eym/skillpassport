@@ -12,11 +12,11 @@ interface AdmissionNoteModalProps {
   onSuccess?: () => void;
 }
 
-const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({ 
-  isOpen, 
-  onClose, 
-  student, 
-  onSuccess 
+const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
+  isOpen,
+  onClose,
+  student,
+  onSuccess,
 }) => {
   const [note, setNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -29,13 +29,13 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
     try {
       // Save note locally (existing behavior)
       // TODO: Save to admission_notes table if needed
-      
+
       // If "Send to Communication" is checked, send as message
       if (sendToCommunication) {
         await sendNoteAsCommunication();
       } else {
         // Just save locally with a small delay
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 500));
         toast.success('Note saved successfully');
       }
 
@@ -54,21 +54,23 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
   const sendNoteAsCommunication = async () => {
     try {
       // Get current user (college admin)
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
         throw new Error('Not authenticated');
       }
 
       // Get college ID for the admin
       let collegeId: string | null = null;
-      
+
       // Try college_lecturers table first
       const { data: lecturerData } = await supabase
         .from('college_lecturers')
         .select('collegeId')
         .or(`user_id.eq.${user.id},userId.eq.${user.id}`)
         .single();
-      
+
       if (lecturerData?.collegeId) {
         collegeId = lecturerData.collegeId;
       } else {
@@ -79,7 +81,7 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
           .eq('organization_type', 'college')
           .eq('admin_id', user.id)
           .maybeSingle();
-        
+
         if (orgData?.id) {
           collegeId = orgData.id;
         }
@@ -105,12 +107,10 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
         receiver_id: student.id,
         receiver_type: 'student',
         message_text: `📝 Admission Note:\n\n${note}`,
-        subject: 'Admission Note'
+        subject: 'Admission Note',
       };
 
-      const { error: messageError } = await supabase
-        .from('messages')
-        .insert(messageData);
+      const { error: messageError } = await supabase.from('messages').insert(messageData);
 
       if (messageError) {
         throw messageError;
@@ -128,7 +128,10 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
   return (
     <div className="fixed inset-0 z-[60] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        <div
+          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          onClick={onClose}
+        ></div>
 
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-4">

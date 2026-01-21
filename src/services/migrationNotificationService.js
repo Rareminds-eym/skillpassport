@@ -1,9 +1,9 @@
 /**
  * Migration Notification Service
- * 
+ *
  * Handles sending notifications to users about the subscription migration
  * from tiered plans to the add-on based system.
- * 
+ *
  * @requirement Task 8.2 - Create migration notification system
  */
 
@@ -15,28 +15,32 @@ import { supabase } from '../lib/supabaseClient';
 const EMAIL_TEMPLATES = {
   migration_announcement: {
     subject: 'Important: Changes to Your SkillPassport Subscription',
-    template: 'migration-announcement'
+    template: 'migration-announcement',
   },
   migration_reminder_30: {
     subject: 'Reminder: Your Subscription is Changing in 30 Days',
-    template: 'migration-reminder-30'
+    template: 'migration-reminder-30',
   },
   migration_reminder_7: {
     subject: 'Action Required: Subscription Changes in 7 Days',
-    template: 'migration-reminder-7'
+    template: 'migration-reminder-7',
   },
   migration_complete: {
     subject: 'Your SkillPassport Subscription Has Been Updated',
-    template: 'migration-complete'
-  }
+    template: 'migration-complete',
+  },
 };
 
 /**
  * Schedule a migration notification for a user
  */
-export async function scheduleMigrationNotification(userId, scheduledDate, notificationType = 'migration_reminder_30') {
+export async function scheduleMigrationNotification(
+  userId,
+  scheduledDate,
+  notificationType = 'migration_reminder_30'
+) {
   const template = EMAIL_TEMPLATES[notificationType];
-  
+
   if (!template) {
     throw new Error(`Unknown notification type: ${notificationType}`);
   }
@@ -50,7 +54,7 @@ export async function scheduleMigrationNotification(userId, scheduledDate, notif
       status: 'pending',
       template_id: template.template,
       subject: template.subject,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
     })
     .select()
     .single();
@@ -69,10 +73,12 @@ export async function scheduleMigrationNotification(userId, scheduledDate, notif
 export async function getPendingNotifications() {
   const { data, error } = await supabase
     .from('scheduled_notifications')
-    .select(`
+    .select(
+      `
       *,
       users!inner(id, email, user_metadata)
-    `)
+    `
+    )
     .eq('status', 'pending')
     .lte('scheduled_for', new Date().toISOString())
     .order('scheduled_for', { ascending: true })
@@ -96,7 +102,7 @@ export async function markNotificationSent(notificationId, success = true, error
       status: success ? 'sent' : 'failed',
       sent_at: success ? new Date().toISOString() : null,
       error_message: errorMessage,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     })
     .eq('id', notificationId);
 
@@ -112,7 +118,7 @@ export async function markNotificationSent(notificationId, success = true, error
  */
 export async function sendMigrationEmail(notification) {
   const { user, notification_type, subject } = notification;
-  
+
   // Get user's subscription details for personalization
   const { data: subscription } = await supabase
     .from('subscriptions')
@@ -137,16 +143,16 @@ export async function sendMigrationEmail(notification) {
       migratedFeatures: migration?.migrated_features || [],
       priceProtectionUntil: migration?.price_protection_until,
       subscriptionEndDate: subscription?.subscription_end_date,
-      dashboardUrl: `${process.env.VITE_APP_URL || 'https://skillpassport.in'}/subscription/manage`
-    }
+      dashboardUrl: `${process.env.VITE_APP_URL || 'https://skillpassport.in'}/subscription/manage`,
+    },
   };
 
   // TODO: Integrate with your email service
   // Example with a generic email service:
   // await emailService.send(emailData);
-  
+
   console.log('Would send email:', emailData);
-  
+
   return { success: true, emailData };
 }
 
@@ -155,13 +161,13 @@ export async function sendMigrationEmail(notification) {
  */
 export async function processNotifications() {
   const notifications = await getPendingNotifications();
-  
+
   console.log(`Processing ${notifications.length} pending notifications`);
-  
+
   const results = {
     sent: 0,
     failed: 0,
-    errors: []
+    errors: [],
   };
 
   for (const notification of notifications) {
@@ -185,13 +191,17 @@ export async function processNotifications() {
  */
 export async function scheduleAllMigrationNotifications(userId, migrationDate) {
   const notifications = [];
-  
+
   // 30-day reminder
   const reminder30Date = new Date(migrationDate);
   reminder30Date.setDate(reminder30Date.getDate() - 30);
   if (reminder30Date > new Date()) {
     notifications.push(
-      await scheduleMigrationNotification(userId, reminder30Date.toISOString(), 'migration_reminder_30')
+      await scheduleMigrationNotification(
+        userId,
+        reminder30Date.toISOString(),
+        'migration_reminder_30'
+      )
     );
   }
 
@@ -200,7 +210,11 @@ export async function scheduleAllMigrationNotifications(userId, migrationDate) {
   reminder7Date.setDate(reminder7Date.getDate() - 7);
   if (reminder7Date > new Date()) {
     notifications.push(
-      await scheduleMigrationNotification(userId, reminder7Date.toISOString(), 'migration_reminder_7')
+      await scheduleMigrationNotification(
+        userId,
+        reminder7Date.toISOString(),
+        'migration_reminder_7'
+      )
     );
   }
 
@@ -258,5 +272,5 @@ export default {
   scheduleAllMigrationNotifications,
   getUserNotificationHistory,
   cancelPendingNotifications,
-  EMAIL_TEMPLATES
+  EMAIL_TEMPLATES,
 };

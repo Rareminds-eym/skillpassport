@@ -1,18 +1,18 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-    Award,
-    BookOpen,
-    CheckCircle,
-    ChevronLeft,
-    ChevronRight,
-    Circle,
-    Clock,
-    FileText,
-    Image,
-    Link as LinkIcon,
-    Menu,
-    Video,
-    X
+  Award,
+  BookOpen,
+  CheckCircle,
+  ChevronLeft,
+  ChevronRight,
+  Circle,
+  Clock,
+  FileText,
+  Image,
+  Link as LinkIcon,
+  Menu,
+  Video,
+  X,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -65,7 +65,7 @@ const CoursePlayer = () => {
   const [lessonStartTime, setLessonStartTime] = useState(null);
   const [accumulatedTime, setAccumulatedTime] = useState(0);
   const [positionInitialized, setPositionInitialized] = useState(false);
-  
+
   // Video progress tracking refs
   const videoRef = useRef(null);
   const videoSaveTimeoutRef = useRef(null);
@@ -84,7 +84,7 @@ const CoursePlayer = () => {
     handleStartFresh,
     dismissModal,
     saveRestorePoint,
-    getLastAccessedText
+    getLastAccessedText,
   } = useSessionRestore(user?.id, courseId, { enabled: isStudent });
 
   // Track if enrollment has been initialized
@@ -130,26 +130,34 @@ const CoursePlayer = () => {
         const savedLessonIndex = enrollResult.data.last_lesson_index || 0;
         const savedLessonId = enrollResult.data.last_lesson_id;
         const savedVideoPosition = enrollResult.data.last_video_position || 0;
-        
+
         console.log('📍 Saved position from enrollment:', {
           moduleIndex: savedModuleIndex,
           lessonIndex: savedLessonIndex,
           lessonId: savedLessonId,
-          videoPosition: savedVideoPosition
+          videoPosition: savedVideoPosition,
         });
-        
+
         if (savedModuleIndex > 0 || savedLessonIndex > 0) {
-          console.log('📍 Restoring to saved position - Module:', savedModuleIndex, 'Lesson:', savedLessonIndex);
+          console.log(
+            '📍 Restoring to saved position - Module:',
+            savedModuleIndex,
+            'Lesson:',
+            savedLessonIndex
+          );
           setCurrentModuleIndex(savedModuleIndex);
           setCurrentLessonIndex(savedLessonIndex);
-          
+
           // Also set the video position ref for when video loads
           if (savedVideoPosition > 0) {
             lastSavedVideoPositionRef.current = Math.max(0, savedVideoPosition - 2);
-            console.log('📹 Pre-setting video position from enrollment:', lastSavedVideoPositionRef.current);
+            console.log(
+              '📹 Pre-setting video position from enrollment:',
+              lastSavedVideoPositionRef.current
+            );
           }
         }
-        
+
         // Mark position as initialized after setting the correct indices
         setPositionInitialized(true);
       } else if (!enrollResult.success) {
@@ -175,12 +183,16 @@ const CoursePlayer = () => {
 
     try {
       const lessonsArray = Array.from(completedLessons);
-      const result = await courseEnrollmentService.updateProgress(user.email, courseId, lessonsArray);
+      const result = await courseEnrollmentService.updateProgress(
+        user.email,
+        courseId,
+        lessonsArray
+      );
       console.log('📊 Progress saved:', lessonsArray.length, 'lessons completed');
-      
+
       // Also update the enrollment state with new progress
       if (result.success && result.data) {
-        setEnrollment(prev => ({ ...prev, ...result.data }));
+        setEnrollment((prev) => ({ ...prev, ...result.data }));
       }
     } catch (error) {
       console.error('Error saving progress:', error);
@@ -200,29 +212,45 @@ const CoursePlayer = () => {
   // ═══════════════════════════════════════════════════════════════════════════
 
   // Save video position to database
-  const saveVideoPosition = useCallback(async (position, duration) => {
-    console.log('📹 saveVideoPosition called:', { position, duration, isStudent, userId: user?.id, courseId });
-    if (!isStudent || !user?.id || !courseId) {
-      console.log('📹 saveVideoPosition skipped - missing params');
-      return;
-    }
-    const currentLesson = getCurrentLesson();
-    if (!currentLesson) {
-      console.log('📹 saveVideoPosition skipped - no current lesson');
-      return;
-    }
+  const saveVideoPosition = useCallback(
+    async (position, duration) => {
+      console.log('📹 saveVideoPosition called:', {
+        position,
+        duration,
+        isStudent,
+        userId: user?.id,
+        courseId,
+      });
+      if (!isStudent || !user?.id || !courseId) {
+        console.log('📹 saveVideoPosition skipped - missing params');
+        return;
+      }
+      const currentLesson = getCurrentLesson();
+      if (!currentLesson) {
+        console.log('📹 saveVideoPosition skipped - no current lesson');
+        return;
+      }
 
-    console.log('📹 Saving video position for lesson:', currentLesson.id, 'position:', position, 'duration:', duration);
-    const result = await courseProgressService.saveVideoPosition(
-      user.id,
-      courseId,
-      currentLesson.id,
-      Math.floor(position),
-      Math.floor(duration)
-    );
-    console.log('📹 Save video position result:', result);
-    lastSavedVideoPositionRef.current = position;
-  }, [isStudent, user?.id, courseId, currentModuleIndex, currentLessonIndex]);
+      console.log(
+        '📹 Saving video position for lesson:',
+        currentLesson.id,
+        'position:',
+        position,
+        'duration:',
+        duration
+      );
+      const result = await courseProgressService.saveVideoPosition(
+        user.id,
+        courseId,
+        currentLesson.id,
+        Math.floor(position),
+        Math.floor(duration)
+      );
+      console.log('📹 Save video position result:', result);
+      lastSavedVideoPositionRef.current = position;
+    },
+    [isStudent, user?.id, courseId, currentModuleIndex, currentLessonIndex]
+  );
 
   // Load saved video position when lesson changes
   useEffect(() => {
@@ -232,7 +260,11 @@ const CoursePlayer = () => {
 
     const loadVideoPosition = async () => {
       console.log('📹 Loading video position for lesson:', currentLesson.id, currentLesson.title);
-      const saved = await courseProgressService.getVideoPosition(user.id, courseId, currentLesson.id);
+      const saved = await courseProgressService.getVideoPosition(
+        user.id,
+        courseId,
+        currentLesson.id
+      );
       console.log('📹 Saved video position data:', saved);
       if (saved && saved.video_position_seconds > 0 && !saved.video_completed) {
         lastSavedVideoPositionRef.current = Math.max(0, saved.video_position_seconds - 2);
@@ -248,7 +280,10 @@ const CoursePlayer = () => {
 
   // Video event handlers
   const handleVideoLoadedMetadata = useCallback(() => {
-    console.log('📹 Video loaded metadata, lastSavedVideoPositionRef:', lastSavedVideoPositionRef.current);
+    console.log(
+      '📹 Video loaded metadata, lastSavedVideoPositionRef:',
+      lastSavedVideoPositionRef.current
+    );
     if (videoRef.current && lastSavedVideoPositionRef.current > 0) {
       console.log('📹 Setting video currentTime to:', lastSavedVideoPositionRef.current);
       videoRef.current.currentTime = lastSavedVideoPositionRef.current;
@@ -258,7 +293,7 @@ const CoursePlayer = () => {
 
   const handleVideoTimeUpdate = useCallback(() => {
     if (!videoRef.current || !isStudent) return;
-    
+
     const video = videoRef.current;
     const position = video.currentTime;
     const duration = video.duration;
@@ -349,20 +384,35 @@ const CoursePlayer = () => {
     const point = handleRestore();
     if (point) {
       console.log('📍 Restore point data:', point);
-      console.log('📍 Restoring to Module Index:', point.lastModuleIndex, 'Lesson Index:', point.lastLessonIndex);
-      console.log('📍 Last Lesson ID:', point.lastLessonId, 'Video Position:', point.lastVideoPosition);
-      
+      console.log(
+        '📍 Restoring to Module Index:',
+        point.lastModuleIndex,
+        'Lesson Index:',
+        point.lastLessonIndex
+      );
+      console.log(
+        '📍 Last Lesson ID:',
+        point.lastLessonId,
+        'Video Position:',
+        point.lastVideoPosition
+      );
+
       // Set the video position from restore point for immediate use
       if (point.lastVideoPosition > 0) {
         lastSavedVideoPositionRef.current = Math.max(0, point.lastVideoPosition - 2);
         console.log('📹 Set video position from restore point:', lastSavedVideoPositionRef.current);
       }
-      
+
       // Update indices - this will trigger the media fetch effect
       setCurrentModuleIndex(point.lastModuleIndex);
       setCurrentLessonIndex(point.lastLessonIndex);
-      
-      console.log('📍 Restored to Module', point.lastModuleIndex + 1, 'Lesson', point.lastLessonIndex + 1);
+
+      console.log(
+        '📍 Restored to Module',
+        point.lastModuleIndex + 1,
+        'Lesson',
+        point.lastLessonIndex + 1
+      );
     }
   }, [handleRestore]);
 
@@ -387,7 +437,15 @@ const CoursePlayer = () => {
       currentLesson.id,
       videoRef.current?.currentTime || 0
     );
-  }, [isStudent, user?.id, courseId, currentModuleIndex, currentLessonIndex, course, saveRestorePoint]);
+  }, [
+    isStudent,
+    user?.id,
+    courseId,
+    currentModuleIndex,
+    currentLessonIndex,
+    course,
+    saveRestorePoint,
+  ]);
 
   // Save time spent on lesson (only for students)
   const saveTimeSpent = async (additionalSeconds) => {
@@ -402,17 +460,18 @@ const CoursePlayer = () => {
 
       console.log('Saving time:', { additionalSeconds, accumulatedTime, totalTime });
 
-      const { error } = await supabase
-        .from('student_course_progress')
-        .upsert({
+      const { error } = await supabase.from('student_course_progress').upsert(
+        {
           student_id: user.id,
           course_id: courseId,
           lesson_id: currentLesson.id,
           time_spent_seconds: totalTime,
-          last_accessed: new Date().toISOString()
-        }, {
-          onConflict: 'student_id,course_id,lesson_id'
-        });
+          last_accessed: new Date().toISOString(),
+        },
+        {
+          onConflict: 'student_id,course_id,lesson_id',
+        }
+      );
 
       if (error) {
         console.error('Error saving time spent:', error);
@@ -430,18 +489,19 @@ const CoursePlayer = () => {
     if (!user?.id || !courseId || !isStudent) return;
 
     try {
-      const { error } = await supabase
-        .from('student_course_progress')
-        .upsert({
+      const { error } = await supabase.from('student_course_progress').upsert(
+        {
           student_id: user.id,
           course_id: courseId,
           lesson_id: lessonId,
           status: 'completed',
           completed_at: new Date().toISOString(),
-          last_accessed: new Date().toISOString()
-        }, {
-          onConflict: 'student_id,course_id,lesson_id'
-        });
+          last_accessed: new Date().toISOString(),
+        },
+        {
+          onConflict: 'student_id,course_id,lesson_id',
+        }
+      );
 
       if (error) {
         console.error('Error marking lesson complete:', error);
@@ -453,12 +513,15 @@ const CoursePlayer = () => {
 
       // Update student streak after completing lesson
       try {
-        const response = await fetch(`https://streak-api.dark-mode-d021.workers.dev/${user.id}/complete`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
+        const response = await fetch(
+          `https://streak-api.dark-mode-d021.workers.dev/${user.id}/complete`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }
+        );
 
         if (response.ok) {
           const streakData = await response.json();
@@ -479,7 +542,8 @@ const CoursePlayer = () => {
 
     try {
       // Get total lessons count
-      const totalLessons = course.modules?.reduce((acc, module) => acc + (module.lessons?.length || 0), 0) || 0;
+      const totalLessons =
+        course.modules?.reduce((acc, module) => acc + (module.lessons?.length || 0), 0) || 0;
       if (totalLessons === 0) return;
 
       // Get completed lessons count from database
@@ -523,7 +587,12 @@ const CoursePlayer = () => {
     const currentLesson = targetLesson || getCurrentLesson();
     if (!currentLesson) return;
 
-    console.log('📚 initializeLessonProgress for lesson:', currentLesson.title, 'ID:', currentLesson.id);
+    console.log(
+      '📚 initializeLessonProgress for lesson:',
+      currentLesson.title,
+      'ID:',
+      currentLesson.id
+    );
 
     try {
       // Check if progress record exists
@@ -543,32 +612,35 @@ const CoursePlayer = () => {
       // If record exists, load accumulated time
       if (existing) {
         setAccumulatedTime(existing.time_spent_seconds || 0);
-        console.log('📚 Loaded existing progress for lesson:', currentLesson.title, 'Time:', existing.time_spent_seconds);
+        console.log(
+          '📚 Loaded existing progress for lesson:',
+          currentLesson.title,
+          'Time:',
+          existing.time_spent_seconds
+        );
 
         // Update last_accessed
         await supabase
           .from('student_course_progress')
           .update({
             last_accessed: new Date().toISOString(),
-            status: existing.status === 'completed' ? 'completed' : 'in_progress'
+            status: existing.status === 'completed' ? 'completed' : 'in_progress',
           })
           .eq('id', existing.id);
       } else {
         // Create new progress record
         console.log('📚 Creating new progress record for lesson:', currentLesson.title);
         setAccumulatedTime(0);
-        
-        const { error: insertError } = await supabase
-          .from('student_course_progress')
-          .insert({
-            student_id: user.id,
-            course_id: courseId,
-            lesson_id: currentLesson.id,
-            status: 'in_progress',
-            time_spent_seconds: 0,
-            last_accessed: new Date().toISOString()
-          });
-          
+
+        const { error: insertError } = await supabase.from('student_course_progress').insert({
+          student_id: user.id,
+          course_id: courseId,
+          lesson_id: currentLesson.id,
+          status: 'in_progress',
+          time_spent_seconds: 0,
+          last_accessed: new Date().toISOString(),
+        });
+
         if (insertError && insertError.code !== '23505') {
           console.error('Error creating lesson progress:', insertError);
         }
@@ -601,15 +673,20 @@ const CoursePlayer = () => {
       console.log('🎬 Waiting for position to be initialized...');
       return;
     }
-    
+
     if (course && currentModuleIndex !== null && currentLessonIndex !== null) {
       // Get the lesson directly here to avoid stale closure issues
       const module = course.modules?.[currentModuleIndex];
       const lesson = module?.lessons?.[currentLessonIndex];
-      
-      console.log('🎬 Lesson change detected - Module:', currentModuleIndex, 'Lesson:', currentLessonIndex);
+
+      console.log(
+        '🎬 Lesson change detected - Module:',
+        currentModuleIndex,
+        'Lesson:',
+        currentLessonIndex
+      );
       console.log('🎬 Target lesson:', lesson?.title, 'ID:', lesson?.id);
-      
+
       if (lesson) {
         fetchLessonMedia(lesson);
         initializeLessonProgress(lesson);
@@ -629,7 +706,7 @@ const CoursePlayer = () => {
       const currentTime = lessonStartTime ? Math.floor((Date.now() - lessonStartTime) / 1000) : 0;
       if (currentTime > 0) {
         // Use the latest accumulated time by accessing it directly
-        saveTimeSpent(currentTime).catch(err => console.error('Error saving on unmount:', err));
+        saveTimeSpent(currentTime).catch((err) => console.error('Error saving on unmount:', err));
       }
     };
   }, [currentModuleIndex, currentLessonIndex]);
@@ -657,7 +734,12 @@ const CoursePlayer = () => {
       return;
     }
 
-    console.log('🎬 fetchLessonMedia: Loading media for lesson:', currentLesson.title, 'ID:', currentLesson.id);
+    console.log(
+      '🎬 fetchLessonMedia: Loading media for lesson:',
+      currentLesson.title,
+      'ID:',
+      currentLesson.id
+    );
 
     // Reset states
     setLessonVideoUrl(null);
@@ -699,23 +781,35 @@ const CoursePlayer = () => {
 
         // Find video resources (uploaded by educator)
         const videoResource = currentLesson.resources.find(
-          r => r.type === 'video' || r.type === 'youtube'
+          (r) => r.type === 'video' || r.type === 'youtube'
         );
 
         if (videoResource) {
-          console.log('🎬 Found video resource for lesson:', currentLesson.title, 'Resource:', videoResource.name, 'Type:', videoResource.type);
-          
+          console.log(
+            '🎬 Found video resource for lesson:',
+            currentLesson.title,
+            'Resource:',
+            videoResource.name,
+            'Type:',
+            videoResource.type
+          );
+
           // For YouTube videos, use embed URL directly
           if (videoResource.type === 'youtube' && videoResource.embedUrl) {
             console.log('🎬 Setting YouTube embed URL for lesson:', currentLesson.title);
             setLessonVideoUrl(videoResource.embedUrl);
           } else if (videoResource.url) {
-            console.log('🎬 Video resource URL for lesson:', currentLesson.title, ':', videoResource.url);
-            
+            console.log(
+              '🎬 Video resource URL for lesson:',
+              currentLesson.title,
+              ':',
+              videoResource.url
+            );
+
             // Try to extract file key and get fresh presigned URL
             const fileKey = extractFileKeyFromUrl(videoResource.url);
             console.log('Extracted file key:', fileKey);
-            
+
             if (fileKey) {
               try {
                 console.log('Fetching fresh URL for file key:', fileKey);
@@ -748,7 +842,7 @@ const CoursePlayer = () => {
 
         // Get all non-video resources (PDFs, documents, links, etc.)
         const otherResources = currentLesson.resources.filter(
-          r => r.type !== 'video' || r.type === 'youtube'
+          (r) => r.type !== 'video' || r.type === 'youtube'
         );
 
         if (otherResources.length > 0) {
@@ -768,7 +862,7 @@ const CoursePlayer = () => {
                 title: r.name,
                 url: url,
                 type: r.type,
-                size: r.size
+                size: r.size,
               };
             })
           );
@@ -776,9 +870,10 @@ const CoursePlayer = () => {
         }
       }
       // Fallback: Check for old-style video_url field
-      else if (currentLesson.video_url &&
-               (currentLesson.video_url.startsWith('http') ||
-                currentLesson.video_url.startsWith('https'))) {
+      else if (
+        currentLesson.video_url &&
+        (currentLesson.video_url.startsWith('http') || currentLesson.video_url.startsWith('https'))
+      ) {
         setLessonVideoUrl(currentLesson.video_url);
       }
     } catch (error) {
@@ -809,13 +904,15 @@ const CoursePlayer = () => {
       // Fetch modules with lessons and resources
       const { data: modulesData, error: modulesError } = await supabase
         .from('course_modules')
-        .select(`
+        .select(
+          `
           *,
           lessons!fk_module (
             *,
             lesson_resources!fk_lesson (*)
           )
-        `)
+        `
+        )
         .eq('course_id', courseId)
         .order('order_index', { ascending: true });
 
@@ -826,12 +923,12 @@ const CoursePlayer = () => {
       console.log('Raw modules data from Supabase:', modulesData);
 
       // Transform modules data to match expected structure
-      const transformedModules = (modulesData || []).map(module => {
+      const transformedModules = (modulesData || []).map((module) => {
         console.log('Processing module:', module.title, 'Raw lessons:', module.lessons);
 
         // Sort lessons by order_index
-        const sortedLessons = (module.lessons || []).sort((a, b) =>
-          (a.order_index || 0) - (b.order_index || 0)
+        const sortedLessons = (module.lessons || []).sort(
+          (a, b) => (a.order_index || 0) - (b.order_index || 0)
         );
 
         return {
@@ -841,7 +938,7 @@ const CoursePlayer = () => {
           skillTags: module.skill_tags || [],
           activities: module.activities || [],
           order: module.order_index,
-          lessons: sortedLessons.map(lesson => {
+          lessons: sortedLessons.map((lesson) => {
             console.log('Processing lesson:', lesson.title, 'Resources:', lesson.lesson_resources);
             return {
               id: lesson.lesson_id,
@@ -850,29 +947,32 @@ const CoursePlayer = () => {
               description: lesson.description || '',
               duration: lesson.duration || '',
               order: lesson.order_index,
-              resources: (lesson.lesson_resources || []).map(resource => ({
+              resources: (lesson.lesson_resources || []).map((resource) => ({
                 id: resource.resource_id,
                 name: resource.name,
                 type: resource.type,
                 url: resource.url,
                 size: resource.file_size,
                 thumbnailUrl: resource.thumbnail_url,
-                embedUrl: resource.embed_url
-              }))
+                embedUrl: resource.embed_url,
+              })),
             };
-          })
+          }),
         };
       });
 
       // Combine course data with modules
       const fullCourse = {
         ...courseData,
-        modules: transformedModules
+        modules: transformedModules,
       };
 
       console.log('Full course loaded:', fullCourse);
       console.log('Modules count:', transformedModules.length);
-      console.log('Total lessons:', transformedModules.reduce((acc, m) => acc + m.lessons.length, 0));
+      console.log(
+        'Total lessons:',
+        transformedModules.reduce((acc, m) => acc + m.lessons.length, 0)
+      );
 
       setCourse(fullCourse);
 
@@ -920,7 +1020,7 @@ const CoursePlayer = () => {
 
     // Mark current lesson as completed in local state
     const lessonKey = `${currentModuleIndex}-${currentLessonIndex}`;
-    setCompletedLessons(prev => new Set([...prev, lessonKey]));
+    setCompletedLessons((prev) => new Set([...prev, lessonKey]));
 
     // Calculate next position
     let nextModuleIndex = currentModuleIndex;
@@ -1036,7 +1136,10 @@ const CoursePlayer = () => {
   // Calculate progress
   const calculateProgress = () => {
     if (!course?.modules) return 0;
-    const totalLessons = course.modules.reduce((acc, module) => acc + (module.lessons?.length || 0), 0);
+    const totalLessons = course.modules.reduce(
+      (acc, module) => acc + (module.lessons?.length || 0),
+      0
+    );
     if (totalLessons === 0) return 0;
     return Math.round((completedLessons.size / totalLessons) * 100);
   };
@@ -1044,8 +1147,10 @@ const CoursePlayer = () => {
   const canGoNext = () => {
     if (!course?.modules) return false;
     const currentModule = course.modules[currentModuleIndex];
-    return currentLessonIndex < currentModule.lessons.length - 1 ||
-           currentModuleIndex < course.modules.length - 1;
+    return (
+      currentLessonIndex < currentModule.lessons.length - 1 ||
+      currentModuleIndex < course.modules.length - 1
+    );
   };
 
   const canGoPrevious = () => {
@@ -1056,8 +1161,10 @@ const CoursePlayer = () => {
   const isLastLesson = () => {
     if (!course?.modules) return false;
     const currentModule = course.modules[currentModuleIndex];
-    return currentModuleIndex === course.modules.length - 1 &&
-           currentLessonIndex === currentModule.lessons.length - 1;
+    return (
+      currentModuleIndex === course.modules.length - 1 &&
+      currentLessonIndex === currentModule.lessons.length - 1
+    );
   };
 
   // Complete the course (called when clicking Complete on last lesson)
@@ -1079,16 +1186,16 @@ const CoursePlayer = () => {
 
     // Mark current lesson as completed in local state
     const lessonKey = `${currentModuleIndex}-${currentLessonIndex}`;
-    setCompletedLessons(prev => new Set([...prev, lessonKey]));
+    setCompletedLessons((prev) => new Set([...prev, lessonKey]));
 
     // Update course enrollment to completed status
     try {
       const { error } = await supabase
         .from('course_enrollments')
-        .update({ 
+        .update({
           status: 'completed',
           completed_at: new Date().toISOString(),
-          progress: 100
+          progress: 100,
         })
         .eq('student_id', user.id)
         .eq('course_id', courseId);
@@ -1097,12 +1204,13 @@ const CoursePlayer = () => {
         console.error('Error completing course:', error);
       } else {
         console.log('🎉 Course completed successfully!');
-        
+
         // Generate certificate for the completed course
         const studentName = user?.name || user?.email?.split('@')[0] || 'Student';
         const courseName = course?.title || 'Course';
-        const educatorName = course?.educator_name || enrollment?.educator_name || 'Skill Ecosystem Platform';
-        
+        const educatorName =
+          course?.educator_name || enrollment?.educator_name || 'Skill Ecosystem Platform';
+
         console.log('📜 Generating certificate...');
         const certResult = await generateCourseCertificate(
           user.id,
@@ -1111,16 +1219,16 @@ const CoursePlayer = () => {
           courseName,
           educatorName
         );
-        
+
         if (certResult.success) {
           console.log('✅ Certificate generated:', certResult.credentialId);
           // Navigate to my learning page with success message
-          navigate('/student/my-learning', { 
-            state: { 
-              courseCompleted: true, 
+          navigate('/student/my-learning', {
+            state: {
+              courseCompleted: true,
               courseName,
-              certificateUrl: certResult.certificateUrl 
-            } 
+              certificateUrl: certResult.certificateUrl,
+            },
           });
         } else {
           console.error('Certificate generation failed:', certResult.error);
@@ -1209,9 +1317,7 @@ const CoursePlayer = () => {
             <div className="flex items-center gap-4">
               <div className="hidden md:flex items-center gap-2">
                 <Award className="w-5 h-5 text-indigo-600" />
-                <span className="text-sm font-medium text-gray-700">
-                  {progress}% Complete
-                </span>
+                <span className="text-sm font-medium text-gray-700">{progress}% Complete</span>
               </div>
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -1251,7 +1357,10 @@ const CoursePlayer = () => {
                 {/* Modules and Lessons */}
                 <div className="space-y-2">
                   {course.modules?.map((module, moduleIndex) => (
-                    <div key={moduleIndex} className="border border-gray-200 rounded-lg overflow-hidden">
+                    <div
+                      key={moduleIndex}
+                      className="border border-gray-200 rounded-lg overflow-hidden"
+                    >
                       <div className="bg-gray-50 p-3">
                         <h3 className="font-medium text-gray-900 text-sm">
                           Module {moduleIndex + 1}: {module.title}
@@ -1263,7 +1372,9 @@ const CoursePlayer = () => {
 
                       <div className="divide-y divide-gray-100">
                         {module.lessons?.map((lesson, lessonIndex) => {
-                          const isActive = moduleIndex === currentModuleIndex && lessonIndex === currentLessonIndex;
+                          const isActive =
+                            moduleIndex === currentModuleIndex &&
+                            lessonIndex === currentLessonIndex;
                           const isCompleted = isLessonCompleted(moduleIndex, lessonIndex);
 
                           return (
@@ -1283,13 +1394,17 @@ const CoursePlayer = () => {
                                   )}
                                 </div>
                                 <div className="flex-1">
-                                  <p className={`text-sm ${isActive ? 'font-medium text-indigo-900' : 'text-gray-700'}`}>
+                                  <p
+                                    className={`text-sm ${isActive ? 'font-medium text-indigo-900' : 'text-gray-700'}`}
+                                  >
                                     {lesson.title || lesson}
                                   </p>
                                   {lesson.duration && (
                                     <div className="flex items-center gap-1 mt-1">
                                       <Clock className="w-3 h-3 text-gray-400" />
-                                      <span className="text-xs text-gray-500">{lesson.duration}</span>
+                                      <span className="text-xs text-gray-500">
+                                        {lesson.duration}
+                                      </span>
                                     </div>
                                   )}
                                 </div>
@@ -1326,9 +1441,7 @@ const CoursePlayer = () => {
                       <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
                         {currentLesson.title || currentLesson}
                       </h2>
-                      {currentModule && (
-                        <p className="text-gray-600">{currentModule.title}</p>
-                      )}
+                      {currentModule && <p className="text-gray-600">{currentModule.title}</p>}
                     </div>
 
                     {/* Lesson Content */}
@@ -1392,7 +1505,7 @@ const CoursePlayer = () => {
                             </video>
                           </div>
                         )}
-                        
+
                         {/* AI Video Learning Panel - Summary, Transcript, Chapters */}
                         {lessonVideoUrl && !lessonVideoUrl.includes('youtube.com') && (
                           <VideoLearningPanel
@@ -1504,9 +1617,7 @@ const CoursePlayer = () => {
                 <CardContent className="p-12 text-center">
                   <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-xl font-semibold text-gray-900 mb-2">No Lessons Available</h3>
-                  <p className="text-gray-600 mb-6">
-                    This course doesn't have any lessons yet.
-                  </p>
+                  <p className="text-gray-600 mb-6">This course doesn't have any lessons yet.</p>
                   <Button
                     onClick={() => navigate(getBackPath())}
                     className="bg-indigo-600 hover:bg-indigo-700 text-white"
@@ -1528,7 +1639,7 @@ const CoursePlayer = () => {
           lessonContext={{
             lessonId: currentLesson?.id,
             lessonTitle: currentLesson?.title,
-            moduleTitle: currentModule?.title
+            moduleTitle: currentModule?.title,
           }}
         />
       )}

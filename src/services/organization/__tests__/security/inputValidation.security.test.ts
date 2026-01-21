@@ -1,6 +1,6 @@
 /**
  * Security Tests: Input Validation
- * 
+ *
  * Tests SQL injection prevention, XSS prevention, and input sanitization.
  * Requirements: Security, Input Validation
  */
@@ -34,7 +34,7 @@ describe('Security Tests: Input Validation', () => {
         "1' OR '1'='1",
         "1; DELETE FROM users WHERE '1'='1",
         "' UNION SELECT * FROM users --",
-        "1' AND 1=1 --"
+        "1' AND 1=1 --",
       ];
 
       const getSubscription = async (orgId: string) => {
@@ -52,25 +52,27 @@ describe('Security Tests: Input Validation', () => {
     it('should reject SQL injection in search queries', async () => {
       // These inputs contain SQL keywords that remain after sanitization
       const maliciousSearches = [
-        "test UNION SELECT * FROM users",
-        "admin SELECT password FROM users",
-        "DROP TABLE users",
-        "DELETE FROM users WHERE true"
+        'test UNION SELECT * FROM users',
+        'admin SELECT password FROM users',
+        'DROP TABLE users',
+        'DELETE FROM users WHERE true',
       ];
 
       const searchMembers = async (query: string) => {
         // Sanitize and validate
         const sanitized = sanitizeForSQL(query);
-        
+
         // Check for remaining suspicious patterns (case-insensitive, after sanitization)
         const lowerSanitized = sanitized.toLowerCase();
-        if (lowerSanitized.includes('union') ||
-            lowerSanitized.includes('select') ||
-            lowerSanitized.includes('drop') ||
-            lowerSanitized.includes('delete')) {
+        if (
+          lowerSanitized.includes('union') ||
+          lowerSanitized.includes('select') ||
+          lowerSanitized.includes('drop') ||
+          lowerSanitized.includes('delete')
+        ) {
           throw new Error('Invalid search query');
         }
-        
+
         return { results: [] };
       };
 
@@ -82,23 +84,23 @@ describe('Security Tests: Input Validation', () => {
     it('should sanitize pool names for SQL safety', async () => {
       const createPool = async (name: string) => {
         const sanitized = sanitizeForSQL(name);
-        
+
         // Additional validation
         if (sanitized.length > 100) {
           throw new Error('Pool name too long');
         }
-        
+
         return { name: sanitized };
       };
 
-      const result = await createPool("Computer Science Department");
-      expect(result.name).toBe("Computer Science Department");
+      const result = await createPool('Computer Science Department');
+      expect(result.name).toBe('Computer Science Department');
 
       // The sanitization escapes single quotes (') to ('') and removes -- and ;
       const maliciousResult = await createPool("Test'; DROP TABLE --");
       // After sanitization: "Test'' DROP TABLE " (single quote escaped, -- and ; removed)
-      expect(maliciousResult.name).not.toContain(";");
-      expect(maliciousResult.name).not.toContain("--");
+      expect(maliciousResult.name).not.toContain(';');
+      expect(maliciousResult.name).not.toContain('--');
     });
 
     it('should use parameterized queries pattern', async () => {
@@ -107,11 +109,11 @@ describe('Security Tests: Input Validation', () => {
         // In real implementation, this would use prepared statements
         // Here we verify the pattern is correct
         const paramCount = (query.match(/\$\d+/g) || []).length;
-        
+
         if (paramCount !== params.length) {
           throw new Error('Parameter count mismatch');
         }
-        
+
         return { executed: true, paramCount };
       };
 
@@ -124,10 +126,12 @@ describe('Security Tests: Input Validation', () => {
       expect(result.paramCount).toBe(2);
 
       // Incorrect usage should fail
-      expect(() => executeQuery(
-        'SELECT * FROM subscriptions WHERE organization_id = $1',
-        ['org-123', 'extra-param']
-      )).toThrow('Parameter count mismatch');
+      expect(() =>
+        executeQuery('SELECT * FROM subscriptions WHERE organization_id = $1', [
+          'org-123',
+          'extra-param',
+        ])
+      ).toThrow('Parameter count mismatch');
     });
   });
 
@@ -152,7 +156,7 @@ describe('Security Tests: Input Validation', () => {
         '<img src="x" onerror="alert(1)">',
         '<a href="javascript:alert(1)">Click me</a>',
         '<div onmouseover="alert(1)">Hover me</div>',
-        '"><script>alert(document.cookie)</script>'
+        '"><script>alert(document.cookie)</script>',
       ];
 
       const createInvitation = async (message: string) => {
@@ -185,7 +189,7 @@ describe('Security Tests: Input Validation', () => {
     it('should sanitize user-provided metadata', async () => {
       const saveMetadata = async (metadata: Record<string, any>) => {
         const sanitized: Record<string, any> = {};
-        
+
         for (const [key, value] of Object.entries(metadata)) {
           if (typeof value === 'string') {
             sanitized[key] = sanitizeHTML(value);
@@ -193,14 +197,14 @@ describe('Security Tests: Input Validation', () => {
             sanitized[key] = value;
           }
         }
-        
+
         return sanitized;
       };
 
       const result = await saveMetadata({
         department: '<script>alert(1)</script>CS',
         grade: 10,
-        notes: '<img src=x onerror=alert(1)>'
+        notes: '<img src=x onerror=alert(1)>',
       });
 
       // HTML encoding converts < to &lt; so actual HTML tags won't execute
@@ -254,7 +258,7 @@ describe('Security Tests: Input Validation', () => {
     it('should validate numeric inputs', async () => {
       const validateSeatCount = (seats: any): number => {
         const num = parseInt(seats, 10);
-        
+
         if (isNaN(num)) {
           throw new Error('Seat count must be a number');
         }
@@ -264,7 +268,7 @@ describe('Security Tests: Input Validation', () => {
         if (num > 100000) {
           throw new Error('Seat count exceeds maximum');
         }
-        
+
         return num;
       };
 
@@ -319,11 +323,13 @@ describe('Security Tests: Input Validation', () => {
 
       const canSendInvitation = (orgId: string, count: number): boolean => {
         const current = invitationCounts.get(orgId) || 0;
-        
+
         if (current + count > MAX_INVITATIONS_PER_HOUR) {
-          throw new Error(`Cannot send ${count} invitations. Limit: ${MAX_INVITATIONS_PER_HOUR}/hour`);
+          throw new Error(
+            `Cannot send ${count} invitations. Limit: ${MAX_INVITATIONS_PER_HOUR}/hour`
+          );
         }
-        
+
         invitationCounts.set(orgId, current + count);
         return true;
       };
@@ -341,11 +347,11 @@ describe('Security Tests: Input Validation', () => {
     it('should validate request content types', async () => {
       const validateContentType = (contentType: string, expected: string[]): boolean => {
         const normalized = contentType.toLowerCase().split(';')[0].trim();
-        
+
         if (!expected.includes(normalized)) {
           throw new Error(`Invalid content type: ${contentType}`);
         }
-        
+
         return true;
       };
 
@@ -355,7 +361,9 @@ describe('Security Tests: Input Validation', () => {
       expect(validateContentType('application/json; charset=utf-8', jsonTypes)).toBe(true);
 
       expect(() => validateContentType('text/html', jsonTypes)).toThrow('Invalid content type');
-      expect(() => validateContentType('multipart/form-data', jsonTypes)).toThrow('Invalid content type');
+      expect(() => validateContentType('multipart/form-data', jsonTypes)).toThrow(
+        'Invalid content type'
+      );
     });
 
     it('should validate JSON payload structure', async () => {
@@ -377,8 +385,9 @@ describe('Security Tests: Input Validation', () => {
       expect(validatePayload(validPayload, ['organization_id', 'seat_count'])).toBe(true);
 
       expect(() => validatePayload(null, ['organization_id'])).toThrow('must be an object');
-      expect(() => validatePayload({ organization_id: 'org-1' }, ['organization_id', 'seat_count']))
-        .toThrow('Missing required field: seat_count');
+      expect(() =>
+        validatePayload({ organization_id: 'org-1' }, ['organization_id', 'seat_count'])
+      ).toThrow('Missing required field: seat_count');
     });
   });
 });

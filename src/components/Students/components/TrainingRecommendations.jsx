@@ -19,9 +19,12 @@ const TrainingRecommendations = ({ recommendations }) => {
   }, [recommendations]);
 
   // Memoize click handler to prevent recreation on every render
-  const handleCourseClick = useCallback((courseId) => {
-    navigate(`/student/courses/${courseId}/learn`);
-  }, [navigate]);
+  const handleCourseClick = useCallback(
+    (courseId) => {
+      navigate(`/student/courses/${courseId}/learn`);
+    },
+    [navigate]
+  );
 
   if (topCourses.length === 0) return null;
 
@@ -29,10 +32,11 @@ const TrainingRecommendations = ({ recommendations }) => {
     <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-5 border-2 border-dashed border-blue-300 shadow-sm">
       {/* Header */}
       <div className="flex items-center gap-3 mb-4">
-        <div 
+        <div
           className="w-14 h-14 rounded-lg  flex items-center justify-center shrink-0 overflow-hidden border border-white/50"
           style={{
-            boxShadow: '0 0 15px rgba(255, 255, 255, 0.5), 0 0 30px rgba(255, 255, 255, 0.3), inset 0 0 10px rgba(255, 255, 255, 0.1)'
+            boxShadow:
+              '0 0 15px rgba(255, 255, 255, 0.5), 0 0 30px rgba(255, 255, 255, 0.3), inset 0 0 10px rgba(255, 255, 255, 0.1)',
           }}
         >
           <img
@@ -42,9 +46,7 @@ const TrainingRecommendations = ({ recommendations }) => {
           />
         </div>
         <div>
-          <h3 className="text-base font-bold text-gray-900">
-            Recommended Courses
-          </h3>
+          <h3 className="text-base font-bold text-gray-900">Recommended Courses</h3>
           <p className="text-xs text-gray-900 font-medium">Based on your assessment</p>
         </div>
       </div>
@@ -65,9 +67,7 @@ const TrainingRecommendations = ({ recommendations }) => {
                 <div className="flex-1">
                   <div className="flex items-center justify-between gap-3 mb-2">
                     <div className="flex items-center gap-2 flex-wrap flex-1">
-                      <h4 className="text-base font-bold text-gray-900">
-                        {course.title}
-                      </h4>
+                      <h4 className="text-base font-bold text-gray-900">{course.title}</h4>
                       {isTopPick && (
                         <Badge className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs px-2.5 py-0.5 rounded-full font-semibold shadow-sm">
                           Top Pick
@@ -79,9 +79,7 @@ const TrainingRecommendations = ({ recommendations }) => {
 
                   {/* Course Code, Duration & Skill Type */}
                   <div className="flex items-center gap-4 text-sm text-gray-900 font-medium flex-wrap">
-                    {course.code && (
-                      <span className="font-medium">{course.code}</span>
-                    )}
+                    {course.code && <span className="font-medium">{course.code}</span>}
                     {course.duration && (
                       <div className="flex items-center gap-1">
                         <Clock className="w-4 h-4 text-blue-600" />

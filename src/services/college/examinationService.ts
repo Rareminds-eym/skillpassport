@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabaseClient';
 
 // ============================================
 // EXAMINATION MANAGEMENT SERVICE
-// Connects to: exam_windows, exam_registrations, exam_rooms, 
+// Connects to: exam_windows, exam_registrations, exam_rooms,
 //              exam_seating_arrangements, invigilator_assignments
 // ============================================
 
@@ -120,7 +120,10 @@ export async function getExamWindows(filters?: {
   return data || [];
 }
 
-export async function updateExamWindow(id: string, updates: Partial<ExamWindow>): Promise<ExamWindow> {
+export async function updateExamWindow(
+  id: string,
+  updates: Partial<ExamWindow>
+): Promise<ExamWindow> {
   const { data, error } = await supabase
     .from('exam_windows')
     .update(updates)
@@ -145,17 +148,21 @@ export async function publishExamWindow(id: string): Promise<void> {
 // EXAM REGISTRATION
 // ============================================
 
-export async function registerStudentForExam(data: Partial<ExamRegistration>): Promise<ExamRegistration> {
+export async function registerStudentForExam(
+  data: Partial<ExamRegistration>
+): Promise<ExamRegistration> {
   // Generate registration number
   const registrationNumber = `REG${Date.now()}${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
 
   const { data: registration, error } = await supabase
     .from('exam_registrations')
-    .insert([{
-      ...data,
-      registration_number: registrationNumber,
-      registration_date: new Date().toISOString().split('T')[0]
-    }])
+    .insert([
+      {
+        ...data,
+        registration_number: registrationNumber,
+        registration_date: new Date().toISOString().split('T')[0],
+      },
+    ])
     .select()
     .single();
 
@@ -189,7 +196,7 @@ export async function issueHallTicket(registrationId: string): Promise<string> {
     .update({
       hall_ticket_number: hallTicketNumber,
       hall_ticket_issued: true,
-      hall_ticket_issued_date: new Date().toISOString().split('T')[0]
+      hall_ticket_issued_date: new Date().toISOString().split('T')[0],
     })
     .eq('id', registrationId);
 
@@ -226,11 +233,7 @@ export async function bulkIssueHallTickets(examWindowId: string): Promise<number
 // ============================================
 
 export async function createExamRoom(data: Partial<ExamRoom>): Promise<ExamRoom> {
-  const { data: room, error } = await supabase
-    .from('exam_rooms')
-    .insert([data])
-    .select()
-    .single();
+  const { data: room, error } = await supabase.from('exam_rooms').insert([data]).select().single();
 
   if (error) throw error;
   return room;
@@ -270,7 +273,9 @@ export async function updateExamRoom(id: string, updates: Partial<ExamRoom>): Pr
 // SEATING ARRANGEMENT
 // ============================================
 
-export async function createSeatingArrangement(data: Partial<ExamSeatingArrangement>): Promise<ExamSeatingArrangement> {
+export async function createSeatingArrangement(
+  data: Partial<ExamSeatingArrangement>
+): Promise<ExamSeatingArrangement> {
   const { data: seating, error } = await supabase
     .from('exam_seating_arrangements')
     .insert([data])
@@ -281,7 +286,9 @@ export async function createSeatingArrangement(data: Partial<ExamSeatingArrangem
   return seating;
 }
 
-export async function getSeatingArrangements(examTimetableId: string): Promise<ExamSeatingArrangement[]> {
+export async function getSeatingArrangements(
+  examTimetableId: string
+): Promise<ExamSeatingArrangement[]> {
   const { data, error } = await supabase
     .from('exam_seating_arrangements')
     .select('*')
@@ -302,7 +309,7 @@ export async function markAttendance(
     .update({
       attendance_status: status,
       marked_at: new Date().toISOString(),
-      marked_by: markedBy
+      marked_by: markedBy,
     })
     .eq('id', seatingId);
 
@@ -313,7 +320,9 @@ export async function markAttendance(
 // INVIGILATOR ASSIGNMENT
 // ============================================
 
-export async function assignInvigilator(data: Partial<InvigilatorAssignment>): Promise<InvigilatorAssignment> {
+export async function assignInvigilator(
+  data: Partial<InvigilatorAssignment>
+): Promise<InvigilatorAssignment> {
   const { data: assignment, error } = await supabase
     .from('invigilator_assignments')
     .insert([data])
@@ -348,7 +357,7 @@ export async function markInvigilatorAttendance(
     .from('invigilator_assignments')
     .update({
       attendance_status: status,
-      check_in_time: status === 'present' ? new Date().toISOString() : null
+      check_in_time: status === 'present' ? new Date().toISOString() : null,
     })
     .eq('id', assignmentId);
 
@@ -369,14 +378,14 @@ export async function getExamStatistics(examWindowId: string): Promise<any> {
 
   const stats = {
     total: registrations?.length || 0,
-    confirmed: registrations?.filter(r => r.status === 'confirmed').length || 0,
-    pending: registrations?.filter(r => r.status === 'registered').length || 0,
-    cancelled: registrations?.filter(r => r.status === 'cancelled').length || 0,
-    feePaid: registrations?.filter(r => r.fee_paid).length || 0,
-    feePending: registrations?.filter(r => !r.fee_paid).length || 0,
-    regular: registrations?.filter(r => r.registration_type === 'regular').length || 0,
-    arrear: registrations?.filter(r => r.registration_type === 'arrear').length || 0,
-    improvement: registrations?.filter(r => r.registration_type === 'improvement').length || 0
+    confirmed: registrations?.filter((r) => r.status === 'confirmed').length || 0,
+    pending: registrations?.filter((r) => r.status === 'registered').length || 0,
+    cancelled: registrations?.filter((r) => r.status === 'cancelled').length || 0,
+    feePaid: registrations?.filter((r) => r.fee_paid).length || 0,
+    feePending: registrations?.filter((r) => !r.fee_paid).length || 0,
+    regular: registrations?.filter((r) => r.registration_type === 'regular').length || 0,
+    arrear: registrations?.filter((r) => r.registration_type === 'arrear').length || 0,
+    improvement: registrations?.filter((r) => r.registration_type === 'improvement').length || 0,
   };
 
   return stats;
@@ -392,9 +401,9 @@ export async function getAttendanceReport(examTimetableId: string): Promise<any>
 
   return {
     total: seating?.length || 0,
-    present: seating?.filter(s => s.attendance_status === 'present').length || 0,
-    absent: seating?.filter(s => s.attendance_status === 'absent').length || 0,
-    late: seating?.filter(s => s.attendance_status === 'late').length || 0,
-    expected: seating?.filter(s => s.attendance_status === 'expected').length || 0
+    present: seating?.filter((s) => s.attendance_status === 'present').length || 0,
+    absent: seating?.filter((s) => s.attendance_status === 'absent').length || 0,
+    late: seating?.filter((s) => s.attendance_status === 'late').length || 0,
+    expected: seating?.filter((s) => s.attendance_status === 'expected').length || 0,
   };
 }

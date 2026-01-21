@@ -27,7 +27,7 @@ import {
   BookOpenCheck,
   CheckSquare,
   Zap,
-  Star
+  Star,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
@@ -39,14 +39,14 @@ import {
   getTodaySchedule,
   ClassInfo,
   Classmate,
-  TimetableSlot
+  TimetableSlot,
 } from '../../services/studentClassService';
 import {
   getAssignmentsByStudentId,
   getAssignmentStats,
   updateAssignmentStatus,
   submitAssignmentWithStagedFiles,
-  getAssignmentWithFiles
+  getAssignmentWithFiles,
 } from '../../services/assignmentsService';
 import StudentAssignmentFileUpload from '../../components/student/StudentAssignmentFileUpload';
 import Pagination from '../../components/educator/Pagination';
@@ -59,20 +59,38 @@ import {
   getGroupedStudentExams,
   StudentExam,
   StudentResult,
-  GroupedExam
+  GroupedExam,
 } from '../../services/studentExamService';
 
-type TabType = 'overview' | 'assignments' | 'timetable' | 'classmates' | 'curriculars' | 'exams' | 'results';
+type TabType =
+  | 'overview'
+  | 'assignments'
+  | 'timetable'
+  | 'classmates'
+  | 'curriculars'
+  | 'exams'
+  | 'results';
 type TimetableViewType = 'week' | 'day';
 
 const DAYS = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const SHORT_DAYS = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const TIME_SLOTS = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
+const TIME_SLOTS = [
+  '09:00',
+  '10:00',
+  '11:00',
+  '12:00',
+  '13:00',
+  '14:00',
+  '15:00',
+  '16:00',
+  '17:00',
+  '18:00',
+];
 
 // Subject color mapping for the grid view
 const getSubjectColor = (subject: string): { bg: string; text: string; border: string } => {
   const subjectLower = subject?.toLowerCase() || '';
-  
+
   if (subjectLower.includes('math')) {
     return { bg: 'bg-purple-100', text: 'text-purple-900', border: 'border-purple-200' };
   }
@@ -88,7 +106,11 @@ const getSubjectColor = (subject: string): { bg: string; text: string; border: s
   if (subjectLower.includes('art')) {
     return { bg: 'bg-emerald-100', text: 'text-emerald-900', border: 'border-emerald-200' };
   }
-  if (subjectLower.includes('science') || subjectLower.includes('physics') || subjectLower.includes('chemistry')) {
+  if (
+    subjectLower.includes('science') ||
+    subjectLower.includes('physics') ||
+    subjectLower.includes('chemistry')
+  ) {
     return { bg: 'bg-blue-100', text: 'text-blue-900', border: 'border-blue-200' };
   }
   if (subjectLower.includes('english') || subjectLower.includes('language')) {
@@ -97,7 +119,11 @@ const getSubjectColor = (subject: string): { bg: string; text: string; border: s
   if (subjectLower.includes('music')) {
     return { bg: 'bg-pink-100', text: 'text-pink-900', border: 'border-pink-200' };
   }
-  if (subjectLower.includes('sport') || subjectLower.includes('pe') || subjectLower.includes('physical')) {
+  if (
+    subjectLower.includes('sport') ||
+    subjectLower.includes('pe') ||
+    subjectLower.includes('physical')
+  ) {
     return { bg: 'bg-orange-100', text: 'text-orange-900', border: 'border-orange-200' };
   }
   return { bg: 'bg-gray-100', text: 'text-gray-900', border: 'border-gray-200' };
@@ -106,7 +132,7 @@ const getSubjectColor = (subject: string): { bg: string; text: string; border: s
 // Subject icon mapping for better visual representation
 const getSubjectIcon = (subjectName: string) => {
   const subject = subjectName?.toLowerCase() || '';
-  
+
   if (subject.includes('math')) {
     return Calculator;
   }
@@ -128,7 +154,7 @@ const getSubjectIcon = (subjectName: string) => {
 // Exam type icon mapping
 const getExamTypeIcon = (examType: string) => {
   const type = examType?.toLowerCase() || '';
-  
+
   if (type.includes('term') || type.includes('mid')) {
     return ClipboardList;
   }
@@ -164,7 +190,14 @@ const MyClass: React.FC = () => {
   const [timetable, setTimetable] = useState<TimetableSlot[]>([]);
   const [todaySchedule, setTodaySchedule] = useState<TimetableSlot[]>([]);
   const [assignments, setAssignments] = useState<any[]>([]);
-  const [stats, setStats] = useState({ total: 0, todo: 0, inProgress: 0, submitted: 0, graded: 0, averageGrade: 0 });
+  const [stats, setStats] = useState({
+    total: 0,
+    todo: 0,
+    inProgress: 0,
+    submitted: 0,
+    graded: 0,
+    averageGrade: 0,
+  });
   const [clubs, setClubs] = useState<any[]>([]);
   const [myMemberships, setMyMemberships] = useState<any[]>([]);
   const [myAchievementsData, setMyAchievementsData] = useState<any[]>([]);
@@ -173,23 +206,36 @@ const MyClass: React.FC = () => {
   const [exams, setExams] = useState<StudentExam[]>([]);
   const [groupedExams, setGroupedExams] = useState<GroupedExam[]>([]);
   const [results, setResults] = useState<StudentResult[]>([]);
-  const [resultStats, setResultStats] = useState({ totalExams: 0, passed: 0, failed: 0, absent: 0, averagePercentage: 0 });
-  
+  const [resultStats, setResultStats] = useState({
+    totalExams: 0,
+    passed: 0,
+    failed: 0,
+    absent: 0,
+    averagePercentage: 0,
+  });
+
   // Assignment upload states
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const fileUploadRef = React.useRef<{ getStagedFiles: () => File[]; clearStagedFiles: () => void }>(null);
-  
+  const fileUploadRef = React.useRef<{
+    getStagedFiles: () => File[];
+    clearStagedFiles: () => void;
+  }>(null);
+
   // Assignment details states
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [assignmentDetails, setAssignmentDetails] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
-  
+
   // Modal states
   const [showNotification, setShowNotification] = useState(false);
-  const [notification, setNotification] = useState({ type: 'info' as const, title: '', message: '' });
+  const [notification, setNotification] = useState({
+    type: 'info' as const,
+    title: '',
+    message: '',
+  });
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -213,20 +259,21 @@ const MyClass: React.FC = () => {
 
       try {
         setLoading(true);
-        
+
         // Fetch class info first
         const classData = await getStudentClassInfo(studentId);
         setClassInfo(classData);
 
         if (classData?.id) {
           // Fetch all related data in parallel
-          const [classmatesData, timetableData, todayData, assignmentsData, statsData] = await Promise.all([
-            getClassmates(classData.id, studentId),
-            getClassTimetable(classData.id),
-            getTodaySchedule(classData.id),
-            getAssignmentsByStudentId(studentId),
-            getAssignmentStats(studentId)
-          ]);
+          const [classmatesData, timetableData, todayData, assignmentsData, statsData] =
+            await Promise.all([
+              getClassmates(classData.id, studentId),
+              getClassTimetable(classData.id),
+              getTodaySchedule(classData.id),
+              getAssignmentsByStudentId(studentId),
+              getAssignmentStats(studentId),
+            ]);
 
           setClassmates(classmatesData);
           setTimetable(timetableData);
@@ -263,7 +310,7 @@ const MyClass: React.FC = () => {
             total_sessions_attended: membership.total_sessions_attended,
             total_sessions_held: membership.total_sessions_held,
             attendance_percentage: membership.attendance_percentage,
-            performance_score: membership.performance_score
+            performance_score: membership.performance_score,
           }));
 
           const clubsWithMembers = await Promise.all(
@@ -285,7 +332,7 @@ const MyClass: React.FC = () => {
                 capacity: clubDetails?.capacity || 30,
                 description: clubDetails?.description || '',
                 memberCount: memberCount || 0,
-                members: []
+                members: [],
               };
             })
           );
@@ -297,7 +344,8 @@ const MyClass: React.FC = () => {
         // Fetch achievements
         const { data: resultsData } = await supabase
           .from('competition_results')
-          .select(`
+          .select(
+            `
             result_id,
             rank,
             score,
@@ -311,7 +359,8 @@ const MyClass: React.FC = () => {
               competition_date,
               status
             )
-          `)
+          `
+          )
           .eq('student_email', userEmail)
           .order('rank', { ascending: true });
 
@@ -322,7 +371,8 @@ const MyClass: React.FC = () => {
         // Fetch certificates
         const { data: certificatesData } = await supabase
           .from('club_certificates')
-          .select(`
+          .select(
+            `
             certificate_id,
             title,
             description,
@@ -335,7 +385,8 @@ const MyClass: React.FC = () => {
               level,
               category
             )
-          `)
+          `
+          )
           .eq('student_email', userEmail)
           .order('issued_date', { ascending: false });
 
@@ -349,7 +400,7 @@ const MyClass: React.FC = () => {
             getStudentExams(studentId),
             getGroupedStudentExams(studentId),
             getStudentResults(studentId),
-            getStudentResultStats(studentId)
+            getStudentResultStats(studentId),
           ]);
           setExams(examsData);
           setGroupedExams(groupedExamsData);
@@ -370,22 +421,24 @@ const MyClass: React.FC = () => {
   const upcomingAssignments = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     return assignments
-      .filter(a => {
+      .filter((a) => {
         if (a.status === 'graded') return false;
         const dueDate = parseAsLocalDate(a.due_date);
         dueDate.setHours(0, 0, 0, 0);
         return dueDate.getTime() >= today.getTime();
       })
-      .sort((a, b) => parseAsLocalDate(a.due_date).getTime() - parseAsLocalDate(b.due_date).getTime())
+      .sort(
+        (a, b) => parseAsLocalDate(a.due_date).getTime() - parseAsLocalDate(b.due_date).getTime()
+      )
       .slice(0, 5);
   }, [assignments]);
 
   // Group timetable by day
   const timetableByDay = useMemo(() => {
     const grouped: Record<number, TimetableSlot[]> = {};
-    timetable.forEach(slot => {
+    timetable.forEach((slot) => {
       if (!grouped[slot.day_of_week]) {
         grouped[slot.day_of_week] = [];
       }
@@ -397,7 +450,7 @@ const MyClass: React.FC = () => {
   // Get slot for a specific day and time
   const getSlotForDayAndTime = (day: number, timeSlot: string): TimetableSlot | undefined => {
     const daySlots = timetableByDay[day] || [];
-    return daySlots.find(slot => {
+    return daySlots.find((slot) => {
       const slotStartHour = parseInt(slot.start_time?.split(':')[0] || '0');
       const timeSlotHour = parseInt(timeSlot.split(':')[0]);
       return slotStartHour === timeSlotHour;
@@ -406,10 +459,10 @@ const MyClass: React.FC = () => {
 
   // Get clubs with enhanced data
   const myClubs = useMemo(() => {
-    return clubs.map(club => {
+    return clubs.map((club) => {
       const attendance = attendanceData[club.club_id] || [];
       const attendancePercentage = club.attendance_percentage || 0;
-      
+
       return {
         ...club,
         avgAttendance: Math.round(attendancePercentage),
@@ -423,13 +476,14 @@ const MyClass: React.FC = () => {
   // Get upcoming activities from all clubs
   const upcomingActivities = useMemo(() => {
     const activities: any[] = [];
-    myClubs.forEach(club => {
+    myClubs.forEach((club) => {
       if (club.meeting_day && club.meeting_time) {
         activities.push({
           title: `${club.name?.charAt(0).toUpperCase() + club.name?.slice(1).toLowerCase() || 'Club'} Meeting`,
-          clubName: club.name?.charAt(0).toUpperCase() + club.name?.slice(1).toLowerCase() || 'Club',
+          clubName:
+            club.name?.charAt(0).toUpperCase() + club.name?.slice(1).toLowerCase() || 'Club',
           date: new Date(),
-          type: 'meeting'
+          type: 'meeting',
         });
       }
     });
@@ -439,8 +493,8 @@ const MyClass: React.FC = () => {
   // Get student achievements from competitions
   const myAchievements = useMemo(() => {
     return myAchievementsData
-      .filter(result => result.competitions)
-      .map(result => ({
+      .filter((result) => result.competitions)
+      .map((result) => ({
         result_id: result.result_id,
         name: result.competitions.name,
         rank: result.rank,
@@ -450,7 +504,7 @@ const MyClass: React.FC = () => {
         category: result.competitions.category || 'General',
         date: result.competitions.competition_date,
         status: result.competitions.status,
-        notes: result.performance_notes
+        notes: result.performance_notes,
       }))
       .sort((a, b) => a.rank - b.rank);
   }, [myAchievementsData]);
@@ -464,7 +518,12 @@ const MyClass: React.FC = () => {
 
   const totalPages = Math.ceil(assignments.length / itemsPerPage);
 
-  const showNotificationModal = (type: 'error' | 'success' | 'warning' | 'info', title: string, message: string) => {
+  const showNotificationModal = (
+    type: 'error' | 'success' | 'warning' | 'info',
+    title: string,
+    message: string
+  ) => {
+    // @ts-expect-error - Auto-suppressed for migration
     setNotification({ type, title, message });
     setShowNotification(true);
   };
@@ -474,69 +533,81 @@ const MyClass: React.FC = () => {
   };
 
   const categoryColors: Record<string, string> = {
-    robotics: "bg-blue-100 text-blue-700",
-    literature: "bg-violet-100 text-violet-700",
-    science: "bg-emerald-100 text-emerald-700",
-    sports: "bg-rose-100 text-rose-700",
-    arts: "bg-pink-100 text-pink-700",
-    music: "bg-purple-100 text-purple-700",
-    debate: "bg-amber-100 text-amber-700",
-    drama: "bg-indigo-100 text-indigo-700",
-    technology: "bg-cyan-100 text-cyan-700",
-    community: "bg-teal-100 text-teal-700",
+    robotics: 'bg-blue-100 text-blue-700',
+    literature: 'bg-violet-100 text-violet-700',
+    science: 'bg-emerald-100 text-emerald-700',
+    sports: 'bg-rose-100 text-rose-700',
+    arts: 'bg-pink-100 text-pink-700',
+    music: 'bg-purple-100 text-purple-700',
+    debate: 'bg-amber-100 text-amber-700',
+    drama: 'bg-indigo-100 text-indigo-700',
+    technology: 'bg-cyan-100 text-cyan-700',
+    community: 'bg-teal-100 text-teal-700',
   };
 
-
-
-  const handleStatusChange = async (assignmentId: string, studentAssignmentId: string, newStatus: string) => {
+  const handleStatusChange = async (
+    assignmentId: string,
+    studentAssignmentId: string,
+    newStatus: string
+  ) => {
     try {
       // Find the assignment to check late submission policy
-      const assignment = assignments.find(a => a.assignment_id === assignmentId);
-      
+      const assignment = assignments.find((a) => a.assignment_id === assignmentId);
+
       // Validate late submission if trying to submit
       if (newStatus === 'submitted' && assignment) {
         if (!canSubmitAssignment(assignment)) {
-          showNotificationModal('error', 'Submission Not Allowed', 
-            'Late submission is not allowed for this assignment and the due date has passed.');
+          showNotificationModal(
+            'error',
+            'Submission Not Allowed',
+            'Late submission is not allowed for this assignment and the due date has passed.'
+          );
           return;
         }
       }
-      
+
       await updateAssignmentStatus(studentAssignmentId, newStatus);
-      
+
       // Update local state with submission date if submitting
-      setAssignments(prev => prev.map(a => 
-        a.assignment_id === assignmentId 
-          ? { 
-              ...a, 
-              status: newStatus,
-              submission_date: newStatus === 'submitted' && !a.submission_date 
-                ? new Date().toISOString() 
-                : a.submission_date
-            } 
-          : a
-      ));
-      
+      setAssignments((prev) =>
+        prev.map((a) =>
+          a.assignment_id === assignmentId
+            ? {
+                ...a,
+                status: newStatus,
+                submission_date:
+                  newStatus === 'submitted' && !a.submission_date
+                    ? new Date().toISOString()
+                    : a.submission_date,
+              }
+            : a
+        )
+      );
+
       const updatedStats = await getAssignmentStats(studentId!);
       setStats(updatedStats);
-      
+
       // Show success notification
       const statusLabels = {
-        'todo': 'To Do',
-        'in-progress': 'In Progress', 
-        'submitted': 'Submitted',
-        'graded': 'Graded'
+        todo: 'To Do',
+        'in-progress': 'In Progress',
+        submitted: 'Submitted',
+        graded: 'Graded',
       };
-      showNotificationModal('success', 'Status Updated', 
-        `Assignment status changed to ${statusLabels[newStatus] || newStatus}`);
-        
+      showNotificationModal(
+        'success',
+        'Status Updated',
+        `Assignment status changed to ${statusLabels[newStatus] || newStatus}`
+      );
     } catch (error) {
       console.error('Error updating status:', error);
-      showNotificationModal('error', 'Update Failed', 
-        'Failed to update assignment status. Please try again.');
+      showNotificationModal(
+        'error',
+        'Update Failed',
+        'Failed to update assignment status. Please try again.'
+      );
     }
   };
-
 
   const formatTime = (time: string) => {
     if (!time) return '';
@@ -549,33 +620,43 @@ const MyClass: React.FC = () => {
 
   const getDaysRemaining = (dueDate: string) => {
     const now = new Date();
-    
+
     // Parse the due date and treat it as local time
     const dueDateStr = dueDate.replace('Z', '').replace('+00:00', '').replace('T', ' ');
     const localDue = new Date(dueDateStr);
-    
+
     // Calculate difference in milliseconds
     const diffTime = localDue.getTime() - now.getTime();
-    
+
     // If overdue, calculate how many days/hours overdue
     if (diffTime < 0) {
       const overdueDays = Math.floor(Math.abs(diffTime) / (1000 * 60 * 60 * 24));
-      const overdueHours = Math.floor((Math.abs(diffTime) % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      
+      const overdueHours = Math.floor(
+        (Math.abs(diffTime) % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+      );
+
       if (overdueDays > 0) {
-        return <span className="text-red-700 font-medium">{overdueDays} day{overdueDays > 1 ? 's' : ''} overdue</span>;
+        return (
+          <span className="text-red-700 font-medium">
+            {overdueDays} day{overdueDays > 1 ? 's' : ''} overdue
+          </span>
+        );
       } else if (overdueHours > 0) {
-        return <span className="text-red-700 font-medium">{overdueHours} hour{overdueHours > 1 ? 's' : ''} overdue</span>;
+        return (
+          <span className="text-red-700 font-medium">
+            {overdueHours} hour{overdueHours > 1 ? 's' : ''} overdue
+          </span>
+        );
       } else {
         return <span className="text-red-700 font-medium">Just overdue</span>;
       }
     }
-    
+
     // If not overdue, calculate remaining time
     const remainingDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
     const remainingHours = Math.floor((diffTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const remainingMinutes = Math.floor((diffTime % (1000 * 60 * 60)) / (1000 * 60));
-    
+
     if (remainingDays > 1) {
       return <span className="text-gray-600">{remainingDays} days left</span>;
     } else if (remainingDays === 1) {
@@ -593,11 +674,11 @@ const MyClass: React.FC = () => {
 
   const isOverdue = (dueDate: string) => {
     const now = new Date();
-    
+
     // Parse the due date and treat it as local time
     const dueDateStr = dueDate.replace('Z', '').replace('+00:00', '').replace('T', ' ');
     const localDue = new Date(dueDateStr);
-    
+
     return localDue < now;
   };
 
@@ -605,13 +686,16 @@ const MyClass: React.FC = () => {
     // If assignment was submitted, check if it was submitted on time
     if (assignment.submission_date) {
       const submissionDate = new Date(assignment.submission_date);
-      const dueDateStr = assignment.due_date.replace('Z', '').replace('+00:00', '').replace('T', ' ');
+      const dueDateStr = assignment.due_date
+        .replace('Z', '')
+        .replace('+00:00', '')
+        .replace('T', ' ');
       const localDue = new Date(dueDateStr);
-      
+
       // If submitted before due date, it's not overdue regardless of current time
       return submissionDate > localDue;
     }
-    
+
     // If not submitted, check if current time is past due date
     return isOverdue(assignment.due_date);
   };
@@ -620,16 +704,19 @@ const MyClass: React.FC = () => {
     // If assignment was submitted, show submission status instead of overdue
     if (assignment.submission_date) {
       const submissionDate = new Date(assignment.submission_date);
-      const dueDateStr = assignment.due_date.replace('Z', '').replace('+00:00', '').replace('T', ' ');
+      const dueDateStr = assignment.due_date
+        .replace('Z', '')
+        .replace('+00:00', '')
+        .replace('T', ' ');
       const localDue = new Date(dueDateStr);
-      
+
       if (submissionDate <= localDue) {
         return <span className="text-green-600 font-medium">Submitted</span>;
       } else {
         return <span className="text-orange-600 font-medium">Submitted late</span>;
       }
     }
-    
+
     // If not submitted, show time remaining or overdue
     return getDaysRemaining(assignment.due_date);
   };
@@ -639,12 +726,12 @@ const MyClass: React.FC = () => {
     if (assignment.status === 'submitted' || assignment.status === 'graded') {
       return false;
     }
-    
+
     // If not overdue, can always submit
     if (!isOverdue(assignment.due_date)) {
       return true;
     }
-    
+
     // If overdue, can only submit if late submission is allowed
     return assignment.allow_late_submission === true;
   };
@@ -656,41 +743,56 @@ const MyClass: React.FC = () => {
 
   const handleUploadSubmit = async () => {
     if (!selectedAssignment || !studentId || !fileUploadRef.current) return;
-    
+
     const stagedFiles = fileUploadRef.current.getStagedFiles();
-    
+
     setIsUploading(true);
     setUploadProgress(0);
-    
+
     try {
       // Get user token from Supabase session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
       if (sessionError) {
         console.error('Session error:', sessionError);
-        showNotificationModal('error', 'Authentication Error', `Authentication error: ${sessionError.message}`);
+        showNotificationModal(
+          'error',
+          'Authentication Error',
+          `Authentication error: ${sessionError.message}`
+        );
         return;
       }
-      
+
       if (!session?.access_token) {
         console.error('No access token found in session');
-        showNotificationModal('error', 'Authentication Required', 'Authentication required. Please log in again.');
+        showNotificationModal(
+          'error',
+          'Authentication Required',
+          'Authentication required. Please log in again.'
+        );
         return;
       }
-      
+
       const userToken = session.access_token;
-      
+
       // Check storage API configuration
       const storageApiUrl = import.meta.env.VITE_STORAGE_API_URL;
       if (!storageApiUrl) {
         console.error('Storage API URL not configured');
-        showNotificationModal('error', 'Configuration Error', 'Storage service not configured. Please contact support.');
+        showNotificationModal(
+          'error',
+          'Configuration Error',
+          'Storage service not configured. Please contact support.'
+        );
         return;
       }
-      
+
       // Simulate initial progress
       setUploadProgress(10);
-      
+
       // Submit assignment with staged files
       await submitAssignmentWithStagedFiles(
         selectedAssignment.student_assignment_id,
@@ -699,46 +801,48 @@ const MyClass: React.FC = () => {
         selectedAssignment.assignment_id,
         userToken
       );
-      
+
       setUploadProgress(100);
-      
+
       // Update local state
-      setAssignments(prev => prev.map(a => 
-        a.assignment_id === selectedAssignment.assignment_id 
-          ? { ...a, status: 'submitted', submission_date: new Date().toISOString() }
-          : a
-      ));
-      
+      setAssignments((prev) =>
+        prev.map((a) =>
+          a.assignment_id === selectedAssignment.assignment_id
+            ? { ...a, status: 'submitted', submission_date: new Date().toISOString() }
+            : a
+        )
+      );
+
       // Refresh stats
       if (studentId) {
         const updatedStats = await getAssignmentStats(studentId);
         setStats(updatedStats);
       }
-      
+
       // Clear staged files and close modal
       fileUploadRef.current.clearStagedFiles();
-      
+
       setTimeout(() => {
         setShowUploadModal(false);
         setSelectedAssignment(null);
         setUploadProgress(0);
         setIsUploading(false);
       }, 1000);
-      
     } catch (error: any) {
       console.error('Upload failed:', error);
-      
+
       // Provide more specific error messages
       let errorMessage = error?.message || 'Unknown error';
-      
+
       if (errorMessage.includes('Authentication') || errorMessage.includes('401')) {
         errorMessage = 'Authentication failed. Please refresh the page and try logging in again.';
       } else if (errorMessage.includes('Storage service')) {
-        errorMessage = 'File storage service is not available. Please try again later or contact support.';
+        errorMessage =
+          'File storage service is not available. Please try again later or contact support.';
       } else if (errorMessage.includes('Network')) {
         errorMessage = 'Network error. Please check your internet connection and try again.';
       }
-      
+
       showNotificationModal('error', 'Upload Failed', errorMessage);
       setIsUploading(false);
       setUploadProgress(0);
@@ -748,7 +852,7 @@ const MyClass: React.FC = () => {
   const handleViewDetails = async (assignment: any) => {
     setLoadingDetails(true);
     setShowDetailsModal(true);
-    
+
     try {
       const detailsWithFiles = await getAssignmentWithFiles(studentId!, assignment.assignment_id);
       setAssignmentDetails(detailsWithFiles);
@@ -784,12 +888,12 @@ const MyClass: React.FC = () => {
       console.error('VITE_STORAGE_API_URL not configured');
       return fileUrl; // Fallback to direct URL
     }
-    
+
     // Check if URL is already a proxy URL
     if (fileUrl.includes('/document-access')) {
       return fileUrl; // Already a proxy URL
     }
-    
+
     // Extract file key and use key parameter for better reliability
     const fileKey = extractFileKey(fileUrl);
     if (fileKey) {
@@ -804,14 +908,14 @@ const MyClass: React.FC = () => {
   const openFile = async (fileUrl: string, fileName: string = 'file') => {
     try {
       console.log(`Opening ${fileName}:`, fileUrl);
-      
+
       const accessibleUrl = getAccessibleFileUrl(fileUrl);
       console.log('Generated accessible URL:', accessibleUrl);
-      
+
       // Test if the URL is accessible
       const testResponse = await fetch(accessibleUrl, { method: 'HEAD' });
       console.log('File accessibility test status:', testResponse.status);
-      
+
       if (testResponse.ok) {
         window.open(accessibleUrl, '_blank');
       } else {
@@ -836,16 +940,41 @@ const MyClass: React.FC = () => {
   };
 
   const getStatusBadge = (status: string) => {
-    const configs: Record<string, { bg: string; text: string; label: string; icon: React.ComponentType<{ className?: string }> }> = {
-      'todo': { bg: 'bg-gray-100 border-gray-200', text: 'text-gray-700', label: 'To Do', icon: ClipboardList },
-      'in-progress': { bg: 'bg-blue-100 border-blue-200', text: 'text-blue-700', label: 'In Progress', icon: Zap },
-      'submitted': { bg: 'bg-purple-100 border-purple-200', text: 'text-purple-700', label: 'Submitted', icon: CheckSquare },
-      'graded': { bg: 'bg-green-100 border-green-200', text: 'text-green-700', label: 'Graded', icon: Star }
+    const configs: Record<
+      string,
+      { bg: string; text: string; label: string; icon: React.ComponentType<{ className?: string }> }
+    > = {
+      todo: {
+        bg: 'bg-gray-100 border-gray-200',
+        text: 'text-gray-700',
+        label: 'To Do',
+        icon: ClipboardList,
+      },
+      'in-progress': {
+        bg: 'bg-blue-100 border-blue-200',
+        text: 'text-blue-700',
+        label: 'In Progress',
+        icon: Zap,
+      },
+      submitted: {
+        bg: 'bg-purple-100 border-purple-200',
+        text: 'text-purple-700',
+        label: 'Submitted',
+        icon: CheckSquare,
+      },
+      graded: {
+        bg: 'bg-green-100 border-green-200',
+        text: 'text-green-700',
+        label: 'Graded',
+        icon: Star,
+      },
     };
     const config = configs[status] || configs.todo;
     const IconComponent = config.icon;
     return (
-      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ${config.bg} ${config.text} shadow-sm`}>
+      <span
+        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ${config.bg} ${config.text} shadow-sm`}
+      >
         <IconComponent className="w-3 h-3" />
         {config.label}
       </span>
@@ -871,7 +1000,9 @@ const MyClass: React.FC = () => {
             <AlertCircle className="w-8 h-8 text-orange-600" />
           </div>
           <h2 className="text-xl font-semibold text-gray-900 mb-2">No Class Assigned</h2>
-          <p className="text-gray-600">You haven't been assigned to a class yet. Please contact your school administrator.</p>
+          <p className="text-gray-600">
+            You haven't been assigned to a class yet. Please contact your school administrator.
+          </p>
         </div>
       </div>
     );
@@ -910,7 +1041,10 @@ const MyClass: React.FC = () => {
                 <p className="text-xs text-gray-500 mb-1">Class Teacher</p>
                 <p className="font-medium text-gray-900">{classInfo.educator_name}</p>
                 {classInfo.educator_email && (
-                  <a href={`mailto:${classInfo.educator_email}`} className="text-sm text-blue-600 hover:underline flex items-center gap-1 mt-1">
+                  <a
+                    href={`mailto:${classInfo.educator_email}`}
+                    className="text-sm text-blue-600 hover:underline flex items-center gap-1 mt-1"
+                  >
                     <Mail className="w-3 h-3" />
                     {classInfo.educator_email}
                   </a>
@@ -931,8 +1065,8 @@ const MyClass: React.FC = () => {
                 { id: 'classmates', label: 'Classmates', icon: Users },
                 { id: 'curriculars', label: 'Co-Curriculars', icon: GraduationCap },
                 { id: 'exams', label: 'Exams', icon: FileText },
-                { id: 'results', label: 'Results', icon: Award }
-              ].map(tab => (
+                { id: 'results', label: 'Results', icon: Award },
+              ].map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as TabType)}
@@ -982,7 +1116,10 @@ const MyClass: React.FC = () => {
                   <div>
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="font-semibold text-gray-900">Upcoming Assignments</h3>
-                      <button onClick={() => setActiveTab('assignments')} className="text-sm text-blue-600 hover:underline flex items-center gap-1">
+                      <button
+                        onClick={() => setActiveTab('assignments')}
+                        className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+                      >
                         View all <ChevronRight className="w-4 h-4" />
                       </button>
                     </div>
@@ -992,12 +1129,17 @@ const MyClass: React.FC = () => {
                           <CheckCircle2 className="w-8 h-8 text-green-600" />
                         </div>
                         <h4 className="font-semibold text-green-900 mb-2">All Caught Up!</h4>
-                        <p className="text-green-700 text-sm">No upcoming assignments. Great work!</p>
+                        <p className="text-green-700 text-sm">
+                          No upcoming assignments. Great work!
+                        </p>
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        {upcomingAssignments.map(assignment => (
-                          <div key={assignment.assignment_id} className="bg-white rounded-xl p-4 border border-gray-200">
+                        {upcomingAssignments.map((assignment) => (
+                          <div
+                            key={assignment.assignment_id}
+                            className="bg-white rounded-xl p-4 border border-gray-200"
+                          >
                             <div className="flex items-start justify-between mb-3">
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
@@ -1006,7 +1148,9 @@ const MyClass: React.FC = () => {
                                     {assignment.title}
                                   </h4>
                                 </div>
-                                <p className="text-sm text-gray-500 font-medium">{assignment.course_name}</p>
+                                <p className="text-sm text-gray-500 font-medium">
+                                  {assignment.course_name}
+                                </p>
                               </div>
                               {getStatusBadge(assignment.status)}
                             </div>
@@ -1021,7 +1165,7 @@ const MyClass: React.FC = () => {
                                   {assignment.total_points} pts
                                 </span>
                               </div>
-                              <button 
+                              <button
                                 onClick={() => setActiveTab('assignments')}
                                 className="text-blue-600 hover:text-blue-700 font-medium text-xs px-2 py-1 rounded-lg hover:bg-blue-50 transition-colors"
                               >
@@ -1038,7 +1182,10 @@ const MyClass: React.FC = () => {
                   <div>
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="font-semibold text-gray-900">Today's Schedule</h3>
-                      <button onClick={() => setActiveTab('timetable')} className="text-sm text-blue-600 hover:underline flex items-center gap-1">
+                      <button
+                        onClick={() => setActiveTab('timetable')}
+                        className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+                      >
                         Full timetable <ChevronRight className="w-4 h-4" />
                       </button>
                     </div>
@@ -1049,9 +1196,9 @@ const MyClass: React.FC = () => {
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        {todaySchedule.map(slot => (
-                          <div 
-                            key={slot.id} 
+                        {todaySchedule.map((slot) => (
+                          <div
+                            key={slot.id}
                             className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200 p-4 flex items-center"
                           >
                             {/* Period Info */}
@@ -1063,7 +1210,7 @@ const MyClass: React.FC = () => {
                                 {formatTime(slot.start_time)}
                               </p>
                             </div>
-                            
+
                             {/* Subject & Teacher */}
                             <div className="flex-1 pl-4">
                               <p className="font-semibold text-gray-900">{slot.subject_name}</p>
@@ -1071,7 +1218,7 @@ const MyClass: React.FC = () => {
                                 <p className="text-sm text-gray-500">{slot.educator_name}</p>
                               )}
                             </div>
-                            
+
                             {/* Room Badge */}
                             {slot.room_number && (
                               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 text-gray-600 text-sm font-medium rounded-full border border-gray-200">
@@ -1103,67 +1250,75 @@ const MyClass: React.FC = () => {
                     </div>
                     <h3 className="text-xl font-semibold text-gray-900 mb-3">No Assignments Yet</h3>
                     <p className="text-gray-500 max-w-md mx-auto leading-relaxed">
-                      Your assignments will appear here when your teachers create them. Check back soon for new learning opportunities!
+                      Your assignments will appear here when your teachers create them. Check back
+                      soon for new learning opportunities!
                     </p>
                   </div>
                 ) : (
                   <div>
                     <div className="grid gap-6 mb-6">
-                      {paginatedAssignments.map(assignment => {
+                      {paginatedAssignments.map((assignment) => {
                         const overdueStatus = isOverdue(assignment.due_date);
-                        const isSubmitted = assignment.status === 'submitted' || assignment.status === 'graded';
-                        
+                        const isSubmitted =
+                          assignment.status === 'submitted' || assignment.status === 'graded';
+
                         return (
-                          <div 
-                            key={assignment.assignment_id} 
+                          <div
+                            key={assignment.assignment_id}
                             className={`relative overflow-hidden rounded-2xl border ${
-                              overdueStatus 
-                                ? 'border-red-200 bg-gradient-to-br from-red-50 via-white to-red-25' 
+                              overdueStatus
+                                ? 'border-red-200 bg-gradient-to-br from-red-50 via-white to-red-25'
                                 : isSubmitted
-                                ? 'border-green-200 bg-gradient-to-br from-green-50 via-white to-green-25'
-                                : 'border-gray-200 bg-white'
+                                  ? 'border-green-200 bg-gradient-to-br from-green-50 via-white to-green-25'
+                                  : 'border-gray-200 bg-white'
                             }`}
                           >
                             {/* Status Indicator Bar */}
-                            <div className={`h-1 w-full ${
-                              overdueStatus 
-                                ? 'bg-gradient-to-r from-red-400 to-red-600' 
-                                : isSubmitted
-                                ? 'bg-gradient-to-r from-green-400 to-green-600'
-                                : assignment.status === 'in-progress'
-                                ? 'bg-gradient-to-r from-blue-400 to-blue-600'
-                                : 'bg-gradient-to-r from-gray-300 to-gray-400'
-                            }`} />
-                            
+                            <div
+                              className={`h-1 w-full ${
+                                overdueStatus
+                                  ? 'bg-gradient-to-r from-red-400 to-red-600'
+                                  : isSubmitted
+                                    ? 'bg-gradient-to-r from-green-400 to-green-600'
+                                    : assignment.status === 'in-progress'
+                                      ? 'bg-gradient-to-r from-blue-400 to-blue-600'
+                                      : 'bg-gradient-to-r from-gray-300 to-gray-400'
+                              }`}
+                            />
+
                             <div className="p-6">
                               {/* Header Section */}
                               <div className="flex items-start justify-between mb-4">
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-3 mb-2">
-                                    <div className={`p-2 rounded-xl ${
-                                      overdueStatus 
-                                        ? 'bg-red-100 text-red-600' 
-                                        : isSubmitted
-                                        ? 'bg-green-100 text-green-600'
-                                        : 'bg-blue-100 text-blue-600'
-                                    }`}>
+                                    <div
+                                      className={`p-2 rounded-xl ${
+                                        overdueStatus
+                                          ? 'bg-red-100 text-red-600'
+                                          : isSubmitted
+                                            ? 'bg-green-100 text-green-600'
+                                            : 'bg-blue-100 text-blue-600'
+                                      }`}
+                                    >
                                       <ClipboardList className="w-5 h-5" />
                                     </div>
                                     <div className="flex-1 min-w-0">
                                       <h3 className="text-lg font-semibold text-gray-900 truncate">
                                         {assignment.title}
                                       </h3>
-                                      <p className="text-sm text-gray-500 font-medium">{assignment.course_name}</p>
+                                      <p className="text-sm text-gray-500 font-medium">
+                                        {assignment.course_name}
+                                      </p>
                                     </div>
                                   </div>
-                                  
+
                                   {assignment.description && (
                                     <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
                                       {assignment.description}
                                     </p>
                                   )}
                                 </div>
-                                
+
                                 <div className="flex items-center gap-2 ml-4">
                                   {overdueStatus && (
                                     <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-500 text-white shadow-sm">
@@ -1182,13 +1337,18 @@ const MyClass: React.FC = () => {
                                     <Calendar className="w-4 h-4 text-gray-600" />
                                   </div>
                                   <div>
-                                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Due Date</p>
+                                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                                      Due Date
+                                    </p>
                                     <p className="text-sm font-semibold text-gray-900">
-                                      {parseAsLocalDate(assignment.due_date).toLocaleDateString('en-US', {
-                                        month: 'short',
-                                        day: 'numeric',
-                                        year: 'numeric'
-                                      })}
+                                      {parseAsLocalDate(assignment.due_date).toLocaleDateString(
+                                        'en-US',
+                                        {
+                                          month: 'short',
+                                          day: 'numeric',
+                                          year: 'numeric',
+                                        }
+                                      )}
                                     </p>
                                     <div className="text-xs mt-1">
                                       {getAssignmentTimeStatus(assignment)}
@@ -1201,8 +1361,12 @@ const MyClass: React.FC = () => {
                                     <Target className="w-4 h-4 text-gray-600" />
                                   </div>
                                   <div>
-                                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Points</p>
-                                    <p className="text-sm font-semibold text-gray-900">{assignment.total_points}</p>
+                                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                                      Points
+                                    </p>
+                                    <p className="text-sm font-semibold text-gray-900">
+                                      {assignment.total_points}
+                                    </p>
                                     {assignment.grade_percentage && (
                                       <p className="text-xs text-green-600 font-medium mt-1">
                                         Grade: {assignment.grade_percentage}%
@@ -1216,9 +1380,12 @@ const MyClass: React.FC = () => {
                                     <Activity className="w-4 h-4 text-gray-600" />
                                   </div>
                                   <div>
-                                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Type</p>
+                                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                                      Type
+                                    </p>
                                     <p className="text-sm font-semibold text-gray-900 capitalize">
-                                      {assignment.assignment_type?.replace('_', ' ') || 'Assignment'}
+                                      {assignment.assignment_type?.replace('_', ' ') ||
+                                        'Assignment'}
                                     </p>
                                   </div>
                                 </div>
@@ -1233,15 +1400,20 @@ const MyClass: React.FC = () => {
                                     </div>
                                     <div>
                                       <p className="text-sm font-semibold text-green-800">
-                                        Submitted on {parseAsLocalDate(assignment.submission_date).toLocaleDateString('en-US', {
+                                        Submitted on{' '}
+                                        {parseAsLocalDate(
+                                          assignment.submission_date
+                                        ).toLocaleDateString('en-US', {
                                           weekday: 'long',
                                           month: 'long',
                                           day: 'numeric',
-                                          year: 'numeric'
+                                          year: 'numeric',
                                         })}
                                       </p>
                                       {assignment.submission_content && (
-                                        <p className="text-xs text-green-600 mt-1">File: {assignment.submission_content}</p>
+                                        <p className="text-xs text-green-600 mt-1">
+                                          File: {assignment.submission_content}
+                                        </p>
                                       )}
                                     </div>
                                   </div>
@@ -1249,23 +1421,35 @@ const MyClass: React.FC = () => {
                               )}
 
                               {/* Status Selector for Non-Submitted Assignments - Only show if can submit or not overdue */}
-                              {assignment.status !== 'submitted' && assignment.status !== 'graded' && (
-                                canSubmitAssignment(assignment) || !isOverdue(assignment.due_date) ? (
+                              {assignment.status !== 'submitted' &&
+                                assignment.status !== 'graded' &&
+                                (canSubmitAssignment(assignment) ||
+                                !isOverdue(assignment.due_date) ? (
                                   <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
                                     <div className="flex items-center gap-3">
                                       <div className="p-2 bg-blue-100 rounded-lg">
                                         <Clock className="w-4 h-4 text-blue-600" />
                                       </div>
                                       <div className="flex-1">
-                                        <label className="text-sm font-medium text-blue-800 block mb-2">Update Status</label>
+                                        <label className="text-sm font-medium text-blue-800 block mb-2">
+                                          Update Status
+                                        </label>
                                         <select
                                           value={assignment.status}
-                                          onChange={(e) => handleStatusChange(assignment.assignment_id, assignment.student_assignment_id, e.target.value)}
+                                          onChange={(e) =>
+                                            handleStatusChange(
+                                              assignment.assignment_id,
+                                              assignment.student_assignment_id,
+                                              e.target.value
+                                            )
+                                          }
                                           className="w-full px-3 py-2 text-sm border border-blue-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                                         >
                                           <option value="todo">To Do</option>
                                           <option value="in-progress">In Progress</option>
-                                          {canSubmitAssignment(assignment) && <option value="submitted">Submitted</option>}
+                                          {canSubmitAssignment(assignment) && (
+                                            <option value="submitted">Submitted</option>
+                                          )}
                                         </select>
                                       </div>
                                     </div>
@@ -1277,13 +1461,16 @@ const MyClass: React.FC = () => {
                                         <AlertCircle className="w-4 h-4 text-red-600" />
                                       </div>
                                       <div>
-                                        <p className="text-sm font-medium text-red-800">Assignment Overdue</p>
-                                        <p className="text-xs text-red-600 mt-1">Late submission is not allowed for this assignment</p>
+                                        <p className="text-sm font-medium text-red-800">
+                                          Assignment Overdue
+                                        </p>
+                                        <p className="text-xs text-red-600 mt-1">
+                                          Late submission is not allowed for this assignment
+                                        </p>
                                       </div>
                                     </div>
                                   </div>
-                                )
-                              )}
+                                ))}
 
                               {/* Action Buttons */}
                               <div className="flex flex-wrap gap-3">
@@ -1295,7 +1482,7 @@ const MyClass: React.FC = () => {
                                   <FileText className="w-4 h-4" />
                                   View Details
                                 </button>
-                                
+
                                 {/* Upload Button */}
                                 {canSubmitAssignment(assignment) && (
                                   <button
@@ -1306,32 +1493,43 @@ const MyClass: React.FC = () => {
                                     Upload Submission
                                   </button>
                                 )}
-                                
+
                                 {/* Show message when submission is disabled due to late submission policy */}
-                                {!canSubmitAssignment(assignment) && assignment.status !== 'submitted' && assignment.status !== 'graded' && isOverdue(assignment.due_date) && !assignment.allow_late_submission && (
-                                  <div className="flex items-center gap-2 px-4 py-2.5 bg-red-50 text-red-700 rounded-xl text-sm font-medium border border-red-200">
-                                    <AlertCircle className="w-4 h-4" />
-                                    Late submission not allowed
-                                  </div>
-                                )}
-                                
+                                {!canSubmitAssignment(assignment) &&
+                                  assignment.status !== 'submitted' &&
+                                  assignment.status !== 'graded' &&
+                                  isOverdue(assignment.due_date) &&
+                                  !assignment.allow_late_submission && (
+                                    <div className="flex items-center gap-2 px-4 py-2.5 bg-red-50 text-red-700 rounded-xl text-sm font-medium border border-red-200">
+                                      <AlertCircle className="w-4 h-4" />
+                                      Late submission not allowed
+                                    </div>
+                                  )}
+
                                 {/* View Submission Button */}
-                                {(assignment.status === 'submitted' || assignment.status === 'graded') && assignment.submission_url && (
-                                  <button
-                                    onClick={() => openFile(assignment.submission_url, assignment.submission_content || 'submission')}
-                                    className="flex items-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors text-sm font-medium"
-                                  >
-                                    <FileText className="w-4 h-4" />
-                                    View Submission
-                                  </button>
-                                )}
+                                {(assignment.status === 'submitted' ||
+                                  assignment.status === 'graded') &&
+                                  assignment.submission_url && (
+                                    <button
+                                      onClick={() =>
+                                        openFile(
+                                          assignment.submission_url,
+                                          assignment.submission_content || 'submission'
+                                        )
+                                      }
+                                      className="flex items-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors text-sm font-medium"
+                                    >
+                                      <FileText className="w-4 h-4" />
+                                      View Submission
+                                    </button>
+                                  )}
                               </div>
                             </div>
                           </div>
                         );
                       })}
                     </div>
-                    
+
                     {/* Pagination */}
                     {assignments.length > itemsPerPage && (
                       <Pagination
@@ -1353,7 +1551,9 @@ const MyClass: React.FC = () => {
                 {timetable.length === 0 ? (
                   <div className="text-center py-12">
                     <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">No Timetable Available</h3>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      No Timetable Available
+                    </h3>
                     <p className="text-gray-500">Your class timetable hasn't been set up yet.</p>
                   </div>
                 ) : (
@@ -1388,7 +1588,7 @@ const MyClass: React.FC = () => {
                     {/* Day Selector for Day View */}
                     {timetableView === 'day' && (
                       <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2">
-                        {[1, 2, 3, 4, 5, 6].map(day => (
+                        {[1, 2, 3, 4, 5, 6].map((day) => (
                           <button
                             key={day}
                             onClick={() => setSelectedDay(day)}
@@ -1411,7 +1611,7 @@ const MyClass: React.FC = () => {
                           {/* Grid Header - Days */}
                           <div className="grid grid-cols-[80px_repeat(5,1fr)] gap-1 mb-1">
                             <div className="h-12"></div>
-                            {[1, 2, 3, 4, 5].map(day => (
+                            {[1, 2, 3, 4, 5].map((day) => (
                               <div
                                 key={day}
                                 className="h-12 flex items-center justify-center font-semibold text-gray-700 bg-gray-50 rounded-t-lg"
@@ -1423,32 +1623,35 @@ const MyClass: React.FC = () => {
 
                           {/* Grid Body - Time Slots */}
                           <div className="grid grid-cols-[80px_repeat(5,1fr)] gap-1">
-                            {TIME_SLOTS.map(timeSlot => (
+                            {TIME_SLOTS.map((timeSlot) => (
                               <React.Fragment key={timeSlot}>
                                 {/* Time Label */}
                                 <div className="h-20 flex items-start justify-end pr-3 pt-1">
-                                  <span className="text-sm text-gray-500 font-medium">{timeSlot}</span>
+                                  <span className="text-sm text-gray-500 font-medium">
+                                    {timeSlot}
+                                  </span>
                                 </div>
-                                
+
                                 {/* Day Cells */}
-                                {[1, 2, 3, 4, 5].map(day => {
+                                {[1, 2, 3, 4, 5].map((day) => {
                                   const slot = getSlotForDayAndTime(day, timeSlot);
                                   const colors = slot ? getSubjectColor(slot.subject_name) : null;
-                                  
+
                                   return (
-                                    <div
-                                      key={`${day}-${timeSlot}`}
-                                      className="h-20 relative"
-                                    >
+                                    <div key={`${day}-${timeSlot}`} className="h-20 relative">
                                       {slot ? (
                                         <div
                                           className={`absolute inset-0.5 rounded-lg p-2 ${colors?.bg} ${colors?.border} border transition-transform hover:scale-[1.02] hover:shadow-md cursor-pointer`}
                                         >
-                                          <p className={`font-bold text-sm ${colors?.text} truncate`}>
+                                          <p
+                                            className={`font-bold text-sm ${colors?.text} truncate`}
+                                          >
                                             {slot.subject_name}
                                           </p>
                                           {slot.room_number && (
-                                            <p className={`text-xs ${colors?.text} opacity-70 mt-0.5`}>
+                                            <p
+                                              className={`text-xs ${colors?.text} opacity-70 mt-0.5`}
+                                            >
                                               Room {slot.room_number}
                                             </p>
                                           )}
@@ -1469,17 +1672,22 @@ const MyClass: React.FC = () => {
                     {/* Day View - List Layout */}
                     {timetableView === 'day' && (
                       <div>
-                        <h3 className="text-xl font-semibold text-gray-900 mb-4">{DAYS[selectedDay]}</h3>
-                        {(!timetableByDay[selectedDay] || timetableByDay[selectedDay].length === 0) ? (
+                        <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                          {DAYS[selectedDay]}
+                        </h3>
+                        {!timetableByDay[selectedDay] ||
+                        timetableByDay[selectedDay].length === 0 ? (
                           <div className="text-center py-12 bg-gray-50 rounded-xl">
                             <Calendar className="w-10 h-10 text-gray-400 mx-auto mb-3" />
-                            <p className="text-gray-600">No classes scheduled for {DAYS[selectedDay]}</p>
+                            <p className="text-gray-600">
+                              No classes scheduled for {DAYS[selectedDay]}
+                            </p>
                           </div>
                         ) : (
                           <div className="space-y-3">
                             {timetableByDay[selectedDay]
                               .sort((a, b) => a.period_number - b.period_number)
-                              .map(slot => {
+                              .map((slot) => {
                                 const colors = getSubjectColor(slot.subject_name);
                                 return (
                                   <div
@@ -1498,20 +1706,26 @@ const MyClass: React.FC = () => {
                                         {formatTime(slot.end_time)}
                                       </p>
                                     </div>
-                                    
+
                                     {/* Subject */}
                                     <div className="flex-1">
-                                      <p className={`font-bold text-lg ${colors.text}`}>{slot.subject_name}</p>
+                                      <p className={`font-bold text-lg ${colors.text}`}>
+                                        {slot.subject_name}
+                                      </p>
                                       {slot.educator_name && (
-                                        <p className="text-sm text-gray-600">{slot.educator_name}</p>
+                                        <p className="text-sm text-gray-600">
+                                          {slot.educator_name}
+                                        </p>
                                       )}
                                     </div>
-                                    
+
                                     {/* Room */}
                                     {slot.room_number && (
                                       <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/60 rounded-full">
                                         <MapPin className="w-4 h-4 text-gray-600" />
-                                        <span className="text-sm font-medium text-gray-700">Room {slot.room_number}</span>
+                                        <span className="text-sm font-medium text-gray-700">
+                                          Room {slot.room_number}
+                                        </span>
                                       </div>
                                     )}
                                   </div>
@@ -1540,11 +1754,18 @@ const MyClass: React.FC = () => {
                   </div>
                 ) : (
                   <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {classmates.map(classmate => (
-                      <div key={classmate.id} className="bg-gray-50 rounded-lg p-4 flex items-center gap-3">
+                    {classmates.map((classmate) => (
+                      <div
+                        key={classmate.id}
+                        className="bg-gray-50 rounded-lg p-4 flex items-center gap-3"
+                      >
                         <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
                           {classmate.profilePicture ? (
-                            <img src={classmate.profilePicture} alt={classmate.name} className="w-10 h-10 rounded-full object-cover" />
+                            <img
+                              src={classmate.profilePicture}
+                              alt={classmate.name}
+                              className="w-10 h-10 rounded-full object-cover"
+                            />
                           ) : (
                             <span className="text-blue-600 font-medium">
                               {classmate.name?.charAt(0)?.toUpperCase() || '?'}
@@ -1565,8 +1786,6 @@ const MyClass: React.FC = () => {
             {/* Co-Curriculars Tab */}
             {activeTab === 'curriculars' && (
               <div className="space-y-8">
-
-
                 {/* Key Metrics */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                   <div className="bg-white border border-gray-200 rounded-lg p-6 hover:border-blue-300 transition-colors">
@@ -1612,8 +1831,10 @@ const MyClass: React.FC = () => {
                         <p className="text-3xl font-bold text-black">
                           {myMemberships.length > 0
                             ? Math.round(
-                                myMemberships.reduce((sum, m) => sum + (m.attendance_percentage || 0), 0) /
-                                  myMemberships.length
+                                myMemberships.reduce(
+                                  (sum, m) => sum + (m.attendance_percentage || 0),
+                                  0
+                                ) / myMemberships.length
                               )
                             : 0}
                           %
@@ -1650,7 +1871,8 @@ const MyClass: React.FC = () => {
                         </div>
                         <h3 className="text-lg font-semibold text-black mb-2">No Clubs Joined</h3>
                         <p className="text-gray-600 max-w-sm mx-auto">
-                          You haven't joined any clubs yet. Explore available clubs to start your co-curricular journey.
+                          You haven't joined any clubs yet. Explore available clubs to start your
+                          co-curricular journey.
                         </p>
                       </div>
                     ) : (
@@ -1665,10 +1887,12 @@ const MyClass: React.FC = () => {
                               <div className="flex-1">
                                 <div className="flex items-center gap-3 mb-2">
                                   <h4 className="text-lg font-bold text-black">
-                                    {club.name?.charAt(0).toUpperCase() + club.name?.slice(1).toLowerCase() || 'Unnamed Club'}
+                                    {club.name?.charAt(0).toUpperCase() +
+                                      club.name?.slice(1).toLowerCase() || 'Unnamed Club'}
                                   </h4>
                                   <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium border border-blue-200">
-                                    {club.category?.charAt(0).toUpperCase() + club.category?.slice(1).toLowerCase() || 'General'}
+                                    {club.category?.charAt(0).toUpperCase() +
+                                      club.category?.slice(1).toLowerCase() || 'General'}
                                   </span>
                                 </div>
                                 <p className="text-gray-600 text-sm leading-relaxed">
@@ -1684,9 +1908,12 @@ const MyClass: React.FC = () => {
                                   <Calendar className="w-4 h-4 text-blue-600" />
                                 </div>
                                 <div>
-                                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Meeting Day</p>
+                                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                                    Meeting Day
+                                  </p>
                                   <p className="text-sm font-semibold text-black">
-                                    {club.meeting_day?.charAt(0).toUpperCase() + club.meeting_day?.slice(1).toLowerCase() || 'TBD'}
+                                    {club.meeting_day?.charAt(0).toUpperCase() +
+                                      club.meeting_day?.slice(1).toLowerCase() || 'TBD'}
                                   </p>
                                 </div>
                               </div>
@@ -1696,8 +1923,12 @@ const MyClass: React.FC = () => {
                                   <Clock className="w-4 h-4 text-blue-600" />
                                 </div>
                                 <div>
-                                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Time</p>
-                                  <p className="text-sm font-semibold text-black">{club.meeting_time || 'TBD'}</p>
+                                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                                    Time
+                                  </p>
+                                  <p className="text-sm font-semibold text-black">
+                                    {club.meeting_time || 'TBD'}
+                                  </p>
                                 </div>
                               </div>
 
@@ -1706,9 +1937,12 @@ const MyClass: React.FC = () => {
                                   <MapPin className="w-4 h-4 text-blue-600" />
                                 </div>
                                 <div>
-                                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Location</p>
+                                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                                    Location
+                                  </p>
                                   <p className="text-sm font-semibold text-black">
-                                    {club.location?.charAt(0).toUpperCase() + club.location?.slice(1).toLowerCase() || 'TBD'}
+                                    {club.location?.charAt(0).toUpperCase() +
+                                      club.location?.slice(1).toLowerCase() || 'TBD'}
                                   </p>
                                 </div>
                               </div>
@@ -1718,7 +1952,9 @@ const MyClass: React.FC = () => {
                                   <Users className="w-4 h-4 text-blue-600" />
                                 </div>
                                 <div>
-                                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Members</p>
+                                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                                    Members
+                                  </p>
                                   <p className="text-sm font-semibold text-black">
                                     {club.memberCount || 0} / {club.capacity || 30}
                                   </p>
@@ -1737,7 +1973,10 @@ const MyClass: React.FC = () => {
                                 <div>
                                   <p className="text-xs font-medium text-gray-500">Mentor</p>
                                   <p className="text-sm font-semibold text-black">
-                                    {club.mentor_name || (club.mentor_type === 'educator' ? 'Educator' : 'School Admin')}
+                                    {club.mentor_name ||
+                                      (club.mentor_type === 'educator'
+                                        ? 'Educator'
+                                        : 'School Admin')}
                                   </p>
                                 </div>
                               </div>
@@ -1765,7 +2004,7 @@ const MyClass: React.FC = () => {
                         </div>
                         <h3 className="text-lg font-bold text-black">Upcoming Activities</h3>
                       </div>
-                      
+
                       {upcomingActivities.length === 0 ? (
                         <div className="text-center py-8">
                           <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -1781,16 +2020,18 @@ const MyClass: React.FC = () => {
                               className="bg-gray-50 border border-gray-100 rounded-lg p-4 border-l-4 border-l-blue-500"
                             >
                               <p className="font-semibold text-black text-sm mb-1">
-                                {activity.title?.charAt(0).toUpperCase() + activity.title?.slice(1) || 'Activity'}
+                                {activity.title?.charAt(0).toUpperCase() +
+                                  activity.title?.slice(1) || 'Activity'}
                               </p>
                               <p className="text-xs text-gray-600 mb-2">
-                                {activity.clubName?.charAt(0).toUpperCase() + activity.clubName?.slice(1).toLowerCase() || 'Club'}
+                                {activity.clubName?.charAt(0).toUpperCase() +
+                                  activity.clubName?.slice(1).toLowerCase() || 'Club'}
                               </p>
                               <p className="text-xs text-gray-500">
-                                {new Date(activity.date).toLocaleDateString("en-US", {
-                                  month: "short",
-                                  day: "numeric",
-                                  year: "numeric",
+                                {new Date(activity.date).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric',
                                 })}
                               </p>
                             </div>
@@ -1814,7 +2055,7 @@ const MyClass: React.FC = () => {
                           </span>
                         )}
                       </div>
-                      
+
                       {myCertificates.length === 0 ? (
                         <div className="text-center py-8">
                           <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -1834,16 +2075,17 @@ const MyClass: React.FC = () => {
                                   </div>
                                   <div className="flex-1 min-w-0">
                                     <h4 className="font-semibold text-gray-900 text-sm leading-tight truncate">
-                                      {cert.title?.charAt(0).toUpperCase() + cert.title?.slice(1) || 'Certificate'}
+                                      {cert.title?.charAt(0).toUpperCase() + cert.title?.slice(1) ||
+                                        'Certificate'}
                                     </h4>
                                   </div>
                                 </div>
-                                
+
                                 {/* Description */}
                                 <p className="text-xs text-gray-600 mb-3 pl-10 leading-relaxed line-clamp-2">
                                   {cert.description}
                                 </p>
-                                
+
                                 {/* Tags and metadata */}
                                 <div className="pl-10 space-y-2">
                                   <div className="flex items-center gap-2 flex-wrap">
@@ -1853,11 +2095,11 @@ const MyClass: React.FC = () => {
                                     <span className="text-xs text-gray-500">
                                       {new Date(cert.issued_date).toLocaleDateString('en-US', {
                                         month: 'short',
-                                        year: 'numeric'
+                                        year: 'numeric',
                                       })}
                                     </span>
                                   </div>
-                                  
+
                                   {/* Rank and score */}
                                   {cert.metadata?.rank && (
                                     <div className="flex items-center gap-3">
@@ -1879,7 +2121,7 @@ const MyClass: React.FC = () => {
                                   )}
                                 </div>
                               </div>
-                              
+
                               {/* Subtle separator between certificates (except last one) */}
                               {index < myCertificates.length - 1 && (
                                 <div className="flex justify-center my-2">
@@ -1908,12 +2150,16 @@ const MyClass: React.FC = () => {
                   <div className="text-center py-12">
                     <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No Exams Scheduled</h3>
-                    <p className="text-gray-500">Your exam schedule will appear here when available.</p>
+                    <p className="text-gray-500">
+                      Your exam schedule will appear here when available.
+                    </p>
                   </div>
                 ) : (
                   <div className="space-y-6">
                     {/* Upcoming Exams */}
-                    {groupedExams.filter(exam => exam.subjects.some(s => new Date(s.exam_date) >= new Date())).length > 0 && (
+                    {groupedExams.filter((exam) =>
+                      exam.subjects.some((s) => new Date(s.exam_date) >= new Date())
+                    ).length > 0 && (
                       <div>
                         <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                           <Clock className="w-5 h-5 text-blue-600" />
@@ -1921,8 +2167,10 @@ const MyClass: React.FC = () => {
                         </h3>
                         <div className="space-y-6">
                           {groupedExams
-                            .filter(exam => exam.subjects.some(s => new Date(s.exam_date) >= new Date()))
-                            .map(groupedExam => (
+                            .filter((exam) =>
+                              exam.subjects.some((s) => new Date(s.exam_date) >= new Date())
+                            )
+                            .map((groupedExam) => (
                               <div
                                 key={groupedExam.assessment_id}
                                 className="bg-white border-2 border-blue-200 rounded-xl p-6"
@@ -1932,26 +2180,31 @@ const MyClass: React.FC = () => {
                                   <div className="flex-1">
                                     <div className="flex items-center gap-3 mb-2">
                                       <div className="flex items-center gap-2">
-                                        {React.createElement(getExamTypeIcon(groupedExam.type), { 
-                                          className: "w-6 h-6 text-blue-600" 
+                                        {React.createElement(getExamTypeIcon(groupedExam.type), {
+                                          className: 'w-6 h-6 text-blue-600',
                                         })}
-                                        <h4 className="text-xl font-bold text-gray-900">{groupedExam.assessment_code}</h4>
+                                        <h4 className="text-xl font-bold text-gray-900">
+                                          {groupedExam.assessment_code}
+                                        </h4>
                                       </div>
                                       <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium flex items-center gap-1">
-                                        {React.createElement(getExamTypeIcon(groupedExam.type), { 
-                                          className: "w-3 h-3" 
+                                        {React.createElement(getExamTypeIcon(groupedExam.type), {
+                                          className: 'w-3 h-3',
                                         })}
                                         {groupedExam.type.replace('_', ' ').toUpperCase()}
                                       </span>
                                     </div>
                                     <p className="text-gray-600">
-                                      {groupedExam.subjects.length} subject{groupedExam.subjects.length > 1 ? 's' : ''} • 
-                                      Total {groupedExam.overall_total_marks} marks
+                                      {groupedExam.subjects.length} subject
+                                      {groupedExam.subjects.length > 1 ? 's' : ''} • Total{' '}
+                                      {groupedExam.overall_total_marks} marks
                                     </p>
                                   </div>
                                   <div className="text-right">
                                     <p className="text-sm font-medium text-gray-600">Total Marks</p>
-                                    <p className="text-3xl font-bold text-blue-600">{groupedExam.overall_total_marks}</p>
+                                    <p className="text-3xl font-bold text-blue-600">
+                                      {groupedExam.overall_total_marks}
+                                    </p>
                                   </div>
                                 </div>
 
@@ -1960,9 +2213,13 @@ const MyClass: React.FC = () => {
                                   <div className="bg-blue-50 rounded-lg p-4 mb-6 border border-blue-100">
                                     <div className="flex items-center gap-2 mb-2">
                                       <ClipboardList className="w-4 h-4 text-blue-600" />
-                                      <p className="text-sm font-medium text-blue-900">Instructions:</p>
+                                      <p className="text-sm font-medium text-blue-900">
+                                        Instructions:
+                                      </p>
                                     </div>
-                                    <p className="text-sm text-blue-800">{groupedExam.instructions}</p>
+                                    <p className="text-sm text-blue-800">
+                                      {groupedExam.instructions}
+                                    </p>
                                   </div>
                                 )}
 
@@ -1970,11 +2227,17 @@ const MyClass: React.FC = () => {
                                 <div className="space-y-3">
                                   <div className="flex items-center gap-2 mb-3">
                                     <Calendar className="w-5 h-5 text-gray-700" />
-                                    <h5 className="text-lg font-semibold text-gray-800">Exam Timetable</h5>
+                                    <h5 className="text-lg font-semibold text-gray-800">
+                                      Exam Timetable
+                                    </h5>
                                   </div>
                                   {groupedExam.subjects
-                                    .sort((a, b) => new Date(a.exam_date).getTime() - new Date(b.exam_date).getTime())
-                                    .map(subject => {
+                                    .sort(
+                                      (a, b) =>
+                                        new Date(a.exam_date).getTime() -
+                                        new Date(b.exam_date).getTime()
+                                    )
+                                    .map((subject) => {
                                       const SubjectIcon = getSubjectIcon(subject.subject_name);
                                       return (
                                         <div
@@ -1986,7 +2249,9 @@ const MyClass: React.FC = () => {
                                               <div className="flex items-center gap-3 mb-2">
                                                 <div className="flex items-center gap-2">
                                                   <SubjectIcon className="w-5 h-5 text-blue-600" />
-                                                  <h6 className="text-lg font-semibold text-gray-900">{subject.subject_name}</h6>
+                                                  <h6 className="text-lg font-semibold text-gray-900">
+                                                    {subject.subject_name}
+                                                  </h6>
                                                 </div>
                                                 <span className="text-sm text-gray-500 bg-gray-200 px-2 py-1 rounded-full">
                                                   {subject.total_marks} marks
@@ -1998,10 +2263,12 @@ const MyClass: React.FC = () => {
                                                   <div>
                                                     <p className="text-xs text-gray-500">Date</p>
                                                     <p className="font-medium text-gray-900">
-                                                      {new Date(subject.exam_date).toLocaleDateString('en-US', {
+                                                      {new Date(
+                                                        subject.exam_date
+                                                      ).toLocaleDateString('en-US', {
                                                         weekday: 'short',
                                                         month: 'short',
-                                                        day: 'numeric'
+                                                        day: 'numeric',
                                                       })}
                                                     </p>
                                                   </div>
@@ -2012,7 +2279,8 @@ const MyClass: React.FC = () => {
                                                   <div>
                                                     <p className="text-xs text-gray-500">Time</p>
                                                     <p className="font-medium text-gray-900">
-                                                      {subject.start_time.slice(0, 5)} - {subject.end_time.slice(0, 5)}
+                                                      {subject.start_time.slice(0, 5)} -{' '}
+                                                      {subject.end_time.slice(0, 5)}
                                                     </p>
                                                   </div>
                                                 </div>
@@ -2020,8 +2288,12 @@ const MyClass: React.FC = () => {
                                                 <div className="flex items-center gap-2">
                                                   <Clock className="w-4 h-4 text-gray-400" />
                                                   <div>
-                                                    <p className="text-xs text-gray-500">Duration</p>
-                                                    <p className="font-medium text-gray-900">{subject.duration_minutes} mins</p>
+                                                    <p className="text-xs text-gray-500">
+                                                      Duration
+                                                    </p>
+                                                    <p className="font-medium text-gray-900">
+                                                      {subject.duration_minutes} mins
+                                                    </p>
                                                   </div>
                                                 </div>
 
@@ -2029,7 +2301,9 @@ const MyClass: React.FC = () => {
                                                   <MapPin className="w-4 h-4 text-gray-400" />
                                                   <div>
                                                     <p className="text-xs text-gray-500">Room</p>
-                                                    <p className="font-medium text-gray-900">{subject.room || 'TBA'}</p>
+                                                    <p className="font-medium text-gray-900">
+                                                      {subject.room || 'TBA'}
+                                                    </p>
                                                   </div>
                                                 </div>
                                               </div>
@@ -2046,7 +2320,9 @@ const MyClass: React.FC = () => {
                     )}
 
                     {/* Past Exams */}
-                    {groupedExams.filter(exam => exam.subjects.every(s => new Date(s.exam_date) < new Date())).length > 0 && (
+                    {groupedExams.filter((exam) =>
+                      exam.subjects.every((s) => new Date(s.exam_date) < new Date())
+                    ).length > 0 && (
                       <div className="mt-8">
                         <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                           <CheckCircle2 className="w-5 h-5 text-gray-600" />
@@ -2054,8 +2330,10 @@ const MyClass: React.FC = () => {
                         </h3>
                         <div className="space-y-4">
                           {groupedExams
-                            .filter(exam => exam.subjects.every(s => new Date(s.exam_date) < new Date()))
-                            .map(groupedExam => (
+                            .filter((exam) =>
+                              exam.subjects.every((s) => new Date(s.exam_date) < new Date())
+                            )
+                            .map((groupedExam) => (
                               <div
                                 key={groupedExam.assessment_id}
                                 className="bg-gray-50 border border-gray-200 rounded-lg p-4"
@@ -2064,14 +2342,16 @@ const MyClass: React.FC = () => {
                                   <div className="flex-1">
                                     <div className="flex items-center gap-2 mb-1">
                                       <div className="flex items-center gap-2">
-                                        {React.createElement(getExamTypeIcon(groupedExam.type), { 
-                                          className: "w-4 h-4 text-gray-600" 
+                                        {React.createElement(getExamTypeIcon(groupedExam.type), {
+                                          className: 'w-4 h-4 text-gray-600',
                                         })}
-                                        <h4 className="font-semibold text-gray-900">{groupedExam.assessment_code}</h4>
+                                        <h4 className="font-semibold text-gray-900">
+                                          {groupedExam.assessment_code}
+                                        </h4>
                                       </div>
                                       <span className="px-2 py-1 bg-gray-200 text-gray-700 rounded-full text-xs font-medium flex items-center gap-1">
-                                        {React.createElement(getExamTypeIcon(groupedExam.type), { 
-                                          className: "w-3 h-3" 
+                                        {React.createElement(getExamTypeIcon(groupedExam.type), {
+                                          className: 'w-3 h-3',
                                         })}
                                         {groupedExam.type.replace('_', ' ')}
                                       </span>
@@ -2080,13 +2360,22 @@ const MyClass: React.FC = () => {
                                       <span>{groupedExam.subjects.length} subjects</span>
                                       <span className="flex items-center gap-1">
                                         <Calendar className="w-3 h-3" />
-                                        {new Date(groupedExam.subjects[0]?.exam_date).toLocaleDateString()} - {new Date(groupedExam.subjects[groupedExam.subjects.length - 1]?.exam_date).toLocaleDateString()}
+                                        {new Date(
+                                          groupedExam.subjects[0]?.exam_date
+                                        ).toLocaleDateString()}{' '}
+                                        -{' '}
+                                        {new Date(
+                                          groupedExam.subjects[groupedExam.subjects.length - 1]
+                                            ?.exam_date
+                                        ).toLocaleDateString()}
                                       </span>
                                     </div>
                                   </div>
                                   <div className="text-right">
                                     <p className="text-sm text-gray-500">Total Marks</p>
-                                    <p className="text-lg font-bold text-gray-700">{groupedExam.overall_total_marks}</p>
+                                    <p className="text-lg font-bold text-gray-700">
+                                      {groupedExam.overall_total_marks}
+                                    </p>
                                   </div>
                                 </div>
                               </div>
@@ -2104,7 +2393,9 @@ const MyClass: React.FC = () => {
               <div>
                 <div className="mb-6">
                   <h2 className="text-2xl font-bold text-gray-900 mb-2">Academic Results</h2>
-                  <p className="text-gray-600">Comprehensive examination results and performance analysis</p>
+                  <p className="text-gray-600">
+                    Comprehensive examination results and performance analysis
+                  </p>
                 </div>
 
                 {/* Performance Summary */}
@@ -2131,7 +2422,9 @@ const MyClass: React.FC = () => {
                       <p className="text-sm text-yellow-700 mt-1">Absent</p>
                     </div>
                     <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-100">
-                      <p className="text-2xl font-bold text-blue-600">{resultStats.averagePercentage}%</p>
+                      <p className="text-2xl font-bold text-blue-600">
+                        {resultStats.averagePercentage}%
+                      </p>
                       <p className="text-sm text-blue-700 mt-1">Average</p>
                     </div>
                   </div>
@@ -2141,30 +2434,38 @@ const MyClass: React.FC = () => {
                   <div className="text-center py-12 bg-white border border-gray-200 rounded-lg">
                     <Award className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No Results Published</h3>
-                    <p className="text-gray-500">Your examination results will appear here once they are published.</p>
+                    <p className="text-gray-500">
+                      Your examination results will appear here once they are published.
+                    </p>
                   </div>
                 ) : (
                   <div className="space-y-6">
                     {/* Group results by assessment */}
                     {(() => {
                       // Group results by assessment_id
-                      const groupedResults = results.reduce((acc, result) => {
-                        const key = result.assessment_id;
-                        if (!acc[key]) {
-                          acc[key] = {
-                            assessment_id: result.assessment_id,
-                            assessment_code: result.assessment_code,
-                            type: result.type,
-                            exam_date: result.exam_date,
-                            subjects: []
-                          };
-                        }
-                        acc[key].subjects.push(result);
-                        return acc;
-                      }, {} as Record<string, any>);
+                      const groupedResults = results.reduce(
+                        (acc, result) => {
+                          const key = result.assessment_id;
+                          if (!acc[key]) {
+                            acc[key] = {
+                              assessment_id: result.assessment_id,
+                              assessment_code: result.assessment_code,
+                              type: result.type,
+                              exam_date: result.exam_date,
+                              subjects: [],
+                            };
+                          }
+                          acc[key].subjects.push(result);
+                          return acc;
+                        },
+                        {} as Record<string, any>
+                      );
 
                       return Object.values(groupedResults).map((assessment: any) => (
-                        <div key={assessment.assessment_id} className="bg-white border border-gray-200 rounded-lg shadow-sm">
+                        <div
+                          key={assessment.assessment_id}
+                          className="bg-white border border-gray-200 rounded-lg shadow-sm"
+                        >
                           {/* Assessment Header */}
                           <div className="border-b border-gray-200 p-6 bg-gradient-to-r from-blue-50 to-white">
                             <div className="flex items-center justify-between">
@@ -2183,7 +2484,7 @@ const MyClass: React.FC = () => {
                                       {new Date(assessment.exam_date).toLocaleDateString('en-US', {
                                         month: 'long',
                                         day: 'numeric',
-                                        year: 'numeric'
+                                        year: 'numeric',
                                       })}
                                     </span>
                                   )}
@@ -2191,7 +2492,9 @@ const MyClass: React.FC = () => {
                               </div>
                               <div className="text-right bg-white rounded-lg p-3 border border-gray-100">
                                 <p className="text-sm text-gray-600">Subjects</p>
-                                <p className="text-2xl font-bold text-blue-600">{assessment.subjects.length}</p>
+                                <p className="text-2xl font-bold text-blue-600">
+                                  {assessment.subjects.length}
+                                </p>
                               </div>
                             </div>
                           </div>
@@ -2201,25 +2504,48 @@ const MyClass: React.FC = () => {
                             <table className="w-full">
                               <thead className="bg-gradient-to-r from-gray-50 to-blue-50">
                                 <tr>
-                                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200">Subject</th>
-                                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200">Marks Obtained</th>
-                                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200">Total Marks</th>
-                                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200">Percentage</th>
-                                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200">Grade</th>
-                                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200">Status</th>
+                                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200">
+                                    Subject
+                                  </th>
+                                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200">
+                                    Marks Obtained
+                                  </th>
+                                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200">
+                                    Total Marks
+                                  </th>
+                                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200">
+                                    Percentage
+                                  </th>
+                                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200">
+                                    Grade
+                                  </th>
+                                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200">
+                                    Status
+                                  </th>
                                 </tr>
                               </thead>
                               <tbody className="bg-white divide-y divide-gray-100">
                                 {assessment.subjects.map((result: any) => {
-                                  const isPassed = !result.is_absent && !result.is_exempt && result.is_pass === true;
-                                  const isFailed = !result.is_absent && !result.is_exempt && result.is_pass === false;
-                                  
+                                  const isPassed =
+                                    !result.is_absent &&
+                                    !result.is_exempt &&
+                                    result.is_pass === true;
+                                  const isFailed =
+                                    !result.is_absent &&
+                                    !result.is_exempt &&
+                                    result.is_pass === false;
+
                                   return (
-                                    <tr key={result.id} className="hover:bg-blue-50 transition-colors duration-150">
+                                    <tr
+                                      key={result.id}
+                                      className="hover:bg-blue-50 transition-colors duration-150"
+                                    >
                                       <td className="px-6 py-4 whitespace-nowrap border-r border-gray-100">
                                         <div className="flex items-center">
                                           <div>
-                                            <div className="text-sm font-semibold text-gray-900">{result.subject_name}</div>
+                                            <div className="text-sm font-semibold text-gray-900">
+                                              {result.subject_name}
+                                            </div>
                                             {result.is_moderated && (
                                               <div className="text-xs text-blue-600 mt-1 flex items-center gap-1">
                                                 <div className="w-1 h-1 bg-blue-500 rounded-full"></div>
@@ -2231,14 +2557,21 @@ const MyClass: React.FC = () => {
                                       </td>
                                       <td className="px-6 py-4 whitespace-nowrap text-center border-r border-gray-100">
                                         {result.is_absent ? (
-                                          <span className="text-sm text-yellow-600 font-semibold">Absent</span>
+                                          <span className="text-sm text-yellow-600 font-semibold">
+                                            Absent
+                                          </span>
                                         ) : result.is_exempt ? (
-                                          <span className="text-sm text-blue-600 font-semibold">Exempt</span>
+                                          <span className="text-sm text-blue-600 font-semibold">
+                                            Exempt
+                                          </span>
                                         ) : (
                                           <div className="text-sm font-semibold text-gray-900">
                                             {result.marks_obtained}
                                             {result.is_moderated && (
-                                              <span className="text-blue-600 ml-1" title={`Moderated from ${result.original_marks} to ${result.marks_obtained}. Reason: ${result.moderation_reason}`}>
+                                              <span
+                                                className="text-blue-600 ml-1"
+                                                title={`Moderated from ${result.original_marks} to ${result.marks_obtained}. Reason: ${result.moderation_reason}`}
+                                              >
                                                 *
                                               </span>
                                             )}
@@ -2252,9 +2585,15 @@ const MyClass: React.FC = () => {
                                         {result.is_absent || result.is_exempt ? (
                                           <span className="text-sm text-gray-400">-</span>
                                         ) : (
-                                          <span className={`text-sm font-semibold ${
-                                            isPassed ? 'text-green-600' : isFailed ? 'text-red-600' : 'text-gray-900'
-                                          }`}>
+                                          <span
+                                            className={`text-sm font-semibold ${
+                                              isPassed
+                                                ? 'text-green-600'
+                                                : isFailed
+                                                  ? 'text-red-600'
+                                                  : 'text-gray-900'
+                                            }`}
+                                          >
                                             {result.percentage?.toFixed(1)}%
                                           </span>
                                         )}
@@ -2263,9 +2602,15 @@ const MyClass: React.FC = () => {
                                         {result.is_absent || result.is_exempt ? (
                                           <span className="text-sm text-gray-400">-</span>
                                         ) : (
-                                          <span className={`text-sm font-semibold ${
-                                            isPassed ? 'text-green-600' : isFailed ? 'text-red-600' : 'text-gray-900'
-                                          }`}>
+                                          <span
+                                            className={`text-sm font-semibold ${
+                                              isPassed
+                                                ? 'text-green-600'
+                                                : isFailed
+                                                  ? 'text-red-600'
+                                                  : 'text-gray-900'
+                                            }`}
+                                          >
                                             {result.grade || 'N/A'}
                                           </span>
                                         )}
@@ -2307,20 +2652,32 @@ const MyClass: React.FC = () => {
                                 <div className="text-sm flex items-center gap-2">
                                   <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
                                   <span className="text-gray-600">Total Subjects: </span>
-                                  <span className="font-semibold text-gray-900">{assessment.subjects.length}</span>
+                                  <span className="font-semibold text-gray-900">
+                                    {assessment.subjects.length}
+                                  </span>
                                 </div>
                                 <div className="text-sm flex items-center gap-2">
                                   <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                                   <span className="text-gray-600">Passed: </span>
                                   <span className="font-semibold text-green-600">
-                                    {assessment.subjects.filter((s: any) => !s.is_absent && !s.is_exempt && s.is_pass === true).length}
+                                    {
+                                      assessment.subjects.filter(
+                                        (s: any) =>
+                                          !s.is_absent && !s.is_exempt && s.is_pass === true
+                                      ).length
+                                    }
                                   </span>
                                 </div>
                                 <div className="text-sm flex items-center gap-2">
                                   <div className="w-2 h-2 bg-red-500 rounded-full"></div>
                                   <span className="text-gray-600">Failed: </span>
                                   <span className="font-semibold text-red-600">
-                                    {assessment.subjects.filter((s: any) => !s.is_absent && !s.is_exempt && s.is_pass === false).length}
+                                    {
+                                      assessment.subjects.filter(
+                                        (s: any) =>
+                                          !s.is_absent && !s.is_exempt && s.is_pass === false
+                                      ).length
+                                    }
                                   </span>
                                 </div>
                               </div>
@@ -2328,12 +2685,20 @@ const MyClass: React.FC = () => {
                                 <span className="text-gray-600">Overall Average: </span>
                                 <span className="font-bold text-blue-600">
                                   {(() => {
-                                    const validResults = assessment.subjects.filter((s: any) => !s.is_absent && !s.is_exempt && s.percentage !== undefined);
-                                    const average = validResults.length > 0
-                                      ? validResults.reduce((sum: number, s: any) => sum + (s.percentage || 0), 0) / validResults.length
-                                      : 0;
+                                    const validResults = assessment.subjects.filter(
+                                      (s: any) =>
+                                        !s.is_absent && !s.is_exempt && s.percentage !== undefined
+                                    );
+                                    const average =
+                                      validResults.length > 0
+                                        ? validResults.reduce(
+                                            (sum: number, s: any) => sum + (s.percentage || 0),
+                                            0
+                                          ) / validResults.length
+                                        : 0;
                                     return average.toFixed(1);
-                                  })()}%
+                                  })()}
+                                  %
                                 </span>
                               </div>
                             </div>
@@ -2345,9 +2710,12 @@ const MyClass: React.FC = () => {
                               <div className="flex items-start gap-2">
                                 <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5" />
                                 <div>
-                                  <p className="text-sm font-medium text-blue-900">Moderation Applied</p>
+                                  <p className="text-sm font-medium text-blue-900">
+                                    Moderation Applied
+                                  </p>
                                   <p className="text-xs text-blue-700 mt-1">
-                                    * Indicates marks that have been moderated. Hover over the asterisk for details.
+                                    * Indicates marks that have been moderated. Hover over the
+                                    asterisk for details.
                                   </p>
                                 </div>
                               </div>
@@ -2375,7 +2743,9 @@ const MyClass: React.FC = () => {
                   {assignmentDetails?.title || 'Assignment Details'}
                 </h3>
                 <p className="text-sm text-gray-500 mt-1">
-                  {assignmentDetails?.course_name} • Due: {assignmentDetails?.due_date && parseAsLocalDate(assignmentDetails.due_date).toLocaleDateString()}
+                  {assignmentDetails?.course_name} • Due:{' '}
+                  {assignmentDetails?.due_date &&
+                    parseAsLocalDate(assignmentDetails.due_date).toLocaleDateString()}
                 </p>
               </div>
               <button
@@ -2403,7 +2773,9 @@ const MyClass: React.FC = () => {
                     </div>
                     <div className="bg-gray-50 rounded-lg p-4">
                       <p className="text-sm text-gray-500 mb-1">Points</p>
-                      <p className="text-lg font-semibold text-gray-900">{assignmentDetails.total_points}</p>
+                      <p className="text-lg font-semibold text-gray-900">
+                        {assignmentDetails.total_points}
+                      </p>
                     </div>
                     <div className="bg-gray-50 rounded-lg p-4">
                       <p className="text-sm text-gray-500 mb-1">Type</p>
@@ -2418,7 +2790,9 @@ const MyClass: React.FC = () => {
                     <div>
                       <h4 className="text-lg font-semibold text-gray-900 mb-3">Description</h4>
                       <div className="bg-gray-50 rounded-lg p-4">
-                        <p className="text-gray-700 whitespace-pre-wrap">{assignmentDetails.description}</p>
+                        <p className="text-gray-700 whitespace-pre-wrap">
+                          {assignmentDetails.description}
+                        </p>
                       </div>
                     </div>
                   )}
@@ -2428,68 +2802,86 @@ const MyClass: React.FC = () => {
                     <div>
                       <h4 className="text-lg font-semibold text-gray-900 mb-3">Instructions</h4>
                       <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                        <p className="text-blue-900 whitespace-pre-wrap">{assignmentDetails.instructions}</p>
+                        <p className="text-blue-900 whitespace-pre-wrap">
+                          {assignmentDetails.instructions}
+                        </p>
                       </div>
                     </div>
                   )}
 
                   {/* Instruction Files */}
-                  {assignmentDetails.instruction_files && assignmentDetails.instruction_files.length > 0 && (
-                    <div>
-                      <h4 className="text-lg font-semibold text-gray-900 mb-3">Instruction Files</h4>
-                      <div className="space-y-2">
-                        {assignmentDetails.instruction_files.map((file: any) => (
-                          <div key={file.attachment_id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
-                            <div className="flex items-center gap-3">
-                              <Paperclip className="w-5 h-5 text-gray-500" />
-                              <div>
-                                <p className="font-medium text-gray-900">{file.file_name}</p>
-                                <p className="text-sm text-gray-500">
-                                  {file.file_type} • {(file.file_size / (1024 * 1024)).toFixed(2)} MB
-                                </p>
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => openFile(file.file_url, file.file_name)}
-                              className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                  {assignmentDetails.instruction_files &&
+                    assignmentDetails.instruction_files.length > 0 && (
+                      <div>
+                        <h4 className="text-lg font-semibold text-gray-900 mb-3">
+                          Instruction Files
+                        </h4>
+                        <div className="space-y-2">
+                          {assignmentDetails.instruction_files.map((file: any) => (
+                            <div
+                              key={file.attachment_id}
+                              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
                             >
-                              <FileText className="w-4 h-4" />
-                              View
-                            </button>
-                          </div>
-                        ))}
+                              <div className="flex items-center gap-3">
+                                <Paperclip className="w-5 h-5 text-gray-500" />
+                                <div>
+                                  <p className="font-medium text-gray-900">{file.file_name}</p>
+                                  <p className="text-sm text-gray-500">
+                                    {file.file_type} • {(file.file_size / (1024 * 1024)).toFixed(2)}{' '}
+                                    MB
+                                  </p>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => openFile(file.file_url, file.file_name)}
+                                className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                              >
+                                <FileText className="w-4 h-4" />
+                                View
+                              </button>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
                   {/* Student Submission Files */}
-                  {assignmentDetails.submission_files && assignmentDetails.submission_files.length > 0 && (
-                    <div>
-                      <h4 className="text-lg font-semibold text-gray-900 mb-3">Your Submissions</h4>
-                      <div className="space-y-2">
-                        {assignmentDetails.submission_files.map((file: any) => (
-                          <div key={file.attachment_id} className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
-                            <div className="flex items-center gap-3">
-                              <CheckCircle2 className="w-5 h-5 text-green-600" />
-                              <div>
-                                <p className="font-medium text-green-900">{file.original_filename}</p>
-                                <p className="text-sm text-green-700">
-                                  Submitted on {new Date(file.uploaded_date).toLocaleDateString()} • {(file.file_size / (1024 * 1024)).toFixed(2)} MB
-                                </p>
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => openFile(file.file_url, file.original_filename)}
-                              className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                  {assignmentDetails.submission_files &&
+                    assignmentDetails.submission_files.length > 0 && (
+                      <div>
+                        <h4 className="text-lg font-semibold text-gray-900 mb-3">
+                          Your Submissions
+                        </h4>
+                        <div className="space-y-2">
+                          {assignmentDetails.submission_files.map((file: any) => (
+                            <div
+                              key={file.attachment_id}
+                              className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200"
                             >
-                              <FileText className="w-4 h-4" />
-                              View
-                            </button>
-                          </div>
-                        ))}
+                              <div className="flex items-center gap-3">
+                                <CheckCircle2 className="w-5 h-5 text-green-600" />
+                                <div>
+                                  <p className="font-medium text-green-900">
+                                    {file.original_filename}
+                                  </p>
+                                  <p className="text-sm text-green-700">
+                                    Submitted on {new Date(file.uploaded_date).toLocaleDateString()}{' '}
+                                    • {(file.file_size / (1024 * 1024)).toFixed(2)} MB
+                                  </p>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => openFile(file.file_url, file.original_filename)}
+                                className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                              >
+                                <FileText className="w-4 h-4" />
+                                View
+                              </button>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
                   {/* Grade and Feedback */}
                   {assignmentDetails.status === 'graded' && (
@@ -2499,13 +2891,16 @@ const MyClass: React.FC = () => {
                         <div className="flex items-center justify-between mb-3">
                           <span className="text-green-700 font-medium">Grade Received:</span>
                           <span className="text-2xl font-bold text-green-800">
-                            {assignmentDetails.grade_percentage}% ({assignmentDetails.grade_received}/{assignmentDetails.total_points})
+                            {assignmentDetails.grade_percentage}% (
+                            {assignmentDetails.grade_received}/{assignmentDetails.total_points})
                           </span>
                         </div>
                         {assignmentDetails.instructor_feedback && (
                           <div>
                             <p className="text-green-700 font-medium mb-2">Instructor Feedback:</p>
-                            <p className="text-green-800 whitespace-pre-wrap">{assignmentDetails.instructor_feedback}</p>
+                            <p className="text-green-800 whitespace-pre-wrap">
+                              {assignmentDetails.instructor_feedback}
+                            </p>
                           </div>
                         )}
                         {assignmentDetails.graded_date && (
@@ -2545,14 +2940,19 @@ const MyClass: React.FC = () => {
                   Upload Submission
                 </button>
               )}
-              
+
               {/* Show message when submission is disabled due to late submission policy */}
-              {assignmentDetails && !canSubmitAssignment(assignmentDetails) && assignmentDetails.status !== 'submitted' && assignmentDetails.status !== 'graded' && isOverdue(assignmentDetails.due_date) && !assignmentDetails.allow_late_submission && (
-                <div className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-700 rounded-lg text-sm font-medium border border-red-200">
-                  <AlertCircle className="w-4 h-4" />
-                  Late submission not allowed
-                </div>
-              )}
+              {assignmentDetails &&
+                !canSubmitAssignment(assignmentDetails) &&
+                assignmentDetails.status !== 'submitted' &&
+                assignmentDetails.status !== 'graded' &&
+                isOverdue(assignmentDetails.due_date) &&
+                !assignmentDetails.allow_late_submission && (
+                  <div className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-700 rounded-lg text-sm font-medium border border-red-200">
+                    <AlertCircle className="w-4 h-4" />
+                    Late submission not allowed
+                  </div>
+                )}
             </div>
           </div>
         </div>
@@ -2607,17 +3007,22 @@ const MyClass: React.FC = () => {
               <div className="bg-gray-50 rounded-lg p-4 space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-600">Course:</span>
-                  <span className="font-medium text-gray-900">{selectedAssignment?.course_name}</span>
+                  <span className="font-medium text-gray-900">
+                    {selectedAssignment?.course_name}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-600">Due Date:</span>
                   <span className="font-medium text-gray-900">
-                    {selectedAssignment?.due_date && parseAsLocalDate(selectedAssignment.due_date).toLocaleDateString()}
+                    {selectedAssignment?.due_date &&
+                      parseAsLocalDate(selectedAssignment.due_date).toLocaleDateString()}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-600">Points:</span>
-                  <span className="font-medium text-gray-900">{selectedAssignment?.total_points}</span>
+                  <span className="font-medium text-gray-900">
+                    {selectedAssignment?.total_points}
+                  </span>
                 </div>
               </div>
             </div>
@@ -2652,7 +3057,7 @@ const MyClass: React.FC = () => {
           </div>
         </div>
       )}
-      
+
       {/* Notification Modal */}
       <NotificationModal
         isOpen={showNotification}

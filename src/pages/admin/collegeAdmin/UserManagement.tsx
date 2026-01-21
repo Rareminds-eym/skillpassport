@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 import {
   PlusCircleIcon,
   MagnifyingGlassIcon,
@@ -6,23 +6,23 @@ import {
   TrashIcon,
   KeyIcon,
   ArrowUpTrayIcon,
-} from "@heroicons/react/24/outline";
-import { useUsers } from "../../../hooks/college/useUsers";
-import { departmentService } from "../../../services/college";
-import { supabase } from "../../../lib/supabaseClient";
-import UserFormModal from "./components/UserFormModal";
-import { ConfirmModal } from "../../../components/shared/ConfirmModal";
-import type { User } from "../../../types/college";
+} from '@heroicons/react/24/outline';
+import { useUsers } from '../../../hooks/college/useUsers';
+import { departmentService } from '../../../services/college';
+import { supabase } from '../../../lib/supabaseClient';
+import UserFormModal from './components/UserFormModal';
+import { ConfirmModal } from '../../../components/shared/ConfirmModal';
+import type { User } from '../../../types/college';
 
 const UserManagement: React.FC = () => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [roleFilter, setRoleFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"active" | "inactive" | "">("");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'active' | 'inactive' | ''>('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [departments, setDepartments] = useState<Array<{ id: string; name: string }>>([]);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -33,19 +33,21 @@ const UserManagement: React.FC = () => {
     title: string;
     message: string;
     onConfirm: () => void;
-    variant?: "danger" | "warning" | "info";
+    variant?: 'danger' | 'warning' | 'info';
   }>({
     isOpen: false,
-    title: "",
-    message: "",
+    title: '',
+    message: '',
     onConfirm: () => {},
   });
 
-  const { users, loading, error, createUser, updateUser, deactivateUser, resetPassword } = useUsers({
-    search: searchTerm,
-    role: roleFilter,
-    status: statusFilter || undefined,
-  });
+  const { users, loading, error, createUser, updateUser, deactivateUser, resetPassword } = useUsers(
+    {
+      search: searchTerm,
+      role: roleFilter,
+      status: statusFilter || undefined,
+    }
+  );
 
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -63,7 +65,7 @@ const UserManagement: React.FC = () => {
   const getPageNumbers = () => {
     const pages: (number | string)[] = [];
     const maxVisible = 5;
-    
+
     if (totalPages <= maxVisible) {
       for (let i = 1; i <= totalPages; i++) {
         pages.push(i);
@@ -87,7 +89,7 @@ const UserManagement: React.FC = () => {
         pages.push(totalPages);
       }
     }
-    
+
     return pages;
   };
 
@@ -96,8 +98,10 @@ const UserManagement: React.FC = () => {
     const fetchDepartments = async () => {
       try {
         // Get college ID from current user
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
-        
+        const {
+          data: { user: currentUser },
+        } = await supabase.auth.getUser();
+
         if (!currentUser?.email) {
           console.error('No user logged in');
           return;
@@ -121,7 +125,7 @@ const UserManagement: React.FC = () => {
             .eq('organization_type', 'college')
             .eq('admin_id', currentUser.id)
             .maybeSingle();
-          
+
           if (orgByAdminId?.id) {
             collegeId = orgByAdminId.id;
           } else {
@@ -132,7 +136,7 @@ const UserManagement: React.FC = () => {
               .eq('organization_type', 'college')
               .eq('email', currentUser.email)
               .maybeSingle();
-            
+
             collegeId = orgByEmail?.id;
           }
         }
@@ -145,7 +149,7 @@ const UserManagement: React.FC = () => {
             .eq('organization_type', 'college')
             .limit(1)
             .maybeSingle();
-          
+
           collegeId = firstCollege?.id;
         }
 
@@ -157,7 +161,7 @@ const UserManagement: React.FC = () => {
         // Fetch departments with the college ID
         const result = await departmentService.getDepartments(collegeId);
         if (result && Array.isArray(result)) {
-          setDepartments(result.map(d => ({ id: d.id, name: d.name })));
+          setDepartments(result.map((d) => ({ id: d.id, name: d.name })));
         }
       } catch (error) {
         console.error('Error fetching departments:', error);
@@ -177,31 +181,35 @@ const UserManagement: React.FC = () => {
   };
 
   const handleSubmitUser = async (userData: Partial<User>) => {
-    const result = await (selectedUser 
+    const result = await (selectedUser
       ? updateUser(selectedUser.id, userData)
-      : createUser(userData)
-    );
-    
+      : createUser(userData));
+
     if (result.success) {
+      // @ts-expect-error - Auto-suppressed for migration
       if (!selectedUser && result.data?.metadata?.temporary_password) {
         setSuccessMessage(
+          // @ts-expect-error - Auto-suppressed for migration
           `User created successfully!\n\nEmail: ${result.data.email}\nTemporary Password: ${result.data.metadata.temporary_password}\n\nPlease save this password and share it with the user.`
         );
       } else {
-        setSuccessMessage(selectedUser ? 'User updated successfully!' : 'User created successfully!');
+        setSuccessMessage(
+          selectedUser ? 'User updated successfully!' : 'User created successfully!'
+        );
       }
       setTimeout(() => setSuccessMessage(null), 10000);
     }
-    
+
     return result;
   };
 
   const handleDeactivateUser = async (userId: string) => {
     setConfirmModal({
       isOpen: true,
-      title: "Deactivate User",
-      message: "Are you sure you want to deactivate this user? They will no longer be able to access the system.",
-      variant: "danger",
+      title: 'Deactivate User',
+      message:
+        'Are you sure you want to deactivate this user? They will no longer be able to access the system.',
+      variant: 'danger',
       onConfirm: async () => {
         const result = await deactivateUser(userId);
         if (result.success) {
@@ -218,13 +226,16 @@ const UserManagement: React.FC = () => {
   const handleResetPassword = async (userId: string) => {
     setConfirmModal({
       isOpen: true,
-      title: "Reset Password",
-      message: "Generate a new temporary password for this user? The new password will be displayed after confirmation.",
-      variant: "warning",
+      title: 'Reset Password',
+      message:
+        'Generate a new temporary password for this user? The new password will be displayed after confirmation.',
+      variant: 'warning',
       onConfirm: async () => {
         const result = await resetPassword(userId);
         if (result.success) {
-          setSuccessMessage('Password reset successfully! Check the console for the new temporary password.');
+          setSuccessMessage(
+            'Password reset successfully! Check the console for the new temporary password.'
+          );
           setTimeout(() => setSuccessMessage(null), 5000);
         } else {
           setSuccessMessage(`Error: ${result.error}`);
@@ -250,23 +261,40 @@ const UserManagement: React.FC = () => {
           <div className="flex items-start gap-3">
             <div className="flex-shrink-0">
               <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                  clipRule="evenodd"
+                />
               </svg>
             </div>
             <div className="flex-1">
               <h3 className="text-sm font-medium text-red-800">Database Error</h3>
               <p className="mt-1 text-sm text-red-700">{error}</p>
-              {error.includes('406') || error.includes('relation') || error.includes('does not exist') ? (
+              {error.includes('406') ||
+              error.includes('relation') ||
+              error.includes('does not exist') ? (
                 <div className="mt-3 text-sm text-red-700">
-                  <p className="font-medium">It looks like the database tables haven't been created yet.</p>
+                  <p className="font-medium">
+                    It looks like the database tables haven't been created yet.
+                  </p>
                   <p className="mt-2">To fix this:</p>
                   <ol className="list-decimal list-inside mt-1 space-y-1">
                     <li>Go to your Supabase Dashboard → SQL Editor</li>
-                    <li>Run the migration from: <code className="bg-red-100 px-1 rounded">database/migrations/college_dashboard_modules.sql</code></li>
+                    <li>
+                      Run the migration from:{' '}
+                      <code className="bg-red-100 px-1 rounded">
+                        database/migrations/college_dashboard_modules.sql
+                      </code>
+                    </li>
                     <li>Refresh this page</li>
                   </ol>
                   <p className="mt-2">
-                    See <code className="bg-red-100 px-1 rounded">QUICK_START_COLLEGE_DASHBOARD.md</code> for detailed instructions.
+                    See{' '}
+                    <code className="bg-red-100 px-1 rounded">
+                      QUICK_START_COLLEGE_DASHBOARD.md
+                    </code>{' '}
+                    for detailed instructions.
                   </p>
                 </div>
               ) : null}
@@ -280,12 +308,18 @@ const UserManagement: React.FC = () => {
           <div className="flex items-start gap-3">
             <div className="flex-shrink-0">
               <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                  clipRule="evenodd"
+                />
               </svg>
             </div>
             <div className="flex-1">
               <h3 className="text-sm font-medium text-green-800">Success</h3>
-              <pre className="mt-1 text-sm text-green-700 whitespace-pre-wrap font-mono">{successMessage}</pre>
+              <pre className="mt-1 text-sm text-green-700 whitespace-pre-wrap font-mono">
+                {successMessage}
+              </pre>
             </div>
           </div>
         </div>
@@ -294,9 +328,7 @@ const UserManagement: React.FC = () => {
       <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
         <div className="flex justify-between items-center mb-4">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">
-              Users ({totalUsers})
-            </h2>
+            <h2 className="text-lg font-semibold text-gray-900">Users ({totalUsers})</h2>
             <p className="text-sm text-gray-500 mt-1">
               Showing {startIndex + 1}-{Math.min(endIndex, totalUsers)} of {totalUsers}
             </p>
@@ -306,7 +338,7 @@ const UserManagement: React.FC = () => {
               <ArrowUpTrayIcon className="h-5 w-5" />
               Bulk Import
             </button>
-            <button 
+            <button
               onClick={handleAddUser}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
             >
@@ -327,7 +359,7 @@ const UserManagement: React.FC = () => {
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
-          
+
           <select
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
@@ -397,9 +429,7 @@ const UserManagement: React.FC = () => {
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
                       Roles
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
-                      ID
-                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">ID</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
                       Status
                     </th>
@@ -411,12 +441,8 @@ const UserManagement: React.FC = () => {
                 <tbody className="divide-y divide-gray-200">
                   {paginatedUsers.map((user) => (
                     <tr key={user.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 font-medium text-gray-900">
-                        {user.name || 'N/A'}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        {user.email || 'N/A'}
-                      </td>
+                      <td className="px-4 py-3 font-medium text-gray-900">{user.name || 'N/A'}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{user.email || 'N/A'}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">
                         <div className="flex flex-wrap gap-1">
                           {(user.roles || []).map((role, idx) => (
@@ -438,9 +464,9 @@ const UserManagement: React.FC = () => {
                       <td className="px-4 py-3">
                         <span
                           className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            user.status === "active"
-                              ? "bg-green-100 text-green-700"
-                              : "bg-gray-100 text-gray-700"
+                            user.status === 'active'
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-gray-100 text-gray-700'
                           }`}
                         >
                           {user.status || 'active'}
@@ -448,21 +474,21 @@ const UserManagement: React.FC = () => {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex gap-2">
-                          <button 
+                          <button
                             onClick={() => handleEditUser(user)}
                             className="p-1 text-blue-600 hover:bg-blue-50 rounded transition"
                             title="Edit user"
                           >
                             <PencilSquareIcon className="h-5 w-5" />
                           </button>
-                          <button 
+                          <button
                             onClick={() => handleResetPassword(user.id)}
                             className="p-1 text-purple-600 hover:bg-purple-50 rounded transition"
                             title="Reset password"
                           >
                             <KeyIcon className="h-5 w-5" />
                           </button>
-                          <button 
+                          <button
                             onClick={() => handleDeactivateUser(user.id)}
                             className="p-1 text-red-600 hover:bg-red-50 rounded transition"
                             title="Deactivate user"
@@ -497,7 +523,7 @@ const UserManagement: React.FC = () => {
                     First
                   </button>
                   <button
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                     disabled={currentPage === 1}
                     className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
                   >
@@ -505,9 +531,11 @@ const UserManagement: React.FC = () => {
                   </button>
 
                   <div className="flex items-center gap-1">
-                    {getPageNumbers().map((page, idx) => (
+                    {getPageNumbers().map((page, idx) =>
                       page === '...' ? (
-                        <span key={`ellipsis-${idx}`} className="px-2 text-gray-400">...</span>
+                        <span key={`ellipsis-${idx}`} className="px-2 text-gray-400">
+                          ...
+                        </span>
                       ) : (
                         <button
                           key={page}
@@ -521,11 +549,11 @@ const UserManagement: React.FC = () => {
                           {page}
                         </button>
                       )
-                    ))}
+                    )}
                   </div>
 
                   <button
-                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
                     disabled={currentPage === totalPages}
                     className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
                   >

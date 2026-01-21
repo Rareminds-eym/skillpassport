@@ -7,7 +7,12 @@ import {
   DocumentTextIcon,
   CurrencyRupeeIcon,
 } from '@heroicons/react/24/outline';
-import { ProjectStatus, ProposalStatus, MilestoneStatus, ProjectCategory } from '../../../../types/project';
+import {
+  ProjectStatus,
+  ProposalStatus,
+  MilestoneStatus,
+  ProjectCategory,
+} from '../../../../types/project';
 
 // Status Badge Component
 interface StatusBadgeProps {
@@ -21,24 +26,69 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, type = 'projec
       // Project statuses
       draft: { bg: 'bg-gray-100', text: 'text-gray-700', icon: DocumentTextIcon, label: 'Draft' },
       open: { bg: 'bg-blue-100', text: 'text-blue-700', icon: ClockIcon, label: 'Open' },
-      in_progress: { bg: 'bg-purple-100', text: 'text-purple-700', icon: ClockIcon, label: 'In Progress' },
-      completed: { bg: 'bg-green-100', text: 'text-green-700', icon: CheckCircleIcon, label: 'Completed' },
+      in_progress: {
+        bg: 'bg-purple-100',
+        text: 'text-purple-700',
+        icon: ClockIcon,
+        label: 'In Progress',
+      },
+      completed: {
+        bg: 'bg-green-100',
+        text: 'text-green-700',
+        icon: CheckCircleIcon,
+        label: 'Completed',
+      },
       cancelled: { bg: 'bg-red-100', text: 'text-red-700', icon: XCircleIcon, label: 'Cancelled' },
-      
+
       // Proposal statuses
-      submitted: { bg: 'bg-blue-100', text: 'text-blue-700', icon: DocumentTextIcon, label: 'Submitted' },
-      under_review: { bg: 'bg-yellow-100', text: 'text-yellow-700', icon: ClockIcon, label: 'Under Review' },
-      shortlisted: { bg: 'bg-purple-100', text: 'text-purple-700', icon: CheckCircleIcon, label: 'Shortlisted' },
-      accepted: { bg: 'bg-green-100', text: 'text-green-700', icon: CheckCircleIcon, label: 'Accepted' },
+      submitted: {
+        bg: 'bg-blue-100',
+        text: 'text-blue-700',
+        icon: DocumentTextIcon,
+        label: 'Submitted',
+      },
+      under_review: {
+        bg: 'bg-yellow-100',
+        text: 'text-yellow-700',
+        icon: ClockIcon,
+        label: 'Under Review',
+      },
+      shortlisted: {
+        bg: 'bg-purple-100',
+        text: 'text-purple-700',
+        icon: CheckCircleIcon,
+        label: 'Shortlisted',
+      },
+      accepted: {
+        bg: 'bg-green-100',
+        text: 'text-green-700',
+        icon: CheckCircleIcon,
+        label: 'Accepted',
+      },
       rejected: { bg: 'bg-red-100', text: 'text-red-700', icon: XCircleIcon, label: 'Rejected' },
-      withdrawn: { bg: 'bg-gray-100', text: 'text-gray-700', icon: XCircleIcon, label: 'Withdrawn' },
-      
+      withdrawn: {
+        bg: 'bg-gray-100',
+        text: 'text-gray-700',
+        icon: XCircleIcon,
+        label: 'Withdrawn',
+      },
+
       // Milestone statuses
       pending: { bg: 'bg-gray-100', text: 'text-gray-700', icon: ClockIcon, label: 'Pending' },
-      approved: { bg: 'bg-green-100', text: 'text-green-700', icon: CheckCircleIcon, label: 'Approved' },
-      paid: { bg: 'bg-emerald-100', text: 'text-emerald-700', icon: CheckCircleIcon, label: 'Paid' },
+      approved: {
+        bg: 'bg-green-100',
+        text: 'text-green-700',
+        icon: CheckCircleIcon,
+        label: 'Approved',
+      },
+      paid: {
+        bg: 'bg-emerald-100',
+        text: 'text-emerald-700',
+        icon: CheckCircleIcon,
+        label: 'Paid',
+      },
     };
-    
+
     return configs[status] || configs.draft;
   };
 
@@ -46,7 +96,9 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, type = 'projec
   const Icon = config.icon;
 
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
+    <span
+      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.text}`}
+    >
       <Icon className="w-3.5 h-3.5 mr-1" />
       {config.label}
     </span>
@@ -69,7 +121,9 @@ export const PriorityBadge: React.FC<PriorityBadgeProps> = ({ priority }) => {
   const config = configs[priority];
 
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${config.bg} ${config.text}`}>
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${config.bg} ${config.text}`}
+    >
       {config.label}
     </span>
   );
@@ -84,12 +138,12 @@ interface BudgetDisplayProps {
   size?: 'sm' | 'md' | 'lg';
 }
 
-export const BudgetDisplay: React.FC<BudgetDisplayProps> = ({ 
-  min, 
-  max, 
-  currency = 'INR', 
+export const BudgetDisplay: React.FC<BudgetDisplayProps> = ({
+  min,
+  max,
+  currency = 'INR',
   showIcon = true,
-  size = 'md'
+  size = 'md',
 }) => {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -102,14 +156,16 @@ export const BudgetDisplay: React.FC<BudgetDisplayProps> = ({
   const sizeClasses = {
     sm: 'text-sm',
     md: 'text-base',
-    lg: 'text-lg'
+    lg: 'text-lg',
   };
 
   return (
     <div className={`flex items-center gap-1 font-semibold text-gray-900 ${sizeClasses[size]}`}>
       {showIcon && <CurrencyRupeeIcon className="w-4 h-4 text-gray-500" />}
       {min && max ? (
-        <span>{formatCurrency(min)} - {formatCurrency(max)}</span>
+        <span>
+          {formatCurrency(min)} - {formatCurrency(max)}
+        </span>
       ) : max ? (
         <span>{formatCurrency(max)}</span>
       ) : min ? (
@@ -135,7 +191,9 @@ export const SkillTag: React.FC<SkillTagProps> = ({ skill, variant = 'default' }
   };
 
   return (
-    <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${variantClasses[variant]}`}>
+    <span
+      className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${variantClasses[variant]}`}
+    >
       {skill}
     </span>
   );
@@ -150,12 +208,12 @@ interface ProgressBarProps {
   size?: 'sm' | 'md' | 'lg';
 }
 
-export const ProgressBar: React.FC<ProgressBarProps> = ({ 
-  percentage, 
+export const ProgressBar: React.FC<ProgressBarProps> = ({
+  percentage,
   label,
   showPercentage = true,
   color = 'purple',
-  size = 'md'
+  size = 'md',
 }) => {
   const colorClasses = {
     purple: 'bg-purple-600',
@@ -175,11 +233,13 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
       {(label || showPercentage) && (
         <div className="flex justify-between items-center mb-1">
           {label && <span className="text-sm font-medium text-gray-700">{label}</span>}
-          {showPercentage && <span className="text-sm font-medium text-gray-600">{percentage}%</span>}
+          {showPercentage && (
+            <span className="text-sm font-medium text-gray-600">{percentage}%</span>
+          )}
         </div>
       )}
       <div className={`w-full bg-gray-200 rounded-full ${heightClasses[size]} overflow-hidden`}>
-        <div 
+        <div
           className={`${colorClasses[color]} ${heightClasses[size]} rounded-full transition-all duration-300`}
           style={{ width: `${Math.min(100, Math.max(0, percentage))}%` }}
         />
@@ -195,22 +255,17 @@ interface MilestoneProgressProps {
   showLabel?: boolean;
 }
 
-export const MilestoneProgress: React.FC<MilestoneProgressProps> = ({ 
-  completed, 
+export const MilestoneProgress: React.FC<MilestoneProgressProps> = ({
+  completed,
   total,
-  showLabel = true 
+  showLabel = true,
 }) => {
   const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
 
   return (
     <div className="flex items-center gap-2">
       <div className="flex-1">
-        <ProgressBar 
-          percentage={percentage} 
-          showPercentage={false}
-          color="purple"
-          size="sm"
-        />
+        <ProgressBar percentage={percentage} showPercentage={false} color="purple" size="sm" />
       </div>
       {showLabel && (
         <span className="text-xs font-medium text-gray-600 whitespace-nowrap">
@@ -256,20 +311,16 @@ interface EmptyStateProps {
   icon?: React.ReactNode;
 }
 
-export const EmptyState: React.FC<EmptyStateProps> = ({ 
-  title, 
-  description, 
+export const EmptyState: React.FC<EmptyStateProps> = ({
+  title,
+  description,
   actionLabel,
   onAction,
-  icon
+  icon,
 }) => {
   return (
     <div className="text-center py-12 px-4">
-      {icon && (
-        <div className="flex justify-center mb-4">
-          {icon}
-        </div>
-      )}
+      {icon && <div className="flex justify-center mb-4">{icon}</div>}
       <h3 className="text-lg font-medium text-gray-900 mb-2">{title}</h3>
       <p className="text-sm text-gray-500 mb-6 max-w-md mx-auto">{description}</p>
       {actionLabel && onAction && (
@@ -311,4 +362,3 @@ export const LoadingSkeleton: React.FC<{ count?: number }> = ({ count = 3 }) => 
     </div>
   );
 };
-

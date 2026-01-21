@@ -16,13 +16,17 @@ export function createLearningPathPrompt(
 ): string {
   const department = studentProfile.department || 'your field';
   const currentSkills = studentProfile.profile?.technicalSkills || [];
-  const completedCourses = studentProfile.profile?.training?.filter((t: any) => t.status === 'completed') || [];
-  const ongoingCourses = studentProfile.profile?.training?.filter((t: any) => t.status === 'ongoing') || [];
-  
-  const skillsList = currentSkills.map((s: any) => `${s.name} (Level: ${s.level}/5)`).join(', ') || 'No skills listed yet';
+  const completedCourses =
+    studentProfile.profile?.training?.filter((t: any) => t.status === 'completed') || [];
+  const ongoingCourses =
+    studentProfile.profile?.training?.filter((t: any) => t.status === 'ongoing') || [];
+
+  const skillsList =
+    currentSkills.map((s: any) => `${s.name} (Level: ${s.level}/5)`).join(', ') ||
+    'No skills listed yet';
   const completedList = completedCourses.map((c: any) => c.course).join(', ') || 'None';
   const ongoingList = ongoingCourses.map((c: any) => c.course).join(', ') || 'None';
-  
+
   return `You are an expert career coach creating a personalized learning roadmap.
 
 **STUDENT PROFILE:**
@@ -74,16 +78,19 @@ Focus on skills that will help them get jobs. Match the depth of your response t
 /**
  * System prompt for learning path AI
  */
-export const LEARNING_PATH_SYSTEM_PROMPT = 
+export const LEARNING_PATH_SYSTEM_PROMPT =
   'You are an expert career coach and learning path designer. You create personalized, actionable learning roadmaps that are specific, realistic, and aligned with market demand. You always include free resources, time estimates, and hands-on projects.';
 
 /**
  * Create fallback learning path when AI fails or profile is minimal
  */
-export function createFallbackLearningPath(studentProfile: StudentProfile, userMessage: string): string {
+export function createFallbackLearningPath(
+  studentProfile: StudentProfile,
+  userMessage: string
+): string {
   const studentName = studentProfile.name?.split(' ')[0] || 'there';
   const currentSkills = studentProfile.profile?.technicalSkills || [];
-  
+
   return `Hey ${studentName}! 🎓
 
 I'd love to create a personalized learning path for you. Based on your profile, here's a general roadmap:

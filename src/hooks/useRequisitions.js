@@ -14,7 +14,7 @@ export const useRequisitions = () => {
     try {
       setLoading(true);
       const { data, error: fetchError } = await getRequisitions();
-      
+
       if (fetchError) {
         setError(fetchError);
         console.error('Error fetching requisitions:', fetchError);
@@ -29,10 +29,10 @@ export const useRequisitions = () => {
     }
   };
 
-  return { 
-    requisitions, 
-    loading, 
+  return {
+    requisitions,
+    loading,
     error,
-    refetch: fetchRequisitions 
+    refetch: fetchRequisitions,
   };
 };

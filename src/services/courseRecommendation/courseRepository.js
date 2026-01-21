@@ -9,9 +9,9 @@ import { parseEmbedding } from './utils';
 /**
  * Fetch all active courses with embeddings from the database.
  * Only returns courses that have embeddings and are active.
- * 
+ *
  * @returns {Promise<Array>} - Array of courses with embeddings
- * 
+ *
  * Requirements: 3.3
  */
 export const fetchCoursesWithEmbeddings = async () => {
@@ -19,7 +19,8 @@ export const fetchCoursesWithEmbeddings = async () => {
     // Fetch active courses with embeddings
     const { data: courses, error } = await supabase
       .from('courses')
-      .select(`
+      .select(
+        `
         course_id,
         title,
         code,
@@ -29,7 +30,8 @@ export const fetchCoursesWithEmbeddings = async () => {
         target_outcomes,
         status,
         embedding
-      `)
+      `
+      )
       .eq('status', 'Active')
       .not('embedding', 'is', null)
       .is('deleted_at', null);
@@ -44,7 +46,7 @@ export const fetchCoursesWithEmbeddings = async () => {
     }
 
     // Fetch skills for each course
-    const courseIds = courses.map(c => c.course_id);
+    const courseIds = courses.map((c) => c.course_id);
     const { data: skillsData, error: skillsError } = await supabase
       .from('course_skills')
       .select('course_id, skill_name')
@@ -57,7 +59,7 @@ export const fetchCoursesWithEmbeddings = async () => {
     // Group skills by course_id
     const skillsByCourse = {};
     if (skillsData) {
-      skillsData.forEach(s => {
+      skillsData.forEach((s) => {
         if (!skillsByCourse[s.course_id]) {
           skillsByCourse[s.course_id] = [];
         }
@@ -66,10 +68,10 @@ export const fetchCoursesWithEmbeddings = async () => {
     }
 
     // Combine courses with their skills and parse embeddings
-    return courses.map(course => ({
+    return courses.map((course) => ({
       ...course,
       skills: skillsByCourse[course.course_id] || [],
-      embedding: parseEmbedding(course.embedding)
+      embedding: parseEmbedding(course.embedding),
     }));
   } catch (error) {
     console.error('Error fetching courses with embeddings:', error);
@@ -79,7 +81,7 @@ export const fetchCoursesWithEmbeddings = async () => {
 
 /**
  * Fetch courses by skill type (technical or soft) with embeddings.
- * 
+ *
  * @param {string} skillType - 'technical' or 'soft'
  * @returns {Promise<Array>} - Array of courses with embeddings
  */
@@ -87,7 +89,8 @@ export const fetchCoursesBySkillType = async (skillType) => {
   try {
     const { data: courses, error } = await supabase
       .from('courses')
-      .select(`
+      .select(
+        `
         course_id,
         title,
         code,
@@ -98,7 +101,8 @@ export const fetchCoursesBySkillType = async (skillType) => {
         status,
         skill_type,
         embedding
-      `)
+      `
+      )
       .eq('status', 'Active')
       .eq('skill_type', skillType)
       .not('embedding', 'is', null)
@@ -114,7 +118,7 @@ export const fetchCoursesBySkillType = async (skillType) => {
     }
 
     // Fetch skills for each course
-    const courseIds = courses.map(c => c.course_id);
+    const courseIds = courses.map((c) => c.course_id);
     const { data: skillsData } = await supabase
       .from('course_skills')
       .select('course_id, skill_name')
@@ -123,7 +127,7 @@ export const fetchCoursesBySkillType = async (skillType) => {
     // Group skills by course_id
     const skillsByCourse = {};
     if (skillsData) {
-      skillsData.forEach(s => {
+      skillsData.forEach((s) => {
         if (!skillsByCourse[s.course_id]) {
           skillsByCourse[s.course_id] = [];
         }
@@ -131,10 +135,10 @@ export const fetchCoursesBySkillType = async (skillType) => {
       });
     }
 
-    return courses.map(course => ({
+    return courses.map((course) => ({
       ...course,
       skills: skillsByCourse[course.course_id] || [],
-      embedding: parseEmbedding(course.embedding)
+      embedding: parseEmbedding(course.embedding),
     }));
   } catch (error) {
     console.error(`Error fetching ${skillType} courses:`, error);
@@ -144,7 +148,7 @@ export const fetchCoursesBySkillType = async (skillType) => {
 
 /**
  * Fetch basic course info without embeddings (for fallback).
- * 
+ *
  * @param {number} limit - Maximum courses to return
  * @returns {Promise<Array>} - Array of courses
  */
@@ -152,7 +156,8 @@ export const fetchBasicCourses = async (limit = 10) => {
   try {
     const { data: courses, error } = await supabase
       .from('courses')
-      .select(`
+      .select(
+        `
         course_id,
         title,
         code,
@@ -161,7 +166,8 @@ export const fetchBasicCourses = async (limit = 10) => {
         category,
         target_outcomes,
         status
-      `)
+      `
+      )
       .eq('status', 'Active')
       .is('deleted_at', null)
       .limit(limit);
@@ -172,7 +178,7 @@ export const fetchBasicCourses = async (limit = 10) => {
     }
 
     // Fetch skills for courses
-    const courseIds = courses.map(c => c.course_id);
+    const courseIds = courses.map((c) => c.course_id);
     const { data: skillsData } = await supabase
       .from('course_skills')
       .select('course_id, skill_name')
@@ -180,16 +186,16 @@ export const fetchBasicCourses = async (limit = 10) => {
 
     // Group skills by course
     const skillsByCourse = {};
-    (skillsData || []).forEach(s => {
+    (skillsData || []).forEach((s) => {
       if (!skillsByCourse[s.course_id]) {
         skillsByCourse[s.course_id] = [];
       }
       skillsByCourse[s.course_id].push(s.skill_name);
     });
 
-    return courses.map(course => ({
+    return courses.map((course) => ({
       ...course,
-      skills: skillsByCourse[course.course_id] || []
+      skills: skillsByCourse[course.course_id] || [],
     }));
   } catch (error) {
     console.error('Error fetching basic courses:', error);
@@ -199,14 +205,14 @@ export const fetchBasicCourses = async (limit = 10) => {
 
 /**
  * Fetch courses that match a skill name via course_skills table.
- * 
+ *
  * @param {string} skillName - The skill name to search for
  * @returns {Promise<Array>} - Array of matching courses with details
  */
 export const fetchCoursesBySkillName = async (skillName) => {
   try {
     const skillLower = skillName.toLowerCase();
-    
+
     // Query course_skills table for matching skills
     const { data: skillMatches, error: skillError } = await supabase
       .from('course_skills')
@@ -223,12 +229,13 @@ export const fetchCoursesBySkillName = async (skillName) => {
     }
 
     // Get unique course IDs
-    const courseIds = [...new Set(skillMatches.map(s => s.course_id))];
+    const courseIds = [...new Set(skillMatches.map((s) => s.course_id))];
 
     // Fetch course details for matching courses
     const { data: courses, error: coursesError } = await supabase
       .from('courses')
-      .select(`
+      .select(
+        `
         course_id,
         title,
         code,
@@ -237,7 +244,8 @@ export const fetchCoursesBySkillName = async (skillName) => {
         category,
         target_outcomes,
         status
-      `)
+      `
+      )
       .in('course_id', courseIds)
       .eq('status', 'Active')
       .is('deleted_at', null);
@@ -255,7 +263,7 @@ export const fetchCoursesBySkillName = async (skillName) => {
 
     // Group skills by course
     const skillsByCourse = {};
-    (allSkills || []).forEach(s => {
+    (allSkills || []).forEach((s) => {
       if (!skillsByCourse[s.course_id]) {
         skillsByCourse[s.course_id] = [];
       }
@@ -263,23 +271,23 @@ export const fetchCoursesBySkillName = async (skillName) => {
     });
 
     // Return courses with skill match info
-    return courses.map(course => {
-      const matchedSkill = skillMatches.find(s => s.course_id === course.course_id);
+    return courses.map((course) => {
+      const matchedSkill = skillMatches.find((s) => s.course_id === course.course_id);
       const courseSkills = skillsByCourse[course.course_id] || [];
-      
+
       // Calculate match strength
-      const exactMatch = courseSkills.some(s => s.toLowerCase() === skillLower);
-      const partialMatch = courseSkills.some(s => 
-        s.toLowerCase().includes(skillLower) || skillLower.includes(s.toLowerCase())
+      const exactMatch = courseSkills.some((s) => s.toLowerCase() === skillLower);
+      const partialMatch = courseSkills.some(
+        (s) => s.toLowerCase().includes(skillLower) || skillLower.includes(s.toLowerCase())
       );
-      
+
       return {
         ...course,
         skills: courseSkills,
         match_type: 'direct',
-        match_strength: exactMatch ? 1.0 : (partialMatch ? 0.8 : 0.6),
+        match_strength: exactMatch ? 1.0 : partialMatch ? 0.8 : 0.6,
         matched_skill: matchedSkill?.skill_name,
-        proficiency_level: matchedSkill?.proficiency_level
+        proficiency_level: matchedSkill?.proficiency_level,
       };
     });
   } catch (error) {

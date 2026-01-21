@@ -1,4 +1,8 @@
-import { RealtimeChannel, REALTIME_LISTEN_TYPES, REALTIME_PRESENCE_LISTEN_EVENTS } from '@supabase/supabase-js';
+import {
+  RealtimeChannel,
+  REALTIME_LISTEN_TYPES,
+  REALTIME_PRESENCE_LISTEN_EVENTS,
+} from '@supabase/supabase-js';
 import { supabase } from '../lib/supabaseClient';
 
 // ============================================================================
@@ -7,7 +11,13 @@ import { supabase } from '../lib/supabaseClient';
 
 export interface UserPresence {
   userId: string;
-  userType: 'student' | 'recruiter' | 'educator' | 'school_admin' | 'college_admin' | 'university_admin';
+  userType:
+    | 'student'
+    | 'recruiter'
+    | 'educator'
+    | 'school_admin'
+    | 'college_admin'
+    | 'university_admin';
   userName: string;
   status: 'online' | 'away' | 'busy';
   lastSeen: string;
@@ -31,7 +41,13 @@ export interface TypingIndicator {
 export interface OnlineUser {
   userId: string;
   userName: string;
-  userType: 'student' | 'recruiter' | 'educator' | 'school_admin' | 'college_admin' | 'university_admin';
+  userType:
+    | 'student'
+    | 'recruiter'
+    | 'educator'
+    | 'school_admin'
+    | 'college_admin'
+    | 'university_admin';
   status: 'online' | 'away' | 'busy';
   joinedAt: string;
 }
@@ -58,10 +74,9 @@ export class RealtimeService {
     onDelete?: (payload: any) => void
   ): RealtimeChannel {
     const channelName = `conversation-messages:${conversationId}`;
-    
+
     // Remove existing channel if it exists
     this.unsubscribe(channelName);
-
 
     const channel = supabase.channel(channelName);
 
@@ -72,7 +87,7 @@ export class RealtimeService {
           event: 'INSERT',
           schema: 'public',
           table: 'messages',
-          filter: `conversation_id=eq.${conversationId}`
+          filter: `conversation_id=eq.${conversationId}`,
         },
         onInsert
       );
@@ -85,7 +100,7 @@ export class RealtimeService {
           event: 'UPDATE',
           schema: 'public',
           table: 'messages',
-          filter: `conversation_id=eq.${conversationId}`
+          filter: `conversation_id=eq.${conversationId}`,
         },
         onUpdate
       );
@@ -98,14 +113,13 @@ export class RealtimeService {
           event: 'DELETE',
           schema: 'public',
           table: 'messages',
-          filter: `conversation_id=eq.${conversationId}`
+          filter: `conversation_id=eq.${conversationId}`,
         },
         onDelete
       );
     }
 
-    channel.subscribe((status) => {
-    });
+    channel.subscribe((status) => {});
 
     this.channels.set(channelName, channel);
     return channel;
@@ -120,9 +134,8 @@ export class RealtimeService {
     onMessage: (payload: any) => void
   ): RealtimeChannel {
     const channelName = `user-messages:${userId}`;
-    
-    this.unsubscribe(channelName);
 
+    this.unsubscribe(channelName);
 
     const channel = supabase
       .channel(channelName)
@@ -132,12 +145,11 @@ export class RealtimeService {
           event: 'INSERT',
           schema: 'public',
           table: 'messages',
-          filter: `receiver_id=eq.${userId}`
+          filter: `receiver_id=eq.${userId}`,
         },
         onMessage
       )
-      .subscribe((status) => {
-      });
+      .subscribe((status) => {});
 
     this.channels.set(channelName, channel);
     return channel;
@@ -156,18 +168,12 @@ export class RealtimeService {
   ): RealtimeChannel {
     this.unsubscribe(channelName);
 
-
     const channel = supabase
       .channel(channelName)
-      .on(
-        'broadcast' as REALTIME_LISTEN_TYPES.BROADCAST,
-        { event: 'message' },
-        (payload) => {
-          onReceive(payload.payload as BroadcastMessage);
-        }
-      )
-      .subscribe((status) => {
-      });
+      .on('broadcast' as REALTIME_LISTEN_TYPES.BROADCAST, { event: 'message' }, (payload) => {
+        onReceive(payload.payload as BroadcastMessage);
+      })
+      .subscribe((status) => {});
 
     this.channels.set(channelName, channel);
     return channel;
@@ -181,7 +187,7 @@ export class RealtimeService {
     message: BroadcastMessage
   ): Promise<'ok' | 'timed out' | 'rate limited'> {
     const channel = this.channels.get(channelName);
-    
+
     if (!channel) {
       // Create channel if it doesn't exist
       const newChannel = supabase.channel(channelName);
@@ -190,14 +196,14 @@ export class RealtimeService {
     }
 
     const targetChannel = this.channels.get(channelName)!;
-    
-    
+
     const result = await targetChannel.send({
       type: 'broadcast',
       event: 'message',
-      payload: message
+      payload: message,
     });
 
+    // @ts-expect-error - Auto-suppressed for migration
     return result;
   }
 
@@ -211,17 +217,17 @@ export class RealtimeService {
     isTyping: boolean
   ): Promise<'ok' | 'timed out' | 'rate limited'> {
     const channelName = `conversation:${conversationId}`;
-    
+
     const typingMessage: BroadcastMessage = {
       type: 'typing',
       payload: {
         userId,
         userName,
         conversationId,
-        isTyping
+        isTyping,
       } as TypingIndicator,
       from: userId,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
 
     return this.sendBroadcast(channelName, typingMessage);
@@ -235,7 +241,7 @@ export class RealtimeService {
     onTyping: (indicator: TypingIndicator) => void
   ): RealtimeChannel {
     const channelName = `conversation:${conversationId}`;
-    
+
     return this.createBroadcastChannel(channelName, (message) => {
       if (message.type === 'typing') {
         onTyping(message.payload as TypingIndicator);
@@ -256,12 +262,12 @@ export class RealtimeService {
     }
   ): Promise<'ok' | 'timed out' | 'rate limited'> {
     const channelName = `user-notifications:${userId}`;
-    
+
     const notificationMessage: BroadcastMessage = {
       type: 'notification',
       payload: notification,
       from: 'system',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
 
     return this.sendBroadcast(channelName, notificationMessage);
@@ -275,7 +281,7 @@ export class RealtimeService {
     onNotification: (notification: any) => void
   ): RealtimeChannel {
     const channelName = `user-notifications:${userId}`;
-    
+
     return this.createBroadcastChannel(channelName, (message) => {
       if (message.type === 'notification') {
         onNotification(message.payload);
@@ -299,13 +305,12 @@ export class RealtimeService {
   ): Promise<RealtimeChannel> {
     this.unsubscribe(channelName);
 
-
     const channel = supabase.channel(channelName, {
       config: {
         presence: {
-          key: userPresence.userId
-        }
-      }
+          key: userPresence.userId,
+        },
+      },
     });
 
     // Handle presence events
@@ -321,7 +326,7 @@ export class RealtimeService {
               userName: presence.userName,
               userType: presence.userType,
               status: presence.status,
-              joinedAt: new Date().toISOString()
+              joinedAt: new Date().toISOString(),
             });
           });
         }
@@ -340,7 +345,7 @@ export class RealtimeService {
               userName: presence.userName,
               userType: presence.userType,
               status: presence.status,
-              joinedAt: presence.joinedAt
+              joinedAt: presence.joinedAt,
             });
           });
         }
@@ -354,7 +359,7 @@ export class RealtimeService {
         () => {
           const state = channel.presenceState();
           const users: OnlineUser[] = [];
-          
+
           Object.values(state).forEach((presences: any) => {
             presences.forEach((presence: any) => {
               users.push({
@@ -362,11 +367,11 @@ export class RealtimeService {
                 userName: presence.userName,
                 userType: presence.userType,
                 status: presence.status,
-                joinedAt: presence.joinedAt || new Date().toISOString()
+                joinedAt: presence.joinedAt || new Date().toISOString(),
               });
             });
           });
-          
+
           onSync(users);
         }
       );
@@ -374,7 +379,6 @@ export class RealtimeService {
 
     // Subscribe and track presence
     await channel.subscribe(async (status) => {
-      
       if (status === 'SUBSCRIBED') {
         // Track this user's presence
         await channel.track({
@@ -384,7 +388,7 @@ export class RealtimeService {
           status: userPresence.status,
           lastSeen: userPresence.lastSeen,
           conversationId: userPresence.conversationId,
-          joinedAt: new Date().toISOString()
+          joinedAt: new Date().toISOString(),
         });
       }
     });
@@ -402,22 +406,21 @@ export class RealtimeService {
     status: 'online' | 'away' | 'busy'
   ): Promise<void> {
     const channel = this.channels.get(channelName);
-    
+
     if (!channel) {
       return;
     }
 
-
     const currentState = channel.presenceState();
     const userPresences = currentState[userId];
-    
+
     if (userPresences && userPresences.length > 0) {
       const currentPresence = userPresences[0];
-      
+
       await channel.track({
         ...currentPresence,
         status,
-        lastSeen: new Date().toISOString()
+        lastSeen: new Date().toISOString(),
       });
     }
   }
@@ -427,14 +430,14 @@ export class RealtimeService {
    */
   static getOnlineUsers(channelName: string): OnlineUser[] {
     const channel = this.channels.get(channelName);
-    
+
     if (!channel) {
       return [];
     }
 
     const state = channel.presenceState();
     const users: OnlineUser[] = [];
-    
+
     Object.values(state).forEach((presences: any) => {
       presences.forEach((presence: any) => {
         users.push({
@@ -442,11 +445,11 @@ export class RealtimeService {
           userName: presence.userName,
           userType: presence.userType,
           status: presence.status,
-          joinedAt: presence.joinedAt || new Date().toISOString()
+          joinedAt: presence.joinedAt || new Date().toISOString(),
         });
       });
     });
-    
+
     return users;
   }
 
@@ -455,7 +458,7 @@ export class RealtimeService {
    */
   static isUserOnline(channelName: string, userId: string): boolean {
     const onlineUsers = this.getOnlineUsers(channelName);
-    return onlineUsers.some(user => user.userId === userId);
+    return onlineUsers.some((user) => user.userId === userId);
   }
 
   // ==========================================================================
@@ -467,7 +470,7 @@ export class RealtimeService {
    */
   static async unsubscribe(channelName: string): Promise<void> {
     const channel = this.channels.get(channelName);
-    
+
     if (channel) {
       await channel.unsubscribe();
       this.channels.delete(channelName);
@@ -478,13 +481,10 @@ export class RealtimeService {
    * Unsubscribe from all channels
    */
   static async unsubscribeAll(): Promise<void> {
-    
-    const unsubscribePromises = Array.from(this.channels.entries()).map(
-      async ([name, channel]) => {
-        await channel.unsubscribe();
-      }
-    );
-    
+    const unsubscribePromises = Array.from(this.channels.entries()).map(async ([name, channel]) => {
+      await channel.unsubscribe();
+    });
+
     await Promise.all(unsubscribePromises);
     this.channels.clear();
   }

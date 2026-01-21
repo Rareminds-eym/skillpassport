@@ -1,6 +1,6 @@
 /**
  * Skeleton Loaders for Organization Subscription Components
- * 
+ *
  * Provides loading state skeletons for all data-fetching components.
  * Requirements: 19.1
  */
@@ -13,9 +13,7 @@ interface SkeletonProps {
 }
 
 export function Skeleton({ className = '' }: SkeletonProps) {
-  return (
-    <div className={`animate-pulse bg-gray-200 rounded ${className}`} />
-  );
+  return <div className={`animate-pulse bg-gray-200 rounded ${className}`} />;
 }
 
 // Subscription Overview Skeleton
@@ -151,7 +149,10 @@ export const InvitationManagerSkeleton = memo(function InvitationManagerSkeleton
       </div>
       <div className="p-6 space-y-4">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="flex items-center justify-between p-4 border border-gray-200 rounded-xl">
+          <div
+            key={i}
+            className="flex items-center justify-between p-4 border border-gray-200 rounded-xl"
+          >
             <div className="space-y-2">
               <Skeleton className="h-4 w-48" />
               <Skeleton className="h-3 w-32" />

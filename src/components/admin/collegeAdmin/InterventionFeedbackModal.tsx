@@ -58,17 +58,19 @@ const InterventionFeedbackModal: React.FC<InterventionFeedbackModalProps> = ({
 
   // Determine if admin can give feedback (only when status = 'acknowledged')
   const canGiveFeedback = note.status === 'acknowledged';
-  
+
   // Determine if admin can resolve (only when status = 'in_progress')
   const canResolve = note.status === 'in_progress';
-  
+
   // Check if educator has responded
   const hasEducatorResponse = note.educator_response || note.action_taken || note.next_steps;
 
   const handleSave = async () => {
     // Validate that we can give feedback
     if (!canGiveFeedback) {
-      alert(`Cannot give feedback: Note must be in 'acknowledged' status (current: '${note.status}')`);
+      alert(
+        `Cannot give feedback: Note must be in 'acknowledged' status (current: '${note.status}')`
+      );
       return;
     }
 
@@ -93,13 +95,13 @@ const InterventionFeedbackModal: React.FC<InterventionFeedbackModalProps> = ({
 
   const handleResolve = async () => {
     if (!onResolve) return;
-    
+
     // Validate that we can resolve
     if (!canResolve) {
       alert(`Cannot resolve: Note must be in 'in_progress' status (current: '${note.status}')`);
       return;
     }
-    
+
     // Show confirmation modal instead of native confirm
     setShowConfirmModal(true);
   };
@@ -162,10 +164,7 @@ const InterventionFeedbackModal: React.FC<InterventionFeedbackModalProps> = ({
               Student: {studentName} • Mentor: {mentorName}
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
             <XMarkIcon className="h-6 w-6" />
           </button>
         </div>
@@ -180,7 +179,9 @@ const InterventionFeedbackModal: React.FC<InterventionFeedbackModalProps> = ({
                 <h3 className="font-semibold text-blue-900">Your Original Note</h3>
               </div>
               <div className="flex items-center gap-2">
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityBadge(note.priority || 'medium')}`}>
+                <span
+                  className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityBadge(note.priority || 'medium')}`}
+                >
                   {(note.priority || 'medium').toUpperCase()}
                 </span>
                 <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs capitalize">
@@ -188,20 +189,18 @@ const InterventionFeedbackModal: React.FC<InterventionFeedbackModalProps> = ({
                 </span>
               </div>
             </div>
-            
-            {note.title && (
-              <h4 className="font-medium text-gray-900 mb-2">{note.title}</h4>
-            )}
-            
+
+            {note.title && <h4 className="font-medium text-gray-900 mb-2">{note.title}</h4>}
+
             <p className="text-gray-700 text-sm mb-3">{note.note_text}</p>
-            
+
             {note.outcome && (
               <div className="mt-3 pt-3 border-t border-blue-200">
                 <p className="text-sm font-medium text-blue-900 mb-1">Initial Outcome:</p>
                 <p className="text-gray-700 text-sm">{note.outcome}</p>
               </div>
             )}
-            
+
             <div className="flex items-center gap-4 text-xs text-gray-600 mt-3">
               <span className="flex items-center gap-1">
                 <ClockIcon className="h-3 w-3" />
@@ -265,7 +264,9 @@ const InterventionFeedbackModal: React.FC<InterventionFeedbackModalProps> = ({
           {/* Current Status Display */}
           <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
             <p className="text-sm font-medium text-gray-700 mb-2">Current Status</p>
-            <span className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${getStatusBadge(note.status)}`}>
+            <span
+              className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${getStatusBadge(note.status)}`}
+            >
               {getStatusLabel(note.status)}
             </span>
           </div>
@@ -278,8 +279,10 @@ const InterventionFeedbackModal: React.FC<InterventionFeedbackModalProps> = ({
                 <div>
                   <p className="text-sm font-medium text-blue-900">Workflow Status</p>
                   <p className="text-sm text-blue-800 mt-1">
-                    {note.status === 'pending' && 'Waiting for educator to respond. You can give feedback once they acknowledge this note.'}
-                    {note.status === 'escalated' && 'This note has been escalated. Please review and take appropriate action.'}
+                    {note.status === 'pending' &&
+                      'Waiting for educator to respond. You can give feedback once they acknowledge this note.'}
+                    {note.status === 'escalated' &&
+                      'This note has been escalated. Please review and take appropriate action.'}
                   </p>
                 </div>
               </div>
@@ -305,19 +308,19 @@ const InterventionFeedbackModal: React.FC<InterventionFeedbackModalProps> = ({
               )}
             </div>
 
-
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Your Feedback
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Your Feedback</label>
               <textarea
                 value={adminFeedback}
                 onChange={(e) => setAdminFeedback(e.target.value)}
                 rows={4}
                 disabled={!canGiveFeedback}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                placeholder={canGiveFeedback ? "Provide guidance, acknowledgment, or additional instructions..." : "Feedback can be provided once educator responds"}
+                placeholder={
+                  canGiveFeedback
+                    ? 'Provide guidance, acknowledgment, or additional instructions...'
+                    : 'Feedback can be provided once educator responds'
+                }
               />
               {canGiveFeedback && (
                 <p className="text-xs text-gray-500 mt-1">
@@ -358,7 +361,9 @@ const InterventionFeedbackModal: React.FC<InterventionFeedbackModalProps> = ({
                           disabled={!canGiveFeedback}
                           className="h-4 w-4 text-indigo-600 rounded disabled:cursor-not-allowed"
                         />
-                        <span className="text-sm font-medium text-gray-700">Requires follow-up</span>
+                        <span className="text-sm font-medium text-gray-700">
+                          Requires follow-up
+                        </span>
                       </label>
                     </div>
 
@@ -438,7 +443,7 @@ const InterventionFeedbackModal: React.FC<InterventionFeedbackModalProps> = ({
           </div>
         </div>
       </div>
-      
+
       {/* Custom Confirm Modal */}
       <ConfirmModal
         isOpen={showConfirmModal}

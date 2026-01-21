@@ -1,6 +1,6 @@
 /**
  * Alert Configuration for Organization Subscription Management
- * 
+ *
  * Defines alert thresholds and notification rules for:
  * - Error rate monitoring
  * - Performance degradation
@@ -15,40 +15,40 @@
 export const ALERT_THRESHOLDS = {
   // Error rates (percentage)
   errorRate: {
-    warning: 1,    // 1% error rate
-    critical: 5,   // 5% error rate
+    warning: 1, // 1% error rate
+    critical: 5, // 5% error rate
   },
-  
+
   // API latency (milliseconds)
   apiLatency: {
-    warning: 500,   // P95 > 500ms
+    warning: 500, // P95 > 500ms
     critical: 2000, // P95 > 2s
   },
-  
+
   // Dashboard load time (milliseconds)
   dashboardLoad: {
-    warning: 3000,  // > 3s
+    warning: 3000, // > 3s
     critical: 5000, // > 5s
   },
-  
+
   // Payment failure rate (percentage)
   paymentFailure: {
-    warning: 5,    // 5% failure rate
-    critical: 10,  // 10% failure rate
+    warning: 5, // 5% failure rate
+    critical: 10, // 10% failure rate
   },
-  
+
   // Seat utilization (percentage)
   seatUtilization: {
-    low: 20,       // < 20% utilization warning
-    high: 95,      // > 95% utilization warning
+    low: 20, // < 20% utilization warning
+    high: 95, // > 95% utilization warning
   },
-  
+
   // Subscription expiration (days)
   subscriptionExpiry: {
-    warning: 30,   // 30 days before expiry
-    critical: 7,   // 7 days before expiry
+    warning: 30, // 30 days before expiry
+    critical: 7, // 7 days before expiry
   },
-  
+
   // Bulk operation limits
   bulkOperation: {
     maxBatchSize: 100,
@@ -159,7 +159,6 @@ export const ALERT_RULES: AlertRule[] = [
   },
 ];
 
-
 // ============================================================================
 // ALERT SERVICE
 // ============================================================================
@@ -177,7 +176,7 @@ class AlertService {
   private shouldTriggerAlert(ruleId: string, cooldownMinutes: number): boolean {
     const lastTime = this.lastAlertTime.get(ruleId);
     if (!lastTime) return true;
-    
+
     const cooldownMs = cooldownMinutes * 60 * 1000;
     return Date.now() - lastTime.getTime() > cooldownMs;
   }
@@ -186,7 +185,7 @@ class AlertService {
    * Evaluate alert rules and trigger if conditions met
    */
   evaluateRule(ruleId: string, value: number): Alert | null {
-    const rule = ALERT_RULES.find(r => r.id === ruleId);
+    const rule = ALERT_RULES.find((r) => r.id === ruleId);
     if (!rule) return null;
 
     const severity = rule.condition(value);
@@ -207,7 +206,7 @@ class AlertService {
 
     this.alerts.set(alert.id, alert);
     this.lastAlertTime.set(ruleId, new Date());
-    
+
     // Dispatch to notification channels
     this.dispatchAlert(alert, rule.notificationChannels);
 
@@ -217,11 +216,8 @@ class AlertService {
   /**
    * Dispatch alert to configured channels
    */
-  private dispatchAlert(
-    alert: Alert,
-    channels: ('email' | 'slack' | 'dashboard')[]
-  ): void {
-    channels.forEach(channel => {
+  private dispatchAlert(alert: Alert, channels: ('email' | 'slack' | 'dashboard')[]): void {
+    channels.forEach((channel) => {
       switch (channel) {
         case 'email':
           this.sendEmailAlert(alert);
@@ -270,9 +266,11 @@ class AlertService {
   private showDashboardAlert(alert: Alert): void {
     // Emit event for dashboard to display
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('org-subscription-alert', {
-        detail: alert,
-      }));
+      window.dispatchEvent(
+        new CustomEvent('org-subscription-alert', {
+          detail: alert,
+        })
+      );
     }
   }
 
@@ -301,7 +299,7 @@ class AlertService {
    */
   getActiveAlerts(): Alert[] {
     return Array.from(this.alerts.values())
-      .filter(a => !a.resolvedAt)
+      .filter((a) => !a.resolvedAt)
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
   }
 
@@ -309,7 +307,7 @@ class AlertService {
    * Get alerts by severity
    */
   getAlertsBySeverity(severity: AlertSeverity): Alert[] {
-    return this.getActiveAlerts().filter(a => a.severity === severity);
+    return this.getActiveAlerts().filter((a) => a.severity === severity);
   }
 }
 

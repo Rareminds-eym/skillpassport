@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 import {
   Building2,
   Plus,
@@ -11,7 +11,7 @@ import {
   MapPin,
   Phone,
   User,
-} from "lucide-react";
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import { companyService } from '@/services/companyService';
 import type { Company, CompanyFormData } from '@/services/companyService';
@@ -22,10 +22,10 @@ interface CompanyRegistrationProps {
 }
 
 const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate }) => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedIndustry, setSelectedIndustry] = useState("");
-  const [selectedCompanySize, setSelectedCompanySize] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState("");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedIndustry, setSelectedIndustry] = useState('');
+  const [selectedCompanySize, setSelectedCompanySize] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('');
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [showAddCompanyModal, setShowAddCompanyModal] = useState(false);
   const [showCompanyHistoryModal, setShowCompanyHistoryModal] = useState(false);
@@ -47,48 +47,48 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
   const [editFormData, setEditFormData] = useState<CompanyFormData>({
-    name: "",
-    code: "",
-    industry: "",
-    companySize: "",
-    establishedYear: "",
-    hqAddress: "",
-    hqCity: "",
-    hqState: "",
-    hqCountry: "India",
-    hqPincode: "",
-    phone: "",
-    email: "",
-    website: "",
-    contactPersonName: "",
-    contactPersonDesignation: "",
-    contactPersonEmail: "",
-    contactPersonPhone: "",
-    companyDescription: "",
-    specialRequirements: "",
+    name: '',
+    code: '',
+    industry: '',
+    companySize: '',
+    establishedYear: '',
+    hqAddress: '',
+    hqCity: '',
+    hqState: '',
+    hqCountry: 'India',
+    hqPincode: '',
+    phone: '',
+    email: '',
+    website: '',
+    contactPersonName: '',
+    contactPersonDesignation: '',
+    contactPersonEmail: '',
+    contactPersonPhone: '',
+    companyDescription: '',
+    specialRequirements: '',
   });
 
   // Form data state
   const [formData, setFormData] = useState<CompanyFormData>({
-    name: "",
-    code: "",
-    industry: "",
-    companySize: "",
-    establishedYear: "",
-    hqAddress: "",
-    hqCity: "",
-    hqState: "",
-    hqCountry: "India",
-    hqPincode: "",
-    phone: "",
-    email: "",
-    website: "",
-    contactPersonName: "",
-    contactPersonDesignation: "",
-    contactPersonEmail: "",
-    contactPersonPhone: "",
-    companyDescription: "",
-    specialRequirements: "",
+    name: '',
+    code: '',
+    industry: '',
+    companySize: '',
+    establishedYear: '',
+    hqAddress: '',
+    hqCity: '',
+    hqState: '',
+    hqCountry: 'India',
+    hqPincode: '',
+    phone: '',
+    email: '',
+    website: '',
+    contactPersonName: '',
+    contactPersonDesignation: '',
+    contactPersonEmail: '',
+    contactPersonPhone: '',
+    companyDescription: '',
+    specialRequirements: '',
   });
 
   // Load companies on component mount
@@ -125,27 +125,28 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
     // Search filter
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
-      filtered = filtered.filter(company => 
-        company.name?.toLowerCase().includes(search) ||
-        company.code?.toLowerCase().includes(search) ||
-        company.industry?.toLowerCase().includes(search) ||
-        company.hqCity?.toLowerCase().includes(search)
+      filtered = filtered.filter(
+        (company) =>
+          company.name?.toLowerCase().includes(search) ||
+          company.code?.toLowerCase().includes(search) ||
+          company.industry?.toLowerCase().includes(search) ||
+          company.hqCity?.toLowerCase().includes(search)
       );
     }
 
     // Industry filter
     if (selectedIndustry) {
-      filtered = filtered.filter(company => company.industry === selectedIndustry);
+      filtered = filtered.filter((company) => company.industry === selectedIndustry);
     }
 
     // Company size filter
     if (selectedCompanySize) {
-      filtered = filtered.filter(company => company.companySize === selectedCompanySize);
+      filtered = filtered.filter((company) => company.companySize === selectedCompanySize);
     }
 
     // Status filter
     if (selectedStatus) {
-      filtered = filtered.filter(company => company.accountStatus === selectedStatus);
+      filtered = filtered.filter((company) => company.accountStatus === selectedStatus);
     }
 
     setTotalItems(filtered.length);
@@ -174,65 +175,107 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
   // Static data for companies - removed as we're now using Supabase data
 
   const industryOptions = [
-    "Technology", "Healthcare", "Finance", "Education", "Manufacturing", 
-    "Retail", "Consulting", "Automotive", "Telecommunications", "Energy",
-    "Real Estate", "Media & Entertainment", "Transportation", "Agriculture", "Other"
+    'Technology',
+    'Healthcare',
+    'Finance',
+    'Education',
+    'Manufacturing',
+    'Retail',
+    'Consulting',
+    'Automotive',
+    'Telecommunications',
+    'Energy',
+    'Real Estate',
+    'Media & Entertainment',
+    'Transportation',
+    'Agriculture',
+    'Other',
   ];
 
   const companySizeOptions = [
-    "1-10 employees", "11-50 employees", "51-200 employees", 
-    "201-500 employees", "501-1000 employees", "1000+ employees"
+    '1-10 employees',
+    '11-50 employees',
+    '51-200 employees',
+    '201-500 employees',
+    '501-1000 employees',
+    '1000+ employees',
   ];
 
-
-
   const indianStates = [
-    "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
-    "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka",
-    "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram",
-    "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu",
-    "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal",
-    "Delhi", "Jammu and Kashmir", "Ladakh", "Puducherry", "Chandigarh",
-    "Andaman and Nicobar Islands", "Dadra and Nagar Haveli and Daman and Diu", "Lakshadweep"
+    'Andhra Pradesh',
+    'Arunachal Pradesh',
+    'Assam',
+    'Bihar',
+    'Chhattisgarh',
+    'Goa',
+    'Gujarat',
+    'Haryana',
+    'Himachal Pradesh',
+    'Jharkhand',
+    'Karnataka',
+    'Kerala',
+    'Madhya Pradesh',
+    'Maharashtra',
+    'Manipur',
+    'Meghalaya',
+    'Mizoram',
+    'Nagaland',
+    'Odisha',
+    'Punjab',
+    'Rajasthan',
+    'Sikkim',
+    'Tamil Nadu',
+    'Telangana',
+    'Tripura',
+    'Uttar Pradesh',
+    'Uttarakhand',
+    'West Bengal',
+    'Delhi',
+    'Jammu and Kashmir',
+    'Ladakh',
+    'Puducherry',
+    'Chandigarh',
+    'Andaman and Nicobar Islands',
+    'Dadra and Nagar Haveli and Daman and Diu',
+    'Lakshadweep',
   ];
 
   // Filter companies based on search and filters - now using loaded companies
   // Filtering is handled by applyFilters() function and filteredCompanies state
 
-
-
   const getClickableStatusBadge = (company: Company) => {
     const status = company.accountStatus || 'pending';
-    let badgeClasses = "px-2 py-1 text-xs font-medium rounded-full cursor-pointer hover:opacity-80 transition-opacity";
-    
+    let badgeClasses =
+      'px-2 py-1 text-xs font-medium rounded-full cursor-pointer hover:opacity-80 transition-opacity';
+
     switch (status) {
       case 'active':
-        badgeClasses += " bg-green-100 text-green-800 hover:bg-green-200";
+        badgeClasses += ' bg-green-100 text-green-800 hover:bg-green-200';
         break;
       case 'approved':
-        badgeClasses += " bg-blue-100 text-blue-800 hover:bg-blue-200";
+        badgeClasses += ' bg-blue-100 text-blue-800 hover:bg-blue-200';
         break;
       case 'pending':
-        badgeClasses += " bg-yellow-100 text-yellow-800 hover:bg-yellow-200";
+        badgeClasses += ' bg-yellow-100 text-yellow-800 hover:bg-yellow-200';
         break;
       case 'rejected':
-        badgeClasses += " bg-red-100 text-red-800 hover:bg-red-200";
+        badgeClasses += ' bg-red-100 text-red-800 hover:bg-red-200';
         break;
       case 'inactive':
-        badgeClasses += " bg-orange-100 text-orange-800 hover:bg-orange-200";
+        badgeClasses += ' bg-orange-100 text-orange-800 hover:bg-orange-200';
         break;
       case 'suspended':
-        badgeClasses += " bg-red-100 text-red-800 hover:bg-red-200";
+        badgeClasses += ' bg-red-100 text-red-800 hover:bg-red-200';
         break;
       case 'blacklisted':
-        badgeClasses += " bg-gray-100 text-gray-800 hover:bg-gray-200";
+        badgeClasses += ' bg-gray-100 text-gray-800 hover:bg-gray-200';
         break;
       default:
-        badgeClasses += " bg-gray-100 text-gray-800 hover:bg-gray-200";
+        badgeClasses += ' bg-gray-100 text-gray-800 hover:bg-gray-200';
     }
 
     return (
-      <button 
+      <button
         onClick={() => openStatusModal(company)}
         className={badgeClasses}
         title="Click to change status"
@@ -249,15 +292,15 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
 
   const handleStatusChange = async (newStatus: string) => {
     if (!selectedCompanyForStatus) return;
-    
+
     setIsUpdatingStatus(true);
     try {
       await companyService.updateCompanyStatus(selectedCompanyForStatus.id, newStatus);
       toast.success(`Company status updated to ${newStatus}`);
-      
+
       // Reload companies to reflect the change
       loadCompanies();
-      
+
       // Update stats in parent component
       if (onStatsUpdate) {
         onStatsUpdate();
@@ -270,8 +313,6 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
       setIsUpdatingStatus(false);
     }
   };
-
-
 
   const viewCompanyHistory = (company: Company) => {
     setSelectedCompanyForHistory(company);
@@ -288,23 +329,23 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
     setEditFormData({
       name: company.name,
       code: company.code,
-      industry: company.industry || "",
-      companySize: company.companySize || "",
-      establishedYear: company.establishedYear?.toString() || "",
-      hqAddress: company.hqAddress || "",
-      hqCity: company.hqCity || "",
-      hqState: company.hqState || "",
-      hqCountry: company.hqCountry || "India",
-      hqPincode: company.hqPincode || "",
-      phone: company.phone || "",
-      email: company.email || "",
-      website: company.website || "",
-      contactPersonName: company.contactPersonName || "",
-      contactPersonDesignation: company.contactPersonDesignation || "",
-      contactPersonEmail: company.contactPersonEmail || "",
-      contactPersonPhone: company.contactPersonPhone || "",
-      companyDescription: company.metadata?.companyDescription || "",
-      specialRequirements: company.metadata?.specialRequirements || "",
+      industry: company.industry || '',
+      companySize: company.companySize || '',
+      establishedYear: company.establishedYear?.toString() || '',
+      hqAddress: company.hqAddress || '',
+      hqCity: company.hqCity || '',
+      hqState: company.hqState || '',
+      hqCountry: company.hqCountry || 'India',
+      hqPincode: company.hqPincode || '',
+      phone: company.phone || '',
+      email: company.email || '',
+      website: company.website || '',
+      contactPersonName: company.contactPersonName || '',
+      contactPersonDesignation: company.contactPersonDesignation || '',
+      contactPersonEmail: company.contactPersonEmail || '',
+      contactPersonPhone: company.contactPersonPhone || '',
+      companyDescription: company.metadata?.companyDescription || '',
+      specialRequirements: company.metadata?.specialRequirements || '',
     });
     setShowEditCompanyModal(true);
   };
@@ -312,28 +353,28 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
   const handleEditInputChange = (field: keyof CompanyFormData, value: string) => {
     setEditFormData((prev: CompanyFormData) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
     try {
       if (!selectedCompanyForEdit) {
-        toast.error("No company selected for editing");
+        toast.error('No company selected for editing');
         return;
       }
 
       // Validate required fields
       if (!editFormData.name.trim()) {
-        toast.error("Company name is required");
+        toast.error('Company name is required');
         return;
       }
 
       if (!editFormData.code.trim()) {
-        toast.error("Company code is required");
+        toast.error('Company code is required');
         return;
       }
 
@@ -347,7 +388,7 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
         hqAddress: editFormData.hqAddress || undefined,
         hqCity: editFormData.hqCity || undefined,
         hqState: editFormData.hqState || undefined,
-        hqCountry: editFormData.hqCountry || "India",
+        hqCountry: editFormData.hqCountry || 'India',
         hqPincode: editFormData.hqPincode || undefined,
         phone: editFormData.phone || undefined,
         email: editFormData.email || undefined,
@@ -359,42 +400,39 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
         companyDescription: editFormData.companyDescription || undefined,
         specialRequirements: editFormData.specialRequirements || undefined,
       };
-      
+
       await companyService.updateCompany(selectedCompanyForEdit.id, updateData);
-      
-      toast.success("Company updated successfully!");
+
+      toast.success('Company updated successfully!');
       setShowEditCompanyModal(false);
       setSelectedCompanyForEdit(null);
-      
+
       // Reload companies to reflect the changes
       loadCompanies();
-      
+
       // Update stats in parent component
       if (onStatsUpdate) {
         onStatsUpdate();
       }
-      
     } catch (error) {
-      console.error("Error updating company:", error);
-      
+      console.error('Error updating company:', error);
+
       // More specific error messages
       if (error instanceof Error) {
         if (error.message.includes('duplicate') || error.message.includes('unique')) {
-          toast.error("Company code already exists. Please use a different code.");
+          toast.error('Company code already exists. Please use a different code.');
         } else if (error.message.includes('permission') || error.message.includes('unauthorized')) {
           toast.error("You don't have permission to update this company.");
         } else {
           toast.error(`Update failed: ${error.message}`);
         }
       } else {
-        toast.error("Error updating company. Please try again.");
+        toast.error('Error updating company. Please try again.');
       }
     } finally {
       setIsSubmitting(false);
     }
   };
-
-
 
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
@@ -412,55 +450,54 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
   const handleInputChange = (field: keyof CompanyFormData, value: string) => {
     setFormData((prev: CompanyFormData) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
     try {
       // Add company to Supabase
       await companyService.addCompany(formData);
-      
+
       // Reset form and close modal
       setFormData({
-        name: "",
-        code: "",
-        industry: "",
-        companySize: "",
-        establishedYear: "",
-        hqAddress: "",
-        hqCity: "",
-        hqState: "",
-        hqCountry: "India",
-        hqPincode: "",
-        phone: "",
-        email: "",
-        website: "",
-        contactPersonName: "",
-        contactPersonDesignation: "",
-        contactPersonEmail: "",
-        contactPersonPhone: "",
-        companyDescription: "",
-        specialRequirements: "",
+        name: '',
+        code: '',
+        industry: '',
+        companySize: '',
+        establishedYear: '',
+        hqAddress: '',
+        hqCity: '',
+        hqState: '',
+        hqCountry: 'India',
+        hqPincode: '',
+        phone: '',
+        email: '',
+        website: '',
+        contactPersonName: '',
+        contactPersonDesignation: '',
+        contactPersonEmail: '',
+        contactPersonPhone: '',
+        companyDescription: '',
+        specialRequirements: '',
       });
       setShowAddCompanyModal(false);
-      
-      toast.success("Company added successfully!");
-      
+
+      toast.success('Company added successfully!');
+
       // Reload companies to show the new company
       loadCompanies();
-      
+
       // Update stats in parent component
       if (onStatsUpdate) {
         onStatsUpdate();
       }
-      
     } catch (error) {
-      console.error("Error adding company:", error);
-      toast.error("Error adding company. Please try again.");
+      console.error('Error adding company:', error);
+      toast.error('Error adding company. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -469,42 +506,40 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
   const handleCloseModal = () => {
     setShowAddCompanyModal(false);
     setFormData({
-      name: "",
-      code: "",
-      industry: "",
-      companySize: "",
-      establishedYear: "",
-      hqAddress: "",
-      hqCity: "",
-      hqState: "",
-      hqCountry: "India",
-      hqPincode: "",
-      phone: "",
-      email: "",
-      website: "",
-      contactPersonName: "",
-      contactPersonDesignation: "",
-      contactPersonEmail: "",
-      contactPersonPhone: "",
-      companyDescription: "",
-      specialRequirements: "",
+      name: '',
+      code: '',
+      industry: '',
+      companySize: '',
+      establishedYear: '',
+      hqAddress: '',
+      hqCity: '',
+      hqState: '',
+      hqCountry: 'India',
+      hqPincode: '',
+      phone: '',
+      email: '',
+      website: '',
+      contactPersonName: '',
+      contactPersonDesignation: '',
+      contactPersonEmail: '',
+      contactPersonPhone: '',
+      companyDescription: '',
+      specialRequirements: '',
     });
   };
 
   const clearFilters = () => {
-    setSelectedIndustry("");
-    setSelectedCompanySize("");
-    setSelectedStatus("");
+    setSelectedIndustry('');
+    setSelectedCompanySize('');
+    setSelectedStatus('');
     setShowFilterModal(false);
   };
-
-
 
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold text-gray-900">Company Registration</h2>
-        <button 
+        <button
           onClick={() => setShowAddCompanyModal(true)}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
         >
@@ -512,9 +547,11 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
           Add Company
         </button>
       </div>
-      
-      <p className="text-gray-600 mb-4">Manage company profiles, MoU/JD uploads, and status management.</p>
-      
+
+      <p className="text-gray-600 mb-4">
+        Manage company profiles, MoU/JD uploads, and status management.
+      </p>
+
       <div className="flex gap-2 mb-6">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -526,7 +563,7 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
-        <button 
+        <button
           onClick={() => setShowFilterModal(true)}
           className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
         >
@@ -591,7 +628,10 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                               </div>
                             </div>
                             <div className="ml-3 min-w-0 flex-1">
-                              <div className="text-sm font-medium text-gray-900 truncate" title={company.name}>
+                              <div
+                                className="text-sm font-medium text-gray-900 truncate"
+                                title={company.name}
+                              >
                                 {company.name}
                               </div>
                               <div className="text-xs text-gray-500 truncate" title={company.code}>
@@ -601,17 +641,26 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                           </div>
                         </td>
                         <td className="w-32 px-4 py-4">
-                          <div className="text-sm text-gray-900 break-words" title={company.industry || 'N/A'}>
+                          <div
+                            className="text-sm text-gray-900 break-words"
+                            title={company.industry || 'N/A'}
+                          >
                             {company.industry || 'N/A'}
                           </div>
                         </td>
                         <td className="w-36 px-4 py-4">
-                          <div className="text-sm text-gray-900 break-words" title={company.companySize || 'N/A'}>
+                          <div
+                            className="text-sm text-gray-900 break-words"
+                            title={company.companySize || 'N/A'}
+                          >
                             {company.companySize || 'N/A'}
                           </div>
                         </td>
                         <td className="w-40 px-4 py-4">
-                          <div className="text-sm text-gray-900 break-words" title={`${company.hqCity || 'N/A'}, ${company.hqState || 'N/A'}`}>
+                          <div
+                            className="text-sm text-gray-900 break-words"
+                            title={`${company.hqCity || 'N/A'}, ${company.hqState || 'N/A'}`}
+                          >
                             {company.hqCity || 'N/A'}
                           </div>
                           <div className="text-xs text-gray-500 break-words">
@@ -619,33 +668,37 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                           </div>
                         </td>
                         <td className="w-48 px-4 py-4">
-                          <div className="text-sm text-gray-900 break-words" title={company.contactPersonName || 'N/A'}>
+                          <div
+                            className="text-sm text-gray-900 break-words"
+                            title={company.contactPersonName || 'N/A'}
+                          >
                             {company.contactPersonName || 'N/A'}
                           </div>
-                          <div className="text-xs text-gray-500 break-words" title={company.contactPersonDesignation || 'N/A'}>
+                          <div
+                            className="text-xs text-gray-500 break-words"
+                            title={company.contactPersonDesignation || 'N/A'}
+                          >
                             {company.contactPersonDesignation || 'N/A'}
                           </div>
                         </td>
-                        <td className="w-32 px-4 py-4">
-                          {getClickableStatusBadge(company)}
-                        </td>
+                        <td className="w-32 px-4 py-4">{getClickableStatusBadge(company)}</td>
                         <td className="w-28 px-4 py-4 text-sm font-medium">
                           <div className="flex items-center justify-center gap-1">
-                            <button 
+                            <button
                               onClick={() => viewCompanyDetails(company)}
                               className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors"
                               title="View Details"
                             >
                               <Eye className="h-4 w-4" />
                             </button>
-                            <button 
+                            <button
                               onClick={() => editCompany(company)}
                               className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50 transition-colors"
                               title="Edit Company"
                             >
                               <Edit className="h-4 w-4" />
                             </button>
-                            <button 
+                            <button
                               onClick={() => viewCompanyHistory(company)}
                               className="text-purple-600 hover:text-purple-900 p-1 rounded hover:bg-purple-50 transition-colors"
                               title="View History"
@@ -661,14 +714,21 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                       <td colSpan={7} className="px-6 py-12 text-center">
                         <div className="flex flex-col items-center">
                           <Building2 className="h-12 w-12 text-gray-400 mb-4" />
-                          <h3 className="text-lg font-medium text-gray-900 mb-2">No companies found</h3>
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">
+                            No companies found
+                          </h3>
                           <p className="text-gray-500 mb-4">
                             {searchTerm || selectedIndustry || selectedCompanySize || selectedStatus
-                              ? "Try adjusting your search or filters"
-                              : "Get started by adding your first company"}
+                              ? 'Try adjusting your search or filters'
+                              : 'Get started by adding your first company'}
                           </p>
-                          {!(searchTerm || selectedIndustry || selectedCompanySize || selectedStatus) && (
-                            <button 
+                          {!(
+                            searchTerm ||
+                            selectedIndustry ||
+                            selectedCompanySize ||
+                            selectedStatus
+                          ) && (
+                            <button
                               onClick={() => setShowAddCompanyModal(true)}
                               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
                             >
@@ -726,7 +786,10 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                               </div>
                             </div>
                             <div className="ml-3 min-w-0">
-                              <div className="text-sm font-medium text-gray-900 truncate max-w-[150px]" title={company.name}>
+                              <div
+                                className="text-sm font-medium text-gray-900 truncate max-w-[150px]"
+                                title={company.name}
+                              >
                                 {company.name}
                               </div>
                               <div className="text-xs text-gray-500 truncate" title={company.code}>
@@ -736,17 +799,26 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                           </div>
                         </td>
                         <td className="px-3 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900 max-w-[100px] truncate" title={company.industry || 'N/A'}>
+                          <div
+                            className="text-sm text-gray-900 max-w-[100px] truncate"
+                            title={company.industry || 'N/A'}
+                          >
                             {company.industry || 'N/A'}
                           </div>
                         </td>
                         <td className="px-3 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900 max-w-[120px] truncate" title={company.companySize || 'N/A'}>
+                          <div
+                            className="text-sm text-gray-900 max-w-[120px] truncate"
+                            title={company.companySize || 'N/A'}
+                          >
                             {company.companySize || 'N/A'}
                           </div>
                         </td>
                         <td className="px-3 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900 max-w-[120px] truncate" title={`${company.hqCity || 'N/A'}, ${company.hqState || 'N/A'}`}>
+                          <div
+                            className="text-sm text-gray-900 max-w-[120px] truncate"
+                            title={`${company.hqCity || 'N/A'}, ${company.hqState || 'N/A'}`}
+                          >
                             {company.hqCity || 'N/A'}
                           </div>
                           <div className="text-xs text-gray-500 max-w-[120px] truncate">
@@ -754,10 +826,16 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                           </div>
                         </td>
                         <td className="px-3 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900 max-w-[140px] truncate" title={company.contactPersonName || 'N/A'}>
+                          <div
+                            className="text-sm text-gray-900 max-w-[140px] truncate"
+                            title={company.contactPersonName || 'N/A'}
+                          >
                             {company.contactPersonName || 'N/A'}
                           </div>
-                          <div className="text-xs text-gray-500 max-w-[140px] truncate" title={company.contactPersonDesignation || 'N/A'}>
+                          <div
+                            className="text-xs text-gray-500 max-w-[140px] truncate"
+                            title={company.contactPersonDesignation || 'N/A'}
+                          >
                             {company.contactPersonDesignation || 'N/A'}
                           </div>
                         </td>
@@ -766,21 +844,21 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                         </td>
                         <td className="px-3 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex items-center gap-1">
-                            <button 
+                            <button
                               onClick={() => viewCompanyDetails(company)}
                               className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors"
                               title="View Details"
                             >
                               <Eye className="h-4 w-4" />
                             </button>
-                            <button 
+                            <button
                               onClick={() => editCompany(company)}
                               className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50 transition-colors"
                               title="Edit Company"
                             >
                               <Edit className="h-4 w-4" />
                             </button>
-                            <button 
+                            <button
                               onClick={() => viewCompanyHistory(company)}
                               className="text-purple-600 hover:text-purple-900 p-1 rounded hover:bg-purple-50 transition-colors"
                               title="View History"
@@ -796,14 +874,21 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                       <td colSpan={7} className="px-6 py-12 text-center">
                         <div className="flex flex-col items-center">
                           <Building2 className="h-12 w-12 text-gray-400 mb-4" />
-                          <h3 className="text-lg font-medium text-gray-900 mb-2">No companies found</h3>
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">
+                            No companies found
+                          </h3>
                           <p className="text-gray-500 mb-4">
                             {searchTerm || selectedIndustry || selectedCompanySize || selectedStatus
-                              ? "Try adjusting your search or filters"
-                              : "Get started by adding your first company"}
+                              ? 'Try adjusting your search or filters'
+                              : 'Get started by adding your first company'}
                           </p>
-                          {!(searchTerm || selectedIndustry || selectedCompanySize || selectedStatus) && (
-                            <button 
+                          {!(
+                            searchTerm ||
+                            selectedIndustry ||
+                            selectedCompanySize ||
+                            selectedStatus
+                          ) && (
+                            <button
                               onClick={() => setShowAddCompanyModal(true)}
                               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
                             >
@@ -824,7 +909,10 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
           <div className="md:hidden space-y-4">
             {paginatedCompanies.length > 0 ? (
               paginatedCompanies.map((company) => (
-                <div key={company.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                <div
+                  key={company.id}
+                  className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm"
+                >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center">
                       <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
@@ -837,29 +925,43 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                     </div>
                     {getClickableStatusBadge(company)}
                   </div>
-                  
+
                   <div className="grid grid-cols-2 gap-3 mb-4">
                     <div>
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Industry</p>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Industry
+                      </p>
                       <p className="text-sm text-gray-900 mt-1">{company.industry || 'N/A'}</p>
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Size</p>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Size
+                      </p>
                       <p className="text-sm text-gray-900 mt-1">{company.companySize || 'N/A'}</p>
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Location</p>
-                      <p className="text-sm text-gray-900 mt-1">{company.hqCity || 'N/A'}, {company.hqState || 'N/A'}</p>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Location
+                      </p>
+                      <p className="text-sm text-gray-900 mt-1">
+                        {company.hqCity || 'N/A'}, {company.hqState || 'N/A'}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</p>
-                      <p className="text-sm text-gray-900 mt-1">{company.contactPersonName || 'N/A'}</p>
-                      <p className="text-xs text-gray-500">{company.contactPersonDesignation || 'N/A'}</p>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Contact
+                      </p>
+                      <p className="text-sm text-gray-900 mt-1">
+                        {company.contactPersonName || 'N/A'}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {company.contactPersonDesignation || 'N/A'}
+                      </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100">
-                    <button 
+                    <button
                       onClick={() => viewCompanyDetails(company)}
                       className="flex items-center gap-1 px-3 py-1.5 text-xs text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded transition-colors"
                       title="View Details"
@@ -867,7 +969,7 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                       <Eye className="h-3 w-3" />
                       View
                     </button>
-                    <button 
+                    <button
                       onClick={() => editCompany(company)}
                       className="flex items-center gap-1 px-3 py-1.5 text-xs text-green-600 hover:text-green-900 hover:bg-green-50 rounded transition-colors"
                       title="Edit Company"
@@ -875,7 +977,7 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                       <Edit className="h-3 w-3" />
                       Edit
                     </button>
-                    <button 
+                    <button
                       onClick={() => viewCompanyHistory(company)}
                       className="flex items-center gap-1 px-3 py-1.5 text-xs text-purple-600 hover:text-purple-900 hover:bg-purple-50 rounded transition-colors"
                       title="View History"
@@ -892,11 +994,11 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No companies found</h3>
                 <p className="text-gray-500 mb-4">
                   {searchTerm || selectedIndustry || selectedCompanySize || selectedStatus
-                    ? "Try adjusting your search or filters"
-                    : "Get started by adding your first company"}
+                    ? 'Try adjusting your search or filters'
+                    : 'Get started by adding your first company'}
                 </p>
                 {!(searchTerm || selectedIndustry || selectedCompanySize || selectedStatus) && (
-                  <button 
+                  <button
                     onClick={() => setShowAddCompanyModal(true)}
                     className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition mx-auto"
                   >
@@ -931,7 +1033,8 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
               <span>entries</span>
             </div>
             <div>
-              Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} companies
+              Showing {(currentPage - 1) * itemsPerPage + 1} to{' '}
+              {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} companies
             </div>
           </div>
 
@@ -939,12 +1042,20 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
           {totalPages > 1 && (
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4 text-sm text-gray-600">
-                <span>Active: {filteredCompanies.filter(c => c.accountStatus === 'active').length}</span>
-                <span>Pending: {filteredCompanies.filter(c => c.accountStatus === 'pending').length}</span>
-                <span>Approved: {filteredCompanies.filter(c => c.accountStatus === 'approved').length}</span>
-                <span>Rejected: {filteredCompanies.filter(c => c.accountStatus === 'rejected').length}</span>
+                <span>
+                  Active: {filteredCompanies.filter((c) => c.accountStatus === 'active').length}
+                </span>
+                <span>
+                  Pending: {filteredCompanies.filter((c) => c.accountStatus === 'pending').length}
+                </span>
+                <span>
+                  Approved: {filteredCompanies.filter((c) => c.accountStatus === 'approved').length}
+                </span>
+                <span>
+                  Rejected: {filteredCompanies.filter((c) => c.accountStatus === 'rejected').length}
+                </span>
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handlePageChange(currentPage - 1)}
@@ -953,7 +1064,7 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                 >
                   Previous
                 </button>
-                
+
                 {/* Page numbers */}
                 <div className="flex items-center gap-1">
                   {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
@@ -967,7 +1078,7 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                     } else {
                       pageNum = currentPage - 2 + i;
                     }
-                    
+
                     return (
                       <button
                         key={pageNum}
@@ -983,7 +1094,7 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                     );
                   })}
                 </div>
-                
+
                 <button
                   onClick={() => handlePageChange(currentPage + 1)}
                   disabled={currentPage === totalPages}
@@ -1002,7 +1113,7 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Filter Companies</h3>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
@@ -1012,8 +1123,10 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">All Industries</option>
-                  {industryOptions.map(industry => (
-                    <option key={industry} value={industry}>{industry}</option>
+                  {industryOptions.map((industry) => (
+                    <option key={industry} value={industry}>
+                      {industry}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -1026,8 +1139,10 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">All Sizes</option>
-                  {companySizeOptions.map(size => (
-                    <option key={size} value={size}>{size}</option>
+                  {companySizeOptions.map((size) => (
+                    <option key={size} value={size}>
+                      {size}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -1126,7 +1241,9 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-gray-900">Add New Company</h2>
-                  <p className="text-sm text-gray-600">Register a new company for placement opportunities</p>
+                  <p className="text-sm text-gray-600">
+                    Register a new company for placement opportunities
+                  </p>
                 </div>
               </div>
               <button
@@ -1183,28 +1300,36 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="">Select Industry</option>
-                      {industryOptions.map(industry => (
-                        <option key={industry} value={industry}>{industry}</option>
+                      {industryOptions.map((industry) => (
+                        <option key={industry} value={industry}>
+                          {industry}
+                        </option>
                       ))}
                     </select>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Company Size</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Company Size
+                    </label>
                     <select
                       value={formData.companySize}
                       onChange={(e) => handleInputChange('companySize', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="">Select Company Size</option>
-                      {companySizeOptions.map(size => (
-                        <option key={size} value={size}>{size}</option>
+                      {companySizeOptions.map((size) => (
+                        <option key={size} value={size}>
+                          {size}
+                        </option>
                       ))}
                     </select>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Established Year</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Established Year
+                    </label>
                     <input
                       type="number"
                       value={formData.establishedYear}
@@ -1256,8 +1381,10 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="">Select State</option>
-                      {indianStates.map(state => (
-                        <option key={state} value={state}>{state}</option>
+                      {indianStates.map((state) => (
+                        <option key={state} value={state}>
+                          {state}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -1294,7 +1421,9 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Phone Number
+                    </label>
                     <input
                       type="tel"
                       value={formData.phone}
@@ -1303,9 +1432,11 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
-                
+
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Email Address
+                    </label>
                     <input
                       type="email"
                       value={formData.email}
@@ -1337,7 +1468,9 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Contact Person Name</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Contact Person Name
+                    </label>
                     <input
                       type="text"
                       value={formData.contactPersonName}
@@ -1348,18 +1481,24 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Designation</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Designation
+                    </label>
                     <input
                       type="text"
                       value={formData.contactPersonDesignation}
-                      onChange={(e) => handleInputChange('contactPersonDesignation', e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange('contactPersonDesignation', e.target.value)
+                      }
                       placeholder="HR Manager"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Contact Person Email</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Contact Person Email
+                    </label>
                     <input
                       type="email"
                       value={formData.contactPersonEmail}
@@ -1370,7 +1509,9 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Contact Person Phone</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Contact Person Phone
+                    </label>
                     <input
                       type="tel"
                       value={formData.contactPersonPhone}
@@ -1390,7 +1531,9 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Company Description</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Company Description
+                  </label>
                   <textarea
                     value={formData.companyDescription}
                     onChange={(e) => handleInputChange('companyDescription', e.target.value)}
@@ -1401,7 +1544,9 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Special Requirements</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Special Requirements
+                  </label>
                   <textarea
                     value={formData.specialRequirements}
                     onChange={(e) => handleInputChange('specialRequirements', e.target.value)}
@@ -1454,7 +1599,9 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                   <Building2 className="h-6 w-6 text-blue-600" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900">{selectedCompanyForDetails.name}</h2>
+                  <h2 className="text-xl font-bold text-gray-900">
+                    {selectedCompanyForDetails.name}
+                  </h2>
                   <p className="text-sm text-gray-600">{selectedCompanyForDetails.code}</p>
                 </div>
               </div>
@@ -1471,13 +1618,25 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
               {/* Current Status */}
               <div className="mb-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Current Status</h3>
-                <p className="text-sm text-gray-600 mb-3">Account status and approval information</p>
+                <p className="text-sm text-gray-600 mb-3">
+                  Account status and approval information
+                </p>
                 <div className="flex items-center gap-2">
-                  <span className={`px-3 py-1 text-sm font-medium rounded-full ${getStatusBadgeColor(selectedCompanyForDetails.accountStatus || 'pending')}`}>
-                    {(selectedCompanyForDetails.accountStatus || 'pending').charAt(0).toUpperCase() + (selectedCompanyForDetails.accountStatus || 'pending').slice(1)}
+                  <span
+                    className={`px-3 py-1 text-sm font-medium rounded-full ${getStatusBadgeColor(selectedCompanyForDetails.accountStatus || 'pending')}`}
+                  >
+                    {(selectedCompanyForDetails.accountStatus || 'pending')
+                      .charAt(0)
+                      .toUpperCase() +
+                      (selectedCompanyForDetails.accountStatus || 'pending').slice(1)}
                   </span>
-                  <span className={`px-3 py-1 text-sm font-medium rounded-full ${getStatusBadgeColor(selectedCompanyForDetails.approvalStatus || 'pending')}`}>
-                    {(selectedCompanyForDetails.approvalStatus || 'pending').charAt(0).toUpperCase() + (selectedCompanyForDetails.approvalStatus || 'pending').slice(1)}
+                  <span
+                    className={`px-3 py-1 text-sm font-medium rounded-full ${getStatusBadgeColor(selectedCompanyForDetails.approvalStatus || 'pending')}`}
+                  >
+                    {(selectedCompanyForDetails.approvalStatus || 'pending')
+                      .charAt(0)
+                      .toUpperCase() +
+                      (selectedCompanyForDetails.approvalStatus || 'pending').slice(1)}
                   </span>
                 </div>
               </div>
@@ -1493,20 +1652,35 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                   <div className="space-y-3">
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Industry</label>
-                      <p className="text-sm text-gray-900">{selectedCompanyForDetails.industry || 'N/A'}</p>
+                      <p className="text-sm text-gray-900">
+                        {selectedCompanyForDetails.industry || 'N/A'}
+                      </p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">Company Size</label>
-                      <p className="text-sm text-gray-900">{selectedCompanyForDetails.companySize || 'N/A'}</p>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Company Size
+                      </label>
+                      <p className="text-sm text-gray-900">
+                        {selectedCompanyForDetails.companySize || 'N/A'}
+                      </p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">Established Year</label>
-                      <p className="text-sm text-gray-900">{selectedCompanyForDetails.establishedYear || 'N/A'}</p>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Established Year
+                      </label>
+                      <p className="text-sm text-gray-900">
+                        {selectedCompanyForDetails.establishedYear || 'N/A'}
+                      </p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Website</label>
                       {selectedCompanyForDetails.website ? (
-                        <a href={selectedCompanyForDetails.website} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:text-blue-800">
+                        <a
+                          href={selectedCompanyForDetails.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-blue-600 hover:text-blue-800"
+                        >
                           {selectedCompanyForDetails.website}
                         </a>
                       ) : (
@@ -1525,16 +1699,25 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
 
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">Headquarters</label>
-                      <p className="text-sm text-gray-900">{selectedCompanyForDetails.hqCity || 'N/A'}, {selectedCompanyForDetails.hqState || 'N/A'}</p>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Headquarters
+                      </label>
+                      <p className="text-sm text-gray-900">
+                        {selectedCompanyForDetails.hqCity || 'N/A'},{' '}
+                        {selectedCompanyForDetails.hqState || 'N/A'}
+                      </p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Phone</label>
-                      <p className="text-sm text-gray-900">{selectedCompanyForDetails.phone || 'N/A'}</p>
+                      <p className="text-sm text-gray-900">
+                        {selectedCompanyForDetails.phone || 'N/A'}
+                      </p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Email</label>
-                      <p className="text-sm text-gray-900">{selectedCompanyForDetails.email || 'N/A'}</p>
+                      <p className="text-sm text-gray-900">
+                        {selectedCompanyForDetails.email || 'N/A'}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -1550,11 +1733,15 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Name</label>
-                    <p className="text-sm text-gray-900">{selectedCompanyForDetails.contactPersonName || 'N/A'}</p>
+                    <p className="text-sm text-gray-900">
+                      {selectedCompanyForDetails.contactPersonName || 'N/A'}
+                    </p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Designation</label>
-                    <p className="text-sm text-gray-900">{selectedCompanyForDetails.contactPersonDesignation || 'N/A'}</p>
+                    <p className="text-sm text-gray-900">
+                      {selectedCompanyForDetails.contactPersonDesignation || 'N/A'}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -1563,7 +1750,8 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
               <div className="mt-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Company Description</h3>
                 <p className="text-sm text-gray-700 leading-relaxed">
-                  {selectedCompanyForDetails.metadata?.companyDescription || 'No description available'}
+                  {selectedCompanyForDetails.metadata?.companyDescription ||
+                    'No description available'}
                 </p>
               </div>
             </div>
@@ -1583,7 +1771,9 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-gray-900">Edit Company</h2>
-                  <p className="text-sm text-gray-600">Update company information for {selectedCompanyForEdit.name}</p>
+                  <p className="text-sm text-gray-600">
+                    Update company information for {selectedCompanyForEdit.name}
+                  </p>
                 </div>
               </div>
               <button
@@ -1638,28 +1828,36 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="">Select Industry</option>
-                      {industryOptions.map(industry => (
-                        <option key={industry} value={industry}>{industry}</option>
+                      {industryOptions.map((industry) => (
+                        <option key={industry} value={industry}>
+                          {industry}
+                        </option>
                       ))}
                     </select>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Company Size</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Company Size
+                    </label>
                     <select
                       value={editFormData.companySize}
                       onChange={(e) => handleEditInputChange('companySize', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="">Select Company Size</option>
-                      {companySizeOptions.map(size => (
-                        <option key={size} value={size}>{size}</option>
+                      {companySizeOptions.map((size) => (
+                        <option key={size} value={size}>
+                          {size}
+                        </option>
                       ))}
                     </select>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Established Year</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Established Year
+                    </label>
                     <input
                       type="number"
                       value={editFormData.establishedYear}
@@ -1671,7 +1869,6 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                   </div>
                 </div>
               </div>
-
               {/* Headquarters Information Section */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 mb-4">
@@ -1709,8 +1906,10 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="">Select State</option>
-                      {indianStates.map(state => (
-                        <option key={state} value={state}>{state}</option>
+                      {indianStates.map((state) => (
+                        <option key={state} value={state}>
+                          {state}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -1736,7 +1935,6 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                   />
                 </div>
               </div>
-
               {/* Contact Information Section */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 mb-4">
@@ -1746,7 +1944,9 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Phone Number
+                    </label>
                     <input
                       type="tel"
                       value={editFormData.phone}
@@ -1756,7 +1956,9 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Email Address
+                    </label>
                     <input
                       type="email"
                       value={editFormData.email}
@@ -1776,7 +1978,6 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                   </div>
                 </div>
               </div>
-
               {/* Contact Person Information */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 mb-4">
@@ -1786,7 +1987,9 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Contact Person Name</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Contact Person Name
+                    </label>
                     <input
                       type="text"
                       value={editFormData.contactPersonName}
@@ -1796,17 +1999,23 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Designation</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Designation
+                    </label>
                     <input
                       type="text"
                       value={editFormData.contactPersonDesignation}
-                      onChange={(e) => handleEditInputChange('contactPersonDesignation', e.target.value)}
+                      onChange={(e) =>
+                        handleEditInputChange('contactPersonDesignation', e.target.value)
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Contact Person Email</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Contact Person Email
+                    </label>
                     <input
                       type="email"
                       value={editFormData.contactPersonEmail}
@@ -1816,7 +2025,9 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Contact Person Phone</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Contact Person Phone
+                    </label>
                     <input
                       type="tel"
                       value={editFormData.contactPersonPhone}
@@ -1826,7 +2037,6 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                   </div>
                 </div>
               </div>
-
               {/* Additional Information */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 mb-4">
@@ -1835,7 +2045,9 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Company Description</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Company Description
+                  </label>
                   <textarea
                     value={editFormData.companyDescription}
                     onChange={(e) => handleEditInputChange('companyDescription', e.target.value)}
@@ -1843,9 +2055,11 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Special Requirements</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Special Requirements
+                  </label>
                   <textarea
                     value={editFormData.specialRequirements}
                     onChange={(e) => handleEditInputChange('specialRequirements', e.target.value)}
@@ -1854,7 +2068,6 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                   />
                 </div>
               </div>
-
               {/* Modal Footer */}
               <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-200">
                 <button
@@ -1879,7 +2092,10 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
                       <Edit className="h-4 w-4" />
                       Update Company
                     </>
-                  )}  </button> </div> </form>
+                  )}{' '}
+                </button>{' '}
+              </div>{' '}
+            </form>
           </div>
         </div>
       )}
@@ -1893,7 +2109,6 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
         onStatusChange={handleStatusChange}
         isUpdating={isUpdatingStatus}
       />
-
     </div>
   );
 };

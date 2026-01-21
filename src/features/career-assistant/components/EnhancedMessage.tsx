@@ -5,11 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { X, Star } from 'lucide-react';
 import { InteractiveCardRenderer } from './InteractiveCards';
 import { VisualizationContainer } from './Visualizations';
-import {
-  EnhancedAIResponse,
-  ActionButton,
-  SuggestedAction
-} from '../types/interactive';
+import { EnhancedAIResponse, ActionButton, SuggestedAction } from '../types/interactive';
 
 interface EnhancedMessageProps {
   response: EnhancedAIResponse;
@@ -20,7 +16,7 @@ interface EnhancedMessageProps {
 export const EnhancedMessage: React.FC<EnhancedMessageProps> = ({
   response,
   timestamp,
-  onSendQuery
+  onSendQuery,
 }) => {
   const navigate = useNavigate();
 
@@ -73,33 +69,34 @@ export const EnhancedMessage: React.FC<EnhancedMessageProps> = ({
               </motion.div>
             )}
 
-            {response.interactive.metadata?.nextSteps && response.interactive.metadata.nextSteps.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="p-4 bg-gray-50 rounded-xl border border-gray-200"
-              >
-                <h4 className="font-semibold text-gray-900 text-sm mb-3 flex items-center gap-2">
-                  <span className="text-base">🎯</span>
-                  Next Steps:
-                </h4>
-                <ul className="space-y-2">
-                  {response.interactive.metadata.nextSteps.map((step, idx) => (
-                    <motion.li
-                      key={idx}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.4 + (idx * 0.05) }}
-                      className="text-sm text-gray-700 flex items-start gap-2"
-                    >
-                      <span className="text-blue-600 font-bold flex-shrink-0 mt-0.5">•</span>
-                      <span>{step}</span>
-                    </motion.li>
-                  ))}
-                </ul>
-              </motion.div>
-            )}
+            {response.interactive.metadata?.nextSteps &&
+              response.interactive.metadata.nextSteps.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="p-4 bg-gray-50 rounded-xl border border-gray-200"
+                >
+                  <h4 className="font-semibold text-gray-900 text-sm mb-3 flex items-center gap-2">
+                    <span className="text-base">🎯</span>
+                    Next Steps:
+                  </h4>
+                  <ul className="space-y-2">
+                    {response.interactive.metadata.nextSteps.map((step, idx) => (
+                      <motion.li
+                        key={idx}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.4 + idx * 0.05 }}
+                        className="text-sm text-gray-700 flex items-start gap-2"
+                      >
+                        <span className="text-blue-600 font-bold flex-shrink-0 mt-0.5">•</span>
+                        <span>{step}</span>
+                      </motion.li>
+                    ))}
+                  </ul>
+                </motion.div>
+              )}
 
             {response.interactive.visualData && (
               <VisualizationContainer data={response.interactive.visualData} />
@@ -108,11 +105,7 @@ export const EnhancedMessage: React.FC<EnhancedMessageProps> = ({
             {response.interactive.cards && response.interactive.cards.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-4">
                 {response.interactive.cards.map((card) => (
-                  <InteractiveCardRenderer
-                    key={card.id}
-                    card={card}
-                    onAction={handleAction}
-                  />
+                  <InteractiveCardRenderer key={card.id} card={card} onAction={handleAction} />
                 ))}
               </div>
             )}
@@ -130,8 +123,8 @@ export const EnhancedMessage: React.FC<EnhancedMessageProps> = ({
                       action.variant === 'primary'
                         ? 'bg-blue-600 hover:bg-blue-700 text-white'
                         : action.variant === 'secondary'
-                        ? 'bg-gray-200 hover:bg-gray-300 text-gray-800'
-                        : 'border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:bg-gray-50'
+                          ? 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+                          : 'border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:bg-gray-50'
                     } ${action.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     {action.label}
@@ -198,7 +191,7 @@ export const SimpleMessage: React.FC<SimpleMessageProps> = ({
   messageId,
   onFeedback,
   feedbackData,
-  feedbackLoading = false
+  feedbackLoading = false,
 }) => {
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [rating, setRating] = useState(0);
@@ -257,10 +250,17 @@ export const SimpleMessage: React.FC<SimpleMessageProps> = ({
                   code({ inline, className, children, ...props }: any) {
                     return !inline ? (
                       <pre className="bg-gray-800 text-gray-100 rounded-lg p-4 overflow-x-auto my-3">
-                        <code className={className} {...props}>{children}</code>
+                        <code className={className} {...props}>
+                          {children}
+                        </code>
                       </pre>
                     ) : (
-                      <code className="bg-gray-200 text-gray-800 px-1.5 py-0.5 rounded text-sm" {...props}>{children}</code>
+                      <code
+                        className="bg-gray-200 text-gray-800 px-1.5 py-0.5 rounded text-sm"
+                        {...props}
+                      >
+                        {children}
+                      </code>
                     );
                   },
                   ul({ children }) {
@@ -283,7 +283,12 @@ export const SimpleMessage: React.FC<SimpleMessageProps> = ({
                   },
                   a({ href, children }) {
                     return (
-                      <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline"
+                      >
                         {children}
                       </a>
                     );
@@ -298,7 +303,9 @@ export const SimpleMessage: React.FC<SimpleMessageProps> = ({
                   table({ children }) {
                     return (
                       <div className="overflow-x-auto my-3">
-                        <table className="min-w-full border border-gray-200 rounded-lg">{children}</table>
+                        <table className="min-w-full border border-gray-200 rounded-lg">
+                          {children}
+                        </table>
                       </div>
                     );
                   },
@@ -310,7 +317,9 @@ export const SimpleMessage: React.FC<SimpleMessageProps> = ({
                     );
                   },
                   td({ children }) {
-                    return <td className="px-3 py-2 border-b border-gray-100 text-sm">{children}</td>;
+                    return (
+                      <td className="px-3 py-2 border-b border-gray-100 text-sm">{children}</td>
+                    );
                   },
                 }}
               >
@@ -318,13 +327,15 @@ export const SimpleMessage: React.FC<SimpleMessageProps> = ({
               </ReactMarkdown>
             </div>
           )}
-          
+
           {/* Timestamp and Feedback */}
-          <div className={`flex items-center justify-between mt-2 ${isUser ? '' : 'border-t border-gray-200 pt-2'}`}>
+          <div
+            className={`flex items-center justify-between mt-2 ${isUser ? '' : 'border-t border-gray-200 pt-2'}`}
+          >
             <p className={`text-xs ${isUser ? 'text-gray-400' : 'text-gray-500'}`}>
               {new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </p>
-            
+
             {/* Feedback buttons for AI messages only */}
             {!isUser && messageId && onFeedback && (
               <div className="flex items-center gap-1">
@@ -342,7 +353,16 @@ export const SimpleMessage: React.FC<SimpleMessageProps> = ({
                       }`}
                       title="Good response"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="w-4 h-4"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
                         <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
                       </svg>
                     </button>
@@ -356,7 +376,16 @@ export const SimpleMessage: React.FC<SimpleMessageProps> = ({
                       }`}
                       title="Bad response - Click to give feedback"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="w-4 h-4"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
                         <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17" />
                       </svg>
                     </button>
@@ -377,20 +406,14 @@ export const SimpleMessage: React.FC<SimpleMessageProps> = ({
                       <Star
                         key={star}
                         className={`w-3 h-3 ${
-                          star <= savedRating
-                            ? 'fill-yellow-400 text-yellow-400'
-                            : 'text-gray-300'
+                          star <= savedRating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
                         }`}
                       />
                     ))}
                   </div>
                 </div>
               )}
-              {savedFeedback && (
-                <p className="text-xs text-gray-500 italic">
-                  "{savedFeedback}"
-                </p>
-              )}
+              {savedFeedback && <p className="text-xs text-gray-500 italic">"{savedFeedback}"</p>}
             </div>
           )}
         </div>

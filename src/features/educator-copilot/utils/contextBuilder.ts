@@ -14,7 +14,8 @@ export const buildEducatorContext = async (educatorId: string): Promise<Educator
     // Fetch educator profile with school details (only necessary columns)
     const { data: educator, error: educatorError } = await supabase
       .from('school_educators')
-      .select(`
+      .select(
+        `
         id,
         user_id,
         school_id,
@@ -36,13 +37,17 @@ export const buildEducatorContext = async (educatorId: string): Promise<Educator
           state,
           board
         )
-      `)
+      `
+      )
       .eq('user_id', educatorId)
       .eq('account_status', 'active')
       .single();
 
     if (educatorError) {
-      console.warn('⚠️ Educator not found in school_educators table, using fallback:', educatorError.message);
+      console.warn(
+        '⚠️ Educator not found in school_educators table, using fallback:',
+        educatorError.message
+      );
       return buildFallbackContext();
     }
 
@@ -52,19 +57,16 @@ export const buildEducatorContext = async (educatorId: string): Promise<Educator
     }
 
     const educatorData = educator as any as EducatorWithSchool;
-    
+
     // Build full name
-    const fullName = [
-      educatorData.first_name,
-      educatorData.last_name
-    ].filter(Boolean).join(' ') || 'Educator';
+    const fullName =
+      [educatorData.first_name, educatorData.last_name].filter(Boolean).join(' ') || 'Educator';
 
     // Get institution details
     const institution = educatorData.schools?.name || 'Your Institution';
-    const institutionDetails = [
-      educatorData.schools?.city,
-      educatorData.schools?.state
-    ].filter(Boolean).join(', ');
+    const institutionDetails = [educatorData.schools?.city, educatorData.schools?.state]
+      .filter(Boolean)
+      .join(', ');
 
     // Get subjects taught (from subjects_handled array)
     const subjects_taught = educatorData.subjects_handled || [];
@@ -92,9 +94,11 @@ export const buildEducatorContext = async (educatorId: string): Promise<Educator
         ...(educatorData.designation ? [`Role: ${educatorData.designation}`] : []),
         ...(educatorData.specialization ? [`Specialization: ${educatorData.specialization}`] : []),
         ...(educatorData.qualification ? [`Qualification: ${educatorData.qualification}`] : []),
-        ...(educatorData.experience_years ? [`Experience: ${educatorData.experience_years} years`] : []),
-        ...(educatorData.schools?.board ? [`Board: ${educatorData.schools.board}`] : [])
-      ].filter(Boolean)
+        ...(educatorData.experience_years
+          ? [`Experience: ${educatorData.experience_years} years`]
+          : []),
+        ...(educatorData.schools?.board ? [`Board: ${educatorData.schools.board}`] : []),
+      ].filter(Boolean),
     };
 
     console.log('✅ Educator context built successfully:', {
@@ -102,7 +106,7 @@ export const buildEducatorContext = async (educatorId: string): Promise<Educator
       institution: context.institution,
       department: context.department,
       total_students: context.total_students,
-      subjects_count: context.subjects_taught.length
+      subjects_count: context.subjects_taught.length,
     });
 
     return context;
@@ -122,7 +126,7 @@ function buildFallbackContext(): EducatorContext {
     total_students: 0,
     active_classes: 0,
     subjects_taught: [],
-    recent_activities: []
+    recent_activities: [],
   };
 }
 
@@ -137,7 +141,7 @@ export const buildClassContext = (classId: string): Promise<any> => {
     total_students: 0,
     active_students: 0,
     skill_distribution: [],
-    career_interests: []
+    career_interests: [],
   });
 };
 
@@ -152,6 +156,6 @@ export const buildStudentContext = (studentId: string): Promise<any> => {
     skills: [],
     projects: [],
     career_interests: [],
-    engagement_level: 'unknown'
+    engagement_level: 'unknown',
   });
 };

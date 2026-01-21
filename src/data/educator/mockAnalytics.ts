@@ -205,7 +205,7 @@ export const mockLeaderboard: LeaderboardEntry[] = [
 export const generateActivityHeatmap = (): ActivityHeatmapData[] => {
   const data: ActivityHeatmapData[] = [];
   const today = new Date();
-  
+
   for (let i = 89; i >= 0; i--) {
     const date = new Date(today);
     date.setDate(date.getDate() - i);
@@ -213,7 +213,7 @@ export const generateActivityHeatmap = (): ActivityHeatmapData[] => {
     const count = Math.floor(Math.random() * 15); // Random activity count 0-14
     data.push({ date: dateStr, count });
   }
-  
+
   return data;
 };
 

@@ -1,8 +1,8 @@
 /**
  * Assessment Validation Utilities
- * 
+ *
  * Validates and corrects assessment results to ensure data quality
- * 
+ *
  * @module features/assessment/assessment-result/utils/assessmentValidation
  */
 
@@ -12,10 +12,10 @@
 
 /**
  * Validates and corrects RIASEC topThree to ensure it's sorted by score
- * 
+ *
  * Issue: AI sometimes returns topThree in wrong order (e.g., CEA when CES is correct)
  * Solution: Re-sort based on actual scores
- * 
+ *
  * @param {Object} riasec - RIASEC results object with scores and topThree
  * @returns {Object} - Corrected RIASEC object
  */
@@ -23,7 +23,7 @@ export const validateRiasecTopThree = (riasec) => {
   if (!riasec?.scores) return riasec;
 
   const scores = riasec.scores;
-  
+
   // Sort all RIASEC types by score in descending order
   const sortedTypes = Object.entries(scores)
     .sort(([, a], [, b]) => b - a)
@@ -50,7 +50,7 @@ export const validateRiasecTopThree = (riasec) => {
     topThree: correctTopThree,
     code: correctCode,
     _wasCorrect: isCorrect,
-    _originalCode: currentCode
+    _originalCode: currentCode,
   };
 };
 
@@ -60,12 +60,12 @@ export const validateRiasecTopThree = (riasec) => {
 
 /**
  * Detects if aptitude answers show suspicious patterns indicating invalid responses
- * 
+ *
  * Patterns detected:
  * 1. All same answer (e.g., all "B")
  * 2. Sequential pattern (A, B, C, D, A, B, C, D...)
  * 3. Too fast completion (< 2 seconds per question average)
- * 
+ *
  * @param {Object} aptitudeAnswers - Aptitude answers by category
  * @param {Object} sectionTimings - Time spent on each section
  * @returns {Object} - Pattern detection results
@@ -75,7 +75,7 @@ export const detectAptitudePatterns = (aptitudeAnswers, sectionTimings = {}) => 
     isValid: true,
     patterns: [],
     warnings: [],
-    categories: {}
+    categories: {},
   };
 
   if (!aptitudeAnswers) return results;
@@ -85,42 +85,42 @@ export const detectAptitudePatterns = (aptitudeAnswers, sectionTimings = {}) => 
   const categoryAnswers = {};
 
   // Process each category
-  ['verbal', 'numerical', 'abstract', 'spatial', 'clerical'].forEach(category => {
+  ['verbal', 'numerical', 'abstract', 'spatial', 'clerical'].forEach((category) => {
     const answers = aptitudeAnswers[category] || [];
-    categoryAnswers[category] = answers.map(a => a.studentAnswer || a.answer || a);
+    categoryAnswers[category] = answers.map((a) => a.studentAnswer || a.answer || a);
     allAnswers.push(...categoryAnswers[category]);
   });
 
   if (allAnswers.length === 0) return results;
 
   // Pattern 1: All same answer
-  const uniqueAnswers = [...new Set(allAnswers.filter(a => a !== null && a !== undefined))];
+  const uniqueAnswers = [...new Set(allAnswers.filter((a) => a !== null && a !== undefined))];
   if (uniqueAnswers.length === 1 && allAnswers.length >= 10) {
     results.isValid = false;
     results.patterns.push({
       type: 'all_same',
       description: `All ${allAnswers.length} aptitude answers are "${uniqueAnswers[0]}"`,
-      severity: 'critical'
+      severity: 'critical',
     });
     results.warnings.push(
       'Aptitude responses appear invalid - all answers are the same. ' +
-      'This suggests the student clicked through without engaging with the questions.'
+        'This suggests the student clicked through without engaging with the questions.'
     );
   }
 
   // Pattern 2: Check each category for same answer
   Object.entries(categoryAnswers).forEach(([category, answers]) => {
     if (answers.length >= 5) {
-      const uniqueInCategory = [...new Set(answers.filter(a => a !== null && a !== undefined))];
+      const uniqueInCategory = [...new Set(answers.filter((a) => a !== null && a !== undefined))];
       const allSame = uniqueInCategory.length === 1;
-      const percentSame = answers.filter(a => a === answers[0]).length / answers.length;
+      const percentSame = answers.filter((a) => a === answers[0]).length / answers.length;
 
       results.categories[category] = {
         totalAnswers: answers.length,
         uniqueAnswers: uniqueInCategory.length,
         allSame,
         percentSame: Math.round(percentSame * 100),
-        isValid: !allSame
+        isValid: !allSame,
       };
 
       if (allSame) {
@@ -128,7 +128,7 @@ export const detectAptitudePatterns = (aptitudeAnswers, sectionTimings = {}) => 
           type: 'category_same',
           category,
           description: `All ${category} answers are "${uniqueInCategory[0]}"`,
-          severity: 'high'
+          severity: 'high',
         });
       }
     }
@@ -140,9 +140,9 @@ export const detectAptitudePatterns = (aptitudeAnswers, sectionTimings = {}) => 
     results.patterns.push({
       type: 'sequential',
       description: sequentialPattern.description,
-      severity: 'high'
+      severity: 'high',
     });
-    if (!results.warnings.some(w => w.includes('invalid'))) {
+    if (!results.warnings.some((w) => w.includes('invalid'))) {
       results.warnings.push(
         'Aptitude responses show a sequential pattern, suggesting random clicking.'
       );
@@ -152,21 +152,21 @@ export const detectAptitudePatterns = (aptitudeAnswers, sectionTimings = {}) => 
   // Pattern 4: Too fast completion
   const aptitudeTime = sectionTimings.aptitude?.seconds || sectionTimings.aptitude || 0;
   const avgTimePerQuestion = aptitudeTime / Math.max(allAnswers.length, 1);
-  
+
   if (aptitudeTime > 0 && avgTimePerQuestion < 2 && allAnswers.length >= 10) {
     results.patterns.push({
       type: 'too_fast',
       description: `Average ${avgTimePerQuestion.toFixed(1)}s per question (expected 15-30s)`,
-      severity: 'medium'
+      severity: 'medium',
     });
     results.warnings.push(
       `Aptitude section completed very quickly (${Math.round(aptitudeTime)}s for ${allAnswers.length} questions). ` +
-      'Results may not reflect actual ability.'
+        'Results may not reflect actual ability.'
     );
   }
 
   // Update overall validity
-  if (results.patterns.some(p => p.severity === 'critical')) {
+  if (results.patterns.some((p) => p.severity === 'critical')) {
     results.isValid = false;
   }
 
@@ -198,7 +198,7 @@ const detectSequentialPattern = (answers) => {
     if (matchRate > 0.8) {
       return {
         isSequential: true,
-        description: `Answers follow pattern: ${pattern.join(', ')}... (${Math.round(matchRate * 100)}% match)`
+        description: `Answers follow pattern: ${pattern.join(', ')}... (${Math.round(matchRate * 100)}% match)`,
       };
     }
   }
@@ -212,7 +212,7 @@ const detectSequentialPattern = (answers) => {
 
 /**
  * Validates and corrects assessment results
- * 
+ *
  * @param {Object} results - Full assessment results from AI
  * @param {Object} rawAnswers - Raw answers from the assessment
  * @param {Object} sectionTimings - Time spent on each section
@@ -222,31 +222,31 @@ export const validateAssessmentResults = (results, rawAnswers = {}, sectionTimin
   if (!results) return { results: null, warnings: [], isValid: false };
 
   const warnings = [];
-  let correctedResults = { ...results };
+  const correctedResults = { ...results };
 
   // 1. Validate and correct RIASEC topThree
   if (results.riasec) {
     const validatedRiasec = validateRiasecTopThree(results.riasec);
     correctedResults.riasec = validatedRiasec;
-    
+
     if (!validatedRiasec._wasCorrect) {
       warnings.push({
         type: 'riasec_correction',
         message: `RIASEC code corrected from ${validatedRiasec._originalCode} to ${validatedRiasec.code}`,
-        severity: 'info'
+        severity: 'info',
       });
     }
   }
 
   // 2. Detect aptitude patterns
   const aptitudePatterns = detectAptitudePatterns(rawAnswers.aptitude, sectionTimings);
-  
+
   if (!aptitudePatterns.isValid) {
     warnings.push({
       type: 'aptitude_invalid',
       message: aptitudePatterns.warnings.join(' '),
       severity: 'critical',
-      patterns: aptitudePatterns.patterns
+      patterns: aptitudePatterns.patterns,
     });
 
     // Add warning to results for display
@@ -254,27 +254,28 @@ export const validateAssessmentResults = (results, rawAnswers = {}, sectionTimin
       isValid: false,
       message: 'Aptitude scores may not reflect actual ability due to response patterns.',
       recommendation: 'Consider retaking the assessment with genuine effort on aptitude questions.',
-      patterns: aptitudePatterns.patterns
+      patterns: aptitudePatterns.patterns,
     };
   }
 
   // 3. Validate stream recommendation for after10 students
   if (results.streamRecommendation?.isAfter10) {
     const streamRec = results.streamRecommendation;
-    
+
     // Check if recommendation is based on invalid aptitude data
     if (!aptitudePatterns.isValid) {
       warnings.push({
         type: 'stream_recommendation_uncertain',
         message: 'Stream recommendation may be less accurate due to invalid aptitude data.',
-        severity: 'warning'
+        severity: 'warning',
       });
 
       // Add note to stream recommendation
       correctedResults.streamRecommendation = {
         ...streamRec,
-        _aptitudeDataWarning: 'Aptitude data appears invalid. The "without Maths" or "with Maths" recommendation may not be accurate.',
-        confidenceScore: Math.min(streamRec.confidenceScore || 70, 70) // Cap confidence at 70%
+        _aptitudeDataWarning:
+          'Aptitude data appears invalid. The "without Maths" or "with Maths" recommendation may not be accurate.',
+        confidenceScore: Math.min(streamRec.confidenceScore || 70, 70), // Cap confidence at 70%
       };
     }
   }
@@ -282,13 +283,13 @@ export const validateAssessmentResults = (results, rawAnswers = {}, sectionTimin
   return {
     results: correctedResults,
     warnings,
-    isValid: warnings.filter(w => w.severity === 'critical').length === 0,
-    aptitudeValidation: aptitudePatterns
+    isValid: warnings.filter((w) => w.severity === 'critical').length === 0,
+    aptitudeValidation: aptitudePatterns,
   };
 };
 
 export default {
   validateRiasecTopThree,
   detectAptitudePatterns,
-  validateAssessmentResults
+  validateAssessmentResults,
 };

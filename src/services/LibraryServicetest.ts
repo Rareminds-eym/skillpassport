@@ -81,13 +81,15 @@ export interface OverdueBook extends LibraryBookIssue {
 class LibraryService {
   // Get current user's college ID
   private async getCurrentCollegeId(): Promise<string> {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
-    
+
     // Try to get college_id from user metadata first
     const collegeId = user.user_metadata?.college_id;
     if (collegeId) return collegeId;
-    
+
     // For college admin, get college_id from the user's profile or students table
     // Check if user is a college admin and get their college_id
     const { data: userData } = await supabase
@@ -96,29 +98,29 @@ class LibraryService {
       .eq('user_id', user.id)
       .limit(1)
       .single();
-    
+
     if (userData?.college_id) {
       return userData.college_id;
     }
-    
+
     // Fallback: get from organizations table
     const { data: orgs } = await supabase
       .from('organizations')
       .select('id')
       .eq('organization_type', 'college')
       .limit(1);
-    
+
     if (orgs && orgs.length > 0) {
       return orgs[0].id;
     }
-    
+
     throw new Error('No college found for user');
   }
 
   // ============================================================================
   // BOOKS MANAGEMENT
   // ============================================================================
-  
+
   async getBooks(filters?: {
     search?: string;
     category?: string;
@@ -127,7 +129,7 @@ class LibraryService {
     limit?: number;
   }) {
     const collegeId = await this.getCurrentCollegeId();
-    
+
     let query = supabase
       .from('library_books_college')
       .select('*', { count: 'exact' })
@@ -135,7 +137,9 @@ class LibraryService {
       .order('title');
 
     if (filters?.search) {
-      query = query.or(`title.ilike.%${filters.search}%,author.ilike.%${filters.search}%,isbn.ilike.%${filters.search}%,book_id.ilike.%${filters.search}%`);
+      query = query.or(
+        `title.ilike.%${filters.search}%,author.ilike.%${filters.search}%,isbn.ilike.%${filters.search}%,book_id.ilike.%${filters.search}%`
+      );
     }
 
     if (filters?.category) {
@@ -153,14 +157,14 @@ class LibraryService {
     }
 
     const { data, error, count } = await query;
-    
+
     if (error) throw error;
     return { books: data as LibraryBook[], count };
   }
 
   async getBookById(id: string) {
     const collegeId = await this.getCurrentCollegeId();
-    
+
     const { data, error } = await supabase
       .from('library_books')
       .select('*')
@@ -174,7 +178,7 @@ class LibraryService {
 
   async addBook(book: Omit<LibraryBook, 'id' | 'created_at' | 'updated_at'>) {
     const collegeId = await this.getCurrentCollegeId();
-    
+
     // Generate a unique book_id if not provided
     const bookData = {
       ...book,
@@ -183,7 +187,7 @@ class LibraryService {
       location: book.location || 'Main Library',
       status: book.status || 'available',
     };
-    
+
     const { data, error } = await supabase
       .from('library_books')
       .insert([bookData])
@@ -196,7 +200,7 @@ class LibraryService {
 
   async updateBook(id: string, updates: Partial<LibraryBook>) {
     const collegeId = await this.getCurrentCollegeId();
-    
+
     const { data, error } = await supabase
       .from('library_books')
       .update(updates)
@@ -211,7 +215,7 @@ class LibraryService {
 
   async deleteBook(id: string) {
     const collegeId = await this.getCurrentCollegeId();
-    
+
     const { error } = await supabase
       .from('library_books')
       .delete()
@@ -235,11 +239,13 @@ class LibraryService {
     issued_by?: string;
   }) {
     const collegeId = await this.getCurrentCollegeId();
-    
+
     // First check if student has reached max book limit
     const settings = await this.getSettings();
-    const maxBooks = parseInt(settings.find(s => s.setting_key === 'max_books_per_student')?.setting_value || '3');
-    
+    const maxBooks = parseInt(
+      settings.find((s) => s.setting_key === 'max_books_per_student')?.setting_value || '3'
+    );
+
     const { count: currentIssues } = await supabase
       .from('library_book_issues')
       .select('*', { count: 'exact', head: true })
@@ -257,7 +263,9 @@ class LibraryService {
     }
 
     // Calculate due date
-    const loanPeriod = parseInt(settings.find(s => s.setting_key === 'default_loan_period_days')?.setting_value || '14');
+    const loanPeriod = parseInt(
+      settings.find((s) => s.setting_key === 'default_loan_period_days')?.setting_value || '14'
+    );
     const issueDate = new Date();
     const dueDate = new Date(issueDate);
     dueDate.setDate(dueDate.getDate() + loanPeriod);
@@ -272,21 +280,26 @@ class LibraryService {
     const { data, error } = await supabase
       .from('library_book_issues')
       .insert([issueData])
-      .select(`
+      .select(
+        `
         *,
         book:library_books(*)
-      `)
+      `
+      )
       .single();
 
     if (error) throw error;
     return data as LibraryBookIssue;
   }
 
-  async returnBook(issueId: string, returnData: {
-    return_date?: string;
-    returned_by?: string;
-    remarks?: string;
-  }) {
+  async returnBook(
+    issueId: string,
+    returnData: {
+      return_date?: string;
+      returned_by?: string;
+      remarks?: string;
+    }
+  ) {
     // Get the issue record
     const { data: issue, error: fetchError } = await supabase
       .from('library_book_issues')
@@ -300,11 +313,10 @@ class LibraryService {
 
     // Calculate fine
     const returnDate = returnData.return_date || new Date().toISOString().split('T')[0];
-    const { data: fineData, error: fineError } = await supabase
-      .rpc('calculate_fine', {
-        issue_date: issue.issue_date,
-        return_date: returnDate
-      });
+    const { data: fineData, error: fineError } = await supabase.rpc('calculate_fine', {
+      issue_date: issue.issue_date,
+      return_date: returnDate,
+    });
 
     if (fineError) throw fineError;
 
@@ -319,10 +331,12 @@ class LibraryService {
       .from('library_book_issues')
       .update(updateData)
       .eq('id', issueId)
-      .select(`
+      .select(
+        `
         *,
         book:library_books(*)
-      `)
+      `
+      )
       .single();
 
     if (error) throw error;
@@ -338,25 +352,28 @@ class LibraryService {
     limit?: number;
   }) {
     const collegeId = await this.getCurrentCollegeId();
-    
+
     // First get student IDs from this college
     const { data: students } = await supabase
       .from('students')
       .select('id')
       .eq('college_id', collegeId);
-    
-    const studentIds = students?.map(s => s.id) || [];
-    
+
+    const studentIds = students?.map((s) => s.id) || [];
+
     if (studentIds.length === 0) {
       return { issues: [], count: 0 };
     }
 
     let query = supabase
       .from('library_book_issues')
-      .select(`
+      .select(
+        `
         *,
         book:library_books(*)
-      `, { count: 'exact' })
+      `,
+        { count: 'exact' }
+      )
       .in('student_id', studentIds)
       .order('issue_date', { ascending: false });
 
@@ -373,7 +390,9 @@ class LibraryService {
     }
 
     if (filters?.search) {
-      query = query.or(`student_name.ilike.%${filters.search}%,roll_number.ilike.%${filters.search}%`);
+      query = query.or(
+        `student_name.ilike.%${filters.search}%,roll_number.ilike.%${filters.search}%`
+      );
     }
 
     if (filters?.page && filters?.limit) {
@@ -383,20 +402,22 @@ class LibraryService {
     }
 
     const { data, error, count } = await query;
-    
+
     if (error) throw error;
     return { issues: data as LibraryBookIssue[], count };
   }
 
   async searchIssuedBook(bookId?: string, studentId?: string) {
     const collegeId = await this.getCurrentCollegeId();
-    
+
     let query = supabase
       .from('library_book_issues')
-      .select(`
+      .select(
+        `
         *,
         book:library_books(*)
-      `)
+      `
+      )
       .eq('status', 'issued');
 
     // Filter by college students only
@@ -406,8 +427,8 @@ class LibraryService {
         .from('students')
         .select('id')
         .eq('college_id', collegeId);
-      
-      const studentIds = students?.map(s => s.id) || [];
+
+      const studentIds = students?.map((s) => s.id) || [];
       if (studentIds.length > 0) {
         query = query.in('student_id', studentIds);
       }
@@ -424,7 +445,7 @@ class LibraryService {
     }
 
     const { data, error } = await query.single();
-    
+
     if (error && error.code !== 'PGRST116') throw error;
     return data as LibraryBookIssue | null;
   }
@@ -435,15 +456,15 @@ class LibraryService {
 
   async getOverdueBooks() {
     const collegeId = await this.getCurrentCollegeId();
-    
+
     // Get overdue books for students from this college
     const { data: students } = await supabase
       .from('students')
       .select('id')
       .eq('college_id', collegeId);
-    
-    const studentIds = students?.map(s => s.id) || [];
-    
+
+    const studentIds = students?.map((s) => s.id) || [];
+
     if (studentIds.length === 0) {
       return [];
     }
@@ -464,45 +485,46 @@ class LibraryService {
 
   async getLibraryStats() {
     const collegeId = await this.getCurrentCollegeId();
-    
+
     // Get students from this college
     const { data: students } = await supabase
       .from('students')
       .select('id')
       .eq('college_id', collegeId);
-    
-    const studentIds = students?.map(s => s.id) || [];
-    
+
+    const studentIds = students?.map((s) => s.id) || [];
+
     // Calculate stats manually for this college
     const { data: booksData } = await supabase
       .from('library_books')
       .select('total_copies, available_copies');
-    
+
     const totalBooks = booksData?.length || 0;
     const totalCopies = booksData?.reduce((sum, book) => sum + book.total_copies, 0) || 0;
     const availableCopies = booksData?.reduce((sum, book) => sum + book.available_copies, 0) || 0;
-    
+
     let currentlyIssued = 0;
     let overdueCount = 0;
     let totalPendingFines = 0;
-    
+
     if (studentIds.length > 0) {
       const { count: issuedCount } = await supabase
         .from('library_book_issues')
         .select('*', { count: 'exact', head: true })
         .in('student_id', studentIds)
         .eq('status', 'issued');
-      
+
       currentlyIssued = issuedCount || 0;
-      
+
       // Get overdue data
       const { data: overdueData } = await supabase
         .from('overdue_books')
         .select('current_fine')
         .in('student_id', studentIds);
-      
+
       overdueCount = overdueData?.length || 0;
-      totalPendingFines = overdueData?.reduce((sum, item) => sum + (item.current_fine || 0), 0) || 0;
+      totalPendingFines =
+        overdueData?.reduce((sum, item) => sum + (item.current_fine || 0), 0) || 0;
     }
 
     const stats: LibraryStats = {
@@ -549,16 +571,15 @@ class LibraryService {
   // ============================================================================
 
   async getCategories() {
-    const { data, error } = await supabase
-      .from('library_categories')
-      .select('*')
-      .order('name');
+    const { data, error } = await supabase.from('library_categories').select('*').order('name');
 
     if (error) throw error;
     return data as LibraryCategory[];
   }
 
-  async addCategory(category: Omit<LibraryCategory, 'id' | 'college_id' | 'created_at' | 'updated_at'>) {
+  async addCategory(
+    category: Omit<LibraryCategory, 'id' | 'college_id' | 'created_at' | 'updated_at'>
+  ) {
     const { data, error } = await supabase
       .from('library_categories')
       .insert([category])
@@ -582,10 +603,7 @@ class LibraryService {
   }
 
   async deleteCategory(id: string) {
-    const { error } = await supabase
-      .from('library_categories')
-      .delete()
-      .eq('id', id);
+    const { error } = await supabase.from('library_categories').delete().eq('id', id);
 
     if (error) throw error;
   }
@@ -595,11 +613,10 @@ class LibraryService {
   // ============================================================================
 
   async calculateFine(issueDate: string, returnDate?: string) {
-    const { data, error } = await supabase
-      .rpc('calculate_fine', {
-        issue_date: issueDate,
-        return_date: returnDate || new Date().toISOString().split('T')[0]
-      });
+    const { data, error } = await supabase.rpc('calculate_fine', {
+      issue_date: issueDate,
+      return_date: returnDate || new Date().toISOString().split('T')[0],
+    });
 
     if (error) throw error;
     return data as number;
@@ -621,10 +638,12 @@ class LibraryService {
   async getStudentBorrowHistory(studentId: string) {
     const { data, error } = await supabase
       .from('library_book_issues')
-      .select(`
+      .select(
+        `
         *,
         book:library_books(*)
-      `)
+      `
+      )
       .eq('student_id', studentId)
       .order('issue_date', { ascending: false });
 
@@ -635,13 +654,17 @@ class LibraryService {
   // Search students for book issuing
   async searchStudents(searchTerm: string) {
     const collegeId = await this.getCurrentCollegeId();
-    
+
     const { data, error } = await supabase
       .from('students')
-      .select('id, name, roll_number, enrollment_number, admission_number, contact_number as phone, email, grade, section, course_name, semester')
+      .select(
+        'id, name, roll_number, enrollment_number, admission_number, contact_number as phone, email, grade, section, course_name, semester'
+      )
       .eq('college_id', collegeId)
       .eq('is_deleted', false)
-      .or(`name.ilike.%${searchTerm}%,roll_number.ilike.%${searchTerm}%,enrollment_number.ilike.%${searchTerm}%,admission_number.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`)
+      .or(
+        `name.ilike.%${searchTerm}%,roll_number.ilike.%${searchTerm}%,enrollment_number.ilike.%${searchTerm}%,admission_number.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`
+      )
       .order('name')
       .limit(10);
 
@@ -652,10 +675,12 @@ class LibraryService {
   // Get student details by ID
   async getStudentById(studentId: string) {
     const collegeId = await this.getCurrentCollegeId();
-    
+
     const { data, error } = await supabase
       .from('students')
-      .select('id, name, roll_number, enrollment_number, admission_number, contact_number as phone, email, grade, section, course_name, semester')
+      .select(
+        'id, name, roll_number, enrollment_number, admission_number, contact_number as phone, email, grade, section, course_name, semester'
+      )
       .eq('id', studentId)
       .eq('college_id', collegeId)
       .eq('is_deleted', false)

@@ -25,7 +25,7 @@ export const useOpportunities = (options = {}) => {
     page = 1,
     pageSize = 6,
     sortBy = 'newest',
-    serverSidePagination = false
+    serverSidePagination = false,
   } = options;
 
   const [opportunities, setOpportunities] = useState([]);
@@ -53,7 +53,7 @@ export const useOpportunities = (options = {}) => {
           searchTerm,
           sortBy,
           filters,
-          activeOnly
+          activeOnly,
         });
         data = result.data || [];
         count = result.count || 0;
@@ -68,7 +68,7 @@ export const useOpportunities = (options = {}) => {
       }
 
       // Format opportunities for display
-      const formattedOpportunities = data.map(opp => 
+      const formattedOpportunities = data.map((opp) =>
         opportunitiesService.formatOpportunityForDisplay(opp)
       );
 
@@ -78,7 +78,7 @@ export const useOpportunities = (options = {}) => {
     } catch (err) {
       console.error('❌ Error fetching opportunities:', err);
       setError(err.message || 'Failed to fetch opportunities');
-      
+
       // Fallback to empty array on error
       setOpportunities([]);
       setTotalCount(0);
@@ -105,10 +105,10 @@ export const useOpportunities = (options = {}) => {
     try {
       const data = await opportunitiesService.getFilteredOpportunities({
         ...filters,
-        employment_type: employmentType
+        employment_type: employmentType,
       });
 
-      const formattedOpportunities = data.map(opp => 
+      const formattedOpportunities = data.map((opp) =>
         opportunitiesService.formatOpportunityForDisplay(opp)
       );
 
@@ -137,14 +137,15 @@ export const useOpportunities = (options = {}) => {
 
     try {
       const allOpportunities = await opportunitiesService.getAllOpportunities();
-      
-      const filteredOpportunities = allOpportunities.filter(opp => 
-        opp.title?.toLowerCase().includes(term.toLowerCase()) ||
-        opp.company_name?.toLowerCase().includes(term.toLowerCase()) ||
-        opp.description?.toLowerCase().includes(term.toLowerCase())
+
+      const filteredOpportunities = allOpportunities.filter(
+        (opp) =>
+          opp.title?.toLowerCase().includes(term.toLowerCase()) ||
+          opp.company_name?.toLowerCase().includes(term.toLowerCase()) ||
+          opp.description?.toLowerCase().includes(term.toLowerCase())
       );
 
-      const formattedOpportunities = filteredOpportunities.map(opp => 
+      const formattedOpportunities = filteredOpportunities.map((opp) =>
         opportunitiesService.formatOpportunityForDisplay(opp)
       );
 
@@ -171,7 +172,16 @@ export const useOpportunities = (options = {}) => {
     if (fetchOnMount) {
       fetchOpportunities();
     }
-  }, [JSON.stringify(filters), JSON.stringify(studentSkills), activeOnly, searchTerm, page, pageSize, sortBy, serverSidePagination]);
+  }, [
+    JSON.stringify(filters),
+    JSON.stringify(studentSkills),
+    activeOnly,
+    searchTerm,
+    page,
+    pageSize,
+    sortBy,
+    serverSidePagination,
+  ]);
 
   return {
     opportunities,
@@ -182,7 +192,7 @@ export const useOpportunities = (options = {}) => {
     fetchOpportunities,
     refreshOpportunities,
     filterByEmploymentType,
-    searchOpportunities
+    searchOpportunities,
   };
 };
 

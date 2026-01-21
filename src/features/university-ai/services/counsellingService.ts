@@ -1,6 +1,10 @@
 import { getOpenAIClient, DEFAULT_MODEL } from './openAIClient';
 import { CounsellingTopic, Message, StudentContext, CounsellingResponse } from '../types';
-import { COUNSELLING_PROMPTS, buildStudentContextPrompt, getFollowUpSuggestions } from '../prompts/counsellingPrompts';
+import {
+  COUNSELLING_PROMPTS,
+  buildStudentContextPrompt,
+  getFollowUpSuggestions,
+} from '../prompts/counsellingPrompts';
 
 /**
  * University AI Counselling Service
@@ -20,25 +24,25 @@ class UniversityCounsellingService {
   ): Promise<CounsellingResponse> {
     try {
       const client = getOpenAIClient();
-      
+
       // Build system prompt
       const systemPrompt = COUNSELLING_PROMPTS[topic];
       const contextPrompt = buildStudentContextPrompt(studentContext);
-      
+
       // Prepare messages
       const messages = [
         {
           role: 'system' as const,
-          content: systemPrompt + contextPrompt
+          content: systemPrompt + contextPrompt,
         },
-        ...conversationHistory.map(msg => ({
+        ...conversationHistory.map((msg) => ({
           role: msg.role,
-          content: msg.content
+          content: msg.content,
         })),
         {
           role: 'user' as const,
-          content: query
-        }
+          content: query,
+        },
       ];
 
       // Stream the response
@@ -51,7 +55,7 @@ class UniversityCounsellingService {
       });
 
       let fullResponse = '';
-      
+
       for await (const chunk of stream) {
         const content = chunk.choices[0]?.delta?.content || '';
         if (content) {
@@ -69,8 +73,8 @@ class UniversityCounsellingService {
         metadata: {
           topic,
           intentHandled: `${topic} counselling`,
-          confidence: 0.95
-        }
+          confidence: 0.95,
+        },
       };
     } catch (error) {
       console.error('University AI Error:', error);
@@ -83,27 +87,33 @@ class UniversityCounsellingService {
    */
   detectTopic(query: string): CounsellingTopic {
     const lowercaseQuery = query.toLowerCase();
-    
+
     // Academic keywords
-    if (lowercaseQuery.match(/course|class|study|exam|grade|assignment|homework|semester|academic/)) {
+    if (
+      lowercaseQuery.match(/course|class|study|exam|grade|assignment|homework|semester|academic/)
+    ) {
       return 'academic';
     }
-    
+
     // Career keywords
-    if (lowercaseQuery.match(/career|job|internship|interview|resume|cv|professional|industry|work/)) {
+    if (
+      lowercaseQuery.match(/career|job|internship|interview|resume|cv|professional|industry|work/)
+    ) {
       return 'career';
     }
-    
+
     // Performance keywords
     if (lowercaseQuery.match(/performance|improve|gpa|score|test|result|achievement|progress/)) {
       return 'performance';
     }
-    
+
     // Wellbeing keywords
-    if (lowercaseQuery.match(/stress|anxiety|mental|health|balance|wellness|tired|overwhelm|burnout/)) {
+    if (
+      lowercaseQuery.match(/stress|anxiety|mental|health|balance|wellness|tired|overwhelm|burnout/)
+    ) {
       return 'wellbeing';
     }
-    
+
     return 'general';
   }
 }

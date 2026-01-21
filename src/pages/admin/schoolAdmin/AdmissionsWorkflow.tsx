@@ -1,7 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  UserPlus, Upload, CheckCircle, XCircle, DollarSign, 
-  FileText, Search, Filter, Download 
+import {
+  UserPlus,
+  Upload,
+  CheckCircle,
+  XCircle,
+  DollarSign,
+  FileText,
+  Search,
+  Filter,
+  Download,
 } from 'lucide-react';
 import { admissionService } from '@/services/studentManagementService';
 import type { AdmissionApplication } from '@/types/StudentManagement';
@@ -21,9 +28,7 @@ const AdmissionsWorkflow: React.FC = () => {
           {applications.length === 0 ? (
             <p>No applications found</p>
           ) : (
-            <div className="space-y-4">
-              {/* Application list will go here */}
-            </div>
+            <div className="space-y-4">{/* Application list will go here */}</div>
           )}
         </div>
       )}

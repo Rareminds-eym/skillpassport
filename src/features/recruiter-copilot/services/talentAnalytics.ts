@@ -19,10 +19,7 @@ class TalentAnalyticsService {
         .not('name', 'is', null);
 
       // Get skill distribution from skills table
-      const { data: skillsData } = await supabase
-        .from('skills')
-        .select('name')
-        .eq('enabled', true);
+      const { data: skillsData } = await supabase.from('skills').select('name').eq('enabled', true);
 
       const skillCounts = new Map<string, number>();
       skillsData?.forEach(({ name }) => {
@@ -81,22 +78,20 @@ class TalentAnalyticsService {
 
       // Experience level distribution based on graduation year
       const currentYear = new Date().getFullYear();
-      const { data: gradYears } = await supabase
-        .from('students')
-        .select('expectedGraduationDate');
+      const { data: gradYears } = await supabase.from('students').select('expectedGraduationDate');
 
       const experienceLevels = {
         'Fresh Graduates': 0,
         '1-2 years': 0,
         '2-5 years': 0,
-        '5+ years': 0
+        '5+ years': 0,
       };
 
       gradYears?.forEach(({ expectedGraduationDate }) => {
         if (expectedGraduationDate) {
           const gradYear = parseInt(expectedGraduationDate.split('-')[0]);
           const yearsSinceGrad = currentYear - gradYear;
-          
+
           if (yearsSinceGrad <= 0) {
             experienceLevels['Fresh Graduates']++;
           } else if (yearsSinceGrad <= 2) {
@@ -109,16 +104,17 @@ class TalentAnalyticsService {
         }
       });
 
-      const by_experience = Object.entries(experienceLevels).map(
-        ([level, count]) => ({ level, count })
-      );
+      const by_experience = Object.entries(experienceLevels).map(([level, count]) => ({
+        level,
+        count,
+      }));
 
       // Estimate availability (mock data - can be enhanced with actual availability tracking)
       const total = totalCandidates || 0;
       const availability_summary = {
         immediate: Math.floor(total * 0.25),
-        within_month: Math.floor(total * 0.40),
-        within_three_months: Math.floor(total * 0.35)
+        within_month: Math.floor(total * 0.4),
+        within_three_months: Math.floor(total * 0.35),
       };
 
       return {
@@ -128,9 +124,8 @@ class TalentAnalyticsService {
         by_experience,
         emerging_skills,
         top_institutions,
-        availability_summary
+        availability_summary,
       };
-
     } catch (error) {
       console.error('Error fetching talent pool analytics:', error);
       return {
@@ -143,8 +138,8 @@ class TalentAnalyticsService {
         availability_summary: {
           immediate: 0,
           within_month: 0,
-          within_three_months: 0
-        }
+          within_three_months: 0,
+        },
       };
     }
   }
@@ -162,7 +157,7 @@ class TalentAnalyticsService {
       { skill: 'TypeScript', trend: 'rising' as const },
       { skill: 'Node.js', trend: 'stable' as const },
       { skill: 'Java', trend: 'stable' as const },
-      { skill: 'Docker', trend: 'rising' as const }
+      { skill: 'Docker', trend: 'rising' as const },
     ];
     return trendingSkills;
   }
@@ -176,12 +171,12 @@ class TalentAnalyticsService {
   ): string[] {
     // Skills that have 5-20% adoption (emerging, not yet oversaturated)
     return skillData
-      .filter(s => {
+      .filter((s) => {
         const adoptionRate = (s.count / totalCandidates) * 100;
         return adoptionRate >= 5 && adoptionRate <= 20;
       })
       .slice(0, 10)
-      .map(s => s.skill);
+      .map((s) => s.skill);
   }
 
   /**
@@ -201,7 +196,7 @@ class TalentAnalyticsService {
 
     // Extract most requested skills
     const skillDemand = new Map<string, number>();
-    opportunities?.forEach(opp => {
+    opportunities?.forEach((opp) => {
       if (Array.isArray(opp.skills_required)) {
         opp.skills_required.forEach((skill: string) => {
           const count = skillDemand.get(skill) || 0;
@@ -213,11 +208,11 @@ class TalentAnalyticsService {
     const in_demand_skills = Array.from(skillDemand.entries())
       .sort((a, b) => b[1] - a[1])
       .slice(0, 10)
-      .map(entry => entry[0]);
+      .map((entry) => entry[0]);
 
     // Extract most common roles
     const roleCounts = new Map<string, number>();
-    opportunities?.forEach(opp => {
+    opportunities?.forEach((opp) => {
       if (opp.job_title) {
         const count = roleCounts.get(opp.job_title) || 0;
         roleCounts.set(opp.job_title, count + 1);
@@ -227,22 +222,27 @@ class TalentAnalyticsService {
     const competitive_roles = Array.from(roleCounts.entries())
       .sort((a, b) => b[1] - a[1])
       .slice(0, 8)
-      .map(entry => entry[0]);
+      .map((entry) => entry[0]);
 
     return {
-      in_demand_skills: in_demand_skills.length > 0 ? in_demand_skills : [
-        'React', 'Python', 'Java', 'JavaScript', 'SQL', 'Node.js', 'AWS', 'Docker'
-      ],
-      competitive_roles: competitive_roles.length > 0 ? competitive_roles : [
-        'Software Engineer',
-        'Full Stack Developer',
-        'Data Scientist',
-        'Frontend Developer',
-        'Backend Developer'
-      ],
-      hiring_velocity: opportunities && opportunities.length > 10 
-        ? 'High - Strong demand in the market' 
-        : 'Moderate - Steady hiring activity'
+      in_demand_skills:
+        in_demand_skills.length > 0
+          ? in_demand_skills
+          : ['React', 'Python', 'Java', 'JavaScript', 'SQL', 'Node.js', 'AWS', 'Docker'],
+      competitive_roles:
+        competitive_roles.length > 0
+          ? competitive_roles
+          : [
+              'Software Engineer',
+              'Full Stack Developer',
+              'Data Scientist',
+              'Frontend Developer',
+              'Backend Developer',
+            ],
+      hiring_velocity:
+        opportunities && opportunities.length > 10
+          ? 'High - Strong demand in the market'
+          : 'Moderate - Steady hiring activity',
     };
   }
 }

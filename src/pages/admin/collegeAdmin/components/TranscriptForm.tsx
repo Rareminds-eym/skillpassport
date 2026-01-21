@@ -6,7 +6,9 @@ import type { Transcript } from '../../../../types/college';
 interface TranscriptFormProps {
   isOpen: boolean;
   onClose: () => void;
-  onGenerate: (data: Partial<Transcript>) => Promise<{ success: boolean; error?: string; data?: Transcript }>;
+  onGenerate: (
+    data: Partial<Transcript>
+  ) => Promise<{ success: boolean; error?: string; data?: Transcript }>;
   students: Array<{ id: string; name: string; roll_number: string }>;
   departments: Array<{ id: string; name: string }>;
 }
@@ -75,10 +77,7 @@ const TranscriptForm: React.FC<TranscriptFormProps> = ({
       <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
           <h2 className="text-xl font-bold text-gray-900">Generate Transcript</h2>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition"
-          >
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition">
             <XMarkIcon className="h-5 w-5 text-gray-500" />
           </button>
         </div>
@@ -92,7 +91,10 @@ const TranscriptForm: React.FC<TranscriptFormProps> = ({
                 Transcript Generated Successfully!
               </h3>
               <p className="text-sm text-green-700 mb-4">
-                Verification ID: <code className="bg-green-100 px-2 py-1 rounded">{generatedTranscript.verification_id}</code>
+                Verification ID:{' '}
+                <code className="bg-green-100 px-2 py-1 rounded">
+                  {generatedTranscript.verification_id}
+                </code>
               </p>
               <div className="flex gap-3 justify-center">
                 <button
@@ -116,7 +118,9 @@ const TranscriptForm: React.FC<TranscriptFormProps> = ({
               <dl className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <dt className="text-gray-600">Type:</dt>
-                  <dd className="font-medium text-gray-900 capitalize">{generatedTranscript.type}</dd>
+                  <dd className="font-medium text-gray-900 capitalize">
+                    {generatedTranscript.type}
+                  </dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-gray-600">Semester Range:</dt>
@@ -161,11 +165,12 @@ const TranscriptForm: React.FC<TranscriptFormProps> = ({
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Choose a student...</option>
-                {Array.isArray(students) && students.map((student) => (
-                  <option key={student.id} value={student.id}>
-                    {student.roll_number} - {student.name}
-                  </option>
-                ))}
+                {Array.isArray(students) &&
+                  students.map((student) => (
+                    <option key={student.id} value={student.id}>
+                      {student.roll_number} - {student.name}
+                    </option>
+                  ))}
               </select>
             </div>
 
@@ -213,7 +218,9 @@ const TranscriptForm: React.FC<TranscriptFormProps> = ({
                 <select
                   required
                   value={formData.semester_from}
-                  onChange={(e) => setFormData({ ...formData, semester_from: parseInt(e.target.value) })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, semester_from: parseInt(e.target.value) })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 >
                   {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
@@ -231,7 +238,9 @@ const TranscriptForm: React.FC<TranscriptFormProps> = ({
                 <select
                   required
                   value={formData.semester_to}
-                  onChange={(e) => setFormData({ ...formData, semester_to: parseInt(e.target.value) })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, semester_to: parseInt(e.target.value) })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 >
                   {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (

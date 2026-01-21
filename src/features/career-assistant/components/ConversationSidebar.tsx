@@ -12,7 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   MoreHorizontal,
-  Clock
+  Clock,
 } from 'lucide-react';
 import { Conversation } from '../hooks/useCareerConversations';
 
@@ -56,15 +56,15 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   // Group conversations by date
   const groupedConversations = React.useMemo(() => {
     const groups: { [key: string]: Conversation[] } = {
-      'Today': [],
-      'Yesterday': [],
+      Today: [],
+      Yesterday: [],
       'Previous 7 Days': [],
       'Previous 30 Days': [],
-      'Older': [],
+      Older: [],
     };
 
     const now = new Date();
-    conversations.forEach(conv => {
+    conversations.forEach((conv) => {
       const date = new Date(conv.updated_at);
       const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
 
@@ -175,19 +175,23 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
                       }}
                       onClick={() => onSelectConversation(conv.id)}
                       className={`mx-2 px-3 py-2.5 rounded-lg cursor-pointer transition-all relative group ${
-                        currentConversationId === conv.id
-                          ? 'bg-gray-200'
-                          : 'hover:bg-gray-100'
+                        currentConversationId === conv.id ? 'bg-gray-200' : 'hover:bg-gray-100'
                       }`}
                     >
                       <div className="flex items-start gap-3">
-                        <MessageSquare className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
-                          currentConversationId === conv.id ? 'text-gray-900' : 'text-gray-400'
-                        }`} />
+                        <MessageSquare
+                          className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
+                            currentConversationId === conv.id ? 'text-gray-900' : 'text-gray-400'
+                          }`}
+                        />
                         <div className="flex-1 min-w-0">
-                          <p className={`text-sm truncate ${
-                            currentConversationId === conv.id ? 'font-medium text-gray-900' : 'text-gray-700'
-                          }`}>
+                          <p
+                            className={`text-sm truncate ${
+                              currentConversationId === conv.id
+                                ? 'font-medium text-gray-900'
+                                : 'text-gray-700'
+                            }`}
+                          >
                             {conv.title || 'New conversation'}
                           </p>
                           <div className="flex items-center gap-1 mt-0.5">

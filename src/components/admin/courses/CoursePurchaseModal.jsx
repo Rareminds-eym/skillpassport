@@ -1,5 +1,14 @@
 import React, { useState } from 'react';
-import { X, BookOpen, Clock, Users, Award, CheckCircle, ShoppingCart, CreditCard } from 'lucide-react';
+import {
+  X,
+  BookOpen,
+  Clock,
+  Users,
+  Award,
+  CheckCircle,
+  ShoppingCart,
+  CreditCard,
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const CoursePurchaseModal = ({ course, isOpen, onClose, onPurchase, userRole = 'educator' }) => {
@@ -11,12 +20,14 @@ const CoursePurchaseModal = ({ course, isOpen, onClose, onPurchase, userRole = '
   const getPrice = () => {
     if (course.price) return course.price;
     // Default pricing if not set
-    return {
-      educator: 499,
-      school_admin: 2999,
-      college_admin: 4999,
-      university_admin: 9999
-    }[userRole] || 499;
+    return (
+      {
+        educator: 499,
+        school_admin: 2999,
+        college_admin: 4999,
+        university_admin: 9999,
+      }[userRole] || 499
+    );
   };
 
   const price = getPrice();
@@ -42,7 +53,7 @@ const CoursePurchaseModal = ({ course, isOpen, onClose, onPurchase, userRole = '
         >
           {/* Header with Thumbnail */}
           <div className="relative h-64 bg-gradient-to-br from-indigo-500 to-purple-600 overflow-hidden">
-            {(course.thumbnail?.startsWith('http') || course.thumbnail?.startsWith('data:')) ? (
+            {course.thumbnail?.startsWith('http') || course.thumbnail?.startsWith('data:') ? (
               <img
                 src={course.thumbnail}
                 alt={course.title}
@@ -64,11 +75,13 @@ const CoursePurchaseModal = ({ course, isOpen, onClose, onPurchase, userRole = '
 
             {/* Status Badge */}
             <div className="absolute top-4 left-4">
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                course.status === 'Active'
-                  ? 'bg-emerald-500 text-white'
-                  : 'bg-blue-500 text-white'
-              }`}>
+              <span
+                className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  course.status === 'Active'
+                    ? 'bg-emerald-500 text-white'
+                    : 'bg-blue-500 text-white'
+                }`}
+              >
                 {course.status}
               </span>
             </div>
@@ -190,7 +203,10 @@ const CoursePurchaseModal = ({ course, isOpen, onClose, onPurchase, userRole = '
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Course Content</h3>
                 <div className="space-y-3">
                   {course.modules.map((module, index) => (
-                    <div key={index} className="border border-gray-200 rounded-lg p-4 hover:border-indigo-300 transition-colors">
+                    <div
+                      key={index}
+                      className="border border-gray-200 rounded-lg p-4 hover:border-indigo-300 transition-colors"
+                    >
                       <div className="flex items-start justify-between mb-2">
                         <h4 className="font-medium text-gray-900">
                           Module {index + 1}: {module.title}
@@ -202,7 +218,10 @@ const CoursePurchaseModal = ({ course, isOpen, onClose, onPurchase, userRole = '
                       {module.lessons && module.lessons.length > 0 && (
                         <ul className="space-y-1 ml-4">
                           {module.lessons.slice(0, 3).map((lesson, lessonIndex) => (
-                            <li key={lessonIndex} className="flex items-center gap-2 text-sm text-gray-600">
+                            <li
+                              key={lessonIndex}
+                              className="flex items-center gap-2 text-sm text-gray-600"
+                            >
                               <CheckCircle className="w-4 h-4 text-gray-400" />
                               {lesson.title || lesson}
                             </li>

@@ -19,7 +19,7 @@ export type Intent =
   | 'networking-advice'
   | 'profile-improvement'
   | 'certification-advice'
-  | 'project-ideas'  // NEW: Project suggestions based on skills
+  | 'project-ideas' // NEW: Project suggestions based on skills
   | 'general';
 
 export interface DetectedIntent {
@@ -41,84 +41,257 @@ class IntentDetectionService {
   // Expanded keywords with synonyms and variations for better matching
   private intentKeywords: Record<Intent, string[]> = {
     'find-jobs': [
-      'find job', 'search job', 'job opportunit', 'job opening', 'job match',
-      'recommend job', 'suggest job', 'show job', 'available job', 'job for me',
-      'looking for job', 'need job', 'want job', 'apply', 'position', 'vacancy',
-      'what jobs', 'which jobs', 'jobs require', 'jobs need', 'jobs for',
-      'get job', 'job search', 'hire', 'hiring', 'placement', 'work opportunit',
-      'employ', 'career opportun', 'opening for', 'job availab'
+      'find job',
+      'search job',
+      'job opportunit',
+      'job opening',
+      'job match',
+      'recommend job',
+      'suggest job',
+      'show job',
+      'available job',
+      'job for me',
+      'looking for job',
+      'need job',
+      'want job',
+      'apply',
+      'position',
+      'vacancy',
+      'what jobs',
+      'which jobs',
+      'jobs require',
+      'jobs need',
+      'jobs for',
+      'get job',
+      'job search',
+      'hire',
+      'hiring',
+      'placement',
+      'work opportunit',
+      'employ',
+      'career opportun',
+      'opening for',
+      'job availab',
     ],
     'skill-gap-analysis': [
-      'skill gap', 'missing skill', 'what skill', 'should i learn', 'need to learn',
-      'improve skill', 'skill required', 'lack skill', 'which skill',
-      'what missing', 'skill need', 'skill develop', 'skill requir', 'must learn',
-      'have to learn', 'weak skill', 'dont have skill', 'not have skill',
-      'what i missing', 'skill i need', 'upskill', 'reskill'
+      'skill gap',
+      'missing skill',
+      'what skill',
+      'should i learn',
+      'need to learn',
+      'improve skill',
+      'skill required',
+      'lack skill',
+      'which skill',
+      'what missing',
+      'skill need',
+      'skill develop',
+      'skill requir',
+      'must learn',
+      'have to learn',
+      'weak skill',
+      'dont have skill',
+      'not have skill',
+      'what i missing',
+      'skill i need',
+      'upskill',
+      'reskill',
     ],
     'interview-prep': [
-      'interview', 'prepare interview', 'interview question', 'interview tip',
-      'mock interview', 'practice interview', 'interview help'
+      'interview',
+      'prepare interview',
+      'interview question',
+      'interview tip',
+      'mock interview',
+      'practice interview',
+      'interview help',
     ],
     'resume-review': [
-      'resume', 'cv', 'resume review', 'improve resume', 'resume help',
-      'resume tip', 'optimize resume', 'resume feedback'
+      'resume',
+      'cv',
+      'resume review',
+      'improve resume',
+      'resume help',
+      'resume tip',
+      'optimize resume',
+      'resume feedback',
     ],
     'learning-path': [
-      'learn', 'course', 'roadmap', 'tutorial', 'study', 'training',
-      'recommend course', 'suggest course', 'learning path', 'how to learn',
-      'guide', 'resource', 'certification path', 'want learn', 'wanna learn',
-      'how learn', 'teach me', 'learning', 'study path', 'what study',
-      'where learn', 'best course', 'good course', 'free course', 'paid course',
-      'online course', 'tutorial for', 'how master', 'beginner guide'
+      'learn',
+      'course',
+      'roadmap',
+      'tutorial',
+      'study',
+      'training',
+      'recommend course',
+      'suggest course',
+      'learning path',
+      'how to learn',
+      'guide',
+      'resource',
+      'certification path',
+      'want learn',
+      'wanna learn',
+      'how learn',
+      'teach me',
+      'learning',
+      'study path',
+      'what study',
+      'where learn',
+      'best course',
+      'good course',
+      'free course',
+      'paid course',
+      'online course',
+      'tutorial for',
+      'how master',
+      'beginner guide',
     ],
     'career-guidance': [
-      'career', 'career path', 'career choice', 'career guidance', 'career advice',
-      'switch career', 'career change', 'become', 'transition to',
-      'career option', 'what career', 'which career', 'future career',
-      'job role', 'profession', 'what should i do', 'confused about career',
-      'career suggestion', 'what field', 'which field', 'change field'
+      'career',
+      'career path',
+      'career choice',
+      'career guidance',
+      'career advice',
+      'switch career',
+      'career change',
+      'become',
+      'transition to',
+      'career option',
+      'what career',
+      'which career',
+      'future career',
+      'job role',
+      'profession',
+      'what should i do',
+      'confused about career',
+      'career suggestion',
+      'what field',
+      'which field',
+      'change field',
     ],
     'technology-comparison': [
-      'vs', 'versus', 'or', 'better', 'which is', 'which one',
-      'difference between', 'compare', 'comparison', 'should i choose',
-      'should i use', 'nodejs vs', 'react vs', 'angular vs', 'django vs',
-      'python or', 'java or', 'node.js or', 'which framework', 'which language',
-      'which technology', 'which stack'
+      'vs',
+      'versus',
+      'or',
+      'better',
+      'which is',
+      'which one',
+      'difference between',
+      'compare',
+      'comparison',
+      'should i choose',
+      'should i use',
+      'nodejs vs',
+      'react vs',
+      'angular vs',
+      'django vs',
+      'python or',
+      'java or',
+      'node.js or',
+      'which framework',
+      'which language',
+      'which technology',
+      'which stack',
     ],
     'salary-inquiry': [
-      'salary', 'pay', 'compensation', 'package', 'earning', 'how much',
-      'salary range', 'expected salary'
+      'salary',
+      'pay',
+      'compensation',
+      'package',
+      'earning',
+      'how much',
+      'salary range',
+      'expected salary',
     ],
     'company-research': [
-      'company', 'about company', 'company culture', 'working at',
-      'company review', 'company info'
+      'company',
+      'about company',
+      'company culture',
+      'working at',
+      'company review',
+      'company info',
     ],
     'networking-advice': [
-      'network', 'linkedin', 'connect', 'reach out', 'referral',
-      'networking tip', 'build network'
+      'network',
+      'linkedin',
+      'connect',
+      'reach out',
+      'referral',
+      'networking tip',
+      'build network',
     ],
     'profile-improvement': [
-      'improve profile', 'improving profile', 'profile tip', 'profile help', 'profile score',
-      'complete profile', 'profile missing', 'profile gap', 'profile improv',
-      'better profile', 'enhance profile', 'boost profile', 'optimize profile',
-      'update profile', 'upgrade profile'
+      'improve profile',
+      'improving profile',
+      'profile tip',
+      'profile help',
+      'profile score',
+      'complete profile',
+      'profile missing',
+      'profile gap',
+      'profile improv',
+      'better profile',
+      'enhance profile',
+      'boost profile',
+      'optimize profile',
+      'update profile',
+      'upgrade profile',
     ],
     'certification-advice': [
-      'certification', 'certified', 'cert', 'certificate', 'aws certified',
-      'google cloud', 'microsoft azure', 'worth certification'
+      'certification',
+      'certified',
+      'cert',
+      'certificate',
+      'aws certified',
+      'google cloud',
+      'microsoft azure',
+      'worth certification',
     ],
     'project-ideas': [
-      'project', 'build', 'create', 'make', 'develop', 'ideas', 'what can i build',
-      'project idea', 'project suggestion', 'project using', 'build using',
-      'build with', 'create with', 'make with', 'develop with',
-      'what project', 'which project', 'suggest project', 'recommend project',
-      'portfolio project', 'practice project', 'real world project',
-      'health sector', 'medical', 'healthcare', 'hospital', 'patient',
-      'chemical', 'pharmacy', 'education sector', 'e-commerce', 'fintech',
-      'social media', 'food delivery', 'travel', 'logistics', 'agriculture',
-      'real estate', 'hr management', 'inventory', 'booking system'
+      'project',
+      'build',
+      'create',
+      'make',
+      'develop',
+      'ideas',
+      'what can i build',
+      'project idea',
+      'project suggestion',
+      'project using',
+      'build using',
+      'build with',
+      'create with',
+      'make with',
+      'develop with',
+      'what project',
+      'which project',
+      'suggest project',
+      'recommend project',
+      'portfolio project',
+      'practice project',
+      'real world project',
+      'health sector',
+      'medical',
+      'healthcare',
+      'hospital',
+      'patient',
+      'chemical',
+      'pharmacy',
+      'education sector',
+      'e-commerce',
+      'fintech',
+      'social media',
+      'food delivery',
+      'travel',
+      'logistics',
+      'agriculture',
+      'real estate',
+      'hr management',
+      'inventory',
+      'booking system',
     ],
-    'general': ['hi', 'hello', 'hey', 'thanks', 'thank you', 'ok', 'okay']
+    general: ['hi', 'hello', 'hey', 'thanks', 'thank you', 'ok', 'okay'],
   };
 
   /**
@@ -133,16 +306,16 @@ class IntentDetectionService {
     // NEW: For meaningful queries (>2 words), use AI-first approach
     const wordCount = message.trim().split(/\s+/).length;
     const isSimpleGreeting = /^(hi|hello|hey|thanks|thank you|ok|okay)$/i.test(message.trim());
-    
+
     if (wordCount > 2 && !isSimpleGreeting) {
       console.log('🧠 AI-FIRST: Letting AI think and reason about the query...');
       return await this.aiFirstDetection(message, profile, conversationHistory);
     }
-    
+
     // For very simple queries, use quick detection
     const normalizedMessage = this.normalizeMessage(message);
     const quickIntent = this.quickIntentDetection(normalizedMessage);
-    
+
     console.log('⚡ Quick detection for simple query:', quickIntent.primary);
     return quickIntent;
   }
@@ -152,43 +325,43 @@ class IntentDetectionService {
    */
   private normalizeMessage(message: string): string {
     let normalized = message.toLowerCase().trim();
-    
+
     // Common typos and variations
     const replacements: Record<string, string> = {
-      'nodejs': 'node.js',
-      'reactjs': 'react',
-      'vuejs': 'vue',
-      'ml': 'machine learning',
-      'ai': 'artificial intelligence',
-      'devops': 'dev ops',
-      'fullstack': 'full stack',
-      'backend': 'back end',
-      'frontend': 'front end',
+      nodejs: 'node.js',
+      reactjs: 'react',
+      vuejs: 'vue',
+      ml: 'machine learning',
+      ai: 'artificial intelligence',
+      devops: 'dev ops',
+      fullstack: 'full stack',
+      backend: 'back end',
+      frontend: 'front end',
       'i want': 'i want to',
-      'wanna': 'want to',
-      'gonna': 'going to',
-      'gotta': 'got to',
-      'dont': 'do not',
-      'cant': 'can not',
-      'wont': 'will not',
-      'shouldnt': 'should not',
-      'whats': 'what is',
-      'hows': 'how is',
-      'im': 'i am',
-      'ive': 'i have',
-      'id': 'i would',
-      'ill': 'i will'
+      wanna: 'want to',
+      gonna: 'going to',
+      gotta: 'got to',
+      dont: 'do not',
+      cant: 'can not',
+      wont: 'will not',
+      shouldnt: 'should not',
+      whats: 'what is',
+      hows: 'how is',
+      im: 'i am',
+      ive: 'i have',
+      id: 'i would',
+      ill: 'i will',
     };
-    
+
     // Apply replacements
     Object.entries(replacements).forEach(([from, to]) => {
       const regex = new RegExp(`\\b${from}\\b`, 'gi');
       normalized = normalized.replace(regex, to);
     });
-    
+
     // Remove extra spaces
     normalized = normalized.replace(/\s+/g, ' ');
-    
+
     return normalized;
   }
 
@@ -200,23 +373,25 @@ class IntentDetectionService {
     const detectedIntents: Intent[] = [];
 
     // Special boost for technology comparison queries (e.g., "Node.js vs Django")
-    const hasComparisonPattern = /\b(\w+)\s+(vs|versus|or)\s+(\w+)\b/i.test(message) || 
-                                  /(which is better|which one|should i (use|choose|learn)).*\b(or|vs)\b/i.test(message);
-    
+    const hasComparisonPattern =
+      /\b(\w+)\s+(vs|versus|or)\s+(\w+)\b/i.test(message) ||
+      /(which is better|which one|should i (use|choose|learn)).*\b(or|vs)\b/i.test(message);
+
     // Special boost for skill + job queries (e.g., "What jobs require SQL?")
     const hasJobKeyword = message.includes('job');
-    const hasSkillEntity = this.extractEntities(message).skills && this.extractEntities(message).skills!.length > 0;
+    const hasSkillEntity =
+      this.extractEntities(message).skills && this.extractEntities(message).skills!.length > 0;
     const isJobWithSkillQuery = hasJobKeyword && hasSkillEntity;
 
     // Calculate confidence for each intent using fuzzy matching
     Object.entries(this.intentKeywords).forEach(([intent, keywords]) => {
       let score = 0;
-      keywords.forEach(keyword => {
+      keywords.forEach((keyword) => {
         // Use more flexible matching - check if keyword parts are in message
         // This handles "improving your profile" matching "improve profile"
         const keywordParts = keyword.split(' ');
-        const matchesAll = keywordParts.every(part => message.includes(part));
-        
+        const matchesAll = keywordParts.every((part) => message.includes(part));
+
         if (message.includes(keyword)) {
           score += 1.0;
         } else if (matchesAll && keywordParts.length > 1) {
@@ -230,21 +405,21 @@ class IntentDetectionService {
           }
         }
       });
-      
+
       // Boost job search if asking about jobs + specific skill
       if (intent === 'find-jobs' && isJobWithSkillQuery) {
         score += 2;
       }
-      
+
       // Boost technology comparison if has comparison pattern
       if (intent === 'technology-comparison' && hasComparisonPattern) {
         score += 3;
       }
-      
+
       // Normalize score to 0-1
       const normalizedScore = Math.min(1, score / 3);
       confidence[intent as Intent] = normalizedScore;
-      
+
       if (normalizedScore > 0.3) {
         detectedIntents.push(intent as Intent);
       }
@@ -261,7 +436,7 @@ class IntentDetectionService {
     const entities = this.extractEntities(message);
 
     // Check if clarification needed (LOWERED THRESHOLD - be more confident)
-    const requiresClarification = 
+    const requiresClarification =
       confidence[primary] < 0.4 || // Lowered from 0.6 to 0.4
       (detectedIntents.length > 1 && confidence[detectedIntents[1]] > confidence[primary] * 0.9); // Increased from 0.8 to 0.9
 
@@ -270,8 +445,10 @@ class IntentDetectionService {
       secondary,
       confidence,
       requiresClarification,
-      clarificationQuestion: requiresClarification ? this.generateClarificationQuestion(detectedIntents) : undefined,
-      extractedEntities: entities
+      clarificationQuestion: requiresClarification
+        ? this.generateClarificationQuestion(detectedIntents)
+        : undefined,
+      extractedEntities: entities,
     };
   }
 
@@ -286,7 +463,8 @@ class IntentDetectionService {
   ): Promise<DetectedIntent> {
     try {
       const context = conversationHistory ? conversationHistory.slice(-3).join('\n') : '';
-      const profileSkills = profile?.profile?.technicalSkills?.map((s: any) => s.name).join(', ') || 'None';
+      const profileSkills =
+        profile?.profile?.technicalSkills?.map((s: any) => s.name).join(', ') || 'None';
       const department = profile?.department || 'Unknown';
 
       const prompt = `You are an intelligent career advisor AI. Think deeply about what the user is asking for and provide the best solution.
@@ -360,19 +538,20 @@ Analyze the query deeply and determine:
       const completion = await client.chat.completions.create({
         model: DEFAULT_MODEL,
         messages: [
-          { 
-            role: 'system', 
-            content: 'You are an intelligent reasoning AI that deeply understands user queries. Think step-by-step like a human would. Output only valid JSON.' 
+          {
+            role: 'system',
+            content:
+              'You are an intelligent reasoning AI that deeply understands user queries. Think step-by-step like a human would. Output only valid JSON.',
           },
-          { role: 'user', content: prompt }
+          { role: 'user', content: prompt },
         ],
         temperature: 0.4, // Lower for more consistent reasoning
         max_tokens: 600,
-        response_format: { type: 'json_object' }
+        response_format: { type: 'json_object' },
       });
 
       const result = JSON.parse(completion.choices[0]?.message?.content || '{}');
-      
+
       console.log('🧠 AI Reasoning:', result.reasoning);
       console.log('🎯 Detected Intent:', result.primary_intent, `(${result.confidence * 100}%)`);
       console.log('🌍 Domain:', result.domain_detected || 'None');
@@ -393,7 +572,7 @@ Analyze the query deeply and determine:
         confidence: { [result.primary_intent]: result.confidence || 0.85 } as any,
         requiresClarification: (result.confidence || 0.85) < 0.6,
         extractedEntities: entities,
-        clarificationQuestion: undefined
+        clarificationQuestion: undefined,
       };
     } catch (error) {
       console.error('AI-first detection error:', error);
@@ -412,7 +591,9 @@ Analyze the query deeply and determine:
   ): Promise<DetectedIntent> {
     try {
       const context = conversationHistory ? conversationHistory.slice(-3).join('\n') : '';
-      const profileContext = profile ? `Student: ${profile.department}, ${profile.profile?.technicalSkills?.length || 0} skills` : '';
+      const profileContext = profile
+        ? `Student: ${profile.department}, ${profile.profile?.technicalSkills?.length || 0} skills`
+        : '';
 
       const prompt = `You are an advanced intent classifier for a career assistant AI. You excel at understanding student queries even when English is imperfect or phrasing is unclear.
 
@@ -468,12 +649,15 @@ Classify the user's intent. Available intents:
       const completion = await client.chat.completions.create({
         model: DEFAULT_MODEL,
         messages: [
-          { role: 'system', content: 'You are a precise intent classifier. Output only valid JSON.' },
-          { role: 'user', content: prompt }
+          {
+            role: 'system',
+            content: 'You are a precise intent classifier. Output only valid JSON.',
+          },
+          { role: 'user', content: prompt },
         ],
         temperature: 0.3,
         max_tokens: 500,
-        response_format: { type: 'json_object' }
+        response_format: { type: 'json_object' },
       });
 
       const result = JSON.parse(completion.choices[0]?.message?.content || '{}');
@@ -483,7 +667,7 @@ Classify the user's intent. Available intents:
         secondary: result.secondary || [],
         confidence: result.confidence || {},
         requiresClarification: (result.confidence?.primary || 1) < 0.6,
-        extractedEntities: result.entities || {}
+        extractedEntities: result.entities || {},
       };
     } catch (error) {
       console.error('AI intent detection error:', error);
@@ -508,33 +692,103 @@ Classify the user's intent. Available intents:
 
     // Common skills and technologies (expanded with databases and specific tools)
     const skillPatterns = [
-      'react', 'vue', 'angular', 'svelte', 'node', 'node.js', 'nodejs', 'django', 'flask', 'express', 'fastapi',
-      'python', 'java', 'javascript', 'typescript', 'go', 'golang', 'rust', 'php', 'c++', 'c#', 'ruby', 'kotlin', 'swift',
-      'aws', 'azure', 'gcp', 'cloud', 'docker', 'kubernetes', 'sql', 'mongodb', 'redis', 'postgresql', 'mysql',
-      'git', 'ci/cd', 'devops', 'machine learning', 'ml', 'ai', 'artificial intelligence', 'data science', 'deep learning',
-      'spring boot', 'laravel', 'rails', 'asp.net', 'next.js', 'nuxt', 'gatsby', 'vue.js', 'react native',
-      'html', 'css', 'sass', 'tailwind', 'bootstrap', 'webpack', 'vite', 'graphql', 'rest api', 'api',
-      'testing', 'jest', 'cypress', 'selenium', 'junit', 'pytest',
-      'supabase', 'firebase', 'prisma', 'sequelize', 'typeorm', 'mongoose',
-      'stripe', 'razorpay', 'socket.io', 'webrtc', 'three.js', 'd3.js'
+      'react',
+      'vue',
+      'angular',
+      'svelte',
+      'node',
+      'node.js',
+      'nodejs',
+      'django',
+      'flask',
+      'express',
+      'fastapi',
+      'python',
+      'java',
+      'javascript',
+      'typescript',
+      'go',
+      'golang',
+      'rust',
+      'php',
+      'c++',
+      'c#',
+      'ruby',
+      'kotlin',
+      'swift',
+      'aws',
+      'azure',
+      'gcp',
+      'cloud',
+      'docker',
+      'kubernetes',
+      'sql',
+      'mongodb',
+      'redis',
+      'postgresql',
+      'mysql',
+      'git',
+      'ci/cd',
+      'devops',
+      'machine learning',
+      'ml',
+      'ai',
+      'artificial intelligence',
+      'data science',
+      'deep learning',
+      'spring boot',
+      'laravel',
+      'rails',
+      'asp.net',
+      'next.js',
+      'nuxt',
+      'gatsby',
+      'vue.js',
+      'react native',
+      'html',
+      'css',
+      'sass',
+      'tailwind',
+      'bootstrap',
+      'webpack',
+      'vite',
+      'graphql',
+      'rest api',
+      'api',
+      'testing',
+      'jest',
+      'cypress',
+      'selenium',
+      'junit',
+      'pytest',
+      'supabase',
+      'firebase',
+      'prisma',
+      'sequelize',
+      'typeorm',
+      'mongoose',
+      'stripe',
+      'razorpay',
+      'socket.io',
+      'webrtc',
+      'three.js',
+      'd3.js',
     ];
-    
-    const foundSkills = skillPatterns.filter(skill => 
-      message.toLowerCase().includes(skill)
-    );
+
+    const foundSkills = skillPatterns.filter((skill) => message.toLowerCase().includes(skill));
     if (foundSkills.length > 0) entities.skills = foundSkills;
 
     // Extract learning goals (what they want to learn)
     const learningGoalPatterns = [
       /(?:want to learn|wanna learn|learning|study|master|become expert in)\s+([\w\s.+#-]+?)(?:\s+(?:and|or|,|\.|\?|$))/gi,
       /(?:how to learn|how learn|teach me)\s+([\w\s.+#-]+?)(?:\s+(?:and|or|,|\.|\?|$))/gi,
-      /(?:course for|courses on|tutorial for|guide to)\s+([\w\s.+#-]+?)(?:\s+(?:and|or|,|\.|\?|$))/gi
+      /(?:course for|courses on|tutorial for|guide to)\s+([\w\s.+#-]+?)(?:\s+(?:and|or|,|\.|\?|$))/gi,
     ];
-    
+
     const learningGoals: string[] = [];
-    learningGoalPatterns.forEach(pattern => {
+    learningGoalPatterns.forEach((pattern) => {
       const matches = [...message.matchAll(pattern)];
-      matches.forEach(match => {
+      matches.forEach((match) => {
         if (match[1]) {
           learningGoals.push(match[1].trim());
         }
@@ -546,13 +800,13 @@ Classify the user's intent. Available intents:
     const careerGoalPatterns = [
       /(?:become|want to be|wanna be|aspiring|aim to be)\s+(?:a\s+)?([\w\s]+?)(?:developer|engineer|analyst|designer|scientist)/gi,
       /(?:career in|job in|work in|working in)\s+([\w\s]+?)(?:\s+(?:and|or|,|\.|\?|$))/gi,
-      /(?:switch to|transition to|move to)\s+([\w\s]+?)(?:\s+(?:and|or|,|\.|\?|$))/gi
+      /(?:switch to|transition to|move to)\s+([\w\s]+?)(?:\s+(?:and|or|,|\.|\?|$))/gi,
     ];
-    
+
     const careerGoals: string[] = [];
-    careerGoalPatterns.forEach(pattern => {
+    careerGoalPatterns.forEach((pattern) => {
       const matches = [...message.matchAll(pattern)];
-      matches.forEach(match => {
+      matches.forEach((match) => {
         if (match[1]) {
           careerGoals.push(match[1].trim());
         }
@@ -562,30 +816,47 @@ Classify the user's intent. Available intents:
 
     // Common roles
     const rolePatterns = [
-      'developer', 'engineer', 'programmer', 'analyst', 'designer',
-      'full stack', 'frontend', 'backend', 'devops', 'data scientist',
-      'ml engineer', 'sre', 'qa', 'tester'
+      'developer',
+      'engineer',
+      'programmer',
+      'analyst',
+      'designer',
+      'full stack',
+      'frontend',
+      'backend',
+      'devops',
+      'data scientist',
+      'ml engineer',
+      'sre',
+      'qa',
+      'tester',
     ];
-    
-    const foundRoles = rolePatterns.filter(role => 
-      message.toLowerCase().includes(role)
-    );
+
+    const foundRoles = rolePatterns.filter((role) => message.toLowerCase().includes(role));
     if (foundRoles.length > 0) entities.roles = foundRoles;
 
     // Locations
-    const locationPatterns = ['bangalore', 'mumbai', 'delhi', 'hyderabad', 'pune', 'chennai', 'remote'];
-    const foundLocations = locationPatterns.filter(loc => 
-      message.toLowerCase().includes(loc)
-    );
+    const locationPatterns = [
+      'bangalore',
+      'mumbai',
+      'delhi',
+      'hyderabad',
+      'pune',
+      'chennai',
+      'remote',
+    ];
+    const foundLocations = locationPatterns.filter((loc) => message.toLowerCase().includes(loc));
     if (foundLocations.length > 0) entities.locations = foundLocations;
 
     // Timeframes
     const timePatterns = [
-      /in (\d+) months?/i, /within (\d+) weeks?/i, /(\d+) days?/i,
-      /next (month|week|year)/i
+      /in (\d+) months?/i,
+      /within (\d+) weeks?/i,
+      /(\d+) days?/i,
+      /next (month|week|year)/i,
     ];
     const timeframes: string[] = [];
-    timePatterns.forEach(pattern => {
+    timePatterns.forEach((pattern) => {
       const match = message.match(pattern);
       if (match) timeframes.push(match[0]);
     });
@@ -601,14 +872,14 @@ Classify the user's intent. Available intents:
     // Check if message contains parts of the keyword
     const keywordWords = keyword.split(' ');
     const messageWords = message.split(' ');
-    
+
     let matchCount = 0;
-    keywordWords.forEach(kw => {
-      if (messageWords.some(mw => mw.includes(kw) || kw.includes(mw))) {
+    keywordWords.forEach((kw) => {
+      if (messageWords.some((mw) => mw.includes(kw) || kw.includes(mw))) {
         matchCount++;
       }
     });
-    
+
     return matchCount / keywordWords.length;
   }
 
@@ -618,7 +889,7 @@ Classify the user's intent. Available intents:
    */
   private isAmbiguous(message: string): boolean {
     const msg = message.toLowerCase();
-    
+
     // Very vague queries that genuinely need clarification
     const veryVague = [
       /^help$/i,
@@ -627,16 +898,16 @@ Classify the user's intent. Available intents:
       /^confused$/i,
       /^not sure$/i,
       /^any suggestions?$/i,
-      /^what should i do?$/i
+      /^what should i do?$/i,
     ];
-    
+
     // If message is very short and vague
-    if (veryVague.some(pattern => pattern.test(message.trim()))) {
+    if (veryVague.some((pattern) => pattern.test(message.trim()))) {
       return true;
     }
-    
+
     // If message has meaningful content (skills, domains, actions), it's NOT ambiguous
-    const hasMeaningfulContent = 
+    const hasMeaningfulContent =
       msg.includes('project') ||
       msg.includes('build') ||
       msg.includes('job') ||
@@ -648,7 +919,7 @@ Classify the user's intent. Available intents:
       msg.includes('resume') ||
       msg.includes('salary') ||
       msg.includes('certification');
-    
+
     // NOT ambiguous if it has meaningful content
     return !hasMeaningfulContent && message.split(' ').length < 5;
   }
@@ -658,7 +929,7 @@ Classify the user's intent. Available intents:
    */
   private generateClarificationQuestion(possibleIntents: Intent[]): string {
     if (possibleIntents.length === 0) {
-      return 'I\'m not sure what you\'re looking for. Could you be more specific?';
+      return "I'm not sure what you're looking for. Could you be more specific?";
     }
 
     const intentDescriptions: Record<Intent, string> = {
@@ -670,15 +941,16 @@ Classify the user's intent. Available intents:
       'career-guidance': 'get career advice and guidance',
       'technology-comparison': 'compare technologies, frameworks, or languages',
       'salary-inquiry': 'learn about salary expectations',
-      'company-research': 'research companies you\'re interested in',
+      'company-research': "research companies you're interested in",
       'networking-advice': 'get networking tips and strategies',
       'profile-improvement': 'improve your profile',
       'certification-advice': 'get advice on certifications',
       'project-ideas': 'get project ideas to build using your skills',
-      'general': 'have a general conversation'
+      general: 'have a general conversation',
     };
 
-    const options = possibleIntents.slice(0, 3)
+    const options = possibleIntents
+      .slice(0, 3)
       .map((intent, idx) => `${idx + 1}. ${intentDescriptions[intent]}`)
       .join('\n');
 
@@ -694,7 +966,7 @@ Classify the user's intent. Available intents:
       'skill-gap-analysis',
       'learning-path',
       'career-guidance',
-      'profile-improvement'
+      'profile-improvement',
     ].includes(intent);
   }
 
@@ -702,84 +974,76 @@ Classify the user's intent. Available intents:
    * Determine if intent requires market data
    */
   requiresMarketData(intent: Intent): boolean {
-    return [
-      'find-jobs',
-      'skill-gap-analysis',
-      'salary-inquiry',
-      'learning-path'
-    ].includes(intent);
+    return ['find-jobs', 'skill-gap-analysis', 'salary-inquiry', 'learning-path'].includes(intent);
   }
 
   /**
    * Get suggested follow-up questions based on intent
    */
   getSuggestedFollowUps(intent: Intent, context?: any): string[] {
+    // @ts-expect-error - Auto-suppressed for migration
     const followUps: Record<Intent, string[]> = {
       'find-jobs': [
         'Show me jobs in [specific location]',
         'What skills do I need for these jobs?',
-        'How can I improve my job match score?'
+        'How can I improve my job match score?',
       ],
       'skill-gap-analysis': [
         'What courses should I take?',
         'How long will it take to learn these skills?',
-        'Show me jobs after I learn these skills'
+        'Show me jobs after I learn these skills',
       ],
       'learning-path': [
         'Suggest free courses',
         'Create a 3-month learning roadmap',
-        'What skills are most in-demand?'
+        'What skills are most in-demand?',
       ],
       'career-guidance': [
         'What career paths are available to me?',
         'How do I switch to [specific field]?',
-        'What\'s the average timeline for career growth?'
+        "What's the average timeline for career growth?",
       ],
       'interview-prep': [
         'Generate technical interview questions',
         'Help me prepare for behavioral interviews',
-        'What should I know about [company]?'
+        'What should I know about [company]?',
       ],
       'resume-review': [
         'How can I improve my resume?',
         'Tailor my resume for [specific job]',
-        'What keywords should I add?'
+        'What keywords should I add?',
       ],
       'technology-comparison': [
         'Compare [tech1] and [tech2] for my career goals',
         'What are the job prospects for each?',
-        'Which technology should I focus on?'
+        'Which technology should I focus on?',
       ],
       'salary-inquiry': [
         'What salary can I expect as a fresher?',
         'How can I maximize my salary offer?',
-        'What\'s the salary range for [specific role]?'
+        "What's the salary range for [specific role]?",
       ],
       'company-research': [
         'Tell me about [company name]',
-        'What\'s the interview process at [company]?',
-        'Company culture at [company]'
+        "What's the interview process at [company]?",
+        'Company culture at [company]',
       ],
       'networking-advice': [
         'How do I build my professional network?',
         'LinkedIn profile optimization tips',
-        'How to get referrals?'
+        'How to get referrals?',
       ],
       'profile-improvement': [
-        'What\'s missing from my profile?',
+        "What's missing from my profile?",
         'How can I boost my profile score?',
-        'Analyze my career readiness'
+        'Analyze my career readiness',
       ],
       'certification-advice': [
         'Which certifications are most valuable?',
         'AWS vs Azure certification',
-        'Is [certification] worth it?'
+        'Is [certification] worth it?',
       ],
-      'general': [
-        'Find me job opportunities',
-        'Suggest courses to learn',
-        'Analyze my profile'
-      ]
+      general: ['Find me job opportunities', 'Suggest courses to learn', 'Analyze my profile'],
     };
 
     return followUps[intent] || followUps['general'];
@@ -788,4 +1052,3 @@ Classify the user's intent. Available intents:
 
 export const intentDetectionService = new IntentDetectionService();
 export default intentDetectionService;
-

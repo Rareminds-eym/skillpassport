@@ -6,7 +6,7 @@ export interface Student {
   contact_number?: string;
   contactNumber?: string;
   phone?: string;
-  
+
   // School-specific fields
   school_id?: string;
   school_name?: string; // Add this field
@@ -17,7 +17,7 @@ export interface Student {
   college_school_name?: string;
   subjects?: string[];
   school_class_id?: string;
-  
+
   // College/University-specific fields
   college_id?: string;
   college?: string;
@@ -32,7 +32,7 @@ export interface Student {
   enrollmentDate?: string;
   expectedGraduationDate?: string;
   admission_academic_year?: string; // Academic year when student was admitted (e.g., "2024-25")
-  
+
   // Common fields
   approval_status?: 'pending' | 'approved' | 'rejected' | 'verified' | 'waitlisted';
   admission_status?: 'pending' | 'approved' | 'rejected' | 'verified' | 'waitlisted';
@@ -45,20 +45,20 @@ export interface Student {
   bloodGroup?: string;
   student_id?: string;
   student_type?: string;
-  
+
   // Guardian info (school students)
   guardianName?: string;
   guardianPhone?: string;
   guardianEmail?: string;
   guardianRelation?: string;
-  
+
   // Address info
   address?: string;
   city?: string;
   state?: string;
   country?: string;
   pincode?: string;
-  
+
   // Social Links
   linkedin_link?: string;
   github_link?: string;
@@ -68,7 +68,7 @@ export interface Student {
   youtube_link?: string;
   portfolio_link?: string;
   other_social_links?: any[];
-  
+
   // Additional fields
   hobbies?: string[];
   interests?: string[];
@@ -76,7 +76,7 @@ export interface Student {
   bio?: string;
   skill_summary?: string;
   user_id?: string;
-  
+
   // Profile data (college/university students)
   profile?: {
     name?: string;
@@ -109,11 +109,11 @@ export interface Student {
       enabled?: boolean;
     }>;
   };
-  
+
   // Projects and Certificates (can be stored directly on student or in separate tables)
   projects?: Project[];
   certificates?: Certificate[];
-  
+
   // Metadata
   metadata?: {
     graduation_date?: string;
@@ -121,10 +121,14 @@ export interface Student {
     approval_date?: string;
     school_graduation_date?: string;
     college_enrollment_date?: string;
-    transition_status?: 'school_active' | 'school_graduated' | 'college_applicant' | 'college_enrolled';
+    transition_status?:
+      | 'school_active'
+      | 'school_graduated'
+      | 'college_applicant'
+      | 'college_enrolled';
     [key: string]: any;
   };
-  
+
   // Timestamps
   applied_date?: string;
   created_at?: string;
@@ -246,7 +250,13 @@ export interface StudentProfileDrawerProps {
   student: Student | null;
   isOpen: boolean;
   onClose: () => void;
-  userRole?: 'school_admin' | 'college_admin' | 'university_admin' | 'educator' | 'school_educator' | 'college_educator';
+  userRole?:
+    | 'school_admin'
+    | 'college_admin'
+    | 'university_admin'
+    | 'educator'
+    | 'school_educator'
+    | 'college_educator';
   schoolId?: string;
   collegeId?: string;
   defaultTab?: string;

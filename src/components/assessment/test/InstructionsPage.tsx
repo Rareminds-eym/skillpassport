@@ -1,5 +1,5 @@
-import React from "react";
-import { motion } from "framer-motion";
+import React from 'react';
+import { motion } from 'framer-motion';
 import {
   BookOpen,
   CheckCircle,
@@ -10,8 +10,8 @@ import {
   Clock,
   Home,
   Timer,
-} from "lucide-react";
-import { useNavigate } from "react-router-dom";
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface InstructionsPageProps {
   onContinue: () => void;
@@ -47,8 +47,7 @@ const InstructionsPage: React.FC<InstructionsPageProps> = ({ onContinue }) => {
                   Welcome to the Hackathon!
                 </h4>
                 <p className="text-gray-600">
-                  This hackathon will evaluate your understanding of the subject
-                  matter.
+                  This hackathon will evaluate your understanding of the subject matter.
                 </p>
               </div>
 
@@ -86,28 +85,21 @@ const InstructionsPage: React.FC<InstructionsPageProps> = ({ onContinue }) => {
 
               {/* Quiz Format */}
               <div className="border-l-4 border-blue-600 pl-4 py-2">
-                <h4 className="font-semibold text-gray-900 mb-2 font-serif">
-                Hackathon Format
-                </h4>
+                <h4 className="font-semibold text-gray-900 mb-2 font-serif">Hackathon Format</h4>
                 <ul className="space-y-2 text-gray-600">
                   <li className="flex items-start gap-2">
                     <CheckCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                    <span>
-                      Multiple choice questions with single correct answer
-                    </span>
+                    <span>Multiple choice questions with single correct answer</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
                     <span>
-                      You can navigate between questions using the Next and
-                      Previous buttons
+                      You can navigate between questions using the Next and Previous buttons
                     </span>
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                    <span>
-                      Your progress will be tracked and shown at the top
-                    </span>
+                    <span>Your progress will be tracked and shown at the top</span>
                   </li>
                 </ul>
               </div>
@@ -135,15 +127,14 @@ const InstructionsPage: React.FC<InstructionsPageProps> = ({ onContinue }) => {
                   <li className="flex items-start gap-2">
                     <MonitorX className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
                     <span>
-                      Switching tabs or opening other applications during the
-                      hackathon is strictly prohibited
+                      Switching tabs or opening other applications during the hackathon is strictly
+                      prohibited
                     </span>
                   </li>
                   <li className="flex items-start gap-2">
                     <AlertTriangle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
                     <span>
-                      Three violations of these rules will result in automatic
-                      hackathon submission
+                      Three violations of these rules will result in automatic hackathon submission
                     </span>
                   </li>
                 </ul>
@@ -159,32 +150,18 @@ const InstructionsPage: React.FC<InstructionsPageProps> = ({ onContinue }) => {
                     </h4>
                     <ul className="space-y-1 text-yellow-700">
                       <li>
-                        • The hackathon will automatically switch to review mode
-                        in the last 5 minutes
+                        • The hackathon will automatically switch to review mode in the last 5
+                        minutes
                       </li>
+                      <li>• The hackathon will be automatically submitted when time expires</li>
                       <li>
-                        • The hackathon will be automatically submitted when
-                        time expires
+                        • Complete the hackathon in one session - your progress will be lost if you
+                        close the browser
                       </li>
-                      <li>
-                        • Complete the hackathon in one session - your progress
-                        will be lost if you close the browser
-                      </li>
-                      <li>
-                        • Switching tabs will trigger a warning and count
-                        towards violations
-                      </li>
-                      <li>
-                        • You can review and change answers before final
-                        submission
-                      </li>
-                      <li>
-                        • Use the help button if you face any technical issues
-                      </li>
-                      <li>
-                        • Ensure stable internet connection throughout the
-                        hackathon
-                      </li>
+                      <li>• Switching tabs will trigger a warning and count towards violations</li>
+                      <li>• You can review and change answers before final submission</li>
+                      <li>• Use the help button if you face any technical issues</li>
+                      <li>• Ensure stable internet connection throughout the hackathon</li>
                     </ul>
                   </div>
                 </div>
@@ -196,7 +173,7 @@ const InstructionsPage: React.FC<InstructionsPageProps> = ({ onContinue }) => {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => navigate("/dashboard")}
+                onClick={() => navigate('/dashboard')}
                 className="px-8 py-3 bg-gray-600 text-white rounded-lg font-medium hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 flex items-center gap-2"
               >
                 <Home className="w-5 h-5" />

@@ -1,6 +1,6 @@
-import React, { useState } from "react";
-import { Search, TrendingUp, DollarSign, Building, AlertCircle, CheckCircle } from "lucide-react";
-import { DepartmentBudget, BudgetCategory } from "../hooks/useDepartmentBudgets";
+import React, { useState } from 'react';
+import { Search, TrendingUp, DollarSign, Building, AlertCircle, CheckCircle } from 'lucide-react';
+import { DepartmentBudget, BudgetCategory } from '../hooks/useDepartmentBudgets';
 
 interface Props {
   budgets: DepartmentBudget[];
@@ -15,23 +15,20 @@ interface Props {
 }
 
 const statusConfig = {
-  draft: { label: "Draft", color: "text-gray-700", bg: "bg-gray-100" },
-  approved: { label: "Approved", color: "text-blue-700", bg: "bg-blue-100" },
-  active: { label: "Active", color: "text-green-700", bg: "bg-green-100" },
-  closed: { label: "Closed", color: "text-red-700", bg: "bg-red-100" },
+  draft: { label: 'Draft', color: 'text-gray-700', bg: 'bg-gray-100' },
+  approved: { label: 'Approved', color: 'text-blue-700', bg: 'bg-blue-100' },
+  active: { label: 'Active', color: 'text-green-700', bg: 'bg-green-100' },
+  closed: { label: 'Closed', color: 'text-red-700', bg: 'bg-red-100' },
 };
 
-export const DepartmentBudgetsTab: React.FC<Props> = ({
-  budgets,
-  loading,
-  stats,
-}) => {
-  const [searchTerm, setSearchTerm] = useState("");
+export const DepartmentBudgetsTab: React.FC<Props> = ({ budgets, loading, stats }) => {
+  const [searchTerm, setSearchTerm] = useState('');
   const [selectedBudget, setSelectedBudget] = useState<DepartmentBudget | null>(null);
 
-  const filteredBudgets = budgets.filter((budget) =>
-    budget.department_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    budget.budget_year.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredBudgets = budgets.filter(
+    (budget) =>
+      budget.department_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      budget.budget_year.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -66,7 +63,9 @@ export const DepartmentBudgetsTab: React.FC<Props> = ({
             </div>
             <div>
               <p className="text-sm text-green-600">Total Allocated</p>
-              <p className="text-xl font-bold text-green-900">₹{(stats.totalAllocated / 100000).toFixed(1)}L</p>
+              <p className="text-xl font-bold text-green-900">
+                ₹{(stats.totalAllocated / 100000).toFixed(1)}L
+              </p>
             </div>
           </div>
         </div>
@@ -77,7 +76,9 @@ export const DepartmentBudgetsTab: React.FC<Props> = ({
             </div>
             <div>
               <p className="text-sm text-yellow-600">Utilization</p>
-              <p className="text-xl font-bold text-yellow-900">{stats.utilizationRate.toFixed(1)}%</p>
+              <p className="text-xl font-bold text-yellow-900">
+                {stats.utilizationRate.toFixed(1)}%
+              </p>
             </div>
           </div>
         </div>
@@ -88,7 +89,9 @@ export const DepartmentBudgetsTab: React.FC<Props> = ({
             </div>
             <div>
               <p className="text-sm text-purple-600">Remaining</p>
-              <p className="text-xl font-bold text-purple-900">₹{(stats.totalRemaining / 100000).toFixed(1)}L</p>
+              <p className="text-xl font-bold text-purple-900">
+                ₹{(stats.totalRemaining / 100000).toFixed(1)}L
+              </p>
             </div>
           </div>
         </div>
@@ -113,28 +116,38 @@ export const DepartmentBudgetsTab: React.FC<Props> = ({
         <div className="p-8 bg-gray-50 border border-gray-200 rounded-xl text-center">
           <Building className="h-12 w-12 text-gray-400 mx-auto mb-3" />
           <p className="text-gray-900 font-medium mb-1">
-            {budgets.length === 0 ? "No department budgets found" : "No matching budgets"}
+            {budgets.length === 0 ? 'No department budgets found' : 'No matching budgets'}
           </p>
           <p className="text-sm text-gray-600">
             {budgets.length === 0
-              ? "Department budgets will appear here once they are created"
-              : "Try adjusting your search terms"}
+              ? 'Department budgets will appear here once they are created'
+              : 'Try adjusting your search terms'}
           </p>
         </div>
       ) : (
         <div className="space-y-4">
           {filteredBudgets.map((budget) => {
             const config = statusConfig[budget.status] || statusConfig.draft;
-            const utilizationRate = budget.allocated_amount > 0 ? (budget.spent_amount / budget.allocated_amount) * 100 : 0;
-            
+            const utilizationRate =
+              budget.allocated_amount > 0
+                ? (budget.spent_amount / budget.allocated_amount) * 100
+                : 0;
+
             return (
-              <div key={budget.id} className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow">
+              <div
+                key={budget.id}
+                className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow"
+              >
                 <div className="flex items-start justify-between mb-4">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">{budget.department_name}</h3>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {budget.department_name}
+                    </h3>
                     <p className="text-sm text-gray-600">Budget Year: {budget.budget_year}</p>
                   </div>
-                  <span className={`px-3 py-1 text-sm font-medium rounded-full ${config.bg} ${config.color}`}>
+                  <span
+                    className={`px-3 py-1 text-sm font-medium rounded-full ${config.bg} ${config.color}`}
+                  >
                     {config.label}
                   </span>
                 </div>
@@ -143,15 +156,21 @@ export const DepartmentBudgetsTab: React.FC<Props> = ({
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                   <div className="text-center p-3 bg-blue-50 rounded-lg">
                     <p className="text-sm text-blue-600">Allocated</p>
-                    <p className="text-lg font-bold text-blue-900">₹{budget.allocated_amount.toLocaleString()}</p>
+                    <p className="text-lg font-bold text-blue-900">
+                      ₹{budget.allocated_amount.toLocaleString()}
+                    </p>
                   </div>
                   <div className="text-center p-3 bg-green-50 rounded-lg">
                     <p className="text-sm text-green-600">Spent</p>
-                    <p className="text-lg font-bold text-green-900">₹{budget.spent_amount.toLocaleString()}</p>
+                    <p className="text-lg font-bold text-green-900">
+                      ₹{budget.spent_amount.toLocaleString()}
+                    </p>
                   </div>
                   <div className="text-center p-3 bg-yellow-50 rounded-lg">
                     <p className="text-sm text-yellow-600">Remaining</p>
-                    <p className="text-lg font-bold text-yellow-900">₹{budget.remaining_amount.toLocaleString()}</p>
+                    <p className="text-lg font-bold text-yellow-900">
+                      ₹{budget.remaining_amount.toLocaleString()}
+                    </p>
                   </div>
                 </div>
 
@@ -164,7 +183,11 @@ export const DepartmentBudgetsTab: React.FC<Props> = ({
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div
                       className={`h-2 rounded-full ${
-                        utilizationRate > 90 ? 'bg-red-500' : utilizationRate > 70 ? 'bg-yellow-500' : 'bg-green-500'
+                        utilizationRate > 90
+                          ? 'bg-red-500'
+                          : utilizationRate > 70
+                            ? 'bg-yellow-500'
+                            : 'bg-green-500'
                       }`}
                       style={{ width: `${Math.min(utilizationRate, 100)}%` }}
                     ></div>
@@ -176,11 +199,18 @@ export const DepartmentBudgetsTab: React.FC<Props> = ({
                   <h4 className="text-sm font-medium text-gray-700 mb-2">Budget Categories</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {budget.budget_categories.map((category, index) => (
-                      <div key={index} className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                      <div
+                        key={index}
+                        className="flex justify-between items-center p-2 bg-gray-50 rounded"
+                      >
                         <span className="text-sm text-gray-700">{category.category}</span>
                         <div className="text-right">
-                          <p className="text-sm font-medium text-gray-900">₹{category.spent_amount.toLocaleString()}</p>
-                          <p className="text-xs text-gray-500">of ₹{category.allocated_amount.toLocaleString()}</p>
+                          <p className="text-sm font-medium text-gray-900">
+                            ₹{category.spent_amount.toLocaleString()}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            of ₹{category.allocated_amount.toLocaleString()}
+                          </p>
                         </div>
                       </div>
                     ))}
@@ -220,7 +250,7 @@ export const DepartmentBudgetsTab: React.FC<Props> = ({
                 ✕
               </button>
             </div>
-            
+
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -229,12 +259,14 @@ export const DepartmentBudgetsTab: React.FC<Props> = ({
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Status</p>
-                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusConfig[selectedBudget.status].bg} ${statusConfig[selectedBudget.status].color}`}>
+                  <span
+                    className={`px-2 py-1 text-xs font-medium rounded-full ${statusConfig[selectedBudget.status].bg} ${statusConfig[selectedBudget.status].color}`}
+                  >
                     {statusConfig[selectedBudget.status].label}
                   </span>
                 </div>
               </div>
-              
+
               <div className="border-t pt-4">
                 <h4 className="font-medium mb-3">Category Breakdown</h4>
                 <div className="space-y-3">
@@ -243,13 +275,18 @@ export const DepartmentBudgetsTab: React.FC<Props> = ({
                       <div className="flex justify-between items-center mb-2">
                         <h5 className="font-medium">{category.category}</h5>
                         <span className="text-sm text-gray-600">
-                          {category.allocated_amount > 0 ? ((category.spent_amount / category.allocated_amount) * 100).toFixed(1) : 0}% utilized
+                          {category.allocated_amount > 0
+                            ? ((category.spent_amount / category.allocated_amount) * 100).toFixed(1)
+                            : 0}
+                          % utilized
                         </span>
                       </div>
                       <div className="grid grid-cols-3 gap-2 text-sm">
                         <div>
                           <p className="text-gray-600">Allocated</p>
-                          <p className="font-medium">₹{category.allocated_amount.toLocaleString()}</p>
+                          <p className="font-medium">
+                            ₹{category.allocated_amount.toLocaleString()}
+                          </p>
                         </div>
                         <div>
                           <p className="text-gray-600">Spent</p>
@@ -257,7 +294,9 @@ export const DepartmentBudgetsTab: React.FC<Props> = ({
                         </div>
                         <div>
                           <p className="text-gray-600">Remaining</p>
-                          <p className="font-medium">₹{category.remaining_amount.toLocaleString()}</p>
+                          <p className="font-medium">
+                            ₹{category.remaining_amount.toLocaleString()}
+                          </p>
                         </div>
                       </div>
                     </div>

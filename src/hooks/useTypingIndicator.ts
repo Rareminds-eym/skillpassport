@@ -10,7 +10,7 @@ interface UseTypingIndicatorProps {
 
 /**
  * Hook for managing typing indicators in a conversation
- * 
+ *
  * @example
  * ```tsx
  * const { typingUsers, setTyping } = useTypingIndicator({
@@ -18,13 +18,13 @@ interface UseTypingIndicatorProps {
  *   currentUserId: 'user-123',
  *   currentUserName: 'John Doe'
  * });
- * 
+ *
  * // Show typing indicator
  * setTyping(true);
- * 
+ *
  * // Hide typing indicator
  * setTyping(false);
- * 
+ *
  * // Check if someone is typing
  * if (typingUsers.length > 0) {
  * }
@@ -34,7 +34,7 @@ export const useTypingIndicator = ({
   conversationId,
   currentUserId,
   currentUserName,
-  enabled = true
+  enabled = true,
 }: UseTypingIndicatorProps) => {
   const [typingUsers, setTypingUsers] = useState<TypingIndicator[]>([]);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -42,38 +42,31 @@ export const useTypingIndicator = ({
   useEffect(() => {
     if (!enabled || !conversationId) return;
 
-
-    const channel = RealtimeService.subscribeToTypingIndicators(
-      conversationId,
-      (indicator) => {
-
-        // Ignore own typing indicators
-        if (indicator.userId === currentUserId) {
-          return;
-        }
-
-        setTypingUsers((prev) => {
-          // Remove existing indicator for this user
-          const filtered = prev.filter(u => u.userId !== indicator.userId);
-
-          // Add new indicator if typing
-          if (indicator.isTyping) {
-            return [...filtered, indicator];
-          }
-
-          return filtered;
-        });
-
-        // Auto-remove typing indicator after 3 seconds
-        if (indicator.isTyping) {
-          setTimeout(() => {
-            setTypingUsers((prev) =>
-              prev.filter(u => u.userId !== indicator.userId)
-            );
-          }, 3000);
-        }
+    const channel = RealtimeService.subscribeToTypingIndicators(conversationId, (indicator) => {
+      // Ignore own typing indicators
+      if (indicator.userId === currentUserId) {
+        return;
       }
-    );
+
+      setTypingUsers((prev) => {
+        // Remove existing indicator for this user
+        const filtered = prev.filter((u) => u.userId !== indicator.userId);
+
+        // Add new indicator if typing
+        if (indicator.isTyping) {
+          return [...filtered, indicator];
+        }
+
+        return filtered;
+      });
+
+      // Auto-remove typing indicator after 3 seconds
+      if (indicator.isTyping) {
+        setTimeout(() => {
+          setTypingUsers((prev) => prev.filter((u) => u.userId !== indicator.userId));
+        }, 3000);
+      }
+    });
 
     return () => {
       RealtimeService.unsubscribe(`conversation:${conversationId}`);
@@ -134,7 +127,7 @@ export const useTypingIndicator = ({
     typingUsers,
     setTyping,
     isAnyoneTyping: typingUsers.length > 0,
-    getTypingText
+    getTypingText,
   };
 };
 

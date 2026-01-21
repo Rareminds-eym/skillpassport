@@ -1,15 +1,18 @@
 import {
-    AcademicCapIcon,
-    ArrowDownTrayIcon,
-    CalendarIcon,
-    ChartBarIcon,
-    DocumentChartBarIcon,
-    PrinterIcon,
-    UserGroupIcon,
+  AcademicCapIcon,
+  ArrowDownTrayIcon,
+  CalendarIcon,
+  ChartBarIcon,
+  DocumentChartBarIcon,
+  PrinterIcon,
+  UserGroupIcon,
 } from '@heroicons/react/24/outline';
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../../lib/supabaseClient';
-import { attendanceService, studentReportService } from '../../../services/studentManagementService';
+import {
+  attendanceService,
+  studentReportService,
+} from '../../../services/studentManagementService';
 
 interface StudentReportData {
   id: string;
@@ -58,8 +61,10 @@ const StudentReports: React.FC = () => {
 
       // If not found in localStorage, try Supabase Auth (for educators/teachers)
       if (!currentSchoolId) {
-        const { data: { user } } = await supabase.auth.getUser();
-        
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
         if (user) {
           // Check school_educators table - use maybeSingle() to avoid 406 error
           const { data: educator } = await supabase
@@ -96,14 +101,16 @@ const StudentReports: React.FC = () => {
       // Fetch students with their data
       const { data: studentsData, error: studentsError } = await supabase
         .from('students')
-        .select(`
+        .select(
+          `
           id,
           name,
           roll_number,
           grade,
           section,
           extended:student_management_records(enrollment_number)
-        `)
+        `
+        )
         .eq('school_id', currentSchoolId);
 
       if (studentsError) throw studentsError;
@@ -112,8 +119,10 @@ const StudentReports: React.FC = () => {
       const enrichedStudents = await Promise.all(
         (studentsData || []).map(async (student: any) => {
           // Get attendance summary
-          const { data: attendanceData } = await attendanceService.getStudentAttendanceSummary(student.id);
-          
+          const { data: attendanceData } = await attendanceService.getStudentAttendanceSummary(
+            student.id
+          );
+
           // Get assessments
           const { data: assessments } = await supabase
             .from('skill_assessments')
@@ -121,9 +130,13 @@ const StudentReports: React.FC = () => {
             .eq('student_id', student.id)
             .eq('school_id', currentSchoolId);
 
-          const avgScore = assessments && assessments.length > 0
-            ? assessments.reduce((sum: number, a: any) => sum + (a.score / a.max_score * 100), 0) / assessments.length
-            : 0;
+          const avgScore =
+            assessments && assessments.length > 0
+              ? assessments.reduce(
+                  (sum: number, a: any) => sum + (a.score / a.max_score) * 100,
+                  0
+                ) / assessments.length
+              : 0;
 
           return {
             id: student.id,
@@ -158,17 +171,29 @@ const StudentReports: React.FC = () => {
 
     try {
       const academicYear = '2024-2025';
-      
+
       let result;
       switch (type) {
         case 'attendance':
-          result = await studentReportService.generateAttendanceReport(studentId, schoolId, academicYear);
+          result = await studentReportService.generateAttendanceReport(
+            studentId,
+            schoolId,
+            academicYear
+          );
           break;
         case 'academic':
-          result = await studentReportService.generateAcademicReport(studentId, schoolId, academicYear);
+          result = await studentReportService.generateAcademicReport(
+            studentId,
+            schoolId,
+            academicYear
+          );
           break;
         case 'career_readiness':
-          result = await studentReportService.generateCareerReadinessReport(studentId, schoolId, academicYear);
+          result = await studentReportService.generateCareerReadinessReport(
+            studentId,
+            schoolId,
+            academicYear
+          );
           break;
       }
 
@@ -183,8 +208,20 @@ const StudentReports: React.FC = () => {
   };
 
   const exportToCSV = () => {
-    const headers = ['Name', 'Roll Number', 'Class', 'Section', 'Enrollment', 'Attendance %', 'Total Days', 'Present', 'Absent', 'Assessments', 'Avg Score'];
-    const rows = students.map(s => [
+    const headers = [
+      'Name',
+      'Roll Number',
+      'Class',
+      'Section',
+      'Enrollment',
+      'Attendance %',
+      'Total Days',
+      'Present',
+      'Absent',
+      'Assessments',
+      'Avg Score',
+    ];
+    const rows = students.map((s) => [
       s.name,
       s.rollNumber,
       s.class,
@@ -198,10 +235,7 @@ const StudentReports: React.FC = () => {
       s.averageScore.toFixed(1),
     ]);
 
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.join(','))
-    ].join('\n');
+    const csvContent = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -273,8 +307,11 @@ const StudentReports: React.FC = () => {
               <p className="text-sm text-gray-600">Avg Attendance</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">
                 {students.length > 0
-                  ? (students.reduce((sum, s) => sum + s.attendancePercentage, 0) / students.length).toFixed(1)
-                  : 0}%
+                  ? (
+                      students.reduce((sum, s) => sum + s.attendancePercentage, 0) / students.length
+                    ).toFixed(1)
+                  : 0}
+                %
               </p>
             </div>
             <CalendarIcon className="h-10 w-10 text-green-600" />
@@ -287,8 +324,11 @@ const StudentReports: React.FC = () => {
               <p className="text-sm text-gray-600">Avg Score</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">
                 {students.length > 0
-                  ? (students.reduce((sum, s) => sum + s.averageScore, 0) / students.length).toFixed(1)
-                  : 0}%
+                  ? (
+                      students.reduce((sum, s) => sum + s.averageScore, 0) / students.length
+                    ).toFixed(1)
+                  : 0}
+                %
               </p>
             </div>
             <AcademicCapIcon className="h-10 w-10 text-blue-600" />
@@ -378,13 +418,15 @@ const StudentReports: React.FC = () => {
                     {student.assessmentCount}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      student.averageScore >= 75
-                        ? 'bg-green-100 text-green-800'
-                        : student.averageScore >= 50
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-red-100 text-red-800'
-                    }`}>
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        student.averageScore >= 75
+                          ? 'bg-green-100 text-green-800'
+                          : student.averageScore >= 50
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-red-100 text-red-800'
+                      }`}
+                    >
                       {student.averageScore.toFixed(1)}%
                     </span>
                   </td>
@@ -416,9 +458,7 @@ const StudentReports: React.FC = () => {
           <div className="text-center py-12">
             <DocumentChartBarIcon className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">No students found</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              No student data available for reports.
-            </p>
+            <p className="mt-1 text-sm text-gray-500">No student data available for reports.</p>
           </div>
         )}
       </div>

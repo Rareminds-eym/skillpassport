@@ -30,11 +30,13 @@ interface UseOrganizationCheckResult {
 /**
  * Hook to check if an admin user has an organization linked to their account.
  * Used to enforce organization creation before accessing the dashboard.
- * 
+ *
  * @param organizationType - The type of organization to check ('school', 'college', 'university')
  * @returns Object containing organization data, loading state, and whether organization exists
  */
-export function useOrganizationCheck(organizationType: OrganizationType): UseOrganizationCheckResult {
+export function useOrganizationCheck(
+  organizationType: OrganizationType
+): UseOrganizationCheckResult {
   const { user } = useAuth();
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
@@ -73,7 +75,9 @@ export function useOrganizationCheck(organizationType: OrganizationType): UseOrg
       // Find organization by admin_id and organization_type in the unified organizations table
       const { data, error: fetchError } = await supabase
         .from('organizations')
-        .select('id, name, organization_type, address, city, state, country, phone, email, website, logo_url')
+        .select(
+          'id, name, organization_type, address, city, state, country, phone, email, website, logo_url'
+        )
         .eq('admin_id', user.id)
         .eq('organization_type', organizationType)
         .maybeSingle();

@@ -1,7 +1,7 @@
 /**
  * Resume Prompt Screen Component
  * Asks user if they want to resume a previous assessment attempt
- * 
+ *
  * @module features/assessment/components/ResumePromptScreen
  */
 
@@ -25,12 +25,9 @@ import { STREAMS_BY_CATEGORY, STREAM_CATEGORIES } from '../constants/config';
  */
 const getStreamLabel = (streamId) => {
   // Check all categories for the stream
-  const allStreams = [
-    ...STREAM_CATEGORIES,
-    ...Object.values(STREAMS_BY_CATEGORY).flat()
-  ];
-  
-  const stream = allStreams.find(s => s.id === streamId);
+  const allStreams = [...STREAM_CATEGORIES, ...Object.values(STREAMS_BY_CATEGORY).flat()];
+
+  const stream = allStreams.find((s) => s.id === streamId);
   return stream?.label || streamId;
 };
 
@@ -39,7 +36,7 @@ const getStreamLabel = (streamId) => {
  */
 const formatDate = (dateString) => {
   if (!dateString) return 'Unknown';
-  
+
   const date = new Date(dateString);
   return date.toLocaleDateString('en-US', {
     month: 'short',
@@ -56,20 +53,20 @@ const formatDate = (dateString) => {
 const calculateProgress = (attempt) => {
   // Count UUID-based responses (from personal_assessment_responses table)
   const uuidResponsesCount = Object.keys(attempt.restoredResponses || {}).length;
-  
+
   // Count non-UUID responses (from all_responses column - RIASEC, BigFive, etc.)
   const allResponsesCount = attempt.all_responses ? Object.keys(attempt.all_responses).length : 0;
-  
+
   // Count adaptive aptitude progress (from adaptive session)
   const adaptiveQuestionsAnswered = attempt.adaptiveProgress?.questionsAnswered || 0;
-  
+
   // Total answered questions (including adaptive)
   const answeredCount = uuidResponsesCount + allResponsesCount + adaptiveQuestionsAnswered;
-  
+
   // Estimate total questions based on grade level
   // These totals now include the adaptive aptitude section (~21 questions)
   let estimatedTotal = 50; // Default
-  
+
   switch (attempt.grade_level) {
     case 'middle':
       // Middle school: Interest Explorer (5) + Strengths (11) + Learning (4) + Adaptive (~21) = ~41
@@ -90,19 +87,14 @@ const calculateProgress = (attempt) => {
       estimatedTotal = 120; // College: ~120 questions
       break;
   }
-  
+
   return Math.min(100, Math.round((answeredCount / estimatedTotal) * 100));
 };
 
 /**
  * Resume Prompt Screen Component
  */
-export const ResumePromptScreen = ({
-  pendingAttempt,
-  onResume,
-  onStartNew,
-  isLoading = false,
-}) => {
+export const ResumePromptScreen = ({ pendingAttempt, onResume, onStartNew, isLoading = false }) => {
   const navigate = useNavigate();
 
   if (!pendingAttempt) {
@@ -111,17 +103,19 @@ export const ResumePromptScreen = ({
 
   const streamLabel = getStreamLabel(pendingAttempt.stream_id);
   const progress = calculateProgress(pendingAttempt);
-  
+
   // Count total answered questions
   // Note: all_responses contains ALL answers (UUID + non-UUID), so we don't need to add them
   // Only add adaptive questions if they're not already in all_responses
-  const allResponsesCount = pendingAttempt.all_responses ? Object.keys(pendingAttempt.all_responses).length : 0;
+  const allResponsesCount = pendingAttempt.all_responses
+    ? Object.keys(pendingAttempt.all_responses).length
+    : 0;
   const adaptiveQuestionsAnswered = pendingAttempt.adaptiveProgress?.questionsAnswered || 0;
-  
+
   // Use all_responses count as the primary source (it contains everything)
   // Adaptive questions are separate and tracked independently
   const answeredCount = allResponsesCount || adaptiveQuestionsAnswered;
-  
+
   const startedAt = formatDate(pendingAttempt.started_at);
 
   return (
@@ -133,12 +127,8 @@ export const ResumePromptScreen = ({
             <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
               <Clock className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-800 mb-2">
-              Resume Your Assessment?
-            </h1>
-            <p className="text-gray-600">
-              You have an assessment in progress
-            </p>
+            <h1 className="text-2xl font-bold text-gray-800 mb-2">Resume Your Assessment?</h1>
+            <p className="text-gray-600">You have an assessment in progress</p>
           </div>
 
           {/* Progress Info */}
@@ -156,7 +146,7 @@ export const ResumePromptScreen = ({
                 <span className="text-sm text-gray-600">Questions Answered</span>
                 <span className="text-sm font-semibold text-gray-800">{answeredCount}</span>
               </div>
-              
+
               {/* Progress Bar */}
               <div className="pt-2">
                 <div className="flex justify-between items-center mb-1">
@@ -164,7 +154,7 @@ export const ResumePromptScreen = ({
                   <span className="text-xs font-medium text-indigo-600">{progress}%</span>
                 </div>
                 <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div 
+                  <div
                     className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-500"
                     style={{ width: `${progress}%` }}
                   />
@@ -217,8 +207,8 @@ export const ResumePromptScreen = ({
           {/* Warning */}
           <div className="mt-6 p-4 bg-amber-50 rounded-xl border border-amber-100">
             <p className="text-xs text-amber-700">
-              <strong>Note:</strong> Starting fresh will abandon your previous progress. 
-              Your answers will not be saved.
+              <strong>Note:</strong> Starting fresh will abandon your previous progress. Your
+              answers will not be saved.
             </p>
           </div>
         </CardContent>

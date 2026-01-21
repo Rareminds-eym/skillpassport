@@ -1,11 +1,11 @@
 /**
  * useStudentGrade Hook
- * 
+ *
  * Fetches and manages student grade information from the database.
  * Handles both school students and college students.
- * 
+ *
  * OPTIMIZED: Single efficient query with all needed joins
- * 
+ *
  * @module features/assessment/career-test/hooks/useStudentGrade
  */
 
@@ -36,7 +36,10 @@ interface UseStudentGradeOptions {
 /**
  * Hook to fetch and manage student grade information
  */
-export const useStudentGrade = ({ userId, userEmail }: UseStudentGradeOptions): StudentGradeData => {
+export const useStudentGrade = ({
+  userId,
+  userEmail,
+}: UseStudentGradeOptions): StudentGradeData => {
   const [studentId, setStudentId] = useState<string | null>(null);
   const [studentGrade, setStudentGrade] = useState<string | null>(null);
   const [studentSchoolClassId, setStudentSchoolClassId] = useState<string | null>(null);
@@ -47,7 +50,7 @@ export const useStudentGrade = ({ userId, userEmail }: UseStudentGradeOptions): 
   const [profileData, setProfileData] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Track if fetch is complete to avoid duplicate calls
   const fetchComplete = useRef(false);
 
@@ -61,7 +64,7 @@ export const useStudentGrade = ({ userId, userEmail }: UseStudentGradeOptions): 
     try {
       setLoading(true);
       setError(null);
-      
+
       console.log('🚀 useStudentGrade: Fetching student data...');
       const startTime = performance.now();
 
@@ -69,7 +72,8 @@ export const useStudentGrade = ({ userId, userEmail }: UseStudentGradeOptions): 
       // Also fetch by email as fallback in the same query pattern
       const { data: student, error: fetchError } = await supabase
         .from('students')
-        .select(`
+        .select(
+          `
           id, 
           grade, 
           grade_start_date, 
@@ -80,10 +84,11 @@ export const useStudentGrade = ({ userId, userEmail }: UseStudentGradeOptions): 
           course_name, 
           school_classes:school_class_id(grade, academic_year), 
           program:program_id(name, code)
-        `)
+        `
+        )
         .or(`user_id.eq.${userId}${userEmail ? `,email.eq.${userEmail}` : ''}`)
         .maybeSingle();
-      
+
       const endTime = performance.now();
       console.log(`✅ useStudentGrade: Query completed in ${Math.round(endTime - startTime)}ms`);
 
@@ -96,7 +101,7 @@ export const useStudentGrade = ({ userId, userEmail }: UseStudentGradeOptions): 
       if (student) {
         // Store complete profile data for missing field analysis
         setProfileData(student);
-        
+
         // Save student ID
         setStudentId(student.id);
 
@@ -105,9 +110,8 @@ export const useStudentGrade = ({ userId, userEmail }: UseStudentGradeOptions): 
         setIsCollegeStudent(isCollege);
 
         // Set program name if available
-        const programName = (student.program as any)?.name || 
-                           (student.program as any)?.code || 
-                           student.course_name;
+        const programName =
+          (student.program as any)?.name || (student.program as any)?.code || student.course_name;
         if (programName) {
           setStudentProgram(programName);
         }
@@ -134,7 +138,7 @@ export const useStudentGrade = ({ userId, userEmail }: UseStudentGradeOptions): 
         setStudentGrade(effectiveGrade);
         setStudentSchoolClassId(student.school_class_id);
       }
-      
+
       fetchComplete.current = true;
     } catch (err) {
       console.error('Error fetching student grade:', err);
@@ -149,8 +153,8 @@ export const useStudentGrade = ({ userId, userEmail }: UseStudentGradeOptions): 
   }, [fetchStudentGrade]);
 
   // Calculate detected grade level
-  const detectedGradeLevel = studentGrade 
-    ? getGradeLevelFromGrade(studentGrade) as GradeLevel | null
+  const detectedGradeLevel = studentGrade
+    ? (getGradeLevelFromGrade(studentGrade) as GradeLevel | null)
     : null;
 
   return {
@@ -164,7 +168,7 @@ export const useStudentGrade = ({ userId, userEmail }: UseStudentGradeOptions): 
     detectedGradeLevel,
     profileData,
     loading,
-    error
+    error,
   };
 };
 

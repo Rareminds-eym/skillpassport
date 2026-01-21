@@ -20,7 +20,7 @@ const RecruiterLayout = () => {
   const [showCandidateDrawer, setShowCandidateDrawer] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const navigate = useNavigate();
-  
+
   // Get unread messages count for sidebar badge
   const { unreadCount } = useUnreadMessagesCount(user?.id);
 
@@ -46,66 +46,69 @@ const RecruiterLayout = () => {
     <GlobalPresenceProvider userType="recruiter">
       <div className="min-h-screen bg-gray-50">
         {/* Header */}
-        <Header
-        onMenuToggle={handleMenuToggle} 
-        showMobileMenu={showMobileMenu}
-      />
+        <Header onMenuToggle={handleMenuToggle} showMobileMenu={showMobileMenu} />
 
-      <div className="flex h-screen pt-0">
-        {/* Sidebar */}
-        <Sidebar 
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          showMobileMenu={showMobileMenu}
-          unreadMessagesCount={unreadCount}
-        />
+        <div className="flex h-screen pt-0">
+          {/* Sidebar */}
+          <Sidebar
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            showMobileMenu={showMobileMenu}
+            unreadMessagesCount={unreadCount}
+          />
 
-        {/* Main Content */}
-        <div className={`flex-1 overflow-auto flex flex-col ${isMobile ? 'pb-20' : 'md:ml-64'}`}>
-          <div className="flex-1">
-            <Outlet context={{ onViewProfile: handleViewProfile }} />
-          </div>
-          {!isMobile && (
-            <footer className="bg-white border-t border-gray-200 py-4 px-6">
-              <div className="flex items-center justify-between text-sm text-gray-500">
-                <span>© {new Date().getFullYear()} Recruiter Portal. All rights reserved.</span>
-                <div className="flex items-center gap-4">
-                  <a href="#" className="hover:text-gray-700 transition-colors">Privacy Policy</a>
-                  <a href="#" className="hover:text-gray-700 transition-colors">Terms of Service</a>
-                  <a href="#" className="hover:text-gray-700 transition-colors">Help</a>
+          {/* Main Content */}
+          <div className={`flex-1 overflow-auto flex flex-col ${isMobile ? 'pb-20' : 'md:ml-64'}`}>
+            <div className="flex-1">
+              <Outlet context={{ onViewProfile: handleViewProfile }} />
+            </div>
+            {!isMobile && (
+              <footer className="bg-white border-t border-gray-200 py-4 px-6">
+                <div className="flex items-center justify-between text-sm text-gray-500">
+                  <span>© {new Date().getFullYear()} Recruiter Portal. All rights reserved.</span>
+                  <div className="flex items-center gap-4">
+                    <a href="#" className="hover:text-gray-700 transition-colors">
+                      Privacy Policy
+                    </a>
+                    <a href="#" className="hover:text-gray-700 transition-colors">
+                      Terms of Service
+                    </a>
+                    <a href="#" className="hover:text-gray-700 transition-colors">
+                      Help
+                    </a>
+                  </div>
                 </div>
-              </div>
-            </footer>
-          )}
+              </footer>
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* Mobile Tab Bar */}
-      {isMobile && (
-        <MobileTabBar
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          onMoreMenuToggle={handleMoreMenuToggle}
+        {/* Mobile Tab Bar */}
+        {isMobile && (
+          <MobileTabBar
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            onMoreMenuToggle={handleMoreMenuToggle}
+          />
+        )}
+
+        {/* Candidate Profile Drawer */}
+        <CandidateProfileDrawer
+          candidate={selectedCandidate}
+          isOpen={showCandidateDrawer}
+          onClose={handleCloseCandidateDrawer}
         />
-      )}
 
-      {/* Candidate Profile Drawer */}
-      <CandidateProfileDrawer
-        candidate={selectedCandidate}
-        isOpen={showCandidateDrawer}
-        onClose={handleCloseCandidateDrawer}
-      />
+        {/* Mobile menu overlay */}
+        {showMobileMenu && (
+          <div
+            className="fixed inset-0 bg-gray-600 bg-opacity-75 z-30 md:hidden"
+            onClick={() => setShowMobileMenu(false)}
+          ></div>
+        )}
 
-      {/* Mobile menu overlay */}
-      {showMobileMenu && (
-        <div 
-          className="fixed inset-0 bg-gray-600 bg-opacity-75 z-30 md:hidden"
-          onClick={() => setShowMobileMenu(false)}
-        ></div>
-      )}
-      
-      {/* Floating AI Button */}
-      <FloatingRecruiterAIButton />
+        {/* Floating AI Button */}
+        <FloatingRecruiterAIButton />
       </div>
     </GlobalPresenceProvider>
   );

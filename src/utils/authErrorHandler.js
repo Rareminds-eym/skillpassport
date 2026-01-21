@@ -41,14 +41,14 @@ export const validateEmail = (email) => {
   if (!email || typeof email !== 'string') {
     return { valid: false, code: AUTH_ERROR_CODES.INVALID_INPUT_FORMAT };
   }
-  
+
   const sanitized = email.trim().toLowerCase();
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  
+
   if (!emailRegex.test(sanitized)) {
     return { valid: false, code: AUTH_ERROR_CODES.INVALID_INPUT_FORMAT };
   }
-  
+
   return { valid: true, sanitized };
 };
 
@@ -56,21 +56,21 @@ export const validatePassword = (password) => {
   if (!password || typeof password !== 'string') {
     return { valid: false, code: AUTH_ERROR_CODES.INVALID_INPUT_FORMAT };
   }
-  
+
   if (password.length < 6) {
     return { valid: false, code: AUTH_ERROR_CODES.PASSWORD_TOO_WEAK };
   }
-  
+
   return { valid: true };
 };
 
 export const validateCredentials = (email, password) => {
   const emailVal = validateEmail(email);
   if (!emailVal.valid) return { valid: false, field: 'email', code: emailVal.code };
-  
+
   const passVal = validatePassword(password);
   if (!passVal.valid) return { valid: false, field: 'password', code: passVal.code };
-  
+
   return { valid: true, email: emailVal.sanitized };
 };
 
@@ -83,16 +83,16 @@ export const validateCredentials = (email, password) => {
  */
 export const mapSupabaseError = (error) => {
   if (!error) return null;
-  
+
   const msg = error.message?.toLowerCase() || '';
   const code = error.code;
-  
+
   if (code === 'PGRST303' || msg.includes('jwt expired')) return AUTH_ERROR_CODES.SESSION_EXPIRED;
   if (msg.includes('invalid login credentials')) return AUTH_ERROR_CODES.INVALID_CREDENTIALS;
   if (msg.includes('user not found')) return AUTH_ERROR_CODES.USER_NOT_FOUND;
   if (msg.includes('email not confirmed')) return AUTH_ERROR_CODES.EMAIL_NOT_CONFIRMED;
   if (msg.includes('rate limit') || error.status === 429) return AUTH_ERROR_CODES.RATE_LIMITED;
-  
+
   return AUTH_ERROR_CODES.UNEXPECTED_ERROR;
 };
 
@@ -101,19 +101,20 @@ export const mapSupabaseError = (error) => {
  */
 export const isJwtExpiryError = (error) => {
   if (!error) return false;
-  
+
   // Check for PGRST303 code (JWT expired)
   if (error.code === 'PGRST303') return true;
-  
+
   // Check typical 401/403 messages
-  if (error.message && (
-    error.message.includes('JWT expired') || 
-    error.message.includes('Invalid token') ||
-    error.message.includes('token is expired')
-  )) {
+  if (
+    error.message &&
+    (error.message.includes('JWT expired') ||
+      error.message.includes('Invalid token') ||
+      error.message.includes('token is expired'))
+  ) {
     return true;
   }
-  
+
   return false;
 };
 
@@ -124,28 +125,28 @@ export const handleAuthError = async (error, context = {}) => {
   // If it's a JWT expiry, force logout and redirect
   if (isJwtExpiryError(error)) {
     console.warn('JWT expired, clearing session and redirecting...');
-    
+
     try {
       await supabase.auth.signOut();
     } catch (e) {
       console.error('Error signing out:', e);
     }
-    
+
     localStorage.removeItem('sb-auth');
     localStorage.removeItem('sb-storage-key');
     const projectRef = import.meta.env.VITE_SUPABASE_URL?.split('.')[0]?.split('//')[1];
     if (projectRef) {
       localStorage.removeItem(`sb-${projectRef}-auth-token`);
     }
-    
+
     window.location.href = '/login?error=session_expired';
     return { success: false, error: 'Session expired. Please log in again.' };
   }
 
   // Generic error return for non-fatal errors
-  return buildErrorResponse(mapSupabaseError(error), { 
+  return buildErrorResponse(mapSupabaseError(error), {
     originalError: error.message,
-    ...context 
+    ...context,
   });
 };
 
@@ -169,7 +170,7 @@ export const generateCorrelationId = () => {
 // ============================================================================
 
 export const withTimeout = (promise, ms) => {
-  const timeout = new Promise((_, reject) => 
+  const timeout = new Promise((_, reject) =>
     setTimeout(() => reject(new Error('Operation timed out')), ms)
   );
   return Promise.race([promise, timeout]);
@@ -178,10 +179,10 @@ export const withTimeout = (promise, ms) => {
 export const withRetry = (fn, options = {}) => {
   const maxRetries = options.maxRetries || 3;
   const shouldRetry = options.shouldRetry || (() => true);
-  
+
   return async (...args) => {
     let lastError;
-    
+
     for (let i = 0; i < maxRetries; i++) {
       try {
         return await fn(...args);
@@ -189,10 +190,10 @@ export const withRetry = (fn, options = {}) => {
         lastError = error;
         if (!shouldRetry(error)) throw error;
         // Exponential backoff
-        await new Promise(r => setTimeout(r, Math.pow(2, i) * 1000));
+        await new Promise((r) => setTimeout(r, Math.pow(2, i) * 1000));
       }
     }
-    
+
     throw lastError;
   };
 };
@@ -203,10 +204,12 @@ export const withRetry = (fn, options = {}) => {
 
 // User-friendly messages for each error code
 const ERROR_MESSAGES = {
-  [AUTH_ERROR_CODES.INVALID_CREDENTIALS]: 'Invalid email or password. Please check your credentials and try again.',
+  [AUTH_ERROR_CODES.INVALID_CREDENTIALS]:
+    'Invalid email or password. Please check your credentials and try again.',
   [AUTH_ERROR_CODES.USER_NOT_FOUND]: 'No account found with this email. Please sign up first.',
   [AUTH_ERROR_CODES.EMAIL_NOT_CONFIRMED]: 'Please verify your email address before signing in.',
-  [AUTH_ERROR_CODES.PASSWORD_TOO_WEAK]: 'Password is too weak. Please use at least 8 characters with uppercase, lowercase, and numbers.',
+  [AUTH_ERROR_CODES.PASSWORD_TOO_WEAK]:
+    'Password is too weak. Please use at least 8 characters with uppercase, lowercase, and numbers.',
   [AUTH_ERROR_CODES.INVALID_INPUT_FORMAT]: 'Please check your input and try again.',
   [AUTH_ERROR_CODES.RATE_LIMITED]: 'Too many requests. Please wait a moment and try again.',
   [AUTH_ERROR_CODES.TOO_MANY_ATTEMPTS]: 'Too many failed attempts. Please try again later.',
@@ -228,6 +231,6 @@ export const buildErrorResponse = (code, details = {}) => {
     success: false,
     error: code,
     message: details.customMessage || defaultMessage,
-    details
+    details,
   };
 };

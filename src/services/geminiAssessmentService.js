@@ -1,7 +1,7 @@
 /**
  * AI Assessment Service
  * Uses OpenRouter API via Cloudflare Worker to analyze assessment answers and provide personalized results
- * 
+ *
  * The heavy lifting (prompt building, AI calls) is now handled by the Cloudflare Worker.
  * This service handles:
  * - Data preparation (transforms raw answers to structured format)
@@ -9,14 +9,14 @@
  * - Response validation
  * - Course recommendations (requires authenticated Supabase client)
  * - Rule-based stream recommendation (for After 10th students)
- * 
+ *
  * @version 2.1.0 - Added hybrid stream recommendation
  */
 
 import {
   getCoursesForMultipleSkillGaps,
   getRecommendedCourses,
-  getRecommendedCoursesByType
+  getRecommendedCoursesByType,
 } from './courseRecommendationService';
 
 // Import stream matching engine for After 10th students
@@ -45,17 +45,20 @@ const updateProgress = (stage, message) => {
 /**
  * Call OpenRouter API via Cloudflare Worker for assessment analysis
  * The worker handles prompt building based on grade level
- * 
+ *
  * @param {Object} assessmentData - The prepared assessment data
  * @returns {Promise<Object>} - The analyzed results from AI
  */
 const callOpenRouterAssessment = async (assessmentData) => {
-  const API_URL = import.meta.env.VITE_ASSESSMENT_API_URL || 
-                  'https://analyze-assessment-api.dark-mode-d021.workers.dev';
+  const API_URL =
+    import.meta.env.VITE_ASSESSMENT_API_URL ||
+    'https://analyze-assessment-api.dark-mode-d021.workers.dev';
 
   // Get auth token
   updateProgress('sending', 'Authenticating...');
-  const { data: { session } } = await import('../lib/supabaseClient').then(m => m.supabase.auth.getSession());
+  const {
+    data: { session },
+  } = await import('../lib/supabaseClient').then((m) => m.supabase.auth.getSession());
   const token = session?.access_token;
 
   if (!token) {
@@ -67,7 +70,9 @@ const callOpenRouterAssessment = async (assessmentData) => {
   console.log(`📊 Grade Level: ${assessmentData.gradeLevel}, Stream: ${assessmentData.stream}`);
   console.log(`🔗 API URL: ${API_URL}/analyze-assessment`);
   console.log(`📝 Assessment data keys:`, Object.keys(assessmentData));
-  console.log(`🎯 STREAM CONTEXT: Student is in ${assessmentData.stream} stream, AI should recommend careers from this stream`);
+  console.log(
+    `🎯 STREAM CONTEXT: Student is in ${assessmentData.stream} stream, AI should recommend careers from this stream`
+  );
   console.log(`📋 RIASEC Answers Count:`, Object.keys(assessmentData.riasecAnswers || {}).length);
   console.log(`📋 Aptitude Scores:`, assessmentData.aptitudeScores);
 
@@ -78,14 +83,14 @@ const callOpenRouterAssessment = async (assessmentData) => {
     // This bypasses Cloudflare edge cache to get the latest deployed version
     const cacheBuster = Date.now();
     const apiUrl = `${API_URL}/analyze-assessment?v=${cacheBuster}`;
-    
+
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ assessmentData })
+      body: JSON.stringify({ assessmentData }),
     });
 
     console.log(`📡 Response status: ${response.status}`);
@@ -106,7 +111,11 @@ const callOpenRouterAssessment = async (assessmentData) => {
     updateProgress('processing', 'Processing AI results...');
 
     const result = await response.json();
-    console.log('📦 API Response:', { success: result.success, hasData: !!result.data, error: result.error });
+    console.log('📦 API Response:', {
+      success: result.success,
+      hasData: !!result.data,
+      error: result.error,
+    });
     console.log('📦 Full API Response:', JSON.stringify(result).substring(0, 500));
 
     if (!result.success || !result.data) {
@@ -121,13 +130,13 @@ const callOpenRouterAssessment = async (assessmentData) => {
 
     console.log('✅ Assessment analysis successful');
     console.log('📊 Response keys:', Object.keys(result.data));
-    
+
     // Log seed for deterministic verification
     if (result.data._metadata?.seed) {
       console.log('🎲 DETERMINISTIC SEED:', result.data._metadata.seed);
       console.log('🎲 Model used:', result.data._metadata.model);
       console.log('🎲 Deterministic:', result.data._metadata.deterministic);
-      
+
       // Log failure details if any models failed before success
       if (result.data._metadata.failureDetails && result.data._metadata.failureDetails.length > 0) {
         console.warn('⚠️ MODEL FAILURES BEFORE SUCCESS:');
@@ -143,7 +152,7 @@ const callOpenRouterAssessment = async (assessmentData) => {
     } else {
       console.warn('⚠️ NO SEED IN RESPONSE - Using old worker version?');
     }
-    
+
     // Debug: Log career clusters to verify stream alignment
     if (result.data.careerFit?.clusters) {
       console.log('🎯 AI CAREER CLUSTERS (from worker):');
@@ -151,7 +160,7 @@ const callOpenRouterAssessment = async (assessmentData) => {
         console.log(`   ${idx + 1}. ${cluster.title} (${cluster.fit} - ${cluster.matchScore}%)`);
       });
     }
-    
+
     return result.data;
   } catch (error) {
     console.error('❌ Assessment API call failed:', error);
@@ -179,18 +188,20 @@ const validateResults = (results) => {
   if (!results.bigFive || typeof results.bigFive.O === 'undefined') missingFields.push('bigFive');
   if (!results.workValues?.topThree?.length) missingFields.push('workValues.topThree');
   if (!results.employability?.strengthAreas?.length) missingFields.push('employability');
-  if (!results.knowledge || typeof results.knowledge.score === 'undefined') missingFields.push('knowledge');
-  
+  if (!results.knowledge || typeof results.knowledge.score === 'undefined')
+    missingFields.push('knowledge');
+
   // Career fit (critical)
   if (!results.careerFit?.clusters?.length) missingFields.push('careerFit.clusters');
-  
+
   // Skill gap and roadmap
   if (!results.skillGap?.priorityA?.length) missingFields.push('skillGap');
   if (!results.roadmap?.projects?.length) missingFields.push('roadmap');
-  
+
   // Summary sections
   if (!results.finalNote?.advantage) missingFields.push('finalNote');
-  if (!results.profileSnapshot?.aptitudeStrengths?.length) missingFields.push('profileSnapshot.aptitudeStrengths');
+  if (!results.profileSnapshot?.aptitudeStrengths?.length)
+    missingFields.push('profileSnapshot.aptitudeStrengths');
   if (!results.overallSummary) missingFields.push('overallSummary');
 
   // Optional but log if missing
@@ -200,7 +211,7 @@ const validateResults = (results) => {
 
   return {
     isValid: missingFields.length === 0,
-    missingFields
+    missingFields,
   };
 };
 
@@ -212,7 +223,7 @@ const validateResults = (results) => {
  * Add course recommendations to assessment results
  * Fetches platform courses that match the student's profile using RAG-based recommendations
  * NOW considers ALL past assessments to provide comprehensive recommendations
- * 
+ *
  * @param {Object} assessmentResults - Parsed results from current AI assessment
  * @param {string} studentId - Student ID to fetch all past assessments
  * @returns {Promise<Object>} - Results with platformCourses, coursesByType, and skillGapCourses added
@@ -224,7 +235,7 @@ export const addCourseRecommendations = async (assessmentResults, studentId = nu
 
     // If studentId provided, fetch all past assessments to build comprehensive profile
     let aggregatedProfile = assessmentResults;
-    
+
     if (studentId) {
       try {
         console.log(`Fetching all past assessments for student: ${studentId}`);
@@ -237,10 +248,10 @@ export const addCourseRecommendations = async (assessmentResults, studentId = nu
 
         if (!error && pastAssessments && pastAssessments.length > 0) {
           console.log(`Found ${pastAssessments.length} past assessments`);
-          
+
           // Aggregate skill gaps from all assessments
           const allSkillGaps = [];
-          pastAssessments.forEach(assessment => {
+          pastAssessments.forEach((assessment) => {
             if (assessment.skill_gap?.priorityA) {
               allSkillGaps.push(...assessment.skill_gap.priorityA);
             }
@@ -248,7 +259,7 @@ export const addCourseRecommendations = async (assessmentResults, studentId = nu
 
           // Deduplicate skills by name
           const uniqueSkills = Array.from(
-            new Map(allSkillGaps.map(skill => [skill.skill, skill])).values()
+            new Map(allSkillGaps.map((skill) => [skill.skill, skill])).values()
           );
 
           // Merge with current assessment
@@ -257,11 +268,13 @@ export const addCourseRecommendations = async (assessmentResults, studentId = nu
             skillGap: {
               ...assessmentResults.skillGap,
               priorityA: uniqueSkills.slice(0, 10), // Top 10 unique skills
-              allAssessments: pastAssessments.length
-            }
+              allAssessments: pastAssessments.length,
+            },
           };
 
-          console.log(`Aggregated ${uniqueSkills.length} unique skills from ${pastAssessments.length} assessments`);
+          console.log(
+            `Aggregated ${uniqueSkills.length} unique skills from ${pastAssessments.length} assessments`
+          );
         }
       } catch (fetchError) {
         console.warn('Failed to fetch past assessments:', fetchError.message);
@@ -275,7 +288,9 @@ export const addCourseRecommendations = async (assessmentResults, studentId = nu
     try {
       // Fetch courses by type using aggregated profile
       coursesByType = await getRecommendedCoursesByType(aggregatedProfile, 5);
-      console.log(`Found ${coursesByType.technical.length} technical and ${coursesByType.soft.length} soft skill courses`);
+      console.log(
+        `Found ${coursesByType.technical.length} technical and ${coursesByType.soft.length} soft skill courses`
+      );
 
       platformCourses = [...coursesByType.technical, ...coursesByType.soft];
 
@@ -309,7 +324,7 @@ export const addCourseRecommendations = async (assessmentResults, studentId = nu
       ...assessmentResults,
       platformCourses,
       coursesByType,
-      skillGapCourses
+      skillGapCourses,
     };
   } catch (error) {
     console.error('Error adding course recommendations:', error);
@@ -317,7 +332,7 @@ export const addCourseRecommendations = async (assessmentResults, studentId = nu
       ...assessmentResults,
       platformCourses: [],
       coursesByType: { technical: [], soft: [] },
-      skillGapCourses: {}
+      skillGapCourses: {},
     };
   }
 };
@@ -345,17 +360,17 @@ const formatTimeForPrompt = (seconds) => {
 const getSectionPrefix = (baseSection, gradeLevel) => {
   if (gradeLevel === 'middle') {
     const middleSchoolMap = {
-      'riasec': 'middle_interest_explorer',
-      'bigfive': 'middle_strengths_character',
-      'knowledge': 'middle_learning_preferences'
+      riasec: 'middle_interest_explorer',
+      bigfive: 'middle_strengths_character',
+      knowledge: 'middle_learning_preferences',
     };
     return middleSchoolMap[baseSection] || baseSection;
   } else if (gradeLevel === 'highschool' || gradeLevel === 'higher_secondary') {
     const highSchoolMap = {
-      'riasec': 'hs_interest_explorer',
-      'bigfive': 'hs_strengths_character',
-      'aptitude': 'hs_aptitude_sampling',
-      'knowledge': 'hs_learning_preferences'
+      riasec: 'hs_interest_explorer',
+      bigfive: 'hs_strengths_character',
+      aptitude: 'hs_aptitude_sampling',
+      knowledge: 'hs_learning_preferences',
     };
     return highSchoolMap[baseSection] || baseSection;
   }
@@ -375,46 +390,58 @@ const calculateAptitudeScore = (answers) => {
     return {
       averageRating: avgRating,
       total: answers.length,
-      percentage: Math.round(percentage)
+      percentage: Math.round(percentage),
     };
   }
-  
+
   // MCQ questions (college/after10/after12)
   // Count answers where isCorrect is explicitly true (not null or undefined)
-  const correctCount = answers.filter(a => a.isCorrect === true).length;
-  const scoredCount = answers.filter(a => a.isCorrect !== null && a.isCorrect !== undefined).length;
-  
+  const correctCount = answers.filter((a) => a.isCorrect === true).length;
+  const scoredCount = answers.filter(
+    (a) => a.isCorrect !== null && a.isCorrect !== undefined
+  ).length;
+
   // Debug logging for troubleshooting
   if (scoredCount < answers.length) {
-    console.warn(`⚠️ ${answers.length - scoredCount} answers could not be scored (missing correct answer data)`);
+    console.warn(
+      `⚠️ ${answers.length - scoredCount} answers could not be scored (missing correct answer data)`
+    );
   }
-  
+
   return {
     correct: correctCount,
     total: answers.length,
     scored: scoredCount,
-    percentage: answers.length > 0 ? Math.round((correctCount / answers.length) * 100) : 0
+    percentage: answers.length > 0 ? Math.round((correctCount / answers.length) * 100) : 0,
   };
 };
 
 /**
  * Prepare assessment data for analysis
  * Transforms raw answers into structured format for the AI
- * 
+ *
  * @param {Object} studentContext - Additional student context for better AI recommendations
  * @param {string} studentContext.rawGrade - Original grade string (e.g., "PG Year 1", "Grade 10")
  * @param {string} studentContext.programName - Student's program name (e.g., "MCA", "B.Tech CSE")
  * @param {string} studentContext.programCode - Program code if available
  * @param {string} studentContext.degreeLevel - Extracted degree level (undergraduate/postgraduate/diploma)
  */
-const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = {}, gradeLevel = 'after12', preCalculatedScores = null, studentContext = {}) => {
-  const { 
-    riasecQuestions, 
-    aptitudeQuestions, 
-    bigFiveQuestions, 
-    workValuesQuestions, 
-    employabilityQuestions, 
-    streamKnowledgeQuestions 
+const prepareAssessmentData = (
+  answers,
+  stream,
+  questionBanks,
+  sectionTimings = {},
+  gradeLevel = 'after12',
+  preCalculatedScores = null,
+  studentContext = {}
+) => {
+  const {
+    riasecQuestions,
+    aptitudeQuestions,
+    bigFiveQuestions,
+    workValuesQuestions,
+    employabilityQuestions,
+    streamKnowledgeQuestions,
   } = questionBanks;
 
   console.log('=== prepareAssessmentData DEBUG ===');
@@ -434,14 +461,14 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
   console.log('  - RIASEC prefix:', riasecPrefix);
   console.log('  - Looking for keys starting with:', `${riasecPrefix}_`);
   console.log('  - Grade level:', gradeLevel);
-  
+
   // First, try to extract using question bank
   Object.entries(answers).forEach(([key, value]) => {
     if (key.startsWith(`${riasecPrefix}_`)) {
       console.log('  - Found RIASEC key:', key, 'value:', value);
       const questionId = key.replace(`${riasecPrefix}_`, '');
-      const question = riasecQuestions?.find(q => q.id === questionId);
-      
+      const question = riasecQuestions?.find((q) => q.id === questionId);
+
       if (question) {
         // For after10/after12/college: questions have a 'type' field (R, I, A, S, E, C)
         // This is the RIASEC category directly
@@ -450,9 +477,11 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
           answer: value,
           riasecType: question.type, // Use the type field as RIASEC category
           categoryMapping: question.categoryMapping,
-          questionType: question.categoryMapping ? 'multiselect' : 'rating' // Determine question type
+          questionType: question.categoryMapping ? 'multiselect' : 'rating', // Determine question type
         };
-        console.log(`  ✅ Extracted with question bank: ${questionId}, RIASEC type: ${question.type}`);
+        console.log(
+          `  ✅ Extracted with question bank: ${questionId}, RIASEC type: ${question.type}`
+        );
       } else {
         // FALLBACK: For middle/high school questions (ms1, hs1, etc.) or standard RIASEC (r1, i1, etc.)
         // Middle/high school questions have categoryMapping in the question bank, so we need the question
@@ -462,18 +491,29 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
           answer: value,
           questionType: 'rating', // Middle/high school use rating scale
           categoryMapping: null, // Will be analyzed by AI
-          riasecType: null // Unknown without question bank
+          riasecType: null, // Unknown without question bank
         };
         console.log(`  ⚠️ Extracted without question bank (fallback): ${questionId} = ${value}`);
       }
     }
   });
-  
+
   console.log('RIASEC answers extracted:', Object.keys(riasecAnswers).length);
   if (Object.keys(riasecAnswers).length === 0) {
     console.error('❌ NO RIASEC ANSWERS EXTRACTED! This will cause zero scores.');
-    console.error('   Check if answer keys match expected format:', `${riasecPrefix}_ms1`, `${riasecPrefix}_hs1`, `${riasecPrefix}_r1`, 'etc.');
-    console.error('   Available answer keys:', Object.keys(answers).filter(k => k.includes('interest') || k.includes('riasec')).slice(0, 10));
+    console.error(
+      '   Check if answer keys match expected format:',
+      `${riasecPrefix}_ms1`,
+      `${riasecPrefix}_hs1`,
+      `${riasecPrefix}_r1`,
+      'etc.'
+    );
+    console.error(
+      '   Available answer keys:',
+      Object.keys(answers)
+        .filter((k) => k.includes('interest') || k.includes('riasec'))
+        .slice(0, 10)
+    );
   } else {
     console.log('✅ RIASEC answers extracted successfully');
     console.log('   Sample extracted keys:', Object.keys(riasecAnswers).slice(0, 5));
@@ -486,7 +526,7 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
     numerical: [],
     abstract: [],
     spatial: [],
-    clerical: []
+    clerical: [],
   };
 
   // For AI-generated aptitude questions, the correct answer is stored in the question object
@@ -494,26 +534,36 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
   console.log('Aptitude prefix:', aptitudePrefix);
   console.log('📊 Aptitude questions available for scoring:', aptitudeQuestions?.length || 0);
   if (aptitudeQuestions?.length > 0) {
-    console.log('📊 Sample question IDs:', aptitudeQuestions.slice(0, 3).map(q => q.id));
-    console.log('📊 Sample question has correct_answer:', !!aptitudeQuestions[0]?.correct_answer, 'correct:', !!aptitudeQuestions[0]?.correct);
+    console.log(
+      '📊 Sample question IDs:',
+      aptitudeQuestions.slice(0, 3).map((q) => q.id)
+    );
+    console.log(
+      '📊 Sample question has correct_answer:',
+      !!aptitudeQuestions[0]?.correct_answer,
+      'correct:',
+      !!aptitudeQuestions[0]?.correct
+    );
     console.log('📊 Sample question type:', aptitudeQuestions[0]?.type);
   } else {
     console.warn('⚠️ NO APTITUDE QUESTIONS AVAILABLE - Scoring will fail!');
     console.warn('⚠️ This usually means fetchAIAptitudeQuestions() did not return questions');
-    console.warn('⚠️ Check if userId is correct and questions exist in career_assessment_ai_questions table');
+    console.warn(
+      '⚠️ Check if userId is correct and questions exist in career_assessment_ai_questions table'
+    );
   }
-  
+
   // Track scoring statistics
   let questionsFound = 0;
   let questionsNotFound = 0;
   let correctAnswers = 0;
   let incorrectAnswers = 0;
-  
+
   Object.entries(answers).forEach(([key, value]) => {
     if (key.startsWith(`${aptitudePrefix}_`)) {
       const questionId = key.replace(`${aptitudePrefix}_`, '');
-      const question = aptitudeQuestions?.find(q => q.id === questionId);
-      
+      const question = aptitudeQuestions?.find((q) => q.id === questionId);
+
       if (question) {
         questionsFound++;
         const isRatingQuestion = question.type === 'rating' || !question.correct;
@@ -524,7 +574,7 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
             question: question.text,
             rating: value,
             taskType: question.taskType || question.task_type,
-            type: question.type
+            type: question.type,
           };
           const taskCategory = (question.taskType || question.task_type || 'verbal').toLowerCase();
           if (aptitudeAnswers[taskCategory]) {
@@ -533,8 +583,12 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
         } else {
           // MCQ question with correct answer
           // Handle different field names: correct, correctAnswer, correct_answer, answer
-          const correctAnswer = question.correct || question.correctAnswer || question.correct_answer || question.answer;
-          
+          const correctAnswer =
+            question.correct ||
+            question.correctAnswer ||
+            question.correct_answer ||
+            question.answer;
+
           // Normalize both values for comparison (handle JSONB strings, trim whitespace, etc.)
           const normalizeValue = (v) => {
             if (v === null || v === undefined) return '';
@@ -546,66 +600,73 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
             }
             return str;
           };
-          
+
           const normalizedStudentAnswer = normalizeValue(value);
           const normalizedCorrectAnswer = normalizeValue(correctAnswer);
           const isCorrect = normalizedStudentAnswer === normalizedCorrectAnswer;
-          
+
           // Track statistics
           if (isCorrect) {
             correctAnswers++;
           } else {
             incorrectAnswers++;
           }
-          
+
           // Debug log for troubleshooting (only log first few mismatches to avoid spam)
-          if (!isCorrect && normalizedStudentAnswer && normalizedCorrectAnswer && incorrectAnswers <= 3) {
-            console.log(`📝 Answer mismatch: "${normalizedStudentAnswer}" vs "${normalizedCorrectAnswer}" (question: ${questionId})`);
+          if (
+            !isCorrect &&
+            normalizedStudentAnswer &&
+            normalizedCorrectAnswer &&
+            incorrectAnswers <= 3
+          ) {
+            console.log(
+              `📝 Answer mismatch: "${normalizedStudentAnswer}" vs "${normalizedCorrectAnswer}" (question: ${questionId})`
+            );
           }
-          
+
           const answerData = {
             questionId,
             question: question.text || question.question,
             studentAnswer: normalizedStudentAnswer,
             correctAnswer: normalizedCorrectAnswer,
             isCorrect: isCorrect,
-            subtype: question.subtype || question.category || 'verbal'
+            subtype: question.subtype || question.category || 'verbal',
           };
           const category = (question.subtype || question.category || 'verbal').toLowerCase();
-          
+
           // Map category to aptitude category
           // AI-generated questions use subtypes like 'english', 'mathematics', 'science', 'social_studies'
           // These need to be mapped to standard aptitude categories: verbal, numerical, abstract, spatial, clerical
           const categoryMap = {
             // Standard aptitude categories
-            'mathematics': 'numerical',
-            'math': 'numerical',
-            'numerical_reasoning': 'numerical',
-            'numerical': 'numerical',
-            'verbal_reasoning': 'verbal',
-            'verbal': 'verbal',
-            'logical_reasoning': 'abstract',
-            'logical': 'abstract',
-            'abstract': 'abstract',
-            'spatial_reasoning': 'spatial',
-            'spatial': 'spatial',
-            'clerical_speed': 'clerical',
-            'clerical': 'clerical',
-            'data_interpretation': 'numerical',
+            mathematics: 'numerical',
+            math: 'numerical',
+            numerical_reasoning: 'numerical',
+            numerical: 'numerical',
+            verbal_reasoning: 'verbal',
+            verbal: 'verbal',
+            logical_reasoning: 'abstract',
+            logical: 'abstract',
+            abstract: 'abstract',
+            spatial_reasoning: 'spatial',
+            spatial: 'spatial',
+            clerical_speed: 'clerical',
+            clerical: 'clerical',
+            data_interpretation: 'numerical',
             // AI-generated question subtypes (from question-generation-api)
-            'english': 'verbal',           // English comprehension → Verbal reasoning
-            'science': 'abstract',         // Science reasoning → Abstract/Logical reasoning
-            'social_studies': 'verbal',    // Social studies → Verbal (reading comprehension)
-            'history': 'verbal',           // History → Verbal
-            'geography': 'spatial',        // Geography → Spatial reasoning
-            'civics': 'verbal',            // Civics → Verbal
-            'economics': 'numerical',      // Economics → Numerical reasoning
-            'general_knowledge': 'verbal', // GK → Verbal
-            'reasoning': 'abstract',       // General reasoning → Abstract
-            'aptitude': 'numerical'        // General aptitude → Numerical
+            english: 'verbal', // English comprehension → Verbal reasoning
+            science: 'abstract', // Science reasoning → Abstract/Logical reasoning
+            social_studies: 'verbal', // Social studies → Verbal (reading comprehension)
+            history: 'verbal', // History → Verbal
+            geography: 'spatial', // Geography → Spatial reasoning
+            civics: 'verbal', // Civics → Verbal
+            economics: 'numerical', // Economics → Numerical reasoning
+            general_knowledge: 'verbal', // GK → Verbal
+            reasoning: 'abstract', // General reasoning → Abstract
+            aptitude: 'numerical', // General aptitude → Numerical
           };
           const mappedCategory = categoryMap[category] || category;
-          
+
           if (aptitudeAnswers[mappedCategory]) {
             aptitudeAnswers[mappedCategory].push(answerData);
           } else {
@@ -626,12 +687,12 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
           studentAnswer: value,
           correctAnswer: null, // Unknown
           isCorrect: null, // Unknown - cannot score without correct answer
-          subtype: 'unknown'
+          subtype: 'unknown',
         });
       }
     }
   });
-  
+
   // Log scoring summary
   console.log('📊 Aptitude Scoring Summary:');
   console.log(`   Questions found: ${questionsFound}`);
@@ -639,40 +700,42 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
   console.log(`   Correct answers: ${correctAnswers}`);
   console.log(`   Incorrect answers: ${incorrectAnswers}`);
   if (questionsNotFound > 0) {
-    console.warn(`⚠️ ${questionsNotFound} questions could not be scored - check if aptitudeQuestions were properly fetched`);
+    console.warn(
+      `⚠️ ${questionsNotFound} questions could not be scored - check if aptitudeQuestions were properly fetched`
+    );
   }
-  
+
   console.log('Aptitude answers extracted:', {
     verbal: aptitudeAnswers.verbal.length,
     numerical: aptitudeAnswers.numerical.length,
     abstract: aptitudeAnswers.abstract.length,
     spatial: aptitudeAnswers.spatial.length,
-    clerical: aptitudeAnswers.clerical.length
+    clerical: aptitudeAnswers.clerical.length,
   });
 
   // Extract Big Five answers - IMPROVED: Extract even if bigFiveQuestions is empty
   const bigFiveAnswers = {};
   const bigFivePrefix = getSectionPrefix('bigfive', gradeLevel);
   console.log('BigFive prefix:', bigFivePrefix);
-  
+
   Object.entries(answers).forEach(([key, value]) => {
     if (key.startsWith(`${bigFivePrefix}_`)) {
       const questionId = key.replace(`${bigFivePrefix}_`, '');
-      const question = bigFiveQuestions?.find(q => q.id === questionId);
-      
+      const question = bigFiveQuestions?.find((q) => q.id === questionId);
+
       if (question) {
         bigFiveAnswers[questionId] = { question: question.text, answer: value };
       } else {
         // FALLBACK: Extract even without question bank
-        bigFiveAnswers[questionId] = { 
-          question: `BigFive question ${questionId}`, 
-          answer: value 
+        bigFiveAnswers[questionId] = {
+          question: `BigFive question ${questionId}`,
+          answer: value,
         };
         console.log(`Extracted BigFive answer without question bank: ${questionId} = ${value}`);
       }
     }
   });
-  
+
   console.log('BigFive answers extracted:', Object.keys(bigFiveAnswers).length);
 
   // Extract Work Values answers - IMPROVED: Extract even if workValuesQuestions is empty
@@ -680,21 +743,21 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
   Object.entries(answers).forEach(([key, value]) => {
     if (key.startsWith('values_')) {
       const questionId = key.replace('values_', '');
-      const question = workValuesQuestions?.find(q => q.id === questionId);
-      
+      const question = workValuesQuestions?.find((q) => q.id === questionId);
+
       if (question) {
         workValuesAnswers[questionId] = { question: question.text, answer: value };
       } else {
         // FALLBACK: Extract even without question bank
-        workValuesAnswers[questionId] = { 
-          question: `Work Values question ${questionId}`, 
-          answer: value 
+        workValuesAnswers[questionId] = {
+          question: `Work Values question ${questionId}`,
+          answer: value,
         };
         console.log(`Extracted WorkValues answer without question bank: ${questionId} = ${value}`);
       }
     }
   });
-  
+
   console.log('WorkValues answers extracted:', Object.keys(workValuesAnswers).length);
 
   // Extract Employability answers - IMPROVED: Extract even if employabilityQuestions is empty
@@ -707,16 +770,16 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
       Leadership: [],
       DigitalFluency: [],
       Professionalism: [],
-      CareerReadiness: []
+      CareerReadiness: [],
     },
-    sjt: []
+    sjt: [],
   };
 
   Object.entries(answers).forEach(([key, value]) => {
     if (key.startsWith('employability_')) {
       const questionId = key.replace('employability_', '');
-      const question = employabilityQuestions?.find(q => q.id === questionId);
-      
+      const question = employabilityQuestions?.find((q) => q.id === questionId);
+
       if (question) {
         if (question.partType === 'selfRating') {
           const domain = question.type;
@@ -724,7 +787,7 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
             employabilityAnswers.selfRating[domain].push({
               question: question.text,
               answer: value,
-              domain: question.moduleTitle
+              domain: question.moduleTitle,
             });
           }
         } else if (question.partType === 'sjt') {
@@ -743,7 +806,7 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
             correctWorst: question.worstAnswer,
             bestCorrect: studentBest === question.bestAnswer,
             worstCorrect: studentWorst === question.worstAnswer,
-            score
+            score,
           });
         }
       } else {
@@ -755,23 +818,24 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
             question: `Employability SJT question ${questionId}`,
             studentBestChoice: value?.best || value,
             studentWorstChoice: value?.worst || null,
-            score: 1 // Default score when we can't verify
+            score: 1, // Default score when we can't verify
           });
         } else {
           // Assume it's a self-rating question
           employabilityAnswers.selfRating.CareerReadiness.push({
             question: `Employability question ${questionId}`,
             answer: value,
-            domain: 'General'
+            domain: 'General',
           });
         }
         console.log(`Extracted Employability answer without question bank: ${questionId}`);
       }
     }
   });
-  
+
   console.log('Employability SJT answers extracted:', employabilityAnswers.sjt.length);
-  console.log('Employability selfRating categories with answers:', 
+  console.log(
+    'Employability selfRating categories with answers:',
     Object.entries(employabilityAnswers.selfRating)
       .filter(([_, arr]) => arr.length > 0)
       .map(([key, arr]) => `${key}:${arr.length}`)
@@ -788,20 +852,20 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
     console.warn('⚠️ NO KNOWLEDGE QUESTIONS AVAILABLE - Scoring will fail!');
     console.warn('⚠️ Check if fetchAIKnowledgeQuestions() returned questions');
   }
-  
+
   let knowledgeFound = 0;
   let knowledgeNotFound = 0;
   let knowledgeCorrect = 0;
-  
+
   Object.entries(answers).forEach(([key, value]) => {
     if (key.startsWith(`${knowledgePrefix}_`)) {
       const questionId = key.replace(`${knowledgePrefix}_`, '');
-      const question = streamQuestions.find(q => q.id === questionId);
+      const question = streamQuestions.find((q) => q.id === questionId);
       if (question) {
         knowledgeFound++;
         // Handle different field names for correct answer
         const correctAnswer = question.correct || question.correctAnswer || question.correct_answer;
-        
+
         // Normalize values for comparison
         const normalizeValue = (v) => {
           if (v === null || v === undefined) return '';
@@ -811,19 +875,19 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
           }
           return str;
         };
-        
+
         const normalizedStudentAnswer = normalizeValue(value);
         const normalizedCorrectAnswer = normalizeValue(correctAnswer);
         const isCorrect = normalizedStudentAnswer === normalizedCorrectAnswer;
-        
+
         if (isCorrect) knowledgeCorrect++;
-        
+
         knowledgeAnswers[questionId] = {
           question: question.text || question.question,
           studentAnswer: normalizedStudentAnswer,
           correctAnswer: normalizedCorrectAnswer,
           isCorrect: isCorrect,
-          options: question.options
+          options: question.options,
         };
       } else {
         knowledgeNotFound++;
@@ -833,7 +897,7 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
       }
     }
   });
-  
+
   console.log('📚 Knowledge Scoring Summary:');
   console.log(`   Questions found: ${knowledgeFound}`);
   console.log(`   Questions NOT found: ${knowledgeNotFound}`);
@@ -852,16 +916,18 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
       numerical: calculateAptitudeScore(aptitudeAnswers.numerical),
       abstract: calculateAptitudeScore(aptitudeAnswers.abstract),
       spatial: calculateAptitudeScore(aptitudeAnswers.spatial),
-      clerical: calculateAptitudeScore(aptitudeAnswers.clerical)
+      clerical: calculateAptitudeScore(aptitudeAnswers.clerical),
     };
   }
-  
+
   // Log calculated scores
   console.log('📊 Final Aptitude Scores:', JSON.stringify(aptitudeScores, null, 2));
   const totalCorrect = Object.values(aptitudeScores).reduce((sum, s) => sum + (s.correct || 0), 0);
   const totalQuestions = Object.values(aptitudeScores).reduce((sum, s) => sum + (s.total || 0), 0);
-  console.log(`📊 Total Aptitude: ${totalCorrect}/${totalQuestions} correct (${totalQuestions > 0 ? Math.round((totalCorrect/totalQuestions)*100) : 0}%)`);
-  
+  console.log(
+    `📊 Total Aptitude: ${totalCorrect}/${totalQuestions} correct (${totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0}%)`
+  );
+
   // Calculate knowledge score - USE PRE-CALCULATED if available
   let knowledgeCorrectCount, knowledgeTotalCount;
   if (preCalculatedScores?.knowledge) {
@@ -870,11 +936,12 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
     knowledgeTotalCount = preCalculatedScores.knowledge.total || 0;
   } else {
     console.log('⚠️ Calculating knowledge scores from questions (fallback)');
-    knowledgeCorrectCount = Object.values(knowledgeAnswers).filter(a => a.isCorrect).length;
+    knowledgeCorrectCount = Object.values(knowledgeAnswers).filter((a) => a.isCorrect).length;
     knowledgeTotalCount = Object.keys(knowledgeAnswers).length;
   }
-  console.log(`📚 Total Knowledge: ${knowledgeCorrectCount}/${knowledgeTotalCount} correct (${knowledgeTotalCount > 0 ? Math.round((knowledgeCorrectCount/knowledgeTotalCount)*100) : 0}%)`);
-
+  console.log(
+    `📚 Total Knowledge: ${knowledgeCorrectCount}/${knowledgeTotalCount} correct (${knowledgeTotalCount > 0 ? Math.round((knowledgeCorrectCount / knowledgeTotalCount) * 100) : 0}%)`
+  );
 
   // Calculate timing metrics
   const totalAptitudeQuestions = aptitudeQuestions?.length || 50;
@@ -883,45 +950,56 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
       seconds: sectionTimings.riasec || 0,
       formatted: formatTimeForPrompt(sectionTimings.riasec),
       questionsCount: riasecQuestions?.length || 0,
-      avgSecondsPerQuestion: sectionTimings.riasec && riasecQuestions?.length 
-        ? Math.round(sectionTimings.riasec / riasecQuestions.length) : 0
+      avgSecondsPerQuestion:
+        sectionTimings.riasec && riasecQuestions?.length
+          ? Math.round(sectionTimings.riasec / riasecQuestions.length)
+          : 0,
     },
     aptitude: {
       seconds: sectionTimings.aptitude || 0,
       formatted: formatTimeForPrompt(sectionTimings.aptitude),
       questionsCount: totalAptitudeQuestions,
-      avgSecondsPerQuestion: sectionTimings.aptitude 
-        ? Math.round(sectionTimings.aptitude / totalAptitudeQuestions) : 0
+      avgSecondsPerQuestion: sectionTimings.aptitude
+        ? Math.round(sectionTimings.aptitude / totalAptitudeQuestions)
+        : 0,
     },
     bigfive: {
       seconds: sectionTimings.bigfive || 0,
       formatted: formatTimeForPrompt(sectionTimings.bigfive),
       questionsCount: bigFiveQuestions?.length || 0,
-      avgSecondsPerQuestion: sectionTimings.bigfive && bigFiveQuestions?.length 
-        ? Math.round(sectionTimings.bigfive / bigFiveQuestions.length) : 0
+      avgSecondsPerQuestion:
+        sectionTimings.bigfive && bigFiveQuestions?.length
+          ? Math.round(sectionTimings.bigfive / bigFiveQuestions.length)
+          : 0,
     },
     values: {
       seconds: sectionTimings.values || 0,
       formatted: formatTimeForPrompt(sectionTimings.values),
       questionsCount: workValuesQuestions?.length || 0,
-      avgSecondsPerQuestion: sectionTimings.values && workValuesQuestions?.length 
-        ? Math.round(sectionTimings.values / workValuesQuestions.length) : 0
+      avgSecondsPerQuestion:
+        sectionTimings.values && workValuesQuestions?.length
+          ? Math.round(sectionTimings.values / workValuesQuestions.length)
+          : 0,
     },
     employability: {
       seconds: sectionTimings.employability || 0,
       formatted: formatTimeForPrompt(sectionTimings.employability),
       questionsCount: employabilityQuestions?.length || 0,
-      avgSecondsPerQuestion: sectionTimings.employability && employabilityQuestions?.length 
-        ? Math.round(sectionTimings.employability / employabilityQuestions.length) : 0
+      avgSecondsPerQuestion:
+        sectionTimings.employability && employabilityQuestions?.length
+          ? Math.round(sectionTimings.employability / employabilityQuestions.length)
+          : 0,
     },
     knowledge: {
       seconds: sectionTimings.knowledge || 0,
       formatted: formatTimeForPrompt(sectionTimings.knowledge),
       questionsCount: streamQuestions.length,
-      avgSecondsPerQuestion: sectionTimings.knowledge && streamQuestions.length 
-        ? Math.round(sectionTimings.knowledge / streamQuestions.length) : 0
+      avgSecondsPerQuestion:
+        sectionTimings.knowledge && streamQuestions.length
+          ? Math.round(sectionTimings.knowledge / streamQuestions.length)
+          : 0,
     },
-    totalTime: Object.values(sectionTimings).reduce((sum, t) => sum + (t || 0), 0)
+    totalTime: Object.values(sectionTimings).reduce((sum, t) => sum + (t || 0), 0),
   };
   timingData.totalFormatted = formatTimeForPrompt(timingData.totalTime);
 
@@ -938,43 +1016,43 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
   console.log('Employability SJT answers:', employabilityAnswers.sjt.length);
   console.log('Knowledge answers extracted:', Object.keys(knowledgeAnswers).length);
   console.log('Aptitude scores:', aptitudeScores);
-  
+
   // Debug: Check if riasecQuestions was provided
   console.log('riasecQuestions provided:', riasecQuestions?.length || 0);
   console.log('bigFiveQuestions provided:', bigFiveQuestions?.length || 0);
   console.log('workValuesQuestions provided:', workValuesQuestions?.length || 0);
   console.log('employabilityQuestions provided:', employabilityQuestions?.length || 0);
-  
+
   // Debug: Check for keys that should match RIASEC pattern
-  const riasecKeys = Object.keys(answers).filter(k => k.startsWith('riasec_'));
+  const riasecKeys = Object.keys(answers).filter((k) => k.startsWith('riasec_'));
   console.log('Keys starting with riasec_:', riasecKeys.length, riasecKeys.slice(0, 5));
 
   // ============================================================================
   // RULE-BASED STREAM RECOMMENDATION (For After 10th and After 12th students)
   // ============================================================================
   let ruleBasedStreamHint = null;
-  
+
   if (gradeLevel === 'after10' || gradeLevel === 'after12') {
     try {
       console.log(`🎯 Calculating rule-based stream recommendation for ${gradeLevel} student...`);
-      
+
       // Calculate RIASEC scores from answers for rule-based engine
       const riasecScores = { R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 };
-      Object.values(riasecAnswers).forEach(answer => {
+      Object.values(riasecAnswers).forEach((answer) => {
         const { answer: value, riasecType, categoryMapping, questionType } = answer;
-        
+
         // For after10/after12/college: Use riasecType directly from question
         if (riasecType) {
           // Rating-based scoring (1-5 scale)
           if (typeof value === 'number') {
             // Rating 1-2: 0 points, 3: 1 point, 4: 2 points, 5: 3 points
-            const points = value <= 2 ? 0 : (value === 3 ? 1 : (value === 4 ? 2 : 3));
+            const points = value <= 2 ? 0 : value === 3 ? 1 : value === 4 ? 2 : 3;
             riasecScores[riasecType] = (riasecScores[riasecType] || 0) + points;
           }
         }
         // For middle/high school: Use categoryMapping
         else if (questionType === 'multiselect' && Array.isArray(value)) {
-          value.forEach(option => {
+          value.forEach((option) => {
             const mappedType = categoryMapping?.[option];
             if (mappedType) riasecScores[mappedType] = (riasecScores[mappedType] || 0) + 2;
           });
@@ -988,7 +1066,7 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
           // For now, distribute evenly or skip
         }
       });
-      
+
       // ========================================================================
       // FLAT PROFILE DETECTION
       // ========================================================================
@@ -998,33 +1076,40 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
       const minRiasec = Math.min(...riasecValues);
       const riasecRange = maxRiasec - minRiasec;
       const avgRiasec = riasecValues.reduce((a, b) => a + b, 0) / riasecValues.length;
-      
+
       // Calculate variance to detect flat profile
-      const riasecVariance = riasecValues.reduce((sum, val) => sum + Math.pow(val - avgRiasec, 2), 0) / riasecValues.length;
+      const riasecVariance =
+        riasecValues.reduce((sum, val) => sum + Math.pow(val - avgRiasec, 2), 0) /
+        riasecValues.length;
       const riasecStdDev = Math.sqrt(riasecVariance);
-      
+
       // Flat profile: low standard deviation (all scores within ~3 points of each other)
       const isFlatProfile = riasecStdDev < 2 || riasecRange < 4;
-      
+
       console.log('📊 RIASEC Profile Analysis:');
       console.log('   Range:', riasecRange, '(max:', maxRiasec, '- min:', minRiasec, ')');
       console.log('   Std Dev:', riasecStdDev.toFixed(2));
       console.log('   Is Flat Profile:', isFlatProfile);
-      
+
       // Calculate rule-based recommendation
       const ruleBasedRecommendation = calculateStreamRecommendations(
         { riasec: { scores: riasecScores } },
         { subjectMarks: [], projects: [], experiences: [] }
       );
-      
+
       // Adjust confidence for flat profiles
       let adjustedConfidence = ruleBasedRecommendation.confidenceScore;
       if (isFlatProfile) {
         // Lower confidence for flat profiles - max 70%
         adjustedConfidence = Math.min(70, adjustedConfidence);
-        console.log('⚠️ Flat profile detected - lowering confidence from', ruleBasedRecommendation.confidenceScore, 'to', adjustedConfidence);
+        console.log(
+          '⚠️ Flat profile detected - lowering confidence from',
+          ruleBasedRecommendation.confidenceScore,
+          'to',
+          adjustedConfidence
+        );
       }
-      
+
       ruleBasedStreamHint = {
         stream: ruleBasedRecommendation.recommendedStream,
         streamId: ruleBasedRecommendation.allStreamScores?.[0]?.streamId || 'pcms',
@@ -1033,20 +1118,22 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
         reasoning: ruleBasedRecommendation.reasoning,
         riasecScores: riasecScores,
         alternativeStream: ruleBasedRecommendation.alternativeStream,
-        allScores: ruleBasedRecommendation.allStreamScores?.slice(0, 3).map(s => ({
+        allScores: ruleBasedRecommendation.allStreamScores?.slice(0, 3).map((s) => ({
           stream: s.streamName,
           score: s.matchScore,
-          category: s.category
+          category: s.category,
         })),
         // Add flat profile info for AI to consider
         profileAnalysis: {
           isFlatProfile,
           riasecRange,
           riasecStdDev: riasecStdDev.toFixed(2),
-          warning: isFlatProfile ? 'Student has undifferentiated interests - multiple streams may be equally valid' : null
-        }
+          warning: isFlatProfile
+            ? 'Student has undifferentiated interests - multiple streams may be equally valid'
+            : null,
+        },
       };
-      
+
       console.log('✅ Rule-based recommendation:', ruleBasedStreamHint.stream);
       console.log('   Confidence:', ruleBasedStreamHint.confidence + '%');
       console.log('   RIASEC Scores:', riasecScores);
@@ -1061,9 +1148,26 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
   let degreeLevel = studentContext.degreeLevel;
   if (!degreeLevel && studentContext.rawGrade) {
     const gradeStr = studentContext.rawGrade.toLowerCase();
-    if (gradeStr.includes('pg') || gradeStr.includes('postgraduate') || gradeStr.includes('m.tech') || gradeStr.includes('mtech') || gradeStr.includes('mca') || gradeStr.includes('mba') || gradeStr.includes('m.sc')) {
+    if (
+      gradeStr.includes('pg') ||
+      gradeStr.includes('postgraduate') ||
+      gradeStr.includes('m.tech') ||
+      gradeStr.includes('mtech') ||
+      gradeStr.includes('mca') ||
+      gradeStr.includes('mba') ||
+      gradeStr.includes('m.sc')
+    ) {
       degreeLevel = 'postgraduate';
-    } else if (gradeStr.includes('ug') || gradeStr.includes('undergraduate') || gradeStr.includes('b.tech') || gradeStr.includes('btech') || gradeStr.includes('bca') || gradeStr.includes('b.sc') || gradeStr.includes('b.com') || gradeStr.includes('ba ')) {
+    } else if (
+      gradeStr.includes('ug') ||
+      gradeStr.includes('undergraduate') ||
+      gradeStr.includes('b.tech') ||
+      gradeStr.includes('btech') ||
+      gradeStr.includes('bca') ||
+      gradeStr.includes('b.sc') ||
+      gradeStr.includes('b.com') ||
+      gradeStr.includes('ba ')
+    ) {
       degreeLevel = 'undergraduate';
     } else if (gradeStr.includes('diploma')) {
       degreeLevel = 'diploma';
@@ -1090,8 +1194,8 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
       rawGrade: studentContext.rawGrade || null,
       programName: studentContext.programName || null,
       programCode: studentContext.programCode || null,
-      degreeLevel: degreeLevel || null
-    }
+      degreeLevel: degreeLevel || null,
+    },
   };
 };
 
@@ -1101,7 +1205,7 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
 
 /**
  * Analyze assessment results using OpenRouter AI via Cloudflare Worker
- * 
+ *
  * @param {Object} answers - All answers from the assessment
  * @param {string} stream - Student's selected stream
  * @param {Object} questionBanks - All question banks for reference
@@ -1111,10 +1215,10 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
  * @returns {Promise<Object>} - AI-analyzed results with course recommendations
  */
 export const analyzeAssessmentWithOpenRouter = async (
-  answers, 
-  stream, 
-  questionBanks, 
-  sectionTimings = {}, 
+  answers,
+  stream,
+  questionBanks,
+  sectionTimings = {},
   gradeLevel = 'after12',
   preCalculatedScores = null,
   studentContext = {}
@@ -1122,14 +1226,24 @@ export const analyzeAssessmentWithOpenRouter = async (
   console.log('🤖 Starting assessment analysis...');
   console.log(`📊 Grade: ${gradeLevel}, Stream: ${stream}`);
   if (studentContext.rawGrade) {
-    console.log(`📚 Student Context: ${studentContext.rawGrade}${studentContext.programName ? ` (${studentContext.programName})` : ''}`);
+    console.log(
+      `📚 Student Context: ${studentContext.rawGrade}${studentContext.programName ? ` (${studentContext.programName})` : ''}`
+    );
   }
-  
+
   updateProgress('preparing', 'Preparing your assessment data...');
-  
+
   try {
     // Prepare the assessment data (includes rule-based stream hint for after10 and student context)
-    const assessmentData = prepareAssessmentData(answers, stream, questionBanks, sectionTimings, gradeLevel, preCalculatedScores, studentContext);
+    const assessmentData = prepareAssessmentData(
+      answers,
+      stream,
+      questionBanks,
+      sectionTimings,
+      gradeLevel,
+      preCalculatedScores,
+      studentContext
+    );
 
     // Call the Cloudflare Worker (handles prompt building and AI call)
     let parsedResults = await callOpenRouterAssessment(assessmentData);
@@ -1149,7 +1263,9 @@ export const analyzeAssessmentWithOpenRouter = async (
     // Add course recommendations (fetch studentId from auth)
     let studentId = null;
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (user) {
         // Get student_id from students table
         const { data: student } = await supabase
@@ -1168,17 +1284,16 @@ export const analyzeAssessmentWithOpenRouter = async (
     // This improves assessment generation speed significantly
     console.log('📋 Skipping course generation (will be generated on-demand)');
     // const resultsWithCourses = await addCourseRecommendations(parsedResults, studentId);
-    
+
     updateProgress('saving', 'Saving your results...');
-    
+
     console.log('✅ Assessment analysis complete');
-    
+
     // Mark as complete after a short delay to show the saving stage
     setTimeout(() => updateProgress('complete', 'Analysis complete!'), 500);
-    
+
     // Return results without courses
     return parsedResults;
-    
   } catch (error) {
     console.error('❌ Assessment analysis failed:', error.message);
     updateProgress('error', error.message);
@@ -1201,7 +1316,7 @@ export const calculateKnowledgeWithGemini = async (answers, questions) => {
   Object.entries(answers).forEach(([key, value]) => {
     if (key.startsWith('knowledge_')) {
       const questionId = key.replace('knowledge_', '');
-      const question = questions.find(q => q.id === questionId);
+      const question = questions.find((q) => q.id === questionId);
 
       if (question) {
         total++;
@@ -1220,12 +1335,12 @@ export const calculateKnowledgeWithGemini = async (answers, questions) => {
     correctCount: correct,
     totalQuestions: total,
     strongTopics: correctTopics.slice(0, 3),
-    weakTopics: incorrectTopics.slice(0, 3)
+    weakTopics: incorrectTopics.slice(0, 3),
   };
 };
 
 export default {
   analyzeAssessmentWithOpenRouter,
   analyzeAssessmentWithGemini: analyzeAssessmentWithOpenRouter,
-  calculateKnowledgeWithGemini
+  calculateKnowledgeWithGemini,
 };

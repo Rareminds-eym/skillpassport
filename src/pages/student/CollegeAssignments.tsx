@@ -16,7 +16,7 @@ import {
   Zap,
   Star,
   Filter,
-  Search
+  Search,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -25,7 +25,8 @@ const MOCK_ASSIGNMENTS = [
   {
     assignment_id: '1',
     title: 'Data Structures Assignment - Binary Trees',
-    description: 'Implement various binary tree operations including insertion, deletion, and traversal algorithms.',
+    description:
+      'Implement various binary tree operations including insertion, deletion, and traversal algorithms.',
     course_name: 'Data Structures and Algorithms',
     course_code: 'CS301',
     assignment_type: 'homework',
@@ -35,12 +36,13 @@ const MOCK_ASSIGNMENTS = [
     skill_outcomes: ['Problem Solving', 'Programming', 'Data Structures'],
     allow_late_submission: true,
     created_date: '2024-01-20T10:00:00',
-    student_assignment_id: 'sa1'
+    student_assignment_id: 'sa1',
   },
   {
     assignment_id: '2',
     title: 'Database Design Project',
-    description: 'Design and implement a complete database schema for an e-commerce application with proper normalization.',
+    description:
+      'Design and implement a complete database schema for an e-commerce application with proper normalization.',
     course_name: 'Database Management Systems',
     course_code: 'CS302',
     assignment_type: 'project',
@@ -50,12 +52,13 @@ const MOCK_ASSIGNMENTS = [
     skill_outcomes: ['Database Design', 'SQL', 'Problem Solving'],
     allow_late_submission: false,
     created_date: '2024-01-18T10:00:00',
-    student_assignment_id: 'sa2'
+    student_assignment_id: 'sa2',
   },
   {
     assignment_id: '3',
     title: 'Machine Learning Lab Report',
-    description: 'Complete analysis of supervised learning algorithms with implementation and comparison.',
+    description:
+      'Complete analysis of supervised learning algorithms with implementation and comparison.',
     course_name: 'Machine Learning',
     course_code: 'CS401',
     assignment_type: 'lab',
@@ -67,8 +70,8 @@ const MOCK_ASSIGNMENTS = [
     allow_late_submission: true,
     created_date: '2024-01-10T10:00:00',
     student_assignment_id: 'sa3',
-    grade_percentage: 85
-  }
+    grade_percentage: 85,
+  },
 ];
 
 const MOCK_STATS = {
@@ -77,7 +80,7 @@ const MOCK_STATS = {
   inProgress: 4,
   submitted: 3,
   graded: 2,
-  averageGrade: 82
+  averageGrade: 82,
 };
 
 type StatusType = 'all' | 'todo' | 'in-progress' | 'submitted' | 'graded';
@@ -106,10 +109,14 @@ const CollegeAssignments: React.FC = () => {
 
   // Filter assignments
   const filteredAssignments = useMemo(() => {
-    return assignments.filter(assignment => {
+    return assignments.filter((assignment) => {
       if (selectedStatus !== 'all' && assignment.status !== selectedStatus) return false;
-      if (searchQuery && !assignment.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
-          !assignment.course_name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+      if (
+        searchQuery &&
+        !assignment.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
+        !assignment.course_name.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+        return false;
       return true;
     });
   }, [assignments, selectedStatus, searchQuery]);
@@ -126,18 +133,22 @@ const CollegeAssignments: React.FC = () => {
     const dueDateStr = dueDate.replace('Z', '').replace('+00:00', '').replace('T', ' ');
     const localDue = new Date(dueDateStr);
     const diffTime = localDue.getTime() - now.getTime();
-    
+
     if (diffTime < 0) {
       const overdueDays = Math.floor(Math.abs(diffTime) / (1000 * 60 * 60 * 24));
       if (overdueDays > 0) {
-        return <span className="text-red-700 font-medium">{overdueDays} day{overdueDays > 1 ? 's' : ''} overdue</span>;
+        return (
+          <span className="text-red-700 font-medium">
+            {overdueDays} day{overdueDays > 1 ? 's' : ''} overdue
+          </span>
+        );
       }
       return <span className="text-red-700 font-medium">Overdue</span>;
     }
-    
+
     const remainingDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
     const remainingHours = Math.floor((diffTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    
+
     if (remainingDays > 1) {
       return <span className="text-gray-600">{remainingDays} days left</span>;
     } else if (remainingDays === 1) {
@@ -149,16 +160,41 @@ const CollegeAssignments: React.FC = () => {
   };
 
   const getStatusBadge = (status: string) => {
-    const configs: Record<string, { bg: string; text: string; label: string; icon: React.ComponentType<{ className?: string }> }> = {
-      'todo': { bg: 'bg-gray-100 border-gray-200', text: 'text-gray-700', label: 'To Do', icon: ClipboardList },
-      'in-progress': { bg: 'bg-blue-100 border-blue-200', text: 'text-blue-700', label: 'In Progress', icon: Zap },
-      'submitted': { bg: 'bg-purple-100 border-purple-200', text: 'text-purple-700', label: 'Submitted', icon: CheckSquare },
-      'graded': { bg: 'bg-green-100 border-green-200', text: 'text-green-700', label: 'Graded', icon: Star }
+    const configs: Record<
+      string,
+      { bg: string; text: string; label: string; icon: React.ComponentType<{ className?: string }> }
+    > = {
+      todo: {
+        bg: 'bg-gray-100 border-gray-200',
+        text: 'text-gray-700',
+        label: 'To Do',
+        icon: ClipboardList,
+      },
+      'in-progress': {
+        bg: 'bg-blue-100 border-blue-200',
+        text: 'text-blue-700',
+        label: 'In Progress',
+        icon: Zap,
+      },
+      submitted: {
+        bg: 'bg-purple-100 border-purple-200',
+        text: 'text-purple-700',
+        label: 'Submitted',
+        icon: CheckSquare,
+      },
+      graded: {
+        bg: 'bg-green-100 border-green-200',
+        text: 'text-green-700',
+        label: 'Graded',
+        icon: Star,
+      },
     };
     const config = configs[status] || configs.todo;
     const IconComponent = config.icon;
     return (
-      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ${config.bg} ${config.text} shadow-sm`}>
+      <span
+        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ${config.bg} ${config.text} shadow-sm`}
+      >
         <IconComponent className="w-3 h-3" />
         {config.label}
       </span>
@@ -231,9 +267,14 @@ const CollegeAssignments: React.FC = () => {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Search Assignments</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Search Assignments
+              </label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                <Search
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                  size={20}
+                />
                 <input
                   type="text"
                   placeholder="Search by title or course..."
@@ -243,11 +284,16 @@ const CollegeAssignments: React.FC = () => {
                 />
               </div>
             </div>
-            
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Status</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Filter by Status
+              </label>
               <div className="relative">
-                <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                <Filter
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                  size={20}
+                />
                 <select
                   value={selectedStatus}
                   onChange={(e) => setSelectedStatus(e.target.value as StatusType)}
@@ -273,59 +319,70 @@ const CollegeAssignments: React.FC = () => {
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">No Assignments Found</h3>
               <p className="text-gray-600">
-                {searchQuery || selectedStatus !== 'all' 
-                  ? 'Try adjusting your filters' 
+                {searchQuery || selectedStatus !== 'all'
+                  ? 'Try adjusting your filters'
                   : 'Your assignments will appear here when educators create them'}
               </p>
             </div>
           ) : (
-            filteredAssignments.map(assignment => {
+            filteredAssignments.map((assignment) => {
               const overdueStatus = isOverdue(assignment.due_date);
-              const isSubmitted = assignment.status === 'submitted' || assignment.status === 'graded';
-              
+              const isSubmitted =
+                assignment.status === 'submitted' || assignment.status === 'graded';
+
               return (
-                <div 
-                  key={assignment.assignment_id} 
+                <div
+                  key={assignment.assignment_id}
                   className={`bg-white rounded-xl shadow-sm border-2 transition-all hover:shadow-md ${
                     overdueStatus && !isSubmitted
-                      ? 'border-red-200 bg-red-50/30' 
+                      ? 'border-red-200 bg-red-50/30'
                       : isSubmitted
-                      ? 'border-green-200 bg-green-50/30'
-                      : 'border-gray-200'
+                        ? 'border-green-200 bg-green-50/30'
+                        : 'border-gray-200'
                   }`}
                 >
                   {/* Status Bar */}
-                  <div className={`h-2 rounded-t-xl ${
-                    overdueStatus && !isSubmitted
-                      ? 'bg-gradient-to-r from-red-400 to-red-600' 
-                      : isSubmitted
-                      ? 'bg-gradient-to-r from-green-400 to-green-600'
-                      : assignment.status === 'in-progress'
-                      ? 'bg-gradient-to-r from-blue-400 to-blue-600'
-                      : 'bg-gradient-to-r from-gray-300 to-gray-400'
-                  }`} />
-                  
+                  <div
+                    className={`h-2 rounded-t-xl ${
+                      overdueStatus && !isSubmitted
+                        ? 'bg-gradient-to-r from-red-400 to-red-600'
+                        : isSubmitted
+                          ? 'bg-gradient-to-r from-green-400 to-green-600'
+                          : assignment.status === 'in-progress'
+                            ? 'bg-gradient-to-r from-blue-400 to-blue-600'
+                            : 'bg-gradient-to-r from-gray-300 to-gray-400'
+                    }`}
+                  />
+
                   <div className="p-6">
                     {/* Header */}
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
-                          <div className={`p-2 rounded-xl ${
-                            overdueStatus && !isSubmitted
-                              ? 'bg-red-100 text-red-600' 
-                              : isSubmitted
-                              ? 'bg-green-100 text-green-600'
-                              : 'bg-blue-100 text-blue-600'
-                          }`}>
+                          <div
+                            className={`p-2 rounded-xl ${
+                              overdueStatus && !isSubmitted
+                                ? 'bg-red-100 text-red-600'
+                                : isSubmitted
+                                  ? 'bg-green-100 text-green-600'
+                                  : 'bg-blue-100 text-blue-600'
+                            }`}
+                          >
                             <ClipboardList className="w-5 h-5" />
                           </div>
                           <div className="flex-1">
-                            <h3 className="text-lg font-semibold text-gray-900">{assignment.title}</h3>
-                            <p className="text-sm text-gray-600">{assignment.course_name} ({assignment.course_code})</p>
+                            <h3 className="text-lg font-semibold text-gray-900">
+                              {assignment.title}
+                            </h3>
+                            <p className="text-sm text-gray-600">
+                              {assignment.course_name} ({assignment.course_code})
+                            </p>
                           </div>
                         </div>
                         {assignment.description && (
-                          <p className="text-sm text-gray-600 line-clamp-2 ml-14">{assignment.description}</p>
+                          <p className="text-sm text-gray-600 line-clamp-2 ml-14">
+                            {assignment.description}
+                          </p>
                         )}
                       </div>
                       <div className="flex items-center gap-2 ml-4">
@@ -348,7 +405,7 @@ const CollegeAssignments: React.FC = () => {
                           <p className="text-sm font-semibold text-gray-900">
                             {parseAsLocalDate(assignment.due_date).toLocaleDateString('en-US', {
                               month: 'short',
-                              day: 'numeric'
+                              day: 'numeric',
                             })}
                           </p>
                           <div className="text-xs">{getDaysRemaining(assignment.due_date)}</div>
@@ -359,9 +416,13 @@ const CollegeAssignments: React.FC = () => {
                         <Target className="w-4 h-4 text-gray-600" />
                         <div>
                           <p className="text-xs text-gray-500">Points</p>
-                          <p className="text-sm font-semibold text-gray-900">{assignment.total_points}</p>
+                          <p className="text-sm font-semibold text-gray-900">
+                            {assignment.total_points}
+                          </p>
                           {assignment.grade_percentage && (
-                            <p className="text-xs text-green-600 font-medium">Grade: {assignment.grade_percentage}%</p>
+                            <p className="text-xs text-green-600 font-medium">
+                              Grade: {assignment.grade_percentage}%
+                            </p>
                           )}
                         </div>
                       </div>
@@ -391,7 +452,10 @@ const CollegeAssignments: React.FC = () => {
                     {assignment.skill_outcomes && assignment.skill_outcomes.length > 0 && (
                       <div className="flex flex-wrap gap-2 mb-4">
                         {assignment.skill_outcomes.map((skill: string, index: number) => (
-                          <span key={index} className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                          <span
+                            key={index}
+                            className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium"
+                          >
                             {skill}
                           </span>
                         ))}
@@ -403,11 +467,15 @@ const CollegeAssignments: React.FC = () => {
                       <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
                         <CheckCircle2 className="w-4 h-4 text-green-600" />
                         <p className="text-sm text-green-800">
-                          Submitted on {parseAsLocalDate(assignment.submission_date).toLocaleDateString('en-US', {
-                            month: 'long',
-                            day: 'numeric',
-                            year: 'numeric'
-                          })}
+                          Submitted on{' '}
+                          {parseAsLocalDate(assignment.submission_date).toLocaleDateString(
+                            'en-US',
+                            {
+                              month: 'long',
+                              day: 'numeric',
+                              year: 'numeric',
+                            }
+                          )}
                         </p>
                       </div>
                     )}
@@ -421,11 +489,9 @@ const CollegeAssignments: React.FC = () => {
                         <FileText className="w-4 h-4" />
                         View Details
                       </button>
-                      
+
                       {assignment.status !== 'submitted' && assignment.status !== 'graded' && (
-                        <button
-                          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                        >
+                        <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
                           <Upload className="w-4 h-4" />
                           Upload Submission
                         </button>
@@ -442,18 +508,26 @@ const CollegeAssignments: React.FC = () => {
         {showDetailsModal && selectedAssignment && (
           <div className="fixed inset-0 z-50 overflow-y-auto">
             <div className="flex items-center justify-center min-h-screen px-4 py-8">
-              <div className="fixed inset-0 bg-gray-900 bg-opacity-50" onClick={() => setShowDetailsModal(false)} />
+              <div
+                className="fixed inset-0 bg-gray-900 bg-opacity-50"
+                onClick={() => setShowDetailsModal(false)}
+              />
               <div className="relative bg-white rounded-xl shadow-xl max-w-3xl w-full p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-2xl font-bold text-gray-900">Assignment Details</h2>
-                  <button onClick={() => setShowDetailsModal(false)} className="text-gray-400 hover:text-gray-600">
+                  <button
+                    onClick={() => setShowDetailsModal(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
                     <X size={24} />
                   </button>
                 </div>
 
                 <div className="space-y-6">
                   <div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">{selectedAssignment.title}</h3>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">
+                      {selectedAssignment.title}
+                    </h3>
                     <p className="text-gray-600">{selectedAssignment.description}</p>
                   </div>
 
@@ -481,18 +555,22 @@ const CollegeAssignments: React.FC = () => {
                     </div>
                   </div>
 
-                  {selectedAssignment.skill_outcomes && selectedAssignment.skill_outcomes.length > 0 && (
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-700 mb-2">Skill Outcomes</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedAssignment.skill_outcomes.map((skill: string, index: number) => (
-                          <span key={index} className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
-                            {skill}
-                          </span>
-                        ))}
+                  {selectedAssignment.skill_outcomes &&
+                    selectedAssignment.skill_outcomes.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-700 mb-2">Skill Outcomes</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedAssignment.skill_outcomes.map((skill: string, index: number) => (
+                            <span
+                              key={index}
+                              className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium"
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
                 </div>
 
                 <div className="mt-6 flex justify-end">

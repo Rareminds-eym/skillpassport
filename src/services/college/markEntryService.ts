@@ -33,8 +33,10 @@ export const markEntryService = {
         }
 
         // Validate marks range
-        if (entry.marks_obtained !== undefined && 
-            (entry.marks_obtained < 0 || entry.marks_obtained > assessment.total_marks)) {
+        if (
+          entry.marks_obtained !== undefined &&
+          (entry.marks_obtained < 0 || entry.marks_obtained > assessment.total_marks)
+        ) {
           errors.push({
             student_id: entry.student_id,
             message: `Marks must be between 0 and ${assessment.total_marks}`,
@@ -56,10 +58,7 @@ export const markEntryService = {
         };
       }
 
-      const { data, error } = await supabase
-        .from('mark_entries')
-        .upsert(validatedEntries)
-        .select();
+      const { data, error } = await supabase.from('mark_entries').upsert(validatedEntries).select();
 
       if (error) throw error;
 
@@ -78,7 +77,10 @@ export const markEntryService = {
   /**
    * Bulk upload marks from CSV
    */
-  async bulkUploadMarks(assessmentId: string, csvData: any[]): Promise<ApiResponse<BulkImportResult>> {
+  async bulkUploadMarks(
+    assessmentId: string,
+    csvData: any[]
+  ): Promise<ApiResponse<BulkImportResult>> {
     try {
       const result: BulkImportResult = {
         success: 0,
@@ -100,7 +102,7 @@ export const markEntryService = {
       for (const entry of entries) {
         const { rowNumber, ...entryData } = entry;
         const entryResult = await this.enterMarks([entryData]);
-        
+
         if (entryResult.success) {
           result.success++;
         } else {
@@ -179,9 +181,9 @@ export const markEntryService = {
    * Property 22: Moderation audit trail
    */
   async moderateMarks(
-    entryId: string, 
-    newMarks: number, 
-    reason: string, 
+    entryId: string,
+    newMarks: number,
+    reason: string,
     moderatedBy: string
   ): Promise<ApiResponse<void>> {
     try {
@@ -255,10 +257,7 @@ export const markEntryService = {
         const percentage = (entry.marks_obtained / assessment.total_marks) * 100;
         const grade = this.calculateGradeFromPercentage(percentage);
 
-        await supabase
-          .from('mark_entries')
-          .update({ grade })
-          .eq('id', entry.id);
+        await supabase.from('mark_entries').update({ grade }).eq('id', entry.id);
       }
 
       return { success: true, data: undefined };
@@ -316,12 +315,17 @@ export const markEntryService = {
       // Calculate SGPA/CGPA (simplified - would need course credits)
       // This is a placeholder implementation
       const gradePoints: { [key: string]: number } = {
-        'O': 10, 'A+': 9, 'A': 8, 'B+': 7, 'B': 6, 'C': 5, 'F': 0
+        O: 10,
+        'A+': 9,
+        A: 8,
+        'B+': 7,
+        B: 6,
+        C: 5,
+        F: 0,
       };
 
-      const totalPoints = entries?.reduce((sum, entry) => 
-        sum + (gradePoints[entry.grade] || 0), 0
-      ) || 0;
+      const totalPoints =
+        entries?.reduce((sum, entry) => sum + (gradePoints[entry.grade] || 0), 0) || 0;
 
       const cgpa = entries && entries.length > 0 ? totalPoints / entries.length : 0;
 

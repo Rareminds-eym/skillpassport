@@ -1,16 +1,16 @@
 import {
-    AlertCircle,
-    ArrowLeft,
-    Check,
-    CheckCircle,
-    CreditCard,
-    Lock,
-    Mail,
-    Phone,
-    Shield,
-    Sparkles,
-    User,
-    Zap,
+  AlertCircle,
+  ArrowLeft,
+  Check,
+  CheckCircle,
+  CreditCard,
+  Lock,
+  Mail,
+  Phone,
+  Shield,
+  Sparkles,
+  User,
+  Zap,
 } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -26,7 +26,7 @@ import { initiateRazorpayPayment } from '../../services/Subscriptions/razorpaySe
  */
 function getManagePath(userRole) {
   if (!userRole) return null; // Return null to prevent wrong redirects
-  
+
   const manageRoutes = {
     super_admin: '/admin/subscription/manage',
     rm_admin: '/admin/subscription/manage',
@@ -246,15 +246,18 @@ function PaymentCompletion() {
       // CRITICAL: Verify user actually exists in database (not just localStorage)
       try {
         // First check if user exists in auth.users via session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
+        const {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession();
+
         if (sessionError || !session?.user) {
           console.warn('⚠️ No valid Supabase session found, clearing stale data');
           // Clear stale localStorage data
           localStorage.removeItem('user');
           localStorage.removeItem('userEmail');
           localStorage.removeItem('pendingUser');
-          
+
           if (plan) {
             localStorage.setItem('payment_plan_details', JSON.stringify({ ...plan, studentType }));
           }
@@ -283,15 +286,17 @@ function PaymentCompletion() {
           // Try to get details from auth metadata
           const authUser = session.user;
           const metadata = authUser.user_metadata || {};
-          
+
           setUserDetails({
             name: metadata.name || metadata.full_name || '',
             email: authUser.email || '',
             phone: metadata.phone || '',
           });
-          
+
           // Set error to inform user
-          setError('Your account setup is incomplete. Please complete payment to finish registration.');
+          setError(
+            'Your account setup is incomplete. Please complete payment to finish registration.'
+          );
           return;
         }
 
@@ -304,7 +309,6 @@ function PaymentCompletion() {
         });
 
         console.log('✅ User validated successfully');
-
       } catch (err) {
         console.error('❌ Error validating user:', err);
         // On error, try to use available data
@@ -325,13 +329,13 @@ function PaymentCompletion() {
       const status = subscriptionData.status;
       const endDate = subscriptionData.endDate ? new Date(subscriptionData.endDate) : null;
       const now = new Date();
-      
+
       // Check if subscription has valid access
-      const hasValidAccess = 
-        status === 'active' || 
+      const hasValidAccess =
+        status === 'active' ||
         status === 'paused' ||
         (status === 'cancelled' && endDate && endDate > now);
-      
+
       if (hasValidAccess) {
         navigate(managePath, { replace: true });
       }
@@ -397,7 +401,11 @@ function PaymentCompletion() {
           plan,
           userDetails: { ...userDetails, studentType },
           onSuccess: (verificationResult) => {
-            const routes = { school: '/signin/school', university: '/signin/university', default: '/signup' };
+            const routes = {
+              school: '/signin/school',
+              university: '/signin/university',
+              default: '/signup',
+            };
             navigate(routes[studentType] || routes.default, {
               state: { paymentDetails: verificationResult },
               replace: true,
@@ -425,7 +433,11 @@ function PaymentCompletion() {
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-3 border-gray-200 border-t-[#2663EB] rounded-full animate-spin" />
           <p className="text-sm text-gray-500">
-            {authLoading ? 'Checking authentication...' : !isAuthenticated ? 'Redirecting...' : 'Loading...'}
+            {authLoading
+              ? 'Checking authentication...'
+              : !isAuthenticated
+                ? 'Redirecting...'
+                : 'Loading...'}
           </p>
         </div>
       </div>
@@ -456,7 +468,9 @@ function PaymentCompletion() {
                   </div>
                   <div>
                     <h1 className="text-xl font-bold text-gray-900">Complete Payment</h1>
-                    <p className="text-sm text-gray-500 mt-0.5">Enter your details to proceed securely</p>
+                    <p className="text-sm text-gray-500 mt-0.5">
+                      Enter your details to proceed securely
+                    </p>
                   </div>
                 </div>
 

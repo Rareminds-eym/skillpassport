@@ -35,7 +35,11 @@ const FilterSection = ({ title, children, defaultOpen = false }: any) => {
   );
 };
 
-const CheckboxGroup = ({ options, selectedValues, onChange }: {
+const CheckboxGroup = ({
+  options,
+  selectedValues,
+  onChange,
+}: {
   options: Array<{ value: string; label: string; count?: number }>;
   selectedValues: string[];
   onChange: (values: string[]) => void;
@@ -51,15 +55,13 @@ const CheckboxGroup = ({ options, selectedValues, onChange }: {
               if (e.target.checked) {
                 onChange([...selectedValues, option.value]);
               } else {
-                onChange(selectedValues.filter(v => v !== option.value));
+                onChange(selectedValues.filter((v) => v !== option.value));
               }
             }}
             className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
           />
           <span className="ml-2 text-sm text-gray-700">{option.label}</span>
-          {option.count && (
-            <span className="ml-auto text-xs text-gray-500">({option.count})</span>
-          )}
+          {option.count && <span className="ml-auto text-xs text-gray-500">({option.count})</span>}
         </label>
       ))}
     </div>
@@ -72,26 +74,34 @@ const StatusBadgeComponent = ({ status }: { status: string }) => {
     pending: { color: 'bg-yellow-100 text-yellow-800', label: 'Pending' },
     graduated: { color: 'bg-blue-100 text-blue-800', label: 'Graduated' },
     withdrawn: { color: 'bg-red-100 text-red-800', label: 'Withdrawn' },
-    suspended: { color: 'bg-orange-100 text-orange-800', label: 'Suspended' }
+    suspended: { color: 'bg-orange-100 text-orange-800', label: 'Suspended' },
   };
 
-  const config = statusConfig[status as keyof typeof statusConfig] || { color: 'bg-gray-100 text-gray-800', label: status };
+  const config = statusConfig[status as keyof typeof statusConfig] || {
+    color: 'bg-gray-100 text-gray-800',
+    label: status,
+  };
 
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
+    <span
+      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}
+    >
       {config.label}
     </span>
   );
 };
 
-const StudentCard = ({ student, onViewProfile, onAddNote, onViewCareerPath }: {
+const StudentCard = ({
+  student,
+  onViewProfile,
+  onAddNote,
+  onViewCareerPath,
+}: {
   student: any;
   onViewProfile: (student: any) => void;
   onAddNote: (student: any) => void;
   onViewCareerPath: (student: any) => void;
 }) => {
-
-
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between mb-3">
@@ -103,14 +113,15 @@ const StudentCard = ({ student, onViewProfile, onAddNote, onViewCareerPath }: {
         <div className="flex flex-col items-end">
           <div className="flex items-center mb-1">
             <StarIcon className="h-4 w-4 text-yellow-400 fill-current" />
-            <span className="text-sm font-medium text-gray-700 ml-1">{student.ai_score_overall || '0'}</span>
+            <span className="text-sm font-medium text-gray-700 ml-1">
+              {student.ai_score_overall || '0'}
+            </span>
           </div>
           <StatusBadgeComponent status={student.approval_status || 'pending'} />
         </div>
       </div>
 
-      <div className="mb-3">
-      </div>
+      <div className="mb-3"></div>
 
       <div className="mb-4 space-y-1">
         {(student.college || student.profile?.university) && (
@@ -118,19 +129,11 @@ const StudentCard = ({ student, onViewProfile, onAddNote, onViewCareerPath }: {
             📚 {student.college || student.profile?.university}
           </p>
         )}
-        {student.dept && (
-          <p className="text-xs text-gray-600">
-            🎓 {student.dept}
-          </p>
-        )}
+        {student.dept && <p className="text-xs text-gray-600">🎓 {student.dept}</p>}
       </div>
 
-
-
       <div className="flex items-center justify-between">
-        <span className="text-xs text-gray-500">
-          {student.location || 'N/A'}
-        </span>
+        <span className="text-xs text-gray-500">{student.location || 'N/A'}</span>
         <div className="flex space-x-1 flex-wrap gap-1">
           <button
             onClick={() => onViewProfile(student)}
@@ -182,18 +185,27 @@ const StudentDataAdmission = () => {
     college: [] as string[],
     status: [] as string[],
     minScore: 0,
-    maxScore: 100
+    maxScore: 100,
   });
 
   const { students, loading, error } = useStudents();
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, sortBy, filters.degree.length, filters.course.length, filters.college.length, filters.status.length, filters.minScore, filters.maxScore]);
+  }, [
+    searchQuery,
+    sortBy,
+    filters.degree.length,
+    filters.course.length,
+    filters.college.length,
+    filters.status.length,
+    filters.minScore,
+    filters.maxScore,
+  ]);
 
   const degreeOptions = useMemo(() => {
     const degreeCounts: any = {};
-    students.forEach(student => {
+    students.forEach((student) => {
       if (student.dept) {
         const normalizedDegree = student.dept.toLowerCase();
         degreeCounts[normalizedDegree] = (degreeCounts[normalizedDegree] || 0) + 1;
@@ -203,14 +215,14 @@ const StudentDataAdmission = () => {
       .map(([degree, count]) => ({
         value: degree,
         label: degree.charAt(0).toUpperCase() + degree.slice(1),
-        count: count as number
+        count: count as number,
       }))
       .sort((a, b) => (b.count as number) - (a.count as number));
   }, [students]);
 
   const courseOptions = useMemo(() => {
     const courseCounts: any = {};
-    students.forEach(student => {
+    students.forEach((student) => {
       if (student.dept) {
         const normalizedCourse = student.dept.toLowerCase();
         courseCounts[normalizedCourse] = (courseCounts[normalizedCourse] || 0) + 1;
@@ -220,7 +232,7 @@ const StudentDataAdmission = () => {
       .map(([course, count]) => ({
         value: course,
         label: course.charAt(0).toUpperCase() + course.slice(1),
-        count: count as number
+        count: count as number,
       }))
       .sort((a, b) => (b.count as number) - (a.count as number))
       .slice(0, 15);
@@ -228,7 +240,7 @@ const StudentDataAdmission = () => {
 
   const collegeOptions = useMemo(() => {
     const collegeCounts: any = {};
-    students.forEach(student => {
+    students.forEach((student) => {
       if (student.college) {
         const normalizedCollege = student.college.toLowerCase();
         collegeCounts[normalizedCollege] = (collegeCounts[normalizedCollege] || 0) + 1;
@@ -238,14 +250,14 @@ const StudentDataAdmission = () => {
       .map(([college, count]) => ({
         value: college,
         label: college.charAt(0).toUpperCase() + college.slice(1),
-        count: count as number
+        count: count as number,
       }))
       .sort((a, b) => (b.count as number) - (a.count as number));
   }, [students]);
 
   const statusOptions = useMemo(() => {
     const statusCounts: any = {};
-    students.forEach(student => {
+    students.forEach((student) => {
       if (student.approval_status) {
         const status = student.approval_status.toLowerCase();
         statusCounts[status] = (statusCounts[status] || 0) + 1;
@@ -255,7 +267,7 @@ const StudentDataAdmission = () => {
       .map(([status, count]) => ({
         value: status,
         label: status.charAt(0).toUpperCase() + status.slice(1),
-        count: count as number
+        count: count as number,
       }))
       .sort((a, b) => (b.count as number) - (a.count as number));
   }, [students]);
@@ -268,7 +280,7 @@ const StudentDataAdmission = () => {
     if (searchQuery && searchQuery.trim() !== '') {
       const query = searchQuery.toLowerCase().trim();
 
-      result = result.filter(student => {
+      result = result.filter((student) => {
         return (
           (student.name && student.name.toLowerCase().includes(query)) ||
           (student.email && student.email.toLowerCase().includes(query)) ||
@@ -280,30 +292,31 @@ const StudentDataAdmission = () => {
     }
 
     if (filters.degree.length > 0) {
-      result = result.filter(student =>
-        student.dept && filters.degree.includes(student.dept.toLowerCase())
+      result = result.filter(
+        (student) => student.dept && filters.degree.includes(student.dept.toLowerCase())
       );
     }
 
     if (filters.course.length > 0) {
-      result = result.filter(student =>
-        student.dept && filters.course.includes(student.dept.toLowerCase())
+      result = result.filter(
+        (student) => student.dept && filters.course.includes(student.dept.toLowerCase())
       );
     }
 
     if (filters.college.length > 0) {
-      result = result.filter(student =>
-        student.college && filters.college.includes(student.college.toLowerCase())
+      result = result.filter(
+        (student) => student.college && filters.college.includes(student.college.toLowerCase())
       );
     }
 
     if (filters.status.length > 0) {
-      result = result.filter(student =>
-        student.approval_status && filters.status.includes(student.approval_status.toLowerCase())
+      result = result.filter(
+        (student) =>
+          student.approval_status && filters.status.includes(student.approval_status.toLowerCase())
       );
     }
 
-    result = result.filter(student => {
+    result = result.filter((student) => {
       const score = student.ai_score_overall || 0;
       return score >= filters.minScore && score <= filters.maxScore;
     });
@@ -318,8 +331,9 @@ const StudentDataAdmission = () => {
           sortedResult.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
           break;
         case 'date':
-          sortedResult.sort((a, b) =>
-            new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime()
+          sortedResult.sort(
+            (a, b) =>
+              new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime()
           );
           break;
         case 'relevance':
@@ -350,7 +364,7 @@ const StudentDataAdmission = () => {
       college: [],
       status: [],
       minScore: 0,
-      maxScore: 100
+      maxScore: 100,
     });
   };
 
@@ -363,9 +377,9 @@ const StudentDataAdmission = () => {
       grade: student.grade,
       college_id: student.college_id,
       approval_status: student.approval_status,
-      allFields: Object.keys(student)
+      allFields: Object.keys(student),
     });
-    
+
     setSelectedStudent(student);
     setShowDrawer(true);
   };
@@ -381,14 +395,14 @@ const StudentDataAdmission = () => {
     setShowAssessmentReport(true);
   };
 
-
-
   return (
     <div className="flex flex-col h-screen">
       <div className="p-4 sm:p-6 lg:p-8 mb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl md:text-3xl font-bold text-gray-900">Student Data & Admission</h1>
-          <p className="text-base md:text-lg mt-2 text-gray-600">Manage student enrollments and profiles for your college.</p>
+          <p className="text-base md:text-lg mt-2 text-gray-600">
+            Manage student enrollments and profiles for your college.
+          </p>
         </div>
         <button
           onClick={() => setShowAddStudentModal(true)}
@@ -404,7 +418,8 @@ const StudentDataAdmission = () => {
           <div className="inline-flex items-baseline">
             <h1 className="text-xl font-semibold text-gray-900">Enrollments</h1>
             <span className="ml-2 text-sm text-gray-500">
-              ({totalItems} {searchQuery || filters.degree.length > 0 ? 'matching' : ''} enrollments)
+              ({totalItems} {searchQuery || filters.degree.length > 0 ? 'matching' : ''}{' '}
+              enrollments)
             </span>
           </div>
         </div>
@@ -427,28 +442,37 @@ const StudentDataAdmission = () => {
           >
             <FunnelIcon className="h-4 w-4 mr-2" />
             Filters
-            {(filters.degree.length + filters.course.length + filters.college.length + filters.status.length) > 0 && (
+            {filters.degree.length +
+              filters.course.length +
+              filters.college.length +
+              filters.status.length >
+              0 && (
               <span className="ml-1 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-primary-600 rounded-full">
-                {filters.degree.length + filters.course.length + filters.college.length + filters.status.length}
+                {filters.degree.length +
+                  filters.course.length +
+                  filters.college.length +
+                  filters.status.length}
               </span>
             )}
           </button>
           <div className="flex rounded-md shadow-sm">
             <button
               onClick={() => setViewMode('grid')}
-              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${viewMode === 'grid'
-                ? 'bg-primary-50 border-primary-300 text-primary-700'
-                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
+              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${
+                viewMode === 'grid'
+                  ? 'bg-primary-50 border-primary-300 text-primary-700'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
             >
               <Squares2X2Icon className="h-4 w-4" />
             </button>
             <button
               onClick={() => setViewMode('table')}
-              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${viewMode === 'table'
-                ? 'bg-primary-50 border-primary-300 text-primary-700'
-                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
+              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${
+                viewMode === 'table'
+                  ? 'bg-primary-50 border-primary-300 text-primary-700'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
             >
               <TableCellsIcon className="h-4 w-4" />
             </button>
@@ -484,19 +508,21 @@ const StudentDataAdmission = () => {
           <div className="flex rounded-md shadow-sm">
             <button
               onClick={() => setViewMode('grid')}
-              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${viewMode === 'grid'
-                ? 'bg-primary-50 border-primary-300 text-primary-700'
-                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
+              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${
+                viewMode === 'grid'
+                  ? 'bg-primary-50 border-primary-300 text-primary-700'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
             >
               <Squares2X2Icon className="h-4 w-4" />
             </button>
             <button
               onClick={() => setViewMode('table')}
-              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${viewMode === 'table'
-                ? 'bg-primary-50 border-primary-300 text-primary-700'
-                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
+              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${
+                viewMode === 'table'
+                  ? 'bg-primary-50 border-primary-300 text-primary-700'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
             >
               <TableCellsIcon className="h-4 w-4" />
             </button>
@@ -562,7 +588,9 @@ const StudentDataAdmission = () => {
                         min="0"
                         max="100"
                         value={filters.minScore}
-                        onChange={(e) => setFilters({ ...filters, minScore: parseInt(e.target.value) })}
+                        onChange={(e) =>
+                          setFilters({ ...filters, minScore: parseInt(e.target.value) })
+                        }
                         className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
                       />
                     </div>
@@ -575,7 +603,9 @@ const StudentDataAdmission = () => {
                         min="0"
                         max="100"
                         value={filters.maxScore}
-                        onChange={(e) => setFilters({ ...filters, maxScore: parseInt(e.target.value) })}
+                        onChange={(e) =>
+                          setFilters({ ...filters, maxScore: parseInt(e.target.value) })
+                        }
                         className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
                       />
                     </div>
@@ -592,7 +622,8 @@ const StudentDataAdmission = () => {
               <p className="text-sm text-gray-700">
                 Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
                 <span className="font-medium">{Math.min(endIndex, totalItems)}</span> of{' '}
-                <span className="font-medium">{totalItems}</span> result{totalItems !== 1 ? 's' : ''}
+                <span className="font-medium">{totalItems}</span> result
+                {totalItems !== 1 ? 's' : ''}
                 {searchQuery && <span className="text-gray-500"> for "{searchQuery}"</span>}
               </p>
               <select
@@ -613,15 +644,16 @@ const StudentDataAdmission = () => {
               <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
                 {loading && <div className="text-sm text-gray-500">Loading enrollments...</div>}
                 {error && <div className="text-sm text-red-600">{error}</div>}
-                {!loading && paginatedStudents.map((student) => (
-                  <StudentCard
-                    key={student.id}
-                    student={student}
-                    onViewProfile={handleViewProfile}
-                    onAddNote={handleAddNoteClick}
-                    onViewCareerPath={handleViewCareerPath}
-                  />
-                ))}
+                {!loading &&
+                  paginatedStudents.map((student) => (
+                    <StudentCard
+                      key={student.id}
+                      student={student}
+                      onViewProfile={handleViewProfile}
+                      onAddNote={handleAddNoteClick}
+                      onViewCareerPath={handleViewCareerPath}
+                    />
+                  ))}
                 {!loading && paginatedStudents.length === 0 && !error && (
                   <div className="col-span-full text-center py-8">
                     <p className="text-sm text-gray-500">
@@ -669,9 +701,7 @@ const StudentDataAdmission = () => {
                               <div className="text-sm font-medium text-gray-900">
                                 {student.name}
                               </div>
-                              <div className="text-sm text-gray-500">
-                                {student.email}
-                              </div>
+                              <div className="text-sm text-gray-500">{student.email}</div>
                             </div>
                           </div>
                         </td>
@@ -693,7 +723,10 @@ const StudentDataAdmission = () => {
                           <span className="text-sm text-gray-800">
                             {(() => {
                               // Calculate academic year from admission year and semester
-                              const calculateAcademicYear = (admissionYear: string, semester: number): string => {
+                              const calculateAcademicYear = (
+                                admissionYear: string,
+                                semester: number
+                              ): string => {
                                 try {
                                   const yearsProgressed = Math.floor((semester - 1) / 2);
                                   const [startYear] = admissionYear.split('-');
@@ -708,17 +741,21 @@ const StudentDataAdmission = () => {
                               // Dynamic semester calculation
                               let currentSem = 1;
                               let totalSems = 8;
-                              
+
                               // First, check if semester is directly available in the student record
                               if ((student as any).semester && (student as any).semester > 0) {
                                 currentSem = (student as any).semester;
                               }
                               // For college students, calculate based on enrollment date
-                              else if ((student as any).college_id && (student as any).enrollmentDate) {
+                              else if (
+                                (student as any).college_id &&
+                                (student as any).enrollmentDate
+                              ) {
                                 const enrollmentDate = new Date((student as any).enrollmentDate);
                                 const currentDate = new Date();
-                                const monthsDiff = (currentDate.getFullYear() - enrollmentDate.getFullYear()) * 12 + 
-                                                  (currentDate.getMonth() - enrollmentDate.getMonth());
+                                const monthsDiff =
+                                  (currentDate.getFullYear() - enrollmentDate.getFullYear()) * 12 +
+                                  (currentDate.getMonth() - enrollmentDate.getMonth());
                                 currentSem = Math.max(1, Math.floor(monthsDiff / 6) + 1);
                               }
                               // For school students, use grade
@@ -730,24 +767,43 @@ const StudentDataAdmission = () => {
                               else {
                                 currentSem = parseInt((student as any).current_semester) || 1;
                               }
-                              
+
                               // Calculate total semesters
                               if (student.school_id) {
                                 totalSems = 12;
                               } else {
-                                const degreeType = student.branch_field?.toLowerCase() || student.dept?.toLowerCase() || '';
-                                if (degreeType.includes('phd') || degreeType.includes('doctorate')) totalSems = 8;
-                                else if (degreeType.includes('master') || degreeType.includes('mtech') || degreeType.includes('mba')) totalSems = 4;
-                                else if (degreeType.includes('bachelor') || degreeType.includes('btech') || degreeType.includes('be') || degreeType.includes('bsc') || degreeType.includes('ba')) totalSems = 8;
+                                const degreeType =
+                                  student.branch_field?.toLowerCase() ||
+                                  student.dept?.toLowerCase() ||
+                                  '';
+                                if (degreeType.includes('phd') || degreeType.includes('doctorate'))
+                                  totalSems = 8;
+                                else if (
+                                  degreeType.includes('master') ||
+                                  degreeType.includes('mtech') ||
+                                  degreeType.includes('mba')
+                                )
+                                  totalSems = 4;
+                                else if (
+                                  degreeType.includes('bachelor') ||
+                                  degreeType.includes('btech') ||
+                                  degreeType.includes('be') ||
+                                  degreeType.includes('bsc') ||
+                                  degreeType.includes('ba')
+                                )
+                                  totalSems = 8;
                                 else if (degreeType.includes('diploma')) totalSems = 6;
                                 else totalSems = 8;
                               }
-                              
+
                               // Calculate academic year for display
-                              const academicYear = (student as any).admission_academic_year 
-                                ? calculateAcademicYear((student as any).admission_academic_year, currentSem)
+                              const academicYear = (student as any).admission_academic_year
+                                ? calculateAcademicYear(
+                                    (student as any).admission_academic_year,
+                                    currentSem
+                                  )
                                 : 'N/A';
-                              
+
                               return `${currentSem} / ${totalSems} (${academicYear})`;
                             })()}
                           </span>
@@ -847,7 +903,6 @@ const StudentDataAdmission = () => {
           }}
         />
       )}
-
     </div>
   );
 };

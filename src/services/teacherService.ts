@@ -90,10 +90,7 @@ export const updateTeacher = async (teacherId: string, updates: Partial<Teacher>
 
 // Delete teacher
 export const deleteTeacher = async (teacherId: string) => {
-  const { error } = await supabase
-    .from('school_educators')
-    .delete()
-    .eq('id', teacherId);
+  const { error } = await supabase.from('school_educators').delete().eq('id', teacherId);
 
   if (error) throw error;
 };
@@ -108,10 +105,7 @@ export const updateTeacherStatus = async (
 
 // Bulk import teachers
 export const bulkImportTeachers = async (teachers: Partial<Teacher>[]) => {
-  const { data, error } = await supabase
-    .from('school_educators')
-    .insert(teachers)
-    .select();
+  const { data, error } = await supabase.from('school_educators').insert(teachers).select();
 
   if (error) throw error;
   return data as Teacher[];
@@ -155,10 +149,7 @@ export const getTeacherPerformance = async (teacherId: string): Promise<TeacherP
 };
 
 // Upload teacher document
-export const uploadTeacherDocument = async (
-  file: File,
-  path: string
-): Promise<string> => {
+export const uploadTeacherDocument = async (file: File, path: string): Promise<string> => {
   const fileExt = file.name.split('.').pop();
   const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
   const filePath = `${path}/${fileName}`;
@@ -169,9 +160,7 @@ export const uploadTeacherDocument = async (
 
   if (uploadError) throw uploadError;
 
-  const { data } = supabase.storage
-    .from('teacher-documents')
-    .getPublicUrl(filePath);
+  const { data } = supabase.storage.from('teacher-documents').getPublicUrl(filePath);
 
   return data.publicUrl;
 };
@@ -192,13 +181,15 @@ export const getTeacherWorkload = async (teacherId: string) => {
 export const getTeacherTimetable = async (teacherId: string) => {
   const { data, error } = await supabase
     .from('timetable_slots')
-    .select(`
+    .select(
+      `
       *,
       timetables (
         *,
         school_classes (*)
       )
-    `)
+    `
+    )
     .eq('teacher_id', teacherId)
     .order('day_of_week')
     .order('start_time');
@@ -213,7 +204,9 @@ export const searchTeachers = async (schoolId: string, query: string) => {
     .from('school_educators')
     .select('*')
     .eq('school_id', schoolId)
-    .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%,teacher_id.ilike.%${query}%`)
+    .or(
+      `first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%,teacher_id.ilike.%${query}%`
+    )
     .order('created_at', { ascending: false });
 
   if (error) throw error;
@@ -231,17 +224,17 @@ export const getTeacherStatistics = async (schoolId: string) => {
 
   const stats = {
     total: teachers.length,
-    active: teachers.filter(t => t.onboarding_status === 'active').length,
-    pending: teachers.filter(t => t.onboarding_status === 'pending').length,
-    verified: teachers.filter(t => t.onboarding_status === 'verified').length,
-    inactive: teachers.filter(t => t.onboarding_status === 'inactive').length,
+    active: teachers.filter((t) => t.onboarding_status === 'active').length,
+    pending: teachers.filter((t) => t.onboarding_status === 'pending').length,
+    verified: teachers.filter((t) => t.onboarding_status === 'verified').length,
+    inactive: teachers.filter((t) => t.onboarding_status === 'inactive').length,
     byRole: {
-      school_admin: teachers.filter(t => t.role === 'school_admin').length,
-      principal: teachers.filter(t => t.role === 'principal').length,
-      it_admin: teachers.filter(t => t.role === 'it_admin').length,
-      class_teacher: teachers.filter(t => t.role === 'class_teacher').length,
-      subject_teacher: teachers.filter(t => t.role === 'subject_teacher').length,
-    }
+      school_admin: teachers.filter((t) => t.role === 'school_admin').length,
+      principal: teachers.filter((t) => t.role === 'principal').length,
+      it_admin: teachers.filter((t) => t.role === 'it_admin').length,
+      class_teacher: teachers.filter((t) => t.role === 'class_teacher').length,
+      subject_teacher: teachers.filter((t) => t.role === 'subject_teacher').length,
+    },
   };
 
   return stats;

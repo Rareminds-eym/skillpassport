@@ -18,7 +18,7 @@ export const useMessages = ({ conversationId, enabled = true }: UseMessagesOptio
     data: messages = [],
     isLoading,
     error,
-    refetch
+    refetch,
   } = useQuery({
     queryKey: ['messages', conversationId],
     queryFn: async () => {
@@ -42,21 +42,18 @@ export const useMessages = ({ conversationId, enabled = true }: UseMessagesOptio
       conversationId,
       (newMessage: Message) => {
         // Optimistically update the cache
-        queryClient.setQueryData<Message[]>(
-          ['messages', conversationId],
-          (oldMessages = []) => {
-            // Check if message already exists (avoid duplicates)
-            const exists = oldMessages.some(msg => msg.id === newMessage.id);
-            if (exists) {
-              return oldMessages;
-            }
-            
-            // Add new message in sorted order by created_at
-            return [...oldMessages, newMessage].sort(
-              (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-            );
+        queryClient.setQueryData<Message[]>(['messages', conversationId], (oldMessages = []) => {
+          // Check if message already exists (avoid duplicates)
+          const exists = oldMessages.some((msg) => msg.id === newMessage.id);
+          if (exists) {
+            return oldMessages;
           }
-        );
+
+          // Add new message in sorted order by created_at
+          return [...oldMessages, newMessage].sort(
+            (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
+        });
       }
     );
 
@@ -74,7 +71,7 @@ export const useMessages = ({ conversationId, enabled = true }: UseMessagesOptio
       receiverType,
       messageText,
       applicationId,
-      opportunityId
+      opportunityId,
     }: {
       senderId: string;
       senderType: 'student' | 'recruiter';
@@ -85,7 +82,7 @@ export const useMessages = ({ conversationId, enabled = true }: UseMessagesOptio
       opportunityId?: number;
     }) => {
       if (!conversationId) throw new Error('No conversation ID');
-      
+
       return await MessageService.sendMessage(
         conversationId,
         senderId,
@@ -118,13 +115,13 @@ export const useMessages = ({ conversationId, enabled = true }: UseMessagesOptio
         is_read: false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        attachments: []
+        attachments: [],
       };
 
-      queryClient.setQueryData<Message[]>(
-        ['messages', conversationId],
-        (old = []) => [...old, optimisticMessage]
-      );
+      queryClient.setQueryData<Message[]>(['messages', conversationId], (old = []) => [
+        ...old,
+        optimisticMessage,
+      ]);
 
       return { previousMessages };
     },
@@ -137,17 +134,14 @@ export const useMessages = ({ conversationId, enabled = true }: UseMessagesOptio
     },
     onSuccess: (data) => {
       // Replace optimistic message with real one
-      queryClient.setQueryData<Message[]>(
-        ['messages', conversationId],
-        (old = []) => {
-          // Remove the optimistic message (temporary ID from Date.now())
-          const withoutOptimistic = old.filter(msg => msg.id < 1000000000000 && msg.id !== data.id);
-          // Add real message and sort by created_at
-          return [...withoutOptimistic, data].sort(
-            (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-          );
-        }
-      );
+      queryClient.setQueryData<Message[]>(['messages', conversationId], (old = []) => {
+        // Remove the optimistic message (temporary ID from Date.now())
+        const withoutOptimistic = old.filter((msg) => msg.id < 1000000000000 && msg.id !== data.id);
+        // Add real message and sort by created_at
+        return [...withoutOptimistic, data].sort(
+          (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
+      });
     },
   });
 
@@ -157,7 +151,7 @@ export const useMessages = ({ conversationId, enabled = true }: UseMessagesOptio
     error,
     sendMessage: sendMessageMutation.mutate,
     isSending: sendMessageMutation.isPending,
-    refetch
+    refetch,
   };
 };
 
@@ -177,7 +171,7 @@ export const useConversation = (
   const {
     data: conversation,
     isLoading,
-    error
+    error,
   } = useQuery({
     queryKey: ['conversation', studentId, recruiterId, applicationId],
     queryFn: async () => {
@@ -219,7 +213,7 @@ export const useConversation = (
           };
         }
       );
-    }
+    },
   });
 
   return {
@@ -229,4 +223,3 @@ export const useConversation = (
     markAsRead: markAsReadMutation.mutate,
   };
 };
-

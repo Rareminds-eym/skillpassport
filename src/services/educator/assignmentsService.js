@@ -20,7 +20,7 @@ export const getEducatorAssignedClassIds = async (educatorId) => {
       .eq('educator_id', educatorId);
 
     if (error) throw error;
-    return (data || []).map(ac => ac.class_id);
+    return (data || []).map((ac) => ac.class_id);
   } catch (error) {
     console.error('Error fetching educator assigned classes:', error);
     throw error;
@@ -53,8 +53,8 @@ export const createAssignment = async (assignmentData) => {
           document_pdf: assignmentData.document_pdf,
           due_date: assignmentData.due_date,
           available_from: assignmentData.available_from,
-          allow_late_submission: assignmentData.allow_late_submission ?? true
-        }
+          allow_late_submission: assignmentData.allow_late_submission ?? true,
+        },
       ])
       .select()
       .single();
@@ -75,7 +75,7 @@ export const createAssignment = async (assignmentData) => {
  */
 export const createAssignmentsForClasses = async (baseAssignmentData, classIds) => {
   try {
-    const assignmentsToInsert = classIds.map(classId => ({
+    const assignmentsToInsert = classIds.map((classId) => ({
       title: baseAssignmentData.title,
       description: baseAssignmentData.description,
       instructions: baseAssignmentData.instructions,
@@ -91,13 +91,10 @@ export const createAssignmentsForClasses = async (baseAssignmentData, classIds) 
       document_pdf: baseAssignmentData.document_pdf,
       due_date: baseAssignmentData.due_date,
       available_from: baseAssignmentData.available_from,
-      allow_late_submission: baseAssignmentData.allow_late_submission ?? true
+      allow_late_submission: baseAssignmentData.allow_late_submission ?? true,
     }));
 
-    const { data, error } = await supabase
-      .from('assignments')
-      .insert(assignmentsToInsert)
-      .select();
+    const { data, error } = await supabase.from('assignments').insert(assignmentsToInsert).select();
 
     if (error) throw error;
     return data || [];
@@ -117,11 +114,13 @@ export const getAssignmentsByEducator = async (educatorId) => {
     // Fetch all assignments created by this educator
     const { data, error } = await supabase
       .from('assignments')
-      .select(`
+      .select(
+        `
         *,
         assignment_attachments (*),
         school_classes (id, name, grade, section)
-      `)
+      `
+      )
       .eq('educator_id', educatorId)
       .eq('is_deleted', false)
       .order('created_date', { ascending: false });
@@ -143,10 +142,12 @@ export const getAssignmentById = async (assignmentId) => {
   try {
     const { data, error } = await supabase
       .from('assignments')
-      .select(`
+      .select(
+        `
         *,
         assignment_attachments (*)
-      `)
+      `
+      )
       .eq('assignment_id', assignmentId)
       .single();
 
@@ -170,7 +171,7 @@ export const updateAssignment = async (assignmentId, updates) => {
       .from('assignments')
       .update({
         ...updates,
-        updated_date: new Date().toISOString()
+        updated_date: new Date().toISOString(),
       })
       .eq('assignment_id', assignmentId)
       .select()
@@ -195,7 +196,7 @@ export const deleteAssignment = async (assignmentId) => {
       .from('assignments')
       .update({
         is_deleted: true,
-        updated_date: new Date().toISOString()
+        updated_date: new Date().toISOString(),
       })
       .eq('assignment_id', assignmentId);
 
@@ -223,8 +224,8 @@ export const addAssignmentAttachment = async (assignmentId, attachmentData) => {
           file_name: attachmentData.file_name,
           file_type: attachmentData.file_type,
           file_size: attachmentData.file_size,
-          file_url: attachmentData.file_url
-        }
+          file_url: attachmentData.file_url,
+        },
       ])
       .select()
       .single();
@@ -275,8 +276,8 @@ export const assignToStudents = async (assignmentId, studentIds, defaults = {}) 
 
     if (checkError) throw checkError;
 
-    const existingStudentIds = existingAssignments?.map(a => a.student_id) || [];
-    const newStudentIds = studentIds.filter(id => !existingStudentIds.includes(id));
+    const existingStudentIds = existingAssignments?.map((a) => a.student_id) || [];
+    const newStudentIds = studentIds.filter((id) => !existingStudentIds.includes(id));
 
     if (newStudentIds.length === 0) {
       return [];
@@ -290,14 +291,14 @@ export const assignToStudents = async (assignmentId, studentIds, defaults = {}) 
 
     if (mapError) throw mapError;
 
-    const mappedStudentIds = userIdMappings.map(s => s.user_id);
+    const mappedStudentIds = userIdMappings.map((s) => s.user_id);
 
     // STEP 2: Create assignment objects
-    const studentAssignments = mappedStudentIds.map(uid => ({
+    const studentAssignments = mappedStudentIds.map((uid) => ({
       assignment_id: assignmentId,
-      student_id: uid,                       // FIXED
+      student_id: uid, // FIXED
       status: defaults.status || 'todo',
-      priority: defaults.priority || 'medium'
+      priority: defaults.priority || 'medium',
     }));
 
     // STEP 3: Insert new rows
@@ -315,7 +316,6 @@ export const assignToStudents = async (assignmentId, studentIds, defaults = {}) 
   }
 };
 
-
 /**
  * Get all students assigned to a specific assignment with their submission status and files
  * @param {string} assignmentId - The UUID of the assignment
@@ -325,7 +325,8 @@ export const getAssignmentStudents = async (assignmentId) => {
   try {
     const { data, error } = await supabase
       .from('student_assignments')
-      .select(`
+      .select(
+        `
         *,
         students (
           id,
@@ -336,7 +337,8 @@ export const getAssignmentStudents = async (assignmentId) => {
           college_school_name,
           registration_number
         )
-      `)
+      `
+      )
       .eq('assignment_id', assignmentId)
       .eq('is_deleted', false)
       .order('assigned_date', { ascending: false });
@@ -347,24 +349,25 @@ export const getAssignmentStudents = async (assignmentId) => {
     const submissionFiles = await getStudentSubmissionFiles(assignmentId);
 
     // Flatten the response using actual column names and add submission files
-    const flattenedData = data?.map(item => {
-      const student = item.students;
-      const studentSubmissionFiles = submissionFiles[item.student_assignment_id] || [];
+    const flattenedData =
+      data?.map((item) => {
+        const student = item.students;
+        const studentSubmissionFiles = submissionFiles[item.student_assignment_id] || [];
 
-      return {
-        ...item,
-        student: {
-          id: student?.id,
-          name: student?.name || 'Unknown',
-          email: student?.email || '',
-          university: student?.university || '',
-          branch_field: student?.branch_field || '',
-          college_school_name: student?.college_school_name || '',
-          registration_number: student?.registration_number || ''
-        },
-        submission_files: studentSubmissionFiles
-      };
-    }) || [];
+        return {
+          ...item,
+          student: {
+            id: student?.id,
+            name: student?.name || 'Unknown',
+            email: student?.email || '',
+            university: student?.university || '',
+            branch_field: student?.branch_field || '',
+            college_school_name: student?.college_school_name || '',
+            registration_number: student?.registration_number || '',
+          },
+          submission_files: studentSubmissionFiles,
+        };
+      }) || [];
 
     return flattenedData;
   } catch (error) {
@@ -390,7 +393,7 @@ export const gradeAssignment = async (studentAssignmentId, gradingData) => {
         graded_date: new Date().toISOString(),
         feedback_date: new Date().toISOString(),
         status: 'graded',
-        updated_date: new Date().toISOString()
+        updated_date: new Date().toISOString(),
       })
       .eq('student_assignment_id', studentAssignmentId)
       .select()
@@ -421,18 +424,18 @@ export const getAssignmentStatistics = async (assignmentId) => {
 
     const stats = {
       total: data.length,
-      todo: data.filter(a => a.status === 'todo').length,
-      inProgress: data.filter(a => a.status === 'in-progress').length,
-      submitted: data.filter(a => a.status === 'submitted').length,
-      graded: data.filter(a => a.status === 'graded').length,
-      lateSubmissions: data.filter(a => a.is_late).length,
-      averageGrade: 0
+      todo: data.filter((a) => a.status === 'todo').length,
+      inProgress: data.filter((a) => a.status === 'in-progress').length,
+      submitted: data.filter((a) => a.status === 'submitted').length,
+      graded: data.filter((a) => a.status === 'graded').length,
+      lateSubmissions: data.filter((a) => a.is_late).length,
+      averageGrade: 0,
     };
 
     // Calculate average grade for graded assignments
     const gradesArray = data
-      .filter(a => a.grade_percentage !== null)
-      .map(a => a.grade_percentage);
+      .filter((a) => a.grade_percentage !== null)
+      .map((a) => a.grade_percentage);
 
     if (gradesArray.length > 0) {
       stats.averageGrade = Math.round(
@@ -462,14 +465,14 @@ export const uploadInstructionFile = async (assignmentId, file, token) => {
   try {
     const timestamp = Date.now();
     const filename = `assignments/${assignmentId}/instructions/${timestamp}_${file.name}`;
-    
+
     // Upload file to R2 storage
     const uploadResult = await storageApiService.uploadFile(file, { filename }, token);
-    
+
     // Store the original R2 URL in database (not the proxy URL)
     // The frontend will convert to proxy URLs when displaying
     const originalR2Url = uploadResult.url;
-    
+
     // Save to assignment_attachments table (educator file - no prefix)
     const { data, error } = await supabase
       .from('assignment_attachments')
@@ -478,20 +481,20 @@ export const uploadInstructionFile = async (assignmentId, file, token) => {
         file_name: file.name, // ✅ EDUCATOR FILE (no prefix)
         file_type: file.type,
         file_size: file.size,
-        file_url: originalR2Url // Store original R2 URL, not proxy URL
+        file_url: originalR2Url, // Store original R2 URL, not proxy URL
       })
       .select()
       .single();
-      
+
     if (error) throw error;
-    
-    return { 
-      ...uploadResult, 
+
+    return {
+      ...uploadResult,
       attachment_id: data.attachment_id,
       file_name: data.file_name,
       file_type: data.file_type,
       file_size: data.file_size,
-      accessible_url: originalR2Url
+      accessible_url: originalR2Url,
     };
   } catch (error) {
     console.error('Error uploading instruction file:', error);
@@ -508,7 +511,7 @@ export const uploadInstructionFile = async (assignmentId, file, token) => {
  */
 export const uploadMultipleInstructionFiles = async (assignmentId, files, token) => {
   try {
-    const uploadPromises = files.map(file => uploadInstructionFile(assignmentId, file, token));
+    const uploadPromises = files.map((file) => uploadInstructionFile(assignmentId, file, token));
     const results = await Promise.all(uploadPromises);
     return results;
   } catch (error) {
@@ -528,20 +531,20 @@ export const createAssignmentWithStagedFiles = async (assignmentData, instructio
   try {
     // Create assignment first
     const assignment = await createAssignment(assignmentData);
-    
+
     // Upload instruction files after assignment is created
     if (instructionFiles && instructionFiles.length > 0) {
       console.log('Uploading staged files for assignment:', assignment.assignment_id);
       const uploadResults = await uploadMultipleInstructionFiles(
-        assignment.assignment_id, 
-        instructionFiles, 
+        assignment.assignment_id,
+        instructionFiles,
         token
       );
-      
+
       // Add file info to assignment object
       assignment.instruction_files = uploadResults;
     }
-    
+
     return assignment;
   } catch (error) {
     console.error('Error creating assignment with staged files:', error);
@@ -557,27 +560,32 @@ export const createAssignmentWithStagedFiles = async (assignmentData, instructio
  * @param {string} token - Auth token
  * @returns {Promise<Array>} Created assignments with file upload results
  */
-export const createAssignmentsForClassesWithStagedFiles = async (baseAssignmentData, classIds, instructionFiles, token) => {
+export const createAssignmentsForClassesWithStagedFiles = async (
+  baseAssignmentData,
+  classIds,
+  instructionFiles,
+  token
+) => {
   try {
     // Create assignments first
     const createdAssignments = await createAssignmentsForClasses(baseAssignmentData, classIds);
-    
+
     // Upload instruction files to each assignment
     if (instructionFiles && instructionFiles.length > 0) {
       console.log('Uploading staged files for', createdAssignments.length, 'assignments');
-      
+
       for (const assignment of createdAssignments) {
         const uploadResults = await uploadMultipleInstructionFiles(
-          assignment.assignment_id, 
-          instructionFiles, 
+          assignment.assignment_id,
+          instructionFiles,
           token
         );
-        
+
         // Add file info to assignment object
         assignment.instruction_files = uploadResults;
       }
     }
-    
+
     return createdAssignments;
   } catch (error) {
     console.error('Error creating assignments with staged files:', error);
@@ -598,11 +606,11 @@ export const getInstructionFiles = async (assignmentId) => {
       .eq('assignment_id', assignmentId)
       .not('file_name', 'like', 'STUDENT:%') // ✅ Only educator files (no STUDENT: prefix)
       .order('uploaded_date', { ascending: false });
-      
+
     if (error) {
       throw error;
     }
-    
+
     // Return files as-is - URL conversion is handled in the frontend
     return data || [];
   } catch (error) {
@@ -623,12 +631,12 @@ export const getStudentSubmissionFiles = async (assignmentId) => {
       .eq('assignment_id', assignmentId)
       .like('file_name', 'STUDENT:%') // ✅ Only student files (with STUDENT: prefix)
       .order('uploaded_date', { ascending: false });
-      
+
     if (error) throw error;
-    
+
     // Group files by student_assignment_id
     const groupedFiles = {};
-    data?.forEach(file => {
+    data?.forEach((file) => {
       // Extract student_assignment_id from file_name: "STUDENT:sa-uuid-001:filename.pdf"
       const match = file.file_name.match(/^STUDENT:([^:]+):/);
       if (match) {
@@ -636,16 +644,16 @@ export const getStudentSubmissionFiles = async (assignmentId) => {
         if (!groupedFiles[studentAssignmentId]) {
           groupedFiles[studentAssignmentId] = [];
         }
-        
+
         // Add original filename without prefix
         const originalFilename = file.file_name.replace(/^STUDENT:[^:]+:/, '');
         groupedFiles[studentAssignmentId].push({
           ...file,
-          original_filename: originalFilename
+          original_filename: originalFilename,
         });
       }
     });
-    
+
     return groupedFiles;
   } catch (error) {
     console.error('Error fetching student submission files:', error);
@@ -667,15 +675,16 @@ export const getStudentSubmissionFilesByStudentId = async (assignmentId, student
       .eq('assignment_id', assignmentId)
       .like('file_name', `STUDENT:${studentAssignmentId}:%`) // ✅ Specific student's files
       .order('uploaded_date', { ascending: false });
-      
+
     if (error) throw error;
-    
+
     // Add original filename without prefix
-    const filesWithOriginalNames = data?.map(file => ({
-      ...file,
-      original_filename: file.file_name.replace(/^STUDENT:[^:]+:/, '')
-    })) || [];
-    
+    const filesWithOriginalNames =
+      data?.map((file) => ({
+        ...file,
+        original_filename: file.file_name.replace(/^STUDENT:[^:]+:/, ''),
+      })) || [];
+
     return filesWithOriginalNames;
   } catch (error) {
     console.error('Error fetching student submission files by student ID:', error);
@@ -691,36 +700,38 @@ export const getStudentSubmissionFilesByStudentId = async (assignmentId, student
 export const getEducatorAssignmentsWithStats = async (educatorId) => {
   try {
     const assignments = await getAssignmentsByEducator(educatorId);
-    
+
     // Get statistics for each assignment
     const assignmentsWithStats = await Promise.all(
       assignments.map(async (assignment) => {
         const stats = await getAssignmentStatistics(assignment.assignment_id);
-        
+
         // Count instruction files (educator files)
-        const instructionFiles = assignment.assignment_attachments?.filter(
-          att => !att.file_name.startsWith('STUDENT:')
-        ) || [];
-        
+        const instructionFiles =
+          assignment.assignment_attachments?.filter(
+            (att) => !att.file_name.startsWith('STUDENT:')
+          ) || [];
+
         // Count submission files (student files)
-        const submissionFiles = assignment.assignment_attachments?.filter(
-          att => att.file_name.startsWith('STUDENT:')
-        ) || [];
-        
+        const submissionFiles =
+          assignment.assignment_attachments?.filter((att) =>
+            att.file_name.startsWith('STUDENT:')
+          ) || [];
+
         return {
           ...assignment,
           stats: {
             ...stats,
-            submissionRate: stats.total > 0 ? Math.round((stats.submitted / stats.total) * 100) : 0
+            submissionRate: stats.total > 0 ? Math.round((stats.submitted / stats.total) * 100) : 0,
           },
           file_counts: {
             instruction_files: instructionFiles.length,
-            submission_files: submissionFiles.length
-          }
+            submission_files: submissionFiles.length,
+          },
         };
       })
     );
-    
+
     return assignmentsWithStats;
   } catch (error) {
     console.error('Error fetching educator assignments with stats:', error);
@@ -737,16 +748,16 @@ export const getAssignmentSubmissionsWithFiles = async (assignmentId) => {
   try {
     // Get student assignments
     const studentAssignments = await getAssignmentStudents(assignmentId);
-    
+
     // Get all submission files grouped by student
     const submissionFiles = await getStudentSubmissionFiles(assignmentId);
-    
+
     // Combine student assignments with their files
-    const submissionsWithFiles = studentAssignments.map(submission => ({
+    const submissionsWithFiles = studentAssignments.map((submission) => ({
       ...submission,
-      submission_files: submissionFiles[submission.student_assignment_id] || []
+      submission_files: submissionFiles[submission.student_assignment_id] || [],
     }));
-    
+
     return submissionsWithFiles;
   } catch (error) {
     console.error('Error fetching assignment submissions with files:', error);
@@ -768,16 +779,16 @@ export const deleteInstructionFile = async (attachmentId, token) => {
       .select('file_url, file_name')
       .eq('attachment_id', attachmentId)
       .single();
-      
+
     if (fetchError) {
       throw fetchError;
     }
-    
+
     // Delete from R2 storage using the original R2 URL
     if (attachment.file_url) {
       try {
         let originalUrl = attachment.file_url;
-        
+
         // If it's a proxy URL, extract the original R2 URL
         if (attachment.file_url.includes('/document-access?url=')) {
           const urlParams = new URLSearchParams(attachment.file_url.split('?')[1]);
@@ -786,33 +797,32 @@ export const deleteInstructionFile = async (attachmentId, token) => {
             originalUrl = decodeURIComponent(encodedUrl);
           }
         }
-        
+
         // Use the corrected storageApiService.deleteFile function with original R2 URL
         await storageApiService.deleteFile(originalUrl, token);
       } catch (storageError) {
         // Continue with database deletion even if storage deletion fails
       }
     }
-    
+
     // Delete from database (always do this regardless of storage deletion)
     const { error, count } = await supabase
       .from('assignment_attachments')
       .delete()
       .eq('attachment_id', attachmentId);
-      
+
     if (error) {
       throw error;
     }
-    
+
     // Verify deletion by checking if record still exists
     const { data: verifyData, error: verifyError } = await supabase
       .from('assignment_attachments')
       .select('attachment_id')
       .eq('attachment_id', attachmentId);
-      
+
     return true;
   } catch (error) {
     throw error;
   }
 };
-

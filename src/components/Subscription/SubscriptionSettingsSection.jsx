@@ -1,10 +1,10 @@
 /**
  * SubscriptionSettingsSection Component
- * 
+ *
  * A reusable subscription management section for settings pages.
  * Shows current subscription status and links to manage subscription/add-ons.
  * For admin users, also shows organization subscription management options.
- * 
+ *
  * @requirement Task - Add subscription management to all user settings pages
  */
 
@@ -17,7 +17,7 @@ import {
   CreditCard,
   Shield,
   Sparkles,
-  Users
+  Users,
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useSubscriptionContext } from '../../context/SubscriptionContext';
@@ -44,12 +44,13 @@ export function SubscriptionSettingsSection({ className = '' }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { subscriptionData, loading } = useSubscriptionQuery();
-  const { activeEntitlements = [], totalAddOnCost = { monthly: 0, annual: 0 } } = useSubscriptionContext() || {};
+  const { activeEntitlements = [], totalAddOnCost = { monthly: 0, annual: 0 } } =
+    useSubscriptionContext() || {};
   useAuth(); // Hook called for potential future use
 
   // Get the base path for subscription routes
   const basePath = getSubscriptionBasePath(location.pathname);
-  
+
   // Check if user is on an organization admin page based on the URL path
   // This is more reliable than checking role since the user is already on the admin dashboard
   const isOrgAdmin = ['/school-admin', '/college-admin', '/university-admin'].includes(basePath);
@@ -62,7 +63,7 @@ export function SubscriptionSettingsSection({ className = '' }) {
           <div className="h-4 w-64 bg-gray-200 rounded"></div>
           <div className="h-20 bg-gray-100 rounded-lg"></div>
         </div>
-        
+
         {/* Show organization section even while loading for admins */}
         {isOrgAdmin && (
           <div className="pt-4 mt-4 border-t border-gray-200">
@@ -73,7 +74,7 @@ export function SubscriptionSettingsSection({ className = '' }) {
             <p className="text-sm text-gray-600 mb-4">
               Manage bulk subscriptions for your organization's members
             </p>
-            
+
             <div className="space-y-2">
               <button
                 onClick={() => navigate(`${basePath}/subscription/organization`)}
@@ -83,7 +84,9 @@ export function SubscriptionSettingsSection({ className = '' }) {
                   <Users className="w-5 h-5 text-purple-600" />
                   <div className="text-left">
                     <span className="font-medium text-purple-900 block">Organization Licenses</span>
-                    <span className="text-xs text-purple-600">Manage seats, pools & assignments</span>
+                    <span className="text-xs text-purple-600">
+                      Manage seats, pools & assignments
+                    </span>
                   </div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-purple-400 group-hover:translate-x-0.5 transition-transform" />
@@ -113,7 +116,9 @@ export function SubscriptionSettingsSection({ className = '' }) {
   const isActive = subscriptionData?.status === 'active';
   const planName = subscriptionData?.planName || subscriptionData?.plan || 'Free';
   const endDate = subscriptionData?.endDate ? new Date(subscriptionData.endDate) : null;
-  const daysRemaining = endDate ? Math.ceil((endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
+  const daysRemaining = endDate
+    ? Math.ceil((endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+    : 0;
   const isExpiringSoon = daysRemaining > 0 && daysRemaining <= 30;
 
   return (
@@ -134,13 +139,15 @@ export function SubscriptionSettingsSection({ className = '' }) {
       {/* Content */}
       <div className="p-6 space-y-4">
         {/* Current Plan Status */}
-        <div className={`rounded-lg p-4 border ${
-          isActive 
-            ? 'bg-green-50 border-green-200' 
-            : hasSubscription 
-              ? 'bg-amber-50 border-amber-200'
-              : 'bg-gray-50 border-gray-200'
-        }`}>
+        <div
+          className={`rounded-lg p-4 border ${
+            isActive
+              ? 'bg-green-50 border-green-200'
+              : hasSubscription
+                ? 'bg-amber-50 border-amber-200'
+                : 'bg-gray-50 border-gray-200'
+          }`}
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               {isActive ? (
@@ -155,14 +162,13 @@ export function SubscriptionSettingsSection({ className = '' }) {
                   {hasSubscription ? `${planName} Plan` : 'No Active Plan'}
                 </p>
                 <p className="text-sm text-gray-600">
-                  {isActive 
-                    ? isExpiringSoon 
+                  {isActive
+                    ? isExpiringSoon
                       ? `Expires in ${daysRemaining} days`
                       : 'Active subscription'
-                    : hasSubscription 
+                    : hasSubscription
                       ? subscriptionData?.status || 'Inactive'
-                      : 'Get started with a subscription'
-                  }
+                      : 'Get started with a subscription'}
                 </p>
               </div>
             </div>
@@ -189,7 +195,8 @@ export function SubscriptionSettingsSection({ className = '' }) {
                 <Sparkles className="w-5 h-5 text-indigo-600" />
                 <div>
                   <p className="font-medium text-gray-900">
-                    {activeEntitlements.length} Active Add-on{activeEntitlements.length !== 1 ? 's' : ''}
+                    {activeEntitlements.length} Active Add-on
+                    {activeEntitlements.length !== 1 ? 's' : ''}
                   </p>
                   <p className="text-sm text-gray-600">
                     ₹{totalAddOnCost.monthly}/month in add-ons
@@ -234,7 +241,7 @@ export function SubscriptionSettingsSection({ className = '' }) {
                   '/educator': 'educator',
                   '/college-admin': 'college_admin',
                   '/school-admin': 'school_admin',
-                  '/university-admin': 'university_admin'
+                  '/university-admin': 'university_admin',
                 };
                 const userType = typeMap[basePath] || 'student';
                 navigate(`/subscription/plans?type=${userType}`);
@@ -260,7 +267,7 @@ export function SubscriptionSettingsSection({ className = '' }) {
             <p className="text-sm text-gray-600 mb-4">
               Manage bulk subscriptions for your organization's members
             </p>
-            
+
             <div className="space-y-2">
               <button
                 onClick={() => navigate(`${basePath}/subscription/organization`)}
@@ -270,7 +277,9 @@ export function SubscriptionSettingsSection({ className = '' }) {
                   <Users className="w-5 h-5 text-purple-600" />
                   <div className="text-left">
                     <span className="font-medium text-purple-900 block">Organization Licenses</span>
-                    <span className="text-xs text-purple-600">Manage seats, pools & assignments</span>
+                    <span className="text-xs text-purple-600">
+                      Manage seats, pools & assignments
+                    </span>
                   </div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-purple-400 group-hover:translate-x-0.5 transition-transform" />

@@ -1,7 +1,11 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
-import { FunnelRangePreset, getGeographicDistribution, getTopHiringColleges } from '../services/analyticsService';
+import {
+  FunnelRangePreset,
+  getGeographicDistribution,
+  getTopHiringColleges,
+} from '../services/analyticsService';
 
 interface UseDiversityDataOptions {
   preset: FunnelRangePreset;
@@ -17,13 +21,13 @@ interface UseDiversityDataOptions {
  * Uses a shared WebSocket channel to reduce the number of active subscriptions
  * Provides better performance and reduced network overhead
  */
-export const useDiversityData = ({ 
-  preset, 
-  startDate, 
+export const useDiversityData = ({
+  preset,
+  startDate,
   endDate,
   geoLimit = 4,
   collegesLimit = 4,
-  enabled = true
+  enabled = true,
 }: UseDiversityDataOptions) => {
   const queryClient = useQueryClient();
   const channelRef = useRef<any>(null);
@@ -31,13 +35,13 @@ export const useDiversityData = ({
   // Memoized invalidation callback
   const invalidateQueries = useCallback(() => {
     // Invalidate both queries at once
-    queryClient.invalidateQueries({ 
+    queryClient.invalidateQueries({
       queryKey: ['geographic-distribution'],
-      refetchType: 'active'
+      refetchType: 'active',
     });
-    queryClient.invalidateQueries({ 
+    queryClient.invalidateQueries({
       queryKey: ['top-hiring-colleges'],
-      refetchType: 'active'
+      refetchType: 'active',
     });
   }, [queryClient]);
 
@@ -47,7 +51,12 @@ export const useDiversityData = ({
       {
         queryKey: ['geographic-distribution', { preset, startDate, endDate, limit: geoLimit }],
         queryFn: async () => {
-          const { data, error } = await getGeographicDistribution(preset, startDate, endDate, geoLimit);
+          const { data, error } = await getGeographicDistribution(
+            preset,
+            startDate,
+            endDate,
+            geoLimit
+          );
           if (error) throw error;
           return data;
         },
@@ -63,7 +72,12 @@ export const useDiversityData = ({
       {
         queryKey: ['top-hiring-colleges', { preset, startDate, endDate, limit: collegesLimit }],
         queryFn: async () => {
-          const { data, error } = await getTopHiringColleges(preset, startDate, endDate, collegesLimit);
+          const { data, error } = await getTopHiringColleges(
+            preset,
+            startDate,
+            endDate,
+            collegesLimit
+          );
           if (error) throw error;
           return data;
         },
@@ -87,22 +101,25 @@ export const useDiversityData = ({
 
     // Use a stable channel name shared between both datasets
     const channelName = 'diversity-data-realtime';
-    
+
     // Check if channel already exists
-    const existingChannel = supabase.getChannels().find(ch => ch.topic === channelName);
+    const existingChannel = supabase.getChannels().find((ch) => ch.topic === channelName);
     if (existingChannel) {
       channelRef.current = existingChannel;
       return;
     }
 
     // Single subscription for both geographic and colleges data
-    const channel = supabase.channel(channelName)
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'pipeline_candidates' }, 
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'pipeline_candidates' },
         invalidateQueries
       )
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'students' }, 
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'students' },
         invalidateQueries
       );
 

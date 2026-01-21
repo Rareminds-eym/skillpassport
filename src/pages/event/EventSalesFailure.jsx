@@ -21,7 +21,7 @@ export default function EventSalesFailure() {
           message: 'You cancelled the payment. No amount has been deducted from your account.',
           icon: XCircle,
           iconBg: 'bg-gray-100',
-          iconColor: 'text-gray-600'
+          iconColor: 'text-gray-600',
         };
       case 'timeout':
         return {
@@ -29,7 +29,7 @@ export default function EventSalesFailure() {
           message: 'The payment session expired. Please try again.',
           icon: AlertTriangle,
           iconBg: 'bg-amber-100',
-          iconColor: 'text-amber-600'
+          iconColor: 'text-amber-600',
         };
       case 'declined':
         return {
@@ -37,7 +37,7 @@ export default function EventSalesFailure() {
           message: 'Your payment was declined by the bank. Please try a different payment method.',
           icon: XCircle,
           iconBg: 'bg-red-100',
-          iconColor: 'text-red-600'
+          iconColor: 'text-red-600',
         };
       default:
         return {
@@ -45,7 +45,7 @@ export default function EventSalesFailure() {
           message: 'Something went wrong with your payment. Please try again.',
           icon: XCircle,
           iconBg: 'bg-red-100',
-          iconColor: 'text-red-600'
+          iconColor: 'text-red-600',
         };
     }
   };
@@ -56,20 +56,20 @@ export default function EventSalesFailure() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      
+
       <div className="py-12 px-4">
         <div className="max-w-lg mx-auto">
           {/* Failure Card */}
           <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
             {/* Failure Icon */}
-            <div className={`w-20 h-20 mx-auto mb-6 ${errorDetails.iconBg} rounded-full flex items-center justify-center`}>
+            <div
+              className={`w-20 h-20 mx-auto mb-6 ${errorDetails.iconBg} rounded-full flex items-center justify-center`}
+            >
               <Icon className={`w-12 h-12 ${errorDetails.iconColor}`} />
             </div>
 
             <h1 className="text-2xl font-bold text-gray-900 mb-2">{errorDetails.title}</h1>
-            <p className="text-gray-600 mb-6">
-              {errorDetails.message}
-            </p>
+            <p className="text-gray-600 mb-6">{errorDetails.message}</p>
 
             {/* Plan Info (if available) */}
             {planName && (

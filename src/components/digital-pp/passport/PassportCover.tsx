@@ -24,7 +24,7 @@ const PassportCover: React.FC<PassportCoverProps> = ({ isOpen, onClick }) => {
             <div className="absolute bottom-8 left-8 w-8 h-8 border border-white rounded-full"></div>
             <div className="absolute bottom-4 right-4 w-20 h-20 border-2 border-white rounded-full"></div>
           </div>
-          
+
           {/* Logo/Emblem */}
           <motion.div
             className="mb-8"
@@ -34,11 +34,11 @@ const PassportCover: React.FC<PassportCoverProps> = ({ isOpen, onClick }) => {
           >
             <div className="w-24 h-24 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
               <svg className="w-12 h-12" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2L2 7v10c0 5.55 3.84 9.74 9 11 5.16-1.26 9-5.45 9-11V7l-10-5z"/>
+                <path d="M12 2L2 7v10c0 5.55 3.84 9.74 9 11 5.16-1.26 9-5.45 9-11V7l-10-5z" />
               </svg>
             </div>
           </motion.div>
-          
+
           {/* Title */}
           <motion.div
             className="text-center"
@@ -51,7 +51,7 @@ const PassportCover: React.FC<PassportCoverProps> = ({ isOpen, onClick }) => {
             <div className="w-32 h-0.5 bg-white mx-auto mb-4"></div>
             <p className="text-lg opacity-90">Professional Portfolio</p>
           </motion.div>
-          
+
           {/* Footer */}
           <motion.div
             className="absolute bottom-6 left-0 right-0 text-center"

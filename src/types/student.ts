@@ -25,7 +25,7 @@ export interface Student {
   approval_status: 'pending' | 'approved' | 'rejected';
   created_at: string;
   updated_at: string;
-  
+
   // Academic fields
   semester?: number;
   current_semester?: string;
@@ -60,7 +60,7 @@ export interface Student {
   hobbies?: string[];
   languages?: Language[];
   interests?: string[];
-  
+
   // Additional database fields
   school_id?: string;
   college_id?: string;
@@ -170,7 +170,16 @@ export interface Training {
   skills: string[];
 }
 
-export type PortfolioLayout = 'modern' | 'classic' | 'creative' | 'minimal' | 'splitscreen' | 'aipersona' | 'infographic' | 'resume' | 'journey';
+export type PortfolioLayout =
+  | 'modern'
+  | 'classic'
+  | 'creative'
+  | 'minimal'
+  | 'splitscreen'
+  | 'aipersona'
+  | 'infographic'
+  | 'resume'
+  | 'journey';
 
 export type AnimationType = 'fade' | 'slide' | 'bounce' | 'float' | 'none';
 

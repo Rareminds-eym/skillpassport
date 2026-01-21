@@ -1,6 +1,6 @@
 /**
  * User Acceptance Tests: Admin User Scenarios
- * 
+ *
  * Tests real-world admin user workflows for organization subscription management.
  * Requirements: UAT, User Experience
  */
@@ -24,12 +24,48 @@ describe('UAT: Admin User Scenarios', () => {
       assignments: new Map(),
       invitations: new Map(),
       users: new Map([
-        ['admin-1', { id: 'admin-1', name: 'John Admin', role: 'school_admin', organization_id: 'org-1', email: 'admin@school.edu' }],
-        ['student-1', { id: 'student-1', name: 'Alice Student', role: 'student', organization_id: 'org-1', email: 'alice@school.edu' }],
-        ['student-2', { id: 'student-2', name: 'Bob Student', role: 'student', organization_id: 'org-1', email: 'bob@school.edu' }],
-        ['educator-1', { id: 'educator-1', name: 'Carol Teacher', role: 'educator', organization_id: 'org-1', email: 'carol@school.edu' }]
+        [
+          'admin-1',
+          {
+            id: 'admin-1',
+            name: 'John Admin',
+            role: 'school_admin',
+            organization_id: 'org-1',
+            email: 'admin@school.edu',
+          },
+        ],
+        [
+          'student-1',
+          {
+            id: 'student-1',
+            name: 'Alice Student',
+            role: 'student',
+            organization_id: 'org-1',
+            email: 'alice@school.edu',
+          },
+        ],
+        [
+          'student-2',
+          {
+            id: 'student-2',
+            name: 'Bob Student',
+            role: 'student',
+            organization_id: 'org-1',
+            email: 'bob@school.edu',
+          },
+        ],
+        [
+          'educator-1',
+          {
+            id: 'educator-1',
+            name: 'Carol Teacher',
+            role: 'educator',
+            organization_id: 'org-1',
+            email: 'carol@school.edu',
+          },
+        ],
       ]),
-      payments: new Map()
+      payments: new Map(),
     };
     vi.clearAllMocks();
   });
@@ -40,7 +76,12 @@ describe('UAT: Admin User Scenarios', () => {
       const viewPlans = async () => {
         return [
           { id: 'plan-basic', name: 'Basic', price: 500, features: ['feature-a'] },
-          { id: 'plan-pro', name: 'Professional', price: 1000, features: ['feature-a', 'feature-b', 'feature-c'] }
+          {
+            id: 'plan-pro',
+            name: 'Professional',
+            price: 1000,
+            features: ['feature-a', 'feature-b', 'feature-c'],
+          },
         ];
       };
 
@@ -63,7 +104,7 @@ describe('UAT: Admin User Scenarios', () => {
           discount: discount * 100,
           discountAmount,
           taxAmount,
-          total: subtotal - discountAmount + taxAmount
+          total: subtotal - discountAmount + taxAmount,
         };
       };
 
@@ -77,7 +118,7 @@ describe('UAT: Admin User Scenarios', () => {
           id: `pay-${Date.now()}`,
           amount,
           status: 'completed',
-          razorpay_payment_id: 'pay_test_123'
+          razorpay_payment_id: 'pay_test_123',
         };
         state.payments.set(payment.id, payment);
         return payment;
@@ -96,7 +137,7 @@ describe('UAT: Admin User Scenarios', () => {
           assigned_seats: 0,
           status: 'active',
           payment_id: paymentId,
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
         };
         state.subscriptions.set(subscription.id, subscription);
         return subscription;
@@ -113,7 +154,7 @@ describe('UAT: Admin User Scenarios', () => {
           organization_subscription_id: subscriptionId,
           member_type: memberType,
           allocated_seats: 50,
-          assigned_seats: 0
+          assigned_seats: 0,
         };
         state.licensePools.set(pool.id, pool);
         return pool;
@@ -134,14 +175,14 @@ describe('UAT: Admin User Scenarios', () => {
         organization_id: 'org-1',
         total_seats: 50,
         assigned_seats: 0,
-        status: 'active'
+        status: 'active',
       });
       state.licensePools.set('pool-1', {
         id: 'pool-1',
         organization_subscription_id: 'sub-1',
         member_type: 'student',
         allocated_seats: 50,
-        assigned_seats: 0
+        assigned_seats: 0,
       });
     });
 
@@ -159,7 +200,7 @@ describe('UAT: Admin User Scenarios', () => {
           user_id: userId,
           assigned_by: adminId,
           status: 'active',
-          assigned_at: new Date().toISOString()
+          assigned_at: new Date().toISOString(),
         };
         state.assignments.set(assignment.id, assignment);
         pool.assigned_seats++;
@@ -196,7 +237,7 @@ describe('UAT: Admin User Scenarios', () => {
             license_pool_id: poolId,
             user_id: userId,
             assigned_by: adminId,
-            status: 'active'
+            status: 'active',
           };
           state.assignments.set(assignment.id, assignment);
           pool.assigned_seats++;
@@ -222,7 +263,7 @@ describe('UAT: Admin User Scenarios', () => {
         member_type: 'student',
         allocated_seats: 50,
         assigned_seats: 0,
-        auto_assign_new_members: true
+        auto_assign_new_members: true,
       });
 
       // Step 1: Admin sends invitation
@@ -236,7 +277,7 @@ describe('UAT: Admin User Scenarios', () => {
           target_license_pool_id: autoAssign ? 'pool-1' : null,
           status: 'pending',
           invitation_token: `token_${Math.random().toString(36).substring(7)}`,
-          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         };
         state.invitations.set(invitation.id, invitation);
         return invitation;
@@ -270,7 +311,7 @@ describe('UAT: Admin User Scenarios', () => {
               id: `assign-${Date.now()}`,
               license_pool_id: pool.id,
               user_id: newUserId,
-              status: 'active'
+              status: 'active',
             };
             state.assignments.set(assignment.id, assignment);
             pool.assigned_seats++;
@@ -298,7 +339,7 @@ describe('UAT: Admin User Scenarios', () => {
         assigned_seats: 30,
         status: 'active',
         auto_renew: true,
-        end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+        end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       });
     });
 
@@ -315,7 +356,7 @@ describe('UAT: Admin User Scenarios', () => {
           subscription,
           daysUntilExpiry,
           needsAttention: daysUntilExpiry <= 30,
-          autoRenewEnabled: subscription.auto_renew
+          autoRenewEnabled: subscription.auto_renew,
         };
       };
 
@@ -356,52 +397,55 @@ describe('UAT: Admin User Scenarios', () => {
         total_seats: 50,
         assigned_seats: 35,
         price_per_seat: 1000,
-        status: 'active'
+        status: 'active',
       });
       state.payments.set('pay-1', {
         id: 'pay-1',
         subscription_id: 'sub-1',
         amount: 53100,
         status: 'completed',
-        created_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+        created_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
       });
     });
 
     it('should display comprehensive billing information', async () => {
       const getBillingDashboard = async (organizationId: string) => {
-        const orgSubscriptions = Array.from(state.subscriptions.values())
-          .filter(s => s.organization_id === organizationId);
+        const orgSubscriptions = Array.from(state.subscriptions.values()).filter(
+          (s) => s.organization_id === organizationId
+        );
 
-        const orgPayments = Array.from(state.payments.values())
-          .filter(p => orgSubscriptions.some(s => s.id === p.subscription_id));
+        const orgPayments = Array.from(state.payments.values()).filter((p) =>
+          orgSubscriptions.some((s) => s.id === p.subscription_id)
+        );
 
         const totalMonthlyCost = orgSubscriptions.reduce(
-          (sum, s) => sum + (s.price_per_seat * s.total_seats), 0
+          (sum, s) => sum + s.price_per_seat * s.total_seats,
+          0
         );
 
         const totalSeats = orgSubscriptions.reduce((sum, s) => sum + s.total_seats, 0);
         const assignedSeats = orgSubscriptions.reduce((sum, s) => sum + s.assigned_seats, 0);
 
         return {
-          subscriptions: orgSubscriptions.map(s => ({
+          subscriptions: orgSubscriptions.map((s) => ({
             id: s.id,
             planName: s.plan_name,
             seats: `${s.assigned_seats}/${s.total_seats}`,
             utilization: ((s.assigned_seats / s.total_seats) * 100).toFixed(1) + '%',
-            monthlyCost: s.price_per_seat * s.total_seats
+            monthlyCost: s.price_per_seat * s.total_seats,
           })),
           summary: {
             totalMonthlyCost,
             totalSeats,
             assignedSeats,
-            overallUtilization: ((assignedSeats / totalSeats) * 100).toFixed(1) + '%'
+            overallUtilization: ((assignedSeats / totalSeats) * 100).toFixed(1) + '%',
           },
-          recentPayments: orgPayments.slice(0, 5)
+          recentPayments: orgPayments.slice(0, 5),
         };
       };
 
       const dashboard = await getBillingDashboard('org-1');
-      
+
       expect(dashboard.subscriptions.length).toBe(1);
       expect(dashboard.summary.totalMonthlyCost).toBe(50000);
       expect(dashboard.summary.overallUtilization).toBe('70.0%');
@@ -417,13 +461,13 @@ describe('UAT: Admin User Scenarios', () => {
       state.licensePools.set('pool-1', {
         id: 'pool-1',
         allocated_seats: 50,
-        assigned_seats: 2
+        assigned_seats: 2,
       });
       state.assignments.set('assign-1', {
         id: 'assign-1',
         license_pool_id: 'pool-1',
         user_id: 'student-1',
-        status: 'active'
+        status: 'active',
       });
     });
 
@@ -451,7 +495,7 @@ describe('UAT: Admin User Scenarios', () => {
           user_id: toUserId,
           status: 'active',
           transferred_from: currentAssignment.id,
-          assigned_by: adminId
+          assigned_by: adminId,
         };
         state.assignments.set(newAssignment.id, newAssignment);
 
@@ -459,7 +503,7 @@ describe('UAT: Admin User Scenarios', () => {
       };
 
       const result = await transferLicense('student-1', 'educator-1', 'admin-1');
-      
+
       expect(result.from.status).toBe('transferred');
       expect(result.to.user_id).toBe('educator-1');
       expect(result.to.transferred_from).toBe('assign-1');

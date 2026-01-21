@@ -1,114 +1,112 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import AddAttendanceSessionModal from "@/components/admin/modals/AddAttendanceSessionModal";
-import AttendanceDetailsModal from "@/components/admin/modals/AttendanceDetailsModal";
-import StudentHistoryModal from "@/components/admin/modals/StudentHistoryModal";
-import { supabase } from "@/lib/supabaseClient";
-import { AttendanceRecord, AttendanceSession, Student, SubjectGroup } from "@/types/Attendance";
+import AddAttendanceSessionModal from '@/components/admin/modals/AddAttendanceSessionModal';
+import AttendanceDetailsModal from '@/components/admin/modals/AttendanceDetailsModal';
+import StudentHistoryModal from '@/components/admin/modals/StudentHistoryModal';
+import { supabase } from '@/lib/supabaseClient';
+import { AttendanceRecord, AttendanceSession, Student, SubjectGroup } from '@/types/Attendance';
 import {
-    ArrowDownTrayIcon,
-    BellAlertIcon,
-    BookOpenIcon,
-    CalendarIcon,
-    ChartBarIcon,
-    ChartPieIcon,
-    CheckCircleIcon,
-    ChevronDownIcon,
-    ClipboardDocumentCheckIcon,
-    ClipboardDocumentListIcon,
-    ClockIcon,
-    ExclamationCircleIcon,
-    FunnelIcon,
-    PlusCircleIcon,
-    ShieldCheckIcon,
-    SparklesIcon,
-    Squares2X2Icon,
-    TableCellsIcon,
-    UserGroupIcon,
-    XCircleIcon,
-    XMarkIcon,
-} from "@heroicons/react/24/outline";
-import React, { useEffect, useMemo, useState } from "react";
-import ReactApexChart from "react-apexcharts";
-import KPICard from "../../../components/admin/KPICard";
-import Pagination from "../../../components/admin/Pagination";
-import SearchBar from "../../../components/common/SearchBar";
-
-
+  ArrowDownTrayIcon,
+  BellAlertIcon,
+  BookOpenIcon,
+  CalendarIcon,
+  ChartBarIcon,
+  ChartPieIcon,
+  CheckCircleIcon,
+  ChevronDownIcon,
+  ClipboardDocumentCheckIcon,
+  ClipboardDocumentListIcon,
+  ClockIcon,
+  ExclamationCircleIcon,
+  FunnelIcon,
+  PlusCircleIcon,
+  ShieldCheckIcon,
+  SparklesIcon,
+  Squares2X2Icon,
+  TableCellsIcon,
+  UserGroupIcon,
+  XCircleIcon,
+  XMarkIcon,
+} from '@heroicons/react/24/outline';
+import React, { useEffect, useMemo, useState } from 'react';
+import ReactApexChart from 'react-apexcharts';
+import KPICard from '../../../components/admin/KPICard';
+import Pagination from '../../../components/admin/Pagination';
+import SearchBar from '../../../components/common/SearchBar';
 
 // ==================== UTILITIES ====================
 const formatDate = (date: string) => {
-  return new Date(date).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
+  return new Date(date).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
   });
 };
 
 const getStatusConfig = (status: string) => {
   const configs = {
     present: {
-      color: "from-emerald-500 to-green-500",
-      bg: "bg-emerald-50",
-      text: "text-emerald-700",
-      border: "border-emerald-200",
+      color: 'from-emerald-500 to-green-500',
+      bg: 'bg-emerald-50',
+      text: 'text-emerald-700',
+      border: 'border-emerald-200',
       icon: CheckCircleIcon,
-      label: "Present",
+      label: 'Present',
     },
     absent: {
-      color: "from-rose-500 to-red-500",
-      bg: "bg-rose-50",
-      text: "text-rose-700",
-      border: "border-rose-200",
+      color: 'from-rose-500 to-red-500',
+      bg: 'bg-rose-50',
+      text: 'text-rose-700',
+      border: 'border-rose-200',
       icon: XCircleIcon,
-      label: "Absent",
+      label: 'Absent',
     },
     late: {
-      color: "from-amber-500 to-orange-500",
-      bg: "bg-amber-50",
-      text: "text-amber-700",
-      border: "border-amber-200",
+      color: 'from-amber-500 to-orange-500',
+      bg: 'bg-amber-50',
+      text: 'text-amber-700',
+      border: 'border-amber-200',
       icon: ClockIcon,
-      label: "Late",
+      label: 'Late',
     },
     excused: {
-      color: "from-blue-500 to-indigo-500",
-      bg: "bg-blue-50",
-      text: "text-blue-700",
-      border: "border-blue-200",
+      color: 'from-blue-500 to-indigo-500',
+      bg: 'bg-blue-50',
+      text: 'text-blue-700',
+      border: 'border-blue-200',
       icon: ShieldCheckIcon,
-      label: "Excused",
+      label: 'Excused',
     },
-    "not-marked": {
-      color: "from-gray-400 to-gray-500",
-      bg: "bg-gray-50",
-      text: "text-gray-700",
-      border: "border-gray-200",
+    'not-marked': {
+      color: 'from-gray-400 to-gray-500',
+      bg: 'bg-gray-50',
+      text: 'text-gray-700',
+      border: 'border-gray-200',
       icon: ExclamationCircleIcon,
-      label: "Not Marked",
+      label: 'Not Marked',
     },
     completed: {
-      color: "from-emerald-500 to-green-500",
-      bg: "bg-emerald-50",
-      text: "text-emerald-700",
-      border: "border-emerald-200",
+      color: 'from-emerald-500 to-green-500',
+      bg: 'bg-emerald-50',
+      text: 'text-emerald-700',
+      border: 'border-emerald-200',
       icon: CheckCircleIcon,
-      label: "Completed",
+      label: 'Completed',
     },
     ongoing: {
-      color: "from-blue-500 to-indigo-500",
-      bg: "bg-blue-50",
-      text: "text-blue-700",
-      border: "border-blue-200",
+      color: 'from-blue-500 to-indigo-500',
+      bg: 'bg-blue-50',
+      text: 'text-blue-700',
+      border: 'border-blue-200',
       icon: SparklesIcon,
-      label: "Ongoing",
+      label: 'Ongoing',
     },
     scheduled: {
-      color: "from-gray-400 to-gray-500",
-      bg: "bg-gray-50",
-      text: "text-gray-700",
-      border: "border-gray-200",
+      color: 'from-gray-400 to-gray-500',
+      bg: 'bg-gray-50',
+      text: 'text-gray-700',
+      border: 'border-gray-200',
       icon: CalendarIcon,
-      label: "Scheduled",
+      label: 'Scheduled',
     },
   };
   return configs[status as keyof typeof configs] || configs.scheduled;
@@ -126,11 +124,7 @@ const FilterSection = ({ title, children, defaultOpen = false }: any) => {
         type="button"
       >
         <span className="text-sm font-medium text-gray-900">{title}</span>
-        <ChevronDownIcon
-          className={`h-4 w-4 transition-transform ${
-            isOpen ? "rotate-180" : ""
-          }`}
-        />
+        <ChevronDownIcon className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {isOpen && <div className="mt-3 space-y-2">{children}</div>}
     </div>
@@ -140,10 +134,7 @@ const FilterSection = ({ title, children, defaultOpen = false }: any) => {
 const CheckboxGroup = ({ options, selectedValues, onChange }: any) => (
   <>
     {options.map((opt: any) => (
-      <label
-        key={opt.value}
-        className="flex items-center text-sm text-gray-700"
-      >
+      <label key={opt.value} className="flex items-center text-sm text-gray-700">
         <input
           type="checkbox"
           checked={selectedValues.includes(opt.value)}
@@ -167,7 +158,9 @@ const StatusBadge = ({ status }: { status: string }) => {
   const Icon = config.icon;
 
   return (
-    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full ${config.bg} ${config.text} border ${config.border} font-medium text-xs shadow-sm`}>
+    <span
+      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full ${config.bg} ${config.text} border ${config.border} font-medium text-xs shadow-sm`}
+    >
       <Icon className="h-3.5 w-3.5" />
       {config.label}
     </span>
@@ -176,9 +169,11 @@ const StatusBadge = ({ status }: { status: string }) => {
 
 const EnhancedSubjectCard = ({ subjectGroup, onView }: any) => {
   const attendanceColor =
-    subjectGroup.avgAttendancePercentage >= 75 ? 'from-emerald-500 to-green-500' :
-    subjectGroup.avgAttendancePercentage >= 50 ? 'from-amber-500 to-orange-500' :
-    'from-rose-500 to-red-500';
+    subjectGroup.avgAttendancePercentage >= 75
+      ? 'from-emerald-500 to-green-500'
+      : subjectGroup.avgAttendancePercentage >= 50
+        ? 'from-amber-500 to-orange-500'
+        : 'from-rose-500 to-red-500';
 
   return (
     <div
@@ -195,9 +190,7 @@ const EnhancedSubjectCard = ({ subjectGroup, onView }: any) => {
                 <BookOpenIcon className="h-5 w-5 text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-gray-900 truncate text-lg">
-                  {subjectGroup.subject}
-                </h3>
+                <h3 className="font-bold text-gray-900 truncate text-lg">{subjectGroup.subject}</h3>
                 <p className="text-sm text-gray-600 truncate">{subjectGroup.faculty}</p>
               </div>
             </div>
@@ -209,22 +202,25 @@ const EnhancedSubjectCard = ({ subjectGroup, onView }: any) => {
           <div className="flex items-center gap-1.5 text-gray-600">
             <CalendarIcon className="h-4 w-4" />
             <span className="text-xs">
-              {subjectGroup.totalSessions === 1 
+              {subjectGroup.totalSessions === 1
                 ? formatDate(subjectGroup.dateRange.first)
-                : `${formatDate(subjectGroup.dateRange.first)} - ${formatDate(subjectGroup.dateRange.last)}`
-              }
+                : `${formatDate(subjectGroup.dateRange.first)} - ${formatDate(subjectGroup.dateRange.last)}`}
             </span>
           </div>
           <div className="flex items-center gap-1.5 text-indigo-600 font-medium">
             <ClipboardDocumentListIcon className="h-4 w-4" />
-            <span>{subjectGroup.totalSessions} Session{subjectGroup.totalSessions !== 1 ? 's' : ''}</span>
+            <span>
+              {subjectGroup.totalSessions} Session{subjectGroup.totalSessions !== 1 ? 's' : ''}
+            </span>
           </div>
         </div>
 
         <div className="relative mb-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-700">Average Attendance</span>
-            <span className={`text-2xl font-bold bg-gradient-to-r ${attendanceColor} bg-clip-text text-transparent`}>
+            <span
+              className={`text-2xl font-bold bg-gradient-to-r ${attendanceColor} bg-clip-text text-transparent`}
+            >
               {subjectGroup.avgAttendancePercentage.toFixed(1)}%
             </span>
           </div>
@@ -276,33 +272,32 @@ const EnhancedSubjectCard = ({ subjectGroup, onView }: any) => {
 
 // ==================== MAIN COMPONENT ====================
 const AttendanceTracking: React.FC = () => {
-  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [showFilters, setShowFilters] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(12);
-  const [selectedSubjectGroup, setSelectedSubjectGroup] =
-    useState<SubjectGroup | null>(null);
+  const [selectedSubjectGroup, setSelectedSubjectGroup] = useState<SubjectGroup | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [showStudentHistoryModal, setShowStudentHistoryModal] = useState(false);
   const [dateRange, setDateRange] = useState({
-    from: "",
-    to: "",
+    from: '',
+    to: '',
   });
   const [showAddSessionModal, setShowAddSessionModal] = useState(false);
   const [sessionFormData, setSessionFormData] = useState({
-    department: "",
-    course: "",
-    semester: "",
-    section: "",
-    subject: "",
-    faculty: "",
-    date: "",
-    startTime: "",
-    endTime: "",
-    roomNumber: "",
-    remarks: "",
+    department: '',
+    course: '',
+    semester: '',
+    section: '',
+    subject: '',
+    faculty: '',
+    date: '',
+    startTime: '',
+    endTime: '',
+    roomNumber: '',
+    remarks: '',
     totalStudents: 0,
   });
 
@@ -315,7 +310,7 @@ const AttendanceTracking: React.FC = () => {
   const [analytics, setAnalytics] = useState({
     totalSessions: 0,
     completedSessions: 0,
-    avgAttendance: "0",
+    avgAttendance: '0',
     totalStudents: 0,
     totalPresent: 0,
     totalAbsent: 0,
@@ -345,14 +340,14 @@ const AttendanceTracking: React.FC = () => {
   const fetchSubjectGroups = async () => {
     try {
       setLoading(true);
-      
-      let query = supabase
-        .from('college_subject_attendance_summary')
-        .select('*');
+
+      let query = supabase.from('college_subject_attendance_summary').select('*');
 
       // Add search filter
       if (searchQuery) {
-        query = query.or(`subject.ilike.%${searchQuery}%,faculty.ilike.%${searchQuery}%,department.ilike.%${searchQuery}%`);
+        query = query.or(
+          `subject.ilike.%${searchQuery}%,faculty.ilike.%${searchQuery}%,department.ilike.%${searchQuery}%`
+        );
       }
 
       // Add filters
@@ -393,7 +388,7 @@ const AttendanceTracking: React.FC = () => {
       const { data, error } = await query;
 
       if (error) throw error;
-      
+
       // Transform Supabase data to match component structure
       const transformedGroups = (data || []).map((item: any) => ({
         subject: item.subject,
@@ -429,28 +424,35 @@ const AttendanceTracking: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('college_attendance_sessions')
-        .select(`
+        .select(
+          `
           id,
           status,
           attendance_percentage,
           total_students,
           present_count,
           absent_count
-        `)
+        `
+        )
         .gte('date', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]); // Last 30 days
 
       if (error) throw error;
 
       const sessions = data || [];
       const totalSessions = sessions.length;
-      const completedSessions = sessions.filter(s => s.status === 'completed').length;
-      const avgAttendance = sessions.length > 0 
-        ? (sessions.reduce((acc, s) => acc + (s.attendance_percentage || 0), 0) / sessions.length).toFixed(1)
-        : "0";
+      const completedSessions = sessions.filter((s) => s.status === 'completed').length;
+      const avgAttendance =
+        sessions.length > 0
+          ? (
+              sessions.reduce((acc, s) => acc + (s.attendance_percentage || 0), 0) / sessions.length
+            ).toFixed(1)
+          : '0';
       const totalStudents = sessions.reduce((acc, s) => acc + (s.total_students || 0), 0);
       const totalPresent = sessions.reduce((acc, s) => acc + (s.present_count || 0), 0);
       const totalAbsent = sessions.reduce((acc, s) => acc + (s.absent_count || 0), 0);
-      const lowAttendanceSessions = sessions.filter(s => (s.attendance_percentage || 0) < 75).length;
+      const lowAttendanceSessions = sessions.filter(
+        (s) => (s.attendance_percentage || 0) < 75
+      ).length;
 
       setAnalytics({
         totalSessions,
@@ -469,9 +471,11 @@ const AttendanceTracking: React.FC = () => {
   const fetchFilterOptions = async () => {
     try {
       // Get current user's college_id first
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       let currentCollegeId = null;
-      
+
       if (user) {
         // Try to get college_id from user metadata or users table
         if (user.user_metadata?.college_id) {
@@ -494,7 +498,7 @@ const AttendanceTracking: React.FC = () => {
         .select('department_name')
         .eq('status', 'active')
         .not('department_name', 'is', null);
-      
+
       if (currentCollegeId) {
         // Add college filter if we have college_id
         departmentsQuery = departmentsQuery.eq('college_id', currentCollegeId);
@@ -508,7 +512,7 @@ const AttendanceTracking: React.FC = () => {
         .select('program_name')
         .eq('status', 'active')
         .not('program_name', 'is', null);
-      
+
       if (currentCollegeId) {
         programsQuery = programsQuery.eq('college_id', currentCollegeId);
       }
@@ -521,7 +525,7 @@ const AttendanceTracking: React.FC = () => {
         .select('semester')
         .eq('status', 'active')
         .not('semester', 'is', null);
-      
+
       if (currentCollegeId) {
         semestersQuery = semestersQuery.eq('college_id', currentCollegeId);
       }
@@ -534,7 +538,7 @@ const AttendanceTracking: React.FC = () => {
         .select('section')
         .eq('status', 'active')
         .not('section', 'is', null);
-      
+
       if (currentCollegeId) {
         sectionsQuery = sectionsQuery.eq('college_id', currentCollegeId);
       }
@@ -545,14 +549,16 @@ const AttendanceTracking: React.FC = () => {
       // Note: colleges table doesn't exist - fetch college name from organizations separately
       let facultyQuery = supabase
         .from('college_lecturers')
-        .select(`
+        .select(
+          `
           id,
           first_name,
           last_name,
           email,
           department,
           "collegeId"
-        `)
+        `
+        )
         .eq('"accountStatus"', 'active');
 
       if (currentCollegeId) {
@@ -576,21 +582,25 @@ const AttendanceTracking: React.FC = () => {
       const { data: subjectsData } = await subjectsQuery;
 
       // Remove duplicates and format data
-      const uniqueDepartments = [...new Set((departmentsData || []).map(d => d.department_name))];
-      const uniquePrograms = [...new Set((programsData || []).map(p => p.program_name))];
-      const uniqueSemesters = [...new Set((semestersData || []).map(s => s.semester))].sort((a, b) => a - b);
-      const uniqueSections = [...new Set((sectionsData || []).map(s => s.section))].sort();
+      const uniqueDepartments = [...new Set((departmentsData || []).map((d) => d.department_name))];
+      const uniquePrograms = [...new Set((programsData || []).map((p) => p.program_name))];
+      const uniqueSemesters = [...new Set((semestersData || []).map((s) => s.semester))].sort(
+        (a, b) => a - b
+      );
+      const uniqueSections = [...new Set((sectionsData || []).map((s) => s.section))].sort();
 
       // Format faculty for dropdown (simple format expected by modal)
-      const facultyOptions = (facultyData || []).map(f => {
-        const displayName = f.first_name && f.last_name 
-          ? `${f.first_name} ${f.last_name}` 
-          : f.email;
-        
+      const facultyOptions = (facultyData || []).map((f) => {
+        const displayName =
+          f.first_name && f.last_name ? `${f.first_name} ${f.last_name}` : f.email;
+
+        // @ts-expect-error - Auto-suppressed for migration
         const collegeName = f.colleges?.name || 'Unknown College';
-        
-        console.log(`Faculty: ${displayName} belongs to college: ${collegeName} (ID: ${f.collegeId})`);
-        
+
+        console.log(
+          `Faculty: ${displayName} belongs to college: ${collegeName} (ID: ${f.collegeId})`
+        );
+
         return {
           value: f.id, // Use actual faculty UUID
           label: `${displayName} (${f.department || 'No Dept'})`, // Show name and department
@@ -604,7 +614,7 @@ const AttendanceTracking: React.FC = () => {
         semesters: uniqueSemesters.length,
         sections: uniqueSections.length,
         faculty: facultyOptions.length,
-        subjects: (subjectsData || []).length
+        subjects: (subjectsData || []).length,
       });
 
       console.log('Faculty list with colleges:', facultyOptions);
@@ -630,7 +640,7 @@ const AttendanceTracking: React.FC = () => {
         .eq('subject_name', subjectName);
 
       if (error) throw error;
-      
+
       // Transform Supabase data to match component structure
       const transformedRecords = (data || []).map((record: any) => ({
         id: record.id,
@@ -658,10 +668,15 @@ const AttendanceTracking: React.FC = () => {
     }
   };
 
-  const fetchStudentCount = async (department: string, course: string, semester: string, section: string) => {
+  const fetchStudentCount = async (
+    department: string,
+    course: string,
+    semester: string,
+    section: string
+  ) => {
     try {
       console.log('Fetching student count for:', { department, course, semester, section });
-      
+
       const { data, error } = await supabase
         .from('program_sections_view')
         .select('max_students, department_name, program_name, semester, section, status')
@@ -677,7 +692,7 @@ const AttendanceTracking: React.FC = () => {
         console.error('Supabase error:', error);
         throw error;
       }
-      
+
       if (data && data.length > 0) {
         console.log('Found matching record:', data[0]);
         return data[0].max_students || 0;
@@ -703,53 +718,65 @@ const AttendanceTracking: React.FC = () => {
 
   // Transform filter options for component use
   const departmentOptions = useMemo(() => {
-    return filterOptions.departments.map(dept => ({
+    return filterOptions.departments.map((dept) => ({
       value: dept,
       label: dept,
-      count: subjectGroups.filter(g => g.department === dept).length,
+      count: subjectGroups.filter((g) => g.department === dept).length,
     }));
   }, [filterOptions.departments, subjectGroups]);
 
   const courseOptions = useMemo(() => {
-    return filterOptions.courses.map(course => ({
+    return filterOptions.courses.map((course) => ({
       value: course,
       label: course,
-      count: subjectGroups.filter(g => g.course === course).length,
+      count: subjectGroups.filter((g) => g.course === course).length,
     }));
   }, [filterOptions.courses, subjectGroups]);
 
   const semesterOptions = useMemo(() => {
-    return filterOptions.semesters.map(sem => ({
+    return filterOptions.semesters.map((sem) => ({
       value: sem,
       label: `Semester ${sem}`,
-      count: subjectGroups.filter(g => g.semester === sem).length,
+      count: subjectGroups.filter((g) => g.semester === sem).length,
     }));
   }, [filterOptions.semesters, subjectGroups]);
 
   const sectionOptions = useMemo(() => {
-    return filterOptions.sections.map(sec => ({
+    return filterOptions.sections.map((sec) => ({
       value: sec,
       label: `Section ${sec}`,
-      count: subjectGroups.filter(g => g.section === sec).length,
+      count: subjectGroups.filter((g) => g.section === sec).length,
     }));
   }, [filterOptions.sections, subjectGroups]);
 
   const statusOptions = [
-    { value: "completed", label: "Completed", count: subjectGroups.filter(g => g.latestStatus === "completed").length },
-    { value: "ongoing", label: "Ongoing", count: subjectGroups.filter(g => g.latestStatus === "ongoing").length },
-    { value: "scheduled", label: "Scheduled", count: subjectGroups.filter(g => g.latestStatus === "scheduled").length },
+    {
+      value: 'completed',
+      label: 'Completed',
+      count: subjectGroups.filter((g) => g.latestStatus === 'completed').length,
+    },
+    {
+      value: 'ongoing',
+      label: 'Ongoing',
+      count: subjectGroups.filter((g) => g.latestStatus === 'ongoing').length,
+    },
+    {
+      value: 'scheduled',
+      label: 'Scheduled',
+      count: subjectGroups.filter((g) => g.latestStatus === 'scheduled').length,
+    },
   ];
 
   const facultyFilterOptions = useMemo(() => {
-    return filterOptions.faculty.map(fac => ({
+    return filterOptions.faculty.map((fac) => ({
       value: fac.value, // Use the faculty ID
       label: fac.label, // Use the formatted name
-      count: subjectGroups.filter(g => g.faculty === fac.label).length,
+      count: subjectGroups.filter((g) => g.faculty === fac.label).length,
     }));
   }, [filterOptions.faculty, subjectGroups]);
 
   const subjectOptions = useMemo(() => {
-    return filterOptions.subjects.map(subj => ({
+    return filterOptions.subjects.map((subj) => ({
       value: subj.course_name,
       label: subj.course_name,
     }));
@@ -768,7 +795,7 @@ const AttendanceTracking: React.FC = () => {
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleClearFilters = () => {
@@ -780,7 +807,7 @@ const AttendanceTracking: React.FC = () => {
       statuses: [],
       faculty: [],
     });
-    setDateRange({ from: "", to: "" });
+    setDateRange({ from: '', to: '' });
   };
 
   const handleViewDetails = async (subjectGroup: SubjectGroup) => {
@@ -830,10 +857,10 @@ const AttendanceTracking: React.FC = () => {
       };
 
       setSelectedSubjectGroup(updatedSubjectGroup);
-      
+
       // Fetch attendance records for this subject
       await fetchAttendanceRecords(subjectGroup.subject);
-      
+
       setShowDetailsModal(true);
     } catch (err: any) {
       console.error('Error in handleViewDetails:', err);
@@ -842,12 +869,16 @@ const AttendanceTracking: React.FC = () => {
   };
 
   const handleEdit = (subjectGroup: SubjectGroup) => {
-    console.log("Edit subject group:", subjectGroup);
+    console.log('Edit subject group:', subjectGroup);
     // Implement edit logic
   };
 
   const handleDelete = async (subjectGroup: SubjectGroup) => {
-    if (confirm(`Are you sure you want to delete all ${subjectGroup.totalSessions} sessions for ${subjectGroup.subject}?`)) {
+    if (
+      confirm(
+        `Are you sure you want to delete all ${subjectGroup.totalSessions} sessions for ${subjectGroup.subject}?`
+      )
+    ) {
       try {
         const { error } = await supabase
           .from('college_attendance_sessions')
@@ -859,7 +890,7 @@ const AttendanceTracking: React.FC = () => {
           .eq('section', subjectGroup.section);
 
         if (error) throw error;
-        
+
         alert('Sessions deleted successfully!');
         // Refresh the data
         fetchSubjectGroups();
@@ -876,7 +907,7 @@ const AttendanceTracking: React.FC = () => {
     const headers = Object.keys(data[0]);
     const csvContent = [
       headers.join(','),
-      ...data.map(row => headers.map(header => `"${row[header] || ''}"`).join(','))
+      ...data.map((row) => headers.map((header) => `"${row[header] || ''}"`).join(',')),
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -891,22 +922,29 @@ const AttendanceTracking: React.FC = () => {
   };
 
   const handleExportSession = (session: AttendanceSession, records: AttendanceRecord[]) => {
-    const exportData = records.map(record => ({
+    const exportData = records.map((record) => ({
       'Roll Number': record.rollNumber,
       'Student Name': record.studentName,
-      'Status': record.status,
+      Status: record.status,
       'Time In': record.timeIn || '',
       'Time Out': record.timeOut || '',
-      'Remarks': record.remarks || '',
-      'Date': record.date,
-      'Subject': record.subject,
-      'Faculty': record.facultyName,
+      Remarks: record.remarks || '',
+      Date: record.date,
+      Subject: record.subject,
+      Faculty: record.facultyName,
     }));
 
-    exportToCSV(exportData, `${session.subject}_${formatDate(session.date).replace(/\//g, '-')}_attendance.csv`);
+    exportToCSV(
+      exportData,
+      `${session.subject}_${formatDate(session.date).replace(/\//g, '-')}_attendance.csv`
+    );
   };
 
-  const handleExportMonthly = (session: AttendanceSession, students: Student[], allRecords: AttendanceRecord[]) => {
+  const handleExportMonthly = (
+    session: AttendanceSession,
+    students: Student[],
+    allRecords: AttendanceRecord[]
+  ) => {
     const classStudents = students.filter(
       (student) =>
         student.department === session.department &&
@@ -915,24 +953,35 @@ const AttendanceTracking: React.FC = () => {
         student.section === session.section
     );
 
-    const exportData = classStudents.map(student => {
-      const studentRecords = allRecords.filter(r => r.studentId === student.id && r.subject === session.subject);
+    const exportData = classStudents.map((student) => {
+      const studentRecords = allRecords.filter(
+        (r) => r.studentId === student.id && r.subject === session.subject
+      );
       const stats = {
-        present: studentRecords.filter((r) => r.status === "present").length,
-        absent: studentRecords.filter((r) => r.status === "absent").length,
-        late: studentRecords.filter((r) => r.status === "late").length,
-        excused: studentRecords.filter((r) => r.status === "excused").length,
+        present: studentRecords.filter((r) => r.status === 'present').length,
+        absent: studentRecords.filter((r) => r.status === 'absent').length,
+        late: studentRecords.filter((r) => r.status === 'late').length,
+        excused: studentRecords.filter((r) => r.status === 'excused').length,
         total: studentRecords.length,
-        percentage: studentRecords.length > 0 ? ((studentRecords.filter((r) => r.status === "present" || r.status === "late" || r.status === "excused").length / studentRecords.length) * 100).toFixed(1) : "0",
+        percentage:
+          studentRecords.length > 0
+            ? (
+                (studentRecords.filter(
+                  (r) => r.status === 'present' || r.status === 'late' || r.status === 'excused'
+                ).length /
+                  studentRecords.length) *
+                100
+              ).toFixed(1)
+            : '0',
       };
 
       return {
         'Roll Number': student.rollNumber,
         'Student Name': student.name,
-        'Present': stats.present,
-        'Absent': stats.absent,
-        'Late': stats.late,
-        'Excused': stats.excused,
+        Present: stats.present,
+        Absent: stats.absent,
+        Late: stats.late,
+        Excused: stats.excused,
         'Total Days': stats.total,
         'Attendance Percentage': `${stats.percentage}%`,
       };
@@ -941,17 +990,23 @@ const AttendanceTracking: React.FC = () => {
     exportToCSV(exportData, `${session.subject}_monthly_summary.csv`);
   };
 
-  const handleExportStudentHistory = (student: Student, session: AttendanceSession, allRecords: AttendanceRecord[]) => {
-    const studentHistory = allRecords.filter((record) => record.studentId === student.id && record.subject === session.subject);
+  const handleExportStudentHistory = (
+    student: Student,
+    session: AttendanceSession,
+    allRecords: AttendanceRecord[]
+  ) => {
+    const studentHistory = allRecords.filter(
+      (record) => record.studentId === student.id && record.subject === session.subject
+    );
 
-    const exportData = studentHistory.map(record => ({
-      'Date': record.date,
-      'Status': record.status,
+    const exportData = studentHistory.map((record) => ({
+      Date: record.date,
+      Status: record.status,
       'Time In': record.timeIn || '',
       'Time Out': record.timeOut || '',
-      'Remarks': record.remarks || '',
-      'Subject': record.subject,
-      'Faculty': record.facultyName,
+      Remarks: record.remarks || '',
+      Subject: record.subject,
+      Faculty: record.facultyName,
     }));
 
     exportToCSV(exportData, `${student.name}_${student.rollNumber}_attendance_history.csv`);
@@ -959,13 +1014,18 @@ const AttendanceTracking: React.FC = () => {
 
   // Add session handlers
   const handleFormChange = async (field: string, value: any) => {
-    setSessionFormData(prev => ({
+    setSessionFormData((prev) => ({
       ...prev,
       [field]: value,
     }));
 
     // Auto-update total students when class details change
-    if (field === 'department' || field === 'course' || field === 'semester' || field === 'section') {
+    if (
+      field === 'department' ||
+      field === 'course' ||
+      field === 'semester' ||
+      field === 'section'
+    ) {
       const department = field === 'department' ? value : sessionFormData.department;
       const course = field === 'course' ? value : sessionFormData.course;
       const semester = field === 'semester' ? value : sessionFormData.semester;
@@ -973,7 +1033,7 @@ const AttendanceTracking: React.FC = () => {
 
       if (department && course && semester && section) {
         const studentCount = await fetchStudentCount(department, course, semester, section);
-        setSessionFormData(prev => ({
+        setSessionFormData((prev) => ({
           ...prev,
           totalStudents: studentCount,
         }));
@@ -983,24 +1043,34 @@ const AttendanceTracking: React.FC = () => {
 
   const handleCreateSession = async () => {
     // Basic validation
-    if (!sessionFormData.department || !sessionFormData.course || !sessionFormData.semester ||
-        !sessionFormData.section || !sessionFormData.subject || !sessionFormData.faculty ||
-        !sessionFormData.date || !sessionFormData.startTime || !sessionFormData.endTime) {
-      alert("Please fill in all required fields.");
+    if (
+      !sessionFormData.department ||
+      !sessionFormData.course ||
+      !sessionFormData.semester ||
+      !sessionFormData.section ||
+      !sessionFormData.subject ||
+      !sessionFormData.faculty ||
+      !sessionFormData.date ||
+      !sessionFormData.startTime ||
+      !sessionFormData.endTime
+    ) {
+      alert('Please fill in all required fields.');
       return;
     }
 
     try {
       // Get current user and their college_id
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
-        alert("Please log in to create a session.");
+        alert('Please log in to create a session.');
         return;
       }
 
       // Get college_id from user profile or session
       let collegeId = null;
-      
+
       // Option 1: Try to get from user metadata
       if (user.user_metadata?.college_id) {
         collegeId = user.user_metadata.college_id;
@@ -1011,7 +1081,7 @@ const AttendanceTracking: React.FC = () => {
           .select('college_id')
           .eq('id', user.id)
           .single();
-        
+
         collegeId = userProfile?.college_id;
       }
 
@@ -1022,24 +1092,26 @@ const AttendanceTracking: React.FC = () => {
           .select('id')
           .eq('organization_type', 'college')
           .limit(1);
-        
+
         collegeId = colleges?.[0]?.id;
       }
 
       if (!collegeId) {
-        alert("Unable to determine college. Please contact administrator.");
+        alert('Unable to determine college. Please contact administrator.');
         return;
       }
 
       // Get faculty details from the selected faculty ID
-      const selectedFaculty = filterOptions.faculty.find(f => f.value === sessionFormData.faculty);
+      const selectedFaculty = filterOptions.faculty.find(
+        (f) => f.value === sessionFormData.faculty
+      );
       const facultyName = selectedFaculty?.label || sessionFormData.faculty;
 
       console.log('Creating session with:', {
         facultyId: sessionFormData.faculty,
         facultyName: facultyName,
         collegeId: collegeId,
-        selectedFaculty: selectedFaculty
+        selectedFaculty: selectedFaculty,
       });
 
       const { data, error } = await supabase
@@ -1065,26 +1137,26 @@ const AttendanceTracking: React.FC = () => {
         .single();
 
       if (error) throw error;
-      
+
       alert('Session created successfully!');
-      
+
       // Refresh the data
       fetchSubjectGroups();
       setShowAddSessionModal(false);
-      
+
       // Reset form
       setSessionFormData({
-        department: "",
-        course: "",
-        semester: "",
-        section: "",
-        subject: "",
-        faculty: "",
-        date: "",
-        startTime: "",
-        endTime: "",
-        roomNumber: "",
-        remarks: "",
+        department: '',
+        course: '',
+        semester: '',
+        section: '',
+        subject: '',
+        faculty: '',
+        date: '',
+        startTime: '',
+        endTime: '',
+        roomNumber: '',
+        remarks: '',
         totalStudents: 0,
       });
     } catch (err: any) {
@@ -1094,19 +1166,27 @@ const AttendanceTracking: React.FC = () => {
 
   const handleCreateAndStart = async () => {
     // Same validation as create session
-    if (!sessionFormData.department || !sessionFormData.course || !sessionFormData.semester ||
-        !sessionFormData.section || !sessionFormData.subject || !sessionFormData.faculty ||
-        !sessionFormData.date || !sessionFormData.startTime || !sessionFormData.endTime) {
-      alert("Please fill in all required fields.");
+    if (
+      !sessionFormData.department ||
+      !sessionFormData.course ||
+      !sessionFormData.semester ||
+      !sessionFormData.section ||
+      !sessionFormData.subject ||
+      !sessionFormData.faculty ||
+      !sessionFormData.date ||
+      !sessionFormData.startTime ||
+      !sessionFormData.endTime
+    ) {
+      alert('Please fill in all required fields.');
       return;
     }
 
     try {
       // Create session first
       await handleCreateSession();
-      
+
       // In a real app, this would navigate to the attendance marking page
-      alert("Session created and attendance marking started!");
+      alert('Session created and attendance marking started!');
     } catch (err: any) {
       alert(`Error: ${err.message}`);
     }
@@ -1116,51 +1196,51 @@ const AttendanceTracking: React.FC = () => {
   const attendanceTrendData = {
     series: [
       {
-        name: "Attendance %",
+        name: 'Attendance %',
         data: [85, 82, 87, 83, 86, 84, 88],
       },
     ],
     options: {
-      chart: { type: "area" as const, toolbar: { show: false }, height: 300 },
-      stroke: { curve: "smooth" as const, width: 3 },
+      chart: { type: 'area' as const, toolbar: { show: false }, height: 300 },
+      stroke: { curve: 'smooth' as const, width: 3 },
       fill: {
-        type: "gradient",
+        type: 'gradient',
         gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.1 },
       },
-      colors: ["#4f46e5"],
+      colors: ['#4f46e5'],
       dataLabels: { enabled: false },
       xaxis: {
-        categories: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-        labels: { style: { colors: "#6b7280" } },
+        categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        labels: { style: { colors: '#6b7280' } },
       },
       yaxis: {
         min: 0,
         max: 100,
-        labels: { style: { colors: "#6b7280" } },
+        labels: { style: { colors: '#6b7280' } },
       },
-      tooltip: { theme: "light" },
+      tooltip: { theme: 'light' },
     },
   };
 
   const departmentComparisonData = {
     series: [
       {
-        name: "Attendance %",
+        name: 'Attendance %',
         data: [88, 82, 85, 79, 86],
       },
     ],
     options: {
-      chart: { type: "bar" as const, toolbar: { show: false } },
+      chart: { type: 'bar' as const, toolbar: { show: false } },
       plotOptions: { bar: { horizontal: true, borderRadius: 8 } },
-      colors: ["#4f46e5"],
+      colors: ['#4f46e5'],
       dataLabels: { enabled: false },
       xaxis: {
-        categories: ["CSE", "ECE", "MECH", "CIVIL", "EEE"],
-        labels: { style: { colors: "#6b7280" } },
+        categories: ['CSE', 'ECE', 'MECH', 'CIVIL', 'EEE'],
+        labels: { style: { colors: '#6b7280' } },
       },
-      yaxis: { labels: { style: { colors: "#6b7280" } } },
-      grid: { borderColor: "#f1f5f9" },
-      tooltip: { theme: "light" },
+      yaxis: { labels: { style: { colors: '#6b7280' } } },
+      grid: { borderColor: '#f1f5f9' },
+      tooltip: { theme: 'light' },
     },
   };
 
@@ -1274,12 +1354,8 @@ const AttendanceTracking: React.FC = () => {
       <div className="px-4 sm:px-6 lg:px-8 hidden lg:flex items-center p-4 bg-white border-b border-gray-200">
         <div className="w-80 flex-shrink-0 pr-4 text-left">
           <div className="inline-flex items-baseline">
-            <h2 className="text-xl font-semibold text-gray-900">
-              Subjects
-            </h2>
-            <span className="ml-2 text-sm text-gray-500">
-              ({totalItems} subjects)
-            </span>
+            <h2 className="text-xl font-semibold text-gray-900">Subjects</h2>
+            <span className="ml-2 text-sm text-gray-500">({totalItems} subjects)</span>
           </div>
         </div>
 
@@ -1309,21 +1385,21 @@ const AttendanceTracking: React.FC = () => {
           </button>
           <div className="flex rounded-md shadow-sm">
             <button
-              onClick={() => setViewMode("grid")}
+              onClick={() => setViewMode('grid')}
               className={`px-3 py-2 text-sm font-medium rounded-l-md border ${
-                viewMode === "grid"
-                  ? "bg-indigo-50 border-indigo-300 text-indigo-700"
-                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                viewMode === 'grid'
+                  ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
               }`}
             >
               <Squares2X2Icon className="h-4 w-4" />
             </button>
             <button
-              onClick={() => setViewMode("table")}
+              onClick={() => setViewMode('table')}
               className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${
-                viewMode === "table"
-                  ? "bg-indigo-50 border-indigo-300 text-indigo-700"
-                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                viewMode === 'table'
+                  ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
               }`}
             >
               <TableCellsIcon className="h-4 w-4" />
@@ -1361,21 +1437,21 @@ const AttendanceTracking: React.FC = () => {
           </button>
           <div className="flex rounded-md shadow-sm">
             <button
-              onClick={() => setViewMode("grid")}
+              onClick={() => setViewMode('grid')}
               className={`px-3 py-2 text-sm font-medium rounded-l-md border ${
-                viewMode === "grid"
-                  ? "bg-indigo-50 border-indigo-300 text-indigo-700"
-                  : "bg-white border-gray-300 text-gray-700"
+                viewMode === 'grid'
+                  ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
+                  : 'bg-white border-gray-300 text-gray-700'
               }`}
             >
               <Squares2X2Icon className="h-4 w-4" />
             </button>
             <button
-              onClick={() => setViewMode("table")}
+              onClick={() => setViewMode('table')}
               className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${
-                viewMode === "table"
-                  ? "bg-indigo-50 border-indigo-300 text-indigo-700"
-                  : "bg-white border-gray-300 text-gray-700"
+                viewMode === 'table'
+                  ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
+                  : 'bg-white border-gray-300 text-gray-700'
               }`}
             >
               <TableCellsIcon className="h-4 w-4" />
@@ -1418,28 +1494,20 @@ const AttendanceTracking: React.FC = () => {
                   <FilterSection title="Date Range" defaultOpen>
                     <div className="space-y-3">
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                          From
-                        </label>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">From</label>
                         <input
                           type="date"
                           value={dateRange.from}
-                          onChange={(e) =>
-                            setDateRange({ ...dateRange, from: e.target.value })
-                          }
+                          onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                          To
-                        </label>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">To</label>
                         <input
                           type="date"
                           value={dateRange.to}
-                          onChange={(e) =>
-                            setDateRange({ ...dateRange, to: e.target.value })
-                          }
+                          onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                         />
                       </div>
@@ -1460,9 +1528,7 @@ const AttendanceTracking: React.FC = () => {
                     <CheckboxGroup
                       options={courseOptions}
                       selectedValues={filters.courses}
-                      onChange={(values: string[]) =>
-                        setFilters({ ...filters, courses: values })
-                      }
+                      onChange={(values: string[]) => setFilters({ ...filters, courses: values })}
                     />
                   </FilterSection>
 
@@ -1470,9 +1536,7 @@ const AttendanceTracking: React.FC = () => {
                     <CheckboxGroup
                       options={semesterOptions}
                       selectedValues={filters.semesters}
-                      onChange={(values: number[]) =>
-                        setFilters({ ...filters, semesters: values })
-                      }
+                      onChange={(values: number[]) => setFilters({ ...filters, semesters: values })}
                     />
                   </FilterSection>
 
@@ -1480,9 +1544,7 @@ const AttendanceTracking: React.FC = () => {
                     <CheckboxGroup
                       options={sectionOptions}
                       selectedValues={filters.sections}
-                      onChange={(values: string[]) =>
-                        setFilters({ ...filters, sections: values })
-                      }
+                      onChange={(values: string[]) => setFilters({ ...filters, sections: values })}
                     />
                   </FilterSection>
 
@@ -1490,9 +1552,7 @@ const AttendanceTracking: React.FC = () => {
                     <CheckboxGroup
                       options={statusOptions}
                       selectedValues={filters.statuses}
-                      onChange={(values: string[]) =>
-                        setFilters({ ...filters, statuses: values })
-                      }
+                      onChange={(values: string[]) => setFilters({ ...filters, statuses: values })}
                     />
                   </FilterSection>
 
@@ -1500,9 +1560,7 @@ const AttendanceTracking: React.FC = () => {
                     <CheckboxGroup
                       options={facultyFilterOptions}
                       selectedValues={filters.faculty}
-                      onChange={(values: string[]) =>
-                        setFilters({ ...filters, faculty: values })
-                      }
+                      onChange={(values: string[]) => setFilters({ ...filters, faculty: values })}
                     />
                   </FilterSection>
                 </div>
@@ -1515,12 +1573,12 @@ const AttendanceTracking: React.FC = () => {
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="px-4 sm:px-6 lg:px-8 py-3 bg-gray-50 border-b border-gray-200">
             <p className="text-sm text-gray-700">
-              Showing{" "}
+              Showing{' '}
               <span className="font-medium">
                 {startIndex + 1}-{Math.min(endIndex, totalItems)}
-              </span>{" "}
+              </span>{' '}
               of <span className="font-medium">{totalItems}</span> subject
-              {totalItems !== 1 ? "s" : ""}
+              {totalItems !== 1 ? 's' : ''}
             </p>
           </div>
 
@@ -1534,14 +1592,14 @@ const AttendanceTracking: React.FC = () => {
               <div className="text-center py-12">
                 <div className="text-red-600 mb-2">Error loading data</div>
                 <p className="text-gray-500">{error}</p>
-                <button 
+                <button
                   onClick={() => fetchSubjectGroups()}
                   className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
                 >
                   Retry
                 </button>
               </div>
-            ) : viewMode === "grid" ? (
+            ) : viewMode === 'grid' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {paginatedSubjectGroups.map((subjectGroup, index) => (
                   <EnhancedSubjectCard
@@ -1585,13 +1643,17 @@ const AttendanceTracking: React.FC = () => {
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {paginatedSubjectGroups.map((subjectGroup) => (
-                        <tr key={`${subjectGroup.subject}-${subjectGroup.department}-${subjectGroup.course}-${subjectGroup.semester}-${subjectGroup.section}`} className="hover:bg-gray-50">
+                        <tr
+                          key={`${subjectGroup.subject}-${subjectGroup.department}-${subjectGroup.course}-${subjectGroup.semester}-${subjectGroup.section}`}
+                          className="hover:bg-gray-50"
+                        >
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-medium text-gray-900">
                               {subjectGroup.subject}
                             </div>
                             <div className="text-xs text-gray-500">
-                              {subjectGroup.course} - Sem {subjectGroup.semester} ({subjectGroup.section})
+                              {subjectGroup.course} - Sem {subjectGroup.semester} (
+                              {subjectGroup.section})
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
@@ -1604,19 +1666,18 @@ const AttendanceTracking: React.FC = () => {
                             {subjectGroup.totalSessions}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-center text-xs text-gray-600">
-                            {subjectGroup.totalSessions === 1 
+                            {subjectGroup.totalSessions === 1
                               ? formatDate(subjectGroup.dateRange.first)
-                              : `${formatDate(subjectGroup.dateRange.first)} - ${formatDate(subjectGroup.dateRange.last)}`
-                            }
+                              : `${formatDate(subjectGroup.dateRange.first)} - ${formatDate(subjectGroup.dateRange.last)}`}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-center">
                             <span
                               className={`text-sm font-bold ${
                                 subjectGroup.avgAttendancePercentage >= 75
-                                  ? "text-green-600"
+                                  ? 'text-green-600'
                                   : subjectGroup.avgAttendancePercentage >= 50
-                                  ? "text-yellow-600"
-                                  : "text-red-600"
+                                    ? 'text-yellow-600'
+                                    : 'text-red-600'
                               }`}
                             >
                               {subjectGroup.avgAttendancePercentage.toFixed(1)}%
@@ -1656,9 +1717,7 @@ const AttendanceTracking: React.FC = () => {
             {paginatedSubjectGroups.length === 0 && (
               <div className="text-center py-12">
                 <ClipboardDocumentListIcon className="mx-auto h-12 w-12 text-gray-400" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900">
-                  No subjects found
-                </h3>
+                <h3 className="mt-2 text-sm font-medium text-gray-900">No subjects found</h3>
                 <p className="mt-1 text-sm text-gray-500">
                   Try adjusting your search or filter criteria
                 </p>
@@ -1683,16 +1742,17 @@ const AttendanceTracking: React.FC = () => {
         isOpen={showDetailsModal}
         onClose={() => setShowDetailsModal(false)}
         subjectGroup={selectedSubjectGroup}
-        records={attendanceRecords.filter(
-          (r) => r.subject === selectedSubjectGroup?.subject
-        )}
+        records={attendanceRecords.filter((r) => r.subject === selectedSubjectGroup?.subject)}
+        // @ts-expect-error - Auto-suppressed for migration
         students={students}
         allRecords={attendanceRecords}
         onViewStudentHistory={(student) => {
+          // @ts-expect-error - Auto-suppressed for migration
           setSelectedStudent(student);
           setShowStudentHistoryModal(true);
         }}
         onExportSession={handleExportSession}
+        // @ts-expect-error - Auto-suppressed for migration
         onExportMonthly={handleExportMonthly}
       />
 

@@ -24,15 +24,17 @@ export function buildStudentContext(profile: StudentProfile): StudentContext {
     technical_skills: technicalSkills.map((s: any) => ({
       name: s.name,
       level: s.level || 3,
-      category: s.category
+      category: s.category,
     })),
     soft_skills: softSkills.map((s: any) => s.name),
     experience_years: calculateExperienceYears(experience),
     experience_roles: experience.map((e: any) => e.role),
-    completed_training: training.filter((t: any) => t.status === 'completed').map((t: any) => t.course),
+    completed_training: training
+      .filter((t: any) => t.status === 'completed')
+      .map((t: any) => t.course),
     education_level: education[0]?.level || 'Bachelor',
     total_experience_count: experience.length,
-    total_training_count: training.length
+    total_training_count: training.length,
   };
 }
 
@@ -57,14 +59,14 @@ export function buildOpportunitiesContext(opportunities: Opportunity[]): Opportu
     location: opp.location,
     mode: opp.mode,
     experience: opp.experience_required,
-    skills: Array.isArray(opp.skills_required) 
-      ? opp.skills_required 
-      : typeof opp.skills_required === 'string' 
-        ? JSON.parse(opp.skills_required || '[]') 
+    skills: Array.isArray(opp.skills_required)
+      ? opp.skills_required
+      : typeof opp.skills_required === 'string'
+        ? JSON.parse(opp.skills_required || '[]')
         : [],
     description: opp.description,
     salary: opp.stipend_or_salary,
-    deadline: opp.deadline
+    deadline: opp.deadline,
   }));
 }
 
@@ -73,10 +75,10 @@ export function buildOpportunitiesContext(opportunities: Opportunity[]): Opportu
  */
 export function extractInDemandSkills(opportunities: any[]): string[] {
   const skillsMap = new Map<string, number>();
-  
-  opportunities.forEach(opp => {
+
+  opportunities.forEach((opp) => {
     let skills: string[] = [];
-    
+
     if (Array.isArray(opp.skills_required)) {
       skills = opp.skills_required;
     } else if (typeof opp.skills_required === 'string') {
@@ -86,15 +88,15 @@ export function extractInDemandSkills(opportunities: any[]): string[] {
         // Ignore parse errors
       }
     }
-    
-    skills.forEach(skill => {
+
+    skills.forEach((skill) => {
       if (skill && typeof skill === 'string') {
         const normalized = skill.toLowerCase().trim();
         skillsMap.set(normalized, (skillsMap.get(normalized) || 0) + 1);
       }
     });
   });
-  
+
   // Sort by frequency and return top skills
   return Array.from(skillsMap.entries())
     .sort((a, b) => b[1] - a[1])

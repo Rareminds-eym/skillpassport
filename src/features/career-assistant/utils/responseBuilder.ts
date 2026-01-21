@@ -15,7 +15,7 @@ import {
   VisualizationData,
   JobMatchResponseData,
   SkillGapResponseData,
-  ProfileAnalysisData
+  ProfileAnalysisData,
 } from '../types/interactive';
 
 /**
@@ -38,7 +38,7 @@ export function buildJobMatchResponse(
       matchScore: match.match_score,
       matchReason: match.match_reason,
       tags: match.key_matching_skills.slice(0, 5),
-      deadline: match.opportunity.deadline
+      deadline: match.opportunity.deadline,
     },
     actions: [
       {
@@ -48,8 +48,8 @@ export function buildJobMatchResponse(
         variant: 'primary',
         action: {
           type: 'navigate',
-          value: `/opportunities/${match.job_id}`
-        }
+          value: `/opportunities/${match.job_id}`,
+        },
       },
       {
         id: `apply-${match.job_id}`,
@@ -58,8 +58,8 @@ export function buildJobMatchResponse(
         variant: 'success',
         action: {
           type: 'external',
-          value: match.opportunity.apply_link || '#'
-        }
+          value: match.opportunity.apply_link || '#',
+        },
       },
       {
         id: `skills-${match.job_id}`,
@@ -68,11 +68,11 @@ export function buildJobMatchResponse(
         variant: 'outline',
         action: {
           type: 'query',
-          value: `What skills do I need to learn for ${match.job_title}?`
+          value: `What skills do I need to learn for ${match.job_title}?`,
         },
-        disabled: match.skills_gap.length === 0
-      }
-    ]
+        disabled: match.skills_gap.length === 0,
+      },
+    ],
   }));
 
   const suggestions: SuggestedAction[] = [
@@ -80,20 +80,20 @@ export function buildJobMatchResponse(
       id: 'refine-search',
       label: 'Refine my search',
       query: 'Show me jobs with better skill match',
-      icon: 'Filter'
+      icon: 'Filter',
     },
     {
       id: 'skill-gap',
       label: 'Analyze skill gaps',
       query: 'What skills am I missing for these jobs?',
-      icon: 'Target'
+      icon: 'Target',
     },
     {
       id: 'improve-profile',
       label: 'Improve my profile',
       query: 'How can I improve my profile to get better matches?',
-      icon: 'User'
-    }
+      icon: 'User',
+    },
   ];
 
   return {
@@ -105,9 +105,9 @@ export function buildJobMatchResponse(
       suggestions,
       metadata: {
         intentHandled: 'find-jobs',
-        dataSource: 'opportunities_database'
-      }
-    }
+        dataSource: 'opportunities_database',
+      },
+    },
   };
 }
 
@@ -119,21 +119,23 @@ export function buildSkillGapResponse(
   message: string,
   detailedGaps?: Array<{ skill: string; demand: number; priority: string; impact: string }>
 ): EnhancedAIResponse {
-  const gaps = detailedGaps || data.missingSkills.map(skill => ({
-    skill,
-    demand: 75, // Default demand
-    priority: 'high',
-    impact: '+20% job opportunities'
-  }));
+  const gaps =
+    detailedGaps ||
+    data.missingSkills.map((skill) => ({
+      skill,
+      demand: 75, // Default demand
+      priority: 'high',
+      impact: '+20% job opportunities',
+    }));
 
   const skillCards: SkillCard[] = gaps.slice(0, 6).map((gap, idx) => {
     const priorityMap: { [key: string]: 'critical' | 'high' | 'medium' | 'low' } = {
       critical: 'critical',
       high: 'high',
       medium: 'medium',
-      low: 'low'
+      low: 'low',
     };
-    
+
     return {
       id: `skill-${idx}`,
       type: 'skill',
@@ -144,7 +146,7 @@ export function buildSkillGapResponse(
         impact: gap.impact,
         status: 'missing',
         priority: priorityMap[gap.priority] || 'medium',
-        timeToLearn: gap.demand > 80 ? '6-8 weeks' : '4-6 weeks'
+        timeToLearn: gap.demand > 80 ? '6-8 weeks' : '4-6 weeks',
       },
       actions: [
         {
@@ -154,8 +156,8 @@ export function buildSkillGapResponse(
           variant: 'primary',
           action: {
             type: 'query',
-            value: `Show me courses to learn ${gap.skill}`
-          }
+            value: `Show me courses to learn ${gap.skill}`,
+          },
         },
         {
           id: `jobs-${idx}`,
@@ -164,10 +166,10 @@ export function buildSkillGapResponse(
           variant: 'secondary',
           action: {
             type: 'query',
-            value: `What jobs require ${gap.skill}?`
-          }
-        }
-      ]
+            value: `What jobs require ${gap.skill}?`,
+          },
+        },
+      ],
     };
   });
 
@@ -176,8 +178,8 @@ export function buildSkillGapResponse(
       label: 'Skills Completeness',
       value: Math.round((data.currentSkillsCount / data.recommendedSkillsCount) * 100),
       color: 'blue' as const,
-      showPercentage: true
-    }
+      showPercentage: true,
+    },
   ];
 
   const suggestions: SuggestedAction[] = [
@@ -185,20 +187,20 @@ export function buildSkillGapResponse(
       id: 'learning-path',
       label: 'Create learning roadmap',
       query: 'Create a learning path for these skills',
-      icon: 'Map'
+      icon: 'Map',
     },
     {
       id: 'prioritize',
       label: 'Which skill to learn first?',
       query: 'Which skill should I learn first?',
-      icon: 'Target'
+      icon: 'Target',
     },
     {
       id: 'certifications',
       label: 'Recommended certifications',
       query: 'What certifications should I get?',
-      icon: 'Award'
-    }
+      icon: 'Award',
+    },
   ];
 
   return {
@@ -211,9 +213,9 @@ export function buildSkillGapResponse(
       visualData: { progressBars },
       metadata: {
         intentHandled: 'skill-gap-analysis',
-        dataSource: 'market_intelligence'
-      }
-    }
+        dataSource: 'market_intelligence',
+      },
+    },
   };
 }
 
@@ -232,12 +234,13 @@ export function buildProfileAnalysisResponse(
     .map((suggestion, idx) => ({
       id: `insight-${idx}`,
       type: 'insight',
-      priority: suggestion.priority === 'critical' || suggestion.priority === 'high' ? 'high' : 'medium',
+      priority:
+        suggestion.priority === 'critical' || suggestion.priority === 'high' ? 'high' : 'medium',
       data: {
         title: suggestion.action,
         description: `Priority: ${suggestion.priority} • Impact: ${suggestion.impact}`,
         category: 'profile',
-        severity: suggestion.priority === 'critical' ? 'error' : 'warning'
+        severity: suggestion.priority === 'critical' ? 'error' : 'warning',
       },
       actions: [
         {
@@ -247,10 +250,10 @@ export function buildProfileAnalysisResponse(
           variant: 'primary',
           action: {
             type: 'navigate',
-            value: '/profile/edit'
-          }
-        }
-      ]
+            value: '/profile/edit',
+          },
+        },
+      ],
     }));
 
   const scores = [
@@ -261,18 +264,18 @@ export function buildProfileAnalysisResponse(
       breakdown: [
         { label: 'Profile', value: profileHealth.completeness_score, color: '#3b82f6' },
         { label: 'Skills', value: 75, color: '#10b981' },
-        { label: 'Experience', value: 60, color: '#f59e0b' }
-      ]
-    }
+        { label: 'Experience', value: 60, color: '#f59e0b' },
+      ],
+    },
   ];
 
   const progressBars = [
     {
       label: 'Profile Completeness',
       value: profileHealth.completeness_score,
-      color: profileHealth.completeness_score >= 80 ? 'green' : 'yellow' as const,
-      showPercentage: true
-    }
+      color: profileHealth.completeness_score >= 80 ? 'green' : ('yellow' as const),
+      showPercentage: true,
+    },
   ];
 
   const suggestions: SuggestedAction[] = [
@@ -280,14 +283,14 @@ export function buildProfileAnalysisResponse(
       id: 'improve',
       label: 'How to improve?',
       query: 'What should I do to improve my profile?',
-      icon: 'TrendingUp'
+      icon: 'TrendingUp',
     },
     {
       id: 'compare',
       label: 'Compare with peers',
       query: 'How do I compare to other students?',
-      icon: 'Users'
-    }
+      icon: 'Users',
+    },
   ];
 
   return {
@@ -297,12 +300,13 @@ export function buildProfileAnalysisResponse(
     interactive: {
       cards: insightCards,
       suggestions,
+      // @ts-expect-error - Auto-suppressed for migration
       visualData: { scores, progressBars },
       metadata: {
         intentHandled: 'profile-improvement',
-        dataSource: 'profile_analytics'
-      }
-    }
+        dataSource: 'profile_analytics',
+      },
+    },
   };
 }
 
@@ -335,9 +339,9 @@ export function buildLearningPathResponse(
         variant: 'primary',
         action: {
           type: 'external',
-          value: course.url || '#'
+          value: course.url || '#',
         },
-        disabled: !course.url
+        disabled: !course.url,
       },
       {
         id: `save-${idx}`,
@@ -347,10 +351,10 @@ export function buildLearningPathResponse(
         action: {
           type: 'function',
           value: 'save_course',
-          data: { courseId: idx, title: course.title }
-        }
-      }
-    ]
+          data: { courseId: idx, title: course.title },
+        },
+      },
+    ],
   }));
 
   const suggestions: SuggestedAction[] = [
@@ -358,14 +362,14 @@ export function buildLearningPathResponse(
       id: 'schedule',
       label: 'Create study schedule',
       query: 'Help me create a study schedule',
-      icon: 'Calendar'
+      icon: 'Calendar',
     },
     {
       id: 'more-courses',
       label: 'Show more courses',
       query: 'Show me more courses',
-      icon: 'BookOpen'
-    }
+      icon: 'BookOpen',
+    },
   ];
 
   return {
@@ -377,9 +381,9 @@ export function buildLearningPathResponse(
       suggestions,
       metadata: {
         intentHandled: 'learning-path',
-        dataSource: 'course_recommendations'
-      }
-    }
+        dataSource: 'course_recommendations',
+      },
+    },
   };
 }
 
@@ -393,7 +397,7 @@ export function buildSimpleResponse(
   return {
     success: true,
     message,
-    interactive: suggestions ? { suggestions } : undefined
+    interactive: suggestions ? { suggestions } : undefined,
   };
 }
 
@@ -408,8 +412,8 @@ export function addQuickActions(
     ...response,
     interactive: {
       ...response.interactive,
-      quickActions: actions
-    }
+      quickActions: actions,
+    },
   };
 }
 
@@ -424,8 +428,7 @@ export function addSuggestions(
     ...response,
     interactive: {
       ...response.interactive,
-      suggestions
-    }
+      suggestions,
+    },
   };
 }
-

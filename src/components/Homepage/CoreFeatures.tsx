@@ -1,20 +1,17 @@
-
-import React, {useEffect} from "react";
-import { FiCheckCircle, FiUsers, FiTrendingUp, FiShield, FiGitBranch } from "react-icons/fi";
+import React, { useEffect } from 'react';
+import { FiCheckCircle, FiUsers, FiTrendingUp, FiShield, FiGitBranch } from 'react-icons/fi';
 
 const CoreFeatures: React.FC = () => {
-   useEffect(() => {
-    const lines = document.querySelectorAll<SVGPathElement | SVGLineElement>(
-      ".animated-draw"
-    );
+  useEffect(() => {
+    const lines = document.querySelectorAll<SVGPathElement | SVGLineElement>('.animated-draw');
 
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            entry.target.classList.add("animate-now");
+            entry.target.classList.add('animate-now');
           } else {
-            entry.target.classList.remove("animate-now");
+            entry.target.classList.remove('animate-now');
           }
         });
       },
@@ -26,11 +23,9 @@ const CoreFeatures: React.FC = () => {
     return () => observer.disconnect();
   }, []);
   return (
-    <div 
-      className="relative flex flex-col items-center justify-center min-h-screen py-12 overflow-hidden bg-section-with-opacity"
-    >
+    <div className="relative flex flex-col items-center justify-center min-h-screen py-12 overflow-hidden bg-section-with-opacity">
       {/* === Inline Animation Styles === */}
-     <style>{`
+      <style>{`
   .bg-section-with-opacity::before {
     content: '';
     position: absolute;
@@ -87,24 +82,20 @@ const CoreFeatures: React.FC = () => {
 
       {/* ===== Heading Section ===== */}
       <div className="relative z-10 text-center mb-20 px-4 -mt-4 sm:mt-10">
-  <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-black">
-    Our Core Features
-  </h1>
-  <p className="text-base sm:text-lg md:text-2xl text-gray-600 mt-3 sm:mt-6">
-    Comprehensive Skill Management Ecosystem
-  </p>
-</div>
-
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-black">Our Core Features</h1>
+        <p className="text-base sm:text-lg md:text-2xl text-gray-600 mt-3 sm:mt-6">
+          Comprehensive Skill Management Ecosystem
+        </p>
+      </div>
 
       {/* ===== Desktop Diagram ===== */}
-     {/* ===== Desktop Diagram ===== */}
+      {/* ===== Desktop Diagram ===== */}
       <div className="desktop-diagram relative w-full max-w-[1300px] h-[700px] mx-auto px-4 lg:scale-100 md:scale-75 transition-all duration-300">
-
         {/* === Center Card === */}
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
           <div className="relative w-[300px] h-[120px]">
             <svg
-  className="
+              className="
     absolute 
     left-[-15px] 
     top-[2px] 
@@ -120,20 +111,20 @@ const CoreFeatures: React.FC = () => {
     max-w-[116px] 
     h-auto
   "
-  viewBox="0 0 116 111"
-  fill="none"
-  xmlns="http://www.w3.org/2000/svg"
-  preserveAspectRatio="xMidYMid meet"
->
-  <path
-    d="M0.00239916 0.500031L60.9935 0.60277C90.9543 0.653238 
+              viewBox="0 0 116 111"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              preserveAspectRatio="xMidYMid meet"
+            >
+              <path
+                d="M0.00239916 0.500031L60.9935 0.60277C90.9543 0.653238 
        115.182 24.8693 115.242 54.8242C115.302 85.0699 
        90.7166 109.658 60.465 109.607L0.218569 109.505"
-    stroke="black"
-  />
-</svg>
+                stroke="black"
+              />
+            </svg>
             <svg
-  className="
+              className="
     absolute 
     right-[-15px] 
     top-[3px] 
@@ -150,23 +141,27 @@ const CoreFeatures: React.FC = () => {
     max-w-[116px] 
     h-auto
   "
-  viewBox="0 0 116 111"
-  fill="none"
-  xmlns="http://www.w3.org/2000/svg"
-  preserveAspectRatio="xMidYMid meet"
->
-  <path
-    d="M0.00239916 0.500031L60.9935 0.60277C90.9543 0.653238 
+              viewBox="0 0 116 111"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              preserveAspectRatio="xMidYMid meet"
+            >
+              <path
+                d="M0.00239916 0.500031L60.9935 0.60277C90.9543 0.653238 
        115.182 24.8693 115.242 54.8242C115.302 85.0699 
        90.7166 109.658 60.465 109.607L0.218569 109.505"
-    stroke="black"
-  />
-</svg>
+                stroke="black"
+              />
+            </svg>
 
             <div className="relative bg-gradient-to-tr bg-[#D4AF37] rounded-[55px] h-[85px] lg:h-[85px] md:h-[80px] top-4 lg:top-4 md:top-3 sm:top-4 flex items-center justify-center shadow-md card-hover">
               <div className="text-center text-black font-semibold">
-                <div className="text-[22px] lg:text-[22px] md:text-[21px] leading-none -mt-2 gap-1">Skill Ecosystem</div>
-                <div className="text-[22px] lg:text-[22px] md:text-[21px]  leading-none">Stakeholders</div>
+                <div className="text-[22px] lg:text-[22px] md:text-[21px] leading-none -mt-2 gap-1">
+                  Skill Ecosystem
+                </div>
+                <div className="text-[22px] lg:text-[22px] md:text-[21px]  leading-none">
+                  Stakeholders
+                </div>
               </div>
             </div>
           </div>
@@ -174,22 +169,27 @@ const CoreFeatures: React.FC = () => {
 
         {/* === Top Center === */}
         <div className="absolute top-[1%] left-1/2 -translate-x-1/2">
-          <div className="absolute -top-[70px] left-1/2 -translate-x-1/2 
+          <div
+            className="absolute -top-[70px] left-1/2 -translate-x-1/2 
             w-[60px] h-[60px] rounded-xl bg-gradient-to-tr 
-            bg-neutral-950  flex items-center justify-center shadow-md">
+            bg-neutral-950  flex items-center justify-center shadow-md"
+          >
             <FiCheckCircle className="text-yellow-500 text-3xl" />
           </div>
-          <div className="w-[300px] h-[120px] bg-white border-2 border-black rounded-2xl 
-            p-4 shadow-md text-center card-hover flex flex-col justify-center">
+          <div
+            className="w-[300px] h-[120px] bg-white border-2 border-black rounded-2xl 
+            p-4 shadow-md text-center card-hover flex flex-col justify-center"
+          >
             <h3 className="text-lg font-bold">Schools & Universities</h3>
             <p className="text-sm text-gray-600">
-              Integrate skills into curriculum, enable credit pathways, and prepare learners for work.
+              Integrate skills into curriculum, enable credit pathways, and prepare learners for
+              work.
             </p>
           </div>
         </div>
         <svg
           className="absolute left-1/2 top-[130px] -translate-x-1/2 delay-1"
-          style={{ ["--path-length" as any]: 175 }}
+          style={{ ['--path-length' as any]: 175 }}
           width="2"
           height="175"
           viewBox="0 0 2 175"
@@ -200,21 +200,25 @@ const CoreFeatures: React.FC = () => {
 
         {/* === Top Left === */}
         <div className="absolute top-[25%] left-[9%] lg-top-[25%] md:top-[21%]">
-          <div className="absolute -top-[70px] left-1/2 -translate-x-1/2 
+          <div
+            className="absolute -top-[70px] left-1/2 -translate-x-1/2 
             w-[60px] h-[60px] rounded-xl bg-gradient-to-tr 
-            bg-neutral-950  flex items-center justify-center shadow-md">
+            bg-neutral-950  flex items-center justify-center shadow-md"
+          >
             <FiUsers className="text-yellow-500 text-3xl" />
           </div>
-          <div className="w-[300px] h-[120px] bg-white border-2 border-black rounded-2xl 
-            p-4 shadow-md text-center card-hover flex flex-col justify-center">
+          <div
+            className="w-[300px] h-[120px] bg-white border-2 border-black rounded-2xl 
+            p-4 shadow-md text-center card-hover flex flex-col justify-center"
+          >
             <h3 className="text-lg font-bold">Students & Workforce Talent</h3>
             <p className="text-sm text-gray-600">
-             School learners, university students, and professionals building skill portfolios.
+              School learners, university students, and professionals building skill portfolios.
             </p>
           </div>
         </div>
-       <svg
-  className="
+        <svg
+          className="
     absolute 
     top-[260px] 
     left-[400px] 
@@ -227,35 +231,40 @@ const CoreFeatures: React.FC = () => {
     max-w-[254px] 
     h-auto
   "
-  style={{ ["--path-length" as any]: 320 }}
-  viewBox="0 0 254 48"
-  xmlns="http://www.w3.org/2000/svg"
-  preserveAspectRatio="xMidYMid meet"
->
-  <path
-    d="M253.5 47.427L253.5 33.9571C253.5 25.6729 246.784 18.9572 
+          style={{ ['--path-length' as any]: 320 }}
+          viewBox="0 0 254 48"
+          xmlns="http://www.w3.org/2000/svg"
+          preserveAspectRatio="xMidYMid meet"
+        >
+          <path
+            d="M253.5 47.427L253.5 33.9571C253.5 25.6729 246.784 18.9572 
        238.5 18.9571L15.5 18.9567C7.21571 18.9567 0.5 12.241 0.5 3.95672L0.5 0"
-    className="animated-draw"
-  />
-</svg>
+            className="animated-draw"
+          />
+        </svg>
 
         {/* === Top Right === */}
         <div className="absolute top-[22%] right-[10%] lg:top[22%] md:top-[21%]">
-          <div className="absolute -top-[70px] left-1/2 -translate-x-1/2 
+          <div
+            className="absolute -top-[70px] left-1/2 -translate-x-1/2 
             w-[60px] h-[60px] rounded-xl bg-gradient-to-tr 
-            bg-neutral-950  flex items-center justify-center shadow-md">
+            bg-neutral-950  flex items-center justify-center shadow-md"
+          >
             <FiTrendingUp className="text-yellow-500 text-3xl" />
           </div>
-          <div className="w-[300px] h-[120px] bg-white border-2 border-black rounded-2xl 
-            p-4 shadow-md text-center card-hover flex flex-col justify-center">
+          <div
+            className="w-[300px] h-[120px] bg-white border-2 border-black rounded-2xl 
+            p-4 shadow-md text-center card-hover flex flex-col justify-center"
+          >
             <h3 className="text-lg font-bold">Employers & Recruiters</h3>
             <p className="text-sm text-gray-600">
-             Companies, HR teams, and recruiters who define hiring needs and validate job-readiness.
+              Companies, HR teams, and recruiters who define hiring needs and validate
+              job-readiness.
             </p>
           </div>
         </div>
-    <svg
-  className="
+        <svg
+          className="
     absolute 
     top-[260px] 
     right-[400px] 
@@ -269,36 +278,39 @@ const CoreFeatures: React.FC = () => {
     max-w-[254px] 
     h-auto
   "
-  style={{ ["--path-length" as any]: 320 }}
-  viewBox="0 0 254 48"
-  xmlns="http://www.w3.org/2000/svg"
-  preserveAspectRatio="xMidYMid meet"
->
-  <path
-    d="M253.5 47.427L253.5 33.9571C253.5 25.6729 246.784 18.9572 
+          style={{ ['--path-length' as any]: 320 }}
+          viewBox="0 0 254 48"
+          xmlns="http://www.w3.org/2000/svg"
+          preserveAspectRatio="xMidYMid meet"
+        >
+          <path
+            d="M253.5 47.427L253.5 33.9571C253.5 25.6729 246.784 18.9572 
        238.5 18.9571L15.5 18.9567C7.21571 18.9567 0.5 12.241 0.5 3.95672L0.5 0"
-    className="animated-draw"
-  />
-</svg>
-
+            className="animated-draw"
+          />
+        </svg>
 
         {/* === Bottom Left === */}
         <div className="absolute bottom-[22%] left-[9%] lg:bottom-[19%] md:bottom-[25%]">
-          <div className="absolute -top-[70px] left-1/2 -translate-x-1/2 
+          <div
+            className="absolute -top-[70px] left-1/2 -translate-x-1/2 
             w-[60px] h-[60px] rounded-xl bg-gradient-to-tr 
-             bg-neutral-950  flex items-center justify-center shadow-md">
+             bg-neutral-950  flex items-center justify-center shadow-md"
+          >
             <FiShield className="text-yellow-500 text-3xl" />
           </div>
-          <div className="w-[300px] h-[120px] bg-white border-2 border-black rounded-2xl 
-            p-4 shadow-md text-center card-hover flex flex-col justify-center">
+          <div
+            className="w-[300px] h-[120px] bg-white border-2 border-black rounded-2xl 
+            p-4 shadow-md text-center card-hover flex flex-col justify-center"
+          >
             <h3 className="text-lg font-bold">Training & EdTech Providers</h3>
             <p className="text-sm text-gray-600">
               Deliver competency-aligned learning, labs, apprenticeships, and on-the-job skilling.
             </p>
           </div>
         </div>
-   <svg
-  className="
+        <svg
+          className="
     absolute 
     bottom-[250px] 
     left-[400px] 
@@ -312,30 +324,33 @@ const CoreFeatures: React.FC = () => {
     max-w-[255px] 
     h-auto
   "
-  style={{ ["--path-length" as any]: 400 }}
-  viewBox="0 0 255 67"
-  xmlns="http://www.w3.org/2000/svg"
-  preserveAspectRatio="xMidYMid meet"
->
-  <path
-    d="M254.105 0.0198917L254.417 7.83847C254.757 16.3506 
+          style={{ ['--path-length' as any]: 400 }}
+          viewBox="0 0 255 67"
+          xmlns="http://www.w3.org/2000/svg"
+          preserveAspectRatio="xMidYMid meet"
+        >
+          <path
+            d="M254.105 0.0198917L254.417 7.83847C254.757 16.3506 
        247.948 23.4366 239.429 23.4366L15.5 23.4366C7.2157 
        23.4366 0.5 30.1524 0.5 38.4366L0.5 66.1697"
-    className="animated-draw"
-  />
-</svg>
-
+            className="animated-draw"
+          />
+        </svg>
 
         {/* === Bottom Right === */}
         <div className="absolute bottom-[22%] right-[9%] lg:bottom-[20%] md:bottom-[25%]">
           <div className="-mb-2">
-            <div className="absolute -top-[70px] left-1/2 -translate-x-1/2 
+            <div
+              className="absolute -top-[70px] left-1/2 -translate-x-1/2 
               w-[60px] h-[60px] rounded-xl bg-gradient-to-tr 
-               bg-neutral-950  flex items-center justify-center shadow-md">
+               bg-neutral-950  flex items-center justify-center shadow-md"
+            >
               <FiGitBranch className="text-yellow-500 text-2xl" />
             </div>
-            <div className="w-[300px] h-[120px] bg-white border-2 border-black rounded-2xl 
-              p-4 shadow-md text-center card-hover flex flex-col justify-center">
+            <div
+              className="w-[300px] h-[120px] bg-white border-2 border-black rounded-2xl 
+              p-4 shadow-md text-center card-hover flex flex-col justify-center"
+            >
               <h3 className="text-lg font-bold">Assessment & Credentialing Bodies</h3>
               <p className="text-sm text-gray-600">
                 Run assessments and issue trusted, portable credentials and digital badges.
@@ -343,8 +358,8 @@ const CoreFeatures: React.FC = () => {
             </div>
           </div>
         </div>
-       <svg
-        className="
+        <svg
+          className="
           absolute 
           bottom-[250px] 
           right-[400px] 
@@ -359,72 +374,71 @@ const CoreFeatures: React.FC = () => {
           max-w-[255px] 
           h-auto
         "
-        style={{ ["--path-length" as any]: 400 }}
-        viewBox="0 0 255 67"
-        xmlns="http://www.w3.org/2000/svg"
-        preserveAspectRatio="xMidYMid meet"
-      >
-        <path
-          d="M254.105 0.0198917L254.417 7.83847C254.757 16.3506 
+          style={{ ['--path-length' as any]: 400 }}
+          viewBox="0 0 255 67"
+          xmlns="http://www.w3.org/2000/svg"
+          preserveAspectRatio="xMidYMid meet"
+        >
+          <path
+            d="M254.105 0.0198917L254.417 7.83847C254.757 16.3506 
              247.948 23.4366 239.429 23.4366L15.5 23.4366C7.2157 
              23.4366 0.5 30.1524 0.5 38.4366L0.5 66.1697"
-          className="animated-draw"
-        />
-      </svg>
+            className="animated-draw"
+          />
+        </svg>
       </div>
 
       {/* ===== Mobile Version (No SVGs) ===== */}
       {/* ===== Mobile Version (Icons + Cards, No SVGs) ===== */}
-      <div className = "mb-7">
-<div className="flex flex-col items-center justify-center space-y-12 px-6 md:hidden">
-  {[
-    {
-      icon: <FiCheckCircle className="text-yellow-500 text-2xl" />,
-      title: "Skill Validation Engine",
-      desc: "Authenticates skills via structured assessment data.",
-    },
-    {
-      icon: <FiUsers className="text-yellow-500 text-2xl" />,
-      title: "Enterprise APIs",
-      desc: "Integrate and scale across locations and departments.",
-    },
-    {
-      icon: <FiShield className="text-yellow-500 text-2xl" />,
-      title: "Digital Badging & Certificates",
-      desc: "Tamper-proof and shareable proof of competence.",
-    },
-    {
-      icon: <FiTrendingUp className="text-yellow-500 text-2xl" />,
-      title: "Competency Mapping",
-      desc: "Align internal frameworks with industry standards.",
-    },
-    {
-      icon: <FiGitBranch className="text-yellow-500 text-2xl" />,
-      title: "Analytics Dashboard",
-      desc: "Visualize training ROI and identify skill gaps.",
-    },
-  ].map((item, i) => (
-    <div key={i} className="relative flex flex-col items-center">
-      {/* === Icon above card === */}
-      <div className="absolute -top-[37px] w-[60px] h-[60px] rounded-xl bg-gradient-to-tr bg-neutral-950 flex items-center justify-center shadow-md">
-        {item.icon}
-      </div>
+      <div className="mb-7">
+        <div className="flex flex-col items-center justify-center space-y-12 px-6 md:hidden">
+          {[
+            {
+              icon: <FiCheckCircle className="text-yellow-500 text-2xl" />,
+              title: 'Skill Validation Engine',
+              desc: 'Authenticates skills via structured assessment data.',
+            },
+            {
+              icon: <FiUsers className="text-yellow-500 text-2xl" />,
+              title: 'Enterprise APIs',
+              desc: 'Integrate and scale across locations and departments.',
+            },
+            {
+              icon: <FiShield className="text-yellow-500 text-2xl" />,
+              title: 'Digital Badging & Certificates',
+              desc: 'Tamper-proof and shareable proof of competence.',
+            },
+            {
+              icon: <FiTrendingUp className="text-yellow-500 text-2xl" />,
+              title: 'Competency Mapping',
+              desc: 'Align internal frameworks with industry standards.',
+            },
+            {
+              icon: <FiGitBranch className="text-yellow-500 text-2xl" />,
+              title: 'Analytics Dashboard',
+              desc: 'Visualize training ROI and identify skill gaps.',
+            },
+          ].map((item, i) => (
+            <div key={i} className="relative flex flex-col items-center">
+              {/* === Icon above card === */}
+              <div className="absolute -top-[37px] w-[60px] h-[60px] rounded-xl bg-gradient-to-tr bg-neutral-950 flex items-center justify-center shadow-md">
+                {item.icon}
+              </div>
 
-      {/* === Card === */}
-      <div className="w-[300px] bg-white border-2 border-black rounded-2xl p-4 shadow-md text-center mt-[36px] card-hover">
-        <h3 className="text-lg font-bold text-black">{item.title}</h3>
-        <p className="text-sm text-gray-600">{item.desc}</p>
+              {/* === Card === */}
+              <div className="w-[300px] bg-white border-2 border-black rounded-2xl p-4 shadow-md text-center mt-[36px] card-hover">
+                <h3 className="text-lg font-bold text-black">{item.title}</h3>
+                <p className="text-sm text-gray-600">{item.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
-  ))}
-</div>
-</div>
     </div>
   );
 };
 
 export default CoreFeatures;
-
 
 // import React, { useEffect } from "react";
 // import { FiCheckCircle, FiUsers, FiTrendingUp, FiShield, FiGitBranch } from "react-icons/fi";

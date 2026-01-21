@@ -1,16 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
-    AcademicCapIcon,
-    ArrowPathIcon,
-    ChartBarIcon,
-    CheckIcon,
-    ClipboardDocumentListIcon,
-    PencilSquareIcon,
-    PlusCircleIcon,
-    TrashIcon,
-    XMarkIcon
-} from "@heroicons/react/24/outline";
-import { useEffect, useState } from "react";
+  AcademicCapIcon,
+  ArrowPathIcon,
+  ChartBarIcon,
+  CheckIcon,
+  ClipboardDocumentListIcon,
+  PencilSquareIcon,
+  PlusCircleIcon,
+  TrashIcon,
+  XMarkIcon,
+} from '@heroicons/react/24/outline';
+import { useEffect, useState } from 'react';
 
 /* ==============================
    TYPES & INTERFACES
@@ -20,7 +20,7 @@ import { useEffect, useState } from "react";
 interface AssessmentType {
   id: string;
   typeName: string;
-  category: "internal" | "external" | "practical";
+  category: 'internal' | 'external' | 'practical';
   isActive: boolean;
   maxMarks: number;
   weightage: number;
@@ -45,35 +45,33 @@ const ModalWrapper = ({
   children,
   isOpen,
   onClose,
-  size = "default",
+  size = 'default',
 }: {
   title: string;
   subtitle?: string;
   children: React.ReactNode;
   isOpen: boolean;
   onClose: () => void;
-  size?: "default" | "large";
+  size?: 'default' | 'large';
 }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">      
-<div className="flex min-h-screen items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex min-h-screen items-center justify-center p-4">
         <div
           className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity"
           onClick={onClose}
         />
         <div
           className={`relative w-full ${
-            size === "large" ? "max-w-4xl" : "max-w-2xl"
+            size === 'large' ? 'max-w-4xl' : 'max-w-2xl'
           } transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all`}
         >
           <div className="flex items-start justify-between border-b border-gray-100 px-6 py-5">
             <div className="flex-1">
               <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
-              {subtitle && (
-                <p className="mt-1 text-sm text-gray-500">{subtitle}</p>
-              )}
+              {subtitle && <p className="mt-1 text-sm text-gray-500">{subtitle}</p>}
             </div>
             <button
               onClick={onClose}
@@ -82,9 +80,7 @@ const ModalWrapper = ({
               <XMarkIcon className="h-5 w-5" />
             </button>
           </div>
-          <div className="p-6 max-h-[calc(100vh-200px)] overflow-y-auto">
-            {children}
-          </div>
+          <div className="p-6 max-h-[calc(100vh-200px)] overflow-y-auto">{children}</div>
         </div>
       </div>
     </div>
@@ -98,41 +94,37 @@ const StatsCard = ({
   label,
   value,
   icon: Icon,
-  color = "blue",
+  color = 'blue',
   onClick,
 }: {
   label: string;
   value: number | string;
   icon: any;
-  color?: "blue" | "green" | "purple" | "amber" | "red" | "indigo";
+  color?: 'blue' | 'green' | 'purple' | 'amber' | 'red' | 'indigo';
   onClick?: () => void;
 }) => {
   const colorClasses = {
-    blue: "bg-blue-50 text-blue-600 border-blue-200",
-    green: "bg-green-50 text-green-600 border-green-200",
-    purple: "bg-purple-50 text-purple-600 border-purple-200",
-    amber: "bg-amber-50 text-amber-600 border-amber-200",
-    red: "bg-red-50 text-red-600 border-red-200",
-    indigo: "bg-indigo-50 text-indigo-600 border-indigo-200",
+    blue: 'bg-blue-50 text-blue-600 border-blue-200',
+    green: 'bg-green-50 text-green-600 border-green-200',
+    purple: 'bg-purple-50 text-purple-600 border-purple-200',
+    amber: 'bg-amber-50 text-amber-600 border-amber-200',
+    red: 'bg-red-50 text-red-600 border-red-200',
+    indigo: 'bg-indigo-50 text-indigo-600 border-indigo-200',
   };
 
   return (
     <div
       onClick={onClick}
       className={`bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-all ${
-        onClick ? "cursor-pointer" : ""
+        onClick ? 'cursor-pointer' : ''
       }`}
     >
       <div className="flex items-center justify-between">
         <div className="flex-1">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-            {label}
-          </p>
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">{label}</p>
           <p className="text-2xl font-bold text-gray-900">{value}</p>
         </div>
-        <div
-          className={`p-3 rounded-xl border ${colorClasses[color]} transition-colors`}
-        >
+        <div className={`p-3 rounded-xl border ${colorClasses[color]} transition-colors`}>
           <Icon className="h-6 w-6" />
         </div>
       </div>
@@ -155,12 +147,12 @@ const AssessmentTypeModal = ({
   onSaved: (assessmentType: AssessmentType) => void;
 }) => {
   const [formData, setFormData] = useState({
-    typeName: "",
-    category: "internal" as "internal" | "external" | "practical",
+    typeName: '',
+    category: 'internal' as 'internal' | 'external' | 'practical',
     isActive: true,
     maxMarks: 100,
     weightage: 20,
-    description: "",
+    description: '',
     duration: 180, // in minutes
     passingMarks: 40,
   });
@@ -168,12 +160,12 @@ const AssessmentTypeModal = ({
 
   // College default assessment types
   const collegeDefaults = [
-    { name: "Internal Assessment 1 (IA1)", category: "internal", maxMarks: 50, weightage: 20 },
-    { name: "Internal Assessment 2 (IA2)", category: "internal", maxMarks: 50, weightage: 20 },
-    { name: "Semester End Examination", category: "external", maxMarks: 100, weightage: 60 },
-    { name: "Practical Examination", category: "practical", maxMarks: 50, weightage: 25 },
-    { name: "Viva Voce", category: "practical", maxMarks: 25, weightage: 15 },
-    { name: "Arrears Examination", category: "external", maxMarks: 100, weightage: 100 },
+    { name: 'Internal Assessment 1 (IA1)', category: 'internal', maxMarks: 50, weightage: 20 },
+    { name: 'Internal Assessment 2 (IA2)', category: 'internal', maxMarks: 50, weightage: 20 },
+    { name: 'Semester End Examination', category: 'external', maxMarks: 100, weightage: 60 },
+    { name: 'Practical Examination', category: 'practical', maxMarks: 50, weightage: 25 },
+    { name: 'Viva Voce', category: 'practical', maxMarks: 25, weightage: 15 },
+    { name: 'Arrears Examination', category: 'external', maxMarks: 100, weightage: 100 },
   ];
 
   useEffect(() => {
@@ -184,18 +176,18 @@ const AssessmentTypeModal = ({
         isActive: assessmentType.isActive,
         maxMarks: assessmentType.maxMarks,
         weightage: assessmentType.weightage,
-        description: "",
+        description: '',
         duration: 180,
         passingMarks: Math.floor(assessmentType.maxMarks * 0.4),
       });
     } else if (!assessmentType && isOpen) {
       setFormData({
-        typeName: "",
-        category: "internal",
+        typeName: '',
+        category: 'internal',
         isActive: true,
         maxMarks: 100,
         weightage: 20,
-        description: "",
+        description: '',
         duration: 180,
         passingMarks: 40,
       });
@@ -226,12 +218,12 @@ const AssessmentTypeModal = ({
       maxMarks: defaultType.maxMarks,
       weightage: defaultType.weightage,
     });
-  }; 
- return (
+  };
+  return (
     <ModalWrapper
       isOpen={isOpen}
       onClose={onClose}
-      title={assessmentType ? "Edit Assessment Type" : "Add Assessment Type"}
+      title={assessmentType ? 'Edit Assessment Type' : 'Add Assessment Type'}
       subtitle="Configure assessment type with category and weightage"
       size="large"
     >
@@ -249,7 +241,8 @@ const AssessmentTypeModal = ({
                 >
                   <p className="text-xs font-medium text-blue-900">{template.name}</p>
                   <p className="text-xs text-blue-700 mt-1">
-                    {template.category.toUpperCase()} • {template.maxMarks} marks • {template.weightage}%
+                    {template.category.toUpperCase()} • {template.maxMarks} marks •{' '}
+                    {template.weightage}%
                   </p>
                 </button>
               ))}
@@ -289,9 +282,7 @@ const AssessmentTypeModal = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Description
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
               <textarea
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -313,8 +304,8 @@ const AssessmentTypeModal = ({
                 Active Status
               </label>
             </div>
-          </div>       
-   {/* Right Column */}
+          </div>
+          {/* Right Column */}
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -325,10 +316,10 @@ const AssessmentTypeModal = ({
                 value={formData.maxMarks}
                 onChange={(e) => {
                   const maxMarks = parseInt(e.target.value) || 0;
-                  setFormData({ 
-                    ...formData, 
+                  setFormData({
+                    ...formData,
                     maxMarks,
-                    passingMarks: Math.floor(maxMarks * 0.4)
+                    passingMarks: Math.floor(maxMarks * 0.4),
                   });
                 }}
                 className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
@@ -344,7 +335,9 @@ const AssessmentTypeModal = ({
               <input
                 type="number"
                 value={formData.weightage}
-                onChange={(e) => setFormData({ ...formData, weightage: parseInt(e.target.value) || 0 })}
+                onChange={(e) =>
+                  setFormData({ ...formData, weightage: parseInt(e.target.value) || 0 })
+                }
                 className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                 min="1"
                 max="100"
@@ -358,7 +351,9 @@ const AssessmentTypeModal = ({
               <input
                 type="number"
                 value={formData.duration}
-                onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) || 0 })}
+                onChange={(e) =>
+                  setFormData({ ...formData, duration: parseInt(e.target.value) || 0 })
+                }
                 className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                 min="30"
                 max="480"
@@ -366,13 +361,13 @@ const AssessmentTypeModal = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Passing Marks
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Passing Marks</label>
               <input
                 type="number"
                 value={formData.passingMarks}
-                onChange={(e) => setFormData({ ...formData, passingMarks: parseInt(e.target.value) || 0 })}
+                onChange={(e) =>
+                  setFormData({ ...formData, passingMarks: parseInt(e.target.value) || 0 })
+                }
                 className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                 min="1"
                 max={formData.maxMarks}
@@ -387,20 +382,30 @@ const AssessmentTypeModal = ({
           <div className="bg-white border border-gray-200 rounded-lg p-4">
             <div className="flex items-start justify-between mb-3">
               <div className="flex-1">
-                <h5 className="font-semibold text-gray-900">{formData.typeName || "Assessment Type Name"}</h5>
-                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium mt-1 ${
-                  formData.category === "internal" ? "bg-blue-100 text-blue-800" :
-                  formData.category === "external" ? "bg-purple-100 text-purple-800" :
-                  "bg-green-100 text-green-800"
-                }`}>
+                <h5 className="font-semibold text-gray-900">
+                  {formData.typeName || 'Assessment Type Name'}
+                </h5>
+                <span
+                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium mt-1 ${
+                    formData.category === 'internal'
+                      ? 'bg-blue-100 text-blue-800'
+                      : formData.category === 'external'
+                        ? 'bg-purple-100 text-purple-800'
+                        : 'bg-green-100 text-green-800'
+                  }`}
+                >
                   {formData.category.toUpperCase()}
                 </span>
               </div>
-              <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${
-                formData.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-              }`}>
-                <div className={`w-1.5 h-1.5 rounded-full ${formData.isActive ? "bg-green-500" : "bg-red-500"}`}></div>
-                {formData.isActive ? "Active" : "Inactive"}
+              <span
+                className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${
+                  formData.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                }`}
+              >
+                <div
+                  className={`w-1.5 h-1.5 rounded-full ${formData.isActive ? 'bg-green-500' : 'bg-red-500'}`}
+                ></div>
+                {formData.isActive ? 'Active' : 'Inactive'}
               </span>
             </div>
             <div className="grid grid-cols-2 gap-3 text-sm">
@@ -423,7 +428,8 @@ const AssessmentTypeModal = ({
             </div>
           </div>
         </div>
-      </div>      {/*
+      </div>{' '}
+      {/*
  Action Buttons */}
       <div className="mt-8 flex justify-end gap-3 pt-6 border-t border-gray-200">
         <button
@@ -441,12 +447,12 @@ const AssessmentTypeModal = ({
           {submitting ? (
             <>
               <ArrowPathIcon className="h-4 w-4 animate-spin" />
-              {assessmentType ? "Updating..." : "Creating..."}
+              {assessmentType ? 'Updating...' : 'Creating...'}
             </>
           ) : (
             <>
               <CheckIcon className="h-4 w-4" />
-              {assessmentType ? "Update Assessment" : "Create Assessment"}
+              {assessmentType ? 'Update Assessment' : 'Create Assessment'}
             </>
           )}
         </button>
@@ -469,18 +475,18 @@ const GradingSystemModal = ({
   grade?: GradingSystem | null;
   onSaved: (grade: GradingSystem) => void;
 }) => {
-  const [activeGradingTab, setActiveGradingTab] = useState("grade");
+  const [activeGradingTab, setActiveGradingTab] = useState('grade');
   const [formData, setFormData] = useState({
-    gradeLabel: "",
+    gradeLabel: '',
     minMarks: 0,
     maxMarks: 0,
     gradePoint: 0,
     isPass: true,
-    description: "",
-    letterGrade: "",
+    description: '',
+    letterGrade: '',
   });
   const [sgpaRules, setSgpaRules] = useState({
-    creditSystem: "semester" as "semester" | "annual",
+    creditSystem: 'semester' as 'semester' | 'annual',
     minCreditsRequired: 20,
     maxCreditsAllowed: 30,
     gradePointScale: 10,
@@ -497,15 +503,43 @@ const GradingSystemModal = ({
 
   // College standard grading templates
   const gradingTemplates = [
-    { label: "O", minMarks: 90, maxMarks: 100, gradePoint: 10, isPass: true, description: "Outstanding" },
-    { label: "A+", minMarks: 80, maxMarks: 89, gradePoint: 9, isPass: true, description: "Excellent" },
-    { label: "A", minMarks: 70, maxMarks: 79, gradePoint: 8, isPass: true, description: "Very Good" },
-    { label: "B+", minMarks: 60, maxMarks: 69, gradePoint: 7, isPass: true, description: "Good" },
-    { label: "B", minMarks: 50, maxMarks: 59, gradePoint: 6, isPass: true, description: "Above Average" },
-    { label: "C", minMarks: 40, maxMarks: 49, gradePoint: 5, isPass: true, description: "Average" },
-    { label: "F", minMarks: 0, maxMarks: 39, gradePoint: 0, isPass: false, description: "Fail" },
-  ]; 
- useEffect(() => {
+    {
+      label: 'O',
+      minMarks: 90,
+      maxMarks: 100,
+      gradePoint: 10,
+      isPass: true,
+      description: 'Outstanding',
+    },
+    {
+      label: 'A+',
+      minMarks: 80,
+      maxMarks: 89,
+      gradePoint: 9,
+      isPass: true,
+      description: 'Excellent',
+    },
+    {
+      label: 'A',
+      minMarks: 70,
+      maxMarks: 79,
+      gradePoint: 8,
+      isPass: true,
+      description: 'Very Good',
+    },
+    { label: 'B+', minMarks: 60, maxMarks: 69, gradePoint: 7, isPass: true, description: 'Good' },
+    {
+      label: 'B',
+      minMarks: 50,
+      maxMarks: 59,
+      gradePoint: 6,
+      isPass: true,
+      description: 'Above Average',
+    },
+    { label: 'C', minMarks: 40, maxMarks: 49, gradePoint: 5, isPass: true, description: 'Average' },
+    { label: 'F', minMarks: 0, maxMarks: 39, gradePoint: 0, isPass: false, description: 'Fail' },
+  ];
+  useEffect(() => {
     if (grade && isOpen) {
       setFormData({
         gradeLabel: grade.gradeLabel,
@@ -513,18 +547,18 @@ const GradingSystemModal = ({
         maxMarks: grade.maxMarks,
         gradePoint: grade.gradePoint,
         isPass: grade.isPass,
-        description: "",
+        description: '',
         letterGrade: grade.gradeLabel,
       });
     } else if (!grade && isOpen) {
       setFormData({
-        gradeLabel: "",
+        gradeLabel: '',
         minMarks: 0,
         maxMarks: 0,
         gradePoint: 0,
         isPass: true,
-        description: "",
-        letterGrade: "",
+        description: '',
+        letterGrade: '',
       });
     }
   }, [grade, isOpen]);
@@ -559,15 +593,15 @@ const GradingSystemModal = ({
   };
 
   const gradingTabs = [
-    { id: "grade", label: "Grade Details", icon: ChartBarIcon },
-    { id: "sgpa", label: "SGPA Rules", icon: AcademicCapIcon },
-    { id: "cgpa", label: "CGPA Rules", icon: ClipboardDocumentListIcon },
-  ]; 
- return (
+    { id: 'grade', label: 'Grade Details', icon: ChartBarIcon },
+    { id: 'sgpa', label: 'SGPA Rules', icon: AcademicCapIcon },
+    { id: 'cgpa', label: 'CGPA Rules', icon: ClipboardDocumentListIcon },
+  ];
+  return (
     <ModalWrapper
       isOpen={isOpen}
       onClose={onClose}
-      title={grade ? "Edit Grade" : "Add Grade"}
+      title={grade ? 'Edit Grade' : 'Add Grade'}
       subtitle="Configure grade points and SGPA/CGPA calculation rules"
       size="large"
     >
@@ -582,8 +616,8 @@ const GradingSystemModal = ({
                 onClick={() => setActiveGradingTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
                   activeGradingTab === tab.id
-                    ? "border-indigo-600 text-indigo-600"
-                    : "border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300"
+                    ? 'border-indigo-600 text-indigo-600'
+                    : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
                 }`}
               >
                 <Icon className="h-4 w-4" />
@@ -597,34 +631,42 @@ const GradingSystemModal = ({
       {/* Tab Content */}
       <div className="space-y-6">
         {/* Grade Details Tab */}
-        {activeGradingTab === "grade" && (
+        {activeGradingTab === 'grade' && (
           <div className="space-y-6">
             {/* Quick Templates */}
             {!grade && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h4 className="text-sm font-semibold text-blue-900 mb-3">Standard College Grading Templates</h4>
+                <h4 className="text-sm font-semibold text-blue-900 mb-3">
+                  Standard College Grading Templates
+                </h4>
                 <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
                   {gradingTemplates.map((template, index) => (
                     <button
                       key={index}
                       onClick={() => loadTemplate(template)}
                       className={`text-center p-3 bg-white border-2 rounded-lg hover:bg-blue-50 transition-colors ${
-                        template.isPass ? "border-green-200" : "border-red-200"
+                        template.isPass ? 'border-green-200' : 'border-red-200'
                       }`}
                     >
-                      <div className={`w-8 h-8 mx-auto rounded-lg flex items-center justify-center font-bold text-sm mb-1 ${
-                        template.isPass ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                      }`}>
+                      <div
+                        className={`w-8 h-8 mx-auto rounded-lg flex items-center justify-center font-bold text-sm mb-1 ${
+                          template.isPass
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}
+                      >
                         {template.label}
                       </div>
                       <p className="text-xs text-gray-600">{template.gradePoint} GP</p>
-                      <p className="text-xs text-gray-500">{template.minMarks}-{template.maxMarks}</p>
+                      <p className="text-xs text-gray-500">
+                        {template.minMarks}-{template.maxMarks}
+                      </p>
                     </button>
                   ))}
                 </div>
               </div>
-            )}   
-         {/* Form Fields - Simplified for space */}
+            )}
+            {/* Form Fields - Simplified for space */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div>
@@ -640,20 +682,28 @@ const GradingSystemModal = ({
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Min Marks</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Min Marks
+                    </label>
                     <input
                       type="number"
                       value={formData.minMarks}
-                      onChange={(e) => setFormData({ ...formData, minMarks: parseInt(e.target.value) || 0 })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, minMarks: parseInt(e.target.value) || 0 })
+                      }
                       className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Max Marks</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Max Marks
+                    </label>
                     <input
                       type="number"
                       value={formData.maxMarks}
-                      onChange={(e) => setFormData({ ...formData, maxMarks: parseInt(e.target.value) || 0 })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, maxMarks: parseInt(e.target.value) || 0 })
+                      }
                       className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                     />
                   </div>
@@ -661,12 +711,16 @@ const GradingSystemModal = ({
               </div>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Grade Point</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Grade Point
+                  </label>
                   <input
                     type="number"
                     step="0.1"
                     value={formData.gradePoint}
-                    onChange={(e) => setFormData({ ...formData, gradePoint: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, gradePoint: parseFloat(e.target.value) || 0 })
+                    }
                     className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                   />
                 </div>
@@ -678,7 +732,9 @@ const GradingSystemModal = ({
                     onChange={(e) => setFormData({ ...formData, isPass: e.target.checked })}
                     className="h-4 w-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
                   />
-                  <label htmlFor="isPass" className="text-sm font-medium text-gray-700">Passing Grade</label>
+                  <label htmlFor="isPass" className="text-sm font-medium text-gray-700">
+                    Passing Grade
+                  </label>
                 </div>
               </div>
             </div>
@@ -688,7 +744,10 @@ const GradingSystemModal = ({
 
       {/* Action Buttons */}
       <div className="mt-8 flex justify-end gap-3 pt-6 border-t border-gray-200">
-        <button onClick={onClose} className="rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+        <button
+          onClick={onClose}
+          className="rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        >
           Cancel
         </button>
         <button
@@ -696,17 +755,17 @@ const GradingSystemModal = ({
           disabled={submitting || !formData.gradeLabel}
           className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:bg-indigo-400"
         >
-          {submitting ? "Saving..." : (grade ? "Update Grade" : "Create Grade")}
+          {submitting ? 'Saving...' : grade ? 'Update Grade' : 'Create Grade'}
         </button>
       </div>
     </ModalWrapper>
   );
-};/*
+}; /*
  ==============================
    MAIN COMPONENT
    ============================== */
 const AssessmentGradingMaster = () => {
-  const [activeTab, setActiveTab] = useState<"assessments" | "grading">("assessments");
+  const [activeTab, setActiveTab] = useState<'assessments' | 'grading'>('assessments');
   const [loading, setLoading] = useState(true);
 
   // Modal states
@@ -717,22 +776,64 @@ const AssessmentGradingMaster = () => {
 
   // Data states
   const [assessmentTypes, setAssessmentTypes] = useState<AssessmentType[]>([
-    { id: "1", typeName: "Internal Assessment 1 (IA1)", category: "internal", isActive: true, maxMarks: 50, weightage: 20 },
-    { id: "2", typeName: "Internal Assessment 2 (IA2)", category: "internal", isActive: true, maxMarks: 50, weightage: 20 },
-    { id: "3", typeName: "Semester End Examination", category: "external", isActive: true, maxMarks: 100, weightage: 60 },
-    { id: "4", typeName: "Practical Examination", category: "practical", isActive: true, maxMarks: 50, weightage: 25 },
-    { id: "5", typeName: "Viva Voce", category: "practical", isActive: true, maxMarks: 25, weightage: 15 },
-    { id: "6", typeName: "Arrears Examination", category: "external", isActive: true, maxMarks: 100, weightage: 100 },
+    {
+      id: '1',
+      typeName: 'Internal Assessment 1 (IA1)',
+      category: 'internal',
+      isActive: true,
+      maxMarks: 50,
+      weightage: 20,
+    },
+    {
+      id: '2',
+      typeName: 'Internal Assessment 2 (IA2)',
+      category: 'internal',
+      isActive: true,
+      maxMarks: 50,
+      weightage: 20,
+    },
+    {
+      id: '3',
+      typeName: 'Semester End Examination',
+      category: 'external',
+      isActive: true,
+      maxMarks: 100,
+      weightage: 60,
+    },
+    {
+      id: '4',
+      typeName: 'Practical Examination',
+      category: 'practical',
+      isActive: true,
+      maxMarks: 50,
+      weightage: 25,
+    },
+    {
+      id: '5',
+      typeName: 'Viva Voce',
+      category: 'practical',
+      isActive: true,
+      maxMarks: 25,
+      weightage: 15,
+    },
+    {
+      id: '6',
+      typeName: 'Arrears Examination',
+      category: 'external',
+      isActive: true,
+      maxMarks: 100,
+      weightage: 100,
+    },
   ]);
 
   const [gradingSystem, setGradingSystem] = useState<GradingSystem[]>([
-    { id: "1", gradeLabel: "O", minMarks: 90, maxMarks: 100, gradePoint: 10, isPass: true },
-    { id: "2", gradeLabel: "A+", minMarks: 80, maxMarks: 89, gradePoint: 9, isPass: true },
-    { id: "3", gradeLabel: "A", minMarks: 70, maxMarks: 79, gradePoint: 8, isPass: true },
-    { id: "4", gradeLabel: "B+", minMarks: 60, maxMarks: 69, gradePoint: 7, isPass: true },
-    { id: "5", gradeLabel: "B", minMarks: 50, maxMarks: 59, gradePoint: 6, isPass: true },
-    { id: "6", gradeLabel: "C", minMarks: 40, maxMarks: 49, gradePoint: 5, isPass: true },
-    { id: "7", gradeLabel: "F", minMarks: 0, maxMarks: 39, gradePoint: 0, isPass: false },
+    { id: '1', gradeLabel: 'O', minMarks: 90, maxMarks: 100, gradePoint: 10, isPass: true },
+    { id: '2', gradeLabel: 'A+', minMarks: 80, maxMarks: 89, gradePoint: 9, isPass: true },
+    { id: '3', gradeLabel: 'A', minMarks: 70, maxMarks: 79, gradePoint: 8, isPass: true },
+    { id: '4', gradeLabel: 'B+', minMarks: 60, maxMarks: 69, gradePoint: 7, isPass: true },
+    { id: '5', gradeLabel: 'B', minMarks: 50, maxMarks: 59, gradePoint: 6, isPass: true },
+    { id: '6', gradeLabel: 'C', minMarks: 40, maxMarks: 49, gradePoint: 5, isPass: true },
+    { id: '7', gradeLabel: 'F', minMarks: 0, maxMarks: 39, gradePoint: 0, isPass: false },
   ]);
 
   useEffect(() => {
@@ -740,24 +841,26 @@ const AssessmentGradingMaster = () => {
   }, []);
 
   const tabs = [
-    { id: "assessments", label: "Assessment Types", icon: ClipboardDocumentListIcon },
-    { id: "grading", label: "Grading System", icon: ChartBarIcon },
+    { id: 'assessments', label: 'Assessment Types', icon: ClipboardDocumentListIcon },
+    { id: 'grading', label: 'Grading System', icon: ChartBarIcon },
   ];
 
   const handleSaveAssessmentType = (assessmentType: AssessmentType) => {
     if (editAssessmentType) {
-      setAssessmentTypes(prev => prev.map(a => a.id === assessmentType.id ? assessmentType : a));
+      setAssessmentTypes((prev) =>
+        prev.map((a) => (a.id === assessmentType.id ? assessmentType : a))
+      );
     } else {
-      setAssessmentTypes(prev => [...prev, assessmentType]);
+      setAssessmentTypes((prev) => [...prev, assessmentType]);
     }
     setEditAssessmentType(null);
   };
 
   const handleSaveGradingSystem = (grade: GradingSystem) => {
     if (editGradingSystem) {
-      setGradingSystem(prev => prev.map(g => g.id === grade.id ? grade : g));
+      setGradingSystem((prev) => prev.map((g) => (g.id === grade.id ? grade : g)));
     } else {
-      setGradingSystem(prev => [...prev, grade]);
+      setGradingSystem((prev) => [...prev, grade]);
     }
     setEditGradingSystem(null);
   };
@@ -778,7 +881,9 @@ const AssessmentGradingMaster = () => {
       <div className="p-4 sm:p-6 lg:p-8">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Assessment & Grading Master</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+            Assessment & Grading Master
+          </h1>
           <p className="text-base sm:text-lg mt-2 text-gray-600">
             Configure assessment types and grading system for your college
           </p>
@@ -791,14 +896,14 @@ const AssessmentGradingMaster = () => {
             value={assessmentTypes.length}
             icon={ClipboardDocumentListIcon}
             color="purple"
-            onClick={() => setActiveTab("assessments")}
+            onClick={() => setActiveTab('assessments')}
           />
           <StatsCard
             label="Grading System"
             value={gradingSystem.length}
             icon={ChartBarIcon}
             color="blue"
-            onClick={() => setActiveTab("grading")}
+            onClick={() => setActiveTab('grading')}
           />
         </div>
 
@@ -814,8 +919,8 @@ const AssessmentGradingMaster = () => {
                     onClick={() => setActiveTab(tab.id as any)}
                     className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
                       activeTab === tab.id
-                        ? "border-indigo-600 text-indigo-600 bg-indigo-50"
-                        : "border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                        ? 'border-indigo-600 text-indigo-600 bg-indigo-50'
+                        : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                     }`}
                   >
                     <Icon className="h-4 w-4" />
@@ -829,7 +934,7 @@ const AssessmentGradingMaster = () => {
           {/* Tab Content */}
           <div className="p-6">
             {/* Assessment Types Tab */}
-            {activeTab === "assessments" && (
+            {activeTab === 'assessments' && (
               <div>
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-xl font-bold text-gray-900">Assessment Type Master</h2>
@@ -844,31 +949,42 @@ const AssessmentGradingMaster = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                   {assessmentTypes.map((assessment) => (
-                    <div key={assessment.id} className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-lg transition-all duration-200">
+                    <div
+                      key={assessment.id}
+                      className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-lg transition-all duration-200"
+                    >
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex-1">
                           <h3 className="font-bold text-gray-900 mb-2">{assessment.typeName}</h3>
-                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                            assessment.category === "internal" ? "bg-blue-50 text-blue-700" :
-                            assessment.category === "external" ? "bg-purple-50 text-purple-700" :
-                            "bg-green-50 text-green-700"
-                          }`}>
+                          <span
+                            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                              assessment.category === 'internal'
+                                ? 'bg-blue-50 text-blue-700'
+                                : assessment.category === 'external'
+                                  ? 'bg-purple-50 text-purple-700'
+                                  : 'bg-green-50 text-green-700'
+                            }`}
+                          >
                             {assessment.category.toUpperCase()}
                           </span>
                         </div>
                       </div>
-                      
+
                       <div className="space-y-3 mb-4">
                         <div className="flex items-center justify-between">
                           <span className="text-sm text-gray-600">Max Marks:</span>
-                          <span className="text-sm font-semibold text-gray-900">{assessment.maxMarks}</span>
+                          <span className="text-sm font-semibold text-gray-900">
+                            {assessment.maxMarks}
+                          </span>
                         </div>
                         <div className="flex items-center justify-between">
                           <span className="text-sm text-gray-600">Weightage:</span>
-                          <span className="text-sm font-semibold text-gray-900">{assessment.weightage}%</span>
+                          <span className="text-sm font-semibold text-gray-900">
+                            {assessment.weightage}%
+                          </span>
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => {
@@ -882,7 +998,9 @@ const AssessmentGradingMaster = () => {
                         </button>
                         <button
                           onClick={() => {
-                            setAssessmentTypes(prev => prev.filter(a => a.id !== assessment.id));
+                            setAssessmentTypes((prev) =>
+                              prev.filter((a) => a.id !== assessment.id)
+                            );
                           }}
                           className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
                         >
@@ -894,9 +1012,9 @@ const AssessmentGradingMaster = () => {
                   ))}
                 </div>
               </div>
-            )}        
-    {/* Grading System Tab */}
-            {activeTab === "grading" && (
+            )}
+            {/* Grading System Tab */}
+            {activeTab === 'grading' && (
               <div>
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-xl font-bold text-gray-900">Grading System Master</h2>
@@ -913,39 +1031,67 @@ const AssessmentGradingMaster = () => {
                   <table className="w-full">
                     <thead className="bg-gray-50 border-b border-gray-200">
                       <tr>
-                        <th className="text-left py-4 px-6 font-semibold text-gray-900 text-sm">Grade Label</th>
-                        <th className="text-left py-4 px-6 font-semibold text-gray-900 text-sm">Min Marks</th>
-                        <th className="text-left py-4 px-6 font-semibold text-gray-900 text-sm">Max Marks</th>
-                        <th className="text-left py-4 px-6 font-semibold text-gray-900 text-sm">Grade Point</th>
-                        <th className="text-left py-4 px-6 font-semibold text-gray-900 text-sm">Pass Status</th>
-                        <th className="text-left py-4 px-6 font-semibold text-gray-900 text-sm">Actions</th>
+                        <th className="text-left py-4 px-6 font-semibold text-gray-900 text-sm">
+                          Grade Label
+                        </th>
+                        <th className="text-left py-4 px-6 font-semibold text-gray-900 text-sm">
+                          Min Marks
+                        </th>
+                        <th className="text-left py-4 px-6 font-semibold text-gray-900 text-sm">
+                          Max Marks
+                        </th>
+                        <th className="text-left py-4 px-6 font-semibold text-gray-900 text-sm">
+                          Grade Point
+                        </th>
+                        <th className="text-left py-4 px-6 font-semibold text-gray-900 text-sm">
+                          Pass Status
+                        </th>
+                        <th className="text-left py-4 px-6 font-semibold text-gray-900 text-sm">
+                          Actions
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {gradingSystem.map((grade) => (
                         <tr key={grade.id} className="hover:bg-gray-50 transition-colors">
                           <td className="py-4 px-6">
-                            <div className={`inline-flex items-center justify-center w-10 h-10 rounded-lg font-bold text-lg ${
-                              grade.isPass ? "bg-green-100 text-green-800 border border-green-200" : "bg-red-100 text-red-800 border border-red-200"
-                            }`}>
+                            <div
+                              className={`inline-flex items-center justify-center w-10 h-10 rounded-lg font-bold text-lg ${
+                                grade.isPass
+                                  ? 'bg-green-100 text-green-800 border border-green-200'
+                                  : 'bg-red-100 text-red-800 border border-red-200'
+                              }`}
+                            >
                               {grade.gradeLabel}
                             </div>
                           </td>
                           <td className="py-4 px-6">
-                            <span className="text-sm font-medium text-gray-900">{grade.minMarks}</span>
+                            <span className="text-sm font-medium text-gray-900">
+                              {grade.minMarks}
+                            </span>
                           </td>
                           <td className="py-4 px-6">
-                            <span className="text-sm font-medium text-gray-900">{grade.maxMarks}</span>
+                            <span className="text-sm font-medium text-gray-900">
+                              {grade.maxMarks}
+                            </span>
                           </td>
                           <td className="py-4 px-6">
-                            <span className="text-sm font-bold text-gray-900 bg-gray-100 px-3 py-1 rounded-full">{grade.gradePoint}</span>
+                            <span className="text-sm font-bold text-gray-900 bg-gray-100 px-3 py-1 rounded-full">
+                              {grade.gradePoint}
+                            </span>
                           </td>
                           <td className="py-4 px-6">
-                            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${
-                              grade.isPass ? "bg-green-100 text-green-800 border border-green-200" : "bg-red-100 text-red-800 border border-red-200"
-                            }`}>
-                              <div className={`w-1.5 h-1.5 rounded-full ${grade.isPass ? "bg-green-500" : "bg-red-500"}`}></div>
-                              {grade.isPass ? "PASS" : "FAIL"}
+                            <span
+                              className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${
+                                grade.isPass
+                                  ? 'bg-green-100 text-green-800 border border-green-200'
+                                  : 'bg-red-100 text-red-800 border border-red-200'
+                              }`}
+                            >
+                              <div
+                                className={`w-1.5 h-1.5 rounded-full ${grade.isPass ? 'bg-green-500' : 'bg-red-500'}`}
+                              ></div>
+                              {grade.isPass ? 'PASS' : 'FAIL'}
                             </span>
                           </td>
                           <td className="py-4 px-6">
@@ -961,7 +1107,7 @@ const AssessmentGradingMaster = () => {
                               </button>
                               <button
                                 onClick={() => {
-                                  setGradingSystem(prev => prev.filter(g => g.id !== grade.id));
+                                  setGradingSystem((prev) => prev.filter((g) => g.id !== grade.id));
                                 }}
                                 className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                               >

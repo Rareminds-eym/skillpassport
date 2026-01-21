@@ -1,6 +1,6 @@
 /**
  * BillingDashboard Component
- * 
+ *
  * Displays billing information, payment history, and cost projections
  * for organization subscriptions.
  */
@@ -41,10 +41,10 @@ function BillingDashboard({
 
   const fetchBillingData = useCallback(async () => {
     if (!organizationId) return;
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const data = await organizationBillingService.getBillingDashboard(
         organizationId,
@@ -68,7 +68,7 @@ function BillingDashboard({
     try {
       // Generate invoice for this transaction
       const invoice = await organizationBillingService.generateInvoice(payment.id);
-      
+
       // Create a simple text-based invoice for download
       const invoiceContent = `
 INVOICE
@@ -81,10 +81,13 @@ ${invoice.gstNumber ? `GST Number: ${invoice.gstNumber}` : ''}
 
 ITEMS
 -----
-${invoice.lineItems.map(item => 
-  `${item.description}
+${invoice.lineItems
+  .map(
+    (item) =>
+      `${item.description}
    Qty: ${item.quantity} x ₹${item.unitPrice.toFixed(2)} = ₹${item.amount.toFixed(2)}`
-).join('\n\n')}
+  )
+  .join('\n\n')}
 
 SUMMARY
 -------
@@ -108,7 +111,7 @@ Thank you for your business!
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      
+
       toast.success('Invoice downloaded');
     } catch (err) {
       console.error('Error downloading invoice:', err);
@@ -139,7 +142,7 @@ Thank you for your business!
       <div className="space-y-6">
         {/* Skeleton loaders */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[1, 2, 3].map(i => (
+          {[1, 2, 3].map((i) => (
             <div key={i} className="bg-white rounded-xl border border-gray-200 p-6 animate-pulse">
               <div className="h-4 bg-gray-200 rounded w-1/2 mb-4" />
               <div className="h-8 bg-gray-200 rounded w-3/4" />
@@ -149,7 +152,7 @@ Thank you for your business!
         <div className="bg-white rounded-xl border border-gray-200 p-6 animate-pulse">
           <div className="h-6 bg-gray-200 rounded w-1/4 mb-4" />
           <div className="space-y-3">
-            {[1, 2, 3].map(i => (
+            {[1, 2, 3].map((i) => (
               <div key={i} className="h-12 bg-gray-200 rounded" />
             ))}
           </div>
@@ -198,7 +201,8 @@ Thank you for your business!
             {formatCurrency(billingData.currentPeriod.totalCost)}
           </div>
           <div className="text-sm opacity-80 mt-1">
-            {formatDate(billingData.currentPeriod.startDate)} - {formatDate(billingData.currentPeriod.endDate)}
+            {formatDate(billingData.currentPeriod.startDate)} -{' '}
+            {formatDate(billingData.currentPeriod.endDate)}
           </div>
         </div>
 
@@ -207,9 +211,7 @@ Thank you for your business!
             <TrendingUp className="w-5 h-5 text-green-500" />
             <span className="text-sm text-gray-500">Seat Utilization</span>
           </div>
-          <div className="text-3xl font-bold text-gray-900">
-            {billingData.overallUtilization}%
-          </div>
+          <div className="text-3xl font-bold text-gray-900">{billingData.overallUtilization}%</div>
           <div className="text-sm text-gray-500 mt-1">
             {billingData.totalAssignedSeats} / {billingData.totalActiveSeats} seats used
           </div>
@@ -245,14 +247,21 @@ Thank you for your business!
             <h4 className="text-sm font-medium text-gray-500 mb-3">Subscriptions</h4>
             {billingData.subscriptions.length > 0 ? (
               <div className="space-y-3">
-                {billingData.subscriptions.map(sub => (
-                  <div key={sub.subscriptionId} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                {billingData.subscriptions.map((sub) => (
+                  <div
+                    key={sub.subscriptionId}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                  >
                     <div>
                       <div className="font-medium text-gray-900">{sub.planName}</div>
-                      <div className="text-sm text-gray-500">{sub.seatCount} seats • {sub.utilization}% used</div>
+                      <div className="text-sm text-gray-500">
+                        {sub.seatCount} seats • {sub.utilization}% used
+                      </div>
                     </div>
                     <div className="text-right">
-                      <div className="font-semibold text-gray-900">{formatCurrency(sub.monthlyCost)}</div>
+                      <div className="font-semibold text-gray-900">
+                        {formatCurrency(sub.monthlyCost)}
+                      </div>
                       <div className="text-xs text-gray-500">/month</div>
                     </div>
                   </div>
@@ -267,14 +276,19 @@ Thank you for your business!
             <h4 className="text-sm font-medium text-gray-500 mb-3">Add-ons</h4>
             {billingData.addons.length > 0 ? (
               <div className="space-y-3">
-                {billingData.addons.map(addon => (
-                  <div key={addon.addonId} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                {billingData.addons.map((addon) => (
+                  <div
+                    key={addon.addonId}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                  >
                     <div>
                       <div className="font-medium text-gray-900">{addon.addonName}</div>
                       <div className="text-sm text-gray-500">{addon.memberCount} members</div>
                     </div>
                     <div className="text-right">
-                      <div className="font-semibold text-gray-900">{formatCurrency(addon.monthlyCost)}</div>
+                      <div className="font-semibold text-gray-900">
+                        {formatCurrency(addon.monthlyCost)}
+                      </div>
                       <div className="text-xs text-gray-500">/month</div>
                     </div>
                   </div>
@@ -295,8 +309,11 @@ Thank you for your business!
             Upcoming Renewals
           </h3>
           <div className="space-y-3">
-            {billingData.upcomingRenewals.map(renewal => (
-              <div key={renewal.subscriptionId} className="flex items-center justify-between p-3 bg-white rounded-lg border border-amber-100">
+            {billingData.upcomingRenewals.map((renewal) => (
+              <div
+                key={renewal.subscriptionId}
+                className="flex items-center justify-between p-3 bg-white rounded-lg border border-amber-100"
+              >
                 <div>
                   <div className="font-medium text-gray-900">{renewal.planName}</div>
                   <div className="text-sm text-gray-500">
@@ -304,8 +321,12 @@ Thank you for your business!
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="font-semibold text-gray-900">{formatCurrency(renewal.estimatedCost)}</div>
-                  <div className={`text-xs ${renewal.autoRenew ? 'text-green-600' : 'text-amber-600'}`}>
+                  <div className="font-semibold text-gray-900">
+                    {formatCurrency(renewal.estimatedCost)}
+                  </div>
+                  <div
+                    className={`text-xs ${renewal.autoRenew ? 'text-green-600' : 'text-amber-600'}`}
+                  >
                     {renewal.autoRenew ? 'Auto-renew ON' : 'Auto-renew OFF'}
                   </div>
                 </div>
@@ -334,22 +355,26 @@ Thank you for your business!
               <thead>
                 <tr className="border-b border-gray-200">
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Date</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Description</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">
+                    Description
+                  </th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Method</th>
                   <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Amount</th>
-                  <th className="text-center py-3 px-4 text-sm font-medium text-gray-500">Status</th>
-                  <th className="text-center py-3 px-4 text-sm font-medium text-gray-500">Invoice</th>
+                  <th className="text-center py-3 px-4 text-sm font-medium text-gray-500">
+                    Status
+                  </th>
+                  <th className="text-center py-3 px-4 text-sm font-medium text-gray-500">
+                    Invoice
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {billingData.paymentHistory.map(payment => (
+                {billingData.paymentHistory.map((payment) => (
                   <tr key={payment.id} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="py-3 px-4 text-sm text-gray-900">
                       {formatDate(payment.createdAt)}
                     </td>
-                    <td className="py-3 px-4 text-sm text-gray-600">
-                      {payment.description}
-                    </td>
+                    <td className="py-3 px-4 text-sm text-gray-600">{payment.description}</td>
                     <td className="py-3 px-4 text-sm text-gray-600 capitalize">
                       {payment.paymentMethod}
                     </td>
@@ -357,12 +382,17 @@ Thank you for your business!
                       {formatCurrency(payment.amount)}
                     </td>
                     <td className="py-3 px-4 text-center">
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                        payment.status === 'success' ? 'bg-green-100 text-green-700' :
-                        payment.status === 'pending' ? 'bg-amber-100 text-amber-700' :
-                        payment.status === 'failed' ? 'bg-red-100 text-red-700' :
-                        'bg-gray-100 text-gray-700'
-                      }`}>
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                          payment.status === 'success'
+                            ? 'bg-green-100 text-green-700'
+                            : payment.status === 'pending'
+                              ? 'bg-amber-100 text-amber-700'
+                              : payment.status === 'failed'
+                                ? 'bg-red-100 text-red-700'
+                                : 'bg-gray-100 text-gray-700'
+                        }`}
+                      >
                         {payment.status}
                       </span>
                     </td>

@@ -17,7 +17,7 @@ import {
   TrophyIcon,
   BriefcaseIcon,
   BeakerIcon,
-  DevicePhoneMobileIcon
+  DevicePhoneMobileIcon,
 } from '@heroicons/react/24/outline';
 import AddToShortlistModal from '../modals/AddToShortlistModal';
 import ScheduleInterviewModal from '../modals/ScheduleInterviewModal';
@@ -31,25 +31,27 @@ const Badge = ({ type }) => {
     self_verified: {
       color: 'bg-gray-100 text-gray-800 border-gray-300',
       label: 'Self Verified',
-      icon: ShieldCheckIcon
+      icon: ShieldCheckIcon,
     },
     institution_verified: {
       color: 'bg-blue-100 text-blue-800 border-blue-300',
       label: 'Institution Verified',
-      icon: AcademicCapIcon
+      icon: AcademicCapIcon,
     },
     external_audited: {
       color: 'bg-yellow-100 text-yellow-800 border-yellow-400',
       label: 'External Audited',
-      icon: ShieldCheckIcon
-    }
+      icon: ShieldCheckIcon,
+    },
   };
 
   const config = badgeConfig[type] || badgeConfig.self_verified;
   const IconComponent = config.icon;
 
   return (
-    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${config.color}`}>
+    <span
+      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${config.color}`}
+    >
       <IconComponent className="h-3 w-3 mr-1" />
       {config.label}
     </span>
@@ -59,10 +61,11 @@ const Badge = ({ type }) => {
 const TabButton = ({ active, onClick, children }) => (
   <button
     onClick={onClick}
-    className={`px-4 py-2 text-sm font-medium border-b-2 ${active
-      ? 'border-primary-500 text-primary-600'
-      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-      }`}
+    className={`px-4 py-2 text-sm font-medium border-b-2 ${
+      active
+        ? 'border-primary-500 text-primary-600'
+        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+    }`}
   >
     {children}
   </button>
@@ -72,7 +75,9 @@ const ProgressBar = ({ label, value, maxValue = 100 }) => (
   <div className="mb-3">
     <div className="flex justify-between items-center mb-1">
       <span className="text-sm text-gray-600">{label}</span>
-      <span className="text-sm font-medium text-gray-900">{value}/{maxValue}</span>
+      <span className="text-sm font-medium text-gray-900">
+        {value}/{maxValue}
+      </span>
     </div>
     <div className="w-full bg-gray-200 rounded-full h-2">
       <div
@@ -86,11 +91,12 @@ const ProgressBar = ({ label, value, maxValue = 100 }) => (
 const ExportModal = ({ isOpen, onClose, candidate }) => {
   const [exportSettings, setExportSettings] = useState({
     format: 'pdf',
-    type: 'mini_profile'
+    type: 'mini_profile',
   });
 
   const generatePDF = (candidate, settings) => {
     const isFullProfile = settings.type === 'full_profile';
+    // @ts-expect-error - Auto-suppressed for migration
     const doc = new jsPDF();
     const pageHeight = doc.internal.pageSize.height;
     const pageWidth = doc.internal.pageSize.width;
@@ -118,7 +124,11 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
     doc.setFont('helvetica', 'normal');
     doc.text(`Generated on: ${new Date().toLocaleDateString()}`, margin, yPos);
     yPos += lineHeight;
-    doc.text(`Export Type: ${isFullProfile ? 'Full Profile with PII' : 'Mini-Profile'}`, margin, yPos);
+    doc.text(
+      `Export Type: ${isFullProfile ? 'Full Profile with PII' : 'Mini-Profile'}`,
+      margin,
+      yPos
+    );
     yPos += lineHeight + 3;
 
     // Basic Information
@@ -151,7 +161,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
       );
     }
 
-    basicFields.forEach(field => {
+    basicFields.forEach((field) => {
       if (field.value) {
         checkNewPage();
         doc.text(`${field.label}: ${field.value}`, margin + 5, yPos);
@@ -179,7 +189,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
       { label: 'Employability Score', value: candidate.employability_score },
     ];
 
-    academicFields.forEach(field => {
+    academicFields.forEach((field) => {
       if (field.value !== undefined && field.value !== null && field.value !== '') {
         checkNewPage();
         doc.text(`${field.label}: ${field.value}`, margin + 5, yPos);
@@ -199,8 +209,8 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
       doc.setFont('helvetica', 'normal');
 
       const skillsText = candidate.skills.join(', ');
-      const splitSkills = doc.splitTextToSize(skillsText, pageWidth - (margin * 2) - 5);
-      splitSkills.forEach(line => {
+      const splitSkills = doc.splitTextToSize(skillsText, pageWidth - margin * 2 - 5);
+      splitSkills.forEach((line) => {
         checkNewPage();
         doc.text(line, margin + 5, yPos);
         yPos += lineHeight;
@@ -225,7 +235,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
         { label: 'Verified', value: candidate.verified ? 'Yes' : 'No' },
       ];
 
-      additionalFields.forEach(field => {
+      additionalFields.forEach((field) => {
         if (field.value) {
           checkNewPage();
           doc.text(`${field.label}: ${field.value}`, margin + 5, yPos);
@@ -254,7 +264,9 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
       doc.setPage(i);
       doc.setFontSize(8);
       doc.setTextColor(128, 128, 128);
-      doc.text('--- Exported from RecruiterHub ---', pageWidth / 2, pageHeight - 10, { align: 'center' });
+      doc.text('--- Exported from RecruiterHub ---', pageWidth / 2, pageHeight - 10, {
+        align: 'center',
+      });
       doc.text(`Page ${i} of ${totalPages}`, pageWidth / 2, pageHeight - 5, { align: 'center' });
       doc.setTextColor(0, 0, 0);
     }
@@ -281,13 +293,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
     ];
 
     if (isFullProfile) {
-      headers.push(
-        'Email',
-        'Phone',
-        'Alternate Number',
-        'Trainer Name',
-        'NM ID'
-      );
+      headers.push('Email', 'Phone', 'Alternate Number', 'Trainer Name', 'NM ID');
     }
 
     headers.push(
@@ -301,11 +307,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
     );
 
     if (isFullProfile) {
-      headers.push(
-        'Imported At',
-        'Last Updated',
-        'Created At'
-      );
+      headers.push('Imported At', 'Last Updated', 'Created At');
     }
 
     let csvContent = headers.join(',') + '\n';
@@ -368,7 +370,7 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
 
   const downloadFile = (content, filename, format) => {
     const blob = new Blob([content], {
-      type: format === 'csv' ? 'text/csv' : 'application/pdf'
+      type: format === 'csv' ? 'text/csv' : 'application/pdf',
     });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -399,7 +401,10 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
   return (
     <div className="fixed inset-0 z-[60] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        <div
+          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          onClick={onClose}
+        ></div>
 
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-4">
@@ -419,7 +424,9 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
                     name="format"
                     value="csv"
                     checked={exportSettings.format === 'csv'}
-                    onChange={(e) => setExportSettings({ ...exportSettings, format: e.target.value })}
+                    onChange={(e) =>
+                      setExportSettings({ ...exportSettings, format: e.target.value })
+                    }
                     className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
                   />
                   <span className="ml-2 text-sm text-gray-700">CSV</span>
@@ -430,7 +437,9 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
                     name="format"
                     value="pdf"
                     checked={exportSettings.format === 'pdf'}
-                    onChange={(e) => setExportSettings({ ...exportSettings, format: e.target.value })}
+                    onChange={(e) =>
+                      setExportSettings({ ...exportSettings, format: e.target.value })
+                    }
                     className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
                   />
                   <span className="ml-2 text-sm text-gray-700">PDF</span>
@@ -464,7 +473,9 @@ const ExportModal = ({ isOpen, onClose, candidate }) => {
                   <span className="ml-2 text-sm text-gray-700">Full Profile</span>
                 </label>
               </div>
-              <p className="text-xs text-gray-500 mt-1">Full Profile includes contact information (PII)</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Full Profile includes contact information (PII)
+              </p>
             </div>
           </div>
 
@@ -493,7 +504,9 @@ const MessageModal = ({ isOpen, onClose, candidate }) => {
 
   const handleWhatsApp = () => {
     const phone = candidate.phone?.replace(/[^0-9]/g, '') || '';
-    const message = encodeURIComponent(`Hi ${candidate.name}, I came across your profile on RecruiterHub...`);
+    const message = encodeURIComponent(
+      `Hi ${candidate.name}, I came across your profile on RecruiterHub...`
+    );
     window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
     onClose();
   };
@@ -506,7 +519,9 @@ const MessageModal = ({ isOpen, onClose, candidate }) => {
 
   const handleEmail = () => {
     const subject = encodeURIComponent('Opportunity from RecruiterHub');
-    const body = encodeURIComponent(`Dear ${candidate.name},\n\nI came across your profile on RecruiterHub and would like to discuss a potential opportunity...\n\nBest regards`);
+    const body = encodeURIComponent(
+      `Dear ${candidate.name},\n\nI came across your profile on RecruiterHub and would like to discuss a potential opportunity...\n\nBest regards`
+    );
     window.location.href = `mailto:${candidate.email}?subject=${subject}&body=${body}`;
     onClose();
   };
@@ -514,7 +529,10 @@ const MessageModal = ({ isOpen, onClose, candidate }) => {
   return (
     <div className="fixed inset-0 z-[60] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        <div
+          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          onClick={onClose}
+        ></div>
 
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-4">
@@ -597,15 +615,27 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
     if (!studentId) return;
 
     // Check if data is already available from useStudents (prefetched)
-    const hasProjects = candidate?.projects && Array.isArray(candidate.projects) && candidate.projects.length > 0;
-    const hasCertificates = candidate?.certificates && Array.isArray(candidate.certificates) && candidate.certificates.length > 0;
-    
+    const hasProjects =
+      candidate?.projects && Array.isArray(candidate.projects) && candidate.projects.length > 0;
+    const hasCertificates =
+      candidate?.certificates &&
+      Array.isArray(candidate.certificates) &&
+      candidate.certificates.length > 0;
+
     // Use prefetched data if available
     if (hasProjects) {
-      setProjects(candidate.projects.filter(p => p.enabled !== false && ['approved', 'verified'].includes(p.approval_status)));
+      setProjects(
+        candidate.projects.filter(
+          (p) => p.enabled !== false && ['approved', 'verified'].includes(p.approval_status)
+        )
+      );
     }
     if (hasCertificates) {
-      setCertificates(candidate.certificates.filter(c => c.enabled !== false && ['approved', 'verified'].includes(c.approval_status)));
+      setCertificates(
+        candidate.certificates.filter(
+          (c) => c.enabled !== false && ['approved', 'verified'].includes(c.approval_status)
+        )
+      );
     }
 
     // Fetch all data in parallel for better performance
@@ -628,7 +658,8 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
               setProjects(data || []);
               setLoadingProjects(false);
             })
-            .catch(error => {
+            // @ts-expect-error - Auto-suppressed for migration
+            .catch((error) => {
               console.error('Error fetching projects:', error);
               setProjects([]);
               setLoadingProjects(false);
@@ -651,7 +682,8 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
               setCertificates(data || []);
               setLoadingCertificates(false);
             })
-            .catch(error => {
+            // @ts-expect-error - Auto-suppressed for migration
+            .catch((error) => {
               console.error('Error fetching certificates:', error);
               setCertificates([]);
               setLoadingCertificates(false);
@@ -664,7 +696,8 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
       fetchPromises.push(
         supabase
           .from('student_assignments')
-          .select(`
+          .select(
+            `
             *,
             assignments (
               title,
@@ -677,7 +710,8 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
               skill_outcomes,
               educator_name
             )
-          `)
+          `
+          )
           .eq('student_id', studentId)
           .eq('is_deleted', false)
           .order('updated_date', { ascending: false })
@@ -686,7 +720,8 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
             setAssessments(data || []);
             setLoadingAssessments(false);
           })
-          .catch(error => {
+          // @ts-expect-error - Auto-suppressed for migration
+          .catch((error) => {
             console.error('Error fetching assignments:', error);
             setAssessments([]);
             setLoadingAssessments(false);
@@ -699,8 +734,6 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
 
     fetchAllData();
   }, [candidate?.user_id, candidate?.id, candidate?.projects, candidate?.certificates]);
-
-
 
   if (!isOpen || !candidate) return null;
 
@@ -731,14 +764,18 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
   const certificatesData = certificates;
   const assessmentsData = assessments;
 
-  const verifiedProjects = projectsData.filter((project: any) => project?.verified === true || project?.status === 'verified');
-  const verifiedCertificates = certificatesData.filter((certificate: any) => certificate?.verified === true || certificate?.status === 'verified');
+  const verifiedProjects = projectsData.filter(
+    (project: any) => project?.verified === true || project?.status === 'verified'
+  );
+  const verifiedCertificates = certificatesData.filter(
+    (certificate: any) => certificate?.verified === true || certificate?.status === 'verified'
+  );
 
   profileData = {
     ...profileData,
     projects: verifiedProjects,
     certificates: verifiedCertificates,
-    assessments: assessmentsData
+    assessments: assessmentsData,
   };
 
   const modalCandidate = {
@@ -747,13 +784,14 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
     email: candidateEmail,
     projects: verifiedProjects,
     certificates: verifiedCertificates,
-    assessments: assessmentsData
+    assessments: assessmentsData,
   };
 
-  const formatLabel = (key: string) => key
-    .replace(/_/g, ' ')
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .replace(/^\w/, (c) => c.toUpperCase());
+  const formatLabel = (key: string) =>
+    key
+      .replace(/_/g, ' ')
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/^\w/, (c) => c.toUpperCase());
 
   const formatDateValue = (value: any) => {
     if (!value) return '';
@@ -761,23 +799,43 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
     return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString();
   };
 
-  const isPrimitive = (val: any) => val === null || ['string', 'number', 'boolean'].includes(typeof val);
-  const isEmpty = (v: any) => v === null || v === undefined || (typeof v === 'string' && v.trim() === '');
+  const isPrimitive = (val: any) =>
+    val === null || ['string', 'number', 'boolean'].includes(typeof val);
+  const isEmpty = (v: any) =>
+    v === null || v === undefined || (typeof v === 'string' && v.trim() === '');
 
   // Build lists of fields from the JSONB profile
-  const knownComposite = new Set(['training', 'education', 'technicalSkills', 'softSkills', 'experience', 'projects', 'certificates', 'assessments']);
+  const knownComposite = new Set([
+    'training',
+    'education',
+    'technicalSkills',
+    'softSkills',
+    'experience',
+    'projects',
+    'certificates',
+    'assessments',
+  ]);
   // Fields to exclude from Profile Information display (metadata/internal fields)
   const excludedFields = new Set([
-    '_', 'imported_at', 'contact_number_dial_code', 'id', 'student_id',
-    'created_at', 'updated_at', 'last_updated'
+    '_',
+    'imported_at',
+    'contact_number_dial_code',
+    'id',
+    'student_id',
+    'created_at',
+    'updated_at',
+    'last_updated',
   ]);
 
   const primitiveEntries = Object.entries(rawProfile || {})
-    .filter(([k, v]) => !knownComposite.has(k) && !excludedFields.has(k) && isPrimitive(v) && !isEmpty(v))
+    .filter(
+      ([k, v]) => !knownComposite.has(k) && !excludedFields.has(k) && isPrimitive(v) && !isEmpty(v)
+    )
     .sort(([a], [b]) => a.localeCompare(b));
 
-  const otherArrays = Object.entries(rawProfile || {})
-    .filter(([k, v]) => Array.isArray(v) && !knownComposite.has(k));
+  const otherArrays = Object.entries(rawProfile || {}).filter(
+    ([k, v]) => Array.isArray(v) && !knownComposite.has(k)
+  );
 
   const tabs = [
     { key: 'overview', label: 'Overview' },
@@ -785,13 +843,21 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
     { key: 'assessments', label: 'Assessments' },
     { key: 'certificates', label: 'Certificates' },
     { key: 'verification', label: 'Verification' },
-    { key: 'notes', label: 'Notes & Ratings' }
+    { key: 'notes', label: 'Notes & Ratings' },
   ];
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden" aria-labelledby="slide-over-title" role="dialog" aria-modal="true">
+    <div
+      className="fixed inset-0 z-50 overflow-hidden"
+      aria-labelledby="slide-over-title"
+      role="dialog"
+      aria-modal="true"
+    >
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        <div
+          className="absolute inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          onClick={onClose}
+        ></div>
 
         <div className="fixed inset-y-0 right-0 pl-10 max-w-full flex sm:pl-16">
           <div className="w-screen max-w-2xl">
@@ -801,20 +867,30 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center">
-                      <h2 className="text-xl font-semibold text-gray-900">{profileData.name || candidate.name}</h2>
+                      <h2 className="text-xl font-semibold text-gray-900">
+                        {profileData.name || candidate.name}
+                      </h2>
                       <div className="ml-3 flex items-center">
                         <StarIcon className="h-5 w-5 text-yellow-400 fill-current" />
-                        <span className="text-lg font-bold text-gray-900 ml-1">{candidate.ai_score_overall || 0}</span>
+                        <span className="text-lg font-bold text-gray-900 ml-1">
+                          {candidate.ai_score_overall || 0}
+                        </span>
                         <span className="text-sm text-gray-600 ml-1">AI Score</span>
                       </div>
                     </div>
                     <div className="mt-2 flex items-center text-sm text-gray-600">
                       <AcademicCapIcon className="h-4 w-4 mr-1" />
-                      <span>{profileData.college_school_name || candidate.college} • {profileData.branch_field || candidate.dept}</span>
+                      <span>
+                        {profileData.college_school_name || candidate.college} •{' '}
+                        {profileData.branch_field || candidate.dept}
+                      </span>
                     </div>
                     <div className="mt-1 flex items-center text-sm text-gray-600">
                       <MapPinIcon className="h-4 w-4 mr-1" />
-                      <span>{profileData.district_name || candidate.location} • Age {profileData.age || 'N/A'}</span>
+                      <span>
+                        {profileData.district_name || candidate.location} • Age{' '}
+                        {profileData.age || 'N/A'}
+                      </span>
                     </div>
                     {candidate.badges && candidate.badges.length > 0 && (
                       <div className="mt-3 flex flex-wrap gap-2">
@@ -892,56 +968,73 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                   <div className="p-6 space-y-6">
                     {/* Profile Info */}
                     <div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-4">Profile Information</h3>
+                      <h3 className="text-lg font-medium text-gray-900 mb-4">
+                        Profile Information
+                      </h3>
                       {primitiveEntries.length > 0 ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                           {primitiveEntries.map(([key, value]) => (
                             <div key={key} className="flex flex-col">
                               <span className="text-gray-500 text-xs mb-1">{formatLabel(key)}</span>
-                              <span className="font-medium text-gray-900 break-all">{String(value)}</span>
+                              <span className="font-medium text-gray-900 break-all">
+                                {String(value)}
+                              </span>
                             </div>
                           ))}
                           {/* Composite summaries inside Profile Information */}
-                          {Array.isArray(profileData.education) && profileData.education.length > 0 && (
-                            <div className="flex flex-col col-span-1">
-                              <span className="text-gray-500 text-xs mb-1">Education</span>
-                              <span className="font-medium text-gray-900 break-all">
-                                {profileData.education.map((e: any) => e.degree || e.level || 'Education').join(', ')}
-                              </span>
-                            </div>
-                          )}
-                          {Array.isArray(profileData.training) && profileData.training.length > 0 && (
-                            <div className="flex flex-col col-span-1">
-                              <span className="text-gray-500 text-xs mb-1">Training</span>
-                              <span className="font-medium text-gray-900 break-all">
-                                {profileData.training.map((t: any) => t.course || t.skill || 'Training').join(', ')}
-                              </span>
-                            </div>
-                          )}
-                          {Array.isArray(profileData.technicalSkills) && profileData.technicalSkills.length > 0 && (
-                            <div className="flex flex-col col-span-1">
-                              <span className="text-gray-500 text-xs mb-1">Technical Skills</span>
-                              <span className="font-medium text-gray-900 break-all">
-                                {profileData.technicalSkills.map((s: any) => s.name).join(', ')}
-                              </span>
-                            </div>
-                          )}
-                          {Array.isArray(profileData.softSkills) && profileData.softSkills.length > 0 && (
-                            <div className="flex flex-col col-span-1">
-                              <span className="text-gray-500 text-xs mb-1">Soft Skills</span>
-                              <span className="font-medium text-gray-900 break-all">
-                                {profileData.softSkills.map((s: any) => s.name).join(', ')}
-                              </span>
-                            </div>
-                          )}
-                          {Array.isArray(profileData.experience) && profileData.experience.length > 0 && (
-                            <div className="flex flex-col col-span-1">
-                              <span className="text-gray-500 text-xs mb-1">Experience</span>
-                              <span className="font-medium text-gray-900 break-all">
-                                {profileData.experience.map((x: any) => [x.role, x.organization].filter(Boolean).join(' @ ')).join(', ')}
-                              </span>
-                            </div>
-                          )}
+                          {Array.isArray(profileData.education) &&
+                            profileData.education.length > 0 && (
+                              <div className="flex flex-col col-span-1">
+                                <span className="text-gray-500 text-xs mb-1">Education</span>
+                                <span className="font-medium text-gray-900 break-all">
+                                  {profileData.education
+                                    .map((e: any) => e.degree || e.level || 'Education')
+                                    .join(', ')}
+                                </span>
+                              </div>
+                            )}
+                          {Array.isArray(profileData.training) &&
+                            profileData.training.length > 0 && (
+                              <div className="flex flex-col col-span-1">
+                                <span className="text-gray-500 text-xs mb-1">Training</span>
+                                <span className="font-medium text-gray-900 break-all">
+                                  {profileData.training
+                                    .map((t: any) => t.course || t.skill || 'Training')
+                                    .join(', ')}
+                                </span>
+                              </div>
+                            )}
+                          {Array.isArray(profileData.technicalSkills) &&
+                            profileData.technicalSkills.length > 0 && (
+                              <div className="flex flex-col col-span-1">
+                                <span className="text-gray-500 text-xs mb-1">Technical Skills</span>
+                                <span className="font-medium text-gray-900 break-all">
+                                  {profileData.technicalSkills.map((s: any) => s.name).join(', ')}
+                                </span>
+                              </div>
+                            )}
+                          {Array.isArray(profileData.softSkills) &&
+                            profileData.softSkills.length > 0 && (
+                              <div className="flex flex-col col-span-1">
+                                <span className="text-gray-500 text-xs mb-1">Soft Skills</span>
+                                <span className="font-medium text-gray-900 break-all">
+                                  {profileData.softSkills.map((s: any) => s.name).join(', ')}
+                                </span>
+                              </div>
+                            )}
+                          {Array.isArray(profileData.experience) &&
+                            profileData.experience.length > 0 && (
+                              <div className="flex flex-col col-span-1">
+                                <span className="text-gray-500 text-xs mb-1">Experience</span>
+                                <span className="font-medium text-gray-900 break-all">
+                                  {profileData.experience
+                                    .map((x: any) =>
+                                      [x.role, x.organization].filter(Boolean).join(' @ ')
+                                    )
+                                    .join(', ')}
+                                </span>
+                              </div>
+                            )}
                         </div>
                       ) : (
                         <p className="text-sm text-gray-500">No profile fields available</p>
@@ -954,19 +1047,31 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                         <h3 className="text-lg font-medium text-gray-900 mb-4">Education</h3>
                         <div className="space-y-3">
                           {profileData.education.map((edu, index) => (
-                            <div key={index} className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                            <div
+                              key={index}
+                              className="p-3 bg-gray-50 border border-gray-200 rounded-lg"
+                            >
                               <div className="flex items-start justify-between">
                                 <div className="flex-1">
                                   <p className="font-medium text-gray-900">{edu.degree}</p>
                                   <p className="text-sm text-gray-600 mt-1">{edu.university}</p>
                                   <div className="flex items-center mt-2 text-sm text-gray-500">
                                     <span className="mr-3">{edu.level}</span>
-                                    {edu.yearOfPassing && <span className="mr-3">• {edu.yearOfPassing}</span>}
-                                    {edu.cgpa && edu.cgpa !== 'N/A' && <span>• CGPA: {edu.cgpa}</span>}
+                                    {edu.yearOfPassing && (
+                                      <span className="mr-3">• {edu.yearOfPassing}</span>
+                                    )}
+                                    {edu.cgpa && edu.cgpa !== 'N/A' && (
+                                      <span>• CGPA: {edu.cgpa}</span>
+                                    )}
                                   </div>
                                 </div>
-                                <span className={`px-2 py-1 text-xs rounded-full ${edu.status === 'ongoing' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
-                                  }`}>
+                                <span
+                                  className={`px-2 py-1 text-xs rounded-full ${
+                                    edu.status === 'ongoing'
+                                      ? 'bg-blue-100 text-blue-800'
+                                      : 'bg-green-100 text-green-800'
+                                  }`}
+                                >
                                   {edu.status}
                                 </span>
                               </div>
@@ -979,18 +1084,34 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                     {/* Training */}
                     {profileData.training && profileData.training.length > 0 && (
                       <div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-4">Training & Courses</h3>
+                        <h3 className="text-lg font-medium text-gray-900 mb-4">
+                          Training & Courses
+                        </h3>
                         <div className="space-y-3">
                           {profileData.training.map((train, index) => (
-                            <div key={index} className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                            <div
+                              key={index}
+                              className="p-3 bg-gray-50 border border-gray-200 rounded-lg"
+                            >
                               <div className="flex items-start justify-between mb-2">
                                 <div className="flex-1">
                                   <p className="font-medium text-gray-900">{train.course}</p>
-                                  {train.skill && <p className="text-sm text-gray-600 mt-1">{train.skill}</p>}
-                                  {train.trainer && <p className="text-xs text-gray-500 mt-1">Trainer: {train.trainer}</p>}
+                                  {train.skill && (
+                                    <p className="text-sm text-gray-600 mt-1">{train.skill}</p>
+                                  )}
+                                  {train.trainer && (
+                                    <p className="text-xs text-gray-500 mt-1">
+                                      Trainer: {train.trainer}
+                                    </p>
+                                  )}
                                 </div>
-                                <span className={`px-2 py-1 text-xs rounded-full ${train.status === 'ongoing' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
-                                  }`}>
+                                <span
+                                  className={`px-2 py-1 text-xs rounded-full ${
+                                    train.status === 'ongoing'
+                                      ? 'bg-yellow-100 text-yellow-800'
+                                      : 'bg-green-100 text-green-800'
+                                  }`}
+                                >
                                   {train.status}
                                 </span>
                               </div>
@@ -1001,7 +1122,10 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                                     <span>{train.progress}%</span>
                                   </div>
                                   <div className="w-full bg-gray-200 rounded-full h-1.5">
-                                    <div className="bg-primary-600 h-1.5 rounded-full" style={{ width: `${train.progress}%` }}></div>
+                                    <div
+                                      className="bg-primary-600 h-1.5 rounded-full"
+                                      style={{ width: `${train.progress}%` }}
+                                    ></div>
                                   </div>
                                 </div>
                               )}
@@ -1017,19 +1141,28 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                         <h3 className="text-lg font-medium text-gray-900 mb-4">Technical Skills</h3>
                         <div className="space-y-2">
                           {profileData.technicalSkills.map((skill, index) => (
-                            <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                            <div
+                              key={index}
+                              className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
+                            >
                               <div className="flex items-center">
                                 {skill.icon && <span className="mr-2">{skill.icon}</span>}
                                 <div>
                                   <p className="text-sm font-medium text-gray-900">{skill.name}</p>
-                                  {skill.category && <p className="text-xs text-gray-500">{skill.category}</p>}
+                                  {skill.category && (
+                                    <p className="text-xs text-gray-500">{skill.category}</p>
+                                  )}
                                 </div>
                               </div>
                               <div className="flex items-center">
                                 <div className="flex">
                                   {[...Array(5)].map((_, i) => (
-                                    <div key={i} className={`w-2 h-2 rounded-full mx-0.5 ${i < skill.level ? 'bg-primary-600' : 'bg-gray-300'
-                                      }`}></div>
+                                    <div
+                                      key={i}
+                                      className={`w-2 h-2 rounded-full mx-0.5 ${
+                                        i < skill.level ? 'bg-primary-600' : 'bg-gray-300'
+                                      }`}
+                                    ></div>
                                   ))}
                                 </div>
                                 {skill.verified && (
@@ -1066,12 +1199,19 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                         <h3 className="text-lg font-medium text-gray-900 mb-4">Experience</h3>
                         <div className="space-y-3">
                           {profileData.experience.map((exp, index) => (
-                            <div key={index} className="flex items-start p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <div
+                              key={index}
+                              className="flex items-start p-3 bg-blue-50 border border-blue-200 rounded-lg"
+                            >
                               <BriefcaseIcon className="h-6 w-6 text-blue-600 mr-3 flex-shrink-0" />
                               <div className="flex-1">
                                 <p className="text-sm font-medium text-gray-900">{exp.role}</p>
                                 <p className="text-sm text-gray-600 mt-1">{exp.organization}</p>
-                                {exp.duration && <p className="text-xs text-gray-500 mt-1">Duration: {exp.duration}</p>}
+                                {exp.duration && (
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    Duration: {exp.duration}
+                                  </p>
+                                )}
                                 {exp.verified && (
                                   <span className="inline-flex items-center mt-2 px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
                                     <ShieldCheckIcon className="h-3 w-3 mr-1" />
@@ -1107,7 +1247,8 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                             : [];
 
                           const statusText = project.status
-                            ? project.status.charAt(0).toUpperCase() + project.status.slice(1).toLowerCase()
+                            ? project.status.charAt(0).toUpperCase() +
+                              project.status.slice(1).toLowerCase()
                             : 'Unknown';
 
                           const approvalBadgeColor =
@@ -1132,12 +1273,13 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
 
                                     {project.status && (
                                       <span
-                                        className={`px-2 py-0.5 text-xs rounded-full ${project.status.toLowerCase() === 'completed'
-                                          ? 'bg-green-100 text-green-800'
-                                          : project.status.toLowerCase() === 'ongoing'
-                                            ? 'bg-blue-100 text-blue-800'
-                                            : 'bg-gray-100 text-gray-800'
-                                          }`}
+                                        className={`px-2 py-0.5 text-xs rounded-full ${
+                                          project.status.toLowerCase() === 'completed'
+                                            ? 'bg-green-100 text-green-800'
+                                            : project.status.toLowerCase() === 'ongoing'
+                                              ? 'bg-blue-100 text-blue-800'
+                                              : 'bg-gray-100 text-gray-800'
+                                        }`}
                                       >
                                         {statusText}
                                       </span>
@@ -1156,13 +1298,16 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                                   {/* Duration */}
                                   {project.duration && (
                                     <p className="text-sm text-gray-500 mt-1">
-                                      <span className="font-medium">Duration:</span> {project.duration}
+                                      <span className="font-medium">Duration:</span>{' '}
+                                      {project.duration}
                                     </p>
                                   )}
 
                                   {/* Description */}
                                   {project.description ? (
-                                    <p className="text-sm text-gray-600 mt-2">{project.description}</p>
+                                    <p className="text-sm text-gray-600 mt-2">
+                                      {project.description}
+                                    </p>
                                   ) : (
                                     <p className="text-sm text-gray-400 mt-2 italic">
                                       No description provided.
@@ -1235,7 +1380,6 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                   </div>
                 )}
 
-
                 {/* Assessments Tab */}
                 {activeTab === 'assessments' && (
                   <div className="p-6">
@@ -1302,9 +1446,10 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                                   {/* Status / Priority / Type */}
                                   <div className="flex flex-wrap items-center gap-2 mt-2">
                                     <span
-                                      className={`px-2 py-1 text-xs rounded-full ${statusColors[assessment.status] ||
+                                      className={`px-2 py-1 text-xs rounded-full ${
+                                        statusColors[assessment.status] ||
                                         'bg-gray-100 text-gray-800'
-                                        }`}
+                                      }`}
                                     >
                                       {assessment.status
                                         ? assessment.status.replace('-', ' ').toUpperCase()
@@ -1312,9 +1457,10 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                                     </span>
                                     {assessment.priority && (
                                       <span
-                                        className={`px-2 py-1 text-xs rounded-full ${priorityColors[assessment.priority] ||
+                                        className={`px-2 py-1 text-xs rounded-full ${
+                                          priorityColors[assessment.priority] ||
                                           'bg-gray-100 text-gray-800'
-                                          }`}
+                                        }`}
                                       >
                                         {assessment.priority.toUpperCase()}
                                       </span>
@@ -1331,9 +1477,7 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                                     <div>
                                       <span className="font-medium">Assigned:</span>{' '}
                                       {assessment.assigned_date
-                                        ? new Date(
-                                          assessment.assigned_date
-                                        ).toLocaleDateString()
+                                        ? new Date(assessment.assigned_date).toLocaleDateString()
                                         : 'N/A'}
                                     </div>
                                     <div>
@@ -1345,17 +1489,13 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                                     {assessment.submission_date && (
                                       <div>
                                         <span className="font-medium">Submitted:</span>{' '}
-                                        {new Date(
-                                          assessment.submission_date
-                                        ).toLocaleDateString()}
+                                        {new Date(assessment.submission_date).toLocaleDateString()}
                                       </div>
                                     )}
                                     {assessment.graded_date && (
                                       <div>
                                         <span className="font-medium">Graded:</span>{' '}
-                                        {new Date(
-                                          assessment.graded_date
-                                        ).toLocaleDateString()}
+                                        {new Date(assessment.graded_date).toLocaleDateString()}
                                       </div>
                                     )}
                                   </div>
@@ -1436,11 +1576,12 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                   </div>
                 )}
 
-
                 {/* Certificates Tab */}
                 {activeTab === 'certificates' && (
                   <div className="p-6">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Certificates & Credentials</h3>
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">
+                      Certificates & Credentials
+                    </h3>
                     <div className="space-y-4">
                       {loadingCertificates ? (
                         <div className="text-center py-12">
@@ -1449,12 +1590,25 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                         </div>
                       ) : certificates && certificates.length > 0 ? (
                         certificates.map((cert: any, index: number) => (
-                          <div key={cert.id || index} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+                          <div
+                            key={cert.id || index}
+                            className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow"
+                          >
                             <div className="flex items-start">
                               <div className="flex-shrink-0">
                                 <div className="h-12 w-12 bg-primary-100 rounded-lg flex items-center justify-center">
-                                  <svg className="h-6 w-6 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                                  <svg
+                                    className="h-6 w-6 text-primary-600"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"
+                                    />
                                   </svg>
                                 </div>
                               </div>
@@ -1467,17 +1621,22 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
 
                                     <div className="flex justify-between">
                                       {cert.issuer && (
-                                        <p className="text-sm text-gray-600 mt-1">Issued by: {cert.issuer}</p>
+                                        <p className="text-sm text-gray-600 mt-1">
+                                          Issued by: {cert.issuer}
+                                        </p>
                                       )}
                                       {cert.issued_on && (
                                         <p className="text-xs text-gray-500 mt-1">
-                                          Issue Date: {new Date(cert.issued_on).toLocaleDateString()}
+                                          Issue Date:{' '}
+                                          {new Date(cert.issued_on).toLocaleDateString()}
                                         </p>
                                       )}
                                     </div>
 
                                     {cert.credential_id && (
-                                      <p className="text-xs text-gray-400 mt-2">ID: {cert.credential_id}</p>
+                                      <p className="text-xs text-gray-400 mt-2">
+                                        ID: {cert.credential_id}
+                                      </p>
                                     )}
 
                                     {cert.level && (
@@ -1490,13 +1649,13 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                                     )}
                                   </div>
 
-                                  {(cert.verified || cert.status === "verified") && (
+                                  {(cert.verified || cert.status === 'verified') && (
                                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                       <ShieldCheckIcon className="h-3 w-3 mr-1" />
                                       Verified
                                     </span>
                                   )}
-                                  {cert.status === "pending" && (
+                                  {cert.status === 'pending' && (
                                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                                       Pending
                                     </span>
@@ -1504,7 +1663,9 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                                 </div>
 
                                 {cert.verifiedAt && (
-                                  <p className="text-xs text-green-600 mt-2">Verified on: {formatDateValue(cert.verifiedAt)}</p>
+                                  <p className="text-xs text-green-600 mt-2">
+                                    Verified on: {formatDateValue(cert.verifiedAt)}
+                                  </p>
                                 )}
                                 {cert.description && (
                                   <p className="text-sm text-gray-600 mt-2">{cert.description}</p>
@@ -1512,14 +1673,22 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                                 {cert.skills && cert.skills.length > 0 && (
                                   <div className="flex flex-wrap gap-1 mt-3">
                                     {cert.skills.map((skill: string, skillIndex: number) => (
-                                      <span key={skillIndex} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
+                                      <span
+                                        key={skillIndex}
+                                        className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700"
+                                      >
                                         {skill}
                                       </span>
                                     ))}
                                   </div>
                                 )}
                                 {cert.link && (
-                                  <a href={cert.link} target="_blank" rel="noopener noreferrer" className="text-sm text-primary-600 hover:text-primary-700 mt-2 inline-flex items-center">
+                                  <a
+                                    href={cert.link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-sm text-primary-600 hover:text-primary-700 mt-2 inline-flex items-center"
+                                  >
                                     View Certificate →
                                   </a>
                                 )}
@@ -1529,11 +1698,23 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                         ))
                       ) : (
                         <div className="text-center py-12">
-                          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                          <svg
+                            className="mx-auto h-12 w-12 text-gray-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"
+                            />
                           </svg>
                           <p className="text-gray-500 mt-2">No certificates available</p>
-                          <p className="text-gray-400 text-sm mt-1">Certificates and credentials will appear here</p>
+                          <p className="text-gray-400 text-sm mt-1">
+                            Certificates and credentials will appear here
+                          </p>
                         </div>
                       )}
                     </div>
@@ -1543,11 +1724,15 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                 {/* Verification Tab */}
                 {activeTab === 'verification' && (
                   <div className="p-6">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Verification & Provenance</h3>
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">
+                      Verification & Provenance
+                    </h3>
 
                     {/* Verification Badges */}
                     <div className="mb-6">
-                      <h4 className="text-sm font-medium text-gray-700 mb-3">Verification Status</h4>
+                      <h4 className="text-sm font-medium text-gray-700 mb-3">
+                        Verification Status
+                      </h4>
                       <div className="space-y-3">
                         {candidate.badges && candidate.badges.length > 0 ? (
                           candidate.badges.map((badge: string, index: number) => {
@@ -1558,7 +1743,7 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                                 date: profileData.imported_at || 'N/A',
                                 verifier: 'Student',
                                 status: 'pending',
-                                icon: '👤'
+                                icon: '👤',
                               },
                               institution_verified: {
                                 title: 'Institution Verified',
@@ -1566,7 +1751,7 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                                 date: profileData.imported_at || 'N/A',
                                 verifier: profileData.college_school_name || 'Institution',
                                 status: 'verified',
-                                icon: '🎓'
+                                icon: '🎓',
                               },
                               external_audited: {
                                 title: 'External Audited',
@@ -1574,8 +1759,8 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                                 date: profileData.imported_at || 'N/A',
                                 verifier: 'External Auditor',
                                 status: 'audited',
-                                icon: '✓'
-                              }
+                                icon: '✓',
+                              },
                             };
 
                             const info = verificationInfo[badge] || {
@@ -1584,23 +1769,28 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                               date: 'N/A',
                               verifier: 'System',
                               status: 'pending',
-                              icon: '•'
+                              icon: '•',
                             };
 
                             const statusColors: any = {
                               pending: 'bg-yellow-50 border-yellow-200',
                               verified: 'bg-blue-50 border-blue-200',
-                              audited: 'bg-green-50 border-green-200'
+                              audited: 'bg-green-50 border-green-200',
                             };
 
                             return (
-                              <div key={index} className={`border rounded-lg p-4 ${statusColors[info.status]}`}>
+                              <div
+                                key={index}
+                                className={`border rounded-lg p-4 ${statusColors[info.status]}`}
+                              >
                                 <div className="flex items-start justify-between">
                                   <div className="flex items-start">
                                     <div className="text-2xl mr-3">{info.icon}</div>
                                     <div>
                                       <h4 className="font-medium text-gray-900">{info.title}</h4>
-                                      <p className="text-sm text-gray-600 mt-1">{info.description}</p>
+                                      <p className="text-sm text-gray-600 mt-1">
+                                        {info.description}
+                                      </p>
                                       <div className="mt-2 text-xs text-gray-500">
                                         <p>Verified by: {info.verifier}</p>
                                         {info.date && info.date !== 'N/A' && (
@@ -1609,10 +1799,15 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                                       </div>
                                     </div>
                                   </div>
-                                  <ShieldCheckIcon className={`h-6 w-6 flex-shrink-0 ${info.status === 'verified' ? 'text-blue-600' :
-                                    info.status === 'audited' ? 'text-green-600' :
-                                      'text-yellow-600'
-                                    }`} />
+                                  <ShieldCheckIcon
+                                    className={`h-6 w-6 flex-shrink-0 ${
+                                      info.status === 'verified'
+                                        ? 'text-blue-600'
+                                        : info.status === 'audited'
+                                          ? 'text-green-600'
+                                          : 'text-yellow-600'
+                                    }`}
+                                  />
                                 </div>
                               </div>
                             );
@@ -1633,12 +1828,17 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                             <div className="flex items-start">
                               <AcademicCapIcon className="h-5 w-5 text-blue-600 mr-2 mt-0.5" />
                               <div className="flex-1">
-                                <p className="text-sm font-medium text-gray-900">Education Records</p>
+                                <p className="text-sm font-medium text-gray-900">
+                                  Education Records
+                                </p>
                                 <p className="text-xs text-gray-600 mt-1">
                                   {profileData.education.length} education record(s) on file
                                 </p>
                                 <p className="text-xs text-gray-500 mt-1">
-                                  Source: {profileData.university || profileData.college_school_name || 'Institution'}
+                                  Source:{' '}
+                                  {profileData.university ||
+                                    profileData.college_school_name ||
+                                    'Institution'}
                                 </p>
                               </div>
                             </div>
@@ -1651,7 +1851,9 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                             <div className="flex items-start">
                               <BeakerIcon className="h-5 w-5 text-purple-600 mr-2 mt-0.5" />
                               <div className="flex-1">
-                                <p className="text-sm font-medium text-gray-900">Training Records</p>
+                                <p className="text-sm font-medium text-gray-900">
+                                  Training Records
+                                </p>
                                 <p className="text-xs text-gray-600 mt-1">
                                   {profileData.training.length} training program(s) documented
                                 </p>
@@ -1668,36 +1870,54 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                         {/* Skills Verification */}
                         {((profileData.technicalSkills && profileData.technicalSkills.length > 0) ||
                           (profileData.softSkills && profileData.softSkills.length > 0)) && (
-                            <div className="border border-gray-200 rounded-lg p-3">
-                              <div className="flex items-start">
-                                <ShieldCheckIcon className="h-5 w-5 text-green-600 mr-2 mt-0.5" />
-                                <div className="flex-1">
-                                  <p className="text-sm font-medium text-gray-900">Skills Assessment</p>
-                                  <p className="text-xs text-gray-600 mt-1">
-                                    {(profileData.technicalSkills?.length || 0) + (profileData.softSkills?.length || 0)} skill(s) verified
-                                  </p>
-                                  <p className="text-xs text-gray-500 mt-1">
-                                    Technical: {profileData.technicalSkills?.length || 0}, Soft: {profileData.softSkills?.length || 0}
-                                  </p>
-                                </div>
+                          <div className="border border-gray-200 rounded-lg p-3">
+                            <div className="flex items-start">
+                              <ShieldCheckIcon className="h-5 w-5 text-green-600 mr-2 mt-0.5" />
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900">
+                                  Skills Assessment
+                                </p>
+                                <p className="text-xs text-gray-600 mt-1">
+                                  {(profileData.technicalSkills?.length || 0) +
+                                    (profileData.softSkills?.length || 0)}{' '}
+                                  skill(s) verified
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  Technical: {profileData.technicalSkills?.length || 0}, Soft:{' '}
+                                  {profileData.softSkills?.length || 0}
+                                </p>
                               </div>
                             </div>
-                          )}
+                          </div>
+                        )}
 
                         {/* Profile Import Info */}
                         {profileData.imported_at && (
                           <div className="border border-gray-200 rounded-lg p-3">
                             <div className="flex items-start">
-                              <svg className="h-5 w-5 text-gray-600 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              <svg
+                                className="h-5 w-5 text-gray-600 mr-2 mt-0.5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                />
                               </svg>
                               <div className="flex-1">
                                 <p className="text-sm font-medium text-gray-900">Profile Import</p>
                                 <p className="text-xs text-gray-600 mt-1">
-                                  Last imported: {new Date(profileData.imported_at).toLocaleString()}
+                                  Last imported:{' '}
+                                  {new Date(profileData.imported_at).toLocaleString()}
                                 </p>
                                 {profileData.nm_id && (
-                                  <p className="text-xs text-gray-500 mt-1">NM ID: {profileData.nm_id}</p>
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    NM ID: {profileData.nm_id}
+                                  </p>
                                 )}
                               </div>
                             </div>
@@ -1731,9 +1951,7 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
 
                     {/* Notes */}
                     <div className="mb-6">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Notes
-                      </label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
                       <textarea
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
@@ -1753,8 +1971,8 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                             <span className="text-xs text-gray-500">2 days ago</span>
                           </div>
                           <p className="text-sm text-gray-700">
-                            Strong technical skills, particularly impressed with the food safety project.
-                            Good communication during preliminary screening.
+                            Strong technical skills, particularly impressed with the food safety
+                            project. Good communication during preliminary screening.
                           </p>
                           <div className="flex items-center mt-2">
                             {[1, 2, 3, 4, 5].map((star) => (
@@ -1784,13 +2002,17 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
                     </button> */}
                     <button
                       onClick={() => setShowInterviewModal(true)}
-                      className="inline-flex items-center px-4 py-2 border border-primary-300 rounded-md text-sm font-medium text-primary-700 bg-primary-50 hover:bg-primary-100">
+                      className="inline-flex items-center px-4 py-2 border border-primary-300 rounded-md text-sm font-medium text-primary-700 bg-primary-50 hover:bg-primary-100"
+                    >
                       <CalendarDaysIcon className="h-4 w-4 mr-2" />
                       Schedule Interview
                     </button>
                     <button
-                      onClick={() => navigate('/digital-pp/homepage', { state: { candidate: candidate } })}
-                      className="inline-flex items-center px-4 py-2 border border-green-300 rounded-md text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100">
+                      onClick={() =>
+                        navigate('/digital-pp/homepage', { state: { candidate: candidate } })
+                      }
+                      className="inline-flex items-center px-4 py-2 border border-green-300 rounded-md text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100"
+                    >
                       <File className="h-4 w-4 mr-2" />
                       View Portfolio
                     </button>
@@ -1827,13 +2049,13 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
             isOpen={showShortlistModal}
             onClose={() => setShowShortlistModal(false)}
             candidate={modalCandidate}
-            onSuccess={() => { }}
+            onSuccess={() => {}}
           />
           <ScheduleInterviewModal
             isOpen={showInterviewModal}
             onClose={() => setShowInterviewModal(false)}
             candidate={modalCandidate}
-            onSuccess={() => { }}
+            onSuccess={() => {}}
           />
         </div>
       </div>

@@ -1,6 +1,15 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../../../lib/supabaseClient';
-import { Student, AssessmentResult, CurriculumData, LessonPlan, Course, AdmissionNote, Project, Certificate } from '../types';
+import {
+  Student,
+  AssessmentResult,
+  CurriculumData,
+  LessonPlan,
+  Course,
+  AdmissionNote,
+  Project,
+  Certificate,
+} from '../types';
 
 // Additional types for new data
 export interface Experience {
@@ -126,7 +135,7 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [admissionNotes, setAdmissionNotes] = useState<AdmissionNote[]>([]);
-  
+
   // New state for additional data
   const [experience, setExperience] = useState<Experience[]>([]);
   const [trainings, setTrainings] = useState<Training[]>([]);
@@ -139,7 +148,7 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
   const [events, setEvents] = useState<CollegeEvent[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [education, setEducation] = useState<any[]>([]);
-  
+
   const [loadingAssessments, setLoadingAssessments] = useState(false);
   const [loadingCurriculum, setLoadingCurriculum] = useState(false);
   const [loadingCourses, setLoadingCourses] = useState(false);
@@ -147,9 +156,8 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
   const [loadingCertificates, setLoadingCertificates] = useState(false);
   const [loadingNotes, setLoadingNotes] = useState(false);
   const [loadingAdditional, setLoadingAdditional] = useState(false);
-  
-  const [studentAcademicYear, setStudentAcademicYear] = useState<string | null>(null);
 
+  const [studentAcademicYear, setStudentAcademicYear] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen && student?.id) {
@@ -165,7 +173,7 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
 
   const fetchAdditionalData = async () => {
     if (!student?.id) return;
-    
+
     setLoadingAdditional(true);
     try {
       // Fetch Experience
@@ -188,7 +196,8 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
       if (student.user_id) {
         const { data: appliedData } = await supabase
           .from('applied_jobs')
-          .select(`
+          .select(
+            `
             *,
             opportunity:opportunities (
               title,
@@ -196,7 +205,8 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
               location,
               employment_type
             )
-          `)
+          `
+          )
           .eq('student_id', student.user_id)
           .order('applied_at', { ascending: false })
           .limit(10);
@@ -205,14 +215,16 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
         // Fetch Saved Jobs
         const { data: savedData } = await supabase
           .from('saved_jobs')
-          .select(`
+          .select(
+            `
             *,
             opportunity:opportunities (
               title,
               company_name,
               location
             )
-          `)
+          `
+          )
           .eq('student_id', student.user_id)
           .order('saved_at', { ascending: false })
           .limit(10);
@@ -237,7 +249,8 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
         // Fetch Assignments
         const { data: assignmentsData } = await supabase
           .from('student_assignments')
-          .select(`
+          .select(
+            `
             *,
             assignment:assignments (
               title,
@@ -245,7 +258,8 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
               due_date,
               total_points
             )
-          `)
+          `
+          )
           .eq('student_id', student.user_id)
           .order('assigned_date', { ascending: false })
           .limit(20);
@@ -267,7 +281,8 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
       if (student.college_id) {
         const { data: eventsData } = await supabase
           .from('college_event_registrations')
-          .select(`
+          .select(
+            `
             *,
             event:college_events (
               title,
@@ -276,7 +291,8 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
               end_date,
               venue
             )
-          `)
+          `
+          )
           .eq('student_id', student.id)
           .order('registered_at', { ascending: false });
         setEvents(eventsData || []);
@@ -297,7 +313,6 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
         .eq('student_id', student.id)
         .order('year_of_passing', { ascending: false });
       setEducation(educationData || []);
-
     } catch (error) {
       console.error('Error fetching additional data:', error);
     } finally {
@@ -314,8 +329,8 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
           id: '1',
           admin: 'Admin User',
           date: new Date().toLocaleDateString(),
-          note: 'Strong application. Excellent entrance score. Recommended for approval.'
-        }
+          note: 'Strong application. Excellent entrance score. Recommended for approval.',
+        },
       ]);
     } catch (error) {
       console.error('Error fetching notes:', error);
@@ -327,7 +342,7 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
 
   const fetchAssessmentResults = async () => {
     if (!student?.id) return;
-    
+
     setLoadingAssessments(true);
     try {
       const { data, error } = await supabase
@@ -352,12 +367,13 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
 
   const fetchCourses = async () => {
     if (!student?.id) return;
-    
+
     setLoadingCourses(true);
     try {
       const { data: trainings, error: trainingsError } = await supabase
         .from('trainings')
-        .select(`
+        .select(
+          `
           *,
           courses:course_id (
             course_id,
@@ -368,7 +384,8 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
             thumbnail,
             educator_id
           )
-        `)
+        `
+        )
         .eq('student_id', student.id)
         .in('approval_status', ['approved', 'verified', 'pending'])
         .order('created_at', { ascending: false });
@@ -390,8 +407,8 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
       }
 
       const coursesData = (trainings || []).map((training: any) => {
-        const enrollment = (enrollments || []).find(e => e.training_id === training.id);
-        
+        const enrollment = (enrollments || []).find((e) => e.training_id === training.id);
+
         let progress = 0;
         if (training.status === 'completed') {
           progress = 100;
@@ -427,7 +444,7 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
           enrollment_status: enrollment?.status,
           skills_acquired: enrollment?.skills_acquired || [],
           certificate_url: enrollment?.certificate_url,
-          grade: enrollment?.grade
+          grade: enrollment?.grade,
         };
       });
 
@@ -442,7 +459,7 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
 
   const fetchProjects = async () => {
     if (!student?.id) return;
-    
+
     setLoadingProjects(true);
     try {
       // First try to get projects from student.projects if it exists
@@ -475,7 +492,7 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
 
   const fetchCertificates = async () => {
     if (!student?.id) return;
-    
+
     setLoadingCertificates(true);
     try {
       // First try to get certificates from student.certificates if it exists
@@ -508,31 +525,32 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
 
   const fetchCurriculumData = async () => {
     if (!student) return;
-    
-    
+
     setLoadingCurriculum(true);
     try {
       let schoolClassId = student.school_class_id;
-      
+
       if (!schoolClassId && student.school_id && student.grade) {
         let schoolClassQuery = supabase
           .from('school_classes')
           .select('id, grade, academic_year, school_id, section')
           .eq('school_id', student.school_id)
           .eq('grade', student.grade);
-        
+
         if (student.section) {
           schoolClassQuery = schoolClassQuery.eq('section', student.section);
         }
-        
+
         const { data: schoolClasses, error: searchError } = await schoolClassQuery;
-        
+
         if (!searchError && schoolClasses && schoolClasses.length > 0) {
-          const selectedClass = schoolClasses.sort((a, b) => b.academic_year.localeCompare(a.academic_year))[0];
+          const selectedClass = schoolClasses.sort((a, b) =>
+            b.academic_year.localeCompare(a.academic_year)
+          )[0];
           schoolClassId = selectedClass.id;
         }
       }
-      
+
       if (!schoolClassId) {
         setCurriculumData([]);
         setLessonPlans([]);
@@ -554,13 +572,14 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
       const studentGrade = schoolClass.grade;
       const studentAcademicYear = schoolClass.academic_year;
       const studentSchoolId = schoolClass.school_id;
-      
+
       setStudentAcademicYear(studentAcademicYear);
 
       // Fetch lesson plans
       const { data: allLessons, error: lessonsError } = await supabase
         .from('lesson_plans')
-        .select(`
+        .select(
+          `
           *,
           curriculum_chapters!inner (
             id,
@@ -573,12 +592,13 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
               academic_year
             )
           )
-        `)
+        `
+        )
         .eq('class_name', studentGrade)
         .eq('status', 'approved')
         .eq('curriculum_chapters.curriculums.school_id', studentSchoolId)
         .order('date', { ascending: false });
-      
+
       if (!lessonsError) {
         setLessonPlans(allLessons || []);
       }
@@ -586,13 +606,15 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
       // Fetch curriculums
       let allCurriculumsQuery = supabase
         .from('curriculums')
-        .select(`
+        .select(
+          `
           *,
           curriculum_chapters (
             *,
             curriculum_learning_outcomes (*)
           )
-        `)
+        `
+        )
         .eq('class', studentGrade)
         .eq('status', 'approved')
         .order('academic_year', { ascending: false });
@@ -612,7 +634,7 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
       const curriculumsBySubject = new Map();
       const lessonsByChapter = new Map();
 
-      (allLessons || []).forEach(lesson => {
+      (allLessons || []).forEach((lesson) => {
         if (lesson.chapter_id) {
           if (!lessonsByChapter.has(lesson.chapter_id)) {
             lessonsByChapter.set(lesson.chapter_id, []);
@@ -621,10 +643,10 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
         }
       });
 
-      allCurriculums.forEach(curriculum => {
+      allCurriculums.forEach((curriculum) => {
         const subject = curriculum.subject;
         let lessonCount = 0;
-        
+
         if (curriculum.curriculum_chapters) {
           curriculum.curriculum_chapters.forEach((chapter: any) => {
             const chapterLessons = lessonsByChapter.get(chapter.id) || [];
@@ -634,16 +656,25 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
 
         const existing = curriculumsBySubject.get(subject);
         let shouldReplace = false;
-        
+
         if (!existing) {
           shouldReplace = true;
         } else {
           if (studentAcademicYear) {
-            if (curriculum.academic_year === studentAcademicYear && existing.academic_year !== studentAcademicYear) {
+            if (
+              curriculum.academic_year === studentAcademicYear &&
+              existing.academic_year !== studentAcademicYear
+            ) {
               shouldReplace = true;
-            } else if (existing.academic_year === studentAcademicYear && curriculum.academic_year !== studentAcademicYear) {
+            } else if (
+              existing.academic_year === studentAcademicYear &&
+              curriculum.academic_year !== studentAcademicYear
+            ) {
               shouldReplace = false;
-            } else if (curriculum.academic_year === studentAcademicYear && existing.academic_year === studentAcademicYear) {
+            } else if (
+              curriculum.academic_year === studentAcademicYear &&
+              existing.academic_year === studentAcademicYear
+            ) {
               shouldReplace = lessonCount > existing.lessonCount;
             } else {
               if (lessonCount > existing.lessonCount) {
@@ -664,14 +695,13 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
         if (shouldReplace) {
           curriculumsBySubject.set(subject, {
             ...curriculum,
-            lessonCount
+            lessonCount,
           });
         }
       });
 
       const selectedCurriculums = Array.from(curriculumsBySubject.values());
       setCurriculumData(selectedCurriculums);
-
     } catch (error) {
       console.error('Error fetching curriculum data:', error);
       setCurriculumData([]);
@@ -717,6 +747,6 @@ export const useStudentData = (student: Student | null, isOpen: boolean) => {
     refetchProjects: fetchProjects,
     refetchCertificates: fetchCertificates,
     refetchNotes: fetchAdmissionNotes,
-    refetchAdditional: fetchAdditionalData
+    refetchAdditional: fetchAdditionalData,
   };
 };

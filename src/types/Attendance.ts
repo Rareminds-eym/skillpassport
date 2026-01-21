@@ -9,7 +9,7 @@ export interface AttendanceRecord {
   semester: number;
   section: string;
   date: string;
-  status: "present" | "absent" | "late" | "excused";
+  status: 'present' | 'absent' | 'late' | 'excused';
   timeIn?: string;
   timeOut?: string;
   subject?: string;
@@ -36,7 +36,7 @@ export interface AttendanceSession {
   lateCount: number;
   excusedCount: number;
   attendancePercentage: number;
-  status: "completed" | "ongoing" | "scheduled";
+  status: 'completed' | 'ongoing' | 'scheduled';
 }
 
 export interface Department {

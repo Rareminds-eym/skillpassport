@@ -23,7 +23,7 @@ const EducatorCopilot: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [userScrolledUp, setUserScrolledUp] = useState(false);
   const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
-  
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -50,26 +50,26 @@ const EducatorCopilot: React.FC = () => {
   const handleScroll = () => {
     const container = messagesContainerRef.current;
     if (!container) return;
-    
+
     const currentScrollTop = container.scrollTop;
     const scrollingUp = currentScrollTop < lastScrollTopRef.current;
     lastScrollTopRef.current = currentScrollTop;
-    
+
     const isScrollable = container.scrollHeight > container.clientHeight;
-    
+
     if (isTyping) {
       userInteractedRef.current = true;
       isScrollingRef.current = true;
-      
+
       if (scrollTimeoutRef.current) {
         clearTimeout(scrollTimeoutRef.current);
       }
-      
+
       scrollTimeoutRef.current = window.setTimeout(() => {
         isScrollingRef.current = false;
       }, 150);
     }
-    
+
     if (isScrollable && isUserAtBottom()) {
       setUserScrolledUp(false);
     } else if (isScrollable && scrollingUp && !isUserAtBottom()) {
@@ -81,13 +81,13 @@ const EducatorCopilot: React.FC = () => {
     if (!userScrolledUp) {
       scrollToBottom();
     }
-    
+
     const timer = setTimeout(() => {
       if (isUserAtBottom()) {
         setUserScrolledUp(false);
       }
     }, 100);
-    
+
     return () => clearTimeout(timer);
   }, [messages]);
 
@@ -111,11 +111,11 @@ const EducatorCopilot: React.FC = () => {
       if (isTyping) {
         userInteractedRef.current = true;
         isScrollingRef.current = true;
-        
+
         if (scrollTimeoutRef.current) {
           clearTimeout(scrollTimeoutRef.current);
         }
-        
+
         scrollTimeoutRef.current = window.setTimeout(() => {
           isScrollingRef.current = false;
         }, 150);
@@ -126,11 +126,11 @@ const EducatorCopilot: React.FC = () => {
       if (isTyping) {
         userInteractedRef.current = true;
         isScrollingRef.current = true;
-        
+
         if (scrollTimeoutRef.current) {
           clearTimeout(scrollTimeoutRef.current);
         }
-        
+
         scrollTimeoutRef.current = window.setTimeout(() => {
           isScrollingRef.current = false;
         }, 150);
@@ -167,10 +167,10 @@ const EducatorCopilot: React.FC = () => {
       id: Date.now().toString(),
       role: 'user',
       content: input.trim(),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     const userInput = input.trim();
     setInput('');
     setLoading(true);
@@ -180,16 +180,16 @@ const EducatorCopilot: React.FC = () => {
     try {
       const educatorId = user?.id || 'demo-educator';
       const id = (Date.now() + 1).toString();
-      
+
       // Create empty assistant message for streaming
       const aiMessage: Message = {
         id,
         role: 'assistant',
         content: '',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
-      
-      setMessages(prev => [...prev, aiMessage]);
+
+      setMessages((prev) => [...prev, aiMessage]);
       setLoading(false);
       setIsTyping(true);
 
@@ -199,10 +199,10 @@ const EducatorCopilot: React.FC = () => {
         educatorId,
         (chunk: string) => {
           // Update message content as chunks arrive from LLM
-          setMessages(prev => prev.map(m => 
-            m.id === id ? { ...m, content: m.content + chunk } : m
-          ));
-          
+          setMessages((prev) =>
+            prev.map((m) => (m.id === id ? { ...m, content: m.content + chunk } : m))
+          );
+
           // Auto-scroll if user hasn't scrolled up
           if (!userInteractedRef.current && !isScrollingRef.current) {
             requestAnimationFrame(() => {
@@ -214,21 +214,22 @@ const EducatorCopilot: React.FC = () => {
 
       // Update with interactive elements if any
       if (result.interactive) {
-        setMessages(prev => prev.map(m => 
-          m.id === id ? { ...m, interactive: result.interactive } : m
-        ));
+        setMessages((prev) =>
+          prev.map((m) => (m.id === id ? { ...m, interactive: result.interactive } : m))
+        );
       }
     } catch (error) {
       console.error('Educator AI Error:', error);
-      
+
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: "I'm sorry, I encountered an error. Please make sure your OpenAI API key is configured correctly.",
-        timestamp: new Date().toISOString()
+        content:
+          "I'm sorry, I encountered an error. Please make sure your OpenAI API key is configured correctly.",
+        timestamp: new Date().toISOString(),
       };
-      
-      setMessages(prev => [...prev, errorMessage]);
+
+      setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setLoading(false);
       setIsTyping(false);
@@ -253,7 +254,7 @@ const EducatorCopilot: React.FC = () => {
   return (
     <div className="flex flex-col h-full max-w-7xl mx-auto bg-white relative">
       {/* Messages Area */}
-      <div 
+      <div
         ref={messagesContainerRef}
         onScroll={handleScroll}
         className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-8"
@@ -267,7 +268,7 @@ const EducatorCopilot: React.FC = () => {
             className="max-w-4xl mx-auto"
           >
             <div className="text-center mb-12">
-              <motion.h1 
+              <motion.h1
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
@@ -275,7 +276,7 @@ const EducatorCopilot: React.FC = () => {
               >
                 {educatorWelcomeConfig.title}
               </motion.h1>
-              <motion.p 
+              <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.2 }}
@@ -285,7 +286,7 @@ const EducatorCopilot: React.FC = () => {
               </motion.p>
             </div>
 
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3 }}
@@ -338,11 +339,13 @@ const EducatorCopilot: React.FC = () => {
                 >
                   <div
                     className={`max-w-[80%] rounded-2xl px-6 py-4 ${
-                      message.role === 'user' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-900'
+                      message.role === 'user'
+                        ? 'bg-gray-900 text-white'
+                        : 'bg-gray-100 text-gray-900'
                     }`}
                   >
                     <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
-                    
+
                     {/* Student Insight Cards */}
                     {message.interactive?.cards && message.interactive.cards.length > 0 && (
                       <div className="mt-4 space-y-3">
@@ -365,52 +368,66 @@ const EducatorCopilot: React.FC = () => {
                         ))}
                       </div>
                     )}
-                    
+
                     {/* Interactive Elements for AI responses */}
                     {message.interactive?.metadata && (
                       <div className="mt-4 space-y-3">
                         {message.interactive.metadata.encouragement && (
                           <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
-                            <p className="text-blue-800 text-sm">{message.interactive.metadata.encouragement}</p>
+                            <p className="text-blue-800 text-sm">
+                              {message.interactive.metadata.encouragement}
+                            </p>
                           </div>
                         )}
-                        
-                        {message.interactive.metadata.nextSteps && message.interactive.metadata.nextSteps.length > 0 && (
-                          <div className="p-3 bg-gray-50 rounded-lg">
-                            <h4 className="font-semibold text-sm mb-2">🎯 Next Steps:</h4>
-                            <ul className="space-y-1">
-                              {message.interactive.metadata.nextSteps.map((step: string, idx: number) => (
-                                <li key={idx} className="text-sm text-gray-700 flex items-start gap-2">
-                                  <span className="text-blue-600 font-bold">•</span>
-                                  <span>{step}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
+
+                        {message.interactive.metadata.nextSteps &&
+                          message.interactive.metadata.nextSteps.length > 0 && (
+                            <div className="p-3 bg-gray-50 rounded-lg">
+                              <h4 className="font-semibold text-sm mb-2">🎯 Next Steps:</h4>
+                              <ul className="space-y-1">
+                                {message.interactive.metadata.nextSteps.map(
+                                  (step: string, idx: number) => (
+                                    <li
+                                      key={idx}
+                                      className="text-sm text-gray-700 flex items-start gap-2"
+                                    >
+                                      <span className="text-blue-600 font-bold">•</span>
+                                      <span>{step}</span>
+                                    </li>
+                                  )
+                                )}
+                              </ul>
+                            </div>
+                          )}
                       </div>
                     )}
-                    
+
                     {/* Suggestions */}
-                    {message.interactive?.suggestions && message.interactive.suggestions.length > 0 && (
-                      <div className="mt-4">
-                        <p className="text-xs text-gray-500 mb-2">Suggested follow-ups:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {message.interactive.suggestions.map((suggestion: any) => (
-                            <button
-                              key={suggestion.id}
-                              onClick={() => handleSendQuery(suggestion.query)}
-                              className="px-3 py-1.5 bg-white border border-gray-300 rounded-full text-sm text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-all"
-                            >
-                              {suggestion.label}
-                            </button>
-                          ))}
+                    {message.interactive?.suggestions &&
+                      message.interactive.suggestions.length > 0 && (
+                        <div className="mt-4">
+                          <p className="text-xs text-gray-500 mb-2">Suggested follow-ups:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {message.interactive.suggestions.map((suggestion: any) => (
+                              <button
+                                key={suggestion.id}
+                                onClick={() => handleSendQuery(suggestion.query)}
+                                className="px-3 py-1.5 bg-white border border-gray-300 rounded-full text-sm text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-all"
+                              >
+                                {suggestion.label}
+                              </button>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                    
-                    <p className={`text-xs mt-2 ${message.role === 'user' ? 'text-gray-400' : 'text-gray-500'}`}>
-                      {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      )}
+
+                    <p
+                      className={`text-xs mt-2 ${message.role === 'user' ? 'text-gray-400' : 'text-gray-500'}`}
+                    >
+                      {new Date(message.timestamp).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
                       {message.interactive?.metadata?.intentHandled && (
                         <span className="ml-2">• {message.interactive.metadata.intentHandled}</span>
                       )}
@@ -464,9 +481,9 @@ const EducatorCopilot: React.FC = () => {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 10 }}
-                  transition={{ 
+                  transition={{
                     duration: 0.15,
-                    ease: [0.25, 0.1, 0.25, 1]
+                    ease: [0.25, 0.1, 0.25, 1],
                   }}
                   whileHover={{ y: -1 }}
                   whileTap={{ y: 0 }}
@@ -489,9 +506,9 @@ const EducatorCopilot: React.FC = () => {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 10 }}
-                  transition={{ 
+                  transition={{
                     duration: 0.15,
-                    ease: [0.25, 0.1, 0.25, 1]
+                    ease: [0.25, 0.1, 0.25, 1],
                   }}
                   whileHover={{ y: -1 }}
                   whileTap={{ y: 0 }}
@@ -510,9 +527,9 @@ const EducatorCopilot: React.FC = () => {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 10 }}
-                  transition={{ 
+                  transition={{
                     duration: 0.15,
-                    ease: [0.25, 0.1, 0.25, 1]
+                    ease: [0.25, 0.1, 0.25, 1],
                   }}
                   whileHover={{ y: -1 }}
                   whileTap={{ y: 0 }}
@@ -547,7 +564,7 @@ const EducatorCopilot: React.FC = () => {
               disabled={loading || isTyping}
               className="w-full px-5 py-4 pr-16 text-gray-900 placeholder-gray-500 bg-gray-50 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
             />
-            
+
             <div className="absolute right-2 top-1/2 -translate-y-1/2">
               <button
                 onClick={handleSend}

@@ -84,15 +84,13 @@ export const getRequisitionsWithStats = async () => {
  */
 export const getPipelineCandidates = async (opportunityId?: number) => {
   try {
-    let query = supabase
-      .from('pipeline_candidates_detailed')
-      .select('*');
-    
+    let query = supabase.from('pipeline_candidates_detailed').select('*');
+
     // Only filter by opportunity_id if provided
     if (opportunityId) {
       query = query.eq('opportunity_id', opportunityId);
     }
-    
+
     const { data, error } = await query.order('added_at', { ascending: false });
 
     if (error) throw error;
@@ -122,7 +120,7 @@ export const getPipelineCandidatesByStage = async (opportunityId: number, stage:
         message: pcError.message,
         details: pcError.details,
         hint: pcError.hint,
-        code: pcError.code
+        code: pcError.code,
       });
       throw pcError;
     }
@@ -132,16 +130,18 @@ export const getPipelineCandidatesByStage = async (opportunityId: number, stage:
     }
 
     // Get unique student IDs
-    const studentIds = [...new Set(pipelineCandidates.map(pc => pc.student_id))];
+    const studentIds = [...new Set(pipelineCandidates.map((pc) => pc.student_id))];
 
     // Fetch student data with relational tables
     const { data: students, error: studentsError } = await supabase
       .from('students')
-      .select(`
+      .select(
+        `
         user_id, id, name, email, contact_number, 
         college_school_name, university, branch_field, course_name, district_name,
         skills!skills_student_id_fkey(id, name, enabled, approval_status)
-      `)
+      `
+      )
       .in('user_id', studentIds);
 
     if (studentsError) {
@@ -149,21 +149,19 @@ export const getPipelineCandidatesByStage = async (opportunityId: number, stage:
         message: studentsError.message,
         details: studentsError.details,
         hint: studentsError.hint,
-        code: studentsError.code
+        code: studentsError.code,
       });
       // Continue without student data rather than failing completely
     }
 
     // Create a map of students by user_id for quick lookup
     const studentsMap = new Map();
-    students?.forEach(student => {
+    students?.forEach((student) => {
       // Filter skills to only enabled ones (include all approval statuses)
-      const enabledSkills = Array.isArray(student.skills) 
-        ? student.skills
-            .filter((s: any) => s.enabled)
-            .map((s: any) => s.name)
+      const enabledSkills = Array.isArray(student.skills)
+        ? student.skills.filter((s: any) => s.enabled).map((s: any) => s.name)
         : [];
-      
+
       studentsMap.set(student.user_id, {
         ...student,
         // Map actual DB columns to UI-friendly names
@@ -171,14 +169,14 @@ export const getPipelineCandidatesByStage = async (opportunityId: number, stage:
         college: student.college_school_name || student.university,
         location: student.district_name,
         ai_score_overall: 0, // AI score not stored in students table directly
-        skills: enabledSkills
+        skills: enabledSkills,
       });
     });
 
     // Combine pipeline candidates with student data
-    const data = pipelineCandidates.map(candidate => ({
+    const data = pipelineCandidates.map((candidate) => ({
       ...candidate,
-      students: studentsMap.get(candidate.student_id) || null
+      students: studentsMap.get(candidate.student_id) || null,
     }));
 
     return { data, error: null };
@@ -194,21 +192,21 @@ export const getPipelineCandidatesByStage = async (opportunityId: number, stage:
 export const getPipelineCandidatesWithFilters = async (
   opportunityId: number,
   filters: {
-    stages?: string[]
-    skills?: string[]
-    departments?: string[]
-    locations?: string[]
-    sources?: string[]
-    aiScoreRange?: { min?: number; max?: number }
-    nextActionTypes?: string[]
-    hasNextAction?: boolean | null
-    assignedTo?: string[]
-    dateAdded?: { startDate?: string; endDate?: string }
-    lastUpdated?: { startDate?: string; endDate?: string }
+    stages?: string[];
+    skills?: string[];
+    departments?: string[];
+    locations?: string[];
+    sources?: string[];
+    aiScoreRange?: { min?: number; max?: number };
+    nextActionTypes?: string[];
+    hasNextAction?: boolean | null;
+    assignedTo?: string[];
+    dateAdded?: { startDate?: string; endDate?: string };
+    lastUpdated?: { startDate?: string; endDate?: string };
   },
   sortOptions?: {
-    field: string
-    direction: 'asc' | 'desc'
+    field: string;
+    direction: 'asc' | 'desc';
   }
 ) => {
   try {
@@ -308,11 +306,13 @@ export const getPipelineCandidatesWithFilters = async (
     // Fetch student data with relational tables
     const { data: students, error: studentsError } = await supabase
       .from('students')
-      .select(`
+      .select(
+        `
         user_id, id, name, email, contact_number, 
         college_school_name, university, branch_field, course_name, district_name,
         skills!skills_student_id_fkey(id, name, enabled, approval_status)
-      `)
+      `
+      )
       .in('user_id', studentIds);
 
     if (studentsError) {
@@ -322,14 +322,12 @@ export const getPipelineCandidatesWithFilters = async (
 
     // Create a map of students by user_id for quick lookup
     const studentsMap = new Map();
-    students?.forEach(student => {
+    students?.forEach((student) => {
       // Filter skills to only enabled ones (include all approval statuses)
-      const enabledSkills = Array.isArray(student.skills) 
-        ? student.skills
-            .filter((s: any) => s.enabled)
-            .map((s: any) => s.name)
+      const enabledSkills = Array.isArray(student.skills)
+        ? student.skills.filter((s: any) => s.enabled).map((s: any) => s.name)
         : [];
-      
+
       studentsMap.set(student.user_id, {
         ...student,
         // Map actual DB columns to UI-friendly names
@@ -337,26 +335,27 @@ export const getPipelineCandidatesWithFilters = async (
         college: student.college_school_name || student.university,
         location: student.district_name,
         ai_score_overall: 0, // AI score not stored in students table directly
-        skills: enabledSkills
+        skills: enabledSkills,
       });
     });
 
     // Combine pipeline candidates with student data
-    let filteredData = pipelineCandidates.map((candidate: any) => {
-      const student = studentsMap.get(candidate.student_id);
-      
-      return {
-        ...candidate,
-        students: student || null
-      };
-    }) || [];
+    let filteredData =
+      pipelineCandidates.map((candidate: any) => {
+        const student = studentsMap.get(candidate.student_id);
+
+        return {
+          ...candidate,
+          students: student || null,
+        };
+      }) || [];
 
     // Apply client-side filters for student data (skills, department, location, AI score)
     // Filter by skills (check if student has any of the selected skills)
     if (filters.skills && filters.skills.length > 0) {
-      filteredData = filteredData.filter(candidate => {
+      filteredData = filteredData.filter((candidate) => {
         const studentSkills = candidate.students?.skills || [];
-        return filters.skills.some(skill => 
+        return filters.skills.some((skill) =>
           studentSkills.some((s: string) => s.toLowerCase().includes(skill.toLowerCase()))
         );
       });
@@ -364,7 +363,7 @@ export const getPipelineCandidatesWithFilters = async (
 
     // Filter by department
     if (filters.departments && filters.departments.length > 0) {
-      filteredData = filteredData.filter(candidate => {
+      filteredData = filteredData.filter((candidate) => {
         const dept = candidate.students?.dept || '';
         return filters.departments.includes(dept);
       });
@@ -372,7 +371,7 @@ export const getPipelineCandidatesWithFilters = async (
 
     // Filter by location
     if (filters.locations && filters.locations.length > 0) {
-      filteredData = filteredData.filter(candidate => {
+      filteredData = filteredData.filter((candidate) => {
         const location = candidate.students?.location || '';
         return filters.locations.includes(location);
       });
@@ -380,7 +379,7 @@ export const getPipelineCandidatesWithFilters = async (
 
     // Filter by AI score range
     if (filters.aiScoreRange) {
-      filteredData = filteredData.filter(candidate => {
+      filteredData = filteredData.filter((candidate) => {
         const score = candidate.students?.ai_score_overall || 0;
         const meetsMin = filters.aiScoreRange.min ? score >= filters.aiScoreRange.min : true;
         const meetsMax = filters.aiScoreRange.max ? score <= filters.aiScoreRange.max : true;
@@ -402,17 +401,17 @@ export const getPipelineCandidatesWithFilters = async (
             aValue = a.students?.ai_score_overall || 0;
             bValue = b.students?.ai_score_overall || 0;
             return (aValue - bValue) * multiplier;
-          
+
           case 'department':
             aValue = (a.students?.dept || '').toLowerCase();
             bValue = (b.students?.dept || '').toLowerCase();
             return aValue.localeCompare(bValue) * multiplier;
-          
+
           case 'location':
             aValue = (a.students?.location || '').toLowerCase();
             bValue = (b.students?.location || '').toLowerCase();
             return aValue.localeCompare(bValue) * multiplier;
-          
+
           default:
             return 0;
         }
@@ -432,7 +431,7 @@ export const getPipelineCandidatesWithFilters = async (
 export const getAllPipelineCandidatesByStage = async (opportunityId: number) => {
   try {
     const { data, error } = await getPipelineCandidates(opportunityId);
-    
+
     if (error) throw error;
 
     // Group candidates by stage
@@ -442,10 +441,10 @@ export const getAllPipelineCandidatesByStage = async (opportunityId: number) => 
       interview_1: [],
       interview_2: [],
       offer: [],
-      hired: []
+      hired: [],
     };
 
-    (data || []).forEach(candidate => {
+    (data || []).forEach((candidate) => {
       if (grouped[candidate.stage]) {
         grouped[candidate.stage].push(candidate);
       }
@@ -477,20 +476,19 @@ export const addCandidateToPipeline = async (pipelineData: {
     // Fetch student's AI score and employability data from relational tables
     let aiScore = null;
     let employabilityScore = null;
-    
+
     try {
       const { data: studentData, error: studentError } = await supabase
         .from('students')
         .select('ai_score_overall, employability_score')
         .eq('user_id', pipelineData.student_id)
         .single();
-      
+
       if (!studentError && studentData) {
         aiScore = studentData.ai_score_overall || null;
         employabilityScore = studentData.employability_score || null;
       }
-    } catch (e) {
-    }
+    } catch (e) {}
 
     // Add AI score to recruiter notes for visibility
     let recruiterNotes = '';
@@ -498,20 +496,24 @@ export const addCandidateToPipeline = async (pipelineData: {
       recruiterNotes += `AI Match Score: ${aiScore}/100`;
     }
     if (employabilityScore !== null) {
-      recruiterNotes += recruiterNotes ? ` | Employability Score: ${employabilityScore}/100` : `Employability Score: ${employabilityScore}/100`;
+      recruiterNotes += recruiterNotes
+        ? ` | Employability Score: ${employabilityScore}/100`
+        : `Employability Score: ${employabilityScore}/100`;
     }
 
     const stage = pipelineData.stage || 'sourced';
-    
+
     const { data, error } = await supabase
       .from('pipeline_candidates')
-      .insert([{
-        ...pipelineData,
-        stage: stage,
-        source: pipelineData.source || 'talent_pool',
-        status: 'active',
-        recruiter_notes: recruiterNotes || pipelineData.next_action_notes || null
-      }])
+      .insert([
+        {
+          ...pipelineData,
+          stage: stage,
+          source: pipelineData.source || 'talent_pool',
+          status: 'active',
+          recruiter_notes: recruiterNotes || pipelineData.next_action_notes || null,
+        },
+      ])
       .select()
       .single();
 
@@ -522,8 +524,8 @@ export const addCandidateToPipeline = async (pipelineData: {
           data: null,
           error: {
             ...error,
-            message: 'Candidate is already in this pipeline'
-          }
+            message: 'Candidate is already in this pipeline',
+          },
         };
       }
       throw error;
@@ -537,7 +539,7 @@ export const addCandidateToPipeline = async (pipelineData: {
       interview_2: 'interviewed',
       offer: 'offer_received',
       hired: 'accepted',
-      rejected: 'rejected'
+      rejected: 'rejected',
     };
 
     const applicationStatus = stageToStatusMap[stage];
@@ -557,7 +559,7 @@ export const addCandidateToPipeline = async (pipelineData: {
             .from('applied_jobs')
             .update({
               application_status: applicationStatus,
-              updated_at: new Date().toISOString()
+              updated_at: new Date().toISOString(),
             })
             .eq('id', existingApplication.id);
         }
@@ -580,8 +582,8 @@ export const addCandidateToPipeline = async (pipelineData: {
         student_id: pipelineData.student_id,
         activity_details: {
           ai_score: aiScore,
-          employability_score: employabilityScore
-        }
+          employability_score: employabilityScore,
+        },
       });
     }
 
@@ -620,7 +622,7 @@ export const moveCandidateToStage = async (
         stage: newStage,
         previous_stage: previousStage,
         stage_changed_at: new Date().toISOString(),
-        stage_changed_by: performedBy
+        stage_changed_by: performedBy,
       })
       .eq('id', candidateId)
       .select()
@@ -636,7 +638,7 @@ export const moveCandidateToStage = async (
       interview_2: 'interviewed',
       offer: 'offer_received',
       hired: 'accepted',
-      rejected: 'rejected'
+      rejected: 'rejected',
     };
 
     const applicationStatus = stageToStatusMap[newStage];
@@ -644,7 +646,7 @@ export const moveCandidateToStage = async (
       try {
         const updateData: any = {
           application_status: applicationStatus,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         };
 
         // Add specific timestamp fields based on status
@@ -671,7 +673,7 @@ export const moveCandidateToStage = async (
       to_stage: newStage,
       activity_details: notes ? { notes } : null,
       performed_by: performedBy,
-      student_id: currentData.student_id
+      student_id: currentData.student_id,
     });
 
     return { data, error: null };
@@ -696,7 +698,7 @@ export const updateNextAction = async (
       .update({
         next_action: nextAction,
         next_action_date: nextActionDate,
-        next_action_notes: notes
+        next_action_notes: notes,
       })
       .eq('id', candidateId)
       .select()
@@ -725,7 +727,7 @@ export const rejectCandidate = async (
         status: 'rejected',
         stage: 'rejected',
         rejection_reason: rejectionReason,
-        rejection_date: new Date().toISOString()
+        rejection_date: new Date().toISOString(),
       })
       .eq('id', candidateId)
       .select()
@@ -741,7 +743,7 @@ export const rejectCandidate = async (
       to_stage: 'rejected',
       activity_details: { reason: rejectionReason },
       performed_by: performedBy,
-      student_id: data.student_id
+      student_id: data.student_id,
     });
 
     return { data, error: null };
@@ -764,7 +766,7 @@ export const updateCandidateRating = async (
       .from('pipeline_candidates')
       .update({
         recruiter_rating: rating,
-        recruiter_notes: notes
+        recruiter_notes: notes,
       })
       .eq('id', candidateId)
       .select()
@@ -802,7 +804,7 @@ export const assignCandidate = async (
       activity_type: 'note_added',
       activity_details: { assigned_to: assignedTo },
       performed_by: performedBy,
-      student_id: data.student_id
+      student_id: data.student_id,
     });
 
     return { data, error: null };
@@ -817,10 +819,7 @@ export const assignCandidate = async (
  */
 export const removeCandidateFromPipeline = async (candidateId: number) => {
   try {
-    const { error } = await supabase
-      .from('pipeline_candidates')
-      .delete()
-      .eq('id', candidateId);
+    const { error } = await supabase.from('pipeline_candidates').delete().eq('id', candidateId);
 
     if (error) throw error;
     return { error: null };
@@ -890,15 +889,15 @@ export const bulkMoveCandidates = async (
 ) => {
   try {
     const results = await Promise.all(
-      candidateIds.map(id => moveCandidateToStage(id, newStage, performedBy))
+      candidateIds.map((id) => moveCandidateToStage(id, newStage, performedBy))
     );
 
-    const errors = results.filter(r => r.error);
+    const errors = results.filter((r) => r.error);
     if (errors.length > 0) {
       return { data: null, error: errors[0].error };
     }
 
-    return { data: results.map(r => r.data), error: null };
+    return { data: results.map((r) => r.data), error: null };
   } catch (error) {
     console.error('Error bulk moving candidates:', error);
     return { data: null, error };
@@ -915,15 +914,15 @@ export const bulkRejectCandidates = async (
 ) => {
   try {
     const results = await Promise.all(
-      candidateIds.map(id => rejectCandidate(id, rejectionReason, performedBy))
+      candidateIds.map((id) => rejectCandidate(id, rejectionReason, performedBy))
     );
 
-    const errors = results.filter(r => r.error);
+    const errors = results.filter((r) => r.error);
     if (errors.length > 0) {
       return { data: null, error: errors[0].error };
     }
 
-    return { data: results.map(r => r.data), error: null };
+    return { data: results.map((r) => r.data), error: null };
   } catch (error) {
     console.error('Error bulk rejecting candidates:', error);
     return { data: null, error };
@@ -938,24 +937,24 @@ export const bulkRejectCandidates = async (
 export const getPipelineStatistics = async (opportunityId: number) => {
   try {
     const { data, error } = await getPipelineCandidates(opportunityId);
-    
+
     if (error) throw error;
 
     const stats = {
       total: data?.length || 0,
       by_stage: {
-        sourced: data?.filter(c => c.stage === 'sourced').length || 0,
-        screened: data?.filter(c => c.stage === 'screened').length || 0,
-        interview_1: data?.filter(c => c.stage === 'interview_1').length || 0,
-        interview_2: data?.filter(c => c.stage === 'interview_2').length || 0,
-        offer: data?.filter(c => c.stage === 'offer').length || 0,
-        hired: data?.filter(c => c.stage === 'hired').length || 0,
-        rejected: data?.filter(c => c.stage === 'rejected').length || 0
+        sourced: data?.filter((c) => c.stage === 'sourced').length || 0,
+        screened: data?.filter((c) => c.stage === 'screened').length || 0,
+        interview_1: data?.filter((c) => c.stage === 'interview_1').length || 0,
+        interview_2: data?.filter((c) => c.stage === 'interview_2').length || 0,
+        offer: data?.filter((c) => c.stage === 'offer').length || 0,
+        hired: data?.filter((c) => c.stage === 'hired').length || 0,
+        rejected: data?.filter((c) => c.stage === 'rejected').length || 0,
       },
       by_status: {
-        active: data?.filter(c => c.status === 'active').length || 0,
-        rejected: data?.filter(c => c.status === 'rejected').length || 0
-      }
+        active: data?.filter((c) => c.status === 'active').length || 0,
+        rejected: data?.filter((c) => c.status === 'rejected').length || 0,
+      },
     };
 
     return { data: stats, error: null };

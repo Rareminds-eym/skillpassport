@@ -1,27 +1,27 @@
-import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import educatorIllustration from "../../../../assets/images/auth/Educator-illustration.jpg";
-import loginIllustration from "../../../../assets/images/auth/Recruiter-illustration.png";
-import studentIllustration from "../../../../assets/images/auth/Student-illustration.jpg";
+import { AnimatePresence, motion } from 'framer-motion';
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import educatorIllustration from '../../../../assets/images/auth/Educator-illustration.jpg';
+import loginIllustration from '../../../../assets/images/auth/Recruiter-illustration.png';
+import studentIllustration from '../../../../assets/images/auth/Student-illustration.jpg';
 
 import {
-    Activity,
-    BadgeCheck,
-    BarChart3,
-    Briefcase,
-    CheckCircle,
-    Info,
-    Share2,
-    User,
-    X,
-    Zap
-} from "lucide-react";
-import FeatureCard from "../ui/FeatureCard";
+  Activity,
+  BadgeCheck,
+  BarChart3,
+  Briefcase,
+  CheckCircle,
+  Info,
+  Share2,
+  User,
+  X,
+  Zap,
+} from 'lucide-react';
+import FeatureCard from '../ui/FeatureCard';
 
 export default function UnifiedSignup() {
   const { type } = useParams();
-  const [activeTab, setActiveTab] = useState(type || "school");
+  const [activeTab, setActiveTab] = useState(type || 'school');
   const [studentType, setStudentType] = useState(null);
   const [recruitmentType, setRecruitmentType] = useState(null);
   const [showAdminInfo, setShowAdminInfo] = useState(false);
@@ -30,7 +30,7 @@ export default function UnifiedSignup() {
 
   // Sync URL with active tab
   useEffect(() => {
-    if (type && ["school", "college", "university", "recruitment"].includes(type)) {
+    if (type && ['school', 'college', 'university', 'recruitment'].includes(type)) {
       setActiveTab(type);
     }
   }, [type]);
@@ -44,30 +44,50 @@ export default function UnifiedSignup() {
   };
 
   // Color schemes for different user types
-  const primary = "#0a6aba";
-  const secondary = "#09277f";
+  const primary = '#0a6aba';
+  const secondary = '#09277f';
 
   // Feature cards data for each user type
   const featureCards = {
     school: [
-      { title: "Skill Verification", Icon: CheckCircle, description: "Verify and endorse student skills" },
-      { title: "Analytics", Icon: BarChart3, description: "Track student progress and outcomes" },
-      { title: "Industry Connect", Icon: Zap, description: "Connect students with opportunities" },
+      {
+        title: 'Skill Verification',
+        Icon: CheckCircle,
+        description: 'Verify and endorse student skills',
+      },
+      { title: 'Analytics', Icon: BarChart3, description: 'Track student progress and outcomes' },
+      { title: 'Industry Connect', Icon: Zap, description: 'Connect students with opportunities' },
     ],
     college: [
-      { title: "Skill Verification", Icon: CheckCircle, description: "Verify and endorse student skills" },
-      { title: "Analytics", Icon: BarChart3, description: "Track student progress and outcomes" },
-      { title: "Industry Connect", Icon: Zap, description: "Connect students with opportunities" },
+      {
+        title: 'Skill Verification',
+        Icon: CheckCircle,
+        description: 'Verify and endorse student skills',
+      },
+      { title: 'Analytics', Icon: BarChart3, description: 'Track student progress and outcomes' },
+      { title: 'Industry Connect', Icon: Zap, description: 'Connect students with opportunities' },
     ],
     university: [
-      { title: "Research Opportunities", Icon: CheckCircle, description: "Collaborate on research projects" },
-      { title: "Student Exchange", Icon: BarChart3, description: "Facilitate student exchange programs" },
-      { title: "Global Networking", Icon: Zap, description: "Build international partnerships" },
+      {
+        title: 'Research Opportunities',
+        Icon: CheckCircle,
+        description: 'Collaborate on research projects',
+      },
+      {
+        title: 'Student Exchange',
+        Icon: BarChart3,
+        description: 'Facilitate student exchange programs',
+      },
+      { title: 'Global Networking', Icon: Zap, description: 'Build international partnerships' },
     ],
     recruitment: [
-      { title: "Verified Skills", Icon: CheckCircle, description: "Access verified student profiles" },
-      { title: "Faster Hiring", Icon: Zap, description: "Reduce hiring time by 60%" },
-      { title: "AI Recommendations", Icon: BarChart3, description: "Smart candidate matching" },
+      {
+        title: 'Verified Skills',
+        Icon: CheckCircle,
+        description: 'Access verified student profiles',
+      },
+      { title: 'Faster Hiring', Icon: Zap, description: 'Reduce hiring time by 60%' },
+      { title: 'AI Recommendations', Icon: BarChart3, description: 'Smart candidate matching' },
     ],
   };
 
@@ -80,61 +100,62 @@ export default function UnifiedSignup() {
 
   const titles = {
     school: {
-      main: "Empower Students. Verify Real Skills.",
-      subtitle: "Guide students and verify their skills for better opportunities.",
-      login: "School Login",
+      main: 'Empower Students. Verify Real Skills.',
+      subtitle: 'Guide students and verify their skills for better opportunities.',
+      login: 'School Login',
     },
     college: {
-      main: "Empower Students. Verify Real Skills.",
-      subtitle: "Guide students and verify their skills for better opportunities.",
-      login: "College Login",
+      main: 'Empower Students. Verify Real Skills.',
+      subtitle: 'Guide students and verify their skills for better opportunities.',
+      login: 'College Login',
     },
     university: {
-      main: "Expand Horizons. Foster Excellence.",
-      subtitle: "Collaborate globally and enhance academic excellence.",
-      login: "University Login",
+      main: 'Expand Horizons. Foster Excellence.',
+      subtitle: 'Collaborate globally and enhance academic excellence.',
+      login: 'University Login',
     },
     recruitment: {
-      main: "Hire Smarter. Trust Skills, Not Just Resumes.",
-      subtitle: "Access verified Skill Passports of students across India & beyond.",
-      login: "Recruiter Login",
+      main: 'Hire Smarter. Trust Skills, Not Just Resumes.',
+      subtitle: 'Access verified Skill Passports of students across India & beyond.',
+      login: 'Recruiter Login',
     },
   };
 
   // Helper function to map student type to entity-specific type
   const getEntitySpecificType = (type, tab) => {
     // For admin, student, and educator, map to entity-specific types
-    if (type === "admin") {
-      if (tab === "college") return "college-admin";
-      if (tab === "university") return "university-admin";
-      return "admin"; // school
-    } else if (type === "student") {
-      if (tab === "college") return "college-student";
-      if (tab === "university") return "university-student";
-      return "school-student"; // school
-    } else if (type === "educator") {
-      if (tab === "college") return "college-educator";
-      if (tab === "university") return "university-educator";
-      return "school-educator"; // school
+    if (type === 'admin') {
+      if (tab === 'college') return 'college-admin';
+      if (tab === 'university') return 'university-admin';
+      return 'admin'; // school
+    } else if (type === 'student') {
+      if (tab === 'college') return 'college-student';
+      if (tab === 'university') return 'university-student';
+      return 'school-student'; // school
+    } else if (type === 'educator') {
+      if (tab === 'college') return 'college-educator';
+      if (tab === 'university') return 'university-educator';
+      return 'school-educator'; // school
     }
     return type; // fallback for other types
   };
 
   const handleGetStarted = () => {
-    if (activeTab === "school" || activeTab === "college" || activeTab === "university") {
+    if (activeTab === 'school' || activeTab === 'college' || activeTab === 'university') {
       if (!studentType) return;
       const entityType = getEntitySpecificType(studentType, activeTab);
       navigate(`/subscription/plans/${entityType}/purchase`);
-    } else if (activeTab === "recruitment") {
+    } else if (activeTab === 'recruitment') {
       if (!recruitmentType) return;
-      const entityType = recruitmentType === "admin" ? "recruitment-admin" : "recruitment-recruiter";
+      const entityType =
+        recruitmentType === 'admin' ? 'recruitment-admin' : 'recruitment-recruiter';
       navigate(`/subscription/plans/${entityType}/purchase`);
     }
   };
 
   // Function to handle info button clicks
   const handleInfoClick = (type) => {
-    if (type === "admin") {
+    if (type === 'admin') {
       setShowRecruiterInfo(false);
       setShowAdminInfo(!showAdminInfo);
     } else {
@@ -157,15 +178,13 @@ export default function UnifiedSignup() {
     <div className="flex items-center lg:py-8 bg-white">
       <div className="w-full lg:mx-4 lg:my-8 xl:mx-auto max-w-7xl grid grid-cols-1 lg:grid-cols-2 h-screen lg:h-[700px] overflow-hidden">
         {/* LEFT SIDE */}
-        {activeTab === "recruitment" ? (
+        {activeTab === 'recruitment' ? (
           <div className="hidden lg:flex relative p-10 text-white flex-col justify-between rounded-3xl shadow-lg bg-gradient-to-br from-[#0a6aba] to-[#09277f]">
             <div className="relative z-10">
               <h2 className="text-3xl md:text-4xl font-bold leading-tight">
                 {titles.recruitment.main}
               </h2>
-              <p className="mt-4 max-w-xl text-[#edf2f9]">
-                {titles.recruitment.subtitle}
-              </p>
+              <p className="mt-4 max-w-xl text-[#edf2f9]">{titles.recruitment.subtitle}</p>
             </div>
 
             <div className="relative z-10 flex justify-start items-end h-full mt-12">
@@ -179,7 +198,7 @@ export default function UnifiedSignup() {
               <motion.div
                 className="absolute top-1 lg:left-[8rem] xl:left-[12rem]"
                 animate={{ y: [0, -10, 0] }}
-                transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+                transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
               >
                 <FeatureCard
                   title={featureCards.recruitment[0].title}
@@ -194,7 +213,7 @@ export default function UnifiedSignup() {
                 transition={{
                   repeat: Infinity,
                   duration: 3.5,
-                  ease: "easeInOut",
+                  ease: 'easeInOut',
                 }}
               >
                 <FeatureCard
@@ -207,7 +226,7 @@ export default function UnifiedSignup() {
               <motion.div
                 className="absolute bottom-8 lg:left-[8rem] xl:left-[12rem]"
                 animate={{ y: [0, -8, 0] }}
-                transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+                transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
               >
                 <FeatureCard
                   title={featureCards.recruitment[2].title}
@@ -222,7 +241,7 @@ export default function UnifiedSignup() {
             className="hidden lg:flex relative p-10 text-white flex-col justify-between rounded-3xl shadow-lg bg-cover bg-center"
             style={{
               backgroundImage: `url(${studentIllustration})`,
-              backgroundRepeat: "no-repeat",
+              backgroundRepeat: 'no-repeat',
             }}
           >
             <div className="relative z-10">
@@ -236,7 +255,7 @@ export default function UnifiedSignup() {
               <motion.div
                 className="absolute top-4 lg:left-[8rem] xl:left-[12rem]"
                 animate={{ y: [0, -10, 0] }}
-                transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+                transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
               >
                 <FeatureCard title="Showcase verified skills" Icon={BadgeCheck} />
               </motion.div>
@@ -244,7 +263,7 @@ export default function UnifiedSignup() {
               <motion.div
                 className="absolute top-44 lg:-right-8 xl:-right-4"
                 animate={{ y: [0, -12, 0] }}
-                transition={{ repeat: Infinity, duration: 3.5, ease: "easeInOut" }}
+                transition={{ repeat: Infinity, duration: 3.5, ease: 'easeInOut' }}
               >
                 <FeatureCard title="Share with recruiters worldwide" Icon={Share2} />
               </motion.div>
@@ -252,7 +271,7 @@ export default function UnifiedSignup() {
               <motion.div
                 className="absolute bottom-16 lg:left-[8rem] xl:left-[12rem]"
                 animate={{ y: [0, -8, 0] }}
-                transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+                transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
               >
                 <FeatureCard title="Track employability score" Icon={Activity} />
               </motion.div>
@@ -286,18 +305,19 @@ export default function UnifiedSignup() {
             {/* Mobile Tabs */}
             <div className="flex space-x-2 mb-6 bg-white/20 backdrop-blur-sm rounded-xl p-1">
               {[
-                { id: "school", label: "School", Icon: User },
-                { id: "college", label: "College", Icon: User },
-                { id: "university", label: "University", Icon: User },
-                { id: "recruitment", label: "Recruitment", Icon: Briefcase },
+                { id: 'school', label: 'School', Icon: User },
+                { id: 'college', label: 'College', Icon: User },
+                { id: 'university', label: 'University', Icon: User },
+                { id: 'recruitment', label: 'Recruitment', Icon: Briefcase },
               ].map(({ id, label, Icon }) => (
                 <button
                   key={id}
                   onClick={() => handleTabChange(id)}
-                  className={`flex-1 flex items-center justify-center space-x-2 py-2 rounded-lg transition-all ${activeTab === id
-                    ? "bg-white/20 backdrop-blur-sm text-white"
-                    : "text-white/70 hover:text-white"
-                    }`}
+                  className={`flex-1 flex items-center justify-center space-x-2 py-2 rounded-lg transition-all ${
+                    activeTab === id
+                      ? 'bg-white/20 backdrop-blur-sm text-white'
+                      : 'text-white/70 hover:text-white'
+                  }`}
                 >
                   <Icon className="w-4 h-4" />
                   <span className="font-medium text-sm">{label}</span>
@@ -306,16 +326,12 @@ export default function UnifiedSignup() {
             </div>
 
             <div className="text-center mb-6">
-              <h3 className="text-3xl font-bold text-white">
-                {titles[activeTab].login}
-              </h3>
-              <p className="text-sm text-white/80 mt-2">
-                {titles[activeTab].subtitle}
-              </p>
+              <h3 className="text-3xl font-bold text-white">{titles[activeTab].login}</h3>
+              <p className="text-sm text-white/80 mt-2">{titles[activeTab].subtitle}</p>
             </div>
             <div className="rounded-2xl p-5 sm:p-6 bg-transparent">
               {/* School/College Section for Mobile */}
-              {(activeTab === "school" || activeTab === "college") && (
+              {(activeTab === 'school' || activeTab === 'college') && (
                 <div className="mb-6">
                   <p className="text-white mb-3 font-medium">I am a:</p>
                   <div className="space-y-3">
@@ -324,7 +340,7 @@ export default function UnifiedSignup() {
                         type="radio"
                         name="studentTypeMobile"
                         value="educator"
-                        checked={studentType === "educator"}
+                        checked={studentType === 'educator'}
                         onChange={(e) => handleStudentTypeChange(e.target.value)}
                         className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
                       />
@@ -335,12 +351,12 @@ export default function UnifiedSignup() {
                         type="radio"
                         name="studentTypeMobile"
                         value="student"
-                        checked={studentType === "student"}
+                        checked={studentType === 'student'}
                         onChange={(e) => handleStudentTypeChange(e.target.value)}
                         className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
                       />
                       <span className="text-white">
-                        {activeTab === "school" ? "School Student" : "College Student"}
+                        {activeTab === 'school' ? 'School Student' : 'College Student'}
                       </span>
                     </label>
                     <label className="flex items-center space-x-3 cursor-pointer">
@@ -348,7 +364,7 @@ export default function UnifiedSignup() {
                         type="radio"
                         name="studentTypeMobile"
                         value="admin"
-                        checked={studentType === "admin"}
+                        checked={studentType === 'admin'}
                         onChange={(e) => handleStudentTypeChange(e.target.value)}
                         className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
                       />
@@ -359,7 +375,7 @@ export default function UnifiedSignup() {
               )}
 
               {/* University Section for Mobile */}
-              {activeTab === "university" && (
+              {activeTab === 'university' && (
                 <div className="mb-6">
                   <p className="text-white mb-3 font-medium">I am a:</p>
                   <div className="space-y-3">
@@ -368,7 +384,7 @@ export default function UnifiedSignup() {
                         type="radio"
                         name="studentTypeMobile"
                         value="educator"
-                        checked={studentType === "educator"}
+                        checked={studentType === 'educator'}
                         onChange={(e) => handleStudentTypeChange(e.target.value)}
                         className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
                       />
@@ -379,7 +395,7 @@ export default function UnifiedSignup() {
                         type="radio"
                         name="studentTypeMobile"
                         value="student"
-                        checked={studentType === "student"}
+                        checked={studentType === 'student'}
                         onChange={(e) => handleStudentTypeChange(e.target.value)}
                         className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
                       />
@@ -390,7 +406,7 @@ export default function UnifiedSignup() {
                         type="radio"
                         name="studentTypeMobile"
                         value="admin"
-                        checked={studentType === "admin"}
+                        checked={studentType === 'admin'}
                         onChange={(e) => handleStudentTypeChange(e.target.value)}
                         className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
                       />
@@ -401,10 +417,10 @@ export default function UnifiedSignup() {
               )}
 
               {/* Recruitment Section for Mobile */}
-              {activeTab === "recruitment" && (
+              {activeTab === 'recruitment' && (
                 <div className="mb-6">
                   <p className="text-white mb-3 font-medium">
-                    I am {recruitmentType === "admin" ? "an" : "a"}:
+                    I am {recruitmentType === 'admin' ? 'an' : 'a'}:
                   </p>
                   <div className="space-y-3">
                     <label className="flex items-center space-x-3 cursor-pointer">
@@ -412,14 +428,14 @@ export default function UnifiedSignup() {
                         type="radio"
                         name="recruitmentTypeMobile"
                         value="admin"
-                        checked={recruitmentType === "admin"}
+                        checked={recruitmentType === 'admin'}
                         onChange={(e) => handleRecruitmentTypeChange(e.target.value)}
                         className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
                       />
                       <span className="text-white">Admin</span>
                       <button
                         type="button"
-                        onClick={() => handleInfoClick("admin")}
+                        onClick={() => handleInfoClick('admin')}
                         className="text-blue-300 hover:text-blue-100 ml-auto transition-all duration-200 hover:scale-110 hover:drop-shadow-lg"
                       >
                         <Info className="w-4 h-4" />
@@ -431,14 +447,14 @@ export default function UnifiedSignup() {
                         type="radio"
                         name="recruitmentTypeMobile"
                         value="recruiter"
-                        checked={recruitmentType === "recruiter"}
+                        checked={recruitmentType === 'recruiter'}
                         onChange={(e) => handleRecruitmentTypeChange(e.target.value)}
                         className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
                       />
                       <span className="text-white">Recruiter</span>
                       <button
                         type="button"
-                        onClick={() => handleInfoClick("recruiter")}
+                        onClick={() => handleInfoClick('recruiter')}
                         className="text-blue-300 hover:text-blue-100 ml-auto transition-all duration-200 hover:scale-110 hover:drop-shadow-lg"
                       >
                         <Info className="w-4 h-4" />
@@ -451,16 +467,14 @@ export default function UnifiedSignup() {
                     {showAdminInfo && (
                       <motion.div
                         initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
+                        animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
                         transition={{ duration: 0.3 }}
                         className="mt-3 overflow-hidden"
                       >
                         <div className="p-3 bg-white/20 backdrop-blur-sm rounded-lg text-white text-xs">
                           <div className="flex justify-between items-start">
-                            <p>
-                              You're creating your company's workspace to generate Workspace ID
-                            </p>
+                            <p>You're creating your company's workspace to generate Workspace ID</p>
                             <button
                               onClick={() => setShowAdminInfo(false)}
                               className="text-white/70 hover:text-white ml-2 flex-shrink-0 transition-colors"
@@ -475,7 +489,7 @@ export default function UnifiedSignup() {
                     {showRecruiterInfo && (
                       <motion.div
                         initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
+                        animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
                         transition={{ duration: 0.3 }}
                         className="mt-3 overflow-hidden"
@@ -483,7 +497,8 @@ export default function UnifiedSignup() {
                         <div className="p-3 bg-white/20 backdrop-blur-sm rounded-lg text-white text-xs">
                           <div className="flex justify-between items-start">
                             <p>
-                              Enter the Workspace ID given by your admin to join your company's workspace.
+                              Enter the Workspace ID given by your admin to join your company's
+                              workspace.
                             </p>
                             <button
                               onClick={() => setShowRecruiterInfo(false)}
@@ -502,7 +517,10 @@ export default function UnifiedSignup() {
               {/* Mobile Buy Now button */}
               <button
                 onClick={handleGetStarted}
-                disabled={(activeTab === "recruitment" && !recruitmentType) || (activeTab !== "recruitment" && !studentType)}
+                disabled={
+                  (activeTab === 'recruitment' && !recruitmentType) ||
+                  (activeTab !== 'recruitment' && !studentType)
+                }
                 className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Buy Now
@@ -515,21 +533,22 @@ export default function UnifiedSignup() {
             {/* Tabs */}
             <div className="flex space-x-4 mb-16 sticky top-[40px] bg-white z-20 py-4 shadow-sm -ml-4">
               {[
-                { id: "school", label: "School", Icon: User },
-                { id: "college", label: "College", Icon: User },
-                { id: "university", label: "University", Icon: User },
-                { id: "recruitment", label: "Recruitment", Icon: Briefcase },
+                { id: 'school', label: 'School', Icon: User },
+                { id: 'college', label: 'College', Icon: User },
+                { id: 'university', label: 'University', Icon: User },
+                { id: 'recruitment', label: 'Recruitment', Icon: Briefcase },
               ].map(({ id, label, Icon }) => (
                 <button
                   key={id}
                   onClick={() => handleTabChange(id)}
-                  className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all ${activeTab === id
-                    ? "bg-blue-50 text-[#0a6aba] font-semibold shadow-sm"
-                    : "text-gray-600 hover:text-[#0a6aba]"
-                    }`}
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all ${
+                    activeTab === id
+                      ? 'bg-blue-50 text-[#0a6aba] font-semibold shadow-sm'
+                      : 'text-gray-600 hover:text-[#0a6aba]'
+                  }`}
                 >
                   <Icon className="w-5 h-5" />
-                  <span className={`tab-link ${activeTab === id ? "text-[#0a6aba]" : ""}`}>
+                  <span className={`tab-link ${activeTab === id ? 'text-[#0a6aba]' : ''}`}>
                     {label}
                   </span>
                 </button>
@@ -537,16 +556,12 @@ export default function UnifiedSignup() {
             </div>
 
             <div className="text-center mb-8">
-              <h3 className="text-3xl font-bold text-gray-900">
-                {titles[activeTab].login}
-              </h3>
-              <p className="text-sm text-gray-600 mt-2">
-                {titles[activeTab].subtitle}
-              </p>
+              <h3 className="text-3xl font-bold text-gray-900">{titles[activeTab].login}</h3>
+              <p className="text-sm text-gray-600 mt-2">{titles[activeTab].subtitle}</p>
             </div>
             <div className="rounded-2xl bg-white/95 shadow-xl ring-1 ring-black/5 p-6 sm:p-8">
               {/* School/College Section for Desktop */}
-              {(activeTab === "school" || activeTab === "college") && (
+              {(activeTab === 'school' || activeTab === 'college') && (
                 <div className="mb-6">
                   <p className="text-gray-700 mb-3 font-medium">I am a:</p>
                   <div className="space-y-3">
@@ -555,7 +570,7 @@ export default function UnifiedSignup() {
                         type="radio"
                         name="studentType"
                         value="educator"
-                        checked={studentType === "educator"}
+                        checked={studentType === 'educator'}
                         onChange={(e) => handleStudentTypeChange(e.target.value)}
                         className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
                       />
@@ -566,12 +581,12 @@ export default function UnifiedSignup() {
                         type="radio"
                         name="studentType"
                         value="student"
-                        checked={studentType === "student"}
+                        checked={studentType === 'student'}
                         onChange={(e) => handleStudentTypeChange(e.target.value)}
                         className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
                       />
                       <span className="text-gray-700">
-                        {activeTab === "school" ? "School Student" : "College Student"}
+                        {activeTab === 'school' ? 'School Student' : 'College Student'}
                       </span>
                     </label>
                     <label className="flex items-center space-x-3 cursor-pointer">
@@ -579,7 +594,7 @@ export default function UnifiedSignup() {
                         type="radio"
                         name="studentType"
                         value="admin"
-                        checked={studentType === "admin"}
+                        checked={studentType === 'admin'}
                         onChange={(e) => handleStudentTypeChange(e.target.value)}
                         className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
                       />
@@ -590,7 +605,7 @@ export default function UnifiedSignup() {
               )}
 
               {/* University Section for Desktop */}
-              {activeTab === "university" && (
+              {activeTab === 'university' && (
                 <div className="mb-6">
                   <p className="text-gray-700 mb-3 font-medium">I am a:</p>
                   <div className="space-y-3">
@@ -599,7 +614,7 @@ export default function UnifiedSignup() {
                         type="radio"
                         name="studentType"
                         value="educator"
-                        checked={studentType === "educator"}
+                        checked={studentType === 'educator'}
                         onChange={(e) => handleStudentTypeChange(e.target.value)}
                         className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
                       />
@@ -610,7 +625,7 @@ export default function UnifiedSignup() {
                         type="radio"
                         name="studentType"
                         value="student"
-                        checked={studentType === "student"}
+                        checked={studentType === 'student'}
                         onChange={(e) => handleStudentTypeChange(e.target.value)}
                         className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
                       />
@@ -621,7 +636,7 @@ export default function UnifiedSignup() {
                         type="radio"
                         name="studentType"
                         value="admin"
-                        checked={studentType === "admin"}
+                        checked={studentType === 'admin'}
                         onChange={(e) => handleStudentTypeChange(e.target.value)}
                         className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
                       />
@@ -632,10 +647,10 @@ export default function UnifiedSignup() {
               )}
 
               {/* Recruitment Section for Desktop */}
-              {activeTab === "recruitment" && (
+              {activeTab === 'recruitment' && (
                 <div className="mb-6">
                   <p className="text-gray-700 mb-3 font-medium">
-                    I am {recruitmentType === "admin" ? "an" : "a"}:
+                    I am {recruitmentType === 'admin' ? 'an' : 'a'}:
                   </p>
                   <div className="space-y-3">
                     <label className="flex items-center space-x-3 cursor-pointer group ">
@@ -643,14 +658,14 @@ export default function UnifiedSignup() {
                         type="radio"
                         name="recruitmentType"
                         value="admin"
-                        checked={recruitmentType === "admin"}
+                        checked={recruitmentType === 'admin'}
                         onChange={(e) => handleRecruitmentTypeChange(e.target.value)}
                         className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
                       />
                       <span className="text-gray-700">Admin</span>
                       <button
                         type="button"
-                        onClick={() => handleInfoClick("admin")}
+                        onClick={() => handleInfoClick('admin')}
                         className="text-blue-500 hover:text-blue-600 ml-auto transition-all duration-200 hover:scale-110 hover:drop-shadow-lg pl-4"
                         title="Learn more about Admin signup"
                       >
@@ -663,14 +678,14 @@ export default function UnifiedSignup() {
                         type="radio"
                         name="recruitmentType"
                         value="recruiter"
-                        checked={recruitmentType === "recruiter"}
+                        checked={recruitmentType === 'recruiter'}
                         onChange={(e) => handleRecruitmentTypeChange(e.target.value)}
                         className="form-radio text-blue-600 focus:ring-blue-500 h-4 w-4"
                       />
                       <span className="text-gray-700">Recruiter</span>
                       <button
                         type="button"
-                        onClick={() => handleInfoClick("recruiter")}
+                        onClick={() => handleInfoClick('recruiter')}
                         className="text-blue-500 hover:text-blue-600 ml-auto transition-all duration-200 hover:scale-110 hover:drop-shadow-lg"
                         title="Learn more about Recruiter signup"
                       >
@@ -684,7 +699,7 @@ export default function UnifiedSignup() {
                     {showAdminInfo && (
                       <motion.div
                         initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
+                        animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
                         transition={{ duration: 0.3 }}
                         className="mt-3 overflow-hidden"
@@ -708,7 +723,7 @@ export default function UnifiedSignup() {
                     {showRecruiterInfo && (
                       <motion.div
                         initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
+                        animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
                         transition={{ duration: 0.3 }}
                         className="mt-3 overflow-hidden"
@@ -716,7 +731,8 @@ export default function UnifiedSignup() {
                         <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 text-gray-700 text-sm">
                           <div className="flex justify-between items-start">
                             <p>
-                              Enter the Workspace ID given by your admin to join your company's workspace.
+                              Enter the Workspace ID given by your admin to join your company's
+                              workspace.
                             </p>
                             <button
                               onClick={() => setShowRecruiterInfo(false)}
@@ -735,7 +751,10 @@ export default function UnifiedSignup() {
               {/* Buy Now button for all sections */}
               <button
                 onClick={handleGetStarted}
-                disabled={(activeTab === "recruitment" && !recruitmentType) || (activeTab !== "recruitment" && !studentType)}
+                disabled={
+                  (activeTab === 'recruitment' && !recruitmentType) ||
+                  (activeTab !== 'recruitment' && !studentType)
+                }
                 className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Buy Now

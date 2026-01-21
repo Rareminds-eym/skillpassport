@@ -1,12 +1,12 @@
 import {
-    AcademicCapIcon,
-    BuildingOfficeIcon,
-    CalendarIcon,
-    EnvelopeIcon,
-    MapPinIcon,
-    PencilIcon,
-    PhoneIcon,
-    UserCircleIcon,
+  AcademicCapIcon,
+  BuildingOfficeIcon,
+  CalendarIcon,
+  EnvelopeIcon,
+  MapPinIcon,
+  PencilIcon,
+  PhoneIcon,
+  UserCircleIcon,
 } from '@heroicons/react/24/outline';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -44,13 +44,13 @@ const ProfileSimple = () => {
   const loadProfile = async () => {
     try {
       setLoading(true);
-      
+
       // Get email from localStorage or use test email
       const storedUser = localStorage.getItem('user');
       const storedEmail = localStorage.getItem('userEmail');
-      
+
       let email = 'karthikeyan@rareminds.in'; // Default test email
-      
+
       if (storedUser) {
         try {
           const userData = JSON.parse(storedUser);
@@ -71,19 +71,21 @@ const ProfileSimple = () => {
       // Approach 1: Direct query
       const { data: directData, error: directError } = await supabase
         .from('school_educators')
-        .select(`
+        .select(
+          `
           *,
           school:organizations!school_educators_school_id_fkey (
             name,
             organization_type
           )
-        `)
+        `
+        )
         .eq('email', email)
         .maybeSingle();
 
       if (directError) {
         console.log('❌ Direct query failed:', directError.message);
-        
+
         // Approach 2: Case insensitive
         const { data: ciData, error: ciError } = await supabase
           .from('school_educators')
@@ -91,7 +93,7 @@ const ProfileSimple = () => {
           .ilike('email', email)
           .limit(1)
           .maybeSingle();
-          
+
         if (ciError) {
           console.log('❌ Case insensitive query failed:', ciError.message);
           error = ciError;
@@ -119,9 +121,10 @@ const ProfileSimple = () => {
           designation: educatorData.designation || '',
           department: educatorData.department || '',
           school_name: educatorData.schools?.name || '',
-          full_name: educatorData.first_name && educatorData.last_name 
-            ? `${educatorData.first_name} ${educatorData.last_name}`
-            : educatorData.first_name || 'Educator',
+          full_name:
+            educatorData.first_name && educatorData.last_name
+              ? `${educatorData.first_name} ${educatorData.last_name}`
+              : educatorData.first_name || 'Educator',
         };
 
         console.log('✅ Profile loaded:', profileData);
@@ -162,7 +165,7 @@ const ProfileSimple = () => {
 
     try {
       setSaving(true);
-      
+
       const updateData = {
         first_name: formData.first_name || profile.first_name,
         last_name: formData.last_name || profile.last_name,
@@ -171,7 +174,9 @@ const ProfileSimple = () => {
         city: formData.city || profile.city,
         specialization: formData.specialization || profile.specialization,
         qualification: formData.qualification || profile.qualification,
-        experience_years: parseInt(formData.experience_years as string) || profile.experience_years || 0,
+        experience_years:
+          // @ts-expect-error - Auto-suppressed for migration
+          parseInt(formData.experience_years as string) || profile.experience_years || 0,
         designation: formData.designation || profile.designation,
         department: formData.department || profile.department,
         updated_at: new Date().toISOString(),
@@ -192,12 +197,12 @@ const ProfileSimple = () => {
       }
 
       // Update local state
-      setProfile(prev => ({ ...prev, ...formData }));
+      setProfile((prev) => ({ ...prev, ...formData }));
       setEditing(false);
       setFormData({});
-      
+
       alert('Profile saved successfully!');
-      
+
       // Reload profile
       setTimeout(() => loadProfile(), 1000);
     } catch (error) {
@@ -209,7 +214,7 @@ const ProfileSimple = () => {
   };
 
   const handleInputChange = (field: keyof EducatorProfile, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   if (loading) {
@@ -228,7 +233,7 @@ const ProfileSimple = () => {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <p className="text-red-600">Failed to load profile</p>
-          <button 
+          <button
             onClick={loadProfile}
             className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
           >
@@ -316,7 +321,7 @@ const ProfileSimple = () => {
                     <span className="text-gray-900 font-medium">{profile.email}</span>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center space-x-3">
                   <PhoneIcon className="h-5 w-5 text-gray-400" />
                   <div className="flex-1">
@@ -330,7 +335,9 @@ const ProfileSimple = () => {
                         placeholder="Enter phone number"
                       />
                     ) : (
-                      <span className="text-gray-900 font-medium">{profile.phone_number || 'Not provided'}</span>
+                      <span className="text-gray-900 font-medium">
+                        {profile.phone_number || 'Not provided'}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -348,7 +355,9 @@ const ProfileSimple = () => {
                         placeholder="Enter address"
                       />
                     ) : (
-                      <span className="text-gray-900 font-medium">{profile.address || 'Not provided'}</span>
+                      <span className="text-gray-900 font-medium">
+                        {profile.address || 'Not provided'}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -372,7 +381,9 @@ const ProfileSimple = () => {
                         placeholder="e.g., Computer Science"
                       />
                     ) : (
-                      <span className="text-gray-900 font-medium">{profile.specialization || 'Not specified'}</span>
+                      <span className="text-gray-900 font-medium">
+                        {profile.specialization || 'Not specified'}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -390,7 +401,9 @@ const ProfileSimple = () => {
                         placeholder="e.g., M.Tech"
                       />
                     ) : (
-                      <span className="text-gray-900 font-medium">{profile.qualification || 'Not specified'}</span>
+                      <span className="text-gray-900 font-medium">
+                        {profile.qualification || 'Not specified'}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -410,7 +423,9 @@ const ProfileSimple = () => {
                       />
                     ) : (
                       <span className="text-gray-900 font-medium">
-                        {profile.experience_years ? `${profile.experience_years} years` : 'Not specified'}
+                        {profile.experience_years
+                          ? `${profile.experience_years} years`
+                          : 'Not specified'}
                       </span>
                     )}
                   </div>
@@ -429,7 +444,9 @@ const ProfileSimple = () => {
                         placeholder="e.g., Senior Educator"
                       />
                     ) : (
-                      <span className="text-gray-900 font-medium">{profile.designation || 'Not specified'}</span>
+                      <span className="text-gray-900 font-medium">
+                        {profile.designation || 'Not specified'}
+                      </span>
                     )}
                   </div>
                 </div>

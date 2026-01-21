@@ -31,11 +31,27 @@ export interface OfferFilters {
 }
 
 export interface OfferSortOptions {
-  field: 'inserted_at' | 'updated_at' | 'offer_date' | 'expiry_date' | 'candidate_name' | 'job_title' | 'offered_ctc' | 'status' | 'template' | 'response_date';
+  field:
+    | 'inserted_at'
+    | 'updated_at'
+    | 'offer_date'
+    | 'expiry_date'
+    | 'candidate_name'
+    | 'job_title'
+    | 'offered_ctc'
+    | 'status'
+    | 'template'
+    | 'response_date';
   direction: 'asc' | 'desc';
   nullsPosition?: 'first' | 'last';
   secondarySort?: {
-    field: 'inserted_at' | 'updated_at' | 'offer_date' | 'expiry_date' | 'candidate_name' | 'job_title';
+    field:
+      | 'inserted_at'
+      | 'updated_at'
+      | 'offer_date'
+      | 'expiry_date'
+      | 'candidate_name'
+      | 'job_title';
     direction: 'asc' | 'desc';
   };
 }
@@ -63,7 +79,7 @@ const OfferAdvancedFilters: React.FC<OfferAdvancedFiltersProps> = ({
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Count active filters
-  const activeFilterCount = 
+  const activeFilterCount =
     (filters.status?.length || 0) +
     (filters.candidateName ? 1 : 0) +
     (filters.jobTitle ? 1 : 0) +
@@ -82,9 +98,9 @@ const OfferAdvancedFilters: React.FC<OfferAdvancedFiltersProps> = ({
   const toggleArrayFilter = (key: keyof OfferFilters, value: string) => {
     const currentValues = (filters[key] as string[]) || [];
     const newValues = currentValues.includes(value)
-      ? currentValues.filter(v => v !== value)
+      ? currentValues.filter((v) => v !== value)
       : [...currentValues, value];
-    
+
     onFiltersChange({
       ...filters,
       [key]: newValues,
@@ -98,13 +114,13 @@ const OfferAdvancedFilters: React.FC<OfferAdvancedFiltersProps> = ({
     });
   };
 
-  const FilterSection = ({ 
-    title, 
-    icon: Icon, 
-    children 
-  }: { 
-    title: string; 
-    icon: any; 
+  const FilterSection = ({
+    title,
+    icon: Icon,
+    children,
+  }: {
+    title: string;
+    icon: any;
     children: React.ReactNode;
   }) => (
     <div className="border-b border-gray-200 last:border-b-0 px-6 py-4">
@@ -112,9 +128,7 @@ const OfferAdvancedFilters: React.FC<OfferAdvancedFiltersProps> = ({
         <Icon className="h-4 w-4 text-gray-500" />
         <span className="text-sm font-medium text-gray-900">{title}</span>
       </div>
-      <div className="space-y-3">
-        {children}
-      </div>
+      <div className="space-y-3">{children}</div>
     </div>
   );
 
@@ -136,8 +150,8 @@ const OfferAdvancedFilters: React.FC<OfferAdvancedFiltersProps> = ({
             {activeFilterCount}
           </span>
         )}
-        <ChevronDownIcon 
-          className={`h-4 w-4 transition-transform ${isExpanded ? 'transform rotate-180' : ''}`} 
+        <ChevronDownIcon
+          className={`h-4 w-4 transition-transform ${isExpanded ? 'transform rotate-180' : ''}`}
         />
       </button>
 
@@ -145,11 +159,11 @@ const OfferAdvancedFilters: React.FC<OfferAdvancedFiltersProps> = ({
       {isExpanded && (
         <>
           {/* Backdrop */}
-          <div 
+          <div
             className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity"
             onClick={() => setIsExpanded(false)}
           />
-          
+
           {/* Slide-in Panel from Right */}
           <div className="fixed top-0 right-0 h-full w-full md:w-[600px] bg-white shadow-2xl z-50 flex flex-col transform transition-transform duration-300 ease-out">
             {/* Header */}
@@ -185,188 +199,198 @@ const OfferAdvancedFilters: React.FC<OfferAdvancedFiltersProps> = ({
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto">
-                <>
-                  {/* Status Filter */}
-                  <FilterSection title="Status" icon={CheckCircleIcon}>
-                    <div className="flex flex-wrap gap-2">
-                      {STATUS_OPTIONS.map((status) => {
-                        const isSelected = filters.status?.includes(status);
+              <>
+                {/* Status Filter */}
+                <FilterSection title="Status" icon={CheckCircleIcon}>
+                  <div className="flex flex-wrap gap-2">
+                    {STATUS_OPTIONS.map((status) => {
+                      const isSelected = filters.status?.includes(status);
+                      return (
+                        <button
+                          key={status}
+                          onClick={() => toggleArrayFilter('status', status)}
+                          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                            isSelected
+                              ? 'bg-primary-600 text-white'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          {status.charAt(0).toUpperCase() + status.slice(1)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </FilterSection>
+
+                {/* Candidate & Job Search */}
+                <FilterSection title="Search" icon={UserIcon}>
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      placeholder="Candidate name..."
+                      value={filters.candidateName || ''}
+                      onChange={(e) => updateFilter('candidateName', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Job title..."
+                      value={filters.jobTitle || ''}
+                      onChange={(e) => updateFilter('jobTitle', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+                </FilterSection>
+
+                {/* CTC Range */}
+                <FilterSection title="Offered CTC Range" icon={CurrencyDollarIcon}>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="number"
+                      placeholder="Min (LPA)"
+                      value={filters.offeredCtcMin || ''}
+                      onChange={(e) =>
+                        updateFilter(
+                          'offeredCtcMin',
+                          e.target.value ? Number(e.target.value) : undefined
+                        )
+                      }
+                      className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                    <input
+                      type="number"
+                      placeholder="Max (LPA)"
+                      value={filters.offeredCtcMax || ''}
+                      onChange={(e) =>
+                        updateFilter(
+                          'offeredCtcMax',
+                          e.target.value ? Number(e.target.value) : undefined
+                        )
+                      }
+                      className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+                </FilterSection>
+
+                {/* Date Ranges */}
+                <FilterSection title="Offer Date Range" icon={CalendarIcon}>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs text-gray-600 mb-1 block">From</label>
+                      <input
+                        type="date"
+                        value={filters.offerDateFrom || ''}
+                        onChange={(e) => updateFilter('offerDateFrom', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-600 mb-1 block">To</label>
+                      <input
+                        type="date"
+                        value={filters.offerDateTo || ''}
+                        onChange={(e) => updateFilter('offerDateTo', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                    </div>
+                  </div>
+                </FilterSection>
+
+                <FilterSection title="Expiry Date Range" icon={ClockIcon}>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs text-gray-600 mb-1 block">From</label>
+                      <input
+                        type="date"
+                        value={filters.expiryDateFrom || ''}
+                        onChange={(e) => updateFilter('expiryDateFrom', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-600 mb-1 block">To</label>
+                      <input
+                        type="date"
+                        value={filters.expiryDateTo || ''}
+                        onChange={(e) => updateFilter('expiryDateTo', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                    </div>
+                  </div>
+                </FilterSection>
+
+                {/* Templates */}
+                {availableTemplates.length > 0 && (
+                  <FilterSection title="Templates" icon={DocumentTextIcon}>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {availableTemplates.map((template) => {
+                        const isSelected = filters.templates?.includes(template);
                         return (
-                          <button
-                            key={status}
-                            onClick={() => toggleArrayFilter('status', status)}
-                            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                              isSelected
-                                ? 'bg-primary-600 text-white'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
+                          <label
+                            key={template}
+                            className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 p-2 rounded transition-colors"
                           >
-                            {status.charAt(0).toUpperCase() + status.slice(1)}
-                          </button>
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleArrayFilter('templates', template)}
+                              className="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                            />
+                            <span className="text-sm text-gray-700">{template}</span>
+                          </label>
                         );
                       })}
                     </div>
                   </FilterSection>
+                )}
 
-                  {/* Candidate & Job Search */}
-                  <FilterSection title="Search" icon={UserIcon}>
-                    <div className="space-y-2">
-                      <input
-                        type="text"
-                        placeholder="Candidate name..."
-                        value={filters.candidateName || ''}
-                        onChange={(e) => updateFilter('candidateName', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Job title..."
-                        value={filters.jobTitle || ''}
-                        onChange={(e) => updateFilter('jobTitle', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                    </div>
-                  </FilterSection>
+                {/* Sent Via */}
+                <FilterSection title="Sent Via" icon={BriefcaseIcon}>
+                  <div className="flex flex-wrap gap-2">
+                    {availableSentVia.map((method) => {
+                      const isSelected = filters.sentVia?.includes(method);
+                      return (
+                        <button
+                          key={method}
+                          onClick={() => toggleArrayFilter('sentVia', method)}
+                          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                            isSelected
+                              ? 'bg-primary-600 text-white'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          {method.charAt(0).toUpperCase() + method.slice(1)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </FilterSection>
 
-                  {/* CTC Range */}
-                  <FilterSection title="Offered CTC Range" icon={CurrencyDollarIcon}>
-                    <div className="grid grid-cols-2 gap-2">
-                      <input
-                        type="number"
-                        placeholder="Min (LPA)"
-                        value={filters.offeredCtcMin || ''}
-                        onChange={(e) => updateFilter('offeredCtcMin', e.target.value ? Number(e.target.value) : undefined)}
-                        className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                      <input
-                        type="number"
-                        placeholder="Max (LPA)"
-                        value={filters.offeredCtcMax || ''}
-                        onChange={(e) => updateFilter('offeredCtcMax', e.target.value ? Number(e.target.value) : undefined)}
-                        className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                    </div>
-                  </FilterSection>
-
-                  {/* Date Ranges */}
-                  <FilterSection title="Offer Date Range" icon={CalendarIcon}>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-xs text-gray-600 mb-1 block">From</label>
-                        <input
-                          type="date"
-                          value={filters.offerDateFrom || ''}
-                          onChange={(e) => updateFilter('offerDateFrom', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-600 mb-1 block">To</label>
-                        <input
-                          type="date"
-                          value={filters.offerDateTo || ''}
-                          onChange={(e) => updateFilter('offerDateTo', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        />
-                      </div>
-                    </div>
-                  </FilterSection>
-
-                  <FilterSection title="Expiry Date Range" icon={ClockIcon}>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-xs text-gray-600 mb-1 block">From</label>
-                        <input
-                          type="date"
-                          value={filters.expiryDateFrom || ''}
-                          onChange={(e) => updateFilter('expiryDateFrom', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-600 mb-1 block">To</label>
-                        <input
-                          type="date"
-                          value={filters.expiryDateTo || ''}
-                          onChange={(e) => updateFilter('expiryDateTo', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        />
-                      </div>
-                    </div>
-                  </FilterSection>
-
-                  {/* Templates */}
-                  {availableTemplates.length > 0 && (
-                    <FilterSection title="Templates" icon={DocumentTextIcon}>
-                      <div className="space-y-2 max-h-40 overflow-y-auto">
-                        {availableTemplates.map((template) => {
-                          const isSelected = filters.templates?.includes(template);
-                          return (
-                            <label
-                              key={template}
-                              className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 p-2 rounded transition-colors"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                onChange={() => toggleArrayFilter('templates', template)}
-                                className="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                              />
-                              <span className="text-sm text-gray-700">{template}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </FilterSection>
-                  )}
-
-                  {/* Sent Via */}
-                  <FilterSection title="Sent Via" icon={BriefcaseIcon}>
-                    <div className="flex flex-wrap gap-2">
-                      {availableSentVia.map((method) => {
-                        const isSelected = filters.sentVia?.includes(method);
+                {/* Benefits */}
+                {availableBenefits.length > 0 && (
+                  <FilterSection title="Benefits" icon={CheckCircleIcon}>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {availableBenefits.map((benefit) => {
+                        const isSelected = filters.benefits?.includes(benefit);
                         return (
-                          <button
-                            key={method}
-                            onClick={() => toggleArrayFilter('sentVia', method)}
-                            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                              isSelected
-                                ? 'bg-primary-600 text-white'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
+                          <label
+                            key={benefit}
+                            className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 p-2 rounded transition-colors"
                           >
-                            {method.charAt(0).toUpperCase() + method.slice(1)}
-                          </button>
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleArrayFilter('benefits', benefit)}
+                              className="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                            />
+                            <span className="text-sm text-gray-700">{benefit}</span>
+                          </label>
                         );
                       })}
                     </div>
                   </FilterSection>
-
-                  {/* Benefits */}
-                  {availableBenefits.length > 0 && (
-                    <FilterSection title="Benefits" icon={CheckCircleIcon}>
-                      <div className="space-y-2 max-h-40 overflow-y-auto">
-                        {availableBenefits.map((benefit) => {
-                          const isSelected = filters.benefits?.includes(benefit);
-                          return (
-                            <label
-                              key={benefit}
-                              className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 p-2 rounded transition-colors"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                onChange={() => toggleArrayFilter('benefits', benefit)}
-                                className="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                              />
-                              <span className="text-sm text-gray-700">{benefit}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </FilterSection>
-                  )}
-                </>
+                )}
+              </>
             </div>
 
             {/* Footer Actions */}
@@ -391,8 +415,11 @@ const OfferAdvancedFilters: React.FC<OfferAdvancedFiltersProps> = ({
       {/* Active Filter Tags */}
       {activeFilterCount > 0 && !isExpanded && (
         <div className="absolute top-full left-0 mt-2 flex flex-wrap gap-2 max-w-4xl z-10">
-          {filters.status?.map(status => (
-            <span key={status} className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+          {filters.status?.map((status) => (
+            <span
+              key={status}
+              className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full"
+            >
               {status}
               <button
                 onClick={() => toggleArrayFilter('status', status)}
@@ -402,7 +429,7 @@ const OfferAdvancedFilters: React.FC<OfferAdvancedFiltersProps> = ({
               </button>
             </span>
           ))}
-          
+
           {filters.candidateName && (
             <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
               Candidate: {filters.candidateName}

@@ -29,14 +29,9 @@ export interface Project {
   updated_at: string;
 }
 
-export type ProjectStatus = 
-  | 'draft' 
-  | 'open' 
-  | 'in_progress' 
-  | 'completed' 
-  | 'cancelled';
+export type ProjectStatus = 'draft' | 'open' | 'in_progress' | 'completed' | 'cancelled';
 
-export type ProjectCategory = 
+export type ProjectCategory =
   | 'web_development'
   | 'mobile_app'
   | 'data_science'
@@ -127,11 +122,7 @@ export interface ProjectContract {
   updated_at: string;
 }
 
-export type ContractStatus = 
-  | 'active' 
-  | 'completed' 
-  | 'terminated' 
-  | 'disputed';
+export type ContractStatus = 'active' | 'completed' | 'terminated' | 'disputed';
 
 export interface ContractMilestone extends ProjectMilestone {
   id: string;
@@ -204,4 +195,3 @@ export interface ProjectAnalytics {
   conversionRate: number;
   avgCompletionTime: number;
 }
-

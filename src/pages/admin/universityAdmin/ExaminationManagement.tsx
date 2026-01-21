@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState } from 'react';
 import {
   Calendar,
   Users,
@@ -17,25 +17,25 @@ import {
   AlertCircle,
   Upload,
   FileSpreadsheet,
-} from "lucide-react";
+} from 'lucide-react';
 
 const UniversityExaminationManagement: React.FC = () => {
-  const [activeTab, setActiveTab] = useState("overview");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [collegeFilter, setCollegeFilter] = useState("");
+  const [activeTab, setActiveTab] = useState('overview');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [collegeFilter, setCollegeFilter] = useState('');
 
   // Mock data for demonstration
   const [examinations, setExaminations] = useState([
     {
       id: 1,
-      title: "End Semester Examination - December 2024",
-      type: "End Semester",
-      academicYear: "2024-25",
-      semester: "Odd",
-      startDate: "2024-12-15",
-      endDate: "2024-12-30",
-      status: "Scheduled",
+      title: 'End Semester Examination - December 2024',
+      type: 'End Semester',
+      academicYear: '2024-25',
+      semester: 'Odd',
+      startDate: '2024-12-15',
+      endDate: '2024-12-30',
+      status: 'Scheduled',
       colleges: 45,
       students: 12500,
       subjects: 180,
@@ -43,13 +43,13 @@ const UniversityExaminationManagement: React.FC = () => {
     },
     {
       id: 2,
-      title: "Internal Assessment - November 2024",
-      type: "Internal Assessment",
-      academicYear: "2024-25",
-      semester: "Odd",
-      startDate: "2024-11-20",
-      endDate: "2024-11-25",
-      status: "Completed",
+      title: 'Internal Assessment - November 2024',
+      type: 'Internal Assessment',
+      academicYear: '2024-25',
+      semester: 'Odd',
+      startDate: '2024-11-20',
+      endDate: '2024-11-25',
+      status: 'Completed',
       colleges: 45,
       students: 12500,
       subjects: 180,
@@ -57,13 +57,13 @@ const UniversityExaminationManagement: React.FC = () => {
     },
     {
       id: 3,
-      title: "Practical Examination - January 2025",
-      type: "Practical",
-      academicYear: "2024-25",
-      semester: "Odd",
-      startDate: "2025-01-10",
-      endDate: "2025-01-20",
-      status: "Draft",
+      title: 'Practical Examination - January 2025',
+      type: 'Practical',
+      academicYear: '2024-25',
+      semester: 'Odd',
+      startDate: '2025-01-10',
+      endDate: '2025-01-20',
+      status: 'Draft',
       colleges: 45,
       students: 8200,
       subjects: 95,
@@ -74,31 +74,31 @@ const UniversityExaminationManagement: React.FC = () => {
   const [results] = useState([
     {
       id: 1,
-      examination: "Internal Assessment - November 2024",
-      college: "ABC Engineering College",
-      department: "Computer Science",
-      semester: "5th Semester",
+      examination: 'Internal Assessment - November 2024',
+      college: 'ABC Engineering College',
+      department: 'Computer Science',
+      semester: '5th Semester',
       totalStudents: 120,
       passedStudents: 108,
       failedStudents: 12,
       passPercentage: 90,
       averageMarks: 78.5,
-      status: "Published",
-      publishedDate: "2024-11-30",
+      status: 'Published',
+      publishedDate: '2024-11-30',
     },
     {
       id: 2,
-      examination: "Internal Assessment - November 2024",
-      college: "XYZ Arts & Science College",
-      department: "Mathematics",
-      semester: "3rd Semester",
+      examination: 'Internal Assessment - November 2024',
+      college: 'XYZ Arts & Science College',
+      department: 'Mathematics',
+      semester: '3rd Semester',
       totalStudents: 85,
       passedStudents: 82,
       failedStudents: 3,
       passPercentage: 96.5,
       averageMarks: 82.3,
-      status: "Published",
-      publishedDate: "2024-11-28",
+      status: 'Published',
+      publishedDate: '2024-11-28',
     },
   ]);
 
@@ -118,8 +118,10 @@ const UniversityExaminationManagement: React.FC = () => {
 
   // Filter results
   const filteredResults = results.filter((result) => {
-    if (searchTerm && !result.examination.toLowerCase().includes(searchTerm.toLowerCase())) return false;
-    if (collegeFilter && !result.college.toLowerCase().includes(collegeFilter.toLowerCase())) return false;
+    if (searchTerm && !result.examination.toLowerCase().includes(searchTerm.toLowerCase()))
+      return false;
+    if (collegeFilter && !result.college.toLowerCase().includes(collegeFilter.toLowerCase()))
+      return false;
     return true;
   });
 
@@ -136,33 +138,33 @@ const UniversityExaminationManagement: React.FC = () => {
 
   const getTypeBadge = (type: string) => {
     const styles = {
-      "Internal Assessment": 'bg-purple-100 text-purple-700',
-      "End Semester": 'bg-indigo-100 text-indigo-700',
-      "Practical": 'bg-teal-100 text-teal-700',
-      "Viva": 'bg-pink-100 text-pink-700',
-      "Arrears": 'bg-orange-100 text-orange-700',
+      'Internal Assessment': 'bg-purple-100 text-purple-700',
+      'End Semester': 'bg-indigo-100 text-indigo-700',
+      Practical: 'bg-teal-100 text-teal-700',
+      Viva: 'bg-pink-100 text-pink-700',
+      Arrears: 'bg-orange-100 text-orange-700',
     };
-    return styles[type as keyof typeof styles] || styles["Internal Assessment"];
+    return styles[type as keyof typeof styles] || styles['Internal Assessment'];
   };
 
   const tabs = [
-    { id: "overview", label: "Overview", icon: BarChart3 },
-    { id: "examinations", label: "Examination Scheduling", icon: Calendar },
-    { id: "results", label: "Results & Grades", icon: Award },
-    { id: "analytics", label: "Analytics", icon: TrendingUp },
+    { id: 'overview', label: 'Overview', icon: BarChart3 },
+    { id: 'examinations', label: 'Examination Scheduling', icon: Calendar },
+    { id: 'results', label: 'Results & Grades', icon: Award },
+    { id: 'analytics', label: 'Analytics', icon: TrendingUp },
   ];
 
   const handleCreateExamination = () => {
     // Mock creation - in real app, this would open a modal or navigate to form
     const newExam = {
       id: examinations.length + 1,
-      title: "New Examination",
-      type: "Internal Assessment",
-      academicYear: "2024-25",
-      semester: "Even",
-      startDate: "2025-02-15",
-      endDate: "2025-02-20",
-      status: "Draft",
+      title: 'New Examination',
+      type: 'Internal Assessment',
+      academicYear: '2024-25',
+      semester: 'Even',
+      startDate: '2025-02-15',
+      endDate: '2025-02-20',
+      status: 'Draft',
       colleges: 0,
       students: 0,
       subjects: 0,
@@ -184,7 +186,8 @@ const UniversityExaminationManagement: React.FC = () => {
           University Examination Management
         </h1>
         <p className="text-gray-600 text-sm sm:text-base">
-          Manage examination scheduling, evaluation workflows, and grade calculation across all colleges
+          Manage examination scheduling, evaluation workflows, and grade calculation across all
+          colleges
         </p>
       </div>
 
@@ -199,8 +202,8 @@ const UniversityExaminationManagement: React.FC = () => {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition ${
                   activeTab === tab.id
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
                 <Icon className="h-4 w-4" />
@@ -213,7 +216,7 @@ const UniversityExaminationManagement: React.FC = () => {
 
       {/* Content */}
       <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-        {activeTab === "overview" && (
+        {activeTab === 'overview' && (
           <div className="space-y-6">
             {/* KPI Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -279,19 +282,25 @@ const UniversityExaminationManagement: React.FC = () => {
                     <CheckCircle className="h-5 w-5 text-green-600" />
                   </div>
                   <div className="flex-1">
-                    <p className="font-medium text-gray-900">Internal Assessment Results Published</p>
-                    <p className="text-sm text-gray-600">November 2024 IA results for all colleges</p>
+                    <p className="font-medium text-gray-900">
+                      Internal Assessment Results Published
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      November 2024 IA results for all colleges
+                    </p>
                   </div>
                   <span className="text-sm text-gray-500">2 hours ago</span>
                 </div>
-                
+
                 <div className="flex items-center gap-3 p-3 bg-white rounded-lg">
                   <div className="p-2 bg-blue-100 rounded-lg">
                     <Calendar className="h-5 w-5 text-blue-600" />
                   </div>
                   <div className="flex-1">
                     <p className="font-medium text-gray-900">End Semester Exam Scheduled</p>
-                    <p className="text-sm text-gray-600">December 2024 examination timetable released</p>
+                    <p className="text-sm text-gray-600">
+                      December 2024 examination timetable released
+                    </p>
                   </div>
                   <span className="text-sm text-gray-500">1 day ago</span>
                 </div>
@@ -302,7 +311,9 @@ const UniversityExaminationManagement: React.FC = () => {
                   </div>
                   <div className="flex-1">
                     <p className="font-medium text-gray-900">Grade Calculation in Progress</p>
-                    <p className="text-sm text-gray-600">Final grades being calculated for 12,500 students</p>
+                    <p className="text-sm text-gray-600">
+                      Final grades being calculated for 12,500 students
+                    </p>
                   </div>
                   <span className="text-sm text-gray-500">3 days ago</span>
                 </div>
@@ -311,13 +322,13 @@ const UniversityExaminationManagement: React.FC = () => {
           </div>
         )}
 
-        {activeTab === "examinations" && (
+        {activeTab === 'examinations' && (
           <div>
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-gray-900">
                 Examination Scheduling ({filteredExaminations.length})
               </h2>
-              <button 
+              <button
                 onClick={handleCreateExamination}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
               >
@@ -338,7 +349,7 @@ const UniversityExaminationManagement: React.FC = () => {
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              
+
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
@@ -394,33 +405,37 @@ const UniversityExaminationManagement: React.FC = () => {
                       <td className="px-4 py-3">
                         <div>
                           <p className="font-medium text-gray-900">{exam.title}</p>
-                          <p className="text-sm text-gray-600">{exam.academicYear} - {exam.semester} Semester</p>
+                          <p className="text-sm text-gray-600">
+                            {exam.academicYear} - {exam.semester} Semester
+                          </p>
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeBadge(exam.type)}`}>
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeBadge(exam.type)}`}
+                        >
                           {exam.type}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
                         {exam.startDate} to {exam.endDate}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-900">
-                        {exam.colleges}
-                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900">{exam.colleges}</td>
                       <td className="px-4 py-3 text-sm text-gray-900">
                         {exam.students.toLocaleString()}
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(exam.status)}`}>
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(exam.status)}`}
+                        >
                           {exam.status}
                         </span>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <div className="w-16 bg-gray-200 rounded-full h-2">
-                            <div 
-                              className="bg-blue-600 h-2 rounded-full" 
+                            <div
+                              className="bg-blue-600 h-2 rounded-full"
                               style={{ width: `${exam.progress}%` }}
                             ></div>
                           </div>
@@ -429,13 +444,22 @@ const UniversityExaminationManagement: React.FC = () => {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
-                          <button className="p-1 text-blue-600 hover:bg-blue-50 rounded" title="Edit">
+                          <button
+                            className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                            title="Edit"
+                          >
                             <Edit className="h-4 w-4" />
                           </button>
-                          <button className="p-1 text-green-600 hover:bg-green-50 rounded" title="View Details">
+                          <button
+                            className="p-1 text-green-600 hover:bg-green-50 rounded"
+                            title="View Details"
+                          >
                             <Eye className="h-4 w-4" />
                           </button>
-                          <button className="p-1 text-purple-600 hover:bg-purple-50 rounded" title="Download Report">
+                          <button
+                            className="p-1 text-purple-600 hover:bg-purple-50 rounded"
+                            title="Download Report"
+                          >
                             <Download className="h-4 w-4" />
                           </button>
                         </div>
@@ -448,7 +472,7 @@ const UniversityExaminationManagement: React.FC = () => {
           </div>
         )}
 
-        {activeTab === "results" && (
+        {activeTab === 'results' && (
           <div>
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-gray-900">
@@ -478,7 +502,7 @@ const UniversityExaminationManagement: React.FC = () => {
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              
+
               <input
                 type="text"
                 placeholder="Filter by college..."
@@ -541,10 +565,13 @@ const UniversityExaminationManagement: React.FC = () => {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <div className="w-12 bg-gray-200 rounded-full h-2">
-                            <div 
+                            <div
                               className={`h-2 rounded-full ${
-                                result.passPercentage >= 90 ? 'bg-green-600' :
-                                result.passPercentage >= 75 ? 'bg-yellow-600' : 'bg-red-600'
+                                result.passPercentage >= 90
+                                  ? 'bg-green-600'
+                                  : result.passPercentage >= 75
+                                    ? 'bg-yellow-600'
+                                    : 'bg-red-600'
                               }`}
                               style={{ width: `${result.passPercentage}%` }}
                             ></div>
@@ -558,21 +585,29 @@ const UniversityExaminationManagement: React.FC = () => {
                         {result.averageMarks}
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(result.status)}`}>
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(result.status)}`}
+                        >
                           {result.status}
                         </span>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
-                          <button className="p-1 text-blue-600 hover:bg-blue-50 rounded" title="View Details">
+                          <button
+                            className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                            title="View Details"
+                          >
                             <Eye className="h-4 w-4" />
                           </button>
-                          <button className="p-1 text-green-600 hover:bg-green-50 rounded" title="Download">
+                          <button
+                            className="p-1 text-green-600 hover:bg-green-50 rounded"
+                            title="Download"
+                          >
                             <Download className="h-4 w-4" />
                           </button>
-                          <button 
+                          <button
                             onClick={() => handlePublishResults(result.id)}
-                            className="p-1 text-purple-600 hover:bg-purple-50 rounded" 
+                            className="p-1 text-purple-600 hover:bg-purple-50 rounded"
                             title="Publish Results"
                           >
                             <Send className="h-4 w-4" />
@@ -587,10 +622,10 @@ const UniversityExaminationManagement: React.FC = () => {
           </div>
         )}
 
-        {activeTab === "analytics" && (
+        {activeTab === 'analytics' && (
           <div className="space-y-6">
             <h2 className="text-xl font-bold text-gray-900">Examination Analytics</h2>
-            
+
             {/* Analytics Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 border border-blue-200">

@@ -6,36 +6,42 @@ import { supabase } from '../lib/supabaseClient';
  */
 
 export const debugRecentUpdates = async (userEmail = null) => {
-  
   try {
     // Test 1: Check authentication status
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
     if (authError) {
     }
-    
+
     const isAuthenticated = !authError && user;
-    
+
     // Test 1.5: Check current session more thoroughly
     if (isAuthenticated) {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        hasSession: !!session, 
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+      console.log({
+        hasSession: !!session,
         sessionError: sessionError?.message,
         accessToken: session?.access_token ? 'Present' : 'Missing',
-        refreshToken: session?.refresh_token ? 'Present' : 'Missing'
+        refreshToken: session?.refresh_token ? 'Present' : 'Missing',
       });
     }
-    
+
     // Test 2: Check recent_updates table structure (public access)
     try {
       // First, try a basic count to see if table exists
       const { count, error: countError } = await supabase
         .from('recent_updates')
         .select('*', { count: 'exact', head: true });
-      
+
       if (countError) {
         console.error('❌ Table access error:', countError.message);
-        
+
         // Try to get more specific error info
         if (countError.code === '42P01') {
           console.error('💀 Table does not exist!');
@@ -43,13 +49,12 @@ export const debugRecentUpdates = async (userEmail = null) => {
           console.error('🔒 Permission denied - RLS policy blocking access');
         }
       } else {
-        
         // Try to get some sample data structure
         const { data: sampleData, error: sampleError } = await supabase
           .from('recent_updates')
           .select('*')
           .limit(1);
-          
+
         if (sampleData && sampleData.length > 0) {
         } else {
         }
@@ -57,7 +62,7 @@ export const debugRecentUpdates = async (userEmail = null) => {
     } catch (tableErr) {
       console.error('❌ Table check failed:', tableErr.message);
     }
-    
+
     // Test 3: Check user-specific data if user is authenticated
     if (isAuthenticated && user) {
       try {
@@ -66,27 +71,27 @@ export const debugRecentUpdates = async (userEmail = null) => {
           .from('recent_updates')
           .select('*')
           .eq('user_id', user.id);
-          
+
         if (userError) {
           console.error('❌ User data error:', userError.message);
+          console.log({
             code: userError.code,
             details: userError.details,
-            hint: userError.hint
+            hint: userError.hint,
           });
         } else {
-          
           if (userData && userData.length > 0) {
             if (userData[0].updates) {
             }
           }
-          
+
           // Test 4: Try the exact .single() query like in the hook
           const { data: singleData, error: singleError } = await supabase
             .from('recent_updates')
             .select('*')
             .eq('user_id', user.id)
             .single();
-            
+
           if (singleError) {
             if (singleError.code === 'PGRST116') {
             }
@@ -98,20 +103,19 @@ export const debugRecentUpdates = async (userEmail = null) => {
       }
     } else {
     }
-    
+
     // Test 5: Check database configuration and basic connectivity
     try {
       // Test basic connection instead of RLS check
       const { data: connectionTest, error: connError } = await supabase
         .from('recent_updates')
         .select('count', { count: 'exact', head: true });
-        
+
       if (connError) {
       } else {
       }
-    } catch (connErr) {
-    }
-    
+    } catch (connErr) {}
+
     // Test 6: Connection and basic functionality test
     try {
       const { data: connectionTest } = await supabase
@@ -120,10 +124,8 @@ export const debugRecentUpdates = async (userEmail = null) => {
     } catch (connErr) {
       console.error('❌ Connection test failed:', connErr.message);
     }
-    
-    
+
     return true;
-    
   } catch (err) {
     console.error('❌ Debug session failed:', err);
     return false;
@@ -135,46 +137,45 @@ export const debugRecentUpdates = async (userEmail = null) => {
  */
 const createSampleRecentUpdates = async (userId) => {
   try {
-    
     const sampleData = {
       updates: [
         {
           id: `debug-${Date.now()}-1`,
-          message: "Debug: Profile analytics updated",
-          timestamp: "Just now",
-          type: "debug"
+          message: 'Debug: Profile analytics updated',
+          timestamp: 'Just now',
+          type: 'debug',
         },
         {
           id: `debug-${Date.now()}-2`,
-          message: "Debug: System health check completed",
-          timestamp: "1 minute ago",
-          type: "system"
+          message: 'Debug: System health check completed',
+          timestamp: '1 minute ago',
+          type: 'system',
         },
         {
           id: `debug-${Date.now()}-3`,
-          message: "Debug: Recent updates functionality tested",
-          timestamp: "2 minutes ago",
-          type: "test"
-        }
-      ]
+          message: 'Debug: Recent updates functionality tested',
+          timestamp: '2 minutes ago',
+          type: 'test',
+        },
+      ],
     };
-    
-    const { data, error } = await supabase
-      .from('recent_updates')
-      .upsert({
+
+    const { data, error } = await supabase.from('recent_updates').upsert(
+      {
         user_id: userId,
-        updates: sampleData
-      }, {
-        onConflict: 'user_id'
-      });
-      
+        updates: sampleData,
+      },
+      {
+        onConflict: 'user_id',
+      }
+    );
+
     if (error) {
       console.error('❌ Failed to create sample data:', error);
       return false;
     }
-    
+
     return true;
-    
   } catch (err) {
     console.error('❌ Error creating sample data:', err);
     return false;
@@ -186,24 +187,22 @@ const createSampleRecentUpdates = async (userId) => {
  */
 export const clearRecentUpdatesDebugData = async () => {
   try {
-    
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
     if (authError || !user) {
       return false;
     }
-    
-    const { data, error } = await supabase
-      .from('recent_updates')
-      .delete()
-      .eq('user_id', user.id);
-      
+
+    const { data, error } = await supabase.from('recent_updates').delete().eq('user_id', user.id);
+
     if (error) {
       console.error('❌ Failed to clear data:', error);
       return false;
     }
-    
+
     return true;
-    
   } catch (err) {
     console.error('❌ Error clearing debug data:', err);
     return false;
@@ -214,16 +213,19 @@ export const clearRecentUpdatesDebugData = async () => {
  * Get comprehensive debug info
  */
 export const getRecentUpdatesDebugInfo = async () => {
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
   return {
     timestamp: new Date().toISOString(),
     authenticated: !authError && !!user,
-    user: (!authError && user) ? { id: user.id, email: user.email } : null,
+    user: !authError && user ? { id: user.id, email: user.email } : null,
     authError: authError ? authError.message : null,
     tableExists: await checkTableExists(),
-    userHasData: (!authError && user) ? await checkUserHasData(user.id) : null,
-    sampleDataCount: await getSampleDataCount()
+    userHasData: !authError && user ? await checkUserHasData(user.id) : null,
+    sampleDataCount: await getSampleDataCount(),
   };
 };
 
@@ -264,10 +266,14 @@ const getSampleDataCount = async () => {
  * Quick auth check function for browser console
  */
 export const checkAuth = async () => {
-  const { data: { user }, error } = await supabase.auth.getUser();
-  const { data: { session } } = await supabase.auth.getSession();
-  
-  
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
   return { user, session, error };
 };
 
@@ -276,18 +282,17 @@ export const checkAuth = async () => {
  */
 export const checkRecentUpdates = async () => {
   const { user } = await checkAuth();
-  
+
   if (!user) {
     return null;
   }
-  
+
   try {
     const { data, error } = await supabase
       .from('recent_updates')
       .select('*')
       .eq('user_id', user.id);
-      
-    
+
     return { data, error };
   } catch (err) {
     console.error('❌ Recent updates check failed:', err);

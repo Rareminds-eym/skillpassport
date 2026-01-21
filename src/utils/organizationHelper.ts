@@ -1,6 +1,6 @@
 /**
  * Organization Helper Utilities
- * 
+ *
  * Helper functions for getting organization IDs from the unified organizations table.
  * Use these helpers instead of querying schools/colleges/universities tables directly.
  */
@@ -23,7 +23,9 @@ export async function getCurrentUserOrganizationId(
   organizationType: OrganizationType
 ): Promise<OrganizationResult> {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) {
       return { id: null, name: null, error: 'User not authenticated' };
     }
@@ -106,9 +108,7 @@ export async function getOrganizationById(
 /**
  * Get organization name by ID
  */
-export async function getOrganizationName(
-  organizationId: string
-): Promise<string | null> {
+export async function getOrganizationName(organizationId: string): Promise<string | null> {
   const result = await getOrganizationById(organizationId);
   return result.name;
 }

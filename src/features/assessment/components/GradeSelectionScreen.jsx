@@ -1,7 +1,7 @@
 /**
  * Grade Selection Screen Component
  * Displays grade level options for the assessment
- * 
+ *
  * @module features/assessment/components/GradeSelectionScreen
  */
 
@@ -87,17 +87,20 @@ const extractNumericGrade = (grade) => {
 /**
  * Check if a grade option should be visible
  */
-const shouldShowOption = (optionId, {
-  shouldShowAllOptions,
-  shouldFilterByGrade,
-  detectedGradeLevel,
-  studentGrade,
-  monthsInGrade,
-  isCollegeStudent,
-}) => {
+const shouldShowOption = (
+  optionId,
+  {
+    shouldShowAllOptions,
+    shouldFilterByGrade,
+    detectedGradeLevel,
+    studentGrade,
+    monthsInGrade,
+    isCollegeStudent,
+  }
+) => {
   // Always show all options on skillpassport.pages.dev
   if (shouldShowAllOptions) return true;
-  
+
   // Don't filter if not required
   if (!shouldFilterByGrade) return true;
 
@@ -126,11 +129,19 @@ const shouldShowOption = (optionId, {
 
     case 'after10':
       // Show for grade 10 students with 6+ months
-      return detectedGradeLevel === 'highschool' && isGrade10 && (monthsInGrade === null || hasBeenInGrade6Months);
+      return (
+        detectedGradeLevel === 'highschool' &&
+        isGrade10 &&
+        (monthsInGrade === null || hasBeenInGrade6Months)
+      );
 
     case 'after12':
       // Show for grade 12 students with 6+ months
-      return detectedGradeLevel === 'higher_secondary' && isGrade12 && (monthsInGrade === null || hasBeenInGrade6Months);
+      return (
+        detectedGradeLevel === 'higher_secondary' &&
+        isGrade12 &&
+        (monthsInGrade === null || hasBeenInGrade6Months)
+      );
 
     case 'college':
       // Show for college students or after12 detected
@@ -154,19 +165,31 @@ const getAdditionalInfo = (optionId, { studentGrade, monthsInGrade }) => {
 
   if (optionId === 'higher_secondary') {
     if (isGrade12 && lessThan6Months) {
-      return { text: `${monthsInGrade} month${monthsInGrade !== 1 ? 's' : ''} in 12th grade`, color: 'text-indigo-600' };
+      return {
+        text: `${monthsInGrade} month${monthsInGrade !== 1 ? 's' : ''} in 12th grade`,
+        color: 'text-indigo-600',
+      };
     }
     if (isGrade10 && lessThan6Months) {
-      return { text: `${monthsInGrade} month${monthsInGrade !== 1 ? 's' : ''} in 10th grade`, color: 'text-indigo-600' };
+      return {
+        text: `${monthsInGrade} month${monthsInGrade !== 1 ? 's' : ''} in 10th grade`,
+        color: 'text-indigo-600',
+      };
     }
   }
 
   if (optionId === 'after10' && isGrade10 && hasBeenInGrade6Months) {
-    return { text: `${monthsInGrade} month${monthsInGrade !== 1 ? 's' : ''} in 10th grade - Ready for stream selection!`, color: 'text-green-600' };
+    return {
+      text: `${monthsInGrade} month${monthsInGrade !== 1 ? 's' : ''} in 10th grade - Ready for stream selection!`,
+      color: 'text-green-600',
+    };
   }
 
   if (optionId === 'after12' && isGrade12 && hasBeenInGrade6Months) {
-    return { text: `${monthsInGrade} month${monthsInGrade !== 1 ? 's' : ''} in 12th grade - Ready for career planning!`, color: 'text-green-600' };
+    return {
+      text: `${monthsInGrade} month${monthsInGrade !== 1 ? 's' : ''} in 12th grade - Ready for career planning!`,
+      color: 'text-green-600',
+    };
   }
 
   return null;
@@ -177,13 +200,10 @@ const getAdditionalInfo = (optionId, { studentGrade, monthsInGrade }) => {
  */
 const GradeOptionButton = ({ option, onClick, additionalInfo, studentProgram }) => {
   // For college option, show student's program name if available
-  const displayTitle = option.id === 'college' && studentProgram 
-    ? studentProgram 
-    : option.title;
-  
-  const displaySubtitle = option.id === 'college' && studentProgram
-    ? 'College/University Student'
-    : option.subtitle;
+  const displayTitle = option.id === 'college' && studentProgram ? studentProgram : option.title;
+
+  const displaySubtitle =
+    option.id === 'college' && studentProgram ? 'College/University Student' : option.subtitle;
 
   return (
     <button
@@ -260,9 +280,11 @@ const IncompleteProfileScreen = ({ onNavigateToSettings, onNavigateToDashboard, 
   // Show current values
   if (profileData) {
     if (profileData.grade) currentValues.push(`Grade: ${profileData.grade}`);
-    if (profileData.school_classes?.grade) currentValues.push(`Class Grade: ${profileData.school_classes.grade}`);
+    if (profileData.school_classes?.grade)
+      currentValues.push(`Class Grade: ${profileData.school_classes.grade}`);
     if (profileData.school_id) currentValues.push(`School ID: ${profileData.school_id}`);
-    if (profileData.university_college_id) currentValues.push(`College ID: ${profileData.university_college_id}`);
+    if (profileData.university_college_id)
+      currentValues.push(`College ID: ${profileData.university_college_id}`);
     if (profileData.program?.name) currentValues.push(`Program: ${profileData.program.name}`);
     if (profileData.course_name) currentValues.push(`Course: ${profileData.course_name}`);
   }
@@ -276,7 +298,9 @@ const IncompleteProfileScreen = ({ onNavigateToSettings, onNavigateToDashboard, 
               <AlertCircle className="w-8 h-8 text-white" />
             </div>
             <h1 className="text-3xl font-bold text-gray-800 mb-2">Complete Your Profile</h1>
-            <p className="text-gray-600">Please update your personal information to take the assessment</p>
+            <p className="text-gray-600">
+              Please update your personal information to take the assessment
+            </p>
           </div>
 
           <div className="bg-amber-50 rounded-xl p-6 mb-6 border border-amber-200">
@@ -287,7 +311,7 @@ const IncompleteProfileScreen = ({ onNavigateToSettings, onNavigateToDashboard, 
                 <p className="text-sm text-amber-700 mb-3">
                   We couldn't determine your grade level or class. Please update the following:
                 </p>
-                
+
                 {missingFields.length > 0 && (
                   <div className="mb-4">
                     <p className="text-xs font-semibold text-amber-800 mb-1">Required Fields:</p>
@@ -301,16 +325,21 @@ const IncompleteProfileScreen = ({ onNavigateToSettings, onNavigateToDashboard, 
 
                 {isUndetermined && (
                   <div className="bg-amber-100 rounded-lg p-3 mb-3">
-                    <p className="text-xs font-semibold text-amber-900 mb-1">Student Type Not Determined</p>
+                    <p className="text-xs font-semibold text-amber-900 mb-1">
+                      Student Type Not Determined
+                    </p>
                     <p className="text-xs text-amber-800">
-                      Please specify if you are a <strong>School Student</strong> (add grade/class) or <strong>College Student</strong> (add college/university).
+                      Please specify if you are a <strong>School Student</strong> (add grade/class)
+                      or <strong>College Student</strong> (add college/university).
                     </p>
                   </div>
                 )}
 
                 {currentValues.length > 0 && (
                   <div className="mt-3 pt-3 border-t border-amber-200">
-                    <p className="text-xs font-semibold text-amber-800 mb-1">Current Profile Data:</p>
+                    <p className="text-xs font-semibold text-amber-800 mb-1">
+                      Current Profile Data:
+                    </p>
                     <div className="text-xs text-amber-700 space-y-0.5">
                       {currentValues.map((value, idx) => (
                         <div key={idx}>• {value}</div>
@@ -326,7 +355,15 @@ const IncompleteProfileScreen = ({ onNavigateToSettings, onNavigateToDashboard, 
             <p className="text-sm font-semibold text-blue-800 mb-2">What to do:</p>
             <ol className="text-sm text-blue-700 space-y-1 list-decimal list-inside">
               <li>Click "Go to Profile Settings" below</li>
-              <li>Update your {isSchoolStudent ? 'Grade/Class' : isCollegeStudent ? 'College/Program' : 'Grade or College'} information</li>
+              <li>
+                Update your{' '}
+                {isSchoolStudent
+                  ? 'Grade/Class'
+                  : isCollegeStudent
+                    ? 'College/Program'
+                    : 'Grade or College'}{' '}
+                information
+              </li>
               <li>Save your changes</li>
               <li>Return to take the assessment</li>
             </ol>
@@ -338,12 +375,8 @@ const IncompleteProfileScreen = ({ onNavigateToSettings, onNavigateToDashboard, 
           >
             Go to Profile Settings
           </Button>
-          
-          <Button
-            variant="outline"
-            onClick={onNavigateToDashboard}
-            className="w-full mt-3 py-4"
-          >
+
+          <Button variant="outline" onClick={onNavigateToDashboard} className="w-full mt-3 py-4">
             Back to Dashboard
           </Button>
         </CardContent>
@@ -410,7 +443,7 @@ export const GradeSelectionScreen = ({
     isCollegeStudent,
   };
 
-  const visibleOptions = GRADE_OPTIONS.filter(option => 
+  const visibleOptions = GRADE_OPTIONS.filter((option) =>
     shouldShowOption(option.id, visibilityContext)
   );
 
@@ -429,7 +462,7 @@ export const GradeSelectionScreen = ({
           <div className="space-y-4">
             <Label className="text-sm font-semibold text-gray-700">Choose Your Grade Level</Label>
 
-            {visibleOptions.map(option => (
+            {visibleOptions.map((option) => (
               <GradeOptionButton
                 key={option.id}
                 option={option}
@@ -445,7 +478,10 @@ export const GradeSelectionScreen = ({
               <AlertCircle className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
               <div className="text-sm text-blue-700">
                 <p className="font-semibold mb-1">Personalized Career Guidance</p>
-                <p>This assessment is designed to help you discover your interests, strengths, and potential career paths based on your age and educational level.</p>
+                <p>
+                  This assessment is designed to help you discover your interests, strengths, and
+                  potential career paths based on your age and educational level.
+                </p>
               </div>
             </div>
           </div>

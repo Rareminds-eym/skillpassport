@@ -145,7 +145,9 @@ const StatutoryDeductions: React.FC = () => {
                     <div className="text-sm font-medium text-gray-900">{rule.name}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTypeColor(rule.type)}`}>
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTypeColor(rule.type)}`}
+                    >
                       {rule.type}
                     </span>
                   </td>
@@ -156,19 +158,20 @@ const StatutoryDeductions: React.FC = () => {
                     {rule.employerRate ? `${rule.employerRate}%` : '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {rule.minSalary && rule.maxSalary 
+                    {rule.minSalary && rule.maxSalary
                       ? `₹${rule.minSalary.toLocaleString()} - ₹${rule.maxSalary.toLocaleString()}`
-                      : rule.minSalary 
-                      ? `Above ₹${rule.minSalary.toLocaleString()}`
-                      : rule.maxSalary
-                      ? `Below ₹${rule.maxSalary.toLocaleString()}`
-                      : 'All'
-                    }
+                      : rule.minSalary
+                        ? `Above ₹${rule.minSalary.toLocaleString()}`
+                        : rule.maxSalary
+                          ? `Below ₹${rule.maxSalary.toLocaleString()}`
+                          : 'All'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      rule.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        rule.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}
+                    >
                       {rule.isActive ? 'Active' : 'Inactive'}
                     </span>
                   </td>
@@ -195,23 +198,19 @@ const StatutoryDeductions: React.FC = () => {
     <div className="space-y-6">
       <div className="bg-white shadow-sm rounded-lg border border-gray-200 p-6">
         <h3 className="text-lg font-medium text-gray-900 mb-6">Deduction Calculator</h3>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Basic Salary
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Basic Salary</label>
             <input
               type="number"
               placeholder="Enter basic salary"
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
-          
+
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Gross Salary
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Gross Salary</label>
             <input
               type="number"
               placeholder="Enter gross salary"
@@ -323,7 +322,9 @@ const StatutoryDeductions: React.FC = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Total Deductions</p>
-              <p className="text-2xl font-semibold text-gray-900">₹{(deductionStats.totalDeductions / 100000).toFixed(1)}L</p>
+              <p className="text-2xl font-semibold text-gray-900">
+                ₹{(deductionStats.totalDeductions / 100000).toFixed(1)}L
+              </p>
             </div>
           </div>
         </div>
@@ -335,7 +336,9 @@ const StatutoryDeductions: React.FC = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">PF Contribution</p>
-              <p className="text-2xl font-semibold text-gray-900">₹{(deductionStats.pfContribution / 100000).toFixed(1)}L</p>
+              <p className="text-2xl font-semibold text-gray-900">
+                ₹{(deductionStats.pfContribution / 100000).toFixed(1)}L
+              </p>
             </div>
           </div>
         </div>
@@ -347,7 +350,9 @@ const StatutoryDeductions: React.FC = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">ESI Contribution</p>
-              <p className="text-2xl font-semibold text-gray-900">₹{(deductionStats.esiContribution / 100000).toFixed(1)}L</p>
+              <p className="text-2xl font-semibold text-gray-900">
+                ₹{(deductionStats.esiContribution / 100000).toFixed(1)}L
+              </p>
             </div>
           </div>
         </div>
@@ -359,7 +364,9 @@ const StatutoryDeductions: React.FC = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">TDS Deduction</p>
-              <p className="text-2xl font-semibold text-gray-900">₹{(deductionStats.tdsDeduction / 100000).toFixed(1)}L</p>
+              <p className="text-2xl font-semibold text-gray-900">
+                ₹{(deductionStats.tdsDeduction / 100000).toFixed(1)}L
+              </p>
             </div>
           </div>
         </div>
@@ -371,7 +378,9 @@ const StatutoryDeductions: React.FC = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Professional Tax</p>
-              <p className="text-2xl font-semibold text-gray-900">₹{(deductionStats.professionalTax / 100000).toFixed(1)}L</p>
+              <p className="text-2xl font-semibold text-gray-900">
+                ₹{(deductionStats.professionalTax / 100000).toFixed(1)}L
+              </p>
             </div>
           </div>
         </div>

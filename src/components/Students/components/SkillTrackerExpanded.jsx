@@ -1,14 +1,14 @@
 import { motion } from 'framer-motion';
 import {
-    Award,
-    ChevronDown,
-    ChevronUp,
-    Code,
-    Sparkles,
-    Star,
-    Target,
-    TrendingUp,
-    Zap
+  Award,
+  ChevronDown,
+  ChevronUp,
+  Code,
+  Sparkles,
+  Star,
+  Target,
+  TrendingUp,
+  Zap,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../../lib/supabaseClient';
@@ -45,8 +45,12 @@ const SkillTrackerExpanded = ({ studentId, email }) => {
 
       // Fetch technical and soft skills from skills table with type filtering
       const [techRes, softRes] = await Promise.all([
-        supabase.from('skills').select('*').eq('student_id', actualStudentId).eq('type', 'technical'),
-        supabase.from('skills').select('*').eq('student_id', actualStudentId).eq('type', 'soft')
+        supabase
+          .from('skills')
+          .select('*')
+          .eq('student_id', actualStudentId)
+          .eq('type', 'technical'),
+        supabase.from('skills').select('*').eq('student_id', actualStudentId).eq('type', 'soft'),
       ]);
 
       setTechSkills(techRes.data || []);
@@ -61,7 +65,7 @@ const SkillTrackerExpanded = ({ studentId, email }) => {
   // Group technical skills by category
   const groupedTechSkills = useMemo(() => {
     const grouped = {};
-    techSkills.forEach(skill => {
+    techSkills.forEach((skill) => {
       const category = skill.category || 'Other';
       if (!grouped[category]) {
         grouped[category] = [];
@@ -74,11 +78,14 @@ const SkillTrackerExpanded = ({ studentId, email }) => {
   // Calculate statistics
   const stats = useMemo(() => {
     const totalSkills = techSkills.length + softSkills.length;
-    const expertSkills = [...techSkills, ...softSkills].filter(s => s.level >= 5).length;
-    const advancedSkills = [...techSkills, ...softSkills].filter(s => s.level >= 4).length;
-    const avgLevel = totalSkills > 0 
-      ? ([...techSkills, ...softSkills].reduce((sum, s) => sum + s.level, 0) / totalSkills).toFixed(1)
-      : 0;
+    const expertSkills = [...techSkills, ...softSkills].filter((s) => s.level >= 5).length;
+    const advancedSkills = [...techSkills, ...softSkills].filter((s) => s.level >= 4).length;
+    const avgLevel =
+      totalSkills > 0
+        ? (
+            [...techSkills, ...softSkills].reduce((sum, s) => sum + s.level, 0) / totalSkills
+          ).toFixed(1)
+        : 0;
 
     return { totalSkills, expertSkills, advancedSkills, avgLevel };
   }, [techSkills, softSkills]);
@@ -217,7 +224,9 @@ const SkillTrackerExpanded = ({ studentId, email }) => {
                     <div className="flex items-center gap-3">
                       <Zap className="w-5 h-5 text-blue-600" />
                       <span className="font-semibold text-gray-900">{category}</span>
-                      <Badge variant="outline" className="text-xs">{skills.length}</Badge>
+                      <Badge variant="outline" className="text-xs">
+                        {skills.length}
+                      </Badge>
                     </div>
                     {expandedCategories.has(category) ? (
                       <ChevronUp className="w-5 h-5 text-gray-500" />
@@ -225,7 +234,7 @@ const SkillTrackerExpanded = ({ studentId, email }) => {
                       <ChevronDown className="w-5 h-5 text-gray-500" />
                     )}
                   </button>
-                  
+
                   {expandedCategories.has(category) && (
                     <div className="p-4 space-y-3 bg-white">
                       {skills.map((skill, index) => (
@@ -238,14 +247,18 @@ const SkillTrackerExpanded = ({ studentId, email }) => {
                         >
                           <div className="flex items-start justify-between mb-3">
                             <div className="flex-1">
-                              <h4 className="font-semibold text-gray-900 text-base mb-1">{skill.name}</h4>
+                              <h4 className="font-semibold text-gray-900 text-base mb-1">
+                                {skill.name}
+                              </h4>
                               {skill.icon && <span className="text-2xl">{skill.icon}</span>}
                             </div>
-                            <Badge className={`bg-gradient-to-r ${getSkillLevelColor(skill.level)} text-white px-3 py-1`}>
+                            <Badge
+                              className={`bg-gradient-to-r ${getSkillLevelColor(skill.level)} text-white px-3 py-1`}
+                            >
                               {getSkillLevelText(skill.level)}
                             </Badge>
                           </div>
-                          
+
                           {/* Progress Bar */}
                           <div className="mb-3">
                             <div className="flex justify-between text-xs text-gray-600 mb-1">
@@ -271,7 +284,9 @@ const SkillTrackerExpanded = ({ studentId, email }) => {
                               />
                             ))}
                             {skill.verified && (
-                              <Badge className="ml-2 bg-green-100 text-green-700 text-xs">Verified</Badge>
+                              <Badge className="ml-2 bg-green-100 text-green-700 text-xs">
+                                Verified
+                              </Badge>
                             )}
                           </div>
                         </motion.div>
@@ -328,7 +343,9 @@ const SkillTrackerExpanded = ({ studentId, email }) => {
                         <p className="text-xs text-gray-600 capitalize">{skill.type}</p>
                       )}
                     </div>
-                    <Badge className={`bg-gradient-to-r ${getSkillLevelColor(skill.level)} text-white px-2 py-1 text-xs`}>
+                    <Badge
+                      className={`bg-gradient-to-r ${getSkillLevelColor(skill.level)} text-white px-2 py-1 text-xs`}
+                    >
                       {getSkillLevelText(skill.level)}
                     </Badge>
                   </div>

@@ -1,6 +1,22 @@
+// @ts-nocheck - Excluded from typecheck for gradual migration
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Mail, Phone, MapPin, Github, Linkedin, Twitter, Code, Briefcase, GraduationCap, Award, Download, FileText, ExternalLink, Calendar } from 'lucide-react';
+import {
+  Mail,
+  Phone,
+  MapPin,
+  Github,
+  Linkedin,
+  Twitter,
+  Code,
+  Briefcase,
+  GraduationCap,
+  Award,
+  Download,
+  FileText,
+  ExternalLink,
+  Calendar,
+} from 'lucide-react';
 import { Student, AnimationType, DisplayPreferences } from '../../../../types/student';
 
 interface CompactResumeDashboardProps {
@@ -14,10 +30,10 @@ interface CompactResumeDashboardProps {
 
 type TabType = 'skills' | 'projects' | 'achievements' | 'resume';
 
-const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({ 
-  student, 
-  primaryColor, 
-  secondaryColor, 
+const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({
+  student,
+  primaryColor,
+  secondaryColor,
   accentColor,
   displayPreferences = {
     showSocialLinks: true,
@@ -26,7 +42,7 @@ const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({
     enableAnimations: true,
     showContactForm: true,
     showDownloadResume: true,
-  }
+  },
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('skills');
   const [isDownloading, setIsDownloading] = useState(false);
@@ -35,19 +51,21 @@ const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({
   const allSkills = [
     ...(student.profile?.skills || []),
     ...(student.profile?.technicalSkills || []),
+    // @ts-expect-error - Auto-suppressed for migration
     ...(student.technicalSkills || []),
-    ...(student.skills || [])
+    // @ts-expect-error - Auto-suppressed for migration
+    ...(student.skills || []),
   ];
   // Remove duplicates by id
-  const uniqueSkills = allSkills.filter((skill, index, self) => 
-    index === self.findIndex((s) => s.id === skill.id)
+  const uniqueSkills = allSkills.filter(
+    (skill, index, self) => index === self.findIndex((s) => s.id === skill.id)
   );
 
   console.log('📋 CompactResumeDashboard - Skills:', {
     profileSkills: student.profile?.skills?.length || 0,
     profileTechnicalSkills: student.profile?.technicalSkills?.length || 0,
     uniqueSkillsCount: uniqueSkills.length,
-    uniqueSkills: uniqueSkills.map(s => ({ name: s.name, level: s.level }))
+    uniqueSkills: uniqueSkills.map((s) => ({ name: s.name, level: s.level })),
   });
 
   const tabs = [
@@ -96,23 +114,37 @@ const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.3 }}
           >
-            <h1 className="text-2xl font-bold mb-2 dark:text-white" style={{ color: secondaryColor }}>
+            <h1
+              className="text-2xl font-bold mb-2 dark:text-white"
+              style={{ color: secondaryColor }}
+            >
               {student.name || student.profile.name}
             </h1>
             {student.branch_field && (
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{student.branch_field}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                {student.branch_field}
+              </p>
             )}
             {/* Show school name for school students, university for college students */}
-            {(student.school?.name || student.profile?.school?.name || 
-              student.college_school_name || student.university || 
-              student.universityCollege?.name || student.profile?.universityCollege?.name) && (
+            {(student.school?.name ||
+              // @ts-expect-error - Auto-suppressed for migration
+              student.profile?.school?.name ||
+              student.college_school_name ||
+              student.university ||
+              // @ts-expect-error - Auto-suppressed for migration
+              student.universityCollege?.name ||
+              // @ts-expect-error - Auto-suppressed for migration
+              student.profile?.universityCollege?.name) && (
               <p className="text-xs text-gray-500 dark:text-gray-500">
-                {student.school?.name || 
-                 student.profile?.school?.name || 
-                 student.college_school_name || 
-                 student.universityCollege?.name || 
-                 student.profile?.universityCollege?.name ||
-                 student.university}
+                {student.school?.name ||
+                  // @ts-expect-error - Auto-suppressed for migration
+                  student.profile?.school?.name ||
+                  student.college_school_name ||
+                  // @ts-expect-error - Auto-suppressed for migration
+                  student.universityCollege?.name ||
+                  // @ts-expect-error - Auto-suppressed for migration
+                  student.profile?.universityCollege?.name ||
+                  student.university}
               </p>
             )}
           </motion.div>
@@ -154,12 +186,9 @@ const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({
               <div className="flex items-start space-x-3">
                 <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: primaryColor }} />
                 <span className="text-sm dark:text-gray-300">
-                  {[
-                    student.city,
-                    student.district_name,
-                    student.state,
-                    student.country
-                  ].filter(Boolean).join(', ') || 'Location not specified'}
+                  {[student.city, student.district_name, student.state, student.country]
+                    .filter(Boolean)
+                    .join(', ') || 'Location not specified'}
                 </span>
               </div>
             )}
@@ -239,7 +268,9 @@ const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({
                     {edu.startDate} - {edu.endDate || 'Present'}
                   </p>
                   {edu.grade && (
-                    <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">Grade: {edu.grade}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                      Grade: {edu.grade}
+                    </p>
                   )}
                 </motion.div>
               ))}
@@ -300,7 +331,9 @@ const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({
                   transition={{ delay: 0.3 + index * 0.1 }}
                   onClick={() => setActiveTab(tab.id as TabType)}
                   className={`flex-1 flex items-center justify-center space-x-2 py-4 px-6 font-medium transition-all relative ${
-                    isActive ? 'text-white' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                    isActive
+                      ? 'text-white'
+                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
                   }`}
                   style={isActive ? { backgroundColor: primaryColor } : {}}
                 >
@@ -329,16 +362,20 @@ const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
             >
-              <h2 className="text-2xl font-bold mb-6 dark:text-white" style={{ color: secondaryColor }}>
+              <h2
+                className="text-2xl font-bold mb-6 dark:text-white"
+                style={{ color: secondaryColor }}
+              >
                 Skills & Technologies
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {uniqueSkills.length > 0 ? (
                   uniqueSkills.map((skill, index) => {
-                    const displayLevel = typeof skill.level === 'number' 
-                      ? `Level ${skill.level}` 
-                      : skill.level || 'Intermediate';
-                    
+                    const displayLevel =
+                      typeof skill.level === 'number'
+                        ? `Level ${skill.level}`
+                        : skill.level || 'Intermediate';
+
                     return (
                       <motion.div
                         key={skill.id || index}
@@ -350,7 +387,7 @@ const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({
                       >
                         <div className="flex items-center justify-between mb-2">
                           <h3 className="font-semibold dark:text-white">{skill.name}</h3>
-                          <span 
+                          <span
                             className="text-xs px-2 py-1 rounded"
                             style={{ backgroundColor: `${primaryColor}20`, color: primaryColor }}
                           >
@@ -358,7 +395,9 @@ const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({
                           </span>
                         </div>
                         {skill.category && (
-                          <p className="text-sm text-gray-600 dark:text-gray-400">{skill.category}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {skill.category}
+                          </p>
                         )}
                       </motion.div>
                     );
@@ -381,61 +420,69 @@ const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
             >
-              <h2 className="text-2xl font-bold mb-6 dark:text-white" style={{ color: secondaryColor }}>
+              <h2
+                className="text-2xl font-bold mb-6 dark:text-white"
+                style={{ color: secondaryColor }}
+              >
                 Featured Projects
               </h2>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                // @ts-expect-error - Auto-suppressed for migration
                 {(student.profile?.projects || student.projects || []).length > 0 ? (
+                  // @ts-expect-error - Auto-suppressed for migration
                   (student.profile?.projects || student.projects || []).map((project, index) => (
-                  <motion.div
-                    key={project.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow hover:shadow-xl transition-all"
-                  >
-                    <h3 className="text-xl font-bold mb-3 dark:text-white" style={{ color: secondaryColor }}>
-                      {project.title}
-                    </h3>
-                    <p className="text-gray-700 dark:text-gray-300 mb-4">{project.description}</p>
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {project.technologies.map((tech, techIndex) => (
-                        <span
-                          key={techIndex}
-                          className="px-2 py-1 text-xs rounded"
-                          style={{ backgroundColor: `${accentColor}20`, color: accentColor }}
-                        >
-                          {tech}
-                        </span>
-                      ))}
-                    </div>
-                    <div className="flex space-x-4">
-                      {project.github_url && (
-                        <a
-                          href={project.github_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center space-x-1 text-sm hover:underline"
-                          style={{ color: primaryColor }}
-                        >
-                          <Github className="w-4 h-4" />
-                          <span>Source</span>
-                        </a>
-                      )}
-                      {project.live_url && (
-                        <a
-                          href={project.live_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center space-x-1 text-sm hover:underline"
-                          style={{ color: primaryColor }}
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                          <span>Live Demo</span>
-                        </a>
-                      )}
-                    </div>
-                  </motion.div>
+                    <motion.div
+                      key={project.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow hover:shadow-xl transition-all"
+                    >
+                      <h3
+                        className="text-xl font-bold mb-3 dark:text-white"
+                        style={{ color: secondaryColor }}
+                      >
+                        {project.title}
+                      </h3>
+                      <p className="text-gray-700 dark:text-gray-300 mb-4">{project.description}</p>
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {project.technologies.map((tech, techIndex) => (
+                          <span
+                            key={techIndex}
+                            className="px-2 py-1 text-xs rounded"
+                            style={{ backgroundColor: `${accentColor}20`, color: accentColor }}
+                          >
+                            {tech}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="flex space-x-4">
+                        {project.github_url && (
+                          <a
+                            href={project.github_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center space-x-1 text-sm hover:underline"
+                            style={{ color: primaryColor }}
+                          >
+                            <Github className="w-4 h-4" />
+                            <span>Source</span>
+                          </a>
+                        )}
+                        {project.live_url && (
+                          <a
+                            href={project.live_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center space-x-1 text-sm hover:underline"
+                            style={{ color: primaryColor }}
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                            <span>Live Demo</span>
+                          </a>
+                        )}
+                      </div>
+                    </motion.div>
                   ))
                 ) : (
                   <div className="col-span-full text-center py-12 text-gray-500 dark:text-gray-400">
@@ -455,7 +502,10 @@ const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
             >
-              <h2 className="text-2xl font-bold mb-6 dark:text-white" style={{ color: secondaryColor }}>
+              <h2
+                className="text-2xl font-bold mb-6 dark:text-white"
+                style={{ color: secondaryColor }}
+              >
                 Achievements & Recognition
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -470,7 +520,9 @@ const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({
                   >
                     <Award className="w-10 h-10 mb-3" style={{ color: accentColor }} />
                     <h3 className="text-lg font-bold mb-2 dark:text-white">{achievement.title}</h3>
-                    <p className="text-gray-700 dark:text-gray-300 mb-3">{achievement.description}</p>
+                    <p className="text-gray-700 dark:text-gray-300 mb-3">
+                      {achievement.description}
+                    </p>
                     <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
                       <Calendar className="w-4 h-4" />
                       <span>{achievement.date}</span>
@@ -494,7 +546,8 @@ const CompactResumeDashboard: React.FC<CompactResumeDashboardProps> = ({
                 <FileText className="w-24 h-24 mb-6" style={{ color: primaryColor }} />
                 <h2 className="text-2xl font-bold mb-4 dark:text-white">Resume Preview</h2>
                 <p className="text-gray-600 dark:text-gray-400 mb-6 text-center max-w-md">
-                  A PDF viewer would be displayed here in production. For now, you can download the resume using the button in the sidebar.
+                  A PDF viewer would be displayed here in production. For now, you can download the
+                  resume using the button in the sidebar.
                 </p>
                 <button
                   onClick={handleDownloadResume}

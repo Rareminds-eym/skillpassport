@@ -1,5 +1,3 @@
-
-
 function FeatureCard({ title, Icon }) {
   return (
     <div className="flex items-center gap-3 bg-white rounded-xl shadow-md px-4 py-3 w-[16rem]">

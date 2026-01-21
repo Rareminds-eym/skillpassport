@@ -1,6 +1,6 @@
 /**
  * Portfolio Service - Fetches student data from relational tables
- * 
+ *
  * Uses proper database schema:
  * - students (main table with individual columns)
  * - skills (technical and soft skills)
@@ -26,7 +26,8 @@ export const getStudentPortfolioByEmail = async (email) => {
     // First, get the student record to get their user_id
     const { data: student, error: studentError } = await supabase
       .from('students')
-      .select(`
+      .select(
+        `
         *,
         school:organizations!students_school_id_fkey (
           id,
@@ -57,7 +58,8 @@ export const getStudentPortfolioByEmail = async (email) => {
             organization_type
           )
         )
-      `)
+      `
+      )
       .eq('email', email)
       .maybeSingle();
 
@@ -80,7 +82,7 @@ export const getStudentPortfolioByEmail = async (email) => {
       projectsResult,
       certificatesResult,
       educationResult,
-      experienceResult
+      experienceResult,
     ] = await Promise.all([
       // Skills (both technical and soft)
       supabase
@@ -91,7 +93,6 @@ export const getStudentPortfolioByEmail = async (email) => {
         .eq('enabled', true)
         .order('created_at', { ascending: false }),
 
-      
       // Trainings
       supabase
         .from('trainings')
@@ -99,7 +100,7 @@ export const getStudentPortfolioByEmail = async (email) => {
         .eq('student_id', userId)
         .in('approval_status', ['verified', 'approved'])
         .order('start_date', { ascending: false }),
-      
+
       // Projects
       supabase
         .from('projects')
@@ -108,7 +109,7 @@ export const getStudentPortfolioByEmail = async (email) => {
         .eq('enabled', true)
         .in('approval_status', ['verified', 'approved'])
         .order('start_date', { ascending: false }),
-      
+
       // Certificates
       supabase
         .from('certificates')
@@ -116,7 +117,7 @@ export const getStudentPortfolioByEmail = async (email) => {
         .eq('student_id', userId)
         .in('approval_status', ['verified', 'approved'])
         .order('issued_on', { ascending: false }),
-      
+
       // Education
       supabase
         .from('education')
@@ -124,14 +125,14 @@ export const getStudentPortfolioByEmail = async (email) => {
         .eq('student_id', userId)
         .in('approval_status', ['verified', 'approved'])
         .order('year_of_passing', { ascending: false }),
-      
+
       // Experience
       supabase
         .from('experience')
         .select('*')
         .eq('student_id', userId)
         .in('approval_status', ['verified', 'approved'])
-        .order('start_date', { ascending: false })
+        .order('start_date', { ascending: false }),
     ]);
 
     // Check for errors in any of the queries
@@ -154,7 +155,6 @@ export const getStudentPortfolioByEmail = async (email) => {
     );
 
     return { success: true, data: portfolioData };
-
   } catch (error) {
     console.error('❌ Exception in getStudentPortfolioByEmail:', error);
     return { success: false, error: error.message };
@@ -175,29 +175,29 @@ function transformToPortfolioFormat(
 ) {
   // Separate technical and soft skills
   const technicalSkills = skills
-    .filter(skill => skill.type === 'technical')
-    .map(skill => ({
+    .filter((skill) => skill.type === 'technical')
+    .map((skill) => ({
       id: skill.id,
       name: skill.name,
       level: skill.level || 3,
       category: skill.description || 'General',
       verified: skill.verified,
-      approvalStatus: skill.approval_status
+      approvalStatus: skill.approval_status,
     }));
 
   const softSkills = skills
-    .filter(skill => skill.type === 'soft')
-    .map(skill => ({
+    .filter((skill) => skill.type === 'soft')
+    .map((skill) => ({
       id: skill.id,
       name: skill.name,
       level: mapLevelToString(skill.level),
       category: skill.description || 'General',
       verified: skill.verified,
-      approvalStatus: skill.approval_status
+      approvalStatus: skill.approval_status,
     }));
 
   // Transform trainings
-  const formattedTrainings = trainings.map(training => ({
+  const formattedTrainings = trainings.map((training) => ({
     id: training.id,
     name: training.title,
     provider: training.organization || 'N/A',
@@ -207,11 +207,11 @@ function transformToPortfolioFormat(
     duration: training.duration,
     description: training.description,
     skills: [], // Can be enhanced if you have a training_skills junction table
-    approvalStatus: training.approval_status
+    approvalStatus: training.approval_status,
   }));
 
   // Transform projects
-  const formattedProjects = projects.map(project => ({
+  const formattedProjects = projects.map((project) => ({
     id: project.id,
     title: project.title,
     description: project.description || '',
@@ -227,11 +227,11 @@ function transformToPortfolioFormat(
     videoUrl: project.video_url,
     pptUrl: project.ppt_url,
     approvalStatus: project.approval_status,
-    enabled: project.enabled
+    enabled: project.enabled,
   }));
 
   // Transform certificates
-  const formattedCertificates = certificates.map(cert => ({
+  const formattedCertificates = certificates.map((cert) => ({
     id: cert.id,
     name: cert.title,
     issuer: cert.issuer || 'N/A',
@@ -243,11 +243,11 @@ function transformToPortfolioFormat(
     description: cert.description,
     verified: cert.approval_status === 'approved',
     approvalStatus: cert.approval_status,
-    enabled: cert.enabled !== false
+    enabled: cert.enabled !== false,
   }));
 
   // Transform education
-  const formattedEducation = education.map(edu => ({
+  const formattedEducation = education.map((edu) => ({
     id: edu.id,
     institution: edu.university || 'N/A',
     degree: edu.degree || 'N/A',
@@ -258,11 +258,11 @@ function transformToPortfolioFormat(
     description: '',
     level: edu.level,
     status: edu.status,
-    approvalStatus: edu.approval_status
+    approvalStatus: edu.approval_status,
   }));
 
   // Transform experience
-  const formattedExperience = experience.map(exp => ({
+  const formattedExperience = experience.map((exp) => ({
     id: exp.id,
     company: exp.organization || 'N/A',
     position: exp.role || 'N/A',
@@ -272,14 +272,16 @@ function transformToPortfolioFormat(
     description: '',
     technologies: [],
     verified: exp.verified,
-    approvalStatus: exp.approval_status
+    approvalStatus: exp.approval_status,
   }));
 
   // Build the profile object
   const profile = {
     email: student.email,
     name: student.name,
-    passportId: student.registration_number ? `SP-${student.registration_number}` : `SP-${student.student_id || '0000'}`,
+    passportId: student.registration_number
+      ? `SP-${student.registration_number}`
+      : `SP-${student.student_id || '0000'}`,
     profileImage: student.profilePicture || generateAvatar(student.name),
     bio: student.bio || '',
     skills: softSkills, // For backward compatibility
@@ -293,14 +295,14 @@ function transformToPortfolioFormat(
     hobbies: student.hobbies || [],
     interests: student.interests || [],
     achievements: [],
-    
+
     // Additional profile info
     phone: student.contactNumber || student.contact_number,
     age: student.age || calculateAge(student.dateOfBirth || student.date_of_birth),
     dateOfBirth: student.dateOfBirth || student.date_of_birth,
     gender: student.gender,
     bloodGroup: student.bloodGroup,
-    
+
     // Address
     address: student.address,
     city: student.city,
@@ -308,7 +310,7 @@ function transformToPortfolioFormat(
     district: student.district_name,
     country: student.country,
     pincode: student.pincode,
-    
+
     // Academic
     university: student.university || student.university_main,
     college: student.college_school_name,
@@ -317,13 +319,13 @@ function transformToPortfolioFormat(
     enrollmentNumber: student.enrollmentNumber,
     currentCgpa: student.currentCgpa,
     expectedGraduationDate: student.expectedGraduationDate,
-    
+
     // Guardian
     guardianName: student.guardianName,
     guardianPhone: student.guardianPhone,
     guardianEmail: student.guardianEmail,
     guardianRelation: student.guardianRelation,
-    
+
     // Social links
     github_link: student.github_link,
     linkedin_link: student.linkedin_link,
@@ -332,14 +334,14 @@ function transformToPortfolioFormat(
     instagram_link: student.instagram_link,
     portfolio_link: student.portfolio_link,
     other_social_links: student.other_social_links || [],
-    
+
     // Resume
     resumeUrl: student.resumeUrl,
-    
+
     // School/College info
     school: student.schools,
     universityCollege: student.university_colleges,
-    universityInfo: student.universities
+    universityInfo: student.universities,
   };
 
   // Return the complete student object
@@ -372,10 +374,10 @@ function transformToPortfolioFormat(
     updated_at: student.updated_at,
     createdAt: student.created_at,
     updatedAt: student.updated_at,
-    
+
     // Nested profile object (for backward compatibility with existing components)
     profile: profile,
-    
+
     // Direct access to collections
     skills: softSkills,
     technicalSkills: technicalSkills,
@@ -389,7 +391,7 @@ function transformToPortfolioFormat(
     languages: student.languages || [],
     hobbies: student.hobbies || [],
     interests: student.interests || [],
-    
+
     // School/College relationships
     school_id: student.school_id,
     university_college_id: student.university_college_id,
@@ -409,7 +411,7 @@ function transformToPortfolioFormat(
 
     // Metadata
     user_id: student.user_id,
-    metadata: student.metadata
+    metadata: student.metadata,
   };
 }
 
@@ -422,7 +424,7 @@ function mapLevelToString(level) {
     2: 'Intermediate',
     3: 'Advanced',
     4: 'Expert',
-    5: 'Expert'
+    5: 'Expert',
   };
   return mapping[level] || 'Intermediate';
 }
@@ -432,16 +434,16 @@ function mapLevelToString(level) {
  */
 function calculateAge(dateOfBirth) {
   if (!dateOfBirth) return null;
-  
+
   const today = new Date();
   const birthDate = new Date(dateOfBirth);
   let age = today.getFullYear() - birthDate.getFullYear();
   const monthDiff = today.getMonth() - birthDate.getMonth();
-  
+
   if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
     age--;
   }
-  
+
   return age;
 }
 
@@ -450,6 +452,9 @@ function calculateAge(dateOfBirth) {
  */
 function generateAvatar(name) {
   if (!name) return `https://ui-avatars.com/api/?name=Student&background=random`;
-  const initials = name.split(' ').map(n => n[0]).join('');
+  const initials = name
+    .split(' ')
+    .map((n) => n[0])
+    .join('');
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random&color=fff`;
 }

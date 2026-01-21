@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState } from 'react';
 import {
   DocumentTextIcon,
   AcademicCapIcon,
@@ -8,8 +8,8 @@ import {
   EyeIcon,
   XMarkIcon,
   MagnifyingGlassIcon,
-} from "@heroicons/react/24/outline";
-import SearchBar from "../../../components/common/SearchBar";
+} from '@heroicons/react/24/outline';
+import SearchBar from '../../../components/common/SearchBar';
 
 interface Student {
   id: number;
@@ -27,9 +27,9 @@ interface Student {
 interface Transcript {
   id: number;
   studentId: number;
-  type: "provisional" | "final";
+  type: 'provisional' | 'final';
   generatedDate: string;
-  status: "pending" | "approved" | "published";
+  status: 'pending' | 'approved' | 'published';
   verificationId: string;
 }
 
@@ -37,10 +37,10 @@ const TranscriptGeneration: React.FC = () => {
   const [students] = useState<Student[]>([
     {
       id: 1,
-      name: "Rahul Sharma",
-      rollNo: "CS2020001",
-      department: "Computer Science",
-      program: "B.Tech",
+      name: 'Rahul Sharma',
+      rollNo: 'CS2020001',
+      department: 'Computer Science',
+      program: 'B.Tech',
       cgpa: 8.5,
       creditsEarned: 160,
       creditsRequired: 160,
@@ -49,10 +49,10 @@ const TranscriptGeneration: React.FC = () => {
     },
     {
       id: 2,
-      name: "Priya Patel",
-      rollNo: "EC2020015",
-      department: "Electronics",
-      program: "B.Tech",
+      name: 'Priya Patel',
+      rollNo: 'EC2020015',
+      department: 'Electronics',
+      program: 'B.Tech',
       cgpa: 7.8,
       creditsEarned: 155,
       creditsRequired: 160,
@@ -62,8 +62,8 @@ const TranscriptGeneration: React.FC = () => {
   ]);
 
   const [transcripts, setTranscripts] = useState<Transcript[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedType, setSelectedType] = useState<"provisional" | "final">("provisional");
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedType, setSelectedType] = useState<'provisional' | 'final'>('provisional');
   const [selectedStudents, setSelectedStudents] = useState<number[]>([]);
   const [showPreview, setShowPreview] = useState(false);
   const [previewStudent, setPreviewStudent] = useState<Student | null>(null);
@@ -73,8 +73,8 @@ const TranscriptGeneration: React.FC = () => {
       id: Date.now(),
       studentId,
       type: selectedType,
-      generatedDate: new Date().toISOString().split("T")[0],
-      status: "pending",
+      generatedDate: new Date().toISOString().split('T')[0],
+      status: 'pending',
       verificationId: `VER${Date.now()}`,
     };
     setTranscripts([...transcripts, newTranscript]);
@@ -85,8 +85,8 @@ const TranscriptGeneration: React.FC = () => {
       id: Date.now() + studentId,
       studentId,
       type: selectedType,
-      generatedDate: new Date().toISOString().split("T")[0],
-      status: "pending" as const,
+      generatedDate: new Date().toISOString().split('T')[0],
+      status: 'pending' as const,
       verificationId: `VER${Date.now() + studentId}`,
     }));
     setTranscripts([...transcripts, ...newTranscripts]);
@@ -103,9 +103,7 @@ const TranscriptGeneration: React.FC = () => {
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 border border-blue-100">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
-          Transcript Generation
-        </h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Transcript Generation</h1>
         <p className="text-gray-600 text-sm sm:text-base">
           Generate official transcripts for students
         </p>
@@ -140,7 +138,7 @@ const TranscriptGeneration: React.FC = () => {
             <div>
               <p className="text-gray-600 text-sm mb-1">Pending Approval</p>
               <p className="text-2xl font-bold text-gray-900">
-                {transcripts.filter((t) => t.status === "pending").length}
+                {transcripts.filter((t) => t.status === 'pending').length}
               </p>
             </div>
             <ClockIcon className="h-8 w-8 text-yellow-600" />
@@ -152,7 +150,7 @@ const TranscriptGeneration: React.FC = () => {
             <div>
               <p className="text-gray-600 text-sm mb-1">Published</p>
               <p className="text-2xl font-bold text-gray-900">
-                {transcripts.filter((t) => t.status === "published").length}
+                {transcripts.filter((t) => t.status === 'published').length}
               </p>
             </div>
             <AcademicCapIcon className="h-8 w-8 text-purple-600" />
@@ -182,9 +180,7 @@ const TranscriptGeneration: React.FC = () => {
 
         {selectedStudents.length > 0 && (
           <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-blue-900">
-              {selectedStudents.length} student(s) selected
-            </p>
+            <p className="text-sm text-blue-900">{selectedStudents.length} student(s) selected</p>
             <button
               onClick={handleBatchGenerate}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm"
@@ -214,27 +210,15 @@ const TranscriptGeneration: React.FC = () => {
                     className="h-4 w-4 text-blue-600 rounded"
                   />
                 </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
-                  Student
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
-                  Roll No
-                </th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Student</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Roll No</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
                   Department
                 </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
-                  CGPA
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
-                  Credits
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
-                  Status
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
-                  Actions
-                </th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">CGPA</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Credits</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Status</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -248,9 +232,7 @@ const TranscriptGeneration: React.FC = () => {
                         if (e.target.checked) {
                           setSelectedStudents([...selectedStudents, student.id]);
                         } else {
-                          setSelectedStudents(
-                            selectedStudents.filter((id) => id !== student.id)
-                          );
+                          setSelectedStudents(selectedStudents.filter((id) => id !== student.id));
                         }
                       }}
                       className="h-4 w-4 text-blue-600 rounded"
@@ -259,15 +241,9 @@ const TranscriptGeneration: React.FC = () => {
                   <td className="px-4 py-3">
                     <p className="font-medium text-gray-900">{student.name}</p>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
-                    {student.rollNo}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
-                    {student.department}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-900 font-medium">
-                    {student.cgpa}
-                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{student.rollNo}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{student.department}</td>
+                  <td className="px-4 py-3 text-sm text-gray-900 font-medium">{student.cgpa}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">
                     {student.creditsEarned}/{student.creditsRequired}
                   </td>
@@ -316,9 +292,7 @@ const TranscriptGeneration: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-900">
-                Transcript Preview
-              </h2>
+              <h2 className="text-xl font-bold text-gray-900">Transcript Preview</h2>
               <button
                 onClick={() => setShowPreview(false)}
                 className="text-gray-400 hover:text-gray-600"
@@ -329,9 +303,7 @@ const TranscriptGeneration: React.FC = () => {
 
             <div className="border border-gray-300 rounded-lg p-6 bg-gray-50">
               <div className="text-center mb-6">
-                <h3 className="text-2xl font-bold text-gray-900">
-                  College Name
-                </h3>
+                <h3 className="text-2xl font-bold text-gray-900">College Name</h3>
                 <p className="text-gray-600">Official Transcript</p>
               </div>
 
@@ -339,39 +311,28 @@ const TranscriptGeneration: React.FC = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-gray-600">Student Name</p>
-                    <p className="font-medium text-gray-900">
-                      {previewStudent.name}
-                    </p>
+                    <p className="font-medium text-gray-900">{previewStudent.name}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Roll Number</p>
-                    <p className="font-medium text-gray-900">
-                      {previewStudent.rollNo}
-                    </p>
+                    <p className="font-medium text-gray-900">{previewStudent.rollNo}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Department</p>
-                    <p className="font-medium text-gray-900">
-                      {previewStudent.department}
-                    </p>
+                    <p className="font-medium text-gray-900">{previewStudent.department}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Program</p>
-                    <p className="font-medium text-gray-900">
-                      {previewStudent.program}
-                    </p>
+                    <p className="font-medium text-gray-900">{previewStudent.program}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">CGPA</p>
-                    <p className="font-medium text-gray-900">
-                      {previewStudent.cgpa}
-                    </p>
+                    <p className="font-medium text-gray-900">{previewStudent.cgpa}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Credits</p>
                     <p className="font-medium text-gray-900">
-                      {previewStudent.creditsEarned}/
-                      {previewStudent.creditsRequired}
+                      {previewStudent.creditsEarned}/{previewStudent.creditsRequired}
                     </p>
                   </div>
                 </div>

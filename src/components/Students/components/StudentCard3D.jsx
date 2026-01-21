@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { 
-  CheckCircle, 
-  Award, 
-  GraduationCap, 
+import {
+  CheckCircle,
+  Award,
+  GraduationCap,
   Calendar,
   Mail,
   Phone,
@@ -12,7 +12,7 @@ import {
   ArrowLeft,
   User,
   Building,
-  Clock
+  Clock,
 } from 'lucide-react';
 import { useStudentDataByEmail } from '../../../hooks/useStudentDataByEmail';
 import { Badge } from './ui/badge';
@@ -23,12 +23,8 @@ const StudentCard3D = () => {
   const { email } = useParams();
   const navigate = useNavigate();
   const [tiltStyle, setTiltStyle] = useState({});
-  
-  const {
-    studentData,
-    loading,
-    error
-  } = useStudentDataByEmail(email);
+
+  const { studentData, loading, error } = useStudentDataByEmail(email);
 
   // 3D tilt effect on mouse move
   const handleMouseMove = (e) => {
@@ -36,23 +32,23 @@ const StudentCard3D = () => {
     const rect = card.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    
+
     const centerX = rect.width / 2;
     const centerY = rect.height / 2;
-    
+
     const rotateX = ((y - centerY) / centerY) * -10;
     const rotateY = ((x - centerX) / centerX) * 10;
-    
+
     setTiltStyle({
       transform: `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`,
-      transition: 'transform 0.1s ease-out'
+      transition: 'transform 0.1s ease-out',
     });
   };
 
   const handleMouseLeave = () => {
     setTiltStyle({
       transform: 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)',
-      transition: 'transform 0.5s ease-out'
+      transition: 'transform 0.5s ease-out',
     });
   };
 
@@ -75,8 +71,10 @@ const StudentCard3D = () => {
             <User className="w-16 h-16 mx-auto" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Student Not Found</h2>
-          <p className="text-gray-600 mb-6">The student profile you're looking for doesn't exist or has been removed.</p>
-          <Button 
+          <p className="text-gray-600 mb-6">
+            The student profile you're looking for doesn't exist or has been removed.
+          </p>
+          <Button
             onClick={() => navigate('/student/dashboard')}
             className="bg-blue-600 hover:bg-blue-700 text-white"
           >
@@ -108,11 +106,7 @@ const StudentCard3D = () => {
         </Button>
 
         {/* 3D Card Container */}
-        <div 
-          className="relative"
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
-        >
+        <div className="relative" onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
           <div
             style={tiltStyle}
             className="bg-gradient-to-br from-blue-600 via-indigo-600 to-indigo-700 rounded-3xl shadow-2xl overflow-hidden"
@@ -123,7 +117,6 @@ const StudentCard3D = () => {
             {/* Main Card Content */}
             <div className="p-8 md:p-12">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                
                 {/* Left Section - Student Info */}
                 <div className="space-y-6">
                   {/* Logo/Name Header */}
@@ -142,8 +135,8 @@ const StudentCard3D = () => {
                   <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
                     <div className="flex items-start gap-6">
                       {profile.photo ? (
-                        <img 
-                          src={profile.photo} 
+                        <img
+                          src={profile.photo}
                           alt={profile.name}
                           className="w-24 h-24 rounded-xl object-cover border-4 border-white shadow-lg"
                         />
@@ -154,7 +147,9 @@ const StudentCard3D = () => {
                       )}
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2 flex-wrap">
-                          <h2 className="text-2xl font-bold text-white">{capitalizeName(profile.name) || 'Student Name'}</h2>
+                          <h2 className="text-2xl font-bold text-white">
+                            {capitalizeName(profile.name) || 'Student Name'}
+                          </h2>
                           {approvalStatus === 'approved' && (
                             <Badge className="bg-green-500 text-white border-0 px-3 py-1 text-xs font-semibold rounded-full shadow-md flex items-center gap-1.5">
                               <CheckCircle className="w-3.5 h-3.5" />
@@ -174,7 +169,9 @@ const StudentCard3D = () => {
                         </div>
                         <div className="flex items-center gap-2 text-white/90">
                           <GraduationCap className="w-4 h-4" />
-                          <span className="text-sm">{profile.department || education.department || 'Department'}</span>
+                          <span className="text-sm">
+                            {profile.department || education.department || 'Department'}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -189,7 +186,7 @@ const StudentCard3D = () => {
                       </span>
                       <span className="text-white font-bold">{studentData.id || 'N/A'}</span>
                     </div>
-                    
+
                     {profile.email && (
                       <div className="flex items-center justify-between">
                         <span className="text-white/80 text-sm flex items-center gap-2">
@@ -220,7 +217,9 @@ const StudentCard3D = () => {
                     <div className="space-y-3">
                       <div className="flex justify-between items-center">
                         <span className="text-white/80 text-sm">Degree</span>
-                        <span className="text-white font-semibold">{education.degree || profile.degree || 'N/A'}</span>
+                        <span className="text-white font-semibold">
+                          {education.degree || profile.degree || 'N/A'}
+                        </span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-white/80 text-sm">Level</span>
@@ -237,7 +236,9 @@ const StudentCard3D = () => {
                       {(education.cgpa || profile.cgpa) && (
                         <div className="flex justify-between items-center">
                           <span className="text-white/80 text-sm">CGPA</span>
-                          <span className="text-white font-semibold">{education.cgpa || profile.cgpa}</span>
+                          <span className="text-white font-semibold">
+                            {education.cgpa || profile.cgpa}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -270,7 +271,10 @@ const StudentCard3D = () => {
                       />
                     </div>
                     <p className="text-white text-xl font-bold tracking-wider">
-                      PASSPORT-ID: {studentData.passport_id || studentData.id?.toUpperCase().slice(0, 8) || 'N/A'}
+                      PASSPORT-ID:{' '}
+                      {studentData.passport_id ||
+                        studentData.id?.toUpperCase().slice(0, 8) ||
+                        'N/A'}
                     </p>
                     <p className="text-white/70 text-sm mt-2">Scan to view profile</p>
                   </div>
@@ -287,11 +291,11 @@ const StudentCard3D = () => {
                         </div>
                       </div>
                     </div>
-                    
+
                     {/* Progress Bar */}
                     <div className="relative">
                       <div className="w-full h-8 bg-white/20 rounded-full overflow-hidden">
-                        <div 
+                        <div
                           className="h-full bg-gradient-to-r from-yellow-400 to-amber-400 rounded-full transition-all duration-1000 ease-out"
                           style={{ width: `${employabilityScore}%` }}
                         ></div>
@@ -305,16 +309,21 @@ const StudentCard3D = () => {
                     {/* Score Description */}
                     <div className="mt-6 text-center">
                       <p className="text-white/90 text-sm">
-                        {employabilityScore >= 80 && "Excellent! Ready for top opportunities."}
-                        {employabilityScore >= 60 && employabilityScore < 80 && "Great progress! Keep building your skills."}
-                        {employabilityScore >= 40 && employabilityScore < 60 && "Good start! Continue developing your profile."}
-                        {employabilityScore < 40 && "Keep learning and adding to your profile!"}
+                        {employabilityScore >= 80 && 'Excellent! Ready for top opportunities.'}
+                        {employabilityScore >= 60 &&
+                          employabilityScore < 80 &&
+                          'Great progress! Keep building your skills.'}
+                        {employabilityScore >= 40 &&
+                          employabilityScore < 60 &&
+                          'Good start! Continue developing your profile.'}
+                        {employabilityScore < 40 && 'Keep learning and adding to your profile!'}
                       </p>
                     </div>
                   </div>
 
                   {/* Skills Summary */}
-                  {(studentData.technicalSkills?.length > 0 || studentData.softSkills?.length > 0) && (
+                  {(studentData.technicalSkills?.length > 0 ||
+                    studentData.softSkills?.length > 0) && (
                     <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
                       <h3 className="text-white font-bold text-lg mb-4">Skills Overview</h3>
                       <div className="space-y-3">
@@ -323,10 +332,7 @@ const StudentCard3D = () => {
                             <p className="text-white/70 text-sm mb-2">Technical Skills</p>
                             <div className="flex flex-wrap gap-2">
                               {studentData.technicalSkills.slice(0, 5).map((skill, idx) => (
-                                <Badge 
-                                  key={idx}
-                                  className="bg-blue-500 text-white border-0"
-                                >
+                                <Badge key={idx} className="bg-blue-500 text-white border-0">
                                   {skill.name}
                                 </Badge>
                               ))}
@@ -343,10 +349,7 @@ const StudentCard3D = () => {
                             <p className="text-white/70 text-sm mb-2">Soft Skills</p>
                             <div className="flex flex-wrap gap-2">
                               {studentData.softSkills.slice(0, 5).map((skill, idx) => (
-                                <Badge
-                                  key={idx}
-                                  className="bg-indigo-500 text-white border-0"
-                                >
+                                <Badge key={idx} className="bg-indigo-500 text-white border-0">
                                   {skill.name}
                                 </Badge>
                               ))}

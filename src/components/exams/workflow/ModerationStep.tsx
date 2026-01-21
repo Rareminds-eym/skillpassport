@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from 'react';
-import { 
-  ArrowLeftIcon, 
-  ChevronRightIcon, 
+import {
+  ArrowLeftIcon,
+  ChevronRightIcon,
   ShieldCheckIcon,
   CheckCircleIcon,
   ExclamationCircleIcon,
@@ -11,7 +11,7 @@ import {
   XMarkIcon,
   EyeIcon,
   PencilIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 import { UIExam, UIStudentMark } from '../../../hooks/useExams';
 import { WorkflowStage, MODERATION_TYPES } from '../types';
@@ -39,13 +39,13 @@ interface ModerationSummary {
   canApprove: boolean;
 }
 
-const ModerationStep: React.FC<ModerationStepProps> = ({ 
-  exam, 
-  setActiveStep, 
-  moderateMarks, 
-  approveSubjectModeration, 
+const ModerationStep: React.FC<ModerationStepProps> = ({
+  exam,
+  setActiveStep,
+  moderateMarks,
+  approveSubjectModeration,
   loadData,
-  currentUserId 
+  currentUserId,
 }) => {
   const [moderatingSubjectId, setModeratingSubjectId] = useState<string | null>(null);
   const [moderationData, setModerationData] = useState<UIStudentMark[]>([]);
@@ -53,30 +53,31 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
   const [loading, setLoading] = useState(false);
 
   // Calculate moderation summary for each subject - Simplified Logic
-  const moderationSummary: ModerationSummary[] = exam.subjects.map(subject => {
-    const subjectMarks = exam.marks.find(m => m.subjectId === subject.id);
+  const moderationSummary: ModerationSummary[] = exam.subjects.map((subject) => {
+    const subjectMarks = exam.marks.find((m) => m.subjectId === subject.id);
     const marksEntered = !!subjectMarks && subjectMarks.studentMarks.length > 0;
-    
+
     // Count students with moderation (original_marks different from marks_obtained)
-    const moderationCount = subjectMarks?.studentMarks.filter(s => 
-      s.originalMarks !== null && s.originalMarks !== s.marks && !s.isAbsent
-    ).length || 0;
-    
+    const moderationCount =
+      subjectMarks?.studentMarks.filter(
+        (s) => s.originalMarks !== null && s.originalMarks !== s.marks && !s.isAbsent
+      ).length || 0;
+
     const hasModeration = moderationCount > 0;
-    
+
     // Smart approval status logic
     let approvalStatus: ModerationSummary['approvalStatus'] = 'not_started';
     let reasonText = '';
-    
+
     if (!marksEntered) {
       approvalStatus = 'not_started';
       reasonText = 'Marks not yet entered';
     } else if (subjectMarks?.isModerated) {
       // CASE: Subject has been manually approved
       approvalStatus = 'approved';
-      reasonText = hasModeration ? 
-        `Approved with ${moderationCount} moderation(s)` : 
-        'Approved - no changes made';
+      reasonText = hasModeration
+        ? `Approved with ${moderationCount} moderation(s)`
+        : 'Approved - no changes made';
     } else if (hasModeration) {
       // CASE: Has moderation changes but not yet approved
       approvalStatus = 'pending_approval';
@@ -99,27 +100,32 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
       // Allow moderation even after publishing and approval
       canModerate: marksEntered,
       // Only show approve button if there are actual moderation changes that need approval
-      canApprove: marksEntered && hasModeration && moderationCount > 0 && !subjectMarks?.isModerated
+      canApprove:
+        marksEntered && hasModeration && moderationCount > 0 && !subjectMarks?.isModerated,
     };
   });
 
   const overallStats = {
     totalSubjects: exam.subjects.length,
-    subjectsWithMarks: moderationSummary.filter(s => s.marksEntered).length,
-    subjectsApproved: moderationSummary.filter(s => s.approvalStatus === 'approved').length,
-    subjectsPendingApproval: moderationSummary.filter(s => s.approvalStatus === 'pending_approval').length,
-    totalModerations: moderationSummary.reduce((sum, s) => sum + s.moderationCount, 0)
+    subjectsWithMarks: moderationSummary.filter((s) => s.marksEntered).length,
+    subjectsApproved: moderationSummary.filter((s) => s.approvalStatus === 'approved').length,
+    subjectsPendingApproval: moderationSummary.filter(
+      (s) => s.approvalStatus === 'pending_approval'
+    ).length,
+    totalModerations: moderationSummary.reduce((sum, s) => sum + s.moderationCount, 0),
   };
 
   const startModeration = (subjectId: string) => {
-    const subjectMarks = exam.marks.find(m => m.subjectId === subjectId);
+    const subjectMarks = exam.marks.find((m) => m.subjectId === subjectId);
     if (subjectMarks) {
-      setModerationData(subjectMarks.studentMarks.map(s => ({
-        ...s,
-        originalMarks: s.originalMarks || s.marks, // Preserve existing original marks
-        moderationType: s.moderationType || "correction",
-        moderationReason: s.moderationReason || ""
-      })));
+      setModerationData(
+        subjectMarks.studentMarks.map((s) => ({
+          ...s,
+          originalMarks: s.originalMarks || s.marks, // Preserve existing original marks
+          moderationType: s.moderationType || 'correction',
+          moderationReason: s.moderationReason || '',
+        }))
+      );
       setModeratingSubjectId(subjectId);
     }
   };
@@ -129,13 +135,16 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
 
     setLoading(true);
     try {
-      const subject = exam.subjects.find(s => s.id === moderatingSubjectId);
+      const subject = exam.subjects.find((s) => s.id === moderatingSubjectId);
       if (!subject) return;
 
       // Find students with actual changes
-      const changedStudents = moderationData.filter(student => 
-        student.originalMarks !== student.marks && !student.isAbsent && 
-        student.marks !== null && student.originalMarks !== null
+      const changedStudents = moderationData.filter(
+        (student) =>
+          student.originalMarks !== student.marks &&
+          !student.isAbsent &&
+          student.marks !== null &&
+          student.originalMarks !== null
       );
 
       if (changedStudents.length === 0) {
@@ -145,17 +154,19 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
       }
 
       // Validate required fields for changed students
-      const missingData = changedStudents.filter(student => 
-        !student.moderationType || !student.moderationReason?.trim()
+      const missingData = changedStudents.filter(
+        (student) => !student.moderationType || !student.moderationReason?.trim()
       );
-      
+
       if (missingData.length > 0) {
-        alert(`Please provide moderation type and justification for all changed students:\n${missingData.map(s => `• ${s.studentName}`).join('\n')}`);
+        alert(
+          `Please provide moderation type and justification for all changed students:\n${missingData.map((s) => `• ${s.studentName}`).join('\n')}`
+        );
         return;
       }
 
       // Check ±10% rule violations
-      const violations = changedStudents.filter(student => {
+      const violations = changedStudents.filter((student) => {
         const diff = Math.abs(student.marks! - student.originalMarks!);
         const tenPercent = student.originalMarks! * 0.1;
         return diff > tenPercent;
@@ -164,14 +175,19 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
       if (violations.length > 0) {
         const proceed = confirm(
           `⚠️ ${violations.length} student(s) have changes exceeding ±10%:\n\n` +
-          violations.map(s => `• ${s.studentName}: ${s.originalMarks} → ${s.marks} (${Math.abs(s.marks! - s.originalMarks!)} marks)`).join('\n') +
-          `\n\nThis requires special approval. Continue?`
+            violations
+              .map(
+                (s) =>
+                  `• ${s.studentName}: ${s.originalMarks} → ${s.marks} (${Math.abs(s.marks! - s.originalMarks!)} marks)`
+              )
+              .join('\n') +
+            `\n\nThis requires special approval. Continue?`
         );
         if (!proceed) return;
       }
 
       // Save moderation for each changed student
-      const moderationPromises = changedStudents.map(student => {
+      const moderationPromises = changedStudents.map((student) => {
         return moderateMarks(student.markEntryId!, {
           assessment_id: exam.id,
           student_id: student.studentId,
@@ -180,13 +196,13 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
           marks_obtained: student.marks!,
           moderation_reason: student.moderationReason!,
           moderation_type: student.moderationType!,
-          moderated_by: currentUserId
+          moderated_by: currentUserId,
         });
       });
 
       await Promise.all(moderationPromises);
       await loadData();
-      
+
       alert(`✅ Moderation saved for ${changedStudents.length} student(s)`);
       setModeratingSubjectId(null);
       setModerationData([]);
@@ -203,7 +219,7 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
 
     setLoading(true);
     try {
-      const subject = exam.subjects.find(s => s.id === subjectId);
+      const subject = exam.subjects.find((s) => s.id === subjectId);
       await approveSubjectModeration(exam.id, subjectId, currentUserId);
       await loadData();
       alert(`✅ Moderation approved for ${subject?.name}`);
@@ -215,29 +231,36 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
     }
   };
 
-
-
   const getStatusIcon = (summary: ModerationSummary) => {
     switch (summary.approvalStatus) {
-      case 'approved': return <CheckCircleIcon className="h-4 w-4 text-green-600" />;
-      case 'pending_approval': return <ExclamationCircleIcon className="h-4 w-4 text-amber-600" />;
-      default: return <ClockIcon className="h-4 w-4 text-gray-400" />;
+      case 'approved':
+        return <CheckCircleIcon className="h-4 w-4 text-green-600" />;
+      case 'pending_approval':
+        return <ExclamationCircleIcon className="h-4 w-4 text-amber-600" />;
+      default:
+        return <ClockIcon className="h-4 w-4 text-gray-400" />;
     }
   };
 
   const getStatusLabel = (summary: ModerationSummary) => {
     switch (summary.approvalStatus) {
-      case 'approved': return 'Approved';
-      case 'pending_approval': return 'Pending Approval';
-      default: return 'Not Started';
+      case 'approved':
+        return 'Approved';
+      case 'pending_approval':
+        return 'Pending Approval';
+      default:
+        return 'Not Started';
     }
   };
 
   const getStatusColor = (summary: ModerationSummary) => {
     switch (summary.approvalStatus) {
-      case 'approved': return 'bg-green-50 border-green-200 text-green-800';
-      case 'pending_approval': return 'bg-amber-50 border-amber-200 text-amber-800';
-      default: return 'bg-gray-50 border-gray-200 text-gray-600';
+      case 'approved':
+        return 'bg-green-50 border-green-200 text-green-800';
+      case 'pending_approval':
+        return 'bg-amber-50 border-amber-200 text-amber-800';
+      default:
+        return 'bg-gray-50 border-gray-200 text-gray-600';
     }
   };
 
@@ -315,11 +338,13 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
             </div>
             <div>
               <p className="text-sm font-medium text-gray-900">Subjects Ready</p>
-              <p className="text-xl font-bold text-blue-600">{overallStats.subjectsWithMarks} / {overallStats.totalSubjects}</p>
+              <p className="text-xl font-bold text-blue-600">
+                {overallStats.subjectsWithMarks} / {overallStats.totalSubjects}
+              </p>
             </div>
           </div>
         </div>
-        
+
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-green-100 rounded-lg">
@@ -339,7 +364,9 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
             </div>
             <div>
               <p className="text-sm font-medium text-gray-900">Pending</p>
-              <p className="text-xl font-bold text-amber-600">{overallStats.subjectsPendingApproval}</p>
+              <p className="text-xl font-bold text-amber-600">
+                {overallStats.subjectsPendingApproval}
+              </p>
             </div>
           </div>
         </div>
@@ -360,10 +387,13 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
       {/* Subject-wise Moderation Status */}
       <div className="space-y-4">
         <h4 className="text-lg font-semibold text-gray-900">Subject Moderation Status</h4>
-        
+
         <div className="space-y-3">
-          {moderationSummary.map(summary => (
-            <div key={summary.subjectId} className={`rounded-lg border p-4 ${getStatusColor(summary)}`}>
+          {moderationSummary.map((summary) => (
+            <div
+              key={summary.subjectId}
+              className={`rounded-lg border p-4 ${getStatusColor(summary)}`}
+            >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   {getStatusIcon(summary)}
@@ -376,7 +406,9 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
                           {summary.moderationCount} moderation(s)
                         </span>
                       )}
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(summary)}`}>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(summary)}`}
+                      >
                         {getStatusLabel(summary)}
                       </span>
                     </div>
@@ -428,20 +460,29 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
                   <div className="flex justify-between text-xs text-gray-600 mb-1">
                     <span>Moderation Progress</span>
                     <span>
-                      {summary.approvalStatus === 'approved' ? 'Approved for publishing' : 
-                       summary.moderationCount > 0 ? `${summary.moderationCount} changes pending approval` : 'Ready for approval'}
+                      {summary.approvalStatus === 'approved'
+                        ? 'Approved for publishing'
+                        : summary.moderationCount > 0
+                          ? `${summary.moderationCount} changes pending approval`
+                          : 'Ready for approval'}
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
+                    <div
                       className={`h-2 rounded-full transition-all ${
-                        summary.approvalStatus === 'approved' ? 'bg-green-500' :
-                        summary.approvalStatus === 'pending_approval' ? 'bg-amber-500' :
-                        'bg-gray-400'
+                        summary.approvalStatus === 'approved'
+                          ? 'bg-green-500'
+                          : summary.approvalStatus === 'pending_approval'
+                            ? 'bg-amber-500'
+                            : 'bg-gray-400'
                       }`}
-                      style={{ 
-                        width: summary.approvalStatus === 'approved' ? '100%' : 
-                               summary.approvalStatus === 'pending_approval' ? '75%' : '25%'
+                      style={{
+                        width:
+                          summary.approvalStatus === 'approved'
+                            ? '100%'
+                            : summary.approvalStatus === 'pending_approval'
+                              ? '75%'
+                              : '25%',
                       }}
                     />
                   </div>
@@ -460,7 +501,7 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">
-                    Moderate Marks - {exam.subjects.find(s => s.id === moderatingSubjectId)?.name}
+                    Moderate Marks - {exam.subjects.find((s) => s.id === moderatingSubjectId)?.name}
                   </h3>
                   <p className="text-sm text-gray-500 mt-1">
                     Adjust marks within ±10% with proper justification
@@ -477,7 +518,7 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
                 </button>
               </div>
             </div>
-            
+
             <div className="p-6 overflow-y-auto max-h-[70vh]">
               {/* Moderation Guidelines */}
               <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
@@ -486,7 +527,7 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
                   <span className="text-sm font-medium text-purple-900">Moderation Guidelines</span>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-purple-700">
-                  {MODERATION_TYPES.map(type => (
+                  {MODERATION_TYPES.map((type) => (
                     <div key={type.value} className="flex items-center gap-2">
                       <span>{type.icon}</span>
                       <span className="font-medium">{type.label}:</span>
@@ -500,69 +541,97 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 sticky top-0">
                     <tr>
-                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600">Roll No</th>
-                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600">Student Name</th>
-                      <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600">Original</th>
-                      <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600">Current</th>
-                      <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600">±10% Range</th>
-                      <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600">Type</th>
-                      <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600">Justification</th>
-                      <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600">Status</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600">
+                        Roll No
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600">
+                        Student Name
+                      </th>
+                      <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600">
+                        Original
+                      </th>
+                      <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600">
+                        Current
+                      </th>
+                      <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600">
+                        ±10% Range
+                      </th>
+                      <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600">
+                        Type
+                      </th>
+                      <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600">
+                        Justification
+                      </th>
+                      <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600">
+                        Status
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {moderationData.map((student, idx) => {
                       const original = student.originalMarks ?? student.marks ?? 0;
-                      const tenPercentLower = Math.max(0, Math.floor(original - (original * 0.1)));
+                      const tenPercentLower = Math.max(0, Math.floor(original - original * 0.1));
                       const tenPercentUpper = Math.min(
-                        exam.subjects.find(s => s.id === moderatingSubjectId)?.totalMarks || 100, 
-                        Math.ceil(original + (original * 0.1))
+                        exam.subjects.find((s) => s.id === moderatingSubjectId)?.totalMarks || 100,
+                        Math.ceil(original + original * 0.1)
                       );
-                      const isWithinRange = student.marks !== null && student.marks >= tenPercentLower && student.marks <= tenPercentUpper;
+                      const isWithinRange =
+                        student.marks !== null &&
+                        student.marks >= tenPercentLower &&
+                        student.marks <= tenPercentUpper;
                       const hasChanged = student.marks !== student.originalMarks;
 
                       return (
-                        <tr key={student.studentId} className={hasChanged ? "bg-yellow-50" : ""}>
+                        <tr key={student.studentId} className={hasChanged ? 'bg-yellow-50' : ''}>
                           <td className="px-3 py-2 text-xs font-medium">{student.rollNumber}</td>
                           <td className="px-3 py-2 text-xs">{student.studentName}</td>
                           <td className="px-3 py-2 text-center text-xs font-medium">
-                            {student.isAbsent ? "Absent" : student.originalMarks}
+                            {student.isAbsent ? 'Absent' : student.originalMarks}
                           </td>
                           <td className="px-3 py-2 text-center">
                             <input
                               type="number"
-                              value={student.marks ?? ""}
+                              value={student.marks ?? ''}
                               onChange={(e) => {
                                 const newMarks = e.target.value ? parseInt(e.target.value) : null;
-                                setModerationData(prev => prev.map((s, i) => 
-                                  i === idx ? { ...s, marks: newMarks } : s
-                                ));
+                                setModerationData((prev) =>
+                                  prev.map((s, i) => (i === idx ? { ...s, marks: newMarks } : s))
+                                );
                               }}
                               disabled={student.isAbsent}
                               min="0"
-                              max={exam.subjects.find(s => s.id === moderatingSubjectId)?.totalMarks || 100}
+                              max={
+                                exam.subjects.find((s) => s.id === moderatingSubjectId)
+                                  ?.totalMarks || 100
+                              }
                               className={`w-16 rounded border px-2 py-1 text-xs text-center ${
-                                student.isAbsent ? "bg-gray-100" : 
-                                !isWithinRange && hasChanged ? "border-red-500 bg-red-50" : 
-                                hasChanged ? "border-yellow-500 bg-yellow-50" : "border-gray-300"
+                                student.isAbsent
+                                  ? 'bg-gray-100'
+                                  : !isWithinRange && hasChanged
+                                    ? 'border-red-500 bg-red-50'
+                                    : hasChanged
+                                      ? 'border-yellow-500 bg-yellow-50'
+                                      : 'border-gray-300'
                               }`}
                             />
                           </td>
                           <td className="px-3 py-2 text-center text-xs text-gray-500">
-                            {student.isAbsent ? "-" : `${tenPercentLower}-${tenPercentUpper}`}
+                            {student.isAbsent ? '-' : `${tenPercentLower}-${tenPercentUpper}`}
                           </td>
                           <td className="px-3 py-2 text-center">
                             <select
-                              value={student.moderationType || "correction"}
+                              value={student.moderationType || 'correction'}
                               onChange={(e) => {
-                                setModerationData(prev => prev.map((s, i) => 
-                                  i === idx ? { ...s, moderationType: e.target.value } : s
-                                ));
+                                setModerationData((prev) =>
+                                  prev.map((s, i) =>
+                                    i === idx ? { ...s, moderationType: e.target.value } : s
+                                  )
+                                );
                               }}
                               disabled={student.isAbsent || !hasChanged}
                               className="w-24 rounded border px-1 py-1 text-xs"
                             >
-                              {MODERATION_TYPES.map(type => (
+                              {MODERATION_TYPES.map((type) => (
                                 <option key={type.value} value={type.value}>
                                   {type.label}
                                 </option>
@@ -572,11 +641,13 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
                           <td className="px-3 py-2 text-center">
                             <input
                               type="text"
-                              value={student.moderationReason || ""}
+                              value={student.moderationReason || ''}
                               onChange={(e) => {
-                                setModerationData(prev => prev.map((s, i) => 
-                                  i === idx ? { ...s, moderationReason: e.target.value } : s
-                                ));
+                                setModerationData((prev) =>
+                                  prev.map((s, i) =>
+                                    i === idx ? { ...s, moderationReason: e.target.value } : s
+                                  )
+                                );
                               }}
                               disabled={student.isAbsent || !hasChanged}
                               placeholder="Required for changes"
@@ -585,15 +656,23 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
                           </td>
                           <td className="px-3 py-2 text-center">
                             {student.isAbsent ? (
-                              <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">Absent</span>
+                              <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">
+                                Absent
+                              </span>
                             ) : hasChanged ? (
                               isWithinRange ? (
-                                <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs">✓ Valid</span>
+                                <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs">
+                                  ✓ Valid
+                                </span>
                               ) : (
-                                <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs">⚠ Exceeds ±10%</span>
+                                <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs">
+                                  ⚠ Exceeds ±10%
+                                </span>
                               )
                             ) : (
-                              <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">No change</span>
+                              <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">
+                                No change
+                              </span>
                             )}
                           </td>
                         </tr>
@@ -603,10 +682,12 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
                 </table>
               </div>
             </div>
-            
+
             <div className="p-6 border-t border-gray-200 flex justify-between">
               <div className="text-sm text-gray-600">
-                Changes: {moderationData.filter(s => s.marks !== s.originalMarks && !s.isAbsent).length} students
+                Changes:{' '}
+                {moderationData.filter((s) => s.marks !== s.originalMarks && !s.isAbsent).length}{' '}
+                students
               </div>
               <div className="flex gap-3">
                 <button
@@ -639,7 +720,7 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-gray-900">
-                  {exam.subjects.find(s => s.id === viewingSubjectId)?.name} - Marks Overview
+                  {exam.subjects.find((s) => s.id === viewingSubjectId)?.name} - Marks Overview
                 </h3>
                 <button
                   onClick={() => setViewingSubjectId(null)}
@@ -649,10 +730,10 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
                 </button>
               </div>
             </div>
-            
+
             <div className="p-6 overflow-y-auto max-h-[70vh]">
               {(() => {
-                const subjectMarks = exam.marks.find(m => m.subjectId === viewingSubjectId);
+                const subjectMarks = exam.marks.find((m) => m.subjectId === viewingSubjectId);
                 if (!subjectMarks) return <p>No marks data available</p>;
 
                 return (
@@ -660,49 +741,83 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
                     <table className="w-full text-sm">
                       <thead className="bg-gray-50">
                         <tr>
-                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600">Roll No</th>
-                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600">Student Name</th>
-                          <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600">Original</th>
-                          <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600">Current</th>
-                          <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600">Change</th>
-                          <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600">Status</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600">
+                            Roll No
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600">
+                            Student Name
+                          </th>
+                          <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600">
+                            Original
+                          </th>
+                          <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600">
+                            Current
+                          </th>
+                          <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600">
+                            Change
+                          </th>
+                          <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600">
+                            Status
+                          </th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
-                        {subjectMarks.studentMarks.map(student => {
+                        {subjectMarks.studentMarks.map((student) => {
                           // Only consider it changed if:
                           // 1. originalMarks exists (not null/undefined)
                           // 2. originalMarks is different from current marks
                           // 3. There's an actual numerical difference (not just null vs 0 issues)
-                          const hasOriginalMarks = student.originalMarks !== null && student.originalMarks !== undefined;
-                          const hasActualChange = hasOriginalMarks && student.originalMarks !== student.marks;
+                          const hasOriginalMarks =
+                            student.originalMarks !== null && student.originalMarks !== undefined;
+                          const hasActualChange =
+                            hasOriginalMarks && student.originalMarks !== student.marks;
                           const hasChanged = hasActualChange;
-                          const change = hasChanged ? (student.marks || 0) - (student.originalMarks || 0) : 0;
-                          
+                          const change = hasChanged
+                            ? (student.marks || 0) - (student.originalMarks || 0)
+                            : 0;
+
                           return (
-                            <tr key={student.studentId} className={hasChanged ? "bg-yellow-50" : ""}>
-                              <td className="px-3 py-2 text-xs font-medium">{student.rollNumber}</td>
+                            <tr
+                              key={student.studentId}
+                              className={hasChanged ? 'bg-yellow-50' : ''}
+                            >
+                              <td className="px-3 py-2 text-xs font-medium">
+                                {student.rollNumber}
+                              </td>
                               <td className="px-3 py-2 text-xs">{student.studentName}</td>
                               <td className="px-3 py-2 text-center text-xs">
-                                {student.isAbsent ? "Absent" : student.originalMarks ?? student.marks}
+                                {student.isAbsent
+                                  ? 'Absent'
+                                  : (student.originalMarks ?? student.marks)}
                               </td>
                               <td className="px-3 py-2 text-center text-xs font-medium">
-                                {student.isAbsent ? "Absent" : student.marks}
+                                {student.isAbsent ? 'Absent' : student.marks}
                               </td>
                               <td className="px-3 py-2 text-center text-xs">
-                                {student.isAbsent ? "-" : hasChanged && change !== 0 ? (
-                                  <span className={change > 0 ? "text-green-600" : "text-red-600"}>
-                                    {change > 0 ? "+" : ""}{change}
+                                {student.isAbsent ? (
+                                  '-'
+                                ) : hasChanged && change !== 0 ? (
+                                  <span className={change > 0 ? 'text-green-600' : 'text-red-600'}>
+                                    {change > 0 ? '+' : ''}
+                                    {change}
                                   </span>
-                                ) : "-"}
+                                ) : (
+                                  '-'
+                                )}
                               </td>
                               <td className="px-3 py-2 text-center">
                                 {student.isAbsent ? (
-                                  <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">Absent</span>
+                                  <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">
+                                    Absent
+                                  </span>
                                 ) : hasChanged ? (
-                                  <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs">Modified</span>
+                                  <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs">
+                                    Modified
+                                  </span>
                                 ) : (
-                                  <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs">Original</span>
+                                  <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs">
+                                    Original
+                                  </span>
                                 )}
                               </td>
                             </tr>
@@ -720,15 +835,15 @@ const ModerationStep: React.FC<ModerationStepProps> = ({
 
       {/* Navigation */}
       <div className="flex justify-between gap-3 pt-4 border-t border-gray-200">
-        <button 
-          onClick={() => setActiveStep("marks")} 
+        <button
+          onClick={() => setActiveStep('marks')}
           className="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 inline-flex items-center gap-2"
         >
           <ArrowLeftIcon className="h-4 w-4" />
           Back to Marks
         </button>
-        <button 
-          onClick={() => setActiveStep("publishing")} 
+        <button
+          onClick={() => setActiveStep('publishing')}
           className="px-5 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 inline-flex items-center gap-2"
         >
           Next: Publish Results

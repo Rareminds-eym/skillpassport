@@ -1,10 +1,5 @@
-import React, { useState } from "react";
-import {
-  XMarkIcon,
-  UserIcon,
-  UserGroupIcon,
-  CheckCircleIcon,
-} from "@heroicons/react/24/outline";
+import React, { useState } from 'react';
+import { XMarkIcon, UserIcon, UserGroupIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { DepartmentWithStats } from '../../../services/college/departmentService';
 
 interface Faculty {
@@ -36,10 +31,8 @@ const HODAssignmentModal: React.FC<HODAssignmentModalProps> = ({
   assignedFaculty,
   onSave,
 }) => {
-  const [selectedHOD, setSelectedHOD] = useState<string | null>(
-    department?.hodId || null
-  );
-  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedHOD, setSelectedHOD] = useState<string | null>(department?.hodId || null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   if (!isOpen || !department) return null;
 
@@ -76,11 +69,7 @@ const HODAssignmentModal: React.FC<HODAssignmentModalProps> = ({
                 Select a faculty member from {department.name} to be HOD
               </p>
             </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
-              type="button"
-            >
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600" type="button">
               <XMarkIcon className="h-6 w-6" />
             </button>
           </div>
@@ -88,9 +77,7 @@ const HODAssignmentModal: React.FC<HODAssignmentModalProps> = ({
           {departmentFaculty.length === 0 ? (
             <div className="text-center py-8 border border-dashed border-gray-300 rounded-lg">
               <UserGroupIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-              <p className="text-sm text-gray-600 mb-1">
-                No faculty assigned to this department
-              </p>
+              <p className="text-sm text-gray-600 mb-1">No faculty assigned to this department</p>
               <p className="text-xs text-gray-500">
                 Please assign faculty members first before selecting HOD
               </p>
@@ -109,9 +96,7 @@ const HODAssignmentModal: React.FC<HODAssignmentModalProps> = ({
 
               <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-lg">
                 {filteredFaculty.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    No faculty found
-                  </div>
+                  <div className="text-center py-8 text-gray-500">No faculty found</div>
                 ) : (
                   <div className="divide-y divide-gray-200">
                     {filteredFaculty.map((faculty) => (
@@ -129,9 +114,7 @@ const HODAssignmentModal: React.FC<HODAssignmentModalProps> = ({
                         <div className="ml-3 flex-1">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm font-medium text-gray-900">
-                                {faculty.name}
-                              </p>
+                              <p className="text-sm font-medium text-gray-900">{faculty.name}</p>
                               <p className="text-xs text-gray-500">
                                 {faculty.designation} • {faculty.specialization}
                               </p>

@@ -1,15 +1,12 @@
 /**
  * Unit Tests for LicenseManagementService
- * 
+ *
  * Tests for Task 21.2: Test LicenseManagementService methods
  * Tests for Task 21.7: Test seat allocation logic
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-    LicenseManagementService,
-    type CreatePoolRequest
-} from '../licenseManagementService';
+import { LicenseManagementService, type CreatePoolRequest } from '../licenseManagementService';
 
 // Mock Supabase client
 vi.mock('@/lib/supabaseClient', () => ({
@@ -20,12 +17,12 @@ vi.mock('@/lib/supabaseClient', () => ({
       update: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
       single: vi.fn(),
-      order: vi.fn().mockReturnThis()
+      order: vi.fn().mockReturnThis(),
     })),
     auth: {
-      getUser: vi.fn()
-    }
-  }
+      getUser: vi.fn(),
+    },
+  },
 }));
 
 import { supabase } from '@/lib/supabaseClient';
@@ -54,7 +51,7 @@ describe('LicenseManagementService', () => {
       memberType: 'educator',
       allocatedSeats: 20,
       autoAssignNewMembers: false,
-      assignmentCriteria: { department: 'CS' }
+      assignmentCriteria: { department: 'CS' },
     };
 
     const mockUser = { id: 'user-789' };
@@ -75,12 +72,12 @@ describe('LicenseManagementService', () => {
         is_active: true,
         created_by: 'user-789',
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       };
 
       vi.mocked(supabase.auth.getUser).mockResolvedValue({
         data: { user: mockUser },
-        error: null
+        error: null,
       } as any);
 
       let callCount = 0;
@@ -90,16 +87,16 @@ describe('LicenseManagementService', () => {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ 
-              data: { available_seats: 50 }, 
-              error: null 
-            })
+            single: vi.fn().mockResolvedValue({
+              data: { available_seats: 50 },
+              error: null,
+            }),
           } as any;
         }
         return {
           insert: vi.fn().mockReturnThis(),
           select: vi.fn().mockReturnThis(),
-          single: vi.fn().mockResolvedValue({ data: mockPool, error: null })
+          single: vi.fn().mockResolvedValue({ data: mockPool, error: null }),
         } as any;
       });
 
@@ -114,30 +111,35 @@ describe('LicenseManagementService', () => {
     it('should throw error when user not authenticated', async () => {
       vi.mocked(supabase.auth.getUser).mockResolvedValue({
         data: { user: null },
-        error: null
+        error: null,
       } as any);
 
-      await expect(service.createLicensePool(mockCreateRequest))
-        .rejects.toThrow('User not authenticated');
+      await expect(service.createLicensePool(mockCreateRequest)).rejects.toThrow(
+        'User not authenticated'
+      );
     });
 
     it('should throw error when insufficient seats available', async () => {
       vi.mocked(supabase.auth.getUser).mockResolvedValue({
         data: { user: mockUser },
-        error: null
+        error: null,
       } as any);
 
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ 
-          data: { available_seats: 10 }, // Less than requested 20
-          error: null 
-        })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(
+        () =>
+          ({
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({
+              data: { available_seats: 10 }, // Less than requested 20
+              error: null,
+            }),
+          }) as any
+      );
 
-      await expect(service.createLicensePool(mockCreateRequest))
-        .rejects.toThrow('Insufficient available seats in subscription');
+      await expect(service.createLicensePool(mockCreateRequest)).rejects.toThrow(
+        'Insufficient available seats in subscription'
+      );
     });
   });
 
@@ -159,7 +161,7 @@ describe('LicenseManagementService', () => {
           is_active: true,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          created_by: 'user-789'
+          created_by: 'user-789',
         },
         {
           id: 'pool-002',
@@ -176,15 +178,18 @@ describe('LicenseManagementService', () => {
           is_active: true,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          created_by: 'user-789'
-        }
+          created_by: 'user-789',
+        },
       ];
 
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        order: vi.fn().mockResolvedValue({ data: mockPools, error: null })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(
+        () =>
+          ({
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            order: vi.fn().mockResolvedValue({ data: mockPools, error: null }),
+          }) as any
+      );
 
       const result = await service.getLicensePools('org-123');
 
@@ -194,11 +199,14 @@ describe('LicenseManagementService', () => {
     });
 
     it('should filter by organization type', async () => {
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        order: vi.fn().mockResolvedValue({ data: [], error: null })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(
+        () =>
+          ({
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            order: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }) as any
+      );
 
       await service.getLicensePools('org-123', 'school');
 
@@ -215,7 +223,7 @@ describe('LicenseManagementService', () => {
         id: 'pool-001',
         organization_subscription_id: 'sub-001',
         member_type: 'educator',
-        available_seats: 5
+        available_seats: 5,
       };
 
       const mockAssignment = {
@@ -228,7 +236,7 @@ describe('LicenseManagementService', () => {
         assigned_at: new Date().toISOString(),
         assigned_by: 'admin-456',
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       };
 
       let callCount = 0;
@@ -238,7 +246,7 @@ describe('LicenseManagementService', () => {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: mockPool, error: null })
+            single: vi.fn().mockResolvedValue({ data: mockPool, error: null }),
           } as any;
         }
         if (callCount === 2) {
@@ -246,13 +254,13 @@ describe('LicenseManagementService', () => {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } })
+            single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } }),
           } as any;
         }
         return {
           insert: vi.fn().mockReturnThis(),
           select: vi.fn().mockReturnThis(),
-          single: vi.fn().mockResolvedValue({ data: mockAssignment, error: null })
+          single: vi.fn().mockResolvedValue({ data: mockAssignment, error: null }),
         } as any;
       });
 
@@ -266,39 +274,47 @@ describe('LicenseManagementService', () => {
     it('should throw error when no seats available', async () => {
       const mockPool = {
         id: 'pool-001',
-        available_seats: 0
+        available_seats: 0,
       };
 
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: mockPool, error: null })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(
+        () =>
+          ({
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: mockPool, error: null }),
+          }) as any
+      );
 
-      await expect(service.assignLicense('pool-001', 'user-123', 'admin-456'))
-        .rejects.toThrow('No available seats in pool');
+      await expect(service.assignLicense('pool-001', 'user-123', 'admin-456')).rejects.toThrow(
+        'No available seats in pool'
+      );
     });
 
     it('should throw error when pool not found', async () => {
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: null, error: null })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(
+        () =>
+          ({
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: null, error: null }),
+          }) as any
+      );
 
-      await expect(service.assignLicense('invalid-pool', 'user-123', 'admin-456'))
-        .rejects.toThrow('License pool not found');
+      await expect(service.assignLicense('invalid-pool', 'user-123', 'admin-456')).rejects.toThrow(
+        'License pool not found'
+      );
     });
 
     it('should throw error when user already has active assignment', async () => {
       const mockPool = {
         id: 'pool-001',
         organization_subscription_id: 'sub-001',
-        available_seats: 5
+        available_seats: 5,
       };
 
       const existingAssignment = {
-        id: 'existing-assign'
+        id: 'existing-assign',
       };
 
       let callCount = 0;
@@ -308,40 +324,47 @@ describe('LicenseManagementService', () => {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: mockPool, error: null })
+            single: vi.fn().mockResolvedValue({ data: mockPool, error: null }),
           } as any;
         }
         return {
           select: vi.fn().mockReturnThis(),
           eq: vi.fn().mockReturnThis(),
-          single: vi.fn().mockResolvedValue({ data: existingAssignment, error: null })
+          single: vi.fn().mockResolvedValue({ data: existingAssignment, error: null }),
         } as any;
       });
 
-      await expect(service.assignLicense('pool-001', 'user-123', 'admin-456'))
-        .rejects.toThrow('User already has an active license assignment');
+      await expect(service.assignLicense('pool-001', 'user-123', 'admin-456')).rejects.toThrow(
+        'User already has an active license assignment'
+      );
     });
   });
 
   describe('unassignLicense', () => {
     it('should unassign license successfully', async () => {
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        update: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockResolvedValue({ error: null })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(
+        () =>
+          ({
+            update: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockResolvedValue({ error: null }),
+          }) as any
+      );
 
-      await expect(service.unassignLicense('assign-001', 'No longer needed', 'admin-456'))
-        .resolves.not.toThrow();
+      await expect(
+        service.unassignLicense('assign-001', 'No longer needed', 'admin-456')
+      ).resolves.not.toThrow();
     });
 
     it('should throw error on database failure', async () => {
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        update: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockResolvedValue({ error: { message: 'Database error' } })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(
+        () =>
+          ({
+            update: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockResolvedValue({ error: { message: 'Database error' } }),
+          }) as any
+      );
 
-      await expect(service.unassignLicense('assign-001', 'Test', 'admin-456'))
-        .rejects.toThrow();
+      await expect(service.unassignLicense('assign-001', 'Test', 'admin-456')).rejects.toThrow();
     });
   });
 
@@ -353,7 +376,7 @@ describe('LicenseManagementService', () => {
         organization_subscription_id: 'sub-001',
         user_id: 'user-from',
         member_type: 'educator',
-        status: 'active'
+        status: 'active',
       };
 
       const mockNewAssignment = {
@@ -366,7 +389,7 @@ describe('LicenseManagementService', () => {
         assigned_by: 'admin-456',
         transferred_from: 'assign-001',
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       };
 
       let callCount = 0;
@@ -377,14 +400,14 @@ describe('LicenseManagementService', () => {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: mockCurrentAssignment, error: null })
+            single: vi.fn().mockResolvedValue({ data: mockCurrentAssignment, error: null }),
           } as any;
         }
         if (callCount === 2) {
           // Unassign (update status)
           return {
             update: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockResolvedValue({ error: null })
+            eq: vi.fn().mockResolvedValue({ error: null }),
           } as any;
         }
         if (callCount === 3) {
@@ -392,13 +415,13 @@ describe('LicenseManagementService', () => {
           return {
             insert: vi.fn().mockReturnThis(),
             select: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: mockNewAssignment, error: null })
+            single: vi.fn().mockResolvedValue({ data: mockNewAssignment, error: null }),
           } as any;
         }
         // Update old assignment with transfer reference
         return {
           update: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockResolvedValue({ error: null })
+          eq: vi.fn().mockResolvedValue({ error: null }),
         } as any;
       });
 
@@ -410,14 +433,18 @@ describe('LicenseManagementService', () => {
     });
 
     it('should throw error when source user has no active assignment', async () => {
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: null, error: null })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(
+        () =>
+          ({
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: null, error: null }),
+          }) as any
+      );
 
-      await expect(service.transferLicense('user-from', 'user-to', 'admin-456', 'sub-001'))
-        .rejects.toThrow('No active assignment found for source user');
+      await expect(
+        service.transferLicense('user-from', 'user-to', 'admin-456', 'sub-001')
+      ).rejects.toThrow('No active assignment found for source user');
     });
   });
 
@@ -427,7 +454,7 @@ describe('LicenseManagementService', () => {
         id: 'pool-001',
         organization_subscription_id: 'sub-001',
         member_type: 'educator',
-        available_seats: 10
+        available_seats: 10,
       };
 
       const createMockAssignment = (userId: string) => ({
@@ -439,7 +466,7 @@ describe('LicenseManagementService', () => {
         status: 'active',
         assigned_by: 'admin-456',
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       });
 
       let callCount = 0;
@@ -449,7 +476,7 @@ describe('LicenseManagementService', () => {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: mockPool, error: null })
+            single: vi.fn().mockResolvedValue({ data: mockPool, error: null }),
           } as any;
         }
         if (table === 'license_assignments') {
@@ -458,7 +485,7 @@ describe('LicenseManagementService', () => {
             return {
               select: vi.fn().mockReturnThis(),
               eq: vi.fn().mockReturnThis(),
-              single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } })
+              single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } }),
             } as any;
           }
           // Insert new assignment
@@ -468,7 +495,7 @@ describe('LicenseManagementService', () => {
             single: vi.fn().mockImplementation(() => {
               const userId = `user-${Math.floor(callCount / 3)}`;
               return Promise.resolve({ data: createMockAssignment(userId), error: null });
-            })
+            }),
           } as any;
         }
         return {} as any;
@@ -488,10 +515,10 @@ describe('LicenseManagementService', () => {
         id: 'pool-001',
         organization_subscription_id: 'sub-001',
         member_type: 'educator',
-        available_seats: 1 // Only 1 seat available
+        available_seats: 1, // Only 1 seat available
       };
 
-      let assignCount = 0;
+      const assignCount = 0;
       vi.mocked(supabase.from).mockImplementation((table: string) => {
         if (table === 'license_pools') {
           return {
@@ -500,11 +527,11 @@ describe('LicenseManagementService', () => {
             single: vi.fn().mockImplementation(() => {
               // After first assignment, no seats available
               const seats = assignCount === 0 ? 1 : 0;
-              return Promise.resolve({ 
-                data: { ...mockPool, available_seats: seats }, 
-                error: null 
+              return Promise.resolve({
+                data: { ...mockPool, available_seats: seats },
+                error: null,
               });
-            })
+            }),
           } as any;
         }
         if (table === 'license_assignments') {
@@ -512,7 +539,7 @@ describe('LicenseManagementService', () => {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
             single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } }),
-            insert: vi.fn().mockReturnThis()
+            insert: vi.fn().mockReturnThis(),
           } as any;
         }
         return {} as any;
@@ -532,11 +559,7 @@ describe('LicenseManagementService', () => {
 
   describe('getAvailableSeats', () => {
     it('should sum available seats across all active pools', async () => {
-      const mockPools = [
-        { available_seats: 10 },
-        { available_seats: 15 },
-        { available_seats: 5 }
-      ];
+      const mockPools = [{ available_seats: 10 }, { available_seats: 15 }, { available_seats: 5 }];
 
       // Create a chainable mock that supports 3 .eq() calls
       const createChainableMock = (finalData: any) => {
@@ -545,8 +568,8 @@ describe('LicenseManagementService', () => {
         // Support 3 levels of .eq() chaining
         chainable.eq = vi.fn().mockImplementation(() => ({
           eq: vi.fn().mockImplementation(() => ({
-            eq: vi.fn().mockResolvedValue({ data: finalData, error: null })
-          }))
+            eq: vi.fn().mockResolvedValue({ data: finalData, error: null }),
+          })),
         }));
         chainable.order = vi.fn().mockResolvedValue({ data: finalData, error: null });
         return chainable;
@@ -566,8 +589,8 @@ describe('LicenseManagementService', () => {
         // Support 3 levels of .eq() chaining
         chainable.eq = vi.fn().mockImplementation(() => ({
           eq: vi.fn().mockImplementation(() => ({
-            eq: vi.fn().mockResolvedValue({ data: finalData, error: null })
-          }))
+            eq: vi.fn().mockResolvedValue({ data: finalData, error: null }),
+          })),
         }));
         chainable.order = vi.fn().mockResolvedValue({ data: finalData, error: null });
         return chainable;
@@ -586,13 +609,13 @@ describe('LicenseManagementService', () => {
       const mockPool = {
         id: 'pool-001',
         allocated_seats: 20,
-        assigned_seats: 10
+        assigned_seats: 10,
       };
 
       const mockUpdatedPool = {
         ...mockPool,
         allocated_seats: 30,
-        available_seats: 20
+        available_seats: 20,
       };
 
       let callCount = 0;
@@ -602,14 +625,14 @@ describe('LicenseManagementService', () => {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: mockPool, error: null })
+            single: vi.fn().mockResolvedValue({ data: mockPool, error: null }),
           } as any;
         }
         return {
           update: vi.fn().mockReturnThis(),
           eq: vi.fn().mockReturnThis(),
           select: vi.fn().mockReturnThis(),
-          single: vi.fn().mockResolvedValue({ data: mockUpdatedPool, error: null })
+          single: vi.fn().mockResolvedValue({ data: mockUpdatedPool, error: null }),
         } as any;
       });
 
@@ -622,17 +645,21 @@ describe('LicenseManagementService', () => {
       const mockPool = {
         id: 'pool-001',
         allocated_seats: 20,
-        assigned_seats: 15
+        assigned_seats: 15,
       };
 
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: mockPool, error: null })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(
+        () =>
+          ({
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: mockPool, error: null }),
+          }) as any
+      );
 
-      await expect(service.updatePoolAllocation('pool-001', 10))
-        .rejects.toThrow('Cannot reduce allocation below assigned seats (15)');
+      await expect(service.updatePoolAllocation('pool-001', 10)).rejects.toThrow(
+        'Cannot reduce allocation below assigned seats (15)'
+      );
     });
   });
 
@@ -641,15 +668,18 @@ describe('LicenseManagementService', () => {
       const mockUpdatedPool = {
         id: 'pool-001',
         auto_assign_new_members: true,
-        assignment_criteria: { department: 'CS', grade: '10' }
+        assignment_criteria: { department: 'CS', grade: '10' },
       };
 
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        update: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        select: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: mockUpdatedPool, error: null })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(
+        () =>
+          ({
+            update: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            select: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: mockUpdatedPool, error: null }),
+          }) as any
+      );
 
       const result = await service.configureAutoAssignment(
         'pool-001',

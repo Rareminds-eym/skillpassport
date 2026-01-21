@@ -13,16 +13,23 @@ export const RealtimeDebugger: React.FC = () => {
   useEffect(() => {
     // Test connection
     const channel = supabase.channel('debug-test');
-    
+
     channel
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'offers'
-      }, (payload) => {
-        const timestamp = new Date().toLocaleTimeString();
-        setEvents(prev => [`[${timestamp}] ${payload.eventType} on offers`, ...prev.slice(0, 9)]);
-      })
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'offers',
+        },
+        (payload) => {
+          const timestamp = new Date().toLocaleTimeString();
+          setEvents((prev) => [
+            `[${timestamp}] ${payload.eventType} on offers`,
+            ...prev.slice(0, 9),
+          ]);
+        }
+      )
       .subscribe((status) => {
         setStatus(status);
       });
@@ -42,7 +49,7 @@ export const RealtimeDebugger: React.FC = () => {
           job_title: 'Software Engineer',
           offered_ctc: '10 LPA',
           expiry_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-          status: 'pending'
+          status: 'pending',
         })
         .select();
 
@@ -67,7 +74,7 @@ export const RealtimeDebugger: React.FC = () => {
     <div className="fixed bottom-4 right-4 w-96 bg-white shadow-2xl rounded-lg border-2 border-gray-200 p-4 z-50">
       <div className="mb-3">
         <h3 className="text-sm font-bold text-gray-900 mb-2">🔍 Real-time Debugger</h3>
-        
+
         {/* Status */}
         <div className="flex items-center gap-2 mb-3">
           <div className={`h-3 w-3 rounded-full ${getStatusColor()}`}></div>
@@ -84,9 +91,7 @@ export const RealtimeDebugger: React.FC = () => {
 
         {/* Test Result */}
         {testResult && (
-          <div className="text-xs p-2 bg-gray-50 rounded mb-2 break-words">
-            {testResult}
-          </div>
+          <div className="text-xs p-2 bg-gray-50 rounded mb-2 break-words">{testResult}</div>
         )}
 
         {/* Events Log */}

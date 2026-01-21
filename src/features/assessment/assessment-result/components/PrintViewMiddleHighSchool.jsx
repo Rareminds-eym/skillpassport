@@ -6,16 +6,26 @@
 
 import CoverPage from './CoverPage';
 import { printStyles } from './shared/styles';
-import { safeRender, getSafeStudentInfo, riasecDescriptions, defaultRiasecNames } from './shared/utils';
+import {
+  safeRender,
+  getSafeStudentInfo,
+  riasecDescriptions,
+  defaultRiasecNames,
+} from './shared/utils';
 import RiasecIcon from './shared/RiasecIcon';
 import PrintStyles from './shared/PrintStyles';
-import Watermarks, { DataPrivacyNotice, ReportDisclaimer, RepeatingHeader, RepeatingFooter } from './shared/Watermarks';
+import Watermarks, {
+  DataPrivacyNotice,
+  ReportDisclaimer,
+  RepeatingHeader,
+  RepeatingFooter,
+} from './shared/Watermarks';
 import DetailedAssessmentBreakdown from './shared/DetailedAssessmentBreakdown';
 
 /**
  * PrintViewMiddleHighSchool Component
  * Renders assessment report for middle and high school students
- * 
+ *
  * @param {Object} props - Component props
  * @param {Object} props.results - Assessment results data
  * @param {Object} props.studentInfo - Student information
@@ -24,12 +34,12 @@ import DetailedAssessmentBreakdown from './shared/DetailedAssessmentBreakdown';
  * @param {Object} props.studentAcademicData - Student academic data (optional)
  * @returns {JSX.Element} - Print view component
  */
-const PrintViewMiddleHighSchool = ({ 
-  results, 
-  studentInfo, 
+const PrintViewMiddleHighSchool = ({
+  results,
+  studentInfo,
   riasecNames,
   streamRecommendation,
-  studentAcademicData
+  studentAcademicData,
 }) => {
   // Handle null results
   if (!results) {
@@ -95,22 +105,18 @@ const PrintViewMiddleHighSchool = ({
 
               {/* Detailed Assessment Breakdown (Developer Reference) */}
               <div style={{ pageBreakBefore: 'always' }}>
-                <DetailedAssessmentBreakdown 
-                  results={results} 
+                <DetailedAssessmentBreakdown
+                  results={results}
                   riasecNames={safeRiasecNames}
                   gradeLevel="highschool"
                 />
               </div>
 
               {/* Section 2: Career Exploration */}
-              {careerFit && (
-                <CareerExplorationSection careerFit={careerFit} />
-              )}
+              {careerFit && <CareerExplorationSection careerFit={careerFit} />}
 
               {/* Section 3: Skills to Develop */}
-              {skillGap && (
-                <SkillsToDevelopSection skillGap={skillGap} />
-              )}
+              {skillGap && <SkillsToDevelopSection skillGap={skillGap} />}
 
               {/* Section 4: 12-Month Journey */}
               {roadmap?.twelveMonthJourney && (
@@ -123,14 +129,10 @@ const PrintViewMiddleHighSchool = ({
               )}
 
               {/* Activities & Exposure */}
-              {roadmap?.exposure && (
-                <ActivitiesExposureSection exposure={roadmap.exposure} />
-              )}
+              {roadmap?.exposure && <ActivitiesExposureSection exposure={roadmap.exposure} />}
 
               {/* Final Note */}
-              {finalNote && (
-                <FinalNoteSection finalNote={finalNote} />
-              )}
+              {finalNote && <FinalNoteSection finalNote={finalNote} />}
 
               {/* Report Disclaimer */}
               <ReportDisclaimer />
@@ -151,37 +153,43 @@ const InterestExplorerSection = ({ riasec, safeRiasecNames }) => {
   if (!riasec || !riasec.topThree) return null;
 
   const maxScore = riasec.maxScore || 20;
-  const topInterestsText = riasec.topThree.map(code => safeRiasecNames[code]).join(', ');
-  const hasStrongInterests = riasec.topThree.some(code => (riasec.scores?.[code] || 0) >= maxScore * 0.5);
-  
+  const topInterestsText = riasec.topThree.map((code) => safeRiasecNames[code]).join(', ');
+  const hasStrongInterests = riasec.topThree.some(
+    (code) => (riasec.scores?.[code] || 0) >= maxScore * 0.5
+  );
+
   return (
     <div>
       <h3 style={printStyles.subTitle}>Interest Explorer Results</h3>
 
       {/* RIASEC Infographic Layout with Central Circle */}
-      <div style={{
-        position: 'relative',
-        padding: '20px 0',
-        marginTop: '10px',
-        marginBottom: '8px',
-        minHeight: '320px'
-      }}>
+      <div
+        style={{
+          position: 'relative',
+          padding: '20px 0',
+          marginTop: '10px',
+          marginBottom: '8px',
+          minHeight: '320px',
+        }}
+      >
         {/* SVG for connecting lines */}
-        <svg style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          pointerEvents: 'none',
-          zIndex: 0
-        }}>
+        <svg
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            pointerEvents: 'none',
+            zIndex: 0,
+          }}
+        >
           {/* Dotted lines from red dots to central RIASEC circle */}
           {riasec.topThree.map((code, idx) => {
             const positions = [
               { x1: '14%', y1: '60%', x2: '50%', y2: '78%' },
               { x1: '50%', y1: '30%', x2: '50%', y2: '78%' },
-              { x1: '86%', y1: '60%', x2: '50%', y2: '78%' }
+              { x1: '86%', y1: '60%', x2: '50%', y2: '78%' },
             ];
             const pos = positions[idx];
             return (
@@ -199,64 +207,104 @@ const InterestExplorerSection = ({ riasec, safeRiasecNames }) => {
             );
           })}
           {/* Vertical lines from red dots to diagonal start for cards 1 and 3 */}
-          <line x1="14%" y1="30%" x2="14%" y2="60%" stroke="#000000" strokeWidth="1" strokeDasharray="2,4" strokeLinecap="round" />
-          <line x1="86%" y1="30%" x2="86%" y2="60%" stroke="#000000" strokeWidth="1" strokeDasharray="2,4" strokeLinecap="round" />
+          <line
+            x1="14%"
+            y1="30%"
+            x2="14%"
+            y2="60%"
+            stroke="#000000"
+            strokeWidth="1"
+            strokeDasharray="2,4"
+            strokeLinecap="round"
+          />
+          <line
+            x1="86%"
+            y1="30%"
+            x2="86%"
+            y2="60%"
+            stroke="#000000"
+            strokeWidth="1"
+            strokeDasharray="2,4"
+            strokeLinecap="round"
+          />
         </svg>
 
         {/* Top 3 Interest Cards */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          position: 'relative',
-          zIndex: 1
-        }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            position: 'relative',
+            zIndex: 1,
+          }}
+        >
           {riasec.topThree.map((code, idx) => {
             const score = riasec.scores?.[code] || 0;
-            
+
             return (
               <div key={code} style={{ width: '28%', textAlign: 'center' }}>
-                <div style={{ fontWeight: 'bold', fontSize: '11px', color: '#1e293b', marginBottom: '4px' }}>
+                <div
+                  style={{
+                    fontWeight: 'bold',
+                    fontSize: '11px',
+                    color: '#1e293b',
+                    marginBottom: '4px',
+                  }}
+                >
                   {safeRiasecNames[code]} ({code})
                 </div>
-                <p style={{ fontSize: '8px', color: '#4b5563', margin: '0 0 8px 0', lineHeight: '1.3' }}>
+                <p
+                  style={{
+                    fontSize: '8px',
+                    color: '#4b5563',
+                    margin: '0 0 8px 0',
+                    lineHeight: '1.3',
+                  }}
+                >
                   {riasecDescriptions[code]}
                 </p>
-                <div style={{
-                  display: 'inline-block',
-                  padding: '4px 12px',
-                  background: '#e0f2fe',
-                  borderRadius: '12px',
-                  fontSize: '9px',
-                  fontWeight: '600',
-                  color: '#0369a1',
-                  marginBottom: '8px'
-                }}>
+                <div
+                  style={{
+                    display: 'inline-block',
+                    padding: '4px 12px',
+                    background: '#e0f2fe',
+                    borderRadius: '12px',
+                    fontSize: '9px',
+                    fontWeight: '600',
+                    color: '#0369a1',
+                    marginBottom: '8px',
+                  }}
+                >
                   {score}/{maxScore}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'center', position: 'relative' }}>
-                  <div style={{
-                    width: '70px',
-                    height: '70px',
-                    borderRadius: '50%',
-                    border: '2px solid #1e3a5f',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: 'white'
-                  }}>
+                  <div
+                    style={{
+                      width: '70px',
+                      height: '70px',
+                      borderRadius: '50%',
+                      border: '2px solid #1e3a5f',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: 'white',
+                    }}
+                  >
                     <RiasecIcon code={code} size={42} />
                   </div>
-                  <div style={{
-                    position: 'absolute',
-                    bottom: '-5px',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    background: '#ef4444'
-                  }}></div>
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: '-5px',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      background: '#ef4444',
+                    }}
+                  ></div>
                 </div>
               </div>
             );
@@ -264,50 +312,60 @@ const InterestExplorerSection = ({ riasec, safeRiasecNames }) => {
         </div>
 
         {/* Central RIASEC Circle */}
-        <div style={{
-          position: 'absolute',
-          bottom: '10px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          textAlign: 'center',
-          zIndex: 1
-        }}>
-          <div style={{
-            width: '100px',
-            height: '100px',
-            borderRadius: '50%',
-            border: '3px dashed #1e3a5f',
-            background: 'white',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-          }}>
-            <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#000000', marginBottom: '2px' }}>
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '10px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            textAlign: 'center',
+            zIndex: 1,
+          }}
+        >
+          <div
+            style={{
+              width: '100px',
+              height: '100px',
+              borderRadius: '50%',
+              border: '3px dashed #1e3a5f',
+              background: 'white',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            }}
+          >
+            <div
+              style={{
+                fontSize: '14px',
+                fontWeight: 'bold',
+                color: '#000000',
+                marginBottom: '2px',
+              }}
+            >
               RIASEC
             </div>
-            <div style={{ fontSize: '9px', color: '#000000' }}>
-              Interest
-            </div>
-            <div style={{ fontSize: '9px', color: '#000000' }}>
-              Profile
-            </div>
+            <div style={{ fontSize: '9px', color: '#000000' }}>Interest</div>
+            <div style={{ fontSize: '9px', color: '#000000' }}>Profile</div>
           </div>
         </div>
       </div>
 
       {/* Bottom Summary Text */}
-      <div style={{ 
-        fontSize: '9px', 
-        color: '#6b7280', 
-        fontStyle: 'italic', 
-        lineHeight: '1.5',
-        marginTop: '10px',
-        textAlign: 'left'
-      }}>
-        <strong>Your Top Interests:</strong> {topInterestsText}. {hasStrongInterests 
-          ? 'These interests indicate your natural preferences and can guide your career exploration.' 
+      <div
+        style={{
+          fontSize: '9px',
+          color: '#6b7280',
+          fontStyle: 'italic',
+          lineHeight: '1.5',
+          marginTop: '10px',
+          textAlign: 'left',
+        }}
+      >
+        <strong>Your Top Interests:</strong> {topInterestsText}.{' '}
+        {hasStrongInterests
+          ? 'These interests indicate your natural preferences and can guide your career exploration.'
           : 'The student has not expressed any strong interests in any of the RIASEC categories, indicating a need for exploration in various fields.'}
       </div>
     </div>
@@ -328,7 +386,14 @@ const CharacterStrengthsSection = ({ aptitudeStrengths }) => {
       <div style={printStyles.twoCol}>
         {aptitudeStrengths.map((strength, idx) => (
           <div key={idx} style={printStyles.card}>
-            <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '4px' }}>
+            <div
+              style={{
+                fontWeight: 'bold',
+                fontSize: '10px',
+                color: '#1e293b',
+                marginBottom: '4px',
+              }}
+            >
               {safeRender(strength.name || strength)}
             </div>
             {strength.description && (
@@ -355,23 +420,31 @@ const LearningWorkStyleSection = ({ keyPatterns }) => {
     { title: 'What You Enjoy', value: keyPatterns.enjoyment },
     { title: 'How You Work Best', value: keyPatterns.workStyle },
     { title: 'Your Strengths', value: keyPatterns.strength },
-    { title: 'What Motivates You', value: keyPatterns.motivation }
+    { title: 'What Motivates You', value: keyPatterns.motivation },
   ];
 
   return (
     <div style={{ ...printStyles.twoCol, marginTop: '15px' }}>
-      {patterns.map((pattern, idx) => (
-        pattern.value && (
-          <div key={idx} style={printStyles.card}>
-            <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '4px' }}>
-              {pattern.title}
+      {patterns.map(
+        (pattern, idx) =>
+          pattern.value && (
+            <div key={idx} style={printStyles.card}>
+              <div
+                style={{
+                  fontWeight: 'bold',
+                  fontSize: '10px',
+                  color: '#1e293b',
+                  marginBottom: '4px',
+                }}
+              >
+                {pattern.title}
+              </div>
+              <p style={{ fontSize: '9px', color: '#4b5563', margin: '0', lineHeight: '1.4' }}>
+                {safeRender(pattern.value)}
+              </p>
             </div>
-            <p style={{ fontSize: '9px', color: '#4b5563', margin: '0', lineHeight: '1.4' }}>
-              {safeRender(pattern.value)}
-            </p>
-          </div>
-        )
-      ))}
+          )
+      )}
     </div>
   );
 };
@@ -398,7 +471,7 @@ const CareerExplorationSection = ({ careerFit }) => {
                   ...printStyles.badge,
                   background: '#dbeafe',
                   color: '#1e40af',
-                  border: '1px solid #93c5fd'
+                  border: '1px solid #93c5fd',
                 }}
               >
                 {safeRender(cluster)}
@@ -415,7 +488,14 @@ const CareerExplorationSection = ({ careerFit }) => {
           <div style={printStyles.twoCol}>
             {careerFit.topCareers.slice(0, 6).map((career, idx) => (
               <div key={idx} style={printStyles.card}>
-                <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '4px' }}>
+                <div
+                  style={{
+                    fontWeight: 'bold',
+                    fontSize: '10px',
+                    color: '#1e293b',
+                    marginBottom: '4px',
+                  }}
+                >
                   {safeRender(career.name || career)}
                 </div>
                 {career.description && (
@@ -457,7 +537,7 @@ const SkillsToDevelopSection = ({ skillGap }) => {
                 const priorityColors = {
                   High: { bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' },
                   Medium: { bg: '#fef9c3', color: '#854d0e', border: '#fde047' },
-                  Low: { bg: '#dcfce7', color: '#166534', border: '#86efac' }
+                  Low: { bg: '#dcfce7', color: '#166534', border: '#86efac' },
                 };
                 const colors = priorityColors[priority] || priorityColors.Medium;
 
@@ -465,12 +545,14 @@ const SkillsToDevelopSection = ({ skillGap }) => {
                   <tr key={idx}>
                     <td style={printStyles.td}>{safeRender(gap.skill || gap)}</td>
                     <td style={printStyles.td}>
-                      <span style={{
-                        ...printStyles.badge,
-                        background: colors.bg,
-                        color: colors.color,
-                        border: `1px solid ${colors.border}`
-                      }}>
+                      <span
+                        style={{
+                          ...printStyles.badge,
+                          background: colors.bg,
+                          color: colors.color,
+                          border: `1px solid ${colors.border}`,
+                        }}
+                      >
                         {priority}
                       </span>
                     </td>
@@ -492,10 +574,10 @@ const SkillsToDevelopSection = ({ skillGap }) => {
  */
 const TwelveMonthJourneySection = ({ twelveMonthJourney }) => {
   // Handle various data formats - could be array, object with items, or null
-  const journeyItems = Array.isArray(twelveMonthJourney) 
-    ? twelveMonthJourney 
+  const journeyItems = Array.isArray(twelveMonthJourney)
+    ? twelveMonthJourney
     : twelveMonthJourney?.items || twelveMonthJourney?.months || [];
-  
+
   if (!journeyItems || journeyItems.length === 0) return null;
 
   return (
@@ -504,7 +586,14 @@ const TwelveMonthJourneySection = ({ twelveMonthJourney }) => {
       <div style={{ marginTop: '10px' }}>
         {journeyItems.map((item, idx) => (
           <div key={idx} style={{ ...printStyles.card, marginBottom: '8px' }}>
-            <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#4f46e5', marginBottom: '3px' }}>
+            <div
+              style={{
+                fontWeight: 'bold',
+                fontSize: '10px',
+                color: '#4f46e5',
+                marginBottom: '3px',
+              }}
+            >
               {safeRender(item.month || `Month ${idx + 1}`)}
             </div>
             <p style={{ fontSize: '9px', color: '#4b5563', margin: '0', lineHeight: '1.4' }}>
@@ -531,7 +620,14 @@ const ProjectsSection = ({ projects }) => {
       <div style={printStyles.twoCol}>
         {projects.map((project, idx) => (
           <div key={idx} style={printStyles.card}>
-            <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '4px' }}>
+            <div
+              style={{
+                fontWeight: 'bold',
+                fontSize: '10px',
+                color: '#1e293b',
+                marginBottom: '4px',
+              }}
+            >
               {safeRender(project.name || project)}
             </div>
             {project.description && (
@@ -558,10 +654,20 @@ const ActivitiesExposureSection = ({ exposure }) => {
     <div style={{ ...printStyles.twoCol, marginTop: '15px' }}>
       {exposure.activities && exposure.activities.length > 0 && (
         <div style={printStyles.card}>
-          <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '6px' }}>
+          <div
+            style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '6px' }}
+          >
             Activities to Try
           </div>
-          <ul style={{ margin: '0', paddingLeft: '15px', fontSize: '9px', color: '#4b5563', lineHeight: '1.5' }}>
+          <ul
+            style={{
+              margin: '0',
+              paddingLeft: '15px',
+              fontSize: '9px',
+              color: '#4b5563',
+              lineHeight: '1.5',
+            }}
+          >
             {exposure.activities.map((activity, idx) => (
               <li key={idx}>{safeRender(activity)}</li>
             ))}
@@ -571,10 +677,20 @@ const ActivitiesExposureSection = ({ exposure }) => {
 
       {exposure.resources && exposure.resources.length > 0 && (
         <div style={printStyles.card}>
-          <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '6px' }}>
+          <div
+            style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '6px' }}
+          >
             Resources to Explore
           </div>
-          <ul style={{ margin: '0', paddingLeft: '15px', fontSize: '9px', color: '#4b5563', lineHeight: '1.5' }}>
+          <ul
+            style={{
+              margin: '0',
+              paddingLeft: '15px',
+              fontSize: '9px',
+              color: '#4b5563',
+              lineHeight: '1.5',
+            }}
+          >
             {exposure.resources.map((resource, idx) => (
               <li key={idx}>{safeRender(resource)}</li>
             ))}
@@ -607,7 +723,9 @@ const FinalNoteSection = ({ finalNote }) => {
         </p>
       )}
       {finalNote.nextReview && (
-        <p style={{ margin: '8px 0 0 0', fontSize: '10px', lineHeight: '1.6', fontStyle: 'italic' }}>
+        <p
+          style={{ margin: '8px 0 0 0', fontSize: '10px', lineHeight: '1.6', fontStyle: 'italic' }}
+        >
           {finalNote.nextReview}
         </p>
       )}

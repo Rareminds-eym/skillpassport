@@ -1,9 +1,9 @@
 /**
  * SubscriptionProtectedRoute
- * 
+ *
  * Industrial-grade route guard that protects routes requiring active subscription.
  * Combines authentication check + role check + subscription access check.
- * 
+ *
  * Features:
  * - State machine for predictable state transitions
  * - Retry logic with exponential backoff
@@ -11,9 +11,9 @@
  * - Comprehensive error handling and recovery
  * - Debug logging for troubleshooting
  * - Safety timeouts to prevent infinite loading
- * 
+ *
  * Usage:
- * <SubscriptionProtectedRoute 
+ * <SubscriptionProtectedRoute
  *   allowedRoles={['school_student', 'college_student']}
  *   requireSubscription={true}
  * >
@@ -94,14 +94,14 @@ function getUserTypeFromPath(pathname) {
 /**
  * Sleep utility for retry delays
  */
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * Retry with exponential backoff
  */
 async function retryWithBackoff(fn, maxRetries, baseDelayMs, onRetry) {
   let lastError;
-  
+
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       return await fn();
@@ -114,7 +114,7 @@ async function retryWithBackoff(fn, maxRetries, baseDelayMs, onRetry) {
       }
     }
   }
-  
+
   throw lastError;
 }
 
@@ -132,7 +132,7 @@ function usePostPaymentSync(isPostPayment, hasAccess, refreshAccess) {
     attempts: 0,
     error: null,
   });
-  
+
   const syncStartedRef = useRef(false);
   const timeoutRef = useRef(null);
   const mountedRef = useRef(true);
@@ -163,7 +163,7 @@ function usePostPaymentSync(isPostPayment, hasAccess, refreshAccess) {
     timeoutRef.current = setTimeout(() => {
       if (mountedRef.current && syncState.status === 'syncing') {
         log.warn('Post-payment sync timeout reached');
-        setSyncState(prev => ({
+        setSyncState((prev) => ({
           ...prev,
           status: 'failed',
           error: new Error('Sync timeout'),
@@ -181,9 +181,12 @@ function usePostPaymentSync(isPostPayment, hasAccess, refreshAccess) {
       CONFIG.POST_PAYMENT_MAX_RETRIES,
       CONFIG.POST_PAYMENT_RETRY_DELAY_MS,
       (attempt, delay, error) => {
-        log.warn(`Post-payment sync retry ${attempt}/${CONFIG.POST_PAYMENT_MAX_RETRIES} after ${delay}ms`, error);
+        log.warn(
+          `Post-payment sync retry ${attempt}/${CONFIG.POST_PAYMENT_MAX_RETRIES} after ${delay}ms`,
+          error
+        );
         if (mountedRef.current) {
-          setSyncState(prev => ({ ...prev, attempts: attempt }));
+          setSyncState((prev) => ({ ...prev, attempts: attempt }));
         }
       }
     )
@@ -261,9 +264,9 @@ function useGuardState({
     // Step 3: Role check - be lenient for admin roles
     if (allowedRoles.length > 0 && !allowedRoles.includes(role)) {
       // Check if this is an admin role mismatch that should be allowed
-      const isAdminRoute = allowedRoles.some(r => r.includes('_admin'));
+      const isAdminRoute = allowedRoles.some((r) => r.includes('_admin'));
       const userIsAdmin = role === 'admin' || role?.includes('_admin');
-      
+
       if (!(isAdminRoute && userIsAdmin)) {
         // Not an admin exception, deny access
         return GUARD_STATES.ACCESS_DENIED;
@@ -338,8 +341,8 @@ function useGuardState({
 // MAIN COMPONENT
 // ============================================================================
 
-const SubscriptionProtectedRoute = ({ 
-  children, 
+const SubscriptionProtectedRoute = ({
+  children,
   allowedRoles = [],
   requireSubscription = true,
   subscriptionFallbackPath = '/subscription/plans',
@@ -347,7 +350,7 @@ const SubscriptionProtectedRoute = ({
 }) => {
   const { isAuthenticated, role, loading: authLoading, user } = useAuth();
   const location = useLocation();
-  
+
   // Debug logging for redirect loop investigation
   useEffect(() => {
     if (DEBUG) {
@@ -361,8 +364,16 @@ const SubscriptionProtectedRoute = ({
         requireSubscription,
       });
     }
-  }, [location.pathname, isAuthenticated, role, authLoading, user?.id, allowedRoles, requireSubscription]);
-  
+  }, [
+    location.pathname,
+    isAuthenticated,
+    role,
+    authLoading,
+    user?.id,
+    allowedRoles,
+    requireSubscription,
+  ]);
+
   const {
     hasAccess,
     accessReason,
@@ -407,12 +418,15 @@ const SubscriptionProtectedRoute = ({
   }, [subscriptionFallbackPath, location.pathname]);
 
   // Build redirect state for subscription plans
-  const buildRedirectState = useCallback((message) => ({
-    from: location,
-    reason: accessReason,
-    userRole: role,
-    message,
-  }), [location, accessReason, role]);
+  const buildRedirectState = useCallback(
+    (message) => ({
+      from: location,
+      reason: accessReason,
+      userRole: role,
+      message,
+    }),
+    [location, accessReason, role]
+  );
 
   // ============================================================================
   // RENDER BASED ON STATE
@@ -433,7 +447,7 @@ const SubscriptionProtectedRoute = ({
     log.error('Subscription check error, allowing access with warning:', subscriptionError);
     return (
       <>
-        <SubscriptionBanner 
+        <SubscriptionBanner
           type="error"
           message="Unable to verify subscription status. Some features may be limited."
         />
@@ -446,9 +460,7 @@ const SubscriptionProtectedRoute = ({
   if (guardState === GUARD_STATES.ACCESS_DENIED) {
     // Not authenticated
     if (!isAuthenticated) {
-      const redirectPath = location.pathname.includes('student') 
-        ? loginFallbackPath 
-        : '/';
+      const redirectPath = location.pathname.includes('student') ? loginFallbackPath : '/';
       log.info('Not authenticated, redirecting to:', redirectPath);
       return <Navigate to={redirectPath} state={{ from: location }} replace />;
     }
@@ -457,10 +469,10 @@ const SubscriptionProtectedRoute = ({
     // Allow 'admin' role to access school_admin, college_admin, university_admin routes
     // This handles the case where the role in metadata is 'admin' but the route expects a specific admin type
     const roleMatches = allowedRoles.length === 0 || allowedRoles.includes(role);
-    const isAdminRoute = allowedRoles.some(r => r.includes('_admin'));
+    const isAdminRoute = allowedRoles.some((r) => r.includes('_admin'));
     const userIsAdmin = role === 'admin' || role?.includes('_admin');
     const adminRoleException = isAdminRoute && userIsAdmin;
-    
+
     if (!roleMatches && !adminRoleException) {
       // Role doesn't match and no admin exception applies
       const expectedRole = allowedRoles[0] || 'student';
@@ -478,14 +490,17 @@ const SubscriptionProtectedRoute = ({
       message = 'Your subscription has ended. Subscribe again to access.';
     }
 
-    log.info('No subscription access, redirecting to:', fallbackUrl, 'Reason:', accessReason, 'Role:', role, 'AdminException:', adminRoleException);
-    return (
-      <Navigate 
-        to={fallbackUrl} 
-        state={buildRedirectState(message)}
-        replace 
-      />
+    log.info(
+      'No subscription access, redirecting to:',
+      fallbackUrl,
+      'Reason:',
+      accessReason,
+      'Role:',
+      role,
+      'AdminException:',
+      adminRoleException
     );
+    return <Navigate to={fallbackUrl} state={buildRedirectState(message)} replace />;
   }
 
   // Access granted
@@ -493,12 +508,7 @@ const SubscriptionProtectedRoute = ({
     log.info('Access granted');
     return (
       <>
-        {showWarning && (
-          <SubscriptionBanner 
-            type={warningType}
-            message={warningMessage}
-          />
-        )}
+        {showWarning && <SubscriptionBanner type={warningType} message={warningMessage} />}
         {children}
       </>
     );

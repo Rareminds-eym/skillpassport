@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 import {
   PlusCircleIcon,
   XMarkIcon,
@@ -9,9 +9,9 @@ import {
   MagnifyingGlassIcon,
   ArrowPathIcon,
   TrashIcon,
-} from "@heroicons/react/24/outline";
-import { supabase } from "../../../lib/supabaseClient";
-import toast from "react-hot-toast";
+} from '@heroicons/react/24/outline';
+import { supabase } from '../../../lib/supabaseClient';
+import toast from 'react-hot-toast';
 
 interface Program {
   id: string;
@@ -21,7 +21,7 @@ interface Program {
   degree_level: string;
   department_id: string;
   department_name?: string;
-  status: "active" | "inactive";
+  status: 'active' | 'inactive';
   created_at: string;
   updated_at: string;
 }
@@ -39,12 +39,12 @@ const ProgramManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedProgram, setSelectedProgram] = useState<Program | null>(null);
-  
+
   // Filters
-  const [departmentFilter, setDepartmentFilter] = useState("");
-  const [degreeLevelFilter, setDegreeLevelFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [departmentFilter, setDepartmentFilter] = useState('');
+  const [degreeLevelFilter, setDegreeLevelFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     loadData();
@@ -56,24 +56,26 @@ const ProgramManagement: React.FC = () => {
 
       // Load departments
       const { data: deptData, error: deptError } = await supabase
-        .from("departments")
-        .select("*")
-        .order("name", { ascending: true });
-      
+        .from('departments')
+        .select('*')
+        .order('name', { ascending: true });
+
       if (deptError) throw deptError;
       setDepartments(deptData || []);
 
       // Load programs with department names
       const { data: programsData, error: programsError } = await supabase
-        .from("programs")
-        .select(`
+        .from('programs')
+        .select(
+          `
           *,
           departments (
             name
           )
-        `)
-        .order("name", { ascending: true });
-      
+        `
+        )
+        .order('name', { ascending: true });
+
       if (programsError) throw programsError;
 
       const formattedPrograms: Program[] = (programsData || []).map((p: any) => ({
@@ -83,7 +85,7 @@ const ProgramManagement: React.FC = () => {
         description: p.description,
         degree_level: p.degree_level,
         department_id: p.department_id,
-        department_name: p.departments?.name || "No Department",
+        department_name: p.departments?.name || 'No Department',
         status: p.status,
         created_at: p.created_at,
         updated_at: p.updated_at,
@@ -91,7 +93,7 @@ const ProgramManagement: React.FC = () => {
 
       setPrograms(formattedPrograms);
     } catch (error: any) {
-      console.error("Error loading data:", error);
+      console.error('Error loading data:', error);
       toast.error(`Failed to load data: ${error.message}`);
     } finally {
       setLoading(false);
@@ -109,34 +111,37 @@ const ProgramManagement: React.FC = () => {
   };
 
   const handleDeleteProgram = async (program: Program) => {
-    if (!confirm(`Are you sure you want to delete "${program.name}"? This will also delete all associated sections.`)) {
+    if (
+      !confirm(
+        `Are you sure you want to delete "${program.name}"? This will also delete all associated sections.`
+      )
+    ) {
       return;
     }
 
     try {
-      const { error } = await supabase
-        .from("programs")
-        .delete()
-        .eq("id", program.id);
+      const { error } = await supabase.from('programs').delete().eq('id', program.id);
 
       if (error) throw error;
-      
-      toast.success("Program deleted successfully");
+
+      toast.success('Program deleted successfully');
       loadData();
     } catch (error: any) {
-      console.error("Error deleting program:", error);
+      console.error('Error deleting program:', error);
       toast.error(`Failed to delete program: ${error.message}`);
     }
   };
 
   const handleSaveProgram = async (data: Partial<Program>) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       if (selectedProgram) {
         // Update existing program
         const { error } = await supabase
-          .from("programs")
+          .from('programs')
           .update({
             name: data.name,
             code: data.code,
@@ -146,32 +151,30 @@ const ProgramManagement: React.FC = () => {
             status: data.status,
             updated_by: user?.id,
           })
-          .eq("id", selectedProgram.id);
+          .eq('id', selectedProgram.id);
 
         if (error) throw error;
-        toast.success("Program updated successfully");
+        toast.success('Program updated successfully');
       } else {
         // Create new program
-        const { error } = await supabase
-          .from("programs")
-          .insert({
-            name: data.name,
-            code: data.code,
-            description: data.description,
-            degree_level: data.degree_level,
-            department_id: data.department_id,
-            status: data.status || "active",
-            created_by: user?.id,
-          });
+        const { error } = await supabase.from('programs').insert({
+          name: data.name,
+          code: data.code,
+          description: data.description,
+          degree_level: data.degree_level,
+          department_id: data.department_id,
+          status: data.status || 'active',
+          created_by: user?.id,
+        });
 
         if (error) throw error;
-        toast.success("Program created successfully");
+        toast.success('Program created successfully');
       }
-      
+
       setIsModalOpen(false);
       loadData();
     } catch (error: any) {
-      console.error("Error saving program:", error);
+      console.error('Error saving program:', error);
       toast.error(`Failed to save program: ${error.message}`);
     }
   };
@@ -192,7 +195,7 @@ const ProgramManagement: React.FC = () => {
   });
 
   const getStatusBadge = (status: string) => {
-    return status === "active" ? (
+    return status === 'active' ? (
       <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
         Active
       </span>
@@ -205,14 +208,16 @@ const ProgramManagement: React.FC = () => {
 
   const getDegreeLevelBadge = (level: string) => {
     const colors: Record<string, string> = {
-      Undergraduate: "bg-blue-100 text-blue-700",
-      Postgraduate: "bg-purple-100 text-purple-700",
-      Diploma: "bg-orange-100 text-orange-700",
-      Certificate: "bg-green-100 text-green-700",
+      Undergraduate: 'bg-blue-100 text-blue-700',
+      Postgraduate: 'bg-purple-100 text-purple-700',
+      Diploma: 'bg-orange-100 text-orange-700',
+      Certificate: 'bg-green-100 text-green-700',
     };
-    
+
     return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${colors[level] || "bg-gray-100 text-gray-700"}`}>
+      <span
+        className={`px-2 py-1 rounded-full text-xs font-medium ${colors[level] || 'bg-gray-100 text-gray-700'}`}
+      >
         {level}
       </span>
     );
@@ -220,9 +225,13 @@ const ProgramManagement: React.FC = () => {
 
   // Calculate stats
   const totalPrograms = filteredPrograms.length;
-  const activePrograms = filteredPrograms.filter((p) => p.status === "active").length;
-  const undergraduatePrograms = filteredPrograms.filter((p) => p.degree_level === "Undergraduate").length;
-  const postgraduatePrograms = filteredPrograms.filter((p) => p.degree_level === "Postgraduate").length;
+  const activePrograms = filteredPrograms.filter((p) => p.status === 'active').length;
+  const undergraduatePrograms = filteredPrograms.filter(
+    (p) => p.degree_level === 'Undergraduate'
+  ).length;
+  const postgraduatePrograms = filteredPrograms.filter(
+    (p) => p.degree_level === 'Postgraduate'
+  ).length;
 
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
@@ -364,9 +373,7 @@ const ProgramManagement: React.FC = () => {
       {/* Programs Table */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900">
-            Programs ({filteredPrograms.length})
-          </h2>
+          <h2 className="text-xl font-bold text-gray-900">Programs ({filteredPrograms.length})</h2>
         </div>
 
         {loading ? (
@@ -392,9 +399,7 @@ const ProgramManagement: React.FC = () => {
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
                     Program Name
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
-                    Code
-                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Code</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
                     Department
                   </th>
@@ -423,12 +428,8 @@ const ProgramManagement: React.FC = () => {
                         {program.code}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-900">
-                      {program.department_name}
-                    </td>
-                    <td className="px-4 py-3">
-                      {getDegreeLevelBadge(program.degree_level)}
-                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{program.department_name}</td>
+                    <td className="px-4 py-3">{getDegreeLevelBadge(program.degree_level)}</td>
                     <td className="px-4 py-3">{getStatusBadge(program.status)}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
@@ -479,12 +480,12 @@ const ProgramFormModal: React.FC<{
   departments: Department[];
 }> = ({ isOpen, onClose, onSave, program, departments }) => {
   const [formData, setFormData] = useState({
-    name: program?.name || "",
-    code: program?.code || "",
-    description: program?.description || "",
-    degree_level: program?.degree_level || "Undergraduate",
-    department_id: program?.department_id || "",
-    status: program?.status || "active",
+    name: program?.name || '',
+    code: program?.code || '',
+    description: program?.description || '',
+    degree_level: program?.degree_level || 'Undergraduate',
+    department_id: program?.department_id || '',
+    status: program?.status || 'active',
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -497,19 +498,13 @@ const ProgramFormModal: React.FC<{
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">
-        <div
-          className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm"
-          onClick={onClose}
-        />
+        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose} />
         <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl">
           <div className="flex items-center justify-between border-b border-gray-200 px-6 py-5">
             <h2 className="text-xl font-semibold text-gray-900">
-              {program ? "Edit Program" : "Create New Program"}
+              {program ? 'Edit Program' : 'Create New Program'}
             </h2>
-            <button
-              onClick={onClose}
-              className="p-2 text-gray-400 hover:bg-gray-100 rounded-lg"
-            >
+            <button onClick={onClose} className="p-2 text-gray-400 hover:bg-gray-100 rounded-lg">
               <XMarkIcon className="h-5 w-5" />
             </button>
           </div>
@@ -523,9 +518,7 @@ const ProgramFormModal: React.FC<{
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g., Bachelor of Technology in Computer Science"
                   required
@@ -539,9 +532,7 @@ const ProgramFormModal: React.FC<{
                 <input
                   type="text"
                   value={formData.code}
-                  onChange={(e) =>
-                    setFormData({ ...formData, code: e.target.value.toUpperCase() })
-                  }
+                  onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g., BTECH-CSE"
                   required
@@ -549,14 +540,10 @@ const ProgramFormModal: React.FC<{
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Department *
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Department *</label>
                 <select
                   value={formData.department_id}
-                  onChange={(e) =>
-                    setFormData({ ...formData, department_id: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, department_id: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   required
                 >
@@ -575,9 +562,7 @@ const ProgramFormModal: React.FC<{
                 </label>
                 <select
                   value={formData.degree_level}
-                  onChange={(e) =>
-                    setFormData({ ...formData, degree_level: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, degree_level: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   required
                 >
@@ -589,13 +574,11 @@ const ProgramFormModal: React.FC<{
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Status *
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status *</label>
                 <select
                   value={formData.status}
                   onChange={(e) =>
-                    setFormData({ ...formData, status: e.target.value as "active" | "inactive" })
+                    setFormData({ ...formData, status: e.target.value as 'active' | 'inactive' })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   required
@@ -611,9 +594,7 @@ const ProgramFormModal: React.FC<{
                 </label>
                 <textarea
                   value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   placeholder="Brief description of the program..."
                   rows={3}
@@ -633,7 +614,7 @@ const ProgramFormModal: React.FC<{
                 type="submit"
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
               >
-                {program ? "Update Program" : "Create Program"}
+                {program ? 'Update Program' : 'Create Program'}
               </button>
             </div>
           </form>

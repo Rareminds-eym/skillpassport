@@ -27,29 +27,31 @@ const Badge = ({ type }: { type: string }) => {
     pending: {
       color: 'bg-yellow-100 text-yellow-800 border-yellow-300',
       label: 'Pending',
-      icon: '⏳'
+      icon: '⏳',
     },
     approved: {
       color: 'bg-green-100 text-green-800 border-green-300',
       label: 'Approved',
-      icon: '✓'
+      icon: '✓',
     },
     rejected: {
       color: 'bg-red-100 text-red-800 border-red-300',
       label: 'Rejected',
-      icon: '✕'
+      icon: '✕',
     },
     waitlisted: {
       color: 'bg-blue-100 text-blue-800 border-blue-300',
       label: 'Waitlisted',
-      icon: '⏸'
-    }
+      icon: '⏸',
+    },
   };
 
   const config = badgeConfig[type as keyof typeof badgeConfig] || badgeConfig.pending;
 
   return (
-    <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border ${config.color}`}>
+    <span
+      className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border ${config.color}`}
+    >
       <span className="mr-1">{config.icon}</span>
       {config.label}
     </span>
@@ -58,16 +60,30 @@ const Badge = ({ type }: { type: string }) => {
 
 const StatusBadge = ({ status }: { status: string }) => {
   const statusConfig = {
-    verified: { color: 'bg-green-100 text-green-800 border-green-300', label: 'Verified', icon: '✓' },
-    approved: { color: 'bg-green-100 text-green-800 border-green-300', label: 'Approved', icon: '✓' },
-    pending: { color: 'bg-yellow-100 text-yellow-800 border-yellow-300', label: 'Pending', icon: '⏳' },
+    verified: {
+      color: 'bg-green-100 text-green-800 border-green-300',
+      label: 'Verified',
+      icon: '✓',
+    },
+    approved: {
+      color: 'bg-green-100 text-green-800 border-green-300',
+      label: 'Approved',
+      icon: '✓',
+    },
+    pending: {
+      color: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+      label: 'Pending',
+      icon: '⏳',
+    },
     rejected: { color: 'bg-red-100 text-red-800 border-red-300', label: 'Rejected', icon: '✕' },
   };
 
   const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
 
   return (
-    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${config.color}`}>
+    <span
+      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${config.color}`}
+    >
       <span className="mr-1">{config.icon}</span>
       {config.label}
     </span>
@@ -77,10 +93,11 @@ const StatusBadge = ({ status }: { status: string }) => {
 const TabButton = ({ active, onClick, children }) => (
   <button
     onClick={onClick}
-    className={`px-4 py-4 text-sm font-medium border-b-2 ${active
-      ? 'border-primary-500 text-primary-600'
-      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-      }`}
+    className={`px-4 py-4 text-sm font-medium border-b-2 ${
+      active
+        ? 'border-primary-500 text-primary-600'
+        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+    }`}
   >
     {children}
   </button>
@@ -95,7 +112,7 @@ const AdmissionNoteModal = ({ isOpen, onClose, student, onSuccess }) => {
 
     setIsSubmitting(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       onSuccess?.();
       setNote('');
@@ -112,7 +129,10 @@ const AdmissionNoteModal = ({ isOpen, onClose, student, onSuccess }) => {
   return (
     <div className="fixed inset-0 z-[60] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        <div
+          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          onClick={onClose}
+        ></div>
 
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-4">
@@ -164,7 +184,9 @@ const MessageModal = ({ isOpen, onClose, student }) => {
 
   const handleWhatsApp = () => {
     const phone = student.contact_number?.replace(/[^0-9]/g, '') || '';
-    const message = encodeURIComponent(`Hi ${student.name}, I wanted to reach out regarding your admission application...`);
+    const message = encodeURIComponent(
+      `Hi ${student.name}, I wanted to reach out regarding your admission application...`
+    );
     window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
     onClose();
   };
@@ -177,7 +199,9 @@ const MessageModal = ({ isOpen, onClose, student }) => {
 
   const handleEmail = () => {
     const subject = encodeURIComponent('Your Admission Application Update');
-    const body = encodeURIComponent(`Dear ${student.name},\n\nI wanted to reach out regarding your admission application.\n\nBest regards`);
+    const body = encodeURIComponent(
+      `Dear ${student.name},\n\nI wanted to reach out regarding your admission application.\n\nBest regards`
+    );
     window.location.href = `mailto:${student.email}?subject=${subject}&body=${body}`;
     onClose();
   };
@@ -185,7 +209,10 @@ const MessageModal = ({ isOpen, onClose, student }) => {
   return (
     <div className="fixed inset-0 z-[60] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        <div
+          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          onClick={onClose}
+        ></div>
 
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-4">
@@ -244,7 +271,7 @@ const MessageModal = ({ isOpen, onClose, student }) => {
 const ExportModal = ({ isOpen, onClose, student }) => {
   const [exportSettings, setExportSettings] = useState({
     format: 'pdf',
-    type: 'application_summary'
+    type: 'application_summary',
   });
 
   const generatePDF = (student, settings) => {
@@ -291,10 +318,13 @@ const ExportModal = ({ isOpen, onClose, student }) => {
       { label: 'Full Name', value: student.name },
       { label: 'Email', value: student.email },
       { label: 'Contact Number', value: student.contact_number },
-      { label: 'Date of Birth', value: student.date_of_birth ? new Date(student.date_of_birth).toLocaleDateString() : 'N/A' },
+      {
+        label: 'Date of Birth',
+        value: student.date_of_birth ? new Date(student.date_of_birth).toLocaleDateString() : 'N/A',
+      },
     ];
 
-    personalFields.forEach(field => {
+    personalFields.forEach((field) => {
       if (field.value) {
         checkNewPage();
         doc.text(`${field.label}: ${field.value}`, margin + 5, yPos);
@@ -317,10 +347,13 @@ const ExportModal = ({ isOpen, onClose, student }) => {
       { label: 'Subjects', value: student.subjects ? student.subjects.join(', ') : 'N/A' },
       { label: 'Entrance Score', value: student.score },
       { label: 'Application Status', value: student.admission_status?.toUpperCase() },
-      { label: 'Applied Date', value: student.applied_date ? new Date(student.applied_date).toLocaleDateString() : 'N/A' },
+      {
+        label: 'Applied Date',
+        value: student.applied_date ? new Date(student.applied_date).toLocaleDateString() : 'N/A',
+      },
     ];
 
-    academicFields.forEach(field => {
+    academicFields.forEach((field) => {
       if (field.value) {
         checkNewPage();
         doc.text(`${field.label}: ${field.value}`, margin + 5, yPos);
@@ -335,7 +368,9 @@ const ExportModal = ({ isOpen, onClose, student }) => {
       doc.setPage(i);
       doc.setFontSize(8);
       doc.setTextColor(128, 128, 128);
-      doc.text('--- Exported from School Admission System ---', pageWidth / 2, pageHeight - 10, { align: 'center' });
+      doc.text('--- Exported from School Admission System ---', pageWidth / 2, pageHeight - 10, {
+        align: 'center',
+      });
       doc.text(`Page ${i} of ${totalPages}`, pageWidth / 2, pageHeight - 5, { align: 'center' });
       doc.setTextColor(0, 0, 0);
     }
@@ -353,7 +388,7 @@ const ExportModal = ({ isOpen, onClose, student }) => {
       'Subjects',
       'Entrance Score',
       'Admission Status',
-      'Applied Date'
+      'Applied Date',
     ];
 
     const escapeCSV = (value) => {
@@ -371,7 +406,7 @@ const ExportModal = ({ isOpen, onClose, student }) => {
       escapeCSV(student.subjects ? student.subjects.join('; ') : ''),
       escapeCSV(student.score),
       escapeCSV(student.admission_status),
-      escapeCSV(student.applied_date ? new Date(student.applied_date).toLocaleDateString() : '')
+      escapeCSV(student.applied_date ? new Date(student.applied_date).toLocaleDateString() : ''),
     ];
 
     const csvContent = headers.join(',') + '\n' + row.join(',') + '\n';
@@ -380,7 +415,7 @@ const ExportModal = ({ isOpen, onClose, student }) => {
 
   const downloadFile = (content, filename, format) => {
     const blob = new Blob([content], {
-      type: format === 'csv' ? 'text/csv' : 'application/pdf'
+      type: format === 'csv' ? 'text/csv' : 'application/pdf',
     });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -411,7 +446,10 @@ const ExportModal = ({ isOpen, onClose, student }) => {
   return (
     <div className="fixed inset-0 z-[60] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        <div
+          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          onClick={onClose}
+        ></div>
 
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-4">
@@ -431,7 +469,9 @@ const ExportModal = ({ isOpen, onClose, student }) => {
                     name="format"
                     value="csv"
                     checked={exportSettings.format === 'csv'}
-                    onChange={(e) => setExportSettings({ ...exportSettings, format: e.target.value })}
+                    onChange={(e) =>
+                      setExportSettings({ ...exportSettings, format: e.target.value })
+                    }
                     className="h-4 w-4 text-primary-600"
                   />
                   <span className="ml-2 text-sm text-gray-700">CSV</span>
@@ -442,7 +482,9 @@ const ExportModal = ({ isOpen, onClose, student }) => {
                     name="format"
                     value="pdf"
                     checked={exportSettings.format === 'pdf'}
-                    onChange={(e) => setExportSettings({ ...exportSettings, format: e.target.value })}
+                    onChange={(e) =>
+                      setExportSettings({ ...exportSettings, format: e.target.value })
+                    }
                     className="h-4 w-4 text-primary-600"
                   />
                   <span className="ml-2 text-sm text-gray-700">PDF</span>
@@ -476,7 +518,9 @@ const ProjectCard = ({ project }) => {
     <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between mb-2">
         <div className="flex-1">
-          <h4 className="text-sm font-semibold text-gray-900">{project.title || 'Untitled Project'}</h4>
+          <h4 className="text-sm font-semibold text-gray-900">
+            {project.title || 'Untitled Project'}
+          </h4>
           {project.organization && (
             <p className="text-xs text-gray-600 mt-1">Organization: {project.organization}</p>
           )}
@@ -491,7 +535,10 @@ const ProjectCard = ({ project }) => {
       {project.tech_stack && project.tech_stack.length > 0 && (
         <div className="mb-3 flex flex-wrap gap-1">
           {project.tech_stack.slice(0, 3).map((tech, idx) => (
-            <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
+            <span
+              key={idx}
+              className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700"
+            >
               {tech}
             </span>
           ))}
@@ -543,7 +590,9 @@ const CertificateCard = ({ certificate }) => {
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
             <ShieldCheckIcon className="h-4 w-4 text-yellow-600" />
-            <h4 className="text-sm font-semibold text-gray-900">{certificate.title || 'Untitled Certificate'}</h4>
+            <h4 className="text-sm font-semibold text-gray-900">
+              {certificate.title || 'Untitled Certificate'}
+            </h4>
           </div>
           {certificate.issuer && (
             <p className="text-xs text-gray-600">Issued by: {certificate.issuer}</p>
@@ -555,14 +604,24 @@ const CertificateCard = ({ certificate }) => {
       <div className="flex items-center justify-between mt-3 text-xs">
         <div className="flex gap-4">
           {certificate.level && (
-            <span className="text-gray-600">Level: <span className="font-medium">{certificate.level}</span></span>
+            <span className="text-gray-600">
+              Level: <span className="font-medium">{certificate.level}</span>
+            </span>
           )}
           {certificate.issued_on && (
-            <span className="text-gray-600">Issued: <span className="font-medium">{new Date(certificate.issued_on).toLocaleDateString()}</span></span>
+            <span className="text-gray-600">
+              Issued:{' '}
+              <span className="font-medium">
+                {new Date(certificate.issued_on).toLocaleDateString()}
+              </span>
+            </span>
           )}
         </div>
         {certificate.credential_id && (
-          <span className="text-blue-600 font-mono text-xs truncate max-w-[150px]" title={certificate.credential_id}>
+          <span
+            className="text-blue-600 font-mono text-xs truncate max-w-[150px]"
+            title={certificate.credential_id}
+          >
             ID: {certificate.credential_id}
           </span>
         )}
@@ -605,7 +664,10 @@ const ApprovalModal = ({ isOpen, onClose, student, onApprove, onReject, loading 
   return (
     <div className="fixed inset-0 z-[60] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        <div
+          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          onClick={onClose}
+        ></div>
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium text-gray-900">Student Verification</h3>
@@ -619,7 +681,7 @@ const ApprovalModal = ({ isOpen, onClose, student, onApprove, onReject, loading 
               <p className="text-sm text-gray-600 mb-4">
                 Review and verify the enrollment status for <strong>{student.name}</strong>
               </p>
-              
+
               <div className="space-y-3">
                 <label className="flex items-center">
                   <input
@@ -635,7 +697,7 @@ const ApprovalModal = ({ isOpen, onClose, student, onApprove, onReject, loading 
                     Approve Enrollment
                   </span>
                 </label>
-                
+
                 <label className="flex items-center">
                   <input
                     type="radio"
@@ -679,14 +741,20 @@ const ApprovalModal = ({ isOpen, onClose, student, onApprove, onReject, loading 
               onClick={handleSubmit}
               disabled={loading || !action}
               className={`px-4 py-2 text-sm font-medium text-white border border-transparent rounded-md disabled:opacity-50 ${
-                action === 'approve' 
-                  ? 'bg-green-600 hover:bg-green-700' 
+                action === 'approve'
+                  ? 'bg-green-600 hover:bg-green-700'
                   : action === 'reject'
-                  ? 'bg-red-600 hover:bg-red-700'
-                  : 'bg-gray-400'
+                    ? 'bg-red-600 hover:bg-red-700'
+                    : 'bg-gray-400'
               }`}
             >
-              {loading ? 'Processing...' : action === 'approve' ? 'Approve' : action === 'reject' ? 'Reject' : 'Select Action'}
+              {loading
+                ? 'Processing...'
+                : action === 'approve'
+                  ? 'Approve'
+                  : action === 'reject'
+                    ? 'Reject'
+                    : 'Select Action'}
             </button>
           </div>
         </div>
@@ -696,13 +764,24 @@ const ApprovalModal = ({ isOpen, onClose, student, onApprove, onReject, loading 
 };
 
 // Promotion Modal
-const PromotionModal = ({ isOpen, onClose, student, onPromote, loading, currentSemester, nextSemester }) => {
+const PromotionModal = ({
+  isOpen,
+  onClose,
+  student,
+  onPromote,
+  loading,
+  currentSemester,
+  nextSemester,
+}) => {
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[60] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        <div
+          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          onClick={onClose}
+        ></div>
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium text-gray-900">Promote to Next Semester</h3>
@@ -723,20 +802,25 @@ const PromotionModal = ({ isOpen, onClose, student, onPromote, loading, currentS
                 </p>
               </div>
             </div>
-            
+
             <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
               <div className="flex">
                 <div className="flex-shrink-0">
                   <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    <path
+                      fillRule="evenodd"
+                      d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                 </div>
                 <div className="ml-3">
-                  <h3 className="text-sm font-medium text-yellow-800">
-                    Confirm Promotion
-                  </h3>
+                  <h3 className="text-sm font-medium text-yellow-800">Confirm Promotion</h3>
                   <div className="mt-2 text-sm text-yellow-700">
-                    <p>This action will promote the student to the next semester. Make sure all current semester requirements are completed.</p>
+                    <p>
+                      This action will promote the student to the next semester. Make sure all
+                      current semester requirements are completed.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -772,7 +856,10 @@ const GraduationModal = ({ isOpen, onClose, student, onGraduate, loading }) => {
   return (
     <div className="fixed inset-0 z-[60] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        <div
+          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          onClick={onClose}
+        ></div>
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium text-gray-900">Mark as Graduate</h3>
@@ -793,18 +880,19 @@ const GraduationModal = ({ isOpen, onClose, student, onGraduate, loading }) => {
                 </p>
               </div>
             </div>
-            
+
             <div className="bg-green-50 border border-green-200 rounded-md p-4">
               <div className="flex">
                 <div className="flex-shrink-0">
                   <CheckCircleIcon className="h-5 w-5 text-green-400" />
                 </div>
                 <div className="ml-3">
-                  <h3 className="text-sm font-medium text-green-800">
-                    Graduation Confirmation
-                  </h3>
+                  <h3 className="text-sm font-medium text-green-800">Graduation Confirmation</h3>
                   <div className="mt-2 text-sm text-green-700">
-                    <p>This action will mark the student as graduated and update their enrollment status. This action cannot be easily undone.</p>
+                    <p>
+                      This action will mark the student as graduated and update their enrollment
+                      status. This action cannot be easily undone.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -833,10 +921,14 @@ const GraduationModal = ({ isOpen, onClose, student, onGraduate, loading }) => {
   );
 };
 
-const StudentProfileDrawer = ({ student, isOpen, onClose }: { 
-  student: any; 
-  isOpen: boolean; 
-  onClose: () => void; 
+const StudentProfileDrawer = ({
+  student,
+  isOpen,
+  onClose,
+}: {
+  student: any;
+  isOpen: boolean;
+  onClose: () => void;
 }) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
@@ -844,9 +936,11 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
   const [showMessageModal, setShowMessageModal] = useState(false);
   const [showAdmissionNoteModal, setShowAdmissionNoteModal] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [admissionNotes, setAdmissionNotes] = useState<Array<{ id: string; admin: string; date: string; note: string }>>([]);
+  const [admissionNotes, setAdmissionNotes] = useState<
+    Array<{ id: string; admin: string; date: string; note: string }>
+  >([]);
   const [loadingNotes, setLoadingNotes] = useState(false);
-  
+
   // New state for student actions
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [showPromotionModal, setShowPromotionModal] = useState(false);
@@ -867,8 +961,8 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
           id: '1',
           admin: 'Admin User',
           date: new Date().toLocaleDateString(),
-          note: 'Strong application. Excellent entrance score. Recommended for approval.'
-        }
+          note: 'Strong application. Excellent entrance score. Recommended for approval.',
+        },
       ]);
     } catch (error) {
       console.error('Error fetching notes:', error);
@@ -884,14 +978,15 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
     if ((student as any).college_id && (student as any).enrollmentDate) {
       const enrollmentDate = new Date((student as any).enrollmentDate);
       const currentDate = new Date();
-      const monthsDiff = (currentDate.getFullYear() - enrollmentDate.getFullYear()) * 12 + 
-                        (currentDate.getMonth() - enrollmentDate.getMonth());
-      
+      const monthsDiff =
+        (currentDate.getFullYear() - enrollmentDate.getFullYear()) * 12 +
+        (currentDate.getMonth() - enrollmentDate.getMonth());
+
       // Assuming 6 months per semester
       const calculatedSemester = Math.floor(monthsDiff / 6) + 1;
       return Math.max(1, calculatedSemester);
     }
-    
+
     // For school students, use grade directly
     if (student.school_id && student.grade) {
       const gradeNum = parseInt(student.grade);
@@ -899,7 +994,7 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
         return gradeNum;
       }
     }
-    
+
     // Fallback to manual current_semester field or default
     return parseInt(student.current_semester) || 1;
   };
@@ -910,17 +1005,27 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
     if (student.school_id) {
       return 12;
     }
-    
+
     // For college students, determine based on degree type
-    const degreeType = student.branch_field?.toLowerCase() || 
-                      student.dept?.toLowerCase() || 
-                      student.profile?.education?.[0]?.degree?.toLowerCase() || '';
-    
+    const degreeType =
+      student.branch_field?.toLowerCase() ||
+      student.dept?.toLowerCase() ||
+      student.profile?.education?.[0]?.degree?.toLowerCase() ||
+      '';
+
     if (degreeType.includes('phd') || degreeType.includes('doctorate')) return 8;
-    if (degreeType.includes('master') || degreeType.includes('mtech') || degreeType.includes('mba')) return 4;
-    if (degreeType.includes('bachelor') || degreeType.includes('btech') || degreeType.includes('be') || degreeType.includes('bsc') || degreeType.includes('ba')) return 8;
+    if (degreeType.includes('master') || degreeType.includes('mtech') || degreeType.includes('mba'))
+      return 4;
+    if (
+      degreeType.includes('bachelor') ||
+      degreeType.includes('btech') ||
+      degreeType.includes('be') ||
+      degreeType.includes('bsc') ||
+      degreeType.includes('ba')
+    )
+      return 8;
     if (degreeType.includes('diploma')) return 6;
-    
+
     return 8; // Default to 8 semesters for bachelor's degree
   };
 
@@ -933,19 +1038,20 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
   const canGraduate = () => {
     const currentSem = getCurrentSemester();
     const totalSems = getTotalSemesters();
-    
+
     // Check if student is in good standing (only use approval_status)
-    const isEligible = student.approval_status === 'approved' ||
-                      student.approval_status === 'verified';
-    
+    const isEligible =
+      student.approval_status === 'approved' || student.approval_status === 'verified';
+
     // Check if not already graduated (use metadata to track graduation)
     const notGraduated = !student.metadata?.graduation_date;
-    
+
     // Check if reached final semester OR expected graduation date has arrived
-    const readyToGraduate = currentSem >= totalSems || 
-                           ((student as any).expectedGraduationDate && 
-                            new Date() >= new Date((student as any).expectedGraduationDate));
-    
+    const readyToGraduate =
+      currentSem >= totalSems ||
+      ((student as any).expectedGraduationDate &&
+        new Date() >= new Date((student as any).expectedGraduationDate));
+
     return readyToGraduate && isEligible && notGraduated;
   };
 
@@ -954,16 +1060,20 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
     setActionLoading(true);
     try {
       // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      console.log(`${action === 'approve' ? 'Approving' : 'Rejecting'} student:`, student.id, reason);
-      
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      console.log(
+        `${action === 'approve' ? 'Approving' : 'Rejecting'} student:`,
+        student.id,
+        reason
+      );
+
       // In a real implementation, you would update the database here
       const updateData: any = {
         approval_status: action === 'approve' ? 'approved' : 'rejected',
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       };
-      
+
       // If approving, also set enrollment status
       if (action === 'approve') {
         // Set enrollment date if not already set (using correct column name)
@@ -971,27 +1081,27 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
           updateData.enrollmentDate = new Date().toISOString().split('T')[0];
         }
       }
-      
+
       // Add reason to metadata if provided
       if (reason) {
         updateData.metadata = {
           ...student.metadata,
           approval_reason: reason,
-          approval_date: new Date().toISOString()
+          approval_date: new Date().toISOString(),
         };
       }
-      
+
       const { error } = await supabase.from('students').update(updateData).eq('id', student.id);
-      
+
       if (error) {
         throw error;
       }
-      
+
       setShowApprovalModal(false);
-      
+
       // Show success message
       toast.success(`Student ${action === 'approve' ? 'approved' : 'rejected'} successfully!`);
-      
+
       // Refresh the page or update local state
       window.location.reload();
     } catch (error) {
@@ -1007,13 +1117,12 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
     setActionLoading(true);
     try {
       // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       setShowPromotionModal(false);
-      
+
       // Show success message
       toast.success('Student promoted successfully!');
-      
     } catch (error) {
       console.error('Error promoting student:', error);
       toast.error('Failed to promote student. Please try again.');
@@ -1027,10 +1136,10 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
     setActionLoading(true);
     try {
       // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       console.log(`Marking student ${student.id} as graduated`);
-      
+
       // In a real implementation, you would update the database here
       const graduationDate = new Date().toISOString();
       const updateData: any = {
@@ -1040,64 +1149,73 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
           graduation_date: graduationDate,
           graduated_by: 'current_admin', // Replace with actual admin ID
           final_semester: getCurrentSemester(),
-          final_cgpa: student.current_cgpa || student.profile?.education?.[0]?.cgpa
-        }
+          final_cgpa: student.current_cgpa || student.profile?.education?.[0]?.cgpa,
+        },
       };
-      
+
       // Set expected graduation date if not already set
       if (!(student as any).expectedGraduationDate) {
         updateData.expectedGraduationDate = graduationDate.split('T')[0];
       }
-      
+
       // For school students, mark as completed grade 12
       if (student.school_id) {
         updateData.grade = getTotalSemesters().toString();
       }
-      
+
       const { error } = await supabase.from('students').update(updateData).eq('id', student.id);
-      
+
       if (error) {
         throw error;
       }
-      
+
       setShowGraduationModal(false);
-      
+
       // Show success message
       toast.success('Student marked as graduated successfully!');
-      
+
       // Refresh the page or update local state
       window.location.reload();
     } catch (error) {
       console.error('Error marking student as graduated:', error);
-      toast.error(`Failed to mark student as graduated: ${(error as any)?.message || 'Please try again.'}`);
+      toast.error(
+        `Failed to mark student as graduated: ${(error as any)?.message || 'Please try again.'}`
+      );
     } finally {
       setActionLoading(false);
     }
   };
 
-
-
   if (!isOpen || !student) return null;
 
   const qrCodeValue = `${window.location.origin}/student/profile/${student.id}`;
 
-  const formatLabel = (key: string) => key
-    .replace(/_/g, ' ')
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .replace(/^\w/, (c) => c.toUpperCase());
+  const formatLabel = (key: string) =>
+    key
+      .replace(/_/g, ' ')
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/^\w/, (c) => c.toUpperCase());
 
   const tabs = [
     { key: 'overview', label: 'Overview' },
     { key: 'academic', label: 'Academic' },
     { key: 'projects', label: `Projects` },
     { key: 'certificates', label: `Certificates` },
-    { key: 'notes', label: 'Admission Notes' }
+    { key: 'notes', label: 'Admission Notes' },
   ];
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden" aria-labelledby="slide-over-title" role="dialog" aria-modal="true">
+    <div
+      className="fixed inset-0 z-50 overflow-hidden"
+      aria-labelledby="slide-over-title"
+      role="dialog"
+      aria-modal="true"
+    >
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        <div
+          className="absolute inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          onClick={onClose}
+        ></div>
 
         <div className="fixed inset-y-0 right-0 pl-10 max-w-full flex sm:pl-16">
           <div className="w-screen max-w-3xl">
@@ -1116,15 +1234,21 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                         <>
                           <div>
                             <p className="text-xs text-gray-500 uppercase tracking-wide">School</p>
-                            <p className="text-sm font-medium text-gray-900 mt-1">{student.college_school_name || 'N/A'}</p>
+                            <p className="text-sm font-medium text-gray-900 mt-1">
+                              {student.college_school_name || 'N/A'}
+                            </p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-500 uppercase tracking-wide">Grade</p>
-                            <p className="text-sm font-medium text-gray-900 mt-1">{student.grade || 'N/A'}</p>
+                            <p className="text-sm font-medium text-gray-900 mt-1">
+                              {student.grade || 'N/A'}
+                            </p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-500 uppercase tracking-wide">Section</p>
-                            <p className="text-sm font-medium text-gray-900 mt-1">{student.section || 'N/A'}</p>
+                            <p className="text-sm font-medium text-gray-900 mt-1">
+                              {student.section || 'N/A'}
+                            </p>
                           </div>
                         </>
                       ) : (
@@ -1132,46 +1256,63 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                         <>
                           <div>
                             <p className="text-xs text-gray-500 uppercase tracking-wide">College</p>
-                            <p className="text-sm font-medium text-gray-900 mt-1">{student.college || student.profile?.university || student.college_school_name || 'N/A'}</p>
+                            <p className="text-sm font-medium text-gray-900 mt-1">
+                              {student.college ||
+                                student.profile?.university ||
+                                student.college_school_name ||
+                                'N/A'}
+                            </p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-500 uppercase tracking-wide">Degree</p>
-                            <p className="text-sm font-medium text-gray-900 mt-1">{student.profile?.education?.[0]?.degree || student.branch_field || 'N/A'}</p>
+                            <p className="text-sm font-medium text-gray-900 mt-1">
+                              {student.profile?.education?.[0]?.degree ||
+                                student.branch_field ||
+                                'N/A'}
+                            </p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-500 uppercase tracking-wide">Section</p>
-                            <p className="text-sm font-medium text-gray-900 mt-1">{student.section || 'N/A'}</p>
+                            <p className="text-sm font-medium text-gray-900 mt-1">
+                              {student.section || 'N/A'}
+                            </p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-500 uppercase tracking-wide">CGPA</p>
-                            <p className="text-sm font-medium text-gray-900 mt-1">{student.profile?.education?.[0]?.cgpa || student.currentCgpa || 'N/A'}</p>
+                            <p className="text-sm font-medium text-gray-900 mt-1">
+                              {student.profile?.education?.[0]?.cgpa ||
+                                student.currentCgpa ||
+                                'N/A'}
+                            </p>
                           </div>
                         </>
                       )}
                     </div>
-                    
+
                     <div className="mt-3 flex items-center justify-between">
                       <div className="flex items-center gap-1">
                         <p className="text-xs text-gray-500 uppercase tracking-wide">
                           {student.school_id ? 'Admission Status:' : 'Enrollment Status:'}
                         </p>
-                        <Badge type={student.admission_status || student.approval_status || 'pending'} />
+                        <Badge
+                          type={student.admission_status || student.approval_status || 'pending'}
+                        />
                       </div>
-                      
+
                       {/* Academic Progress Indicator */}
                       {!student.school_id && (
                         <div className="flex items-center gap-2">
-                          <div className="text-xs text-gray-500">
-                            Academic Progress:
-                          </div>
+                          <div className="text-xs text-gray-500">Academic Progress:</div>
                           <div className="flex items-center bg-gray-100 rounded-full px-2 py-1">
                             <div className="text-xs font-medium text-gray-700">
                               Semester {getCurrentSemester()} of {getTotalSemesters()}
                             </div>
                             <div className="ml-2 w-12 bg-gray-200 rounded-full h-1.5">
-                              <div 
-                                className="bg-primary-600 h-1.5 rounded-full transition-all duration-300" 
-                                style={{ width: `${(getCurrentSemester() / getTotalSemesters()) * 100}%` }}
+                              <div
+                                className="bg-primary-600 h-1.5 rounded-full transition-all duration-300"
+                                style={{
+                                  width: `${(getCurrentSemester() / getTotalSemesters()) * 100}%`,
+                                }}
                               ></div>
                             </div>
                           </div>
@@ -1216,23 +1357,29 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                   <div className="flex items-center space-x-4 text-sm">
                     <div className="flex items-center text-gray-600">
                       <PhoneIcon className="h-4 w-4 mr-1" />
-                      <span>{student.contact_number || student.contactNumber || student.profile?.contact_number || student.phone || 'Not provided'}</span>
+                      <span>
+                        {student.contact_number ||
+                          student.contactNumber ||
+                          student.profile?.contact_number ||
+                          student.phone ||
+                          'Not provided'}
+                      </span>
                     </div>
                     <div className="flex items-center text-gray-600">
                       <EnvelopeIcon className="h-4 w-4 mr-1" />
                       <span>{student.email || student.profile?.email || 'Not provided'}</span>
                     </div>
                   </div>
-                  
+
                   {/* Action Indicators */}
                   <div className="flex items-center space-x-2">
                     {(() => {
-                      const needsVerification = 
+                      const needsVerification =
                         student.approval_status === 'pending' ||
                         student.approval_status === null ||
                         student.approval_status === undefined ||
                         !student.approval_status;
-                      
+
                       return needsVerification && !student.school_id;
                     })() && (
                       <div className="flex items-center text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
@@ -1240,14 +1387,14 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                         Verification Required
                       </div>
                     )}
-                    
+
                     {canPromote() && !student.school_id && (
                       <div className="flex items-center text-xs text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">
                         <ArrowUpIcon className="h-3 w-3 mr-1" />
                         Ready for Promotion
                       </div>
                     )}
-                    
+
                     {canGraduate() && !student.school_id && (
                       <div className="flex items-center text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">
                         <TrophyIcon className="h-3 w-3 mr-1" />
@@ -1282,48 +1429,69 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                         <div className="flex flex-col">
                           <span className="text-gray-500 text-xs mb-1">Full Name</span>
-                          <span className="font-medium text-gray-900">{student.name || student.profile?.name || 'N/A'}</span>
+                          <span className="font-medium text-gray-900">
+                            {student.name || student.profile?.name || 'N/A'}
+                          </span>
                         </div>
                         <div className="flex flex-col">
                           <span className="text-gray-500 text-xs mb-1">Email</span>
-                          <span className="font-medium text-gray-900 break-all">{student.email || student.profile?.email || 'N/A'}</span>
+                          <span className="font-medium text-gray-900 break-all">
+                            {student.email || student.profile?.email || 'N/A'}
+                          </span>
                         </div>
                         <div className="flex flex-col">
                           <span className="text-gray-500 text-xs mb-1">Contact</span>
-                          <span className="font-medium text-gray-900">{student.contact_number || student.contactNumber || student.phone || 'N/A'}</span>
+                          <span className="font-medium text-gray-900">
+                            {student.contact_number ||
+                              student.contactNumber ||
+                              student.phone ||
+                              'N/A'}
+                          </span>
                         </div>
-                        
+
                         {/* School-specific fields */}
                         {student.school_id ? (
                           <>
                             <div className="flex flex-col">
                               <span className="text-gray-500 text-xs mb-1">School</span>
-                              <span className="font-medium text-gray-900">{student.college_school_name || 'N/A'}</span>
+                              <span className="font-medium text-gray-900">
+                                {student.college_school_name || 'N/A'}
+                              </span>
                             </div>
                             <div className="flex flex-col">
                               <span className="text-gray-500 text-xs mb-1">Grade</span>
-                              <span className="font-medium text-gray-900">{student.grade || 'N/A'}</span>
+                              <span className="font-medium text-gray-900">
+                                {student.grade || 'N/A'}
+                              </span>
                             </div>
                             <div className="flex flex-col">
                               <span className="text-gray-500 text-xs mb-1">Section</span>
-                              <span className="font-medium text-gray-900">{student.section || 'N/A'}</span>
+                              <span className="font-medium text-gray-900">
+                                {student.section || 'N/A'}
+                              </span>
                             </div>
                             {student.roll_number && (
                               <div className="flex flex-col">
                                 <span className="text-gray-500 text-xs mb-1">Roll Number</span>
-                                <span className="font-medium text-gray-900">{student.roll_number}</span>
+                                <span className="font-medium text-gray-900">
+                                  {student.roll_number}
+                                </span>
                               </div>
                             )}
                             {student.admission_number && (
                               <div className="flex flex-col">
                                 <span className="text-gray-500 text-xs mb-1">Admission Number</span>
-                                <span className="font-medium text-gray-900">{student.admission_number}</span>
+                                <span className="font-medium text-gray-900">
+                                  {student.admission_number}
+                                </span>
                               </div>
                             )}
                             {student.category && (
                               <div className="flex flex-col">
                                 <span className="text-gray-500 text-xs mb-1">Category</span>
-                                <span className="font-medium text-gray-900">{student.category}</span>
+                                <span className="font-medium text-gray-900">
+                                  {student.category}
+                                </span>
                               </div>
                             )}
                             {student.quota && (
@@ -1335,7 +1503,9 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                             {student.date_of_birth && (
                               <div className="flex flex-col">
                                 <span className="text-gray-500 text-xs mb-1">Date of Birth</span>
-                                <span className="font-medium text-gray-900">{new Date(student.date_of_birth).toLocaleDateString()}</span>
+                                <span className="font-medium text-gray-900">
+                                  {new Date(student.date_of_birth).toLocaleDateString()}
+                                </span>
                               </div>
                             )}
                             {student.age && (
@@ -1353,19 +1523,25 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                             {student.bloodGroup && (
                               <div className="flex flex-col">
                                 <span className="text-gray-500 text-xs mb-1">Blood Group</span>
-                                <span className="font-medium text-gray-900">{student.bloodGroup}</span>
+                                <span className="font-medium text-gray-900">
+                                  {student.bloodGroup}
+                                </span>
                               </div>
                             )}
                             {student.district_name && (
                               <div className="flex flex-col">
                                 <span className="text-gray-500 text-xs mb-1">District</span>
-                                <span className="font-medium text-gray-900">{student.district_name}</span>
+                                <span className="font-medium text-gray-900">
+                                  {student.district_name}
+                                </span>
                               </div>
                             )}
                             {student.university && (
                               <div className="flex flex-col">
                                 <span className="text-gray-500 text-xs mb-1">University</span>
-                                <span className="font-medium text-gray-900">{student.university}</span>
+                                <span className="font-medium text-gray-900">
+                                  {student.university}
+                                </span>
                               </div>
                             )}
                           </>
@@ -1374,42 +1550,69 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                           <>
                             <div className="flex flex-col">
                               <span className="text-gray-500 text-xs mb-1">College</span>
-                              <span className="font-medium text-gray-900">{student.college || student.profile?.university || student.college_school_name || 'N/A'}</span>
+                              <span className="font-medium text-gray-900">
+                                {student.college ||
+                                  student.profile?.university ||
+                                  student.college_school_name ||
+                                  'N/A'}
+                              </span>
                             </div>
                             <div className="flex flex-col">
                               <span className="text-gray-500 text-xs mb-1">Degree</span>
-                              <span className="font-medium text-gray-900">{student.profile?.education?.[0]?.degree || student.branch_field || 'N/A'}</span>
+                              <span className="font-medium text-gray-900">
+                                {student.profile?.education?.[0]?.degree ||
+                                  student.branch_field ||
+                                  'N/A'}
+                              </span>
                             </div>
                             <div className="flex flex-col">
                               <span className="text-gray-500 text-xs mb-1">Section</span>
-                              <span className="font-medium text-gray-900">{student.section || 'N/A'}</span>
+                              <span className="font-medium text-gray-900">
+                                {student.section || 'N/A'}
+                              </span>
                             </div>
                             <div className="flex flex-col">
                               <span className="text-gray-500 text-xs mb-1">CGPA</span>
-                              <span className="font-medium text-gray-900">{student.profile?.education?.[0]?.cgpa || student.currentCgpa || 'N/A'}</span>
+                              <span className="font-medium text-gray-900">
+                                {student.profile?.education?.[0]?.cgpa ||
+                                  student.currentCgpa ||
+                                  'N/A'}
+                              </span>
                             </div>
                             {student.enrollment_number && (
                               <div className="flex flex-col">
-                                <span className="text-gray-500 text-xs mb-1">Enrollment Number</span>
-                                <span className="font-medium text-gray-900">{student.enrollment_number}</span>
+                                <span className="text-gray-500 text-xs mb-1">
+                                  Enrollment Number
+                                </span>
+                                <span className="font-medium text-gray-900">
+                                  {student.enrollment_number}
+                                </span>
                               </div>
                             )}
                             {student.registration_number && (
                               <div className="flex flex-col">
-                                <span className="text-gray-500 text-xs mb-1">Registration Number</span>
-                                <span className="font-medium text-gray-900">{student.registration_number}</span>
+                                <span className="text-gray-500 text-xs mb-1">
+                                  Registration Number
+                                </span>
+                                <span className="font-medium text-gray-900">
+                                  {student.registration_number}
+                                </span>
                               </div>
                             )}
                             {student.roll_number && (
                               <div className="flex flex-col">
                                 <span className="text-gray-500 text-xs mb-1">Roll Number</span>
-                                <span className="font-medium text-gray-900">{student.roll_number}</span>
+                                <span className="font-medium text-gray-900">
+                                  {student.roll_number}
+                                </span>
                               </div>
                             )}
                             {student.category && (
                               <div className="flex flex-col">
                                 <span className="text-gray-500 text-xs mb-1">Category</span>
-                                <span className="font-medium text-gray-900">{student.category}</span>
+                                <span className="font-medium text-gray-900">
+                                  {student.category}
+                                </span>
                               </div>
                             )}
                             {student.quota && (
@@ -1421,13 +1624,17 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                             {student.date_of_birth && (
                               <div className="flex flex-col">
                                 <span className="text-gray-500 text-xs mb-1">Date of Birth</span>
-                                <span className="font-medium text-gray-900">{new Date(student.date_of_birth).toLocaleDateString()}</span>
+                                <span className="font-medium text-gray-900">
+                                  {new Date(student.date_of_birth).toLocaleDateString()}
+                                </span>
                               </div>
                             )}
                             {(student.age || student.profile?.age) && (
                               <div className="flex flex-col">
                                 <span className="text-gray-500 text-xs mb-1">Age</span>
-                                <span className="font-medium text-gray-900">{student.age || student.profile.age}</span>
+                                <span className="font-medium text-gray-900">
+                                  {student.age || student.profile.age}
+                                </span>
                               </div>
                             )}
                             {student.gender && (
@@ -1439,13 +1646,17 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                             {student.district_name && (
                               <div className="flex flex-col">
                                 <span className="text-gray-500 text-xs mb-1">District</span>
-                                <span className="font-medium text-gray-900">{student.district_name}</span>
+                                <span className="font-medium text-gray-900">
+                                  {student.district_name}
+                                </span>
                               </div>
                             )}
                             {student.university && (
                               <div className="flex flex-col">
                                 <span className="text-gray-500 text-xs mb-1">University</span>
-                                <span className="font-medium text-gray-900">{student.university}</span>
+                                <span className="font-medium text-gray-900">
+                                  {student.university}
+                                </span>
                               </div>
                             )}
                             {student.profile?.linkedin_link && (
@@ -1465,44 +1676,57 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                         )}
                       </div>
                     </div>
-                    
+
                     {/* Guardian Information for School Students */}
-                    {student.school_id && (student.guardianName || student.guardianPhone || student.guardianEmail) && (
-                      <div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-4">Guardian Information</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                          {student.guardianName && (
-                            <div className="flex flex-col">
-                              <span className="text-gray-500 text-xs mb-1">Guardian Name</span>
-                              <span className="font-medium text-gray-900">{student.guardianName}</span>
-                            </div>
-                          )}
-                          {student.guardianPhone && (
-                            <div className="flex flex-col">
-                              <span className="text-gray-500 text-xs mb-1">Guardian Phone</span>
-                              <span className="font-medium text-gray-900">{student.guardianPhone}</span>
-                            </div>
-                          )}
-                          {student.guardianEmail && (
-                            <div className="flex flex-col">
-                              <span className="text-gray-500 text-xs mb-1">Guardian Email</span>
-                              <span className="font-medium text-gray-900">{student.guardianEmail}</span>
-                            </div>
-                          )}
-                          {student.guardianRelation && (
-                            <div className="flex flex-col">
-                              <span className="text-gray-500 text-xs mb-1">Relation</span>
-                              <span className="font-medium text-gray-900">{student.guardianRelation}</span>
-                            </div>
-                          )}
+                    {student.school_id &&
+                      (student.guardianName || student.guardianPhone || student.guardianEmail) && (
+                        <div>
+                          <h3 className="text-lg font-medium text-gray-900 mb-4">
+                            Guardian Information
+                          </h3>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                            {student.guardianName && (
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs mb-1">Guardian Name</span>
+                                <span className="font-medium text-gray-900">
+                                  {student.guardianName}
+                                </span>
+                              </div>
+                            )}
+                            {student.guardianPhone && (
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs mb-1">Guardian Phone</span>
+                                <span className="font-medium text-gray-900">
+                                  {student.guardianPhone}
+                                </span>
+                              </div>
+                            )}
+                            {student.guardianEmail && (
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs mb-1">Guardian Email</span>
+                                <span className="font-medium text-gray-900">
+                                  {student.guardianEmail}
+                                </span>
+                              </div>
+                            )}
+                            {student.guardianRelation && (
+                              <div className="flex flex-col">
+                                <span className="text-gray-500 text-xs mb-1">Relation</span>
+                                <span className="font-medium text-gray-900">
+                                  {student.guardianRelation}
+                                </span>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                    
+                      )}
+
                     {/* Address Information for School Students */}
                     {student.school_id && (student.address || student.city || student.state) && (
                       <div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-4">Address Information</h3>
+                        <h3 className="text-lg font-medium text-gray-900 mb-4">
+                          Address Information
+                        </h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                           {student.address && (
                             <div className="flex flex-col sm:col-span-2">
@@ -1541,12 +1765,16 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                     {student.profile?.bio && (
                       <div>
                         <h3 className="text-lg font-medium text-gray-900 mb-2">Bio</h3>
-                        <p className="text-sm text-gray-700 leading-relaxed">{student.profile.bio}</p>
+                        <p className="text-sm text-gray-700 leading-relaxed">
+                          {student.profile.bio}
+                        </p>
                       </div>
                     )}
 
                     <div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-4">Application Timeline</h3>
+                      <h3 className="text-lg font-medium text-gray-900 mb-4">
+                        Application Timeline
+                      </h3>
                       <div className="space-y-3">
                         <div className="flex items-start">
                           <div className="flex flex-col items-center mr-4">
@@ -1554,19 +1782,29 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                             <div className="w-0.5 h-8 bg-gray-200 my-1"></div>
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-gray-900">Application Submitted</p>
+                            <p className="text-sm font-medium text-gray-900">
+                              Application Submitted
+                            </p>
                             <p className="text-xs text-gray-500">
-                              {student.applied_date ? new Date(student.applied_date).toLocaleDateString() : 'N/A'}
+                              {student.applied_date
+                                ? new Date(student.applied_date).toLocaleDateString()
+                                : 'N/A'}
                             </p>
                           </div>
                         </div>
                         <div className="flex items-start">
                           <div className="flex flex-col items-center mr-4">
-                            <div className={`w-3 h-3 ${student.admission_status === 'approved' ? 'bg-green-600' : student.admission_status === 'rejected' ? 'bg-red-600' : 'bg-gray-300'} rounded-full`}></div>
+                            <div
+                              className={`w-3 h-3 ${student.admission_status === 'approved' ? 'bg-green-600' : student.admission_status === 'rejected' ? 'bg-red-600' : 'bg-gray-300'} rounded-full`}
+                            ></div>
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-gray-900">Application Decision</p>
-                            <p className="text-xs text-gray-500">Status: {student.admission_status?.toUpperCase() || 'PENDING'}</p>
+                            <p className="text-sm font-medium text-gray-900">
+                              Application Decision
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              Status: {student.admission_status?.toUpperCase() || 'PENDING'}
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -1579,61 +1817,86 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                     {student.school_id ? (
                       // School Student Academic Info
                       <div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-4">Academic Information</h3>
+                        <h3 className="text-lg font-medium text-gray-900 mb-4">
+                          Academic Information
+                        </h3>
                         <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                             <div className="flex flex-col">
                               <span className="text-gray-500 text-xs mb-1">School</span>
-                              <span className="font-medium text-gray-900">{student.college_school_name || 'N/A'}</span>
+                              <span className="font-medium text-gray-900">
+                                {student.college_school_name || 'N/A'}
+                              </span>
                             </div>
                             <div className="flex flex-col">
                               <span className="text-gray-500 text-xs mb-1">Grade</span>
-                              <span className="font-medium text-gray-900">{student.grade || 'N/A'}</span>
+                              <span className="font-medium text-gray-900">
+                                {student.grade || 'N/A'}
+                              </span>
                             </div>
                             <div className="flex flex-col">
                               <span className="text-gray-500 text-xs mb-1">Section</span>
-                              <span className="font-medium text-gray-900">{student.section || 'N/A'}</span>
+                              <span className="font-medium text-gray-900">
+                                {student.section || 'N/A'}
+                              </span>
                             </div>
                             {student.roll_number && (
                               <div className="flex flex-col">
                                 <span className="text-gray-500 text-xs mb-1">Roll Number</span>
-                                <span className="font-medium text-gray-900">{student.roll_number}</span>
+                                <span className="font-medium text-gray-900">
+                                  {student.roll_number}
+                                </span>
                               </div>
                             )}
                             {student.admission_number && (
                               <div className="flex flex-col">
                                 <span className="text-gray-500 text-xs mb-1">Admission Number</span>
-                                <span className="font-medium text-gray-900">{student.admission_number}</span>
+                                <span className="font-medium text-gray-900">
+                                  {student.admission_number}
+                                </span>
                               </div>
                             )}
                             {student.enrollmentNumber && (
                               <div className="flex flex-col">
-                                <span className="text-gray-500 text-xs mb-1">Enrollment Number</span>
-                                <span className="font-medium text-gray-900">{student.enrollmentNumber}</span>
+                                <span className="text-gray-500 text-xs mb-1">
+                                  Enrollment Number
+                                </span>
+                                <span className="font-medium text-gray-900">
+                                  {student.enrollmentNumber}
+                                </span>
                               </div>
                             )}
                             {student.student_id && (
                               <div className="flex flex-col">
                                 <span className="text-gray-500 text-xs mb-1">Student ID</span>
-                                <span className="font-medium text-gray-900">{student.student_id}</span>
+                                <span className="font-medium text-gray-900">
+                                  {student.student_id}
+                                </span>
                               </div>
                             )}
                             {student.student_type && (
                               <div className="flex flex-col">
                                 <span className="text-gray-500 text-xs mb-1">Student Type</span>
-                                <span className="font-medium text-gray-900">{student.student_type}</span>
+                                <span className="font-medium text-gray-900">
+                                  {student.student_type}
+                                </span>
                               </div>
                             )}
                           </div>
                           <div className="mt-3">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              student.approval_status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                            }`}>
-                              {student.approval_status?.charAt(0).toUpperCase() + student.approval_status?.slice(1) || 'Pending'}
+                            <span
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                student.approval_status === 'approved'
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-yellow-100 text-yellow-800'
+                              }`}
+                            >
+                              {student.approval_status?.charAt(0).toUpperCase() +
+                                student.approval_status?.slice(1) || 'Pending'}
                             </span>
                           </div>
                         </div>
-                        
+
                         {/* Show subjects if available */}
                         {student.subjects && student.subjects.length > 0 && (
                           <div className="mt-6">
@@ -1654,106 +1917,169 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                     ) : (
                       // University/College Student Education Info
                       <div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-4">Academic Information</h3>
+                        <h3 className="text-lg font-medium text-gray-900 mb-4">
+                          Academic Information
+                        </h3>
                         <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                             <div className="flex flex-col">
                               <span className="text-gray-500 text-xs mb-1">College</span>
-                              <span className="font-medium text-gray-900">{student.college || student.profile?.university || student.college_school_name || 'N/A'}</span>
+                              <span className="font-medium text-gray-900">
+                                {student.college ||
+                                  student.profile?.university ||
+                                  student.college_school_name ||
+                                  'N/A'}
+                              </span>
                             </div>
                             <div className="flex flex-col">
                               <span className="text-gray-500 text-xs mb-1">Degree</span>
-                              <span className="font-medium text-gray-900">{student.profile?.education?.[0]?.degree || student.branch_field || 'N/A'}</span>
+                              <span className="font-medium text-gray-900">
+                                {student.profile?.education?.[0]?.degree ||
+                                  student.branch_field ||
+                                  'N/A'}
+                              </span>
                             </div>
                             <div className="flex flex-col">
                               <span className="text-gray-500 text-xs mb-1">Section</span>
-                              <span className="font-medium text-gray-900">{student.section || 'N/A'}</span>
+                              <span className="font-medium text-gray-900">
+                                {student.section || 'N/A'}
+                              </span>
                             </div>
                             <div className="flex flex-col">
                               <span className="text-gray-500 text-xs mb-1">CGPA</span>
-                              <span className="font-medium text-gray-900">{student.profile?.education?.[0]?.cgpa || student.currentCgpa || 'N/A'}</span>
+                              <span className="font-medium text-gray-900">
+                                {student.profile?.education?.[0]?.cgpa ||
+                                  student.currentCgpa ||
+                                  'N/A'}
+                              </span>
                             </div>
                             {student.enrollment_number && (
                               <div className="flex flex-col">
-                                <span className="text-gray-500 text-xs mb-1">Enrollment Number</span>
-                                <span className="font-medium text-gray-900">{student.enrollment_number}</span>
+                                <span className="text-gray-500 text-xs mb-1">
+                                  Enrollment Number
+                                </span>
+                                <span className="font-medium text-gray-900">
+                                  {student.enrollment_number}
+                                </span>
                               </div>
                             )}
                             {student.registration_number && (
                               <div className="flex flex-col">
-                                <span className="text-gray-500 text-xs mb-1">Registration Number</span>
-                                <span className="font-medium text-gray-900">{student.registration_number}</span>
+                                <span className="text-gray-500 text-xs mb-1">
+                                  Registration Number
+                                </span>
+                                <span className="font-medium text-gray-900">
+                                  {student.registration_number}
+                                </span>
                               </div>
                             )}
                             {student.student_id && (
                               <div className="flex flex-col">
                                 <span className="text-gray-500 text-xs mb-1">Student ID</span>
-                                <span className="font-medium text-gray-900">{student.student_id}</span>
+                                <span className="font-medium text-gray-900">
+                                  {student.student_id}
+                                </span>
                               </div>
                             )}
                             {student.student_type && (
                               <div className="flex flex-col">
                                 <span className="text-gray-500 text-xs mb-1">Student Type</span>
-                                <span className="font-medium text-gray-900">{student.student_type}</span>
+                                <span className="font-medium text-gray-900">
+                                  {student.student_type}
+                                </span>
                               </div>
                             )}
                             {student.university && (
                               <div className="flex flex-col">
                                 <span className="text-gray-500 text-xs mb-1">University</span>
-                                <span className="font-medium text-gray-900">{student.university}</span>
+                                <span className="font-medium text-gray-900">
+                                  {student.university}
+                                </span>
                               </div>
                             )}
                           </div>
                           <div className="mt-3">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              student.approval_status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                            }`}>
-                              {student.approval_status?.charAt(0).toUpperCase() + student.approval_status?.slice(1) || 'Pending'}
+                            <span
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                student.approval_status === 'approved'
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-yellow-100 text-yellow-800'
+                              }`}
+                            >
+                              {student.approval_status?.charAt(0).toUpperCase() +
+                                student.approval_status?.slice(1) || 'Pending'}
                             </span>
                           </div>
                         </div>
-                        
+
                         {/* Show detailed education if available */}
                         {student.profile?.education && student.profile.education.length > 0 && (
                           <div className="mt-6">
-                            <h3 className="text-lg font-medium text-gray-900 mb-4">Education History</h3>
+                            <h3 className="text-lg font-medium text-gray-900 mb-4">
+                              Education History
+                            </h3>
                             <div className="space-y-4">
                               {student.profile.education.map((edu: any, index: number) => (
-                                <div key={edu.id || index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                                <div
+                                  key={edu.id || index}
+                                  className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+                                >
                                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                                     <div className="flex flex-col">
                                       <span className="text-gray-500 text-xs mb-1">Degree</span>
-                                      <span className="font-medium text-gray-900">{edu.degree || 'N/A'}</span>
+                                      <span className="font-medium text-gray-900">
+                                        {edu.degree || 'N/A'}
+                                      </span>
                                     </div>
                                     <div className="flex flex-col">
                                       <span className="text-gray-500 text-xs mb-1">Level</span>
-                                      <span className="font-medium text-gray-900">{edu.level || 'N/A'}</span>
+                                      <span className="font-medium text-gray-900">
+                                        {edu.level || 'N/A'}
+                                      </span>
                                     </div>
                                     <div className="flex flex-col">
                                       <span className="text-gray-500 text-xs mb-1">University</span>
-                                      <span className="font-medium text-gray-900">{edu.university || 'N/A'}</span>
+                                      <span className="font-medium text-gray-900">
+                                        {edu.university || 'N/A'}
+                                      </span>
                                     </div>
                                     <div className="flex flex-col">
                                       <span className="text-gray-500 text-xs mb-1">CGPA</span>
-                                      <span className="font-medium text-gray-900">{edu.cgpa || 'N/A'}</span>
+                                      <span className="font-medium text-gray-900">
+                                        {edu.cgpa || 'N/A'}
+                                      </span>
                                     </div>
                                     {edu.department && (
                                       <div className="flex flex-col">
-                                        <span className="text-gray-500 text-xs mb-1">Department</span>
-                                        <span className="font-medium text-gray-900">{edu.department}</span>
+                                        <span className="text-gray-500 text-xs mb-1">
+                                          Department
+                                        </span>
+                                        <span className="font-medium text-gray-900">
+                                          {edu.department}
+                                        </span>
                                       </div>
                                     )}
                                     {edu.yearOfPassing && (
                                       <div className="flex flex-col">
-                                        <span className="text-gray-500 text-xs mb-1">Year of Passing</span>
-                                        <span className="font-medium text-gray-900">{edu.yearOfPassing}</span>
+                                        <span className="text-gray-500 text-xs mb-1">
+                                          Year of Passing
+                                        </span>
+                                        <span className="font-medium text-gray-900">
+                                          {edu.yearOfPassing}
+                                        </span>
                                       </div>
                                     )}
                                   </div>
                                   <div className="mt-3">
-                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${edu.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
-                                      }`}>
-                                      {edu.status?.charAt(0).toUpperCase() + edu.status?.slice(1) || 'N/A'}
+                                    <span
+                                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                        edu.status === 'completed'
+                                          ? 'bg-green-100 text-green-800'
+                                          : 'bg-blue-100 text-blue-800'
+                                      }`}
+                                    >
+                                      {edu.status?.charAt(0).toUpperCase() + edu.status?.slice(1) ||
+                                        'N/A'}
                                     </span>
                                   </div>
                                 </div>
@@ -1764,28 +2090,31 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                       </div>
                     )}
 
-                    {student.profile?.technicalSkills && student.profile.technicalSkills.length > 0 && (
-                      <div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-4">Technical Skills</h3>
-                        <div className="flex flex-wrap gap-2">
-                          {student.profile.technicalSkills
-                            .filter((skill: any) => skill.enabled !== false)
-                            .map((skill: any, index: number) => (
-                              <span
-                                key={skill.id || index}
-                                className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 border border-blue-200"
-                              >
-                                {skill.name}
-                                {skill.level && (
-                                  <span className="ml-2 text-xs opacity-75">
-                                    Level {skill.level}/5
-                                  </span>
-                                )}
-                              </span>
-                            ))}
+                    {student.profile?.technicalSkills &&
+                      student.profile.technicalSkills.length > 0 && (
+                        <div>
+                          <h3 className="text-lg font-medium text-gray-900 mb-4">
+                            Technical Skills
+                          </h3>
+                          <div className="flex flex-wrap gap-2">
+                            {student.profile.technicalSkills
+                              .filter((skill: any) => skill.enabled !== false)
+                              .map((skill: any, index: number) => (
+                                <span
+                                  key={skill.id || index}
+                                  className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 border border-blue-200"
+                                >
+                                  {skill.name}
+                                  {skill.level && (
+                                    <span className="ml-2 text-xs opacity-75">
+                                      Level {skill.level}/5
+                                    </span>
+                                  )}
+                                </span>
+                              ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
                     {student.profile?.softSkills && student.profile.softSkills.length > 0 && (
                       <div>
@@ -1816,7 +2145,9 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                   <div className="p-6">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-lg font-medium text-gray-900">Projects</h3>
-                      <span className="text-sm text-gray-600">{student.projects?.length || 0} total</span>
+                      <span className="text-sm text-gray-600">
+                        {student.projects?.length || 0} total
+                      </span>
                     </div>
 
                     {student.projects && student.projects.length > 0 ? (
@@ -1829,7 +2160,9 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                       <div className="text-center py-12">
                         <BriefcaseIcon className="mx-auto h-12 w-12 text-gray-400" />
                         <p className="text-gray-500 mt-2">No projects yet</p>
-                        <p className="text-gray-400 text-sm mt-1">Student hasn't added any projects to their portfolio</p>
+                        <p className="text-gray-400 text-sm mt-1">
+                          Student hasn't added any projects to their portfolio
+                        </p>
                       </div>
                     )}
                   </div>
@@ -1839,7 +2172,9 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                   <div className="p-6">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-lg font-medium text-gray-900">Certificates</h3>
-                      <span className="text-sm text-gray-600">{student.certificates?.length || 0} total</span>
+                      <span className="text-sm text-gray-600">
+                        {student.certificates?.length || 0} total
+                      </span>
                     </div>
 
                     {student.certificates && student.certificates.length > 0 ? (
@@ -1852,7 +2187,9 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                       <div className="text-center py-12">
                         <ShieldCheckIcon className="mx-auto h-12 w-12 text-gray-400" />
                         <p className="text-gray-500 mt-2">No certificates yet</p>
-                        <p className="text-gray-400 text-sm mt-1">Student hasn't added any certificates</p>
+                        <p className="text-gray-400 text-sm mt-1">
+                          Student hasn't added any certificates
+                        </p>
                       </div>
                     )}
                   </div>
@@ -1879,9 +2216,14 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                         </div>
                       ) : admissionNotes.length > 0 ? (
                         admissionNotes.map((note: any) => (
-                          <div key={note.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:shadow-sm transition-shadow">
+                          <div
+                            key={note.id}
+                            className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:shadow-sm transition-shadow"
+                          >
                             <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm font-medium text-gray-900">{note.admin}</span>
+                              <span className="text-sm font-medium text-gray-900">
+                                {note.admin}
+                              </span>
                               <span className="text-xs text-gray-500">{note.date}</span>
                             </div>
                             <p className="text-sm text-gray-700">{note.note}</p>
@@ -1891,7 +2233,9 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                         <div className="text-center py-12">
                           <PencilSquareIcon className="mx-auto h-12 w-12 text-gray-400" />
                           <p className="text-gray-500 mt-2">No admission notes yet</p>
-                          <p className="text-gray-400 text-sm mt-1">Add feedback or assessment notes for this application</p>
+                          <p className="text-gray-400 text-sm mt-1">
+                            Add feedback or assessment notes for this application
+                          </p>
                         </div>
                       )}
                     </div>
@@ -1905,13 +2249,17 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                   <div className="flex space-x-2">
                     <button
                       onClick={() => setShowAdmissionNoteModal(true)}
-                      className="inline-flex items-center px-4 py-2 border border-primary-300 rounded-md text-sm font-medium text-primary-700 bg-primary-50 hover:bg-primary-100">
+                      className="inline-flex items-center px-4 py-2 border border-primary-300 rounded-md text-sm font-medium text-primary-700 bg-primary-50 hover:bg-primary-100"
+                    >
                       <PencilSquareIcon className="h-4 w-4 mr-2" />
                       Add Note
                     </button>
                     <button
-                      onClick={() => navigate('/digital-pp/homepage', { state: { candidate: student } })}
-                      className="inline-flex items-center px-4 py-2 border border-green-300 rounded-md text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100">
+                      onClick={() =>
+                        navigate('/digital-pp/homepage', { state: { candidate: student } })
+                      }
+                      className="inline-flex items-center px-4 py-2 border border-green-300 rounded-md text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100"
+                    >
                       <File className="h-4 w-4 mr-2" />
                       View Portfolio
                     </button>
@@ -1921,16 +2269,16 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                       // Debug: Log student status values
                       console.log('Student status check:', {
                         approval_status: student.approval_status,
-                        name: student.name
+                        name: student.name,
                       });
-                      
+
                       // Show verify button if student needs verification and is not a school student
-                      const needsVerification = 
+                      const needsVerification =
                         student.approval_status === 'pending' ||
                         student.approval_status === null ||
                         student.approval_status === undefined ||
                         !student.approval_status;
-                      
+
                       return needsVerification && !student.school_id;
                     })() && (
                       <button
@@ -1943,8 +2291,6 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                       </button>
                     )}
 
-
-
                     {canPromote() && !student.school_id && (
                       <button
                         onClick={() => setShowPromotionModal(true)}
@@ -1956,7 +2302,7 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                       </button>
                     )}
 
-                    {canGraduate() && !student.school_id  && (
+                    {canGraduate() && !student.school_id && (
                       <button
                         onClick={() => setShowGraduationModal(true)}
                         disabled={actionLoading}
@@ -1967,7 +2313,7 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                       </button>
                     )}
                   </div>
-                  
+
                   <div className="flex items-center space-x-3">
                     {/* Semester Status - Subtle Display - Only for College Students */}
                     {!student.school_id && (
@@ -1975,7 +2321,7 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                         Sem {getCurrentSemester()}/{getTotalSemesters()}
                       </div>
                     )}
-                    
+
                     <div className="flex space-x-2">
                       <button
                         onClick={() => setShowMessageModal(true)}

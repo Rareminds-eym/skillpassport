@@ -1,6 +1,16 @@
-import React, { useState, useMemo } from "react";
-import { Search, Eye, CreditCard, AlertTriangle, CheckCircle, Clock, Users, Filter, Download } from "lucide-react";
-import { StudentFeeSummary, PaymentStatus } from "../types";
+import React, { useState, useMemo } from 'react';
+import {
+  Search,
+  Eye,
+  CreditCard,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  Users,
+  Filter,
+  Download,
+} from 'lucide-react';
+import { StudentFeeSummary, PaymentStatus } from '../types';
 
 interface Props {
   studentSummaries: StudentFeeSummary[];
@@ -20,18 +30,18 @@ interface Props {
 }
 
 interface FeeTrackingFilters {
-  status: PaymentStatus | "all";
-  amountRange: "all" | "0-25k" | "25k-50k" | "50k-75k" | "75k+";
-  balanceRange: "all" | "0" | "0-10k" | "10k-25k" | "25k+";
+  status: PaymentStatus | 'all';
+  amountRange: 'all' | '0-25k' | '25k-50k' | '50k-75k' | '75k+';
+  balanceRange: 'all' | '0' | '0-10k' | '10k-25k' | '25k+';
   search: string;
 }
 
 const statusConfig: Record<PaymentStatus, { label: string; color: string; bg: string }> = {
-  paid: { label: "Paid", color: "text-green-700", bg: "bg-green-100" },
-  partial: { label: "Partial", color: "text-yellow-700", bg: "bg-yellow-100" },
-  pending: { label: "Pending", color: "text-gray-700", bg: "bg-gray-100" },
-  overdue: { label: "Overdue", color: "text-red-700", bg: "bg-red-100" },
-  waived: { label: "Waived", color: "text-blue-700", bg: "bg-blue-100" },
+  paid: { label: 'Paid', color: 'text-green-700', bg: 'bg-green-100' },
+  partial: { label: 'Partial', color: 'text-yellow-700', bg: 'bg-yellow-100' },
+  pending: { label: 'Pending', color: 'text-gray-700', bg: 'bg-gray-100' },
+  overdue: { label: 'Overdue', color: 'text-red-700', bg: 'bg-red-100' },
+  waived: { label: 'Waived', color: 'text-blue-700', bg: 'bg-blue-100' },
 };
 
 export const FeeTrackingTab: React.FC<Props> = ({
@@ -42,13 +52,13 @@ export const FeeTrackingTab: React.FC<Props> = ({
   onRecordPayment,
 }) => {
   const [filters, setFilters] = useState<FeeTrackingFilters>({
-    status: "all",
-    amountRange: "all",
-    balanceRange: "all",
-    search: "",
+    status: 'all',
+    amountRange: 'all',
+    balanceRange: 'all',
+    search: '',
   });
-  const [sortBy, setSortBy] = useState<"name" | "amount" | "balance" | "status">("name");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [sortBy, setSortBy] = useState<'name' | 'amount' | 'balance' | 'status'>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [showFilters, setShowFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
@@ -60,39 +70,50 @@ export const FeeTrackingTab: React.FC<Props> = ({
     // Apply search filter
     if (filters.search.trim()) {
       const searchTerm = filters.search.toLowerCase();
-      result = result.filter((s) =>
-        s.student_name.toLowerCase().includes(searchTerm) ||
-        s.roll_number.toLowerCase().includes(searchTerm)
+      result = result.filter(
+        (s) =>
+          s.student_name.toLowerCase().includes(searchTerm) ||
+          s.roll_number.toLowerCase().includes(searchTerm)
       );
     }
 
     // Apply status filter
-    if (filters.status !== "all") {
+    if (filters.status !== 'all') {
       result = result.filter((s) => s.status === filters.status);
     }
 
     // Apply amount range filter
-    if (filters.amountRange !== "all") {
+    if (filters.amountRange !== 'all') {
       result = result.filter((s) => {
         switch (filters.amountRange) {
-          case "0-25k": return s.total_due <= 25000;
-          case "25k-50k": return s.total_due > 25000 && s.total_due <= 50000;
-          case "50k-75k": return s.total_due > 50000 && s.total_due <= 75000;
-          case "75k+": return s.total_due > 75000;
-          default: return true;
+          case '0-25k':
+            return s.total_due <= 25000;
+          case '25k-50k':
+            return s.total_due > 25000 && s.total_due <= 50000;
+          case '50k-75k':
+            return s.total_due > 50000 && s.total_due <= 75000;
+          case '75k+':
+            return s.total_due > 75000;
+          default:
+            return true;
         }
       });
     }
 
     // Apply balance range filter
-    if (filters.balanceRange !== "all") {
+    if (filters.balanceRange !== 'all') {
       result = result.filter((s) => {
         switch (filters.balanceRange) {
-          case "0": return s.balance === 0;
-          case "0-10k": return s.balance > 0 && s.balance <= 10000;
-          case "10k-25k": return s.balance > 10000 && s.balance <= 25000;
-          case "25k+": return s.balance > 25000;
-          default: return true;
+          case '0':
+            return s.balance === 0;
+          case '0-10k':
+            return s.balance > 0 && s.balance <= 10000;
+          case '10k-25k':
+            return s.balance > 10000 && s.balance <= 25000;
+          case '25k+':
+            return s.balance > 25000;
+          default:
+            return true;
         }
       });
     }
@@ -100,21 +121,21 @@ export const FeeTrackingTab: React.FC<Props> = ({
     // Apply sorting
     result.sort((a, b) => {
       let aValue: any, bValue: any;
-      
+
       switch (sortBy) {
-        case "name":
+        case 'name':
           aValue = a.student_name.toLowerCase();
           bValue = b.student_name.toLowerCase();
           break;
-        case "amount":
+        case 'amount':
           aValue = a.total_due;
           bValue = b.total_due;
           break;
-        case "balance":
+        case 'balance':
           aValue = a.balance;
           bValue = b.balance;
           break;
-        case "status":
+        case 'status':
           aValue = a.status;
           bValue = b.status;
           break;
@@ -122,8 +143,8 @@ export const FeeTrackingTab: React.FC<Props> = ({
           return 0;
       }
 
-      if (aValue < bValue) return sortOrder === "asc" ? -1 : 1;
-      if (aValue > bValue) return sortOrder === "asc" ? 1 : -1;
+      if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
       return 0;
     });
 
@@ -139,17 +160,17 @@ export const FeeTrackingTab: React.FC<Props> = ({
 
   // Handle filter changes
   const handleFilterChange = (key: keyof FeeTrackingFilters, value: any) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
+    setFilters((prev) => ({ ...prev, [key]: value }));
     setCurrentPage(1); // Reset to first page when filters change
   };
 
   // Clear all filters
   const handleClearFilters = () => {
     setFilters({
-      status: "all",
-      amountRange: "all",
-      balanceRange: "all",
-      search: "",
+      status: 'all',
+      amountRange: 'all',
+      balanceRange: 'all',
+      search: '',
     });
     setCurrentPage(1);
   };
@@ -157,27 +178,34 @@ export const FeeTrackingTab: React.FC<Props> = ({
   // Handle sort change
   const handleSortChange = (newSortBy: typeof sortBy) => {
     if (sortBy === newSortBy) {
-      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
       setSortBy(newSortBy);
-      setSortOrder("asc");
+      setSortOrder('asc');
     }
   };
 
   // Export to CSV
   const handleExportCSV = () => {
-    const csvHeaders = ["Student Name", "Roll Number", "Total Due", "Paid Amount", "Balance", "Status"];
-    const csvData = filteredAndSortedStudents.map(student => [
+    const csvHeaders = [
+      'Student Name',
+      'Roll Number',
+      'Total Due',
+      'Paid Amount',
+      'Balance',
+      'Status',
+    ];
+    const csvData = filteredAndSortedStudents.map((student) => [
       student.student_name,
       student.roll_number,
       student.total_due.toString(),
       student.total_paid.toString(),
       student.balance.toString(),
-      student.status
+      student.status,
     ]);
 
     const csvContent = [csvHeaders, ...csvData]
-      .map(row => row.map(field => `"${field}"`).join(','))
+      .map((row) => row.map((field) => `"${field}"`).join(','))
       .join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -199,8 +227,8 @@ export const FeeTrackingTab: React.FC<Props> = ({
     );
   }
 
-  const activeFiltersCount = Object.values(filters).filter(value => 
-    value !== "all" && value !== ""
+  const activeFiltersCount = Object.values(filters).filter(
+    (value) => value !== 'all' && value !== ''
   ).length;
 
   return (
@@ -209,9 +237,11 @@ export const FeeTrackingTab: React.FC<Props> = ({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
           <h2 className="text-xl font-bold text-gray-900">Fee Tracking</h2>
-          <p className="text-gray-600 text-sm">Monitor student fee payments and outstanding balances</p>
+          <p className="text-gray-600 text-sm">
+            Monitor student fee payments and outstanding balances
+          </p>
         </div>
-        
+
         <div className="flex items-center gap-2">
           <button
             onClick={handleExportCSV}
@@ -244,7 +274,9 @@ export const FeeTrackingTab: React.FC<Props> = ({
             </div>
             <div>
               <p className="text-sm text-green-600">Collected</p>
-              <p className="text-xl font-bold text-green-900">₹{(stats.totalCollected / 1000).toFixed(1)}K</p>
+              <p className="text-xl font-bold text-green-900">
+                ₹{(stats.totalCollected / 1000).toFixed(1)}K
+              </p>
             </div>
           </div>
         </div>
@@ -255,7 +287,9 @@ export const FeeTrackingTab: React.FC<Props> = ({
             </div>
             <div>
               <p className="text-sm text-yellow-600">Pending</p>
-              <p className="text-xl font-bold text-yellow-900">₹{(stats.totalPending / 1000).toFixed(1)}K</p>
+              <p className="text-xl font-bold text-yellow-900">
+                ₹{(stats.totalPending / 1000).toFixed(1)}K
+              </p>
             </div>
           </div>
         </div>
@@ -279,7 +313,9 @@ export const FeeTrackingTab: React.FC<Props> = ({
             <button
               onClick={() => setShowFilters(!showFilters)}
               className={`inline-flex items-center px-3 py-2 border rounded-lg text-sm font-medium transition ${
-                showFilters ? "bg-blue-50 border-blue-300 text-blue-700" : "border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
+                showFilters
+                  ? 'bg-blue-50 border-blue-300 text-blue-700'
+                  : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
               }`}
             >
               <Filter className="h-4 w-4 mr-2" />
@@ -290,7 +326,7 @@ export const FeeTrackingTab: React.FC<Props> = ({
                 </span>
               )}
             </button>
-            
+
             {activeFiltersCount > 0 && (
               <button
                 onClick={handleClearFilters}
@@ -307,7 +343,7 @@ export const FeeTrackingTab: React.FC<Props> = ({
                 type="text"
                 placeholder="Search by name or roll number..."
                 value={filters.search}
-                onChange={(e) => handleFilterChange("search", e.target.value)}
+                onChange={(e) => handleFilterChange('search', e.target.value)}
                 className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
               <Search className="h-4 w-4 text-gray-400 absolute left-3 top-2.5" />
@@ -321,7 +357,7 @@ export const FeeTrackingTab: React.FC<Props> = ({
               <label className="block text-sm font-medium text-gray-700 mb-1">Payment Status</label>
               <select
                 value={filters.status}
-                onChange={(e) => handleFilterChange("status", e.target.value)}
+                onChange={(e) => handleFilterChange('status', e.target.value)}
                 className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
               >
                 <option value="all">All Statuses</option>
@@ -336,7 +372,7 @@ export const FeeTrackingTab: React.FC<Props> = ({
               <label className="block text-sm font-medium text-gray-700 mb-1">Fee Amount</label>
               <select
                 value={filters.amountRange}
-                onChange={(e) => handleFilterChange("amountRange", e.target.value)}
+                onChange={(e) => handleFilterChange('amountRange', e.target.value)}
                 className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
               >
                 <option value="all">All Amounts</option>
@@ -348,10 +384,12 @@ export const FeeTrackingTab: React.FC<Props> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Outstanding Balance</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Outstanding Balance
+              </label>
               <select
                 value={filters.balanceRange}
-                onChange={(e) => handleFilterChange("balanceRange", e.target.value)}
+                onChange={(e) => handleFilterChange('balanceRange', e.target.value)}
                 className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
               >
                 <option value="all">All Balances</option>
@@ -390,7 +428,7 @@ export const FeeTrackingTab: React.FC<Props> = ({
       <div className="flex items-center justify-between mb-4">
         <div className="text-sm text-gray-600">
           Showing {startIndex + 1} to {Math.min(endIndex, totalItems)} of {totalItems} students
-          {activeFiltersCount > 0 && " (filtered)"}
+          {activeFiltersCount > 0 && ' (filtered)'}
         </div>
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-600">Show</span>
@@ -416,12 +454,12 @@ export const FeeTrackingTab: React.FC<Props> = ({
         <div className="p-8 bg-gray-50 border border-gray-200 rounded-xl text-center">
           <Users className="h-12 w-12 text-gray-400 mx-auto mb-3" />
           <p className="text-gray-900 font-medium mb-1">
-            {totalItems === 0 ? "No student fee records found" : "No matching students"}
+            {totalItems === 0 ? 'No student fee records found' : 'No matching students'}
           </p>
           <p className="text-sm text-gray-600">
             {totalItems === 0
-              ? "Student fee ledgers will appear here once fee structures are assigned to students"
-              : "Try adjusting your search or filters"}
+              ? 'Student fee ledgers will appear here once fee structures are assigned to students'
+              : 'Try adjusting your search or filters'}
           </p>
         </div>
       ) : (
@@ -430,60 +468,67 @@ export const FeeTrackingTab: React.FC<Props> = ({
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  <th 
+                  <th
                     className="text-left py-3 px-4 text-sm font-semibold text-gray-700 cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSortChange("name")}
+                    onClick={() => handleSortChange('name')}
                   >
                     <div className="flex items-center">
                       Student
-                      {sortBy === "name" && (
-                        <span className="ml-1">{sortOrder === "asc" ? "↑" : "↓"}</span>
+                      {sortBy === 'name' && (
+                        <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
                       )}
                     </div>
                   </th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Roll No</th>
-                  <th 
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
+                    Roll No
+                  </th>
+                  <th
                     className="text-right py-3 px-4 text-sm font-semibold text-gray-700 cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSortChange("amount")}
+                    onClick={() => handleSortChange('amount')}
                   >
                     <div className="flex items-center justify-end">
                       Total Due
-                      {sortBy === "amount" && (
-                        <span className="ml-1">{sortOrder === "asc" ? "↑" : "↓"}</span>
+                      {sortBy === 'amount' && (
+                        <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
                       )}
                     </div>
                   </th>
                   <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Paid</th>
-                  <th 
+                  <th
                     className="text-right py-3 px-4 text-sm font-semibold text-gray-700 cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSortChange("balance")}
+                    onClick={() => handleSortChange('balance')}
                   >
                     <div className="flex items-center justify-end">
                       Balance
-                      {sortBy === "balance" && (
-                        <span className="ml-1">{sortOrder === "asc" ? "↑" : "↓"}</span>
+                      {sortBy === 'balance' && (
+                        <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
                       )}
                     </div>
                   </th>
-                  <th 
+                  <th
                     className="text-center py-3 px-4 text-sm font-semibold text-gray-700 cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSortChange("status")}
+                    onClick={() => handleSortChange('status')}
                   >
                     <div className="flex items-center justify-center">
                       Status
-                      {sortBy === "status" && (
-                        <span className="ml-1">{sortOrder === "asc" ? "↑" : "↓"}</span>
+                      {sortBy === 'status' && (
+                        <span className="ml-1">{sortOrder === 'asc' ? '↑' : '↓'}</span>
                       )}
                     </div>
                   </th>
-                  <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">Actions</th>
+                  <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {paginatedStudents.map((student) => {
                   const config = statusConfig[student.status] || statusConfig.pending;
                   return (
-                    <tr key={student.student_id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <tr
+                      key={student.student_id}
+                      className="border-b border-gray-100 hover:bg-gray-50"
+                    >
                       <td className="py-3 px-4">
                         <p className="font-medium text-gray-900">{student.student_name}</p>
                       </td>
@@ -498,7 +543,9 @@ export const FeeTrackingTab: React.FC<Props> = ({
                         ₹{student.balance.toLocaleString()}
                       </td>
                       <td className="py-3 px-4 text-center">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${config.bg} ${config.color}`}>
+                        <span
+                          className={`px-2 py-1 text-xs font-medium rounded-full ${config.bg} ${config.color}`}
+                        >
                           {config.label}
                         </span>
                       </td>
@@ -535,7 +582,7 @@ export const FeeTrackingTab: React.FC<Props> = ({
               <div className="text-sm text-gray-600">
                 Showing {startIndex + 1} to {Math.min(endIndex, totalItems)} of {totalItems} entries
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
@@ -544,12 +591,12 @@ export const FeeTrackingTab: React.FC<Props> = ({
                 >
                   Previous
                 </button>
-                
+
                 <div className="flex gap-1">
                   {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
                     const page = i + Math.max(1, currentPage - 2);
                     if (page > totalPages) return null;
-                    
+
                     return (
                       <button
                         key={page}
@@ -565,7 +612,7 @@ export const FeeTrackingTab: React.FC<Props> = ({
                     );
                   })}
                 </div>
-                
+
                 <button
                   onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                   disabled={currentPage === totalPages}
@@ -580,4 +627,4 @@ export const FeeTrackingTab: React.FC<Props> = ({
       )}
     </div>
   );
-}; 
+};

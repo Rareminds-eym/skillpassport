@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import toast from 'react-hot-toast';
-import { 
+import {
   MagnifyingGlassIcon,
   PaperAirplaneIcon,
   EllipsisVerticalIcon,
@@ -12,7 +12,7 @@ import {
   ChevronRightIcon,
   ArrowUturnLeftIcon,
   ChevronLeftIcon,
-  TrashIcon
+  TrashIcon,
 } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/24/solid';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
@@ -33,23 +33,31 @@ const Messages = () => {
   const [showMenu, setShowMenu] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; conversationId: string | null; contactName: string }>({ 
-    isOpen: false, 
-    conversationId: null, 
-    contactName: '' 
+  const [deleteModal, setDeleteModal] = useState<{
+    isOpen: boolean;
+    conversationId: string | null;
+    contactName: string;
+  }>({
+    isOpen: false,
+    conversationId: null,
+    contactName: '',
   });
   const menuRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const markedAsReadRef = useRef<Set<string>>(new Set());
-  
+
   // Get recruiter ID from auth
   const { user } = useAuth();
   const recruiterId = user?.id;
   const recruiterName = user?.name || 'Recruiter';
   const queryClient = useQueryClient();
-  
+
   // Fetch active conversations
-  const { data: activeConversations = [], isLoading: loadingActive, refetch: refetchActive } = useQuery({
+  const {
+    data: activeConversations = [],
+    isLoading: loadingActive,
+    refetch: refetchActive,
+  } = useQuery({
     queryKey: ['recruiter-conversations', recruiterId, 'active'],
     queryFn: async () => {
       if (!recruiterId) return [];
@@ -64,12 +72,20 @@ const Messages = () => {
   });
 
   // Fetch archived conversations count - always fetch for the badge
-  const { data: archivedConversations = [], isLoading: loadingArchived, refetch: refetchArchived } = useQuery({
+  const {
+    data: archivedConversations = [],
+    isLoading: loadingArchived,
+    refetch: refetchArchived,
+  } = useQuery({
     queryKey: ['recruiter-conversations', recruiterId, 'archived'],
     queryFn: async () => {
       if (!recruiterId) return [];
-      const allConversations = await MessageService.getUserConversations(recruiterId, 'recruiter', true);
-      return allConversations.filter(conv => conv.status === 'archived');
+      const allConversations = await MessageService.getUserConversations(
+        recruiterId,
+        'recruiter',
+        true
+      );
+      return allConversations.filter((conv) => conv.status === 'archived');
     },
     enabled: !!recruiterId,
     staleTime: 60000, // Cache valid for 60 seconds
@@ -81,9 +97,14 @@ const Messages = () => {
 
   const conversations = showArchived ? archivedConversations : activeConversations;
   const loadingConversations = showArchived ? loadingArchived : loadingActive;
-  
+
   // Fetch messages for selected conversation
-  const { messages, isLoading: loadingMessages, sendMessage, isSending } = useMessages({
+  const {
+    messages,
+    isLoading: loadingMessages,
+    sendMessage,
+    isSending,
+  } = useMessages({
     conversationId: selectedConversationId,
     enabled: !!selectedConversationId,
   });
@@ -100,9 +121,9 @@ const Messages = () => {
       userType: 'recruiter',
       status: 'online',
       lastSeen: new Date().toISOString(),
-      conversationId: selectedConversationId || undefined
+      conversationId: selectedConversationId || undefined,
     },
-    enabled: !!selectedConversationId && !!recruiterId
+    enabled: !!selectedConversationId && !!recruiterId,
   });
 
   // Typing indicators
@@ -110,41 +131,41 @@ const Messages = () => {
     conversationId: selectedConversationId || '',
     currentUserId: recruiterId || '',
     currentUserName: recruiterName,
-    enabled: !!selectedConversationId && !!recruiterId
+    enabled: !!selectedConversationId && !!recruiterId,
   });
 
   // Notification broadcasts
   const { sendNotification } = useNotificationBroadcast({
     userId: recruiterId || '',
     showToast: true,
-    enabled: !!recruiterId
+    enabled: !!recruiterId,
   });
 
   // Subscribe to conversation updates for real-time unread count changes
   useEffect(() => {
     if (!recruiterId) return;
-    
+
     const subscription = MessageService.subscribeToUserConversations(
       recruiterId,
       'recruiter',
       (conversation: Conversation) => {
         console.log('🔄 [Recruiter] Realtime UPDATE detected:', conversation);
-        
+
         // CRITICAL: Ignore updates for conversations that were deleted
         // This prevents re-fetching deleted conversations back into the cache
         if (conversation.deleted_by_recruiter) {
           console.log('❌ [Recruiter] Ignoring UPDATE for deleted conversation:', conversation.id);
           return; // Don't refetch
         }
-        
+
         // Invalidate conversation queries and unread count for sidebar badge
-        queryClient.invalidateQueries({ 
+        queryClient.invalidateQueries({
           queryKey: ['recruiter-conversations', recruiterId],
-          refetchType: 'active'
+          refetchType: 'active',
         });
-        queryClient.invalidateQueries({ 
+        queryClient.invalidateQueries({
           queryKey: ['recruiter-unread-count', recruiterId],
-          refetchType: 'active'
+          refetchType: 'active',
         });
       }
     );
@@ -153,44 +174,41 @@ const Messages = () => {
       subscription.unsubscribe();
     };
   }, [recruiterId, queryClient]);
-  
+
   // Mark messages as read when conversation is selected (with debounce)
   useEffect(() => {
     if (!selectedConversationId || !recruiterId) return;
-    
+
     // Get current conversations
-    const conversation = activeConversations.find(c => c.id === selectedConversationId);
+    const conversation = activeConversations.find((c) => c.id === selectedConversationId);
     const hasUnread = conversation?.recruiter_unread_count > 0;
-    
+
     if (!hasUnread) return;
-    
+
     const markKey = `${selectedConversationId}-${conversation?.recruiter_unread_count}`;
     if (markedAsReadRef.current.has(markKey)) return;
     markedAsReadRef.current.add(markKey);
-    
+
     // Optimistically update the UI immediately
     queryClient.setQueryData<typeof activeConversations>(
       ['recruiter-conversations', recruiterId, 'active'],
       (oldData) => {
         if (!oldData) return oldData;
-        return oldData.map(conv => 
-          conv.id === selectedConversationId 
-            ? { ...conv, recruiter_unread_count: 0 }
-            : conv
+        return oldData.map((conv) =>
+          conv.id === selectedConversationId ? { ...conv, recruiter_unread_count: 0 } : conv
         );
       }
     );
-    
+
     // Mark the database update
-    MessageService.markConversationAsRead(selectedConversationId, recruiterId)
-      .catch(err => {
-        console.error('Failed to mark as read:', err);
-        markedAsReadRef.current.delete(markKey);
-        // Revert optimistic update on error
-        refetchActive();
-      });
+    MessageService.markConversationAsRead(selectedConversationId, recruiterId).catch((err) => {
+      console.error('Failed to mark as read:', err);
+      markedAsReadRef.current.delete(markKey);
+      // Revert optimistic update on error
+      refetchActive();
+    });
   }, [selectedConversationId, recruiterId, activeConversations, queryClient, refetchActive]);
-  
+
   // Close menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -201,7 +219,7 @@ const Messages = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-  
+
   // Delete mutation with proper optimistic updates
   const deleteMutation = useMutation({
     mutationFn: async ({ conversationId }: { conversationId: string }) => {
@@ -211,36 +229,50 @@ const Messages = () => {
     onMutate: async ({ conversationId }) => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['recruiter-conversations', recruiterId] });
-      
+
       // Snapshot previous value
-      const previousActive = queryClient.getQueryData(['recruiter-conversations', recruiterId, 'active']);
-      const previousArchived = queryClient.getQueryData(['recruiter-conversations', recruiterId, 'archived']);
-      
+      const previousActive = queryClient.getQueryData([
+        'recruiter-conversations',
+        recruiterId,
+        'active',
+      ]);
+      const previousArchived = queryClient.getQueryData([
+        'recruiter-conversations',
+        recruiterId,
+        'archived',
+      ]);
+
       // Optimistically update: mark as deleted
       queryClient.setQueryData(['recruiter-conversations', recruiterId, 'active'], (old: any) => {
         if (!old) return [];
-        return old.map((conv: any) => 
+        return old.map((conv: any) =>
           conv.id === conversationId ? { ...conv, _pendingDelete: true } : conv
         );
       });
-      
+
       // CRITICAL: Invalidate to trigger immediate re-render
-      queryClient.invalidateQueries({ 
+      queryClient.invalidateQueries({
         queryKey: ['recruiter-conversations', recruiterId, 'active'],
-        refetchType: 'none' // Don't refetch, just notify subscribers
+        refetchType: 'none', // Don't refetch, just notify subscribers
       });
-      
+
       console.log('🗑️ [Recruiter] Marked conversation as deleted:', conversationId);
-      
+
       return { previousActive, previousArchived, conversationId };
     },
     onError: (err, variables, context) => {
       // Rollback on error
       if (context?.previousActive) {
-        queryClient.setQueryData(['recruiter-conversations', recruiterId, 'active'], context.previousActive);
+        queryClient.setQueryData(
+          ['recruiter-conversations', recruiterId, 'active'],
+          context.previousActive
+        );
       }
       if (context?.previousArchived) {
-        queryClient.setQueryData(['recruiter-conversations', recruiterId, 'archived'], context.previousArchived);
+        queryClient.setQueryData(
+          ['recruiter-conversations', recruiterId, 'archived'],
+          context.previousArchived
+        );
       }
       toast.error('Failed to delete conversation');
     },
@@ -250,17 +282,20 @@ const Messages = () => {
         if (!old) return [];
         return old.filter((conv: any) => conv.id !== variables.conversationId);
       });
-      
+
       // CRITICAL: Invalidate to ensure the query doesn't refetch from realtime updates
-      queryClient.invalidateQueries({ 
+      queryClient.invalidateQueries({
         queryKey: ['recruiter-conversations', recruiterId, 'active'],
-        refetchType: 'none' // Don't refetch, just notify
+        refetchType: 'none', // Don't refetch, just notify
       });
-      
-      console.log('✅ [Recruiter] Conversation permanently removed from cache:', variables.conversationId);
-    }
+
+      console.log(
+        '✅ [Recruiter] Conversation permanently removed from cache:',
+        variables.conversationId
+      );
+    },
   });
-  
+
   // Undo mutation
   const undoMutation = useMutation({
     mutationFn: async ({ conversationId }: { conversationId: string }) => {
@@ -270,22 +305,36 @@ const Messages = () => {
     onMutate: async ({ conversationId }) => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['recruiter-conversations', recruiterId] });
-      
+
       // Snapshot
-      const previousActive = queryClient.getQueryData(['recruiter-conversations', recruiterId, 'active']);
-      const previousArchived = queryClient.getQueryData(['recruiter-conversations', recruiterId, 'archived']);
-      
+      const previousActive = queryClient.getQueryData([
+        'recruiter-conversations',
+        recruiterId,
+        'active',
+      ]);
+      const previousArchived = queryClient.getQueryData([
+        'recruiter-conversations',
+        recruiterId,
+        'archived',
+      ]);
+
       console.log('↩️ [Recruiter] Attempting to restore conversation:', conversationId);
-      
+
       return { previousActive, previousArchived, conversationId };
     },
     onError: (err, variables, context) => {
       // Rollback on error
       if (context?.previousActive) {
-        queryClient.setQueryData(['recruiter-conversations', recruiterId, 'active'], context.previousActive);
+        queryClient.setQueryData(
+          ['recruiter-conversations', recruiterId, 'active'],
+          context.previousActive
+        );
       }
       if (context?.previousArchived) {
-        queryClient.setQueryData(['recruiter-conversations', recruiterId, 'archived'], context.previousArchived);
+        queryClient.setQueryData(
+          ['recruiter-conversations', recruiterId, 'archived'],
+          context.previousArchived
+        );
       }
       toast.error('Failed to restore conversation');
     },
@@ -293,149 +342,169 @@ const Messages = () => {
       toast.success('Conversation restored');
       refetchActive(); // Sync with DB
       refetchArchived();
-    }
+    },
   });
-  
+
   // Handle archive/unarchive with optimistic updates
-  const handleToggleArchive = useCallback(async (conversationId: string, isArchiving: boolean) => {
-    setShowMenu(null);
-    setIsTransitioning(true);
-    
-    try {
-      if (selectedConversationId === conversationId) {
-        setSelectedConversationId(null);
+  const handleToggleArchive = useCallback(
+    async (conversationId: string, isArchiving: boolean) => {
+      setShowMenu(null);
+      setIsTransitioning(true);
+
+      try {
+        if (selectedConversationId === conversationId) {
+          setSelectedConversationId(null);
+        }
+
+        await (isArchiving
+          ? MessageService.archiveConversation(conversationId)
+          : MessageService.unarchiveConversation(conversationId));
+
+        await Promise.all([refetchActive(), refetchArchived()]);
+      } catch (error) {
+        console.error(`Error ${isArchiving ? 'archiving' : 'unarchiving'} conversation:`, error);
+        refetchActive();
+        refetchArchived();
+      } finally {
+        setTimeout(() => setIsTransitioning(false), 300);
       }
-      
-      await (isArchiving 
-        ? MessageService.archiveConversation(conversationId)
-        : MessageService.unarchiveConversation(conversationId)
-      );
-      
-      await Promise.all([refetchActive(), refetchArchived()]);
-    } catch (error) {
-      console.error(`Error ${isArchiving ? 'archiving' : 'unarchiving'} conversation:`, error);
-      refetchActive();
-      refetchArchived();
-    } finally {
-      setTimeout(() => setIsTransitioning(false), 300);
-    }
-  }, [selectedConversationId, refetchActive, refetchArchived]);
+    },
+    [selectedConversationId, refetchActive, refetchArchived]
+  );
 
   // Handle delete conversation using mutation
   const handleDeleteConversation = useCallback(async () => {
     if (!deleteModal.conversationId || !recruiterId) return;
-    
+
     const conversationId = deleteModal.conversationId;
     const contactName = deleteModal.contactName;
-    
+
     // Clear selection if deleting current conversation
     if (selectedConversationId === conversationId) {
       setSelectedConversationId(null);
     }
-    
+
     // Close modal immediately for snappy UX
     setDeleteModal({ isOpen: false, conversationId: null, contactName: '' });
-    
+
     // Trigger the mutation (handles optimistic update, API call, and cache removal)
     deleteMutation.mutate({ conversationId });
-      
-      // Show success toast with undo option (5 seconds with timer)
-      const UndoToastComponent = ({ t, conversationId, recruiterId, contactName, onRestore }: {
-        t: any;
-        conversationId: string;
-        recruiterId: string;
-        contactName: string;
-        onRestore: () => Promise<void>;
-      }) => {
-        const [displayTime, setDisplayTime] = React.useState(5);
-        const startTimeRef = React.useRef(Date.now());
-        const rafIdRef = React.useRef<number | null>(null);
-        const progressRef = React.useRef<SVGCircleElement | null>(null);
 
-        React.useEffect(() => {
-          let lastUpdate = 0;
-          let isMounted = true;
-          const THROTTLE_MS = 50;
+    // Show success toast with undo option (5 seconds with timer)
+    const UndoToastComponent = ({
+      t,
+      conversationId,
+      recruiterId,
+      contactName,
+      onRestore,
+    }: {
+      t: any;
+      conversationId: string;
+      recruiterId: string;
+      contactName: string;
+      onRestore: () => Promise<void>;
+    }) => {
+      const [displayTime, setDisplayTime] = React.useState(5);
+      const startTimeRef = React.useRef(Date.now());
+      const rafIdRef = React.useRef<number | null>(null);
+      const progressRef = React.useRef<SVGCircleElement | null>(null);
 
-          const animate = (timestamp: number) => {
-            if (!isMounted) return;
+      React.useEffect(() => {
+        let lastUpdate = 0;
+        let isMounted = true;
+        const THROTTLE_MS = 50;
 
-            const elapsed = (Date.now() - startTimeRef.current) / 1000;
-            
-            if (timestamp - lastUpdate >= THROTTLE_MS) {
-              const remaining = Math.max(0, 5 - elapsed);
-              const currentProgress = (remaining / 5) * 100;
+        const animate = (timestamp: number) => {
+          if (!isMounted) return;
 
-              if (isMounted) {
-                setDisplayTime(remaining);
-              }
+          const elapsed = (Date.now() - startTimeRef.current) / 1000;
 
-              if (progressRef.current) {
-                const offset = (1 - currentProgress / 100) * 97.4;
-                progressRef.current.style.strokeDashoffset = String(offset);
-              }
+          if (timestamp - lastUpdate >= THROTTLE_MS) {
+            const remaining = Math.max(0, 5 - elapsed);
+            const currentProgress = (remaining / 5) * 100;
 
-              lastUpdate = timestamp;
+            if (isMounted) {
+              setDisplayTime(remaining);
             }
 
-            if (isMounted && elapsed < 5) {
-              rafIdRef.current = requestAnimationFrame(animate);
+            if (progressRef.current) {
+              const offset = (1 - currentProgress / 100) * 97.4;
+              progressRef.current.style.strokeDashoffset = String(offset);
             }
-          };
 
-          rafIdRef.current = requestAnimationFrame(animate);
+            lastUpdate = timestamp;
+          }
 
-          return () => {
-            isMounted = false;
-            if (rafIdRef.current !== null) {
-              cancelAnimationFrame(rafIdRef.current);
-              rafIdRef.current = null;
-            }
-          };
-        }, []);
-
-        const handleUndo = () => {
-          toast.dismiss(t.id);
-          // Trigger undo mutation
-          undoMutation.mutate({ conversationId });
+          if (isMounted && elapsed < 5) {
+            rafIdRef.current = requestAnimationFrame(animate);
+          }
         };
 
-        return (
-          <div className="flex items-center gap-4 min-w-[380px] max-w-[420px]">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div className="relative flex-shrink-0 w-11 h-11">
-                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
-                  <circle cx="18" cy="18" r="15.5" fill="none" className="stroke-gray-200" strokeWidth="2.5" />
-                  <circle
-                    ref={progressRef}
-                    cx="18" cy="18" r="15.5" fill="none"
-                    className="stroke-green-500"
-                    strokeWidth="2.5"
-                    strokeDasharray="97.4"
-                    strokeDashoffset="0"
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-[13px] font-bold text-green-600 tabular-nums w-3 text-center">
-                    {Math.ceil(displayTime)}
-                  </span>
-                </div>
-              </div>
-              <div className="flex-1 min-w-0 py-1">
-                <p className="font-semibold text-[15px] text-gray-900 leading-tight">Conversation deleted</p>
-                <p className="text-[13px] text-gray-500 mt-1 truncate">with {contactName}</p>
+        rafIdRef.current = requestAnimationFrame(animate);
+
+        return () => {
+          isMounted = false;
+          if (rafIdRef.current !== null) {
+            cancelAnimationFrame(rafIdRef.current);
+            rafIdRef.current = null;
+          }
+        };
+      }, []);
+
+      const handleUndo = () => {
+        toast.dismiss(t.id);
+        // Trigger undo mutation
+        undoMutation.mutate({ conversationId });
+      };
+
+      return (
+        <div className="flex items-center gap-4 min-w-[380px] max-w-[420px]">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className="relative flex-shrink-0 w-11 h-11">
+              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                <circle
+                  cx="18"
+                  cy="18"
+                  r="15.5"
+                  fill="none"
+                  className="stroke-gray-200"
+                  strokeWidth="2.5"
+                />
+                <circle
+                  ref={progressRef}
+                  cx="18"
+                  cy="18"
+                  r="15.5"
+                  fill="none"
+                  className="stroke-green-500"
+                  strokeWidth="2.5"
+                  strokeDasharray="97.4"
+                  strokeDashoffset="0"
+                  strokeLinecap="round"
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-[13px] font-bold text-green-600 tabular-nums w-3 text-center">
+                  {Math.ceil(displayTime)}
+                </span>
               </div>
             </div>
-            <button
-              onClick={handleUndo}
-              className="flex-shrink-0 px-5 py-2.5 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white text-[15px] font-semibold rounded-xl shadow-sm hover:shadow-lg active:scale-95 transition-all duration-200"
-            >
-              Undo
-            </button>
+            <div className="flex-1 min-w-0 py-1">
+              <p className="font-semibold text-[15px] text-gray-900 leading-tight">
+                Conversation deleted
+              </p>
+              <p className="text-[13px] text-gray-500 mt-1 truncate">with {contactName}</p>
+            </div>
           </div>
-        );
-      };
+          <button
+            onClick={handleUndo}
+            className="flex-shrink-0 px-5 py-2.5 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white text-[15px] font-semibold rounded-xl shadow-sm hover:shadow-lg active:scale-95 transition-all duration-200"
+          >
+            Undo
+          </button>
+        </div>
+      );
+    };
 
     // Show undo toast
     toast.success(
@@ -461,31 +530,40 @@ const Messages = () => {
         icon: null,
       }
     );
-  }, [deleteModal.conversationId, deleteModal.contactName, recruiterId, selectedConversationId, deleteMutation, undoMutation]);
+  }, [
+    deleteModal.conversationId,
+    deleteModal.contactName,
+    recruiterId,
+    selectedConversationId,
+    deleteMutation,
+    undoMutation,
+  ]);
 
   // Open delete confirmation modal
   const openDeleteModal = useCallback((conversationId: string, contactName: string) => {
     setShowMenu(null);
     setDeleteModal({ isOpen: true, conversationId, contactName });
   }, []);
-  
+
   // Transform and filter conversations - memoized for performance
   // Include onlineUsers as dependency so contacts update when presence changes
   const filteredContacts = useMemo(() => {
     console.log('🔄 [Recruiter] Recalculating contacts memo, conversations:', conversations.length);
-    
+
     // First filter out conversations marked for deletion
     const activeConversations = conversations.filter((conv: any) => !conv._pendingDelete);
-    
+
     // Debug logging
     const pendingCount = conversations.filter((c: any) => c._pendingDelete).length;
-    console.log(`📊 [Recruiter] Conversations: ${conversations.length} total, ${pendingCount} pending delete, ${activeConversations.length} active`);
-    
+    console.log(
+      `📊 [Recruiter] Conversations: ${conversations.length} total, ${pendingCount} pending delete, ${activeConversations.length} active`
+    );
+
     if (pendingCount > 0) {
       const pendingIds = conversations.filter((c: any) => c._pendingDelete).map((c: any) => c.id);
       console.log('❌ [Recruiter] Pending delete IDs:', pendingIds);
     }
-    
+
     const parseProfile = (profile: any) => {
       if (!profile || typeof profile === 'object') return profile || {};
       try {
@@ -499,19 +577,20 @@ const Messages = () => {
       const profile = parseProfile(conv.student?.profile);
       const studentName = profile?.name || conv.student?.email || 'Student';
       const opportunityTitle = conv.opportunity?.title || 'No job specified';
-      const opportunityDetails = conv.opportunity?.company_name 
+      const opportunityDetails = conv.opportunity?.company_name
         ? `${opportunityTitle} • ${conv.opportunity.company_name}`
         : opportunityTitle;
-      
+
       return {
         id: conv.id,
         name: studentName,
         role: opportunityDetails,
-                      avatar: profile?.profilePicture || 
-                        `https://ui-avatars.com/api/?name=${encodeURIComponent(studentName)}&background=3B82F6&color=fff`,
-                      lastMessage: conv.last_message_preview || 'No messages yet',
-                      online: isUserOnlineGlobal(conv.student_id),
-        time: conv.last_message_at 
+        avatar:
+          profile?.profilePicture ||
+          `https://ui-avatars.com/api/?name=${encodeURIComponent(studentName)}&background=3B82F6&color=fff`,
+        lastMessage: conv.last_message_preview || 'No messages yet',
+        online: isUserOnlineGlobal(conv.student_id),
+        time: conv.last_message_at
           ? formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true })
           : 'No messages',
         unread: conv.recruiter_unread_count || 0,
@@ -522,81 +601,104 @@ const Messages = () => {
     });
 
     if (!searchQuery) return contacts;
-    
+
     const query = searchQuery.toLowerCase();
-    return contacts.filter(c => 
-      c.name.toLowerCase().includes(query) || c.role.toLowerCase().includes(query)
+    return contacts.filter(
+      (c) => c.name.toLowerCase().includes(query) || c.role.toLowerCase().includes(query)
     );
   }, [conversations, searchQuery, globalOnlineUsers, isUserOnlineGlobal]);
 
-  const currentChat = useMemo(() => 
-    filteredContacts.find(c => c.id === selectedConversationId),
+  const currentChat = useMemo(
+    () => filteredContacts.find((c) => c.id === selectedConversationId),
     [filteredContacts, selectedConversationId]
   );
 
-  const handleSendMessage = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!messageInput.trim() || !currentChat || !recruiterId) return;
-    
-    try {
-      await sendMessage({
-        senderId: recruiterId,
-        senderType: 'recruiter',
-        receiverId: currentChat.studentId,
-        receiverType: 'student',
-        messageText: messageInput,
-        applicationId: currentChat.applicationId,
-        opportunityId: currentChat.opportunityId
-      });
-      
-      // Send notification broadcast to student
+  const handleSendMessage = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!messageInput.trim() || !currentChat || !recruiterId) return;
+
       try {
-        await sendNotification(currentChat.studentId, {
-          title: 'New Message from Recruiter',
-          message: messageInput.length > 50 ? messageInput.substring(0, 50) + '...' : messageInput,
-          type: 'message',
-          link: `/student/messages?conversation=${selectedConversationId}`
+        await sendMessage({
+          senderId: recruiterId,
+          senderType: 'recruiter',
+          receiverId: currentChat.studentId,
+          receiverType: 'student',
+          messageText: messageInput,
+          applicationId: currentChat.applicationId,
+          opportunityId: currentChat.opportunityId,
         });
-      } catch (notifError) {
+
+        // Send notification broadcast to student
+        try {
+          await sendNotification(currentChat.studentId, {
+            title: 'New Message from Recruiter',
+            message:
+              messageInput.length > 50 ? messageInput.substring(0, 50) + '...' : messageInput,
+            type: 'message',
+            link: `/student/messages?conversation=${selectedConversationId}`,
+          });
+        } catch (notifError) {}
+
+        setMessageInput('');
+        setTyping(false);
+        // Don't refetch - real-time updates will handle it
+      } catch (error) {
+        console.error('Error sending message:', error);
       }
-      
-      setMessageInput('');
-      setTyping(false);
-      // Don't refetch - real-time updates will handle it
-    } catch (error) {
-      console.error('Error sending message:', error);
-    }
-  }, [messageInput, currentChat, recruiterId, sendMessage, sendNotification, selectedConversationId, setTyping, refetchActive]);
+    },
+    [
+      messageInput,
+      currentChat,
+      recruiterId,
+      sendMessage,
+      sendNotification,
+      selectedConversationId,
+      setTyping,
+      refetchActive,
+    ]
+  );
 
   // Handle typing in input
-  const handleInputChange = useCallback((value: string) => {
-    setMessageInput(value);
-    setTyping(value.length > 0);
-  }, [setTyping]);
+  const handleInputChange = useCallback(
+    (value: string) => {
+      setMessageInput(value);
+      setTyping(value.length > 0);
+    },
+    [setTyping]
+  );
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const displayMessages = useMemo(() => 
-    messages.map(msg => ({
-      id: msg.id,
-      text: msg.message_text,
-      sender: msg.sender_type === 'recruiter' ? 'me' : 'them',
-      time: formatDistanceToNow(new Date(msg.created_at), { addSuffix: true }),
-      status: msg.is_read ? 'read' : 'delivered'
-    })),
+  const displayMessages = useMemo(
+    () =>
+      messages.map((msg) => ({
+        id: msg.id,
+        text: msg.message_text,
+        sender: msg.sender_type === 'recruiter' ? 'me' : 'them',
+        time: formatDistanceToNow(new Date(msg.created_at), { addSuffix: true }),
+        status: msg.is_read ? 'read' : 'delivered',
+      })),
     [messages]
   );
 
-  const renderStatusIcon = useCallback((status: string) => (
-    <div className="flex">
-      <CheckIcon className={`w-3 h-3 ${status === 'read' ? 'text-blue-500' : 'text-gray-400'}`} />
-      {status !== 'sent' && <CheckIcon className={`w-3 h-3 -ml-1 ${status === 'read' ? 'text-blue-500' : 'text-gray-400'}`} />}
-    </div>
-  ), []);
-  
+  const renderStatusIcon = useCallback(
+    (status: string) => (
+      <div className="flex">
+        <CheckIcon className={`w-3 h-3 ${status === 'read' ? 'text-blue-500' : 'text-gray-400'}`} />
+        {status !== 'sent' && (
+          <CheckIcon
+            className={`w-3 h-3 -ml-1 ${status === 'read' ? 'text-blue-500' : 'text-gray-400'}`}
+          />
+        )}
+      </div>
+    ),
+    []
+  );
+
   // Show loading state
   if (loadingConversations || !recruiterId) {
     return (
@@ -610,7 +712,7 @@ const Messages = () => {
       </div>
     );
   }
-  
+
   return (
     <div className="h-[calc(100vh-120px)] mx-4 my-4">
       <div className="flex h-full bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
@@ -663,7 +765,8 @@ const Messages = () => {
                   <div className="text-left">
                     <h3 className="font-bold text-gray-900 text-base">Archived</h3>
                     <p className="text-sm text-gray-500">
-                      {archivedConversations.length} conversation{archivedConversations.length !== 1 ? 's' : ''}
+                      {archivedConversations.length} conversation
+                      {archivedConversations.length !== 1 ? 's' : ''}
                     </p>
                   </div>
                 </div>
@@ -688,20 +791,18 @@ const Messages = () => {
                   )}
                 </div>
                 <p className="text-gray-600 text-sm font-medium">
-                  {showArchived 
-                    ? 'No archived conversations' 
-                    : searchQuery 
-                    ? 'No conversations found' 
-                    : 'No conversations yet'
-                  }
+                  {showArchived
+                    ? 'No archived conversations'
+                    : searchQuery
+                      ? 'No conversations found'
+                      : 'No conversations yet'}
                 </p>
                 <p className="text-gray-400 text-xs mt-2">
-                  {showArchived 
-                    ? 'Archived conversations will appear here' 
-                    : searchQuery 
-                    ? 'Try a different search term' 
-                    : 'Start messaging candidates'
-                  }
+                  {showArchived
+                    ? 'Archived conversations will appear here'
+                    : searchQuery
+                      ? 'Try a different search term'
+                      : 'Start messaging candidates'}
                 </p>
               </div>
             ) : (
@@ -709,12 +810,12 @@ const Messages = () => {
                 <div
                   key={contact.id}
                   className={`relative w-full flex items-center border-b border-gray-100 group transition-all duration-200 ${
-                    selectedConversationId === contact.id 
-                      ? 'bg-primary-50 border-l-4 border-l-primary-600' 
+                    selectedConversationId === contact.id
+                      ? 'bg-primary-50 border-l-4 border-l-primary-600'
                       : 'hover:bg-gray-50 border-l-4 border-l-transparent'
                   }`}
                   style={{
-                    animation: 'fadeInSlide 0.2s ease-out'
+                    animation: 'fadeInSlide 0.2s ease-out',
                   }}
                 >
                   <button
@@ -743,9 +844,7 @@ const Messages = () => {
                       <p className="text-xs text-primary-600 font-semibold mb-1.5 truncate">
                         {contact.role}
                       </p>
-                      <p className="text-sm text-gray-600 truncate">
-                        {contact.lastMessage}
-                      </p>
+                      <p className="text-sm text-gray-600 truncate">{contact.lastMessage}</p>
                     </div>
                     {contact.unread > 0 && (
                       <div className="flex-shrink-0 min-w-[22px] h-6 px-2 bg-primary-600 text-white text-xs rounded-full flex items-center justify-center font-bold">
@@ -753,7 +852,7 @@ const Messages = () => {
                       </div>
                     )}
                   </button>
-                  
+
                   {/* Quick Actions on Hover */}
                   <div className="flex items-center gap-1 pr-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     {/* Archive/Unarchive Button */}
@@ -771,7 +870,7 @@ const Messages = () => {
                         <ArchiveBoxIcon className="w-5 h-5 text-gray-600" />
                       )}
                     </button>
-                    
+
                     {/* Delete Button */}
                     <button
                       onClick={(e) => {
@@ -822,13 +921,22 @@ const Messages = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button className="p-3 hover:bg-gray-100 rounded-full transition-colors" title="Voice Call">
+                  <button
+                    className="p-3 hover:bg-gray-100 rounded-full transition-colors"
+                    title="Voice Call"
+                  >
                     <PhoneIcon className="w-5 h-5 text-gray-700" />
                   </button>
-                  <button className="p-3 hover:bg-gray-100 rounded-full transition-colors" title="Video Call">
+                  <button
+                    className="p-3 hover:bg-gray-100 rounded-full transition-colors"
+                    title="Video Call"
+                  >
                     <VideoCameraIcon className="w-5 h-5 text-gray-700" />
                   </button>
-                  <button className="p-3 hover:bg-gray-100 rounded-full transition-colors" title="More">
+                  <button
+                    className="p-3 hover:bg-gray-100 rounded-full transition-colors"
+                    title="More"
+                  >
                     <EllipsisVerticalIcon className="w-5 h-5 text-gray-700" />
                   </button>
                 </div>
@@ -849,8 +957,18 @@ const Messages = () => {
                 ) : displayMessages.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full">
                     <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                      <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                      <svg
+                        className="w-10 h-10 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+                        />
                       </svg>
                     </div>
                     <p className="text-gray-600 font-semibold">No messages yet</p>
@@ -888,23 +1006,32 @@ const Messages = () => {
                     </div>
                   ))
                 )}
-                
+
                 {/* Typing indicator */}
                 {isAnyoneTyping && (
                   <div className="flex justify-start">
                     <div className="bg-white border border-gray-200 rounded-2xl px-5 py-3 shadow-sm">
                       <div className="flex items-center gap-2">
                         <div className="flex gap-1">
-                          <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                          <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                          <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                          <span
+                            className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                            style={{ animationDelay: '0ms' }}
+                          />
+                          <span
+                            className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                            style={{ animationDelay: '150ms' }}
+                          />
+                          <span
+                            className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                            style={{ animationDelay: '300ms' }}
+                          />
                         </div>
                         <span className="text-xs text-gray-500 italic">{getTypingText()}</span>
                       </div>
                     </div>
                   </div>
                 )}
-                
+
                 <div ref={messagesEndRef} />
               </div>
 
@@ -976,9 +1103,7 @@ const Messages = () => {
                     />
                   </svg>
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-3">
-                  Select a conversation
-                </h3>
+                <h3 className="text-2xl font-bold text-gray-900 mb-3">Select a conversation</h3>
                 <p className="text-gray-500 leading-relaxed">
                   Choose a conversation from the list to start messaging with candidates
                 </p>
@@ -1001,4 +1126,3 @@ const Messages = () => {
 };
 
 export default Messages;
-

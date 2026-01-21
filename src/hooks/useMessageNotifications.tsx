@@ -15,11 +15,10 @@ export const useMessageNotifications = ({
   userId,
   userType,
   enabled = true,
-  onMessageReceived
+  onMessageReceived,
 }: UseMessageNotificationsProps) => {
   useEffect(() => {
     if (!userId || !enabled) return;
-
 
     const channel = supabase
       .channel(`user-messages:${userId}`)
@@ -29,11 +28,10 @@ export const useMessageNotifications = ({
           event: 'INSERT',
           schema: 'public',
           table: 'messages',
-          filter: `receiver_id=eq.${userId}`
+          filter: `receiver_id=eq.${userId}`,
         },
         (payload) => {
           const message = payload.new as Message;
-          
 
           // Don't show notification if current user sent the message
           if (message.sender_id === userId) {
@@ -61,9 +59,7 @@ export const useMessageNotifications = ({
                       </div>
                     </div>
                     <div className="ml-3 flex-1">
-                      <p className="text-sm font-medium text-gray-900">
-                        New Message
-                      </p>
+                      <p className="text-sm font-medium text-gray-900">New Message</p>
                       <p className="mt-1 text-sm text-gray-500 line-clamp-2">
                         {message.message_text}
                       </p>
@@ -82,7 +78,7 @@ export const useMessageNotifications = ({
             ),
             {
               duration: 5000,
-              position: 'top-right'
+              position: 'top-right',
             }
           );
 
@@ -95,8 +91,7 @@ export const useMessageNotifications = ({
           }
         }
       )
-      .subscribe((status) => {
-      });
+      .subscribe((status) => {});
 
     return () => {
       channel.unsubscribe();

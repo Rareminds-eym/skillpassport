@@ -19,12 +19,12 @@ import {
   BookOpenIcon,
 } from '@heroicons/react/24/outline';
 import KPICard from '../../components/educator/KPICard';
-import { 
-  dashboardApi, 
-  DashboardKPIs, 
-  RecentActivity, 
-  SkillAnalytics, 
-  Announcement 
+import {
+  dashboardApi,
+  DashboardKPIs,
+  RecentActivity,
+  SkillAnalytics,
+  Announcement,
 } from '../../services/educator/dashboardApi';
 import { supabase } from '../../lib/supabaseClient';
 // import './Dashboard.css';
@@ -56,22 +56,22 @@ const Dashboard = () => {
       }
 
       refreshAttempts += 1;
-      
+
       try {
         console.log('Dashboard: Attempting session refresh...');
         const { data, error } = await supabase.auth.refreshSession();
-        
+
         if (error) {
           console.warn('Dashboard: Session refresh failed:', error.message);
           return null;
         }
-        
+
         if (data?.session) {
           console.log('Dashboard: Session refreshed successfully');
           refreshAttempts = 0; // Reset on success
           return data.session;
         }
-        
+
         return null;
       } catch (err) {
         console.error('Dashboard: Session refresh error:', err);
@@ -80,7 +80,9 @@ const Dashboard = () => {
     };
 
     // Listen for auth changes first
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
 
       if (event === 'TOKEN_REFRESHED') {
@@ -104,18 +106,21 @@ const Dashboard = () => {
     // Check current session immediately
     const checkCurrentSession = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
+
         if (!mounted) return;
 
         if (error) {
           console.error('Session error:', error);
-          
+
           // If 403 error, try to refresh the session
           if (error.status === 403 || error.message?.includes('403')) {
             console.log('Dashboard: Session invalid (403), attempting refresh...');
             const refreshedSession = await attemptSessionRefresh();
-            
+
             if (refreshedSession?.user && mounted) {
               console.log('✅ Session refreshed, loading data...');
               setIsAuthenticated(true);
@@ -135,7 +140,7 @@ const Dashboard = () => {
           // No session - try to refresh before giving up
           console.log('No session found, attempting refresh...');
           const refreshedSession = await attemptSessionRefresh();
-          
+
           if (refreshedSession?.user && mounted) {
             console.log('✅ Session refreshed, loading data...');
             setIsAuthenticated(true);
@@ -153,7 +158,7 @@ const Dashboard = () => {
         if (mounted) {
           // Try to refresh on any auth error
           const refreshedSession = await attemptSessionRefresh();
-          
+
           if (refreshedSession?.user) {
             setIsAuthenticated(true);
             setError(null);
@@ -179,9 +184,11 @@ const Dashboard = () => {
   const loadDashboardData = useCallback(async () => {
     // Prevent multiple simultaneous loads
     if (loadingRef.current) return;
-    
+
     // Check session state again before loading data
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (!session?.user) {
       setError('Please log in to view the dashboard');
       setLoading(false);
@@ -192,9 +199,9 @@ const Dashboard = () => {
       loadingRef.current = true;
       setLoading(true);
       setError(null);
-      
+
       console.log('🔄 Starting data load...');
-      
+
       const [kpisData, activitiesData, analyticsData, announcementsData] = await Promise.all([
         dashboardApi.getKPIs(),
         dashboardApi.getRecentActivities(),
@@ -206,7 +213,7 @@ const Dashboard = () => {
         kpis: kpisData,
         activities: activitiesData.length,
         analytics: analyticsData,
-        announcements: announcementsData.length
+        announcements: announcementsData.length,
       });
 
       setKpis(kpisData);
@@ -215,10 +222,12 @@ const Dashboard = () => {
       setAnnouncements(announcementsData);
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
-      
+
       // Check if it's an educator registration issue
       if (error instanceof Error && error.message.includes('not registered with any school')) {
-        setError('You are not registered as an educator. Please contact your administrator or run the educator registration script.');
+        setError(
+          'You are not registered as an educator. Please contact your administrator or run the educator registration script.'
+        );
       } else {
         setError('Failed to load dashboard data. Please try again.');
       }
@@ -230,11 +239,11 @@ const Dashboard = () => {
 
   const handleSendAnnouncement = async () => {
     if (!newAnnouncement.trim()) return;
-    
+
     try {
       setSendingAnnouncement(true);
       const success = await dashboardApi.addAnnouncement(newAnnouncement);
-      
+
       if (success) {
         // Add to local state for immediate feedback
         const newAnnouncementObj: Announcement = {
@@ -242,7 +251,7 @@ const Dashboard = () => {
           message: newAnnouncement,
           createdAt: new Date().toISOString(),
         };
-        setAnnouncements(prev => [newAnnouncementObj, ...prev]);
+        setAnnouncements((prev) => [newAnnouncementObj, ...prev]);
         setNewAnnouncement('');
       }
     } catch (error) {
@@ -381,19 +390,19 @@ const Dashboard = () => {
     if ((category === 'Assignment' || category === 'Attendance') && status === 'sent_to_admin') {
       return 'Submitted';
     }
-    
+
     if (category === 'Schedule' && status === 'sent_to_admin') {
       return 'Assigned';
     }
-    
+
     // Default status text mapping
     const statusTexts: { [key: string]: string } = {
-      'pending': 'pending',
-      'sent_to_admin': 'Verified',
-      'approved': 'approved',
-      'rejected': 'rejected'
+      pending: 'pending',
+      sent_to_admin: 'Verified',
+      approved: 'approved',
+      rejected: 'rejected',
     };
-    
+
     return statusTexts[status] || status;
   };
 
@@ -402,7 +411,7 @@ const Dashboard = () => {
     const now = new Date();
     const diffInMs = date.getTime() - now.getTime();
     const diffInDays = Math.round(diffInMs / (1000 * 60 * 60 * 24));
-    
+
     // Handle same day
     if (Math.abs(diffInDays) < 1) {
       const diffInHours = Math.round(diffInMs / (1000 * 60 * 60));
@@ -415,7 +424,7 @@ const Dashboard = () => {
       }
       return diffInHours < 0 ? `${Math.abs(diffInHours)}h ago` : `in ${diffInHours}h`;
     }
-    
+
     return new Intl.RelativeTimeFormat('en', { numeric: 'auto' }).format(diffInDays, 'day');
   };
 
@@ -456,7 +465,7 @@ const Dashboard = () => {
       },
     },
     xaxis: {
-      categories: skillAnalytics?.skillParticipation.map(item => item.skill) || [],
+      categories: skillAnalytics?.skillParticipation.map((item) => item.skill) || [],
       labels: {
         style: {
           fontSize: '11px',
@@ -492,10 +501,12 @@ const Dashboard = () => {
     },
   };
 
-  const barChartSeries = [{
-    name: 'Activities',
-    data: skillAnalytics?.skillParticipation.map(item => item.count) || [],
-  }];
+  const barChartSeries = [
+    {
+      name: 'Activities',
+      data: skillAnalytics?.skillParticipation.map((item) => item.count) || [],
+    },
+  ];
 
   const pieChartOptions = {
     chart: {
@@ -503,7 +514,7 @@ const Dashboard = () => {
       height: 250,
       fontFamily: 'Inter, system-ui, sans-serif',
     },
-    labels: skillAnalytics?.skillDistribution.map(item => item.category) || [],
+    labels: skillAnalytics?.skillDistribution.map((item) => item.category) || [],
     colors: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'],
     legend: {
       position: 'bottom' as const,
@@ -537,7 +548,7 @@ const Dashboard = () => {
     },
   };
 
-  const pieChartSeries = skillAnalytics?.skillDistribution.map(item => item.count) || [];
+  const pieChartSeries = skillAnalytics?.skillDistribution.map((item) => item.count) || [];
 
   return (
     <div className="min-h-screen bg-gray-50" data-testid="educator-dashboard">
@@ -556,7 +567,12 @@ const Dashboard = () => {
                     <p className="font-medium mb-1">To fix this issue:</p>
                     <ol className="list-decimal list-inside space-y-1">
                       <li>Open Supabase SQL Editor</li>
-                      <li>Run the script: <code className="bg-red-200 px-1 rounded">register-current-user-as-educator.sql</code></li>
+                      <li>
+                        Run the script:{' '}
+                        <code className="bg-red-200 px-1 rounded">
+                          register-current-user-as-educator.sql
+                        </code>
+                      </li>
                       <li>Refresh this page</li>
                     </ol>
                   </div>
@@ -582,7 +598,11 @@ const Dashboard = () => {
                   className="inline-flex text-red-400 hover:text-red-600 transition-colors"
                 >
                   <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                    <path
+                      fillRule="evenodd"
+                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                 </button>
               </div>
@@ -596,8 +616,6 @@ const Dashboard = () => {
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
               <p className="mt-2 text-gray-600">Monitor student progress and manage activities</p>
-
-
             </div>
           </div>
         </div>
@@ -648,7 +666,9 @@ const Dashboard = () => {
               <ArrowRightIcon className="h-4 w-4 text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Mentor Notes</h3>
-            <p className="text-sm text-gray-600 mb-4">Record feedback and observations for students</p>
+            <p className="text-sm text-gray-600 mb-4">
+              Record feedback and observations for students
+            </p>
             <div className="flex items-center gap-4 text-xs text-gray-500">
               <div className="flex items-center gap-1">
                 <UserGroupIcon className="h-3 w-3" />
@@ -720,10 +740,9 @@ const Dashboard = () => {
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">Skill Participation</h3>
                 <p className="text-sm text-gray-500 mt-1">
-                  {skillAnalytics?.skillParticipation.length ? 
-                    `${skillAnalytics.skillParticipation.length} skills tracked` : 
-                    'No data available'
-                  }
+                  {skillAnalytics?.skillParticipation.length
+                    ? `${skillAnalytics.skillParticipation.length} skills tracked`
+                    : 'No data available'}
                 </p>
               </div>
             </div>
@@ -747,7 +766,9 @@ const Dashboard = () => {
                   <div className="text-center">
                     <ChartBarIcon className="h-12 w-12 text-gray-300 mx-auto mb-2" />
                     <p className="text-sm text-gray-500">No participation data available</p>
-                    <p className="text-xs text-gray-400 mt-1">Data will appear as students submit activities</p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Data will appear as students submit activities
+                    </p>
                   </div>
                 </div>
               )}
@@ -760,10 +781,9 @@ const Dashboard = () => {
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">Skill Categories</h3>
                 <p className="text-sm text-gray-500 mt-1">
-                  {skillAnalytics?.skillDistribution.length ? 
-                    `${skillAnalytics.skillDistribution.length} categories` : 
-                    'No data available'
-                  }
+                  {skillAnalytics?.skillDistribution.length
+                    ? `${skillAnalytics.skillDistribution.length} categories`
+                    : 'No data available'}
                 </p>
               </div>
             </div>
@@ -785,11 +805,23 @@ const Dashboard = () => {
               ) : (
                 <div className="h-full bg-gray-50 rounded-lg flex items-center justify-center">
                   <div className="text-center">
-                    <svg className="h-12 w-12 text-gray-300 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    <svg
+                      className="h-12 w-12 text-gray-300 mx-auto mb-2"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                      />
                     </svg>
                     <p className="text-sm text-gray-500">No distribution data available</p>
-                    <p className="text-xs text-gray-400 mt-1">Data will appear as students submit activities</p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Data will appear as students submit activities
+                    </p>
                   </div>
                 </div>
               )}
@@ -823,88 +855,114 @@ const Dashboard = () => {
                   <DocumentChartBarIcon className="h-6 w-6 text-gray-400" />
                 </div>
                 <p className="text-sm text-gray-500 mb-1">No recent activities</p>
-                <p className="text-xs text-gray-400">Activities will appear as students submit work</p>
+                <p className="text-xs text-gray-400">
+                  Activities will appear as students submit work
+                </p>
               </div>
             ) : (
               <>
                 {/* Scrollable Activities Container */}
-                <div className={`divide-y divide-gray-100 ${showAllActivities ? 'max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100' : ''}`}>
+                <div
+                  className={`divide-y divide-gray-100 ${showAllActivities ? 'max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100' : ''}`}
+                >
                   {/* Show limited activities initially (first 5), or all if expanded */}
-                  {(showAllActivities ? recentActivities : recentActivities.slice(0, 5)).map((activity) => (
-                    <div
-                      key={activity.id}
-                      className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
-                      onClick={() => handleActivityClick(activity)}
-                      data-testid="activity-item"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start gap-3 flex-1 min-w-0">
-                          <div className="flex-shrink-0 w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center text-gray-600">
-                            {getCategoryIcon(activity.category)}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h4 className="text-sm font-medium text-gray-900 truncate">
-                                {activity.title}
-                              </h4>
-                              <span
-                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(
-                                  activity.status
-                                )}`}
-                              >
-                                {getStatusText(activity.status, activity.category)}
-                              </span>
+                  {(showAllActivities ? recentActivities : recentActivities.slice(0, 5)).map(
+                    (activity) => (
+                      <div
+                        key={activity.id}
+                        className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                        onClick={() => handleActivityClick(activity)}
+                        data-testid="activity-item"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start gap-3 flex-1 min-w-0">
+                            <div className="flex-shrink-0 w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center text-gray-600">
+                              {getCategoryIcon(activity.category)}
                             </div>
-                            <p className="text-sm text-gray-600 mb-1">
-                              {activity.studentName} • {activity.category}
-                              <span className="text-xs text-gray-400 ml-2">
-                                → {getNavigationHint(activity.category)}
-                              </span>
-                            </p>
-                            <p className="text-xs text-gray-500 line-clamp-2">
-                              {activity.description}
-                            </p>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h4 className="text-sm font-medium text-gray-900 truncate">
+                                  {activity.title}
+                                </h4>
+                                <span
+                                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(
+                                    activity.status
+                                  )}`}
+                                >
+                                  {getStatusText(activity.status, activity.category)}
+                                </span>
+                              </div>
+                              <p className="text-sm text-gray-600 mb-1">
+                                {activity.studentName} • {activity.category}
+                                <span className="text-xs text-gray-400 ml-2">
+                                  → {getNavigationHint(activity.category)}
+                                </span>
+                              </p>
+                              <p className="text-xs text-gray-500 line-clamp-2">
+                                {activity.description}
+                              </p>
+                            </div>
                           </div>
+                          <span className="text-xs text-gray-400 ml-4 whitespace-nowrap">
+                            {formatDate(activity.submittedDate)}
+                          </span>
                         </div>
-                        <span className="text-xs text-gray-400 ml-4 whitespace-nowrap">
-                          {formatDate(activity.submittedDate)}
-                        </span>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  )}
                 </div>
-                  
+
                 {/* Show More / Show Less Button */}
                 {recentActivities.length > 5 && (
-                    <div className="px-6 py-4 border-t border-gray-100 bg-gray-50">
-                      <button
-                        onClick={handleShowMoreActivities}
-                        disabled={loadingMoreActivities}
-                        className="w-full flex items-center justify-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors disabled:opacity-50"
-                        data-testid="show-more-activities"
-                      >
-                        {loadingMoreActivities ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                            Loading more...
-                          </>
-                        ) : showAllActivities ? (
-                          <>
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                            </svg>
-                            Show Less
-                          </>
-                        ) : (
-                          <>
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                            Show More
-                          </>
-                        )}
-                      </button>
-                    </div>
+                  <div className="px-6 py-4 border-t border-gray-100 bg-gray-50">
+                    <button
+                      onClick={handleShowMoreActivities}
+                      disabled={loadingMoreActivities}
+                      className="w-full flex items-center justify-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors disabled:opacity-50"
+                      data-testid="show-more-activities"
+                    >
+                      {loadingMoreActivities ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                          Loading more...
+                        </>
+                      ) : showAllActivities ? (
+                        <>
+                          <svg
+                            className="h-4 w-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M5 15l7-7 7 7"
+                            />
+                          </svg>
+                          Show Less
+                        </>
+                      ) : (
+                        <>
+                          <svg
+                            className="h-4 w-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 9l-7 7-7-7"
+                            />
+                          </svg>
+                          Show More
+                        </>
+                      )}
+                    </button>
+                  </div>
                 )}
               </>
             )}
@@ -927,7 +985,7 @@ const Dashboard = () => {
                   rows={3}
                   onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendAnnouncement()}
                 />
-                <button 
+                <button
                   onClick={handleSendAnnouncement}
                   disabled={!newAnnouncement.trim() || sendingAnnouncement}
                   className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
@@ -958,8 +1016,18 @@ const Dashboard = () => {
                 ) : announcements.length === 0 ? (
                   <div className="text-center py-6">
                     <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-3">
-                      <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                      <svg
+                        className="h-5 w-5 text-gray-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"
+                        />
                       </svg>
                     </div>
                     <p className="text-sm text-gray-500">No announcements yet</p>
@@ -968,9 +1036,7 @@ const Dashboard = () => {
                   announcements.map((announcement) => (
                     <div key={announcement.id} className="bg-gray-50 rounded-lg p-3">
                       <p className="text-sm text-gray-700 mb-1">{announcement.message}</p>
-                      <p className="text-xs text-gray-500">
-                        {formatDate(announcement.createdAt)}
-                      </p>
+                      <p className="text-xs text-gray-500">{formatDate(announcement.createdAt)}</p>
                     </div>
                   ))
                 )}
@@ -978,7 +1044,6 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
-
 
         {/* Quick Actions */}
         <div className="bg-white rounded-lg border border-gray-200">
@@ -1022,8 +1087,18 @@ const Dashboard = () => {
               >
                 <div className="flex items-center space-x-3">
                   <div className="w-8 h-8 bg-purple-50 rounded-lg flex items-center justify-center group-hover:bg-purple-100 transition-colors">
-                    <svg className="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    <svg
+                      className="h-5 w-5 text-purple-600"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                      />
                     </svg>
                   </div>
                   <span className="text-sm font-medium text-gray-900">Import Students</span>
@@ -1047,7 +1122,6 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
-
       </div>
     </div>
   );

@@ -42,7 +42,7 @@ const AddAttendanceSessionModal = ({
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       return `${hours}h ${minutes}m`;
     }
-    return "";
+    return '';
   };
 
   const getClassStudentCount = () => {
@@ -107,7 +107,7 @@ const AddAttendanceSessionModal = ({
                     </label>
                     <select
                       value={formData.department}
-                      onChange={(e) => onFormChange("department", e.target.value)}
+                      onChange={(e) => onFormChange('department', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     >
                       <option value="">Select Department</option>
@@ -120,12 +120,10 @@ const AddAttendanceSessionModal = ({
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Course *
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Course *</label>
                     <select
                       value={formData.course}
-                      onChange={(e) => onFormChange("course", e.target.value)}
+                      onChange={(e) => onFormChange('course', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     >
                       <option value="">Select Course</option>
@@ -143,7 +141,7 @@ const AddAttendanceSessionModal = ({
                     </label>
                     <select
                       value={formData.semester}
-                      onChange={(e) => onFormChange("semester", e.target.value)}
+                      onChange={(e) => onFormChange('semester', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     >
                       <option value="">Select Semester</option>
@@ -161,7 +159,7 @@ const AddAttendanceSessionModal = ({
                     </label>
                     <select
                       value={formData.section}
-                      onChange={(e) => onFormChange("section", e.target.value)}
+                      onChange={(e) => onFormChange('section', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     >
                       <option value="">Select Section</option>
@@ -179,7 +177,7 @@ const AddAttendanceSessionModal = ({
                     </label>
                     <select
                       value={formData.subject}
-                      onChange={(e) => onFormChange("subject", e.target.value)}
+                      onChange={(e) => onFormChange('subject', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     >
                       <option value="">Select Subject</option>
@@ -197,7 +195,7 @@ const AddAttendanceSessionModal = ({
                     </label>
                     <select
                       value={formData.faculty}
-                      onChange={(e) => onFormChange("faculty", e.target.value)}
+                      onChange={(e) => onFormChange('faculty', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     >
                       <option value="">Select Faculty</option>
@@ -218,13 +216,11 @@ const AddAttendanceSessionModal = ({
                   </h3>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Date *
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Date *</label>
                     <input
                       type="date"
                       value={formData.date}
-                      onChange={(e) => onFormChange("date", e.target.value)}
+                      onChange={(e) => onFormChange('date', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     />
                   </div>
@@ -237,7 +233,7 @@ const AddAttendanceSessionModal = ({
                       <input
                         type="time"
                         value={formData.startTime}
-                        onChange={(e) => onFormChange("startTime", e.target.value)}
+                        onChange={(e) => onFormChange('startTime', e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                       />
                     </div>
@@ -248,7 +244,7 @@ const AddAttendanceSessionModal = ({
                       <input
                         type="time"
                         value={formData.endTime}
-                        onChange={(e) => onFormChange("endTime", e.target.value)}
+                        onChange={(e) => onFormChange('endTime', e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                       />
                     </div>
@@ -269,7 +265,7 @@ const AddAttendanceSessionModal = ({
                     <input
                       type="text"
                       value={formData.roomNumber}
-                      onChange={(e) => onFormChange("roomNumber", e.target.value)}
+                      onChange={(e) => onFormChange('roomNumber', e.target.value)}
                       placeholder="e.g., Room 301"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     />
@@ -283,23 +279,21 @@ const AddAttendanceSessionModal = ({
                       <input
                         type="number"
                         value={formData.totalStudents || getClassStudentCount()}
-                        onChange={(e) => onFormChange("totalStudents", parseInt(e.target.value) || 0)}
+                        onChange={(e) =>
+                          onFormChange('totalStudents', parseInt(e.target.value) || 0)
+                        }
                         className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                         min="0"
                       />
-                      <span className="text-sm text-gray-500">
-                        Auto: {getClassStudentCount()}
-                      </span>
+                      <span className="text-sm text-gray-500">Auto: {getClassStudentCount()}</span>
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Remarks
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
                     <textarea
                       value={formData.remarks}
-                      onChange={(e) => onFormChange("remarks", e.target.value)}
+                      onChange={(e) => onFormChange('remarks', e.target.value)}
                       placeholder="Optional notes..."
                       rows={3}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -314,7 +308,9 @@ const AddAttendanceSessionModal = ({
           <div className="border-t border-gray-200 px-6 py-4 bg-gray-50">
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-600">
-                <strong>Summary:</strong> {formData.subject} - {formData.faculty} • {formData.course} Sem {formData.semester} ({formData.section}) • {calculateDuration()}
+                <strong>Summary:</strong> {formData.subject} - {formData.faculty} •{' '}
+                {formData.course} Sem {formData.semester} ({formData.section}) •{' '}
+                {calculateDuration()}
               </div>
               <div className="flex gap-3">
                 <button
@@ -344,4 +340,4 @@ const AddAttendanceSessionModal = ({
   );
 };
 
-export default AddAttendanceSessionModal
+export default AddAttendanceSessionModal;

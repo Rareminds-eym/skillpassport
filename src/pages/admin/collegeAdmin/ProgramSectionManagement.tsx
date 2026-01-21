@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 import {
   PlusCircleIcon,
   XMarkIcon,
@@ -10,9 +10,9 @@ import {
   FunnelIcon,
   MagnifyingGlassIcon,
   ArrowPathIcon,
-} from "@heroicons/react/24/outline";
-import { supabase } from "../../../lib/supabaseClient";
-import toast from "react-hot-toast";
+} from '@heroicons/react/24/outline';
+import { supabase } from '../../../lib/supabaseClient';
+import toast from 'react-hot-toast';
 
 interface ProgramSection {
   id: string;
@@ -26,7 +26,7 @@ interface ProgramSection {
   current_students: number;
   faculty_id?: string;
   faculty_name?: string;
-  status: "active" | "inactive";
+  status: 'active' | 'inactive';
   created_at: string;
 }
 
@@ -58,13 +58,13 @@ const ProgramSectionManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedSection, setSelectedSection] = useState<ProgramSection | null>(null);
-  
+
   // Filters
-  const [departmentFilter, setDepartmentFilter] = useState("");
-  const [programFilter, setProgramFilter] = useState("");
-  const [semesterFilter, setSemesterFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [departmentFilter, setDepartmentFilter] = useState('');
+  const [programFilter, setProgramFilter] = useState('');
+  const [semesterFilter, setSemesterFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     loadData();
@@ -76,26 +76,27 @@ const ProgramSectionManagement: React.FC = () => {
 
       // Load departments
       const { data: deptData, error: deptError } = await supabase
-        .from("departments")
-        .select("*")
-        .eq("status", "active");
-      
+        .from('departments')
+        .select('*')
+        .eq('status', 'active');
+
       if (deptError) throw deptError;
       setDepartments(deptData || []);
 
       // Load programs
       const { data: progData, error: progError } = await supabase
-        .from("programs")
-        .select("*")
-        .eq("status", "active");
-      
+        .from('programs')
+        .select('*')
+        .eq('status', 'active');
+
       if (progError) throw progError;
       setPrograms(progData || []);
 
       // Load faculty from college_lecturers
       const { data: facultyData, error: facultyError } = await supabase
-        .from("college_lecturers")
-        .select(`
+        .from('college_lecturers')
+        .select(
+          `
           id,
           user_id,
           users!fk_college_lecturers_user (
@@ -103,18 +104,21 @@ const ProgramSectionManagement: React.FC = () => {
             lastName,
             email
           )
-        `)
-        .eq("accountStatus", "active");
-      
+        `
+        )
+        .eq('accountStatus', 'active');
+
       if (facultyError) {
-        console.error("Error loading faculty:", facultyError);
+        console.error('Error loading faculty:', facultyError);
         // Continue without faculty data
         setFaculty([]);
       } else {
         // Transform the data to match Faculty interface
         const transformedFaculty = (facultyData || []).map((f: any) => ({
           id: f.user_id,
-          name: f.users ? `${f.users.firstName || ''} ${f.users.lastName || ''}`.trim() || f.users.email : 'Unknown',
+          name: f.users
+            ? `${f.users.firstName || ''} ${f.users.lastName || ''}`.trim() || f.users.email
+            : 'Unknown',
           email: f.users?.email || '',
         }));
         setFaculty(transformedFaculty);
@@ -122,15 +126,15 @@ const ProgramSectionManagement: React.FC = () => {
 
       // Load sections from program_sections_view
       const { data: sectionsData, error: sectionsError } = await supabase
-        .from("program_sections_view")
-        .select("*")
-        .order("department_name", { ascending: true })
-        .order("program_name", { ascending: true })
-        .order("semester", { ascending: true })
-        .order("section", { ascending: true });
-      
+        .from('program_sections_view')
+        .select('*')
+        .order('department_name', { ascending: true })
+        .order('program_name', { ascending: true })
+        .order('semester', { ascending: true })
+        .order('section', { ascending: true });
+
       if (sectionsError) {
-        console.error("Error loading sections:", sectionsError);
+        console.error('Error loading sections:', sectionsError);
         // If view doesn't exist yet, show empty state
         setSections([]);
       } else {
@@ -152,7 +156,7 @@ const ProgramSectionManagement: React.FC = () => {
         setSections(formattedSections);
       }
     } catch (error: any) {
-      console.error("Error loading data:", error);
+      console.error('Error loading data:', error);
       toast.error(`Failed to load data: ${error.message}`);
     } finally {
       setLoading(false);
@@ -171,12 +175,14 @@ const ProgramSectionManagement: React.FC = () => {
 
   const handleSaveSection = async (data: Partial<ProgramSection>) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       if (selectedSection) {
         // Update existing section
         const { error } = await supabase
-          .from("program_sections")
+          .from('program_sections')
           .update({
             department_id: data.department_id,
             program_id: data.program_id,
@@ -187,39 +193,37 @@ const ProgramSectionManagement: React.FC = () => {
             status: data.status,
             updated_by: user?.id,
           })
-          .eq("id", selectedSection.id);
+          .eq('id', selectedSection.id);
 
         if (error) throw error;
-        toast.success("Section updated successfully");
+        toast.success('Section updated successfully');
       } else {
         // Create new section
         const currentYear = new Date().getFullYear();
         const nextYear = (currentYear + 1).toString().slice(-2);
         const academicYear = `${currentYear}-${nextYear}`;
 
-        const { error } = await supabase
-          .from("program_sections")
-          .insert({
-            department_id: data.department_id,
-            program_id: data.program_id,
-            semester: data.semester,
-            section: data.section,
-            max_students: data.max_students,
-            faculty_id: data.faculty_id || null,
-            academic_year: academicYear,
-            status: data.status || "active",
-            current_students: 0,
-            created_by: user?.id,
-          });
+        const { error } = await supabase.from('program_sections').insert({
+          department_id: data.department_id,
+          program_id: data.program_id,
+          semester: data.semester,
+          section: data.section,
+          max_students: data.max_students,
+          faculty_id: data.faculty_id || null,
+          academic_year: academicYear,
+          status: data.status || 'active',
+          current_students: 0,
+          created_by: user?.id,
+        });
 
         if (error) throw error;
-        toast.success("Section created successfully");
+        toast.success('Section created successfully');
       }
-      
+
       setIsModalOpen(false);
       loadData(); // Reload data to show changes
     } catch (error: any) {
-      console.error("Error saving section:", error);
+      console.error('Error saving section:', error);
       toast.error(`Failed to save section: ${error.message}`);
     }
   };
@@ -241,7 +245,7 @@ const ProgramSectionManagement: React.FC = () => {
   });
 
   const getStatusBadge = (status: string) => {
-    return status === "active" ? (
+    return status === 'active' ? (
       <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
         Active
       </span>
@@ -254,14 +258,14 @@ const ProgramSectionManagement: React.FC = () => {
 
   const getCapacityColor = (current: number, max: number) => {
     const percentage = (current / max) * 100;
-    if (percentage >= 90) return "text-red-600";
-    if (percentage >= 75) return "text-yellow-600";
-    return "text-green-600";
+    if (percentage >= 90) return 'text-red-600';
+    if (percentage >= 75) return 'text-yellow-600';
+    return 'text-green-600';
   };
 
   // Calculate stats
   const totalSections = filteredSections.length;
-  const activeSections = filteredSections.filter((s) => s.status === "active").length;
+  const activeSections = filteredSections.filter((s) => s.status === 'active').length;
   const totalCapacity = filteredSections.reduce((sum, s) => sum + s.max_students, 0);
   const totalStudents = filteredSections.reduce((sum, s) => sum + s.current_students, 0);
 
@@ -421,9 +425,7 @@ const ProgramSectionManagement: React.FC = () => {
       {/* Sections Table */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900">
-            Sections ({filteredSections.length})
-          </h2>
+          <h2 className="text-xl font-bold text-gray-900">Sections ({filteredSections.length})</h2>
         </div>
 
         {loading ? (
@@ -475,22 +477,16 @@ const ProgramSectionManagement: React.FC = () => {
               <tbody className="divide-y divide-gray-200">
                 {filteredSections.map((section) => (
                   <tr key={section.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm text-gray-900">
-                      {section.department_name}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-900">
-                      {section.program_name}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
-                      Semester {section.semester}
-                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{section.department_name}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{section.program_name}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">Semester {section.semester}</td>
                     <td className="px-4 py-3">
                       <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-sm font-medium">
                         Section {section.section}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600">
-                      {section.faculty_name || "Unassigned"}
+                      {section.faculty_name || 'Unassigned'}
                     </td>
                     <td className="px-4 py-3">
                       <span
@@ -547,26 +543,26 @@ const SectionFormModal: React.FC<{
   faculty: Faculty[];
 }> = ({ isOpen, onClose, onSave, section, departments, programs, faculty }) => {
   const [formData, setFormData] = useState({
-    department_id: section?.department_id || "",
-    program_id: section?.program_id || "",
+    department_id: section?.department_id || '',
+    program_id: section?.program_id || '',
     semester: section?.semester || 1,
-    section: section?.section || "",
+    section: section?.section || '',
     max_students: section?.max_students || 60,
-    faculty_id: section?.faculty_id || "",
-    status: section?.status || "active",
+    faculty_id: section?.faculty_id || '',
+    status: section?.status || 'active',
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const dept = departments.find((d) => d.id === formData.department_id);
     const prog = programs.find((p) => p.id === formData.program_id);
     const fac = faculty.find((f) => f.id === formData.faculty_id);
 
     onSave({
       ...formData,
-      department_name: dept?.name || "",
-      program_name: prog?.name || "",
+      department_name: dept?.name || '',
+      program_name: prog?.name || '',
       faculty_name: fac?.name,
     });
   };
@@ -576,19 +572,13 @@ const SectionFormModal: React.FC<{
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">
-        <div
-          className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm"
-          onClick={onClose}
-        />
+        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose} />
         <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl">
           <div className="flex items-center justify-between border-b border-gray-200 px-6 py-5">
             <h2 className="text-xl font-semibold text-gray-900">
-              {section ? "Edit Section" : "Create New Section"}
+              {section ? 'Edit Section' : 'Create New Section'}
             </h2>
-            <button
-              onClick={onClose}
-              className="p-2 text-gray-400 hover:bg-gray-100 rounded-lg"
-            >
+            <button onClick={onClose} className="p-2 text-gray-400 hover:bg-gray-100 rounded-lg">
               <XMarkIcon className="h-5 w-5" />
             </button>
           </div>
@@ -596,13 +586,11 @@ const SectionFormModal: React.FC<{
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Department *
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Department *</label>
                 <select
                   value={formData.department_id}
                   onChange={(e) =>
-                    setFormData({ ...formData, department_id: e.target.value, program_id: "" })
+                    setFormData({ ...formData, department_id: e.target.value, program_id: '' })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   required
@@ -617,14 +605,10 @@ const SectionFormModal: React.FC<{
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Program *
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Program *</label>
                 <select
                   value={formData.program_id}
-                  onChange={(e) =>
-                    setFormData({ ...formData, program_id: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, program_id: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   required
                   disabled={!formData.department_id}
@@ -641,14 +625,10 @@ const SectionFormModal: React.FC<{
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Semester *
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Semester *</label>
                 <select
                   value={formData.semester}
-                  onChange={(e) =>
-                    setFormData({ ...formData, semester: parseInt(e.target.value) })
-                  }
+                  onChange={(e) => setFormData({ ...formData, semester: parseInt(e.target.value) })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   required
                 >
@@ -661,9 +641,7 @@ const SectionFormModal: React.FC<{
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Section *
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Section *</label>
                 <input
                   type="text"
                   value={formData.section}
@@ -699,9 +677,7 @@ const SectionFormModal: React.FC<{
                 </label>
                 <select
                   value={formData.faculty_id}
-                  onChange={(e) =>
-                    setFormData({ ...formData, faculty_id: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, faculty_id: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Unassigned</option>
@@ -714,13 +690,11 @@ const SectionFormModal: React.FC<{
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Status *
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status *</label>
                 <select
                   value={formData.status}
                   onChange={(e) =>
-                    setFormData({ ...formData, status: e.target.value as "active" | "inactive" })
+                    setFormData({ ...formData, status: e.target.value as 'active' | 'inactive' })
                   }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   required
@@ -743,7 +717,7 @@ const SectionFormModal: React.FC<{
                 type="submit"
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
               >
-                {section ? "Update Section" : "Create Section"}
+                {section ? 'Update Section' : 'Create Section'}
               </button>
             </div>
           </form>

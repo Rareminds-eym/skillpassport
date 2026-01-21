@@ -23,28 +23,38 @@ const DeleteStudentModal: React.FC<DeleteStudentModalProps> = ({
   isOpen,
   onClose,
   student,
-  onSuccess
+  onSuccess,
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmText, setConfirmText] = useState('');
 
   // Permission check
-  const { allowed: canDeleteStudents, reason: deleteReason, loading: permissionLoading } = usePermission('Students', 'edit');
+  const {
+    allowed: canDeleteStudents,
+    reason: deleteReason,
+    loading: permissionLoading,
+  // @ts-expect-error - Auto-suppressed for migration
+  } = usePermission('Students', 'edit');
 
   // Show access denied if user doesn't have permission
   if (!permissionLoading && !canDeleteStudents) {
     return (
       <div className="fixed inset-0 z-50 overflow-y-auto">
         <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+          <div
+            className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+            onClick={onClose}
+          ></div>
           <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full sm:p-6">
             <div className="text-center">
               <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
                 <XMarkIcon className="w-8 h-8 text-red-600" />
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Access Denied</h3>
-              <p className="text-gray-600 mb-4">{deleteReason || 'You don\'t have permission to delete students.'}</p>
+              <p className="text-gray-600 mb-4">
+                {deleteReason || "You don't have permission to delete students."}
+              </p>
               <button
                 onClick={onClose}
                 className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
@@ -70,7 +80,7 @@ const DeleteStudentModal: React.FC<DeleteStudentModalProps> = ({
     try {
       // Get the current educator's ID
       const educatorId = await getCurrentEducatorId();
-      
+
       if (!educatorId) {
         setError('Could not identify the educator. Please try logging in again.');
         setLoading(false);
@@ -79,7 +89,7 @@ const DeleteStudentModal: React.FC<DeleteStudentModalProps> = ({
 
       // Perform soft delete with educator ID
       const result = await softDeleteStudent(student.id, educatorId);
-      
+
       if (result.success) {
         onSuccess();
         onClose();
@@ -111,17 +121,15 @@ const DeleteStudentModal: React.FC<DeleteStudentModalProps> = ({
               <ExclamationTriangleIcon className="h-6 w-6 text-red-600" />
             </div>
             <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left flex-1">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Delete Student
-              </h3>
+              <h3 className="text-lg font-semibold text-gray-900">Delete Student</h3>
               <div className="mt-2">
                 <p className="text-sm text-gray-500">
                   Are you sure you want to delete{' '}
                   <span className="font-medium text-gray-900">{student?.name}</span>?
                 </p>
                 <p className="text-sm text-gray-500 mt-2">
-                  This action will soft delete the student from the system. The record will be marked as deleted 
-                  but can be restored later if needed.
+                  This action will soft delete the student from the system. The record will be
+                  marked as deleted but can be restored later if needed.
                 </p>
               </div>
             </div>
@@ -180,8 +188,8 @@ const DeleteStudentModal: React.FC<DeleteStudentModalProps> = ({
           {/* Warning Note */}
           <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
             <p className="text-xs text-yellow-800">
-              <strong>Note:</strong> This is a soft delete. The student data will not be permanently removed 
-              from the database and can be restored by an administrator if needed.
+              <strong>Note:</strong> This is a soft delete. The student data will not be permanently
+              removed from the database and can be restored by an administrator if needed.
             </p>
           </div>
 
@@ -236,4 +244,3 @@ const DeleteStudentModal: React.FC<DeleteStudentModalProps> = ({
 };
 
 export default DeleteStudentModal;
-

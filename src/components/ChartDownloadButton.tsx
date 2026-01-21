@@ -1,6 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowDownTrayIcon, PhotoIcon, DocumentTextIcon, ClipboardIcon } from '@heroicons/react/24/outline';
-import { downloadChartAsPNG, downloadChartDataAsCSV, copyChartToClipboard } from '../utils/chartDownload';
+import {
+  ArrowDownTrayIcon,
+  PhotoIcon,
+  DocumentTextIcon,
+  ClipboardIcon,
+} from '@heroicons/react/24/outline';
+import {
+  downloadChartAsPNG,
+  downloadChartDataAsCSV,
+  copyChartToClipboard,
+} from '../utils/chartDownload';
 
 interface ChartDownloadButtonProps {
   chartId: string;
@@ -9,11 +18,11 @@ interface ChartDownloadButtonProps {
   compact?: boolean;
 }
 
-const ChartDownloadButton: React.FC<ChartDownloadButtonProps> = ({ 
-  chartId, 
-  chartName, 
+const ChartDownloadButton: React.FC<ChartDownloadButtonProps> = ({
+  chartId,
+  chartName,
   data,
-  compact = false 
+  compact = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -99,9 +108,7 @@ const ChartDownloadButton: React.FC<ChartDownloadButtonProps> = ({
           </div>
 
           <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              {chartName}
-            </p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">{chartName}</p>
           </div>
         </div>
       )}

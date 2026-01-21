@@ -1,6 +1,6 @@
 /**
  * OrganizationSubscriptionDashboard Component
- * 
+ *
  * Main dashboard for organization subscription management.
  * Combines subscription overview, license pools, member assignments, and billing.
  */
@@ -149,7 +149,8 @@ function OrganizationSubscriptionDashboard(props: OrganizationSubscriptionDashbo
     .reduce((sum, s) => sum + s.assignedSeats, 0);
 
   const availableSeats = totalSeats - assignedSeats;
-  const totalUnallocatedSeats = availableSeats - licensePools.reduce((sum, p) => sum + p.availableSeats, 0);
+  const totalUnallocatedSeats =
+    availableSeats - licensePools.reduce((sum, p) => sum + p.availableSeats, 0);
 
   const handleTabChange = useCallback((tabId: TabId) => {
     setActiveTab(tabId);
@@ -210,7 +211,7 @@ function OrganizationSubscriptionDashboard(props: OrganizationSubscriptionDashbo
           <InvitationManager
             organizationId={organizationId}
             organizationType={organizationType}
-            licensePools={licensePools.map(p => ({
+            licensePools={licensePools.map((p) => ({
               id: p.id,
               poolName: p.poolName,
               memberType: p.memberType,

@@ -1,6 +1,6 @@
 /**
  * Load Tests: Payment Processing
- * 
+ *
  * Tests payment processing performance under load.
  * Requirements: Performance, Reliability
  */
@@ -29,13 +29,13 @@ describe('Load Tests: Payment Processing', () => {
         const payment: any = {
           id: `pay-${index}`,
           organization_id: `org-${index % 10}`,
-          amount: 50000 + (index * 100),
+          amount: 50000 + index * 100,
           status: 'pending',
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
         };
 
         // Simulate Razorpay API call delay
-        await new Promise(resolve => setTimeout(resolve, 1));
+        await new Promise((resolve) => setTimeout(resolve, 1));
 
         payment.status = 'completed';
         payment.completed_at = new Date().toISOString();
@@ -45,10 +45,14 @@ describe('Load Tests: Payment Processing', () => {
       };
 
       // Process payments concurrently
-      const promises = Array.from({ length: paymentCount }, (_, i) => 
+      const promises = Array.from({ length: paymentCount }, (_, i) =>
         processPayment(i)
-          .then(() => { successful++; })
-          .catch(() => { failed++; })
+          .then(() => {
+            successful++;
+          })
+          .catch(() => {
+            failed++;
+          })
       );
 
       await Promise.all(promises);
@@ -74,7 +78,7 @@ describe('Load Tests: Payment Processing', () => {
       const processWithRetry = async (index: number, maxRetries: number = 3) => {
         for (let retry = 0; retry < maxRetries; retry++) {
           attempts++;
-          
+
           // Simulate failure on first attempt for some payments
           if (retry === 0 && Math.random() < failureRate) {
             continue;
@@ -84,7 +88,7 @@ describe('Load Tests: Payment Processing', () => {
             id: `pay-${index}`,
             amount: 50000,
             status: 'completed',
-            attempts: retry + 1
+            attempts: retry + 1,
           };
           payments.set(payment.id, payment);
           successful++;
@@ -96,7 +100,7 @@ describe('Load Tests: Payment Processing', () => {
 
       const startTime = Date.now();
 
-      const promises = Array.from({ length: paymentCount }, (_, i) => 
+      const promises = Array.from({ length: paymentCount }, (_, i) =>
         processWithRetry(i).catch(() => {})
       );
 
@@ -120,12 +124,13 @@ describe('Load Tests: Payment Processing', () => {
       for (let i = 0; i < webhookCount; i++) {
         webhookQueue.push({
           id: `webhook-${i}`,
-          event: i % 3 === 0 ? 'payment.captured' : i % 3 === 1 ? 'payment.failed' : 'refund.created',
+          event:
+            i % 3 === 0 ? 'payment.captured' : i % 3 === 1 ? 'payment.failed' : 'refund.created',
           payload: {
             payment_id: `pay_${i}`,
-            amount: 50000 + (i * 100)
+            amount: 50000 + i * 100,
           },
-          received_at: new Date().toISOString()
+          received_at: new Date().toISOString(),
         });
       }
 
@@ -156,7 +161,7 @@ describe('Load Tests: Payment Processing', () => {
           id: `pay-${i}`,
           razorpay_order_id: `order_${i}`,
           status: 'pending',
-          amount: 50000
+          amount: 50000,
         });
       }
 
@@ -174,12 +179,12 @@ describe('Load Tests: Payment Processing', () => {
       };
 
       const paymentIds = Array.from(payments.keys());
-      const promises = paymentIds.map(id => verifyPayment(id));
+      const promises = paymentIds.map((id) => verifyPayment(id));
       await Promise.all(promises);
 
       const duration = Date.now() - startTime;
 
-      const verifiedCount = Array.from(payments.values()).filter(p => p.verified).length;
+      const verifiedCount = Array.from(payments.values()).filter((p) => p.verified).length;
       expect(verifiedCount).toBe(200);
 
       console.log(`Bulk Payment Verification:`);
@@ -196,10 +201,10 @@ describe('Load Tests: Payment Processing', () => {
         payments.set(`pay-${i}`, {
           id: `pay-${i}`,
           organization_id: `org-${i % 10}`,
-          amount: 50000 + (i * 100),
-          tax_amount: (50000 + (i * 100)) * 0.18,
+          amount: 50000 + i * 100,
+          tax_amount: (50000 + i * 100) * 0.18,
           status: 'completed',
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
         });
       }
 
@@ -214,7 +219,7 @@ describe('Load Tests: Payment Processing', () => {
           subtotal: payment.amount,
           tax: payment.tax_amount,
           total: payment.amount + payment.tax_amount,
-          generated_at: new Date().toISOString()
+          generated_at: new Date().toISOString(),
         };
       };
 
@@ -242,9 +247,9 @@ describe('Load Tests: Payment Processing', () => {
           payments.set(`pay-${org}-${p}`, {
             id: `pay-${org}-${p}`,
             organization_id: `org-${org}`,
-            amount: 50000 + (p * 100),
+            amount: 50000 + p * 100,
             status: 'completed',
-            created_at: new Date(Date.now() - p * 24 * 60 * 60 * 1000).toISOString()
+            created_at: new Date(Date.now() - p * 24 * 60 * 60 * 1000).toISOString(),
           });
         }
       }
@@ -304,7 +309,7 @@ describe('Load Tests: Payment Processing', () => {
       });
 
       await measureOperation('query_by_org', async () => {
-        Array.from(payments.values()).filter(p => p.organization_id === 'org-1');
+        Array.from(payments.values()).filter((p) => p.organization_id === 'org-1');
       });
 
       await measureOperation('aggregate_totals', async () => {
@@ -312,18 +317,16 @@ describe('Load Tests: Payment Processing', () => {
       });
 
       // Find slowest operation
-      const slowest = operationTimes.reduce((max, op) => 
-        op.duration > max.duration ? op : max
-      );
+      const slowest = operationTimes.reduce((max, op) => (op.duration > max.duration ? op : max));
 
       console.log(`Operation Performance:`);
-      operationTimes.forEach(op => {
+      operationTimes.forEach((op) => {
         console.log(`  ${op.operation}: ${op.duration}ms`);
       });
       console.log(`  Slowest: ${slowest.operation} (${slowest.duration}ms)`);
 
       // All operations should be fast
-      expect(operationTimes.every(op => op.duration < 100)).toBe(true);
+      expect(operationTimes.every((op) => op.duration < 100)).toBe(true);
     });
 
     it('should handle payment queue backpressure', async () => {
@@ -336,7 +339,7 @@ describe('Load Tests: Payment Processing', () => {
         queue.push({
           id: `pay-${i}`,
           amount: 50000,
-          queued_at: new Date().toISOString()
+          queued_at: new Date().toISOString(),
         });
       }
 
@@ -348,7 +351,7 @@ describe('Load Tests: Payment Processing', () => {
       while (queue.length > 0) {
         const batchStart = Date.now();
         const batch = queue.splice(0, processingRate);
-        
+
         for (const payment of batch) {
           payment.processed = true;
           payments.set(payment.id, payment);

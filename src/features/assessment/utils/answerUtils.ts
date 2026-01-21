@@ -8,10 +8,7 @@ import type { Question, AnswerValue, SJTAnswer, Answers } from '../types/assessm
 /**
  * Check if a question is answered
  */
-export const isQuestionAnswered = (
-  answer: AnswerValue,
-  question: Question | null
-): boolean => {
+export const isQuestionAnswered = (answer: AnswerValue, question: Question | null): boolean => {
   if (!answer) return false;
   if (!question) return false;
 
@@ -50,7 +47,7 @@ export const countAnsweredInSection = (
   sectionId: string,
   questions: Question[]
 ): number => {
-  return questions.filter(q => {
+  return questions.filter((q) => {
     const questionId = generateQuestionId(sectionId, q.id);
     return isQuestionAnswered(answers[questionId], q);
   }).length;
@@ -78,12 +75,12 @@ export const calculateOverallProgress = (
   adaptiveQuestionsAnswered: number = 0
 ): number => {
   if (totalQuestions === 0) return 0;
-  
+
   // Count regular answers (excluding adaptive)
   const regularAnswers = Object.keys(answers).filter(
-    key => !key.startsWith('adaptive_aptitude')
+    (key) => !key.startsWith('adaptive_aptitude')
   ).length;
-  
+
   const totalAnswered = regularAnswers + adaptiveQuestionsAnswered;
   return (totalAnswered / totalQuestions) * 100;
 };
@@ -96,8 +93,8 @@ export const autoFillAnswers = (
 ): Answers => {
   const filledAnswers: Answers = {};
 
-  sections.forEach(section => {
-    section.questions.forEach(question => {
+  sections.forEach((section) => {
+    section.questions.forEach((question) => {
       const questionId = generateQuestionId(section.id, question.id);
 
       if (question.partType === 'sjt') {
@@ -135,20 +132,14 @@ export const autoFillUpToSection = (
 /**
  * Merge answers (for resuming assessment)
  */
-export const mergeAnswers = (
-  existingAnswers: Answers,
-  newAnswers: Answers
-): Answers => {
+export const mergeAnswers = (existingAnswers: Answers, newAnswers: Answers): Answers => {
   return { ...existingAnswers, ...newAnswers };
 };
 
 /**
  * Extract answers for a specific section
  */
-export const extractSectionAnswers = (
-  answers: Answers,
-  sectionId: string
-): Answers => {
+export const extractSectionAnswers = (answers: Answers, sectionId: string): Answers => {
   const sectionAnswers: Answers = {};
   const prefix = `${sectionId}_`;
 
@@ -209,7 +200,7 @@ export const updateMultiselectAnswer = (
 
   if (isSelected) {
     // Deselect
-    const newSelection = current.filter(opt => opt !== option);
+    const newSelection = current.filter((opt) => opt !== option);
     return newSelection.length > 0 ? newSelection : undefined;
   } else if (current.length < maxSelections) {
     // Select

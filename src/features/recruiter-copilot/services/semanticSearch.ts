@@ -4,24 +4,23 @@ import { ParsedRecruiterQuery } from './queryParser';
 
 /**
  * Semantic Search Service for Recruiter AI
- * 
+ *
  * Uses PostgreSQL pgvector extension for semantic similarity search
  * Leverages embeddings stored in:
  * - students.embedding (candidate profiles)
  * - opportunities.embedding (job descriptions)
- * 
+ *
  * This enables finding candidates based on semantic understanding,
  * not just keyword matching.
  */
 
 export interface SemanticSearchOptions {
   limit?: number;
-  similarity_threshold?: number;  // 0 to 1, higher = more similar
+  similarity_threshold?: number; // 0 to 1, higher = more similar
   include_near_matches?: boolean;
 }
 
 class SemanticSearchService {
-  
   /**
    * Search candidates using semantic similarity
    * Uses pgvector's cosine similarity on embeddings
@@ -30,23 +29,16 @@ class SemanticSearchService {
     queryEmbedding: number[],
     options: SemanticSearchOptions = {}
   ): Promise<CandidateSummary[]> {
-    const {
-      limit = 20,
-      similarity_threshold = 0.7,
-      include_near_matches = true
-    } = options;
+    const { limit = 20, similarity_threshold = 0.7, include_near_matches = true } = options;
 
     try {
       // Search using pgvector similarity
       // Note: This uses RPC function or direct SQL with pgvector operators
-      const { data: matches, error } = await supabase.rpc(
-        'search_candidates_by_embedding',
-        {
-          query_embedding: queryEmbedding,
-          match_threshold: similarity_threshold,
-          match_count: limit
-        }
-      );
+      const { data: matches, error } = await supabase.rpc('search_candidates_by_embedding', {
+        query_embedding: queryEmbedding,
+        match_threshold: similarity_threshold,
+        match_count: limit,
+      });
 
       if (error) {
         console.error('Semantic search error:', error);
@@ -55,7 +47,6 @@ class SemanticSearchService {
 
       // Enrich with full candidate data
       return await this.enrichCandidates(matches || []);
-      
     } catch (error) {
       console.error('Error in semantic search:', error);
       return [];
@@ -84,14 +75,11 @@ class SemanticSearchService {
       }
 
       // Search candidates with similar embeddings
-      const { data: matches, error } = await supabase.rpc(
-        'match_candidates_to_opportunity',
-        {
-          opportunity_embedding: opportunity.embedding,
-          match_count: limit,
-          min_similarity: 0.65
-        }
-      );
+      const { data: matches, error } = await supabase.rpc('match_candidates_to_opportunity', {
+        opportunity_embedding: opportunity.embedding,
+        match_count: limit,
+        min_similarity: 0.65,
+      });
 
       if (error) {
         console.error('Opportunity matching error:', error);
@@ -99,7 +87,6 @@ class SemanticSearchService {
       }
 
       return await this.enrichCandidatesWithScore(matches || []);
-      
     } catch (error) {
       console.error('Error matching candidates to opportunity:', error);
       return [];
@@ -119,7 +106,7 @@ class SemanticSearchService {
         skills: parsedQuery.required_skills,
         locations: parsedQuery.locations,
         min_cgpa: parsedQuery.min_cgpa,
-        experience_level: parsedQuery.experience_level
+        experience_level: parsedQuery.experience_level,
       });
 
       // Debug: Check total students with names
@@ -132,7 +119,9 @@ class SemanticSearchService {
       // Build SQL query with filters
       let query = supabase
         .from('students')
-        .select('user_id, name, email, university, branch_field, city, state, currentCgpa, expectedGraduationDate, resumeUrl, embedding')
+        .select(
+          'user_id, name, email, university, branch_field, city, state, currentCgpa, expectedGraduationDate, resumeUrl, embedding'
+        )
         .not('name', 'is', null);
 
       // Apply CGPA filter
@@ -150,34 +139,37 @@ class SemanticSearchService {
 
       // Execute base query
       console.log('📡 Executing Supabase query...');
-      
+
       // FIRST: Try to get students who have skills (prioritize them)
       const { data: studentsWithSkills } = await supabase
         .from('students')
         .select('user_id')
         .not('name', 'is', null);
-      
-      const studentIdsWithSkills = studentsWithSkills?.map(s => s.user_id) || [];
-      
+
+      const studentIdsWithSkills = studentsWithSkills?.map((s) => s.user_id) || [];
+
       // Get unique student IDs that have skills
       const { data: skillsData } = await supabase
         .from('skills')
         .select('student_id')
         .eq('enabled', true);
-      
-      const uniqueStudentIdsWithSkills = [...new Set(skillsData?.map(s => s.student_id) || [])];
+
+      const uniqueStudentIdsWithSkills = [...new Set(skillsData?.map((s) => s.student_id) || [])];
       console.log(`📊 Found ${uniqueStudentIdsWithSkills.length} students with skills in database`);
-      
+
       // If we have students with skills, prioritize them
       let priorityQuery = query;
       if (uniqueStudentIdsWithSkills.length > 0) {
         // Fetch students who have skills first
         priorityQuery = query.in('user_id', uniqueStudentIdsWithSkills);
       }
-      
+
       const { data: initialStudents, error: baseError } = await priorityQuery.limit(limit * 3);
-      console.log('📊 Query result:', { count: initialStudents?.length, error: baseError?.message });
-      let baseStudents = initialStudents;
+      console.log('📊 Query result:', {
+        count: initialStudents?.length,
+        error: baseError?.message,
+      });
+      const baseStudents = initialStudents;
 
       if (baseError) {
         console.error('❌ Supabase query error:', baseError);
@@ -204,25 +196,25 @@ class SemanticSearchService {
 
       // Filter by certifications if required
       if (parsedQuery.has_certifications) {
-        filtered = filtered.filter(c => c.experience_count > 0);
+        filtered = filtered.filter((c) => c.experience_count > 0);
       }
 
       // Filter by training if required
       if (parsedQuery.has_training) {
-        filtered = filtered.filter(c => c.training_count > 0);
+        filtered = filtered.filter((c) => c.training_count > 0);
       }
 
       // Filter by projects if required
       if (parsedQuery.has_projects && parsedQuery.min_projects) {
-        filtered = filtered.filter(c => c.projects_count >= parsedQuery.min_projects);
+        filtered = filtered.filter((c) => c.projects_count >= parsedQuery.min_projects);
       }
 
       // Apply location preference (not a hard filter)
-      const withLocationScore = filtered.map(candidate => {
+      const withLocationScore = filtered.map((candidate) => {
         let locationScore = 0;
         if (parsedQuery.locations && parsedQuery.locations.length > 0) {
           const candidateLocation = (candidate.location || '').toLowerCase();
-          const matchesLocation = parsedQuery.locations.some(loc => 
+          const matchesLocation = parsedQuery.locations.some((loc) =>
             candidateLocation.includes(loc.toLowerCase())
           );
           locationScore = matchesLocation ? 10 : 0;
@@ -232,7 +224,6 @@ class SemanticSearchService {
 
       // Sort by match quality (includes location preference)
       return this.rankCandidates(withLocationScore as any, parsedQuery).slice(0, limit);
-
     } catch (error) {
       console.error('Error in hybrid search:', error);
       return [];
@@ -247,12 +238,18 @@ class SemanticSearchService {
     requiredSkills: string[],
     preferredSkills: string[]
   ): Promise<CandidateSummary[]> {
-    const studentIds = students.map(s => s.user_id);
+    const studentIds = students.map((s) => s.user_id);
 
     if (studentIds.length === 0) return [];
 
     // Fetch all skills for these students
-    console.log('🔍 Fetching skills for student IDs:', studentIds.slice(0, 5), '... (total:', studentIds.length, ')');
+    console.log(
+      '🔍 Fetching skills for student IDs:',
+      studentIds.slice(0, 5),
+      '... (total:',
+      studentIds.length,
+      ')'
+    );
     const { data: allSkills, error: skillsError } = await supabase
       .from('skills')
       .select('student_id, name, level, type')
@@ -262,12 +259,12 @@ class SemanticSearchService {
     console.log('📊 Skills query result:', {
       totalSkills: allSkills?.length || 0,
       error: skillsError?.message,
-      sampleSkills: allSkills?.slice(0, 3)
+      sampleSkills: allSkills?.slice(0, 3),
     });
 
     // Group skills by student
     const skillsByStudent = new Map<string, any[]>();
-    allSkills?.forEach(skill => {
+    allSkills?.forEach((skill) => {
       const existing = skillsByStudent.get(skill.student_id) || [];
       skillsByStudent.set(skill.student_id, [...existing, skill]);
     });
@@ -275,29 +272,31 @@ class SemanticSearchService {
     console.log('🗺️ Skills grouped by student:', {
       studentsWithSkills: skillsByStudent.size,
       totalStudents: students.length,
-      sampleMapping: Array.from(skillsByStudent.entries()).slice(0, 2).map(([id, skills]) => ({
-        student_id: id,
-        skillCount: skills.length,
-        skills: skills.map(s => s.name)
-      }))
+      sampleMapping: Array.from(skillsByStudent.entries())
+        .slice(0, 2)
+        .map(([id, skills]) => ({
+          student_id: id,
+          skillCount: skills.length,
+          skills: skills.map((s) => s.name),
+        })),
     });
 
     // Filter students who have required skills (if specified)
     let matchingStudents = students;
-    
+
     if (requiredSkills.length > 0) {
-      const studentsWithMatchingSkills = students.filter(student => {
+      const studentsWithMatchingSkills = students.filter((student) => {
         const studentSkills = skillsByStudent.get(student.user_id) || [];
-        const studentSkillNames = studentSkills.map(s => s.name.toLowerCase());
-        
+        const studentSkillNames = studentSkills.map((s) => s.name.toLowerCase());
+
         // Must have at least one required skill
-        return requiredSkills.some(reqSkill => 
-          studentSkillNames.some(ss => 
-            ss.includes(reqSkill.toLowerCase()) || reqSkill.toLowerCase().includes(ss)
+        return requiredSkills.some((reqSkill) =>
+          studentSkillNames.some(
+            (ss) => ss.includes(reqSkill.toLowerCase()) || reqSkill.toLowerCase().includes(ss)
           )
         );
       });
-      
+
       if (studentsWithMatchingSkills.length > 0) {
         matchingStudents = studentsWithMatchingSkills;
         console.log(`✅ Found ${studentsWithMatchingSkills.length} students with matching skills`);
@@ -334,12 +333,12 @@ class SemanticSearchService {
           certCount: certCount || 0,
           hasCGPA: !!student.currentCgpa,
           hasResume: !!student.resumeUrl,
-          hasLocation: !!(student.city || student.state)
+          hasLocation: !!(student.city || student.state),
         });
 
         // Calculate skill match score
         const skillMatchScore = this.calculateSkillMatch(
-          skills.map(s => s.name),
+          skills.map((s) => s.name),
           requiredSkills,
           preferredSkills
         );
@@ -351,7 +350,7 @@ class SemanticSearchService {
           institution: student.university,
           graduation_year: student.expectedGraduationDate?.split('-')[0],
           cgpa: student.currentCgpa?.toString(),
-          skills: skills.map(s => s.name),
+          skills: skills.map((s) => s.name),
           projects_count: 0,
           training_count: trainingCount || 0,
           experience_count: certCount || 0,
@@ -360,7 +359,7 @@ class SemanticSearchService {
           last_active: student.updated_at,
           profile_completeness: profileScore,
           // Add match score for ranking
-          __match_score: skillMatchScore + (profileScore * 0.3)
+          __match_score: skillMatchScore + profileScore * 0.3,
         } as CandidateSummary & { __match_score?: number };
       })
     );
@@ -377,14 +376,14 @@ class SemanticSearchService {
       // Use match score if available
       const scoreA = (a as any).__match_score || 0;
       const scoreB = (b as any).__match_score || 0;
-      
+
       // Add location preference bonus
       const locationA = (a as any).__location_score || 0;
       const locationB = (b as any).__location_score || 0;
-      
+
       const totalA = scoreA + locationA;
       const totalB = scoreB + locationB;
-      
+
       if (totalA !== totalB) return totalB - totalA;
 
       // Secondary sort by profile completeness
@@ -401,20 +400,20 @@ class SemanticSearchService {
     preferredSkills: string[]
   ): number {
     let score = 0;
-    const candidateSkillsLower = candidateSkills.map(s => s.toLowerCase());
+    const candidateSkillsLower = candidateSkills.map((s) => s.toLowerCase());
 
     // Check required skills (weighted heavily)
-    requiredSkills.forEach(reqSkill => {
-      const hasSkill = candidateSkillsLower.some(cs => 
-        cs.includes(reqSkill.toLowerCase()) || reqSkill.toLowerCase().includes(cs)
+    requiredSkills.forEach((reqSkill) => {
+      const hasSkill = candidateSkillsLower.some(
+        (cs) => cs.includes(reqSkill.toLowerCase()) || reqSkill.toLowerCase().includes(cs)
       );
       if (hasSkill) score += 10;
     });
 
     // Check preferred skills (bonus points)
-    preferredSkills.forEach(prefSkill => {
-      const hasSkill = candidateSkillsLower.some(cs => 
-        cs.includes(prefSkill.toLowerCase()) || prefSkill.toLowerCase().includes(cs)
+    preferredSkills.forEach((prefSkill) => {
+      const hasSkill = candidateSkillsLower.some(
+        (cs) => cs.includes(prefSkill.toLowerCase()) || prefSkill.toLowerCase().includes(cs)
       );
       if (hasSkill) score += 3;
     });
@@ -451,11 +450,13 @@ class SemanticSearchService {
   private async enrichCandidates(matches: any[]): Promise<CandidateSummary[]> {
     if (!matches || matches.length === 0) return [];
 
-    const studentIds = matches.map(m => m.user_id || m.id);
-    
+    const studentIds = matches.map((m) => m.user_id || m.id);
+
     const { data: students } = await supabase
       .from('students')
-      .select('user_id, name, email, university, branch_field, city, state, currentCgpa, expectedGraduationDate, resumeUrl')
+      .select(
+        'user_id, name, email, university, branch_field, city, state, currentCgpa, expectedGraduationDate, resumeUrl'
+      )
       .in('user_id', studentIds);
 
     if (!students) return [];
@@ -486,13 +487,13 @@ class SemanticSearchService {
           institution: student.university,
           graduation_year: student.expectedGraduationDate?.split('-')[0],
           cgpa: student.currentCgpa?.toString(),
-          skills: skills?.map(s => s.name) || [],
+          skills: skills?.map((s) => s.name) || [],
           projects_count: 0,
           training_count: trainingCount || 0,
           experience_count: certCount || 0,
           career_interests: [student.branch_field].filter(Boolean),
           location: [student.city, student.state].filter(Boolean).join(', '),
-          profile_completeness: 75
+          profile_completeness: 75,
         };
       })
     );
@@ -505,10 +506,10 @@ class SemanticSearchService {
     matches: any[]
   ): Promise<Array<CandidateSummary & { similarity_score: number }>> {
     const enriched = await this.enrichCandidates(matches);
-    
+
     return enriched.map((candidate, idx) => ({
       ...candidate,
-      similarity_score: matches[idx]?.similarity || 0
+      similarity_score: matches[idx]?.similarity || 0,
     }));
   }
 }

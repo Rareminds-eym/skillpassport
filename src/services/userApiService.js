@@ -50,7 +50,7 @@ export async function unifiedSignup(data) {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok || !result.success) {
     throw new Error(result.error || 'Failed to create account');
   }
@@ -71,7 +71,7 @@ export async function signupSchoolAdmin(data) {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to create school account');
   }
@@ -92,7 +92,7 @@ export async function signupEducator(data) {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to create educator account');
   }
@@ -113,7 +113,7 @@ export async function signupStudent(data) {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to create student account');
   }
@@ -132,7 +132,7 @@ export async function getSchools() {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to fetch schools');
   }
@@ -153,7 +153,7 @@ export async function checkSchoolCode(code) {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to check school code');
   }
@@ -174,7 +174,7 @@ export async function checkEmail(email) {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to check email');
   }
@@ -197,7 +197,7 @@ export async function signupCollegeAdmin(data) {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to create college account');
   }
@@ -218,7 +218,7 @@ export async function signupCollegeEducator(data) {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to create college educator account');
   }
@@ -239,7 +239,7 @@ export async function signupCollegeStudent(data) {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to create college student account');
   }
@@ -258,7 +258,7 @@ export async function getColleges() {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to fetch colleges');
   }
@@ -279,7 +279,7 @@ export async function checkCollegeCode(code) {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to check college code');
   }
@@ -302,7 +302,7 @@ export async function signupUniversityAdmin(data) {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to create university account');
   }
@@ -323,7 +323,7 @@ export async function signupUniversityEducator(data) {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to create university educator account');
   }
@@ -344,7 +344,7 @@ export async function signupUniversityStudent(data) {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to create university student account');
   }
@@ -363,7 +363,7 @@ export async function getUniversities() {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to fetch universities');
   }
@@ -384,7 +384,7 @@ export async function checkUniversityCode(code) {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to check university code');
   }
@@ -407,7 +407,7 @@ export async function signupRecruiterAdmin(data) {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to create recruiter admin account');
   }
@@ -428,7 +428,7 @@ export async function signupRecruiter(data) {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to create recruiter account');
   }
@@ -447,7 +447,7 @@ export async function getCompanies() {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to fetch companies');
   }
@@ -468,7 +468,7 @@ export async function checkCompanyCode(code) {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to check company code');
   }
@@ -482,8 +482,11 @@ export async function checkCompanyCode(code) {
  * Create a new student (admin adds student)
  */
 export async function createStudent(studentData, token) {
-  console.log('🔑 userApiService.createStudent called with token length:', token?.length || 'no token');
-  
+  console.log(
+    '🔑 userApiService.createStudent called with token length:',
+    token?.length || 'no token'
+  );
+
   const response = await fetch(`${getBaseUrl()}/create-student`, {
     method: 'POST',
     headers: getAuthHeaders(token),
@@ -491,7 +494,7 @@ export async function createStudent(studentData, token) {
   });
 
   console.log('📡 Response status:', response.status, response.statusText);
-  
+
   if (!response.ok) {
     let errorDetails;
     try {
@@ -499,13 +502,13 @@ export async function createStudent(studentData, token) {
     } catch (e) {
       errorDetails = { error: `HTTP ${response.status}: ${response.statusText}` };
     }
-    
+
     console.error('❌ API Error:', errorDetails);
-    
+
     if (response.status === 401) {
       throw new Error('Authentication failed. Please login again.');
     }
-    
+
     throw new Error(errorDetails.error || `Failed to create student (${response.status})`);
   }
 
@@ -553,7 +556,10 @@ export async function resetPassword({ userId, newPassword, action, email, otp },
 /**
  * Create event user (after event registration payment)
  */
-export async function createEventUser({ email, firstName, lastName, role, phone, registrationId, metadata }, token) {
+export async function createEventUser(
+  { email, firstName, lastName, role, phone, registrationId, metadata },
+  token
+) {
   const response = await fetch(`${getBaseUrl()}/create-event-user`, {
     method: 'POST',
     headers: getAuthHeaders(token),
@@ -571,7 +577,10 @@ export async function createEventUser({ email, firstName, lastName, role, phone,
 /**
  * Send interview reminder email
  */
-export async function sendInterviewReminder({ interviewId, recipientEmail, recipientName, interviewDetails }, token) {
+export async function sendInterviewReminder(
+  { interviewId, recipientEmail, recipientName, interviewDetails },
+  token
+) {
   const response = await fetch(`${getBaseUrl()}/send-interview-reminder`, {
     method: 'POST',
     headers: getAuthHeaders(token),
@@ -590,8 +599,11 @@ export async function sendInterviewReminder({ interviewId, recipientEmail, recip
  * Update student documents after creation
  */
 export async function updateStudentDocuments(studentId, documents, token) {
-  console.log('🔑 userApiService.updateStudentDocuments called with token length:', token?.length || 'no token');
-  
+  console.log(
+    '🔑 userApiService.updateStudentDocuments called with token length:',
+    token?.length || 'no token'
+  );
+
   const response = await fetch(`${getBaseUrl()}/update-student-documents`, {
     method: 'POST',
     headers: getAuthHeaders(token),
@@ -599,7 +611,7 @@ export async function updateStudentDocuments(studentId, documents, token) {
   });
 
   console.log('📡 Response status:', response.status, response.statusText);
-  
+
   if (!response.ok) {
     let errorDetails;
     try {
@@ -607,14 +619,16 @@ export async function updateStudentDocuments(studentId, documents, token) {
     } catch (e) {
       errorDetails = { error: `HTTP ${response.status}: ${response.statusText}` };
     }
-    
+
     console.error('❌ API Error:', errorDetails);
-    
+
     if (response.status === 401) {
       throw new Error('Authentication failed. Please login again.');
     }
-    
-    throw new Error(errorDetails.error || `Failed to update student documents (${response.status})`);
+
+    throw new Error(
+      errorDetails.error || `Failed to update student documents (${response.status})`
+    );
   }
 
   const result = await response.json();
@@ -626,8 +640,11 @@ export async function updateStudentDocuments(studentId, documents, token) {
  * Update teacher documents after creation
  */
 export async function updateTeacherDocuments(teacherId, documents, token) {
-  console.log('🔑 userApiService.updateTeacherDocuments called with token length:', token?.length || 'no token');
-  
+  console.log(
+    '🔑 userApiService.updateTeacherDocuments called with token length:',
+    token?.length || 'no token'
+  );
+
   const response = await fetch(`${getBaseUrl()}/update-teacher-documents`, {
     method: 'POST',
     headers: getAuthHeaders(token),
@@ -635,7 +652,7 @@ export async function updateTeacherDocuments(teacherId, documents, token) {
   });
 
   console.log('📡 Response status:', response.status, response.statusText);
-  
+
   if (!response.ok) {
     let errorDetails;
     try {
@@ -643,14 +660,16 @@ export async function updateTeacherDocuments(teacherId, documents, token) {
     } catch (e) {
       errorDetails = { error: `HTTP ${response.status}: ${response.statusText}` };
     }
-    
+
     console.error('❌ API Error:', errorDetails);
-    
+
     if (response.status === 401) {
       throw new Error('Authentication failed. Please login again.');
     }
-    
-    throw new Error(errorDetails.error || `Failed to update teacher documents (${response.status})`);
+
+    throw new Error(
+      errorDetails.error || `Failed to update teacher documents (${response.status})`
+    );
   }
 
   const result = await response.json();
@@ -665,8 +684,11 @@ export async function updateTeacherDocuments(teacherId, documents, token) {
  * @returns {Promise<Object>} Created staff data with temporary password
  */
 export async function createCollegeStaff(staffData, token) {
-  console.log('🔑 userApiService.createCollegeStaff called with token length:', token?.length || 'no token');
-  
+  console.log(
+    '🔑 userApiService.createCollegeStaff called with token length:',
+    token?.length || 'no token'
+  );
+
   const response = await fetch(`${getBaseUrl()}/create-college-staff`, {
     method: 'POST',
     headers: getAuthHeaders(token),
@@ -674,7 +696,7 @@ export async function createCollegeStaff(staffData, token) {
   });
 
   console.log('📡 Response status:', response.status, response.statusText);
-  
+
   if (!response.ok) {
     let errorDetails;
     try {
@@ -682,13 +704,13 @@ export async function createCollegeStaff(staffData, token) {
     } catch (e) {
       errorDetails = { error: `HTTP ${response.status}: ${response.statusText}` };
     }
-    
+
     console.error('❌ API Error:', errorDetails);
-    
+
     if (response.status === 401) {
       throw new Error('Authentication failed. Please login again.');
     }
-    
+
     throw new Error(errorDetails.error || `Failed to create staff member (${response.status})`);
   }
 

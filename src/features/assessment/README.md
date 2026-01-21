@@ -131,11 +131,15 @@ import { useAssessmentFlow } from '@/features/assessment';
 
 const flow = useAssessmentFlow({
   sections,
-  onSectionComplete: (sectionId, timeSpent) => { /* ... */ },
-  onAnswerChange: (questionId, answer) => { /* ... */ }
+  onSectionComplete: (sectionId, timeSpent) => {
+    /* ... */
+  },
+  onAnswerChange: (questionId, answer) => {
+    /* ... */
+  },
 });
 
-// Flow screens: loading → grade_selection → category_selection → 
+// Flow screens: loading → grade_selection → category_selection →
 //               section_intro → question → section_complete → submitting
 ```
 
@@ -155,12 +159,12 @@ const middleSections = getSectionsForGrade('middle');
 ### Question Components
 
 ```typescript
-import { 
+import {
   QuestionRenderer,
   LikertQuestion,
   MCQQuestion,
   SJTQuestion,
-  AdaptiveQuestion 
+  AdaptiveQuestion
 } from '@/features/assessment';
 
 // QuestionRenderer automatically selects the right component
@@ -177,12 +181,12 @@ import {
 ### Custom Hooks
 
 ```typescript
-import { 
+import {
   useStudentGrade,
   useAIQuestions,
   useAssessmentProgress,
   useAssessmentFlow,
-  useAssessmentSubmission
+  useAssessmentSubmission,
 } from '@/features/assessment';
 
 // Fetch student grade information
@@ -196,7 +200,7 @@ const { progress, answeredCount } = useAssessmentProgress({
   sections,
   currentSectionIndex,
   currentQuestionIndex,
-  answers
+  answers,
 });
 
 // Handle submission with Gemini AI
@@ -208,6 +212,7 @@ const { isSubmitting, error, submit } = useAssessmentSubmission();
 The system supports three main assessment types:
 
 ### 1. Career Assessment (Personal Assessment)
+
 - **Purpose**: Career guidance through personality and interest profiling
 - **Components**: RIASEC, Big Five, Work Values, Employability, Aptitude
 - **Main File**: `src/features/assessment/career-test/AssessmentTestPage.tsx` ✅ (NEW)
@@ -216,13 +221,15 @@ The system supports three main assessment types:
 - **Services**: `assessmentService`, `assessmentGenerationService`, `careerAssessmentAIService`
 
 ### 2. External Course Assessment
+
 - **Purpose**: Course-specific skill tests for certificates
-- **Main Files**: 
+- **Main Files**:
   - `src/pages/student/DynamicAssessment.jsx`
 - **Results**: `src/pages/student/AssessmentResults.tsx`
 - **Services**: `externalAssessmentService`
 
 ### 3. Adaptive Aptitude Assessment
+
 - **Purpose**: IRT-based adaptive testing for aptitude measurement
 - **Main File**: `src/pages/student/AdaptiveAptitudeTest.tsx`
 - **Services**: `adaptiveEngine.ts`, `adaptiveAptitudeService.ts`
@@ -237,40 +244,40 @@ import {
   // Types
   type AssessmentResults,
   type GradeLevel,
-  type TestSession,           // Adaptive testing types
+  type TestSession, // Adaptive testing types
   type TestResults,
-  
+
   // Constants
   GRADE_LEVELS,
   TIMERS,
   DEFAULT_ADAPTIVE_TEST_CONFIG,
-  
+
   // Hooks
   useAssessmentFlow,
   useAssessmentTimer,
   useQuestionNavigation,
   useAutoSave,
   useTabVisibility,
-  
+
   // Data
   riasecQuestions,
   bigFiveQuestions,
   calculateRIASEC,
-  
+
   // Components
   GradeSelectionScreen,
   StreamSelectionScreen,
-  
+
   // Result Components
   ProgressRing,
   SummaryCard,
   CareerSection,
-  
+
   // Services
-  checkAssessmentStatus,      // External assessment
+  checkAssessmentStatus, // External assessment
   createAssessmentAttempt,
-  AdaptiveEngine,             // Adaptive testing
-  
+  AdaptiveEngine, // Adaptive testing
+
   // Utilities
   formatTime,
   getGradeLevelFromGrade,
@@ -280,14 +287,7 @@ import {
 ### Using the Timer Hook:
 
 ```typescript
-const {
-  timeRemaining,
-  elapsedTime,
-  isRunning,
-  start,
-  pause,
-  formatTime,
-} = useAssessmentTimer({
+const { timeRemaining, elapsedTime, isRunning, start, pause, formatTime } = useAssessmentTimer({
   initialTime: 900, // 15 minutes
   onTimeUp: () => handleSubmit(),
   warningThresholds: [300, 60], // Warn at 5 min and 1 min
@@ -330,6 +330,7 @@ const { isSaving, lastSaved, saveNow } = useAutoSave({
 The assessment data files have been fully migrated from `src/pages/student/assessment-data/` to `src/features/assessment/data/questions/`. The original folder has been deleted.
 
 **What was migrated:**
+
 - `aptitudeQuestions.js` → `aptitudeQuestions.ts`
 - `bigFiveQuestions.js` → `bigFiveQuestions.ts`
 - `riasecQuestions.js` → `riasecQuestions.ts`
@@ -340,10 +341,12 @@ The assessment data files have been fully migrated from `src/pages/student/asses
 - `scoringUtils.js` → `scoringUtils.ts`
 
 **Files updated to use new imports:**
+
 - `src/pages/student/AssessmentTest.jsx`
 - `src/pages/student/assessment-result/hooks/useAssessmentResults.js`
 
 **New code should always import from the feature module:**
+
 ```typescript
 import { riasecQuestions, bigFiveQuestions } from '@/features/assessment';
 // or
@@ -355,20 +358,24 @@ import { riasecQuestions, bigFiveQuestions } from '../../features/assessment';
 Assessment services are located in `src/services/` and re-exported through `src/features/assessment/services/`:
 
 ### Career Assessment (Personal Assessment)
+
 - `assessmentService.js` - Career assessment database operations (attempts, responses, results)
 - `assessmentGenerationService.js` - AI question generation for assessments
 - `careerAssessmentAIService.js` - AI-powered question loading for aptitude & knowledge sections
 - `geminiAssessmentService.js` - Gemini AI analysis for assessment results
 
 ### Adaptive Testing
+
 - `adaptiveEngine.ts` - IRT-based adaptive testing logic (difficulty adjustment, ability estimation)
 - `adaptiveAptitudeService.ts` - Adaptive aptitude test session management
 
 ### External Course Assessment
+
 - `externalAssessmentService.js` - External course skill tests and certificates
 - `certificateAssessmentService.js` - Certificate-based assessment questions
 
 ### AI & Recommendations
+
 - `aiCareerPathService.ts` - AI-powered career path recommendations
 - `streamRecommendationService.js` - Stream/course recommendations based on assessment results
 - `courseRecommendationService.js` - Course recommendations based on assessment scores

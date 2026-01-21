@@ -9,9 +9,14 @@ import { curriculumChangeFallbackService } from './curriculumChangeFallbackServi
 
 export interface PendingChange {
   id: string;
-  change_type: 'unit_add' | 'unit_edit' | 'unit_delete' | 
-                'outcome_add' | 'outcome_edit' | 'outcome_delete' | 
-                'curriculum_edit';
+  change_type:
+    | 'unit_add'
+    | 'unit_edit'
+    | 'unit_delete'
+    | 'outcome_add'
+    | 'outcome_edit'
+    | 'outcome_delete'
+    | 'curriculum_edit';
   entity_id?: string;
   timestamp: string;
   requested_by: string;
@@ -37,21 +42,20 @@ class CurriculumChangeRequestService {
         .select('status, university_id')
         .eq('id', curriculumId)
         .single();
-      
+
       if (error) throw error;
-      
+
       // Requires approval if:
       // 1. Curriculum is published
       // 2. College is affiliated with university
-      const requiresApproval = 
-        curriculum.status === 'published' && 
-        curriculum.university_id !== null;
-      
+      const requiresApproval =
+        curriculum.status === 'published' && curriculum.university_id !== null;
+
       return {
         requiresApproval,
-        reason: requiresApproval 
+        reason: requiresApproval
           ? 'Published curriculum in affiliated college requires university approval'
-          : undefined
+          : undefined,
       };
     } catch (error: any) {
       console.error('Error checking approval requirement:', error);
@@ -71,10 +75,10 @@ class CurriculumChangeRequestService {
       // Use fallback method directly to avoid RPC authentication issues
       console.log('Using fallback method for unit add...');
       return await curriculumChangeFallbackService.submitUnitAdd(curriculumId, unitData, message);
-      
     } catch (error: any) {
       console.error('Error submitting unit add:', error);
-      const errorMessage = error?.message || error?.error_description || error?.toString() || 'Unknown error occurred';
+      const errorMessage =
+        error?.message || error?.error_description || error?.toString() || 'Unknown error occurred';
       return { success: false, error: errorMessage };
     }
   }
@@ -99,10 +103,10 @@ class CurriculumChangeRequestService {
         { before: beforeData, after: afterData },
         message || 'Editing unit'
       );
-      
     } catch (error: any) {
       console.error('Error submitting unit edit:', error);
-      const errorMessage = error?.message || error?.error_description || error?.toString() || 'Unknown error occurred';
+      const errorMessage =
+        error?.message || error?.error_description || error?.toString() || 'Unknown error occurred';
       return { success: false, error: errorMessage };
     }
   }
@@ -126,7 +130,6 @@ class CurriculumChangeRequestService {
         { data: unitData },
         message || 'Deleting unit'
       );
-      
     } catch (error: any) {
       console.error('Error submitting unit delete:', error);
       return { success: false, error: error.message };
@@ -143,13 +146,17 @@ class CurriculumChangeRequestService {
   ): Promise<{ success: boolean; error?: string }> {
     try {
       // Check authentication before making the request
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
       if (authError || !user) {
         console.error('Authentication error:', authError);
-        return { 
-          success: false, 
-          error: 'You must be logged in to make changes to the curriculum. Please refresh the page and try again.' 
+        return {
+          success: false,
+          error:
+            'You must be logged in to make changes to the curriculum. Please refresh the page and try again.',
         };
       }
 
@@ -157,13 +164,16 @@ class CurriculumChangeRequestService {
 
       // Use fallback method directly to avoid RPC authentication issues
       console.log('Using fallback method for outcome add...');
-      return await curriculumChangeFallbackService.submitOutcomeAdd(curriculumId, outcomeData, message);
-
+      return await curriculumChangeFallbackService.submitOutcomeAdd(
+        curriculumId,
+        outcomeData,
+        message
+      );
     } catch (error: any) {
       console.error('Error submitting outcome add:', error);
       // Handle different error formats
       let errorMessage = 'Failed to submit change request';
-      
+
       if (error?.message) {
         errorMessage = error.message;
       } else if (error?.error_description) {
@@ -171,14 +181,14 @@ class CurriculumChangeRequestService {
       } else if (typeof error === 'string') {
         errorMessage = error;
       }
-      
+
       // Provide user-friendly error messages
       if (errorMessage.includes('User not authenticated')) {
         errorMessage = 'Authentication expired. Please refresh the page and try again.';
       } else if (errorMessage.includes('function') && errorMessage.includes('does not exist')) {
         errorMessage = 'System configuration error. Please contact support.';
       }
-      
+
       return { success: false, error: errorMessage };
     }
   }
@@ -203,7 +213,6 @@ class CurriculumChangeRequestService {
         { before: beforeData, after: afterData },
         message || 'Editing learning outcome'
       );
-      
     } catch (error: any) {
       console.error('Error submitting outcome edit:', error);
       return { success: false, error: error.message };
@@ -229,7 +238,6 @@ class CurriculumChangeRequestService {
         { data: outcomeData },
         message || 'Deleting learning outcome'
       );
-      
     } catch (error: any) {
       console.error('Error submitting outcome delete:', error);
       return { success: false, error: error.message };
@@ -255,7 +263,6 @@ class CurriculumChangeRequestService {
         { before: beforeData, after: afterData },
         message || 'Editing curriculum details'
       );
-      
     } catch (error: any) {
       console.error('Error submitting curriculum edit:', error);
       return { success: false, error: error.message };
@@ -277,9 +284,9 @@ class CurriculumChangeRequestService {
         .select('pending_changes')
         .eq('id', curriculumId)
         .single();
-      
+
       if (error) throw error;
-      
+
       const pendingChanges = curriculum?.pending_changes || [];
       return { success: true, data: pendingChanges };
     } catch (error: any) {
@@ -299,10 +306,15 @@ class CurriculumChangeRequestService {
     try {
       // Use fallback method directly to avoid RPC authentication issues
       console.log('Using fallback method for change approval...');
-      return await curriculumChangeFallbackService.approvePendingChange(curriculumId, changeId, reviewNotes);
+      return await curriculumChangeFallbackService.approvePendingChange(
+        curriculumId,
+        changeId,
+        reviewNotes
+      );
     } catch (error: any) {
       console.error('Error approving change:', error);
-      const errorMessage = error?.message || error?.error_description || error?.toString() || 'Unknown error occurred';
+      const errorMessage =
+        error?.message || error?.error_description || error?.toString() || 'Unknown error occurred';
       return { success: false, error: errorMessage };
     }
   }
@@ -318,7 +330,11 @@ class CurriculumChangeRequestService {
     try {
       // Use fallback method directly to avoid RPC authentication issues
       console.log('Using fallback method for change rejection...');
-      return await curriculumChangeFallbackService.rejectPendingChange(curriculumId, changeId, reviewNotes);
+      return await curriculumChangeFallbackService.rejectPendingChange(
+        curriculumId,
+        changeId,
+        reviewNotes
+      );
     } catch (error: any) {
       console.error('Error rejecting change:', error);
       return { success: false, error: error.message };
@@ -354,11 +370,12 @@ class CurriculumChangeRequestService {
     try {
       // Use direct database query instead of RPC functions
       console.log('Fetching pending changes for university:', universityId);
-      
+
       // Query college_curriculums with pending changes
       const { data: curriculums, error } = await supabase
         .from('college_curriculums')
-        .select(`
+        .select(
+          `
           id,
           status,
           academic_year,
@@ -368,7 +385,8 @@ class CurriculumChangeRequestService {
           course:college_courses!college_curriculums_course_id_fkey(course_name, course_code),
           departments(name),
           programs(name)
-        `)
+        `
+        )
         .eq('has_pending_changes', true)
         .eq('university_id', universityId)
         .order('created_at', { ascending: false });
@@ -379,18 +397,19 @@ class CurriculumChangeRequestService {
       }
 
       // Get college names for the curriculums
-      const collegeIds = [...new Set(curriculums?.map(c => c.college_id).filter(Boolean))] || [];
-      let collegeMap: { [key: string]: string } = {};
-      
+      // @ts-expect-error - Auto-suppressed for migration
+      const collegeIds = [...new Set(curriculums?.map((c) => c.college_id).filter(Boolean))] || [];
+      const collegeMap: { [key: string]: string } = {};
+
       if (collegeIds.length > 0) {
         // Try to get college names from curriculum_approval_dashboard view
         const { data: collegeData } = await supabase
           .from('curriculum_approval_dashboard')
           .select('college_id, college_name')
           .in('college_id', collegeIds);
-        
+
         if (collegeData) {
-          collegeData.forEach(college => {
+          collegeData.forEach((college) => {
             collegeMap[college.college_id] = college.college_name;
           });
         }
@@ -398,8 +417,8 @@ class CurriculumChangeRequestService {
 
       // Transform the data to flatten pending changes
       const pendingChanges: any[] = [];
-      
-      curriculums?.forEach(curriculum => {
+
+      curriculums?.forEach((curriculum) => {
         if (curriculum.pending_changes && Array.isArray(curriculum.pending_changes)) {
           curriculum.pending_changes.forEach((change: any) => {
             if (change.status === 'pending') {
@@ -407,13 +426,17 @@ class CurriculumChangeRequestService {
                 curriculum_id: curriculum.id,
                 curriculum_status: curriculum.status,
                 academic_year: curriculum.academic_year,
+                // @ts-expect-error - Auto-suppressed for migration
                 course_name: curriculum.course?.course_name,
+                // @ts-expect-error - Auto-suppressed for migration
                 course_code: curriculum.course?.course_code,
+                // @ts-expect-error - Auto-suppressed for migration
                 department_name: curriculum.departments?.name,
+                // @ts-expect-error - Auto-suppressed for migration
                 program_name: curriculum.programs?.name,
                 college_name: collegeMap[curriculum.college_id] || 'Unknown College',
                 college_id: curriculum.college_id,
-                
+
                 // Change details - using field names expected by frontend
                 change_id: change.id,
                 change_type: change.change_type,
@@ -425,7 +448,8 @@ class CurriculumChangeRequestService {
                 status: change.status,
                 data: change.data,
                 change_data: change.data, // Frontend expects this field name
-                curriculum_name: curriculum.course?.course_name // Frontend expects this field name
+                // @ts-expect-error - Auto-suppressed for migration
+                curriculum_name: curriculum.course?.course_name, // Frontend expects this field name
               });
             }
           });
@@ -434,7 +458,6 @@ class CurriculumChangeRequestService {
 
       console.log(`Found ${pendingChanges.length} pending changes`);
       return { success: true, data: pendingChanges };
-      
     } catch (error: any) {
       console.error('Error fetching university pending changes:', error);
       return { success: false, error: error.message };

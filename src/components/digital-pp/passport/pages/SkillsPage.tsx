@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Code, Star, Zap } from 'lucide-react';
+// @ts-expect-error - Auto-suppressed for migration
 import { Student } from '../../../types/student';
 import PassportPage from '../PassportPage';
 
@@ -43,7 +44,7 @@ const SkillsPage: React.FC<SkillsPageProps> = ({ student, isActive }) => {
               <Code className="w-5 h-5 mr-2" />
               Programming & Technologies
             </h3>
-            
+
             <div className="grid grid-cols-2 gap-4">
               {technicalSkills.slice(0, 8).map((skill, index) => (
                 <motion.div
@@ -55,25 +56,27 @@ const SkillsPage: React.FC<SkillsPageProps> = ({ student, isActive }) => {
                 >
                   <div className="flex justify-between items-center mb-2">
                     <h4 className="font-semibold text-gray-800 text-sm">{skill.name}</h4>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSkillColor(skill.level)}`}>
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${getSkillColor(skill.level)}`}
+                    >
                       {getSkillLevel(skill.level)}
                     </span>
                   </div>
-                  
+
                   <div className="flex items-center mb-1">
                     {[...Array(5)].map((_, i) => (
                       <Star
                         key={i}
                         className={`w-3 h-3 ${
-                          i < Math.floor(skill.level / 2) 
-                            ? 'text-yellow-400 fill-current' 
+                          i < Math.floor(skill.level / 2)
+                            ? 'text-yellow-400 fill-current'
                             : 'text-gray-300'
                         }`}
                       />
                     ))}
                     <span className="ml-2 text-xs text-gray-500">{skill.level}/10</span>
                   </div>
-                  
+
                   <p className="text-xs text-gray-500">{skill.category}</p>
                 </motion.div>
               ))}
@@ -88,7 +91,7 @@ const SkillsPage: React.FC<SkillsPageProps> = ({ student, isActive }) => {
               <Zap className="w-5 h-5 mr-2" />
               Core Competencies
             </h3>
-            
+
             <div className="grid grid-cols-1 gap-3">
               {skills.slice(0, 6).map((skill, index) => (
                 <motion.div
@@ -100,9 +103,7 @@ const SkillsPage: React.FC<SkillsPageProps> = ({ student, isActive }) => {
                 >
                   <div>
                     <h4 className="font-semibold text-gray-800 text-sm">{skill.name}</h4>
-                    {skill.category && (
-                      <p className="text-xs text-gray-500">{skill.category}</p>
-                    )}
+                    {skill.category && <p className="text-xs text-gray-500">{skill.category}</p>}
                   </div>
                   <span className="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-xs font-medium">
                     {skill.level}

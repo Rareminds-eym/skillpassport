@@ -2,15 +2,25 @@ import { Calendar, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-export default function DatePicker({ 
-  value, 
-  onChange, 
+export default function DatePicker({
+  value,
+  onChange,
   name = 'date',
   label = 'Date',
   required = false,
@@ -18,7 +28,7 @@ export default function DatePicker({
   placeholder = 'Select date',
   minDate,
   maxDate,
-  className = ''
+  className = '',
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [viewDate, setViewDate] = useState(() => {
@@ -86,12 +96,18 @@ export default function DatePicker({
     // Normalize month/year for comparison
     let normalizedYear = year;
     let normalizedMonth = month;
-    if (month < 0) { normalizedMonth = 11; normalizedYear--; }
-    if (month > 11) { normalizedMonth = 0; normalizedYear++; }
-    
+    if (month < 0) {
+      normalizedMonth = 11;
+      normalizedYear--;
+    }
+    if (month > 11) {
+      normalizedMonth = 0;
+      normalizedYear++;
+    }
+
     // Create date string for comparison (YYYY-MM-DD format)
     const dateStr = `${normalizedYear}-${String(normalizedMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    
+
     if (minDate && dateStr < minDate) return true;
     if (maxDate && dateStr > maxDate) return true;
     return false;
@@ -110,11 +126,7 @@ export default function DatePicker({
   // Check if date is today
   const isToday = (year, month, day) => {
     const today = new Date();
-    return (
-      today.getFullYear() === year &&
-      today.getMonth() === month &&
-      today.getDate() === day
-    );
+    return today.getFullYear() === year && today.getMonth() === month && today.getDate() === day;
   };
 
   // Handle day click
@@ -124,17 +136,23 @@ export default function DatePicker({
 
     if (isPrev) {
       month--;
-      if (month < 0) { month = 11; year--; }
+      if (month < 0) {
+        month = 11;
+        year--;
+      }
     } else if (isNext) {
       month++;
-      if (month > 11) { month = 0; year++; }
+      if (month > 11) {
+        month = 0;
+        year++;
+      }
     }
 
     if (isDateDisabled(year, month, day)) return;
 
     // Create date string in YYYY-MM-DD format to avoid timezone issues
     const formattedDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    
+
     onChange({ target: { name, value: formattedDate } });
     setIsOpen(false);
     setViewMode('days');
@@ -142,7 +160,7 @@ export default function DatePicker({
 
   // Navigate months
   const navigateMonth = (direction) => {
-    setViewDate(prev => {
+    setViewDate((prev) => {
       const newDate = new Date(prev);
       newDate.setMonth(prev.getMonth() + direction);
       return newDate;
@@ -151,7 +169,7 @@ export default function DatePicker({
 
   // Navigate years
   const navigateYear = (direction) => {
-    setViewDate(prev => {
+    setViewDate((prev) => {
       const newDate = new Date(prev);
       newDate.setFullYear(prev.getFullYear() + direction);
       return newDate;
@@ -176,7 +194,7 @@ export default function DatePicker({
       weekday: 'short',
       year: 'numeric',
       month: 'short',
-      day: 'numeric'
+      day: 'numeric',
     });
   };
 
@@ -193,7 +211,7 @@ export default function DatePicker({
           {label} {required && <span className="text-red-500">*</span>}
         </label>
       )}
-      
+
       {/* Input Display */}
       <div
         onClick={() => setIsOpen(!isOpen)}
@@ -202,7 +220,9 @@ export default function DatePicker({
           ${error ? 'border-red-500' : ''}
         `}
       >
-        <Calendar className={`w-5 h-5 mr-3 transition-colors ${isOpen ? 'text-blue-500' : 'text-gray-400'}`} />
+        <Calendar
+          className={`w-5 h-5 mr-3 transition-colors ${isOpen ? 'text-blue-500' : 'text-gray-400'}`}
+        />
         <span className={`flex-1 ${selectedDate ? 'text-gray-900' : 'text-gray-400'}`}>
           {selectedDate ? formatDisplayValue() : placeholder}
         </span>
@@ -232,12 +252,12 @@ export default function DatePicker({
           <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white">
             <button
               type="button"
-              onClick={() => viewMode === 'years' ? navigateYear(-12) : navigateMonth(-1)}
+              onClick={() => (viewMode === 'years' ? navigateYear(-12) : navigateMonth(-1))}
               className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
-            
+
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -257,7 +277,7 @@ export default function DatePicker({
 
             <button
               type="button"
-              onClick={() => viewMode === 'years' ? navigateYear(12) : navigateMonth(1)}
+              onClick={() => (viewMode === 'years' ? navigateYear(12) : navigateMonth(1))}
               className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
             >
               <ChevronRight className="w-5 h-5" />
@@ -269,7 +289,7 @@ export default function DatePicker({
             <div className="p-3">
               {/* Day Headers */}
               <div className="grid grid-cols-7 mb-2">
-                {DAYS.map(day => (
+                {DAYS.map((day) => (
                   <div key={day} className="text-center text-xs font-medium text-gray-500 py-2">
                     {day}
                   </div>
@@ -281,15 +301,21 @@ export default function DatePicker({
                 {generateCalendarDays().map((item, index) => {
                   let year = viewDate.getFullYear();
                   let month = viewDate.getMonth();
-                  
+
                   // Adjust month and year for prev/next month days
                   if (item.isPrev) {
                     month--;
-                    if (month < 0) { month = 11; year--; }
+                    if (month < 0) {
+                      month = 11;
+                      year--;
+                    }
                   }
                   if (item.isNext) {
                     month++;
-                    if (month > 11) { month = 0; year++; }
+                    if (month > 11) {
+                      month = 0;
+                      year++;
+                    }
                   }
 
                   const disabled = isDateDisabled(year, month, item.day);
@@ -300,7 +326,9 @@ export default function DatePicker({
                     <button
                       key={index}
                       type="button"
-                      onClick={() => handleDayClick(item.day, item.isCurrentMonth, item.isPrev, item.isNext)}
+                      onClick={() =>
+                        handleDayClick(item.day, item.isCurrentMonth, item.isPrev, item.isNext)
+                      }
                       disabled={disabled}
                       className={`
                         relative w-10 h-10 rounded-xl text-sm font-medium transition-all duration-150
@@ -337,7 +365,10 @@ export default function DatePicker({
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setIsOpen(false); setViewMode('days'); }}
+                  onClick={() => {
+                    setIsOpen(false);
+                    setViewMode('days');
+                  }}
                   className="flex-1 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                 >
                   Cancel
@@ -355,7 +386,7 @@ export default function DatePicker({
                     key={month}
                     type="button"
                     onClick={() => {
-                      setViewDate(prev => {
+                      setViewDate((prev) => {
                         const newDate = new Date(prev);
                         newDate.setMonth(index);
                         return newDate;
@@ -378,12 +409,12 @@ export default function DatePicker({
           {viewMode === 'years' && (
             <div className="p-3">
               <div className="grid grid-cols-3 gap-2">
-                {generateYears().map(year => (
+                {generateYears().map((year) => (
                   <button
                     key={year}
                     type="button"
                     onClick={() => {
-                      setViewDate(prev => {
+                      setViewDate((prev) => {
                         const newDate = new Date(prev);
                         newDate.setFullYear(year);
                         return newDate;

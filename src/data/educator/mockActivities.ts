@@ -38,10 +38,10 @@ export const mockActivities: Activity[] = [
         type: 'image',
         url: 'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=800',
         thumbnail: 'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=200',
-        name: 'solar-project.jpg'
-      }
+        name: 'solar-project.jpg',
+      },
     ],
-    skills: ['Critical Thinking', 'Problem Solving', 'Science']
+    skills: ['Critical Thinking', 'Problem Solving', 'Science'],
   },
   {
     id: 'act-002',
@@ -60,17 +60,18 @@ export const mockActivities: Activity[] = [
         type: 'document',
         url: 'https://via.placeholder.com/800x600/10b981/ffffff?text=Certificate',
         thumbnail: 'https://via.placeholder.com/200x150/10b981/ffffff?text=Cert',
-        name: 'freecodecamp-cert.pdf'
-      }
+        name: 'freecodecamp-cert.pdf',
+      },
     ],
-    skills: ['Technology', 'Programming', 'Problem Solving']
+    skills: ['Technology', 'Programming', 'Problem Solving'],
   },
   {
     id: 'act-003',
     studentId: 'std-003',
     studentName: 'Emma Rodriguez',
     title: 'Community Art Mural Project',
-    description: 'Led a team of 10 students to design and paint a mural at the local community center.',
+    description:
+      'Led a team of 10 students to design and paint a mural at the local community center.',
     category: 'extracurricular',
     status: 'verified',
     submittedDate: '2025-01-08T11:45:00Z',
@@ -82,17 +83,17 @@ export const mockActivities: Activity[] = [
         type: 'image',
         url: 'https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?w=800',
         thumbnail: 'https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?w=200',
-        name: 'mural-final.jpg'
+        name: 'mural-final.jpg',
       },
       {
         id: 'med-004',
         type: 'image',
         url: 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=800',
         thumbnail: 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=200',
-        name: 'team-photo.jpg'
-      }
+        name: 'team-photo.jpg',
+      },
     ],
-    skills: ['Leadership', 'Creativity', 'Collaboration']
+    skills: ['Leadership', 'Creativity', 'Collaboration'],
   },
   {
     id: 'act-004',
@@ -109,17 +110,18 @@ export const mockActivities: Activity[] = [
         type: 'image',
         url: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?w=800',
         thumbnail: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?w=200',
-        name: 'tournament-trophy.jpg'
-      }
+        name: 'tournament-trophy.jpg',
+      },
     ],
-    skills: ['Teamwork', 'Leadership', 'Physical Fitness']
+    skills: ['Teamwork', 'Leadership', 'Physical Fitness'],
   },
   {
     id: 'act-005',
     studentId: 'std-005',
     studentName: 'Olivia Martinez',
     title: 'Research Paper - Climate Change Impact',
-    description: 'Published research paper in youth science journal on local climate change effects.',
+    description:
+      'Published research paper in youth science journal on local climate change effects.',
     category: 'project',
     status: 'verified',
     submittedDate: '2025-01-05T13:30:00Z',
@@ -131,10 +133,10 @@ export const mockActivities: Activity[] = [
         type: 'document',
         url: 'https://via.placeholder.com/800x600/6366f1/ffffff?text=Research+Paper',
         thumbnail: 'https://via.placeholder.com/200x150/6366f1/ffffff?text=Paper',
-        name: 'climate-research.pdf'
-      }
+        name: 'climate-research.pdf',
+      },
     ],
-    skills: ['Research', 'Writing', 'Analysis']
+    skills: ['Research', 'Writing', 'Analysis'],
   },
   {
     id: 'act-006',
@@ -145,8 +147,9 @@ export const mockActivities: Activity[] = [
     category: 'achievement',
     status: 'rejected',
     submittedDate: '2025-01-03T15:20:00Z',
-    rejectionReason: 'Please provide official documentation or certificate from school administration.',
+    rejectionReason:
+      'Please provide official documentation or certificate from school administration.',
     media: [],
-    skills: ['Leadership', 'Communication']
-  }
+    skills: ['Leadership', 'Communication'],
+  },
 ];

@@ -1,6 +1,6 @@
 /**
  * DeletePoolModal Component
- * 
+ *
  * Confirmation modal for deleting a license pool.
  */
 
@@ -34,7 +34,7 @@ function DeletePoolModal({
 
   const handleConfirm = useCallback(async () => {
     if (!pool) return;
-    
+
     try {
       setError('');
       await onConfirm(pool.id);
@@ -55,7 +55,7 @@ function DeletePoolModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleClose} />
-      
+
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-red-50">
@@ -79,8 +79,8 @@ function DeletePoolModal({
                 <div>
                   <h4 className="font-medium text-amber-800">Cannot Delete Pool</h4>
                   <p className="text-sm text-amber-700 mt-1">
-                    This pool has {pool.assignedSeats} assigned license(s). 
-                    Please unassign all licenses before deleting the pool.
+                    This pool has {pool.assignedSeats} assigned license(s). Please unassign all
+                    licenses before deleting the pool.
                   </p>
                 </div>
               </div>
@@ -90,7 +90,7 @@ function DeletePoolModal({
               <p className="text-gray-600 mb-4">
                 Are you sure you want to delete the pool <strong>"{pool.poolName}"</strong>?
               </p>
-              
+
               <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Pool Name</span>
@@ -105,7 +105,7 @@ function DeletePoolModal({
                   <span className="font-medium text-gray-900">{pool.allocatedSeats}</span>
                 </div>
               </div>
-              
+
               <p className="text-sm text-gray-500 mt-4">
                 The {pool.allocatedSeats} allocated seats will be returned to the available pool.
               </p>

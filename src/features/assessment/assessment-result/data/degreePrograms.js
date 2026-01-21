@@ -1,12 +1,12 @@
 /**
  * Comprehensive Degree Programs Database for After 12th Students
- * 
+ *
  * This file contains 50 curated degree programs across Science, Commerce, and Arts streams.
  * Each program includes detailed matching criteria for AI-powered recommendations.
- * 
+ *
  * Structure:
  * - 15 Science programs
- * - 15 Commerce programs  
+ * - 15 Commerce programs
  * - 20 Arts programs
  */
 
@@ -20,16 +20,21 @@ export const SCIENCE_PROGRAMS = [
     name: 'B.Tech Computer Science & Engineering',
     stream: 'science',
     category: 'Technology',
-    description: 'Design and develop software systems, applications, and cutting-edge technology solutions',
+    description:
+      'Design and develop software systems, applications, and cutting-edge technology solutions',
     riasec: { primary: ['I', 'R'], secondary: ['C'], weights: { I: 0.4, R: 0.35, C: 0.25 } },
     aptitudeRequirements: { numerical: 70, logical: 75, verbal: 60 },
     keySubjects: ['Mathematics', 'Physics', 'Computer Science'],
     careerPaths: ['Software Engineer', 'Data Scientist', 'AI/ML Engineer', 'Full Stack Developer'],
-    salaryRange: { entry: { min: 6, max: 15 }, mid: { min: 15, max: 40 }, senior: { min: 40, max: 100 } },
+    salaryRange: {
+      entry: { min: 6, max: 15 },
+      mid: { min: 15, max: 40 },
+      senior: { min: 40, max: 100 },
+    },
     growthOutlook: 'Exceptional - 25% annual growth in tech sector',
     entranceExams: ['JEE Main', 'JEE Advanced', 'BITSAT', 'VITEEE'],
     topColleges: ['IIT', 'NIT', 'BITS Pilani', 'IIIT'],
-    duration: '4 years'
+    duration: '4 years',
   },
   {
     id: 'btech_ai_ml',
@@ -37,31 +42,50 @@ export const SCIENCE_PROGRAMS = [
     stream: 'science',
     category: 'Technology',
     description: 'Build intelligent systems, neural networks, and next-generation AI applications',
-    riasec: { primary: ['I', 'R'], secondary: ['C'], weights: { I: 0.45, R: 0.35, C: 0.20 } },
+    riasec: { primary: ['I', 'R'], secondary: ['C'], weights: { I: 0.45, R: 0.35, C: 0.2 } },
     aptitudeRequirements: { numerical: 75, logical: 80, verbal: 60 },
     keySubjects: ['Mathematics', 'Physics', 'Computer Science'],
-    careerPaths: ['AI Engineer', 'Machine Learning Scientist', 'Deep Learning Researcher', 'NLP Engineer'],
-    salaryRange: { entry: { min: 8, max: 20 }, mid: { min: 20, max: 50 }, senior: { min: 50, max: 150 } },
+    careerPaths: [
+      'AI Engineer',
+      'Machine Learning Scientist',
+      'Deep Learning Researcher',
+      'NLP Engineer',
+    ],
+    salaryRange: {
+      entry: { min: 8, max: 20 },
+      mid: { min: 20, max: 50 },
+      senior: { min: 50, max: 150 },
+    },
     growthOutlook: 'Explosive - AI market growing 40% annually',
     entranceExams: ['JEE Main', 'JEE Advanced', 'BITSAT'],
     topColleges: ['IIT', 'IIIT', 'BITS Pilani'],
-    duration: '4 years'
+    duration: '4 years',
   },
   {
     id: 'btech_data_science',
     name: 'B.Tech Data Science & Analytics',
     stream: 'science',
     category: 'Technology',
-    description: 'Extract insights from data, build predictive models, and drive data-driven decisions',
+    description:
+      'Extract insights from data, build predictive models, and drive data-driven decisions',
     riasec: { primary: ['I', 'C'], secondary: ['R'], weights: { I: 0.4, C: 0.35, R: 0.25 } },
     aptitudeRequirements: { numerical: 80, logical: 75, verbal: 60 },
     keySubjects: ['Mathematics', 'Statistics', 'Computer Science'],
-    careerPaths: ['Data Scientist', 'Data Analyst', 'Business Intelligence Analyst', 'Data Engineer'],
-    salaryRange: { entry: { min: 7, max: 18 }, mid: { min: 18, max: 45 }, senior: { min: 45, max: 120 } },
+    careerPaths: [
+      'Data Scientist',
+      'Data Analyst',
+      'Business Intelligence Analyst',
+      'Data Engineer',
+    ],
+    salaryRange: {
+      entry: { min: 7, max: 18 },
+      mid: { min: 18, max: 45 },
+      senior: { min: 45, max: 120 },
+    },
     growthOutlook: 'Very High - Data science roles growing 30% annually',
     entranceExams: ['JEE Main', 'BITSAT', 'University-specific'],
     topColleges: ['IIT', 'IIIT', 'ISI Kolkata', 'CMI'],
-    duration: '4 years'
+    duration: '4 years',
   },
   {
     id: 'btech_cybersecurity',
@@ -72,12 +96,21 @@ export const SCIENCE_PROGRAMS = [
     riasec: { primary: ['I', 'R'], secondary: ['C'], weights: { I: 0.4, R: 0.35, C: 0.25 } },
     aptitudeRequirements: { numerical: 70, logical: 80, verbal: 60 },
     keySubjects: ['Mathematics', 'Computer Science', 'Physics'],
-    careerPaths: ['Cybersecurity Analyst', 'Ethical Hacker', 'Security Architect', 'Penetration Tester'],
-    salaryRange: { entry: { min: 6, max: 15 }, mid: { min: 15, max: 40 }, senior: { min: 40, max: 100 } },
+    careerPaths: [
+      'Cybersecurity Analyst',
+      'Ethical Hacker',
+      'Security Architect',
+      'Penetration Tester',
+    ],
+    salaryRange: {
+      entry: { min: 6, max: 15 },
+      mid: { min: 15, max: 40 },
+      senior: { min: 40, max: 100 },
+    },
     growthOutlook: 'Very High - Cybersecurity demand growing 35% annually',
     entranceExams: ['JEE Main', 'BITSAT', 'University-specific'],
     topColleges: ['IIT', 'NIT', 'IIIT', 'Amity'],
-    duration: '4 years'
+    duration: '4 years',
   },
   {
     id: 'bca',
@@ -89,11 +122,15 @@ export const SCIENCE_PROGRAMS = [
     aptitudeRequirements: { numerical: 65, logical: 70, verbal: 60 },
     keySubjects: ['Mathematics', 'Computer Science'],
     careerPaths: ['Software Developer', 'Web Developer', 'App Developer', 'System Analyst'],
-    salaryRange: { entry: { min: 4, max: 10 }, mid: { min: 10, max: 25 }, senior: { min: 25, max: 60 } },
+    salaryRange: {
+      entry: { min: 4, max: 10 },
+      mid: { min: 10, max: 25 },
+      senior: { min: 25, max: 60 },
+    },
     growthOutlook: 'High - IT sector consistently growing',
     entranceExams: ['University-specific', 'CUET', 'IPU CET'],
     topColleges: ['Christ University', 'Symbiosis', 'DU', 'Presidency'],
-    duration: '3 years'
+    duration: '3 years',
   },
   {
     id: 'bsc_physics',
@@ -101,15 +138,19 @@ export const SCIENCE_PROGRAMS = [
     stream: 'science',
     category: 'Pure Science',
     description: 'Study fundamental laws of nature, quantum mechanics, and experimental physics',
-    riasec: { primary: ['I', 'R'], secondary: ['C'], weights: { I: 0.45, R: 0.35, C: 0.20 } },
+    riasec: { primary: ['I', 'R'], secondary: ['C'], weights: { I: 0.45, R: 0.35, C: 0.2 } },
     aptitudeRequirements: { numerical: 75, logical: 75, spatial: 70 },
     keySubjects: ['Physics', 'Mathematics', 'Chemistry'],
     careerPaths: ['Research Scientist', 'Physicist', 'Data Analyst', 'Science Teacher'],
-    salaryRange: { entry: { min: 4, max: 8 }, mid: { min: 8, max: 20 }, senior: { min: 20, max: 50 } },
+    salaryRange: {
+      entry: { min: 4, max: 8 },
+      mid: { min: 8, max: 20 },
+      senior: { min: 20, max: 50 },
+    },
     growthOutlook: 'Moderate - Research and academia opportunities',
     entranceExams: ['CUET', 'University-specific'],
     topColleges: ['IISc', 'DU', 'St. Stephens', 'Presidency'],
-    duration: '3 years'
+    duration: '3 years',
   },
   {
     id: 'bsc_chemistry',
@@ -117,15 +158,24 @@ export const SCIENCE_PROGRAMS = [
     stream: 'science',
     category: 'Pure Science',
     description: 'Explore chemical reactions, molecular structures, and laboratory research',
-    riasec: { primary: ['I', 'R'], secondary: ['C'], weights: { I: 0.4, R: 0.4, C: 0.20 } },
+    riasec: { primary: ['I', 'R'], secondary: ['C'], weights: { I: 0.4, R: 0.4, C: 0.2 } },
     aptitudeRequirements: { numerical: 70, logical: 70, verbal: 60 },
     keySubjects: ['Chemistry', 'Physics', 'Mathematics'],
-    careerPaths: ['Chemist', 'Research Scientist', 'Quality Control Analyst', 'Pharmaceutical Scientist'],
-    salaryRange: { entry: { min: 4, max: 8 }, mid: { min: 8, max: 18 }, senior: { min: 18, max: 45 } },
+    careerPaths: [
+      'Chemist',
+      'Research Scientist',
+      'Quality Control Analyst',
+      'Pharmaceutical Scientist',
+    ],
+    salaryRange: {
+      entry: { min: 4, max: 8 },
+      mid: { min: 8, max: 18 },
+      senior: { min: 18, max: 45 },
+    },
     growthOutlook: 'Moderate - Pharma and chemical industries stable',
     entranceExams: ['CUET', 'University-specific'],
     topColleges: ['IISc', 'DU', 'Presidency', 'St. Stephens'],
-    duration: '3 years'
+    duration: '3 years',
   },
   {
     id: 'bsc_mathematics',
@@ -133,15 +183,19 @@ export const SCIENCE_PROGRAMS = [
     stream: 'science',
     category: 'Pure Science',
     description: 'Master advanced mathematics, statistics, and computational methods',
-    riasec: { primary: ['I', 'C'], secondary: ['R'], weights: { I: 0.45, C: 0.35, R: 0.20 } },
+    riasec: { primary: ['I', 'C'], secondary: ['R'], weights: { I: 0.45, C: 0.35, R: 0.2 } },
     aptitudeRequirements: { numerical: 85, logical: 80, verbal: 60 },
     keySubjects: ['Mathematics', 'Statistics'],
     careerPaths: ['Data Scientist', 'Actuary', 'Quantitative Analyst', 'Mathematician'],
-    salaryRange: { entry: { min: 5, max: 12 }, mid: { min: 12, max: 30 }, senior: { min: 30, max: 80 } },
+    salaryRange: {
+      entry: { min: 5, max: 12 },
+      mid: { min: 12, max: 30 },
+      senior: { min: 30, max: 80 },
+    },
     growthOutlook: 'High - Strong demand in finance and tech',
     entranceExams: ['CUET', 'University-specific'],
     topColleges: ['ISI', 'CMI', 'DU', 'IISc'],
-    duration: '3 years'
+    duration: '3 years',
   },
   {
     id: 'mbbs',
@@ -153,11 +207,15 @@ export const SCIENCE_PROGRAMS = [
     aptitudeRequirements: { verbal: 75, logical: 80, numerical: 70 },
     keySubjects: ['Biology', 'Chemistry', 'Physics'],
     careerPaths: ['Doctor', 'Surgeon', 'Physician', 'Medical Researcher'],
-    salaryRange: { entry: { min: 6, max: 15 }, mid: { min: 15, max: 50 }, senior: { min: 50, max: 200 } },
+    salaryRange: {
+      entry: { min: 6, max: 15 },
+      mid: { min: 15, max: 50 },
+      senior: { min: 50, max: 200 },
+    },
     growthOutlook: 'Very High - Healthcare always in demand',
     entranceExams: ['NEET UG'],
     topColleges: ['AIIMS', 'JIPMER', 'CMC Vellore', 'MAMC'],
-    duration: '5.5 years'
+    duration: '5.5 years',
   },
   {
     id: 'bds',
@@ -169,11 +227,15 @@ export const SCIENCE_PROGRAMS = [
     aptitudeRequirements: { verbal: 70, logical: 75, spatial: 70 },
     keySubjects: ['Biology', 'Chemistry', 'Physics'],
     careerPaths: ['Dentist', 'Orthodontist', 'Oral Surgeon', 'Dental Consultant'],
-    salaryRange: { entry: { min: 5, max: 12 }, mid: { min: 12, max: 35 }, senior: { min: 35, max: 100 } },
+    salaryRange: {
+      entry: { min: 5, max: 12 },
+      mid: { min: 12, max: 35 },
+      senior: { min: 35, max: 100 },
+    },
     growthOutlook: 'High - Growing awareness of dental health',
     entranceExams: ['NEET UG'],
     topColleges: ['Maulana Azad', 'Manipal', 'KGMU', 'BHU'],
-    duration: '5 years'
+    duration: '5 years',
   },
   {
     id: 'bpharm',
@@ -184,12 +246,21 @@ export const SCIENCE_PROGRAMS = [
     riasec: { primary: ['I', 'C'], secondary: ['S'], weights: { I: 0.4, C: 0.35, S: 0.25 } },
     aptitudeRequirements: { numerical: 70, logical: 70, verbal: 65 },
     keySubjects: ['Chemistry', 'Biology', 'Physics'],
-    careerPaths: ['Pharmacist', 'Drug Inspector', 'Pharmaceutical Scientist', 'Clinical Research Associate'],
-    salaryRange: { entry: { min: 4, max: 10 }, mid: { min: 10, max: 25 }, senior: { min: 25, max: 60 } },
+    careerPaths: [
+      'Pharmacist',
+      'Drug Inspector',
+      'Pharmaceutical Scientist',
+      'Clinical Research Associate',
+    ],
+    salaryRange: {
+      entry: { min: 4, max: 10 },
+      mid: { min: 10, max: 25 },
+      senior: { min: 25, max: 60 },
+    },
     growthOutlook: 'High - Pharma industry expanding',
     entranceExams: ['NEET', 'GPAT', 'University-specific'],
     topColleges: ['NIPER', 'Jamia Hamdard', 'Manipal', 'BHU'],
-    duration: '4 years'
+    duration: '4 years',
   },
   {
     id: 'btech_mechanical',
@@ -197,15 +268,24 @@ export const SCIENCE_PROGRAMS = [
     stream: 'science',
     category: 'Engineering',
     description: 'Design machines, engines, and mechanical systems',
-    riasec: { primary: ['R', 'I'], secondary: ['C'], weights: { R: 0.45, I: 0.35, C: 0.20 } },
+    riasec: { primary: ['R', 'I'], secondary: ['C'], weights: { R: 0.45, I: 0.35, C: 0.2 } },
     aptitudeRequirements: { numerical: 75, spatial: 80, logical: 70 },
     keySubjects: ['Physics', 'Mathematics', 'Chemistry'],
-    careerPaths: ['Mechanical Engineer', 'Design Engineer', 'Automotive Engineer', 'Manufacturing Engineer'],
-    salaryRange: { entry: { min: 5, max: 12 }, mid: { min: 12, max: 30 }, senior: { min: 30, max: 80 } },
+    careerPaths: [
+      'Mechanical Engineer',
+      'Design Engineer',
+      'Automotive Engineer',
+      'Manufacturing Engineer',
+    ],
+    salaryRange: {
+      entry: { min: 5, max: 12 },
+      mid: { min: 12, max: 30 },
+      senior: { min: 30, max: 80 },
+    },
     growthOutlook: 'Moderate - Core engineering stable',
     entranceExams: ['JEE Main', 'JEE Advanced', 'State CETs'],
     topColleges: ['IIT', 'NIT', 'BITS Pilani', 'VIT'],
-    duration: '4 years'
+    duration: '4 years',
   },
   {
     id: 'btech_civil',
@@ -217,11 +297,15 @@ export const SCIENCE_PROGRAMS = [
     aptitudeRequirements: { numerical: 70, spatial: 75, logical: 70 },
     keySubjects: ['Physics', 'Mathematics', 'Chemistry'],
     careerPaths: ['Civil Engineer', 'Structural Engineer', 'Construction Manager', 'Urban Planner'],
-    salaryRange: { entry: { min: 4, max: 10 }, mid: { min: 10, max: 25 }, senior: { min: 25, max: 70 } },
+    salaryRange: {
+      entry: { min: 4, max: 10 },
+      mid: { min: 10, max: 25 },
+      senior: { min: 25, max: 70 },
+    },
     growthOutlook: 'Moderate - Infrastructure development ongoing',
     entranceExams: ['JEE Main', 'State CETs'],
     topColleges: ['IIT', 'NIT', 'BITS Pilani', 'Anna University'],
-    duration: '4 years'
+    duration: '4 years',
   },
   {
     id: 'btech_electronics',
@@ -229,15 +313,24 @@ export const SCIENCE_PROGRAMS = [
     stream: 'science',
     category: 'Engineering',
     description: 'Work with circuits, communication systems, and electronic devices',
-    riasec: { primary: ['R', 'I'], secondary: ['C'], weights: { R: 0.4, I: 0.4, C: 0.20 } },
+    riasec: { primary: ['R', 'I'], secondary: ['C'], weights: { R: 0.4, I: 0.4, C: 0.2 } },
     aptitudeRequirements: { numerical: 75, logical: 75, spatial: 70 },
     keySubjects: ['Physics', 'Mathematics', 'Electronics'],
-    careerPaths: ['Electronics Engineer', 'Embedded Systems Engineer', 'Telecom Engineer', 'VLSI Designer'],
-    salaryRange: { entry: { min: 5, max: 12 }, mid: { min: 12, max: 30 }, senior: { min: 30, max: 75 } },
+    careerPaths: [
+      'Electronics Engineer',
+      'Embedded Systems Engineer',
+      'Telecom Engineer',
+      'VLSI Designer',
+    ],
+    salaryRange: {
+      entry: { min: 5, max: 12 },
+      mid: { min: 12, max: 30 },
+      senior: { min: 30, max: 75 },
+    },
     growthOutlook: 'High - Electronics and IoT growing',
     entranceExams: ['JEE Main', 'JEE Advanced', 'BITSAT'],
     topColleges: ['IIT', 'NIT', 'IIIT', 'BITS Pilani'],
-    duration: '4 years'
+    duration: '4 years',
   },
   {
     id: 'barch',
@@ -245,15 +338,19 @@ export const SCIENCE_PROGRAMS = [
     stream: 'science',
     category: 'Design & Engineering',
     description: 'Design buildings, spaces, and architectural structures',
-    riasec: { primary: ['A', 'R'], secondary: ['I'], weights: { A: 0.45, R: 0.35, I: 0.20 } },
+    riasec: { primary: ['A', 'R'], secondary: ['I'], weights: { A: 0.45, R: 0.35, I: 0.2 } },
     aptitudeRequirements: { spatial: 85, creative: 80, numerical: 65 },
     keySubjects: ['Mathematics', 'Physics', 'Drawing'],
     careerPaths: ['Architect', 'Urban Designer', 'Landscape Architect', 'Interior Architect'],
-    salaryRange: { entry: { min: 4, max: 10 }, mid: { min: 10, max: 30 }, senior: { min: 30, max: 100 } },
+    salaryRange: {
+      entry: { min: 4, max: 10 },
+      mid: { min: 10, max: 30 },
+      senior: { min: 30, max: 100 },
+    },
     growthOutlook: 'High - Real estate and urban development',
     entranceExams: ['NATA', 'JEE Main Paper 2'],
     topColleges: ['IIT Kharagpur', 'SPA Delhi', 'CEPT', 'NIT'],
-    duration: '5 years'
+    duration: '5 years',
   },
   {
     id: 'bsc_biotechnology',
@@ -264,12 +361,21 @@ export const SCIENCE_PROGRAMS = [
     riasec: { primary: ['I', 'R'], secondary: ['S'], weights: { I: 0.4, R: 0.35, S: 0.25 } },
     aptitudeRequirements: { logical: 75, verbal: 70, numerical: 65 },
     keySubjects: ['Biology', 'Chemistry', 'Mathematics'],
-    careerPaths: ['Biotechnologist', 'Research Scientist', 'Quality Control Analyst', 'Biotech Consultant'],
-    salaryRange: { entry: { min: 4, max: 9 }, mid: { min: 9, max: 22 }, senior: { min: 22, max: 55 } },
+    careerPaths: [
+      'Biotechnologist',
+      'Research Scientist',
+      'Quality Control Analyst',
+      'Biotech Consultant',
+    ],
+    salaryRange: {
+      entry: { min: 4, max: 9 },
+      mid: { min: 9, max: 22 },
+      senior: { min: 22, max: 55 },
+    },
     growthOutlook: 'High - Biotech sector expanding rapidly',
     entranceExams: ['CUET', 'University-specific'],
     topColleges: ['IISc', 'JNU', 'DU', 'Manipal'],
-    duration: '3 years'
+    duration: '3 years',
   },
 ];
 
@@ -288,11 +394,15 @@ export const COMMERCE_PROGRAMS = [
     aptitudeRequirements: { verbal: 70, numerical: 65, logical: 65 },
     keySubjects: ['Business Studies', 'Economics', 'Accountancy'],
     careerPaths: ['Business Manager', 'Operations Manager', 'HR Manager', 'Marketing Manager'],
-    salaryRange: { entry: { min: 4, max: 10 }, mid: { min: 10, max: 25 }, senior: { min: 25, max: 70 } },
+    salaryRange: {
+      entry: { min: 4, max: 10 },
+      mid: { min: 10, max: 25 },
+      senior: { min: 25, max: 70 },
+    },
     growthOutlook: 'High - Business management always in demand',
     entranceExams: ['CUET', 'IPMAT', 'University-specific'],
     topColleges: ['Shaheed Sukhdev', 'Christ University', 'Symbiosis', 'NMIMS'],
-    duration: '3 years'
+    duration: '3 years',
   },
   {
     id: 'bba_digital_marketing',
@@ -303,12 +413,21 @@ export const COMMERCE_PROGRAMS = [
     riasec: { primary: ['A', 'E'], secondary: ['S'], weights: { A: 0.35, E: 0.4, S: 0.25 } },
     aptitudeRequirements: { verbal: 75, creative: 75, numerical: 60 },
     keySubjects: ['Business Studies', 'Marketing', 'Computer Applications'],
-    careerPaths: ['Digital Marketing Manager', 'SEO Specialist', 'Social Media Manager', 'Content Strategist'],
-    salaryRange: { entry: { min: 4, max: 10 }, mid: { min: 10, max: 28 }, senior: { min: 28, max: 80 } },
+    careerPaths: [
+      'Digital Marketing Manager',
+      'SEO Specialist',
+      'Social Media Manager',
+      'Content Strategist',
+    ],
+    salaryRange: {
+      entry: { min: 4, max: 10 },
+      mid: { min: 10, max: 28 },
+      senior: { min: 28, max: 80 },
+    },
     growthOutlook: 'Very High - Digital marketing booming',
     entranceExams: ['CUET', 'University-specific'],
     topColleges: ['MICA', 'Symbiosis', 'Christ University', 'NMIMS'],
-    duration: '3 years'
+    duration: '3 years',
   },
   {
     id: 'bba_finance',
@@ -320,11 +439,15 @@ export const COMMERCE_PROGRAMS = [
     aptitudeRequirements: { numerical: 80, logical: 75, verbal: 65 },
     keySubjects: ['Accountancy', 'Economics', 'Mathematics'],
     careerPaths: ['Financial Analyst', 'Investment Banker', 'Portfolio Manager', 'Risk Analyst'],
-    salaryRange: { entry: { min: 5, max: 12 }, mid: { min: 12, max: 35 }, senior: { min: 35, max: 100 } },
+    salaryRange: {
+      entry: { min: 5, max: 12 },
+      mid: { min: 12, max: 35 },
+      senior: { min: 35, max: 100 },
+    },
     growthOutlook: 'Very High - Finance sector growing',
     entranceExams: ['CUET', 'IPMAT', 'University-specific'],
     topColleges: ['SRCC', 'Shaheed Sukhdev', 'Christ University', 'NMIMS'],
-    duration: '3 years'
+    duration: '3 years',
   },
   {
     id: 'bcom_general',
@@ -336,11 +459,15 @@ export const COMMERCE_PROGRAMS = [
     aptitudeRequirements: { numerical: 75, logical: 70, verbal: 65 },
     keySubjects: ['Accountancy', 'Economics', 'Business Studies'],
     careerPaths: ['Chartered Accountant', 'Tax Consultant', 'Auditor', 'Accountant'],
-    salaryRange: { entry: { min: 4, max: 8 }, mid: { min: 8, max: 20 }, senior: { min: 20, max: 60 } },
+    salaryRange: {
+      entry: { min: 4, max: 8 },
+      mid: { min: 8, max: 20 },
+      senior: { min: 20, max: 60 },
+    },
     growthOutlook: 'Moderate - Stable accounting profession',
     entranceExams: ['CUET', 'University-specific'],
     topColleges: ['SRCC', 'Hindu College', 'Loyola', 'Christ University'],
-    duration: '3 years'
+    duration: '3 years',
   },
   {
     id: 'bcom_honors',
@@ -352,11 +479,15 @@ export const COMMERCE_PROGRAMS = [
     aptitudeRequirements: { numerical: 80, logical: 75, verbal: 70 },
     keySubjects: ['Accountancy', 'Economics', 'Business Studies'],
     careerPaths: ['CA', 'Financial Analyst', 'Investment Banker', 'Corporate Finance Manager'],
-    salaryRange: { entry: { min: 5, max: 10 }, mid: { min: 10, max: 30 }, senior: { min: 30, max: 80 } },
+    salaryRange: {
+      entry: { min: 5, max: 10 },
+      mid: { min: 10, max: 30 },
+      senior: { min: 30, max: 80 },
+    },
     growthOutlook: 'High - Strong foundation for CA/MBA',
     entranceExams: ['CUET', 'DU JAT'],
     topColleges: ['SRCC', 'Hindu College', 'St. Xaviers', 'Loyola'],
-    duration: '3 years'
+    duration: '3 years',
   },
   {
     id: 'bba_entrepreneurship',
@@ -364,15 +495,19 @@ export const COMMERCE_PROGRAMS = [
     stream: 'commerce',
     category: 'Business Management',
     description: 'Learn to start and manage your own business ventures',
-    riasec: { primary: ['E', 'I'], secondary: ['A'], weights: { E: 0.5, I: 0.3, A: 0.20 } },
+    riasec: { primary: ['E', 'I'], secondary: ['A'], weights: { E: 0.5, I: 0.3, A: 0.2 } },
     aptitudeRequirements: { verbal: 70, logical: 70, creative: 75 },
     keySubjects: ['Business Studies', 'Economics', 'Innovation'],
     careerPaths: ['Entrepreneur', 'Startup Founder', 'Business Consultant', 'Venture Capitalist'],
-    salaryRange: { entry: { min: 3, max: 15 }, mid: { min: 15, max: 50 }, senior: { min: 50, max: 500 } },
+    salaryRange: {
+      entry: { min: 3, max: 15 },
+      mid: { min: 15, max: 50 },
+      senior: { min: 50, max: 500 },
+    },
     growthOutlook: 'Very High - Startup ecosystem thriving',
     entranceExams: ['CUET', 'University-specific'],
     topColleges: ['IIM Bangalore', 'Symbiosis', 'Christ University', 'NMIMS'],
-    duration: '3 years'
+    duration: '3 years',
   },
   {
     id: 'bba_international_business',
@@ -383,12 +518,21 @@ export const COMMERCE_PROGRAMS = [
     riasec: { primary: ['E', 'S'], secondary: ['I'], weights: { E: 0.4, S: 0.35, I: 0.25 } },
     aptitudeRequirements: { verbal: 80, logical: 70, numerical: 65 },
     keySubjects: ['Business Studies', 'Economics', 'Geography'],
-    careerPaths: ['International Business Manager', 'Export Manager', 'Trade Analyst', 'Global Operations Manager'],
-    salaryRange: { entry: { min: 5, max: 12 }, mid: { min: 12, max: 30 }, senior: { min: 30, max: 85 } },
+    careerPaths: [
+      'International Business Manager',
+      'Export Manager',
+      'Trade Analyst',
+      'Global Operations Manager',
+    ],
+    salaryRange: {
+      entry: { min: 5, max: 12 },
+      mid: { min: 12, max: 30 },
+      senior: { min: 30, max: 85 },
+    },
     growthOutlook: 'High - Globalization increasing',
     entranceExams: ['CUET', 'IPMAT', 'University-specific'],
     topColleges: ['Symbiosis', 'Christ University', 'NMIMS', 'Amity'],
-    duration: '3 years'
+    duration: '3 years',
   },
   {
     id: 'bba_hr',
@@ -396,15 +540,24 @@ export const COMMERCE_PROGRAMS = [
     stream: 'commerce',
     category: 'Business Management',
     description: 'Specialize in talent management, recruitment, and organizational behavior',
-    riasec: { primary: ['S', 'E'], secondary: ['C'], weights: { S: 0.45, E: 0.35, C: 0.20 } },
+    riasec: { primary: ['S', 'E'], secondary: ['C'], weights: { S: 0.45, E: 0.35, C: 0.2 } },
     aptitudeRequirements: { verbal: 75, logical: 65, numerical: 60 },
     keySubjects: ['Business Studies', 'Psychology', 'Economics'],
-    careerPaths: ['HR Manager', 'Talent Acquisition Specialist', 'Training Manager', 'Organizational Development Consultant'],
-    salaryRange: { entry: { min: 4, max: 9 }, mid: { min: 9, max: 22 }, senior: { min: 22, max: 60 } },
+    careerPaths: [
+      'HR Manager',
+      'Talent Acquisition Specialist',
+      'Training Manager',
+      'Organizational Development Consultant',
+    ],
+    salaryRange: {
+      entry: { min: 4, max: 9 },
+      mid: { min: 9, max: 22 },
+      senior: { min: 22, max: 60 },
+    },
     growthOutlook: 'High - HR always essential',
     entranceExams: ['CUET', 'University-specific'],
     topColleges: ['XLRI', 'Symbiosis', 'Christ University', 'NMIMS'],
-    duration: '3 years'
+    duration: '3 years',
   },
   {
     id: 'bba_hospitality',
@@ -412,15 +565,19 @@ export const COMMERCE_PROGRAMS = [
     stream: 'commerce',
     category: 'Hospitality',
     description: 'Manage hotels, resorts, restaurants, and hospitality services',
-    riasec: { primary: ['E', 'S'], secondary: ['C'], weights: { E: 0.4, S: 0.4, C: 0.20 } },
+    riasec: { primary: ['E', 'S'], secondary: ['C'], weights: { E: 0.4, S: 0.4, C: 0.2 } },
     aptitudeRequirements: { verbal: 70, logical: 65, numerical: 60 },
     keySubjects: ['Business Studies', 'Economics', 'Tourism'],
     careerPaths: ['Hotel Manager', 'Event Manager', 'Restaurant Manager', 'Tourism Manager'],
-    salaryRange: { entry: { min: 3, max: 8 }, mid: { min: 8, max: 20 }, senior: { min: 20, max: 60 } },
+    salaryRange: {
+      entry: { min: 3, max: 8 },
+      mid: { min: 8, max: 20 },
+      senior: { min: 20, max: 60 },
+    },
     growthOutlook: 'High - Tourism and hospitality recovering',
     entranceExams: ['NCHMCT JEE', 'University-specific'],
     topColleges: ['IHM', 'Welcomgroup', 'Christ University', 'Manipal'],
-    duration: '3-4 years'
+    duration: '3-4 years',
   },
   {
     id: 'bms',
@@ -431,12 +588,21 @@ export const COMMERCE_PROGRAMS = [
     riasec: { primary: ['E', 'C'], secondary: ['I'], weights: { E: 0.4, C: 0.35, I: 0.25 } },
     aptitudeRequirements: { verbal: 70, numerical: 70, logical: 70 },
     keySubjects: ['Business Studies', 'Economics', 'Mathematics'],
-    careerPaths: ['Business Analyst', 'Operations Manager', 'Strategy Consultant', 'Project Manager'],
-    salaryRange: { entry: { min: 4, max: 10 }, mid: { min: 10, max: 25 }, senior: { min: 25, max: 70 } },
+    careerPaths: [
+      'Business Analyst',
+      'Operations Manager',
+      'Strategy Consultant',
+      'Project Manager',
+    ],
+    salaryRange: {
+      entry: { min: 4, max: 10 },
+      mid: { min: 10, max: 25 },
+      senior: { min: 25, max: 70 },
+    },
     growthOutlook: 'High - Management skills always valued',
     entranceExams: ['CUET', 'University-specific'],
     topColleges: ['Mumbai University', 'Symbiosis', 'Christ University'],
-    duration: '3 years'
+    duration: '3 years',
   },
   {
     id: 'bba_supply_chain',
@@ -447,12 +613,21 @@ export const COMMERCE_PROGRAMS = [
     riasec: { primary: ['C', 'E'], secondary: ['I'], weights: { C: 0.4, E: 0.35, I: 0.25 } },
     aptitudeRequirements: { numerical: 70, logical: 75, verbal: 65 },
     keySubjects: ['Business Studies', 'Mathematics', 'Economics'],
-    careerPaths: ['Supply Chain Manager', 'Logistics Manager', 'Operations Analyst', 'Procurement Manager'],
-    salaryRange: { entry: { min: 4, max: 10 }, mid: { min: 10, max: 28 }, senior: { min: 28, max: 75 } },
+    careerPaths: [
+      'Supply Chain Manager',
+      'Logistics Manager',
+      'Operations Analyst',
+      'Procurement Manager',
+    ],
+    salaryRange: {
+      entry: { min: 4, max: 10 },
+      mid: { min: 10, max: 28 },
+      senior: { min: 28, max: 75 },
+    },
     growthOutlook: 'Very High - E-commerce driving demand',
     entranceExams: ['CUET', 'University-specific'],
     topColleges: ['Symbiosis', 'NMIMS', 'Christ University', 'Amity'],
-    duration: '3 years'
+    duration: '3 years',
   },
   {
     id: 'bba_retail',
@@ -464,11 +639,15 @@ export const COMMERCE_PROGRAMS = [
     aptitudeRequirements: { verbal: 70, numerical: 65, logical: 65 },
     keySubjects: ['Business Studies', 'Marketing', 'Economics'],
     careerPaths: ['Retail Manager', 'Store Manager', 'Merchandising Manager', 'Category Manager'],
-    salaryRange: { entry: { min: 3, max: 8 }, mid: { min: 8, max: 20 }, senior: { min: 20, max: 55 } },
+    salaryRange: {
+      entry: { min: 3, max: 8 },
+      mid: { min: 8, max: 20 },
+      senior: { min: 20, max: 55 },
+    },
     growthOutlook: 'Moderate - Retail sector evolving',
     entranceExams: ['CUET', 'University-specific'],
     topColleges: ['Symbiosis', 'Christ University', 'NMIMS', 'Pearl Academy'],
-    duration: '3 years'
+    duration: '3 years',
   },
   {
     id: 'bba_aviation',
@@ -479,12 +658,21 @@ export const COMMERCE_PROGRAMS = [
     riasec: { primary: ['E', 'C'], secondary: ['S'], weights: { E: 0.4, C: 0.35, S: 0.25 } },
     aptitudeRequirements: { verbal: 75, numerical: 70, logical: 70 },
     keySubjects: ['Business Studies', 'Economics', 'Geography'],
-    careerPaths: ['Airport Manager', 'Airline Operations Manager', 'Aviation Consultant', 'Ground Services Manager'],
-    salaryRange: { entry: { min: 4, max: 10 }, mid: { min: 10, max: 25 }, senior: { min: 25, max: 70 } },
+    careerPaths: [
+      'Airport Manager',
+      'Airline Operations Manager',
+      'Aviation Consultant',
+      'Ground Services Manager',
+    ],
+    salaryRange: {
+      entry: { min: 4, max: 10 },
+      mid: { min: 10, max: 25 },
+      senior: { min: 25, max: 70 },
+    },
     growthOutlook: 'High - Aviation sector expanding',
     entranceExams: ['University-specific'],
     topColleges: ['Rajiv Gandhi Aviation', 'Hindustan Aviation', 'IATA', 'Amity'],
-    duration: '3 years'
+    duration: '3 years',
   },
   {
     id: 'bba_event_management',
@@ -496,11 +684,15 @@ export const COMMERCE_PROGRAMS = [
     aptitudeRequirements: { verbal: 75, creative: 80, logical: 65 },
     keySubjects: ['Business Studies', 'Marketing', 'Communication'],
     careerPaths: ['Event Manager', 'Wedding Planner', 'Conference Organizer', 'Exhibition Manager'],
-    salaryRange: { entry: { min: 3, max: 8 }, mid: { min: 8, max: 22 }, senior: { min: 22, max: 60 } },
+    salaryRange: {
+      entry: { min: 3, max: 8 },
+      mid: { min: 8, max: 22 },
+      senior: { min: 22, max: 60 },
+    },
     growthOutlook: 'High - Events industry growing',
     entranceExams: ['University-specific'],
     topColleges: ['NAEMD', 'Symbiosis', 'Pearl Academy', 'MICA'],
-    duration: '3 years'
+    duration: '3 years',
   },
   {
     id: 'bba_insurance',
@@ -508,15 +700,19 @@ export const COMMERCE_PROGRAMS = [
     stream: 'commerce',
     category: 'Finance',
     description: 'Specialize in insurance products, risk assessment, and actuarial science',
-    riasec: { primary: ['C', 'I'], secondary: ['E'], weights: { C: 0.45, I: 0.35, E: 0.20 } },
+    riasec: { primary: ['C', 'I'], secondary: ['E'], weights: { C: 0.45, I: 0.35, E: 0.2 } },
     aptitudeRequirements: { numerical: 80, logical: 75, verbal: 65 },
     keySubjects: ['Mathematics', 'Economics', 'Statistics'],
     careerPaths: ['Insurance Underwriter', 'Risk Analyst', 'Actuary', 'Claims Manager'],
-    salaryRange: { entry: { min: 4, max: 10 }, mid: { min: 10, max: 28 }, senior: { min: 28, max: 80 } },
+    salaryRange: {
+      entry: { min: 4, max: 10 },
+      mid: { min: 10, max: 28 },
+      senior: { min: 28, max: 80 },
+    },
     growthOutlook: 'High - Insurance sector growing',
     entranceExams: ['CUET', 'University-specific'],
     topColleges: ['NISM', 'Symbiosis', 'Christ University', 'NMIMS'],
-    duration: '3 years'
+    duration: '3 years',
   },
 ];
 
@@ -535,11 +731,15 @@ export const ARTS_PROGRAMS = [
     aptitudeRequirements: { verbal: 85, creative: 75, logical: 60 },
     keySubjects: ['English', 'Literature', 'Communication'],
     careerPaths: ['Content Writer', 'Editor', 'Journalist', 'Teacher', 'Author'],
-    salaryRange: { entry: { min: 3, max: 8 }, mid: { min: 8, max: 20 }, senior: { min: 20, max: 60 } },
+    salaryRange: {
+      entry: { min: 3, max: 8 },
+      mid: { min: 8, max: 20 },
+      senior: { min: 20, max: 60 },
+    },
     growthOutlook: 'Moderate - Content creation growing',
     entranceExams: ['CUET', 'University-specific'],
     topColleges: ['St. Stephens', 'Hindu College', 'Presidency', 'Loyola'],
-    duration: '3 years'
+    duration: '3 years',
   },
   {
     id: 'ba_psychology',
@@ -547,15 +747,19 @@ export const ARTS_PROGRAMS = [
     stream: 'arts',
     category: 'Social Sciences',
     description: 'Understand human behavior, mental processes, and counseling',
-    riasec: { primary: ['S', 'I'], secondary: ['A'], weights: { S: 0.45, I: 0.35, A: 0.20 } },
+    riasec: { primary: ['S', 'I'], secondary: ['A'], weights: { S: 0.45, I: 0.35, A: 0.2 } },
     aptitudeRequirements: { verbal: 75, logical: 70, numerical: 60 },
     keySubjects: ['Psychology', 'Sociology', 'Biology'],
     careerPaths: ['Psychologist', 'Counselor', 'HR Specialist', 'Therapist', 'Researcher'],
-    salaryRange: { entry: { min: 4, max: 10 }, mid: { min: 10, max: 25 }, senior: { min: 25, max: 70 } },
+    salaryRange: {
+      entry: { min: 4, max: 10 },
+      mid: { min: 10, max: 25 },
+      senior: { min: 25, max: 70 },
+    },
     growthOutlook: 'High - Mental health awareness increasing',
     entranceExams: ['CUET', 'University-specific'],
     topColleges: ['DU', 'Christ University', 'Fergusson', 'Presidency'],
-    duration: '3 years'
+    duration: '3 years',
   },
   {
     id: 'ba_economics',
@@ -567,11 +771,15 @@ export const ARTS_PROGRAMS = [
     aptitudeRequirements: { numerical: 80, logical: 80, verbal: 70 },
     keySubjects: ['Economics', 'Mathematics', 'Statistics'],
     careerPaths: ['Economist', 'Policy Analyst', 'Financial Analyst', 'Data Analyst', 'Researcher'],
-    salaryRange: { entry: { min: 5, max: 12 }, mid: { min: 12, max: 30 }, senior: { min: 30, max: 80 } },
+    salaryRange: {
+      entry: { min: 5, max: 12 },
+      mid: { min: 12, max: 30 },
+      senior: { min: 30, max: 80 },
+    },
     growthOutlook: 'High - Economics expertise valued',
     entranceExams: ['CUET', 'University-specific'],
     topColleges: ['SRCC', 'St. Stephens', 'Hindu College', 'Presidency'],
-    duration: '3 years'
+    duration: '3 years',
   },
   {
     id: 'ba_political_science',
@@ -582,12 +790,22 @@ export const ARTS_PROGRAMS = [
     riasec: { primary: ['S', 'E'], secondary: ['I'], weights: { S: 0.4, E: 0.35, I: 0.25 } },
     aptitudeRequirements: { verbal: 80, logical: 75, numerical: 60 },
     keySubjects: ['Political Science', 'History', 'Economics'],
-    careerPaths: ['Civil Services', 'Diplomat', 'Policy Analyst', 'Political Consultant', 'Journalist'],
-    salaryRange: { entry: { min: 4, max: 10 }, mid: { min: 10, max: 30 }, senior: { min: 30, max: 100 } },
+    careerPaths: [
+      'Civil Services',
+      'Diplomat',
+      'Policy Analyst',
+      'Political Consultant',
+      'Journalist',
+    ],
+    salaryRange: {
+      entry: { min: 4, max: 10 },
+      mid: { min: 10, max: 30 },
+      senior: { min: 30, max: 100 },
+    },
     growthOutlook: 'Moderate - Government and policy roles',
     entranceExams: ['CUET', 'University-specific'],
     topColleges: ['JNU', 'St. Stephens', 'Hindu College', 'Presidency'],
-    duration: '3 years'
+    duration: '3 years',
   },
   {
     id: 'ba_history',
@@ -599,11 +817,15 @@ export const ARTS_PROGRAMS = [
     aptitudeRequirements: { verbal: 80, logical: 70, creative: 65 },
     keySubjects: ['History', 'Geography', 'Political Science'],
     careerPaths: ['Historian', 'Archaeologist', 'Museum Curator', 'Teacher', 'Researcher'],
-    salaryRange: { entry: { min: 3, max: 8 }, mid: { min: 8, max: 18 }, senior: { min: 18, max: 50 } },
+    salaryRange: {
+      entry: { min: 3, max: 8 },
+      mid: { min: 8, max: 18 },
+      senior: { min: 18, max: 50 },
+    },
     growthOutlook: 'Moderate - Academia and research',
     entranceExams: ['CUET', 'University-specific'],
     topColleges: ['JNU', 'St. Stephens', 'Presidency', 'Hindu College'],
-    duration: '3 years'
+    duration: '3 years',
   },
   {
     id: 'ba_sociology',
@@ -611,15 +833,25 @@ export const ARTS_PROGRAMS = [
     stream: 'arts',
     category: 'Social Sciences',
     description: 'Study society, social behavior, institutions, and cultural patterns',
-    riasec: { primary: ['S', 'I'], secondary: ['A'], weights: { S: 0.45, I: 0.35, A: 0.20 } },
+    riasec: { primary: ['S', 'I'], secondary: ['A'], weights: { S: 0.45, I: 0.35, A: 0.2 } },
     aptitudeRequirements: { verbal: 75, logical: 70, numerical: 60 },
     keySubjects: ['Sociology', 'Psychology', 'Anthropology'],
-    careerPaths: ['Social Worker', 'NGO Manager', 'HR Specialist', 'Researcher', 'Community Developer'],
-    salaryRange: { entry: { min: 3, max: 8 }, mid: { min: 8, max: 18 }, senior: { min: 18, max: 45 } },
+    careerPaths: [
+      'Social Worker',
+      'NGO Manager',
+      'HR Specialist',
+      'Researcher',
+      'Community Developer',
+    ],
+    salaryRange: {
+      entry: { min: 3, max: 8 },
+      mid: { min: 8, max: 18 },
+      senior: { min: 18, max: 45 },
+    },
     growthOutlook: 'Moderate - Social sector opportunities',
     entranceExams: ['CUET', 'University-specific'],
     topColleges: ['JNU', 'DU', 'Tata Institute', 'Presidency'],
-    duration: '3 years'
+    duration: '3 years',
   },
   {
     id: 'ba_journalism',
@@ -631,11 +863,15 @@ export const ARTS_PROGRAMS = [
     aptitudeRequirements: { verbal: 85, creative: 80, logical: 65 },
     keySubjects: ['English', 'Communication', 'Media Studies'],
     careerPaths: ['Journalist', 'News Anchor', 'Content Creator', 'PR Manager', 'Editor'],
-    salaryRange: { entry: { min: 3, max: 10 }, mid: { min: 10, max: 25 }, senior: { min: 25, max: 70 } },
+    salaryRange: {
+      entry: { min: 3, max: 10 },
+      mid: { min: 10, max: 25 },
+      senior: { min: 25, max: 70 },
+    },
     growthOutlook: 'High - Digital media expanding',
     entranceExams: ['CUET', 'University-specific'],
     topColleges: ['IIMC', 'Symbiosis', 'Xavier Institute', 'Christ University'],
-    duration: '3 years'
+    duration: '3 years',
   },
   {
     id: 'llb',
@@ -647,11 +883,15 @@ export const ARTS_PROGRAMS = [
     aptitudeRequirements: { verbal: 85, logical: 85, numerical: 60 },
     keySubjects: ['English', 'Political Science', 'History'],
     careerPaths: ['Lawyer', 'Corporate Counsel', 'Judge', 'Legal Advisor', 'Advocate'],
-    salaryRange: { entry: { min: 4, max: 15 }, mid: { min: 15, max: 50 }, senior: { min: 50, max: 200 } },
+    salaryRange: {
+      entry: { min: 4, max: 15 },
+      mid: { min: 15, max: 50 },
+      senior: { min: 50, max: 200 },
+    },
     growthOutlook: 'High - Legal services always needed',
     entranceExams: ['CLAT', 'AILET', 'LSAT'],
     topColleges: ['NLSIU', 'NALSAR', 'NLU Delhi', 'NUJS'],
-    duration: '3 years (after graduation) or 5 years (integrated)'
+    duration: '3 years (after graduation) or 5 years (integrated)',
   },
   {
     id: 'ba_fine_arts',
@@ -659,15 +899,19 @@ export const ARTS_PROGRAMS = [
     stream: 'arts',
     category: 'Creative Arts',
     description: 'Develop artistic skills in painting, sculpture, and visual arts',
-    riasec: { primary: ['A', 'R'], secondary: ['I'], weights: { A: 0.55, R: 0.25, I: 0.20 } },
+    riasec: { primary: ['A', 'R'], secondary: ['I'], weights: { A: 0.55, R: 0.25, I: 0.2 } },
     aptitudeRequirements: { creative: 90, spatial: 80, verbal: 60 },
     keySubjects: ['Art', 'Drawing', 'Design'],
     careerPaths: ['Artist', 'Art Director', 'Illustrator', 'Gallery Curator', 'Art Teacher'],
-    salaryRange: { entry: { min: 3, max: 8 }, mid: { min: 8, max: 25 }, senior: { min: 25, max: 100 } },
+    salaryRange: {
+      entry: { min: 3, max: 8 },
+      mid: { min: 8, max: 25 },
+      senior: { min: 25, max: 100 },
+    },
     growthOutlook: 'Moderate - Niche but growing',
     entranceExams: ['BHU UET', 'NIFT', 'University-specific'],
     topColleges: ['MS University Baroda', 'JNU', 'BHU', 'Kala Bhavan'],
-    duration: '4 years'
+    duration: '4 years',
   },
   {
     id: 'ba_design',
@@ -675,15 +919,25 @@ export const ARTS_PROGRAMS = [
     stream: 'arts',
     category: 'Design',
     description: 'Create visual designs, user interfaces, and digital experiences',
-    riasec: { primary: ['A', 'I'], secondary: ['R'], weights: { A: 0.5, I: 0.3, R: 0.20 } },
+    riasec: { primary: ['A', 'I'], secondary: ['R'], weights: { A: 0.5, I: 0.3, R: 0.2 } },
     aptitudeRequirements: { creative: 85, spatial: 80, logical: 70 },
     keySubjects: ['Art', 'Computer Applications', 'Design'],
-    careerPaths: ['Graphic Designer', 'UI/UX Designer', 'Product Designer', 'Brand Designer', 'Creative Director'],
-    salaryRange: { entry: { min: 4, max: 12 }, mid: { min: 12, max: 35 }, senior: { min: 35, max: 100 } },
+    careerPaths: [
+      'Graphic Designer',
+      'UI/UX Designer',
+      'Product Designer',
+      'Brand Designer',
+      'Creative Director',
+    ],
+    salaryRange: {
+      entry: { min: 4, max: 12 },
+      mid: { min: 12, max: 35 },
+      senior: { min: 35, max: 100 },
+    },
     growthOutlook: 'Very High - Design in high demand',
     entranceExams: ['NIFT', 'NID', 'UCEED', 'CEED'],
     topColleges: ['NID', 'NIFT', 'Pearl Academy', 'Srishti'],
-    duration: '3-4 years'
+    duration: '3-4 years',
   },
   {
     id: 'ba_fashion_design',
@@ -691,15 +945,25 @@ export const ARTS_PROGRAMS = [
     stream: 'arts',
     category: 'Design',
     description: 'Design clothing, accessories, and fashion collections',
-    riasec: { primary: ['A', 'E'], secondary: ['R'], weights: { A: 0.5, E: 0.3, R: 0.20 } },
+    riasec: { primary: ['A', 'E'], secondary: ['R'], weights: { A: 0.5, E: 0.3, R: 0.2 } },
     aptitudeRequirements: { creative: 90, spatial: 75, verbal: 65 },
     keySubjects: ['Art', 'Design', 'Textiles'],
-    careerPaths: ['Fashion Designer', 'Stylist', 'Fashion Merchandiser', 'Costume Designer', 'Fashion Blogger'],
-    salaryRange: { entry: { min: 3, max: 10 }, mid: { min: 10, max: 30 }, senior: { min: 30, max: 150 } },
+    careerPaths: [
+      'Fashion Designer',
+      'Stylist',
+      'Fashion Merchandiser',
+      'Costume Designer',
+      'Fashion Blogger',
+    ],
+    salaryRange: {
+      entry: { min: 3, max: 10 },
+      mid: { min: 10, max: 30 },
+      senior: { min: 30, max: 150 },
+    },
     growthOutlook: 'High - Fashion industry growing',
     entranceExams: ['NIFT', 'NID', 'AIFD', 'Pearl Academy'],
     topColleges: ['NIFT', 'Pearl Academy', 'JD Institute', 'Symbiosis'],
-    duration: '3-4 years'
+    duration: '3-4 years',
   },
   {
     id: 'ba_animation',
@@ -707,15 +971,25 @@ export const ARTS_PROGRAMS = [
     stream: 'arts',
     category: 'Media & Entertainment',
     description: 'Create animated content, visual effects, and digital media',
-    riasec: { primary: ['A', 'R'], secondary: ['I'], weights: { A: 0.5, R: 0.3, I: 0.20 } },
+    riasec: { primary: ['A', 'R'], secondary: ['I'], weights: { A: 0.5, R: 0.3, I: 0.2 } },
     aptitudeRequirements: { creative: 85, spatial: 80, logical: 70 },
     keySubjects: ['Art', 'Computer Applications', 'Design'],
-    careerPaths: ['Animator', 'VFX Artist', '3D Modeler', 'Motion Graphics Designer', 'Game Artist'],
-    salaryRange: { entry: { min: 4, max: 10 }, mid: { min: 10, max: 30 }, senior: { min: 30, max: 80 } },
+    careerPaths: [
+      'Animator',
+      'VFX Artist',
+      '3D Modeler',
+      'Motion Graphics Designer',
+      'Game Artist',
+    ],
+    salaryRange: {
+      entry: { min: 4, max: 10 },
+      mid: { min: 10, max: 30 },
+      senior: { min: 30, max: 80 },
+    },
     growthOutlook: 'Very High - Animation and gaming booming',
     entranceExams: ['University-specific', 'Portfolio-based'],
     topColleges: ['NID', 'Arena Animation', 'Frameboxx', 'MAAC'],
-    duration: '3-4 years'
+    duration: '3-4 years',
   },
   {
     id: 'ba_film_making',
@@ -723,15 +997,25 @@ export const ARTS_PROGRAMS = [
     stream: 'arts',
     category: 'Media & Entertainment',
     description: 'Learn film direction, cinematography, and video production',
-    riasec: { primary: ['A', 'E'], secondary: ['I'], weights: { A: 0.5, E: 0.3, I: 0.20 } },
+    riasec: { primary: ['A', 'E'], secondary: ['I'], weights: { A: 0.5, E: 0.3, I: 0.2 } },
     aptitudeRequirements: { creative: 90, verbal: 75, spatial: 75 },
     keySubjects: ['Art', 'Media Studies', 'Communication'],
-    careerPaths: ['Film Director', 'Cinematographer', 'Video Editor', 'Documentary Filmmaker', 'Content Creator'],
-    salaryRange: { entry: { min: 3, max: 12 }, mid: { min: 12, max: 40 }, senior: { min: 40, max: 200 } },
+    careerPaths: [
+      'Film Director',
+      'Cinematographer',
+      'Video Editor',
+      'Documentary Filmmaker',
+      'Content Creator',
+    ],
+    salaryRange: {
+      entry: { min: 3, max: 12 },
+      mid: { min: 12, max: 40 },
+      senior: { min: 40, max: 200 },
+    },
     growthOutlook: 'High - OTT and content creation growing',
     entranceExams: ['FTII', 'SRFTI', 'University-specific'],
     topColleges: ['FTII', 'SRFTI', 'Whistling Woods', 'Asian Academy'],
-    duration: '3-4 years'
+    duration: '3-4 years',
   },
   {
     id: 'ba_music',
@@ -743,11 +1027,15 @@ export const ARTS_PROGRAMS = [
     aptitudeRequirements: { creative: 90, verbal: 65, logical: 60 },
     keySubjects: ['Music', 'Performing Arts'],
     careerPaths: ['Musician', 'Music Producer', 'Composer', 'Music Teacher', 'Sound Engineer'],
-    salaryRange: { entry: { min: 3, max: 10 }, mid: { min: 10, max: 35 }, senior: { min: 35, max: 150 } },
+    salaryRange: {
+      entry: { min: 3, max: 10 },
+      mid: { min: 10, max: 35 },
+      senior: { min: 35, max: 150 },
+    },
     growthOutlook: 'Moderate - Niche but passionate field',
     entranceExams: ['University-specific', 'Audition-based'],
     topColleges: ['KM Music Conservatory', 'Berklee India', 'DU', 'BHU'],
-    duration: '3-4 years'
+    duration: '3-4 years',
   },
   {
     id: 'ba_theatre',
@@ -759,11 +1047,15 @@ export const ARTS_PROGRAMS = [
     aptitudeRequirements: { creative: 90, verbal: 80, logical: 60 },
     keySubjects: ['Drama', 'Literature', 'Communication'],
     careerPaths: ['Actor', 'Theatre Director', 'Drama Teacher', 'Voice Artist', 'Theatre Producer'],
-    salaryRange: { entry: { min: 2, max: 8 }, mid: { min: 8, max: 25 }, senior: { min: 25, max: 100 } },
+    salaryRange: {
+      entry: { min: 2, max: 8 },
+      mid: { min: 8, max: 25 },
+      senior: { min: 25, max: 100 },
+    },
     growthOutlook: 'Moderate - Passion-driven field',
     entranceExams: ['NSD', 'University-specific', 'Audition-based'],
     topColleges: ['NSD', 'FTII', 'Whistling Woods', 'Barry John'],
-    duration: '3 years'
+    duration: '3 years',
   },
   {
     id: 'ba_interior_design',
@@ -771,15 +1063,25 @@ export const ARTS_PROGRAMS = [
     stream: 'arts',
     category: 'Design',
     description: 'Design interior spaces, furniture, and architectural interiors',
-    riasec: { primary: ['A', 'R'], secondary: ['E'], weights: { A: 0.5, R: 0.3, E: 0.20 } },
+    riasec: { primary: ['A', 'R'], secondary: ['E'], weights: { A: 0.5, R: 0.3, E: 0.2 } },
     aptitudeRequirements: { creative: 85, spatial: 90, numerical: 65 },
     keySubjects: ['Art', 'Design', 'Mathematics'],
-    careerPaths: ['Interior Designer', 'Space Planner', 'Furniture Designer', 'Set Designer', 'Design Consultant'],
-    salaryRange: { entry: { min: 4, max: 10 }, mid: { min: 10, max: 30 }, senior: { min: 30, max: 100 } },
+    careerPaths: [
+      'Interior Designer',
+      'Space Planner',
+      'Furniture Designer',
+      'Set Designer',
+      'Design Consultant',
+    ],
+    salaryRange: {
+      entry: { min: 4, max: 10 },
+      mid: { min: 10, max: 30 },
+      senior: { min: 30, max: 100 },
+    },
     growthOutlook: 'High - Real estate and design growing',
     entranceExams: ['NIFT', 'NID', 'CEED', 'University-specific'],
     topColleges: ['NID', 'NIFT', 'Pearl Academy', 'Arch Academy'],
-    duration: '3-4 years'
+    duration: '3-4 years',
   },
   {
     id: 'ba_public_relations',
@@ -787,15 +1089,25 @@ export const ARTS_PROGRAMS = [
     stream: 'arts',
     category: 'Media & Communication',
     description: 'Manage brand image, public communication, and advertising campaigns',
-    riasec: { primary: ['E', 'A'], secondary: ['S'], weights: { E: 0.45, A: 0.35, S: 0.20 } },
+    riasec: { primary: ['E', 'A'], secondary: ['S'], weights: { E: 0.45, A: 0.35, S: 0.2 } },
     aptitudeRequirements: { verbal: 85, creative: 80, logical: 65 },
     keySubjects: ['Communication', 'Marketing', 'English'],
-    careerPaths: ['PR Manager', 'Brand Manager', 'Advertising Executive', 'Communications Director', 'Media Planner'],
-    salaryRange: { entry: { min: 4, max: 10 }, mid: { min: 10, max: 28 }, senior: { min: 28, max: 80 } },
+    careerPaths: [
+      'PR Manager',
+      'Brand Manager',
+      'Advertising Executive',
+      'Communications Director',
+      'Media Planner',
+    ],
+    salaryRange: {
+      entry: { min: 4, max: 10 },
+      mid: { min: 10, max: 28 },
+      senior: { min: 28, max: 80 },
+    },
     growthOutlook: 'High - Brand communication essential',
     entranceExams: ['CUET', 'University-specific'],
     topColleges: ['MICA', 'Symbiosis', 'Xavier Institute', 'Mudra Institute'],
-    duration: '3 years'
+    duration: '3 years',
   },
   {
     id: 'ba_linguistics',
@@ -806,12 +1118,22 @@ export const ARTS_PROGRAMS = [
     riasec: { primary: ['I', 'A'], secondary: ['S'], weights: { I: 0.45, A: 0.3, S: 0.25 } },
     aptitudeRequirements: { verbal: 90, logical: 75, creative: 65 },
     keySubjects: ['English', 'Languages', 'Communication'],
-    careerPaths: ['Linguist', 'Translator', 'Language Teacher', 'Speech Therapist', 'NLP Specialist'],
-    salaryRange: { entry: { min: 4, max: 10 }, mid: { min: 10, max: 25 }, senior: { min: 25, max: 65 } },
+    careerPaths: [
+      'Linguist',
+      'Translator',
+      'Language Teacher',
+      'Speech Therapist',
+      'NLP Specialist',
+    ],
+    salaryRange: {
+      entry: { min: 4, max: 10 },
+      mid: { min: 10, max: 25 },
+      senior: { min: 25, max: 65 },
+    },
     growthOutlook: 'Moderate - Niche but valuable',
     entranceExams: ['CUET', 'University-specific'],
     topColleges: ['JNU', 'DU', 'EFL University', 'Presidency'],
-    duration: '3 years'
+    duration: '3 years',
   },
   {
     id: 'ba_philosophy',
@@ -819,15 +1141,19 @@ export const ARTS_PROGRAMS = [
     stream: 'arts',
     category: 'Humanities',
     description: 'Explore ethics, logic, metaphysics, and critical thinking',
-    riasec: { primary: ['I', 'A'], secondary: ['S'], weights: { I: 0.5, A: 0.3, S: 0.20 } },
+    riasec: { primary: ['I', 'A'], secondary: ['S'], weights: { I: 0.5, A: 0.3, S: 0.2 } },
     aptitudeRequirements: { verbal: 85, logical: 85, creative: 70 },
     keySubjects: ['Philosophy', 'Logic', 'Ethics'],
     careerPaths: ['Philosopher', 'Ethics Consultant', 'Writer', 'Teacher', 'Researcher'],
-    salaryRange: { entry: { min: 3, max: 8 }, mid: { min: 8, max: 18 }, senior: { min: 18, max: 50 } },
+    salaryRange: {
+      entry: { min: 3, max: 8 },
+      mid: { min: 8, max: 18 },
+      senior: { min: 18, max: 50 },
+    },
     growthOutlook: 'Low - Academic and research focused',
     entranceExams: ['CUET', 'University-specific'],
     topColleges: ['JNU', 'St. Stephens', 'Presidency', 'Hindu College'],
-    duration: '3 years'
+    duration: '3 years',
   },
   {
     id: 'ba_anthropology',
@@ -835,15 +1161,25 @@ export const ARTS_PROGRAMS = [
     stream: 'arts',
     category: 'Social Sciences',
     description: 'Study human cultures, societies, and evolutionary biology',
-    riasec: { primary: ['I', 'S'], secondary: ['A'], weights: { I: 0.45, S: 0.35, A: 0.20 } },
+    riasec: { primary: ['I', 'S'], secondary: ['A'], weights: { I: 0.45, S: 0.35, A: 0.2 } },
     aptitudeRequirements: { verbal: 75, logical: 75, creative: 65 },
     keySubjects: ['Anthropology', 'Sociology', 'History'],
-    careerPaths: ['Anthropologist', 'Researcher', 'Museum Curator', 'Cultural Consultant', 'NGO Worker'],
-    salaryRange: { entry: { min: 3, max: 8 }, mid: { min: 8, max: 18 }, senior: { min: 18, max: 45 } },
+    careerPaths: [
+      'Anthropologist',
+      'Researcher',
+      'Museum Curator',
+      'Cultural Consultant',
+      'NGO Worker',
+    ],
+    salaryRange: {
+      entry: { min: 3, max: 8 },
+      mid: { min: 8, max: 18 },
+      senior: { min: 18, max: 45 },
+    },
     growthOutlook: 'Low - Research and academia',
     entranceExams: ['CUET', 'University-specific'],
     topColleges: ['JNU', 'DU', 'Presidency', 'BHU'],
-    duration: '3 years'
+    duration: '3 years',
   },
   {
     id: 'ba_geography',
@@ -854,12 +1190,22 @@ export const ARTS_PROGRAMS = [
     riasec: { primary: ['I', 'R'], secondary: ['S'], weights: { I: 0.4, R: 0.35, S: 0.25 } },
     aptitudeRequirements: { logical: 75, spatial: 80, numerical: 70 },
     keySubjects: ['Geography', 'Environmental Science', 'Mathematics'],
-    careerPaths: ['Geographer', 'GIS Analyst', 'Urban Planner', 'Environmental Consultant', 'Cartographer'],
-    salaryRange: { entry: { min: 4, max: 9 }, mid: { min: 9, max: 22 }, senior: { min: 22, max: 55 } },
+    careerPaths: [
+      'Geographer',
+      'GIS Analyst',
+      'Urban Planner',
+      'Environmental Consultant',
+      'Cartographer',
+    ],
+    salaryRange: {
+      entry: { min: 4, max: 9 },
+      mid: { min: 9, max: 22 },
+      senior: { min: 22, max: 55 },
+    },
     growthOutlook: 'Moderate - GIS and urban planning growing',
     entranceExams: ['CUET', 'University-specific'],
     topColleges: ['JNU', 'DU', 'BHU', 'Presidency'],
-    duration: '3 years'
+    duration: '3 years',
   },
   {
     id: 'ba_education',
@@ -867,15 +1213,25 @@ export const ARTS_PROGRAMS = [
     stream: 'arts',
     category: 'Education',
     description: 'Prepare for teaching careers and educational leadership',
-    riasec: { primary: ['S', 'A'], secondary: ['I'], weights: { S: 0.5, A: 0.3, I: 0.20 } },
+    riasec: { primary: ['S', 'A'], secondary: ['I'], weights: { S: 0.5, A: 0.3, I: 0.2 } },
     aptitudeRequirements: { verbal: 75, logical: 70, creative: 70 },
     keySubjects: ['Education', 'Psychology', 'Subject Specialization'],
-    careerPaths: ['Teacher', 'Education Consultant', 'Curriculum Designer', 'School Administrator', 'Education Researcher'],
-    salaryRange: { entry: { min: 3, max: 8 }, mid: { min: 8, max: 20 }, senior: { min: 20, max: 50 } },
+    careerPaths: [
+      'Teacher',
+      'Education Consultant',
+      'Curriculum Designer',
+      'School Administrator',
+      'Education Researcher',
+    ],
+    salaryRange: {
+      entry: { min: 3, max: 8 },
+      mid: { min: 8, max: 20 },
+      senior: { min: 20, max: 50 },
+    },
     growthOutlook: 'Moderate - Teaching always needed',
     entranceExams: ['University-specific', 'State B.Ed entrance'],
     topColleges: ['DU', 'JMI', 'BHU', 'Regional Colleges'],
-    duration: '2-4 years'
+    duration: '2-4 years',
   },
 ];
 
@@ -883,16 +1239,12 @@ export const ARTS_PROGRAMS = [
 // COMBINED PROGRAMS LIST (50 total)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export const ALL_DEGREE_PROGRAMS = [
-  ...SCIENCE_PROGRAMS,
-  ...COMMERCE_PROGRAMS,
-  ...ARTS_PROGRAMS
-];
+export const ALL_DEGREE_PROGRAMS = [...SCIENCE_PROGRAMS, ...COMMERCE_PROGRAMS, ...ARTS_PROGRAMS];
 
 // Export count for validation
 export const PROGRAM_COUNTS = {
   science: SCIENCE_PROGRAMS.length,
   commerce: COMMERCE_PROGRAMS.length,
   arts: ARTS_PROGRAMS.length,
-  total: ALL_DEGREE_PROGRAMS.length
+  total: ALL_DEGREE_PROGRAMS.length,
 };

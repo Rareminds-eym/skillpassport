@@ -1,46 +1,37 @@
-import { motion } from "framer-motion";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import studentIllustration from "../../assets/images/auth/Student-illustration.jpg";
-import { useAuth } from "../../context/AuthContext";
+import { motion } from 'framer-motion';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import studentIllustration from '../../assets/images/auth/Student-illustration.jpg';
+import { useAuth } from '../../context/AuthContext';
 
 // Lucide icons
-import {
-    Activity,
-    AlertCircle,
-    BadgeCheck,
-    Eye,
-    EyeOff,
-    Lock,
-    Mail,
-    Share2,
-} from "lucide-react";
+import { Activity, AlertCircle, BadgeCheck, Eye, EyeOff, Lock, Mail, Share2 } from 'lucide-react';
 
-import { loginStudent } from "../../services/studentAuthService";
-import FeatureCard from "./components/ui/FeatureCard";
+import { loginStudent } from '../../services/studentAuthService';
+import FeatureCard from './components/ui/FeatureCard';
 
 export default function LoginStudent() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const primary = "#3261A5";
-  const secondary = "#3392D0";
+  const primary = '#3261A5';
+  const secondary = '#3392D0';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
+    setError('');
     setLoading(true);
 
     try {
       // Validate inputs
       if (!email || !password) {
-        setError("Please enter both email and password.");
+        setError('Please enter both email and password.');
         setLoading(false);
         return;
       }
@@ -49,31 +40,31 @@ export default function LoginStudent() {
       const result = await loginStudent(email, password);
 
       if (!result.success) {
-        setError(result.error || "Login failed. Please check your credentials.");
+        setError(result.error || 'Login failed. Please check your credentials.');
         setLoading(false);
         return;
       }
 
       // Store student data in context
       const studentData = result.student;
-      login({ 
+      login({
         id: studentData.id,
         user_id: studentData.user_id,
         name: studentData.name || studentData.profile?.name || '',
         email: studentData.email,
-        role: "student",
+        role: 'student',
         school_id: studentData.school_id,
         university_college_id: studentData.university_college_id,
         school: studentData.schools,
         university_college: studentData.university_colleges,
-        approval_status: studentData.approval_status
+        approval_status: studentData.approval_status,
       });
 
       // Navigate to dashboard
-      navigate("/student/dashboard");
+      navigate('/student/dashboard');
     } catch (err) {
-      console.error("Login error:", err);
-      setError("An error occurred during login. Please try again.");
+      console.error('Login error:', err);
+      setError('An error occurred during login. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -87,7 +78,7 @@ export default function LoginStudent() {
           <label
             htmlFor="email"
             className={`block text-sm font-medium ${
-              isLg ? "text-gray-800 lg:text-gray-700" : "text-white/90"
+              isLg ? 'text-gray-800 lg:text-gray-700' : 'text-white/90'
             }`}
           >
             Email ID
@@ -103,9 +94,7 @@ export default function LoginStudent() {
               autoComplete="username"
               aria-label="Email ID"
               className={`w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-[#5378f1] focus:outline-none transition border-gray-300/90 hover:border-gray-400/90 placeholder:text-white/60 lg:placeholder:text-gray-400 ${
-                isLg
-                  ? "bg-white/90"
-                  : "bg-white/15 border-2 border-white/15 backdrop-blur-sm"
+                isLg ? 'bg-white/90' : 'bg-white/15 border-2 border-white/15 backdrop-blur-sm'
               }`}
             />
             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60 lg:text-gray-400" />
@@ -117,14 +106,14 @@ export default function LoginStudent() {
           <label
             htmlFor="password"
             className={`block text-sm font-medium ${
-              isLg ? "text-gray-800 lg:text-gray-700" : "text-white/90"
+              isLg ? 'text-gray-800 lg:text-gray-700' : 'text-white/90'
             }`}
           >
             Password
           </label>
           <div className="relative">
             <input
-              type={showPassword ? "text" : "password"}
+              type={showPassword ? 'text' : 'password'}
               id="password"
               required
               value={password}
@@ -133,9 +122,7 @@ export default function LoginStudent() {
               autoComplete="current-password"
               aria-label="Password"
               className={`w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-[#5378f1] focus:outline-none transition border-gray-300/90 hover:border-gray-400/90 placeholder:text-white/60 lg:placeholder:text-gray-400 ${
-                isLg
-                  ? "bg-white/90"
-                  : "bg-white/15 border-2 border-white/15 backdrop-blur-sm"
+                isLg ? 'bg-white/90' : 'bg-white/15 border-2 border-white/15 backdrop-blur-sm'
               }`}
             />
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60 lg:text-gray-400" />
@@ -143,7 +130,7 @@ export default function LoginStudent() {
               type="button"
               onClick={() => setShowPassword(!showPassword)}
               className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700"
-              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
             >
               {showPassword ? (
                 <EyeOff className="w-5 h-5 text-white/60 lg:text-gray-400" />
@@ -165,7 +152,7 @@ export default function LoginStudent() {
                 background: `linear-gradient(90deg, ${primary}, ${secondary})`,
               }}
             >
-              {loading ? "Validating..." : "Login"}
+              {loading ? 'Validating...' : 'Login'}
             </button>
           ) : (
             <button
@@ -177,7 +164,7 @@ export default function LoginStudent() {
                 background: `linear-gradient(90deg, ${primary}, ${secondary})`,
               }}
             >
-              {loading ? "Validating..." : "Login"}
+              {loading ? 'Validating...' : 'Login'}
             </button>
           )}
         </div>
@@ -188,8 +175,8 @@ export default function LoginStudent() {
             to="/resetpassword"
             className={
               isLg
-                ? "text-[#e32a18] font-semibold hover:text-[#000000]"
-                : "text-white/90 font-semibold hover:opacity-90"
+                ? 'text-[#e32a18] font-semibold hover:text-[#000000]'
+                : 'text-white/90 font-semibold hover:opacity-90'
             }
           >
             Forgot password?
@@ -200,7 +187,6 @@ export default function LoginStudent() {
     );
   };
 
-
   return (
     <div className="flex items-center lg:py-10 bg-white">
       <div className="w-full lg:mx-4 lg:my-8 xl:mx-auto max-w-7xl grid grid-cols-1 lg:grid-cols-2 h-screen lg:h-[700px] overflow-hidden">
@@ -209,23 +195,21 @@ export default function LoginStudent() {
           className="hidden lg:flex relative p-10 text-white flex-col justify-between rounded-3xl shadow-lg bg-cover bg-center"
           style={{
             backgroundImage: `url(${studentIllustration})`,
-            backgroundRepeat: "no-repeat",
+            backgroundRepeat: 'no-repeat',
           }}
         >
           <div className="relative z-10">
             <h2 className="text-3xl md:text-4xl font-bold leading-tight">
               Your Skills. Your Passport. Your Future.
             </h2>
-            <p className="mt-4 max-w-xl">
-              Unlock Opportunities With Your Verified Skill Passport.
-            </p>
+            <p className="mt-4 max-w-xl">Unlock Opportunities With Your Verified Skill Passport.</p>
           </div>
 
           <div className="relative z-10 flex justify-start items-end h-full mt-12">
             <motion.div
               className="absolute top-4 lg:left-[8rem] xl:left-[12rem]"
               animate={{ y: [0, -10, 0] }}
-              transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+              transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
             >
               <FeatureCard title="Showcase Verified Skills" Icon={BadgeCheck} />
             </motion.div>
@@ -236,19 +220,16 @@ export default function LoginStudent() {
               transition={{
                 repeat: Infinity,
                 duration: 3.5,
-                ease: "easeInOut",
+                ease: 'easeInOut',
               }}
             >
-              <FeatureCard
-                title="Share With Recruiters Worldwide"
-                Icon={Share2}
-              />
+              <FeatureCard title="Share With Recruiters Worldwide" Icon={Share2} />
             </motion.div>
 
             <motion.div
               className="absolute bottom-16 lg:left-[8rem] xl:left-[12rem]"
               animate={{ y: [0, -8, 0] }}
-              transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+              transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
             >
               <FeatureCard title="Track Employability Score" Icon={Activity} />
             </motion.div>
@@ -266,8 +247,7 @@ export default function LoginStudent() {
           <div
             className="absolute inset-0 lg:hidden"
             style={{
-              background:
-                "linear-gradient(rgba(8,18,32,0.55), rgba(8,18,32,0.35))",
+              background: 'linear-gradient(rgba(8,18,32,0.55), rgba(8,18,32,0.35))',
             }}
             aria-hidden
           />
@@ -298,9 +278,7 @@ export default function LoginStudent() {
           {/* DESKTOP */}
           <div className="relative w-full max-w-md hidden lg:block">
             <div className="text-center mb-8">
-              <h3 className="text-3xl font-bold text-[#000000]">
-                Student Login
-              </h3>
+              <h3 className="text-3xl font-bold text-[#000000]">Student Login</h3>
               <p className="text-sm text-gray-700/90 lg:text-gray-500 mt-2">
                 Use your university email or registered phone number.
               </p>

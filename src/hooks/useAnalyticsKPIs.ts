@@ -25,15 +25,24 @@ export const useAnalyticsKPIs = ({ preset, startDate, endDate }: UseAnalyticsKPI
 
   useEffect(() => {
     // Subscribe to pipeline changes for real-time KPI updates
-    const channel = supabase.channel(`analytics-kpis-${Date.now()}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pipeline_activities' }, () => {
-        // Invalidate on any activity change (stage changes, hires)
-        queryClient.invalidateQueries({ queryKey: ['analytics-kpis'] });
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pipeline_candidates' }, () => {
-        // Invalidate when candidates are added or updated
-        queryClient.invalidateQueries({ queryKey: ['analytics-kpis'] });
-      });
+    const channel = supabase
+      .channel(`analytics-kpis-${Date.now()}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'pipeline_activities' },
+        () => {
+          // Invalidate on any activity change (stage changes, hires)
+          queryClient.invalidateQueries({ queryKey: ['analytics-kpis'] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'pipeline_candidates' },
+        () => {
+          // Invalidate when candidates are added or updated
+          queryClient.invalidateQueries({ queryKey: ['analytics-kpis'] });
+        }
+      );
 
     channel.subscribe();
     channelRef.current = channel;

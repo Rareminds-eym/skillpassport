@@ -84,8 +84,13 @@ export interface StreamChunk {
  * Send a message to the AI tutor with streaming response
  * Returns an async generator that yields content and reasoning chunks
  */
-export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamChunk, void, unknown> {
-  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+export async function* sendMessage(
+  request: ChatRequest
+): AsyncGenerator<StreamChunk, void, unknown> {
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
 
   if (sessionError) {
     console.error('Session error:', sessionError);
@@ -97,16 +102,16 @@ export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamC
     throw new Error('Please log in to use the AI Tutor');
   }
 
-  console.log('Sending AI tutor request with token:', session.access_token.substring(0, 20) + '...');
-
-  const response = await fetch(
-    getApiUrl('ai-tutor-chat'),
-    {
-      method: 'POST',
-      headers: getApiHeaders(session.access_token),
-      body: JSON.stringify(request),
-    }
+  console.log(
+    'Sending AI tutor request with token:',
+    session.access_token.substring(0, 20) + '...'
   );
+
+  const response = await fetch(getApiUrl('ai-tutor-chat'), {
+    method: 'POST',
+    headers: getApiHeaders(session.access_token),
+    body: JSON.stringify(request),
+  });
 
   if (!response.ok) {
     const error = await response.json();
@@ -156,7 +161,7 @@ export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamC
             yield {
               type: 'done',
               conversationId: parsed.conversationId,
-              messageId: parsed.messageId
+              messageId: parsed.messageId,
             };
           }
         } catch {
@@ -170,7 +175,9 @@ export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamC
 /**
  * Legacy wrapper for backward compatibility - yields only content strings
  */
-export async function* sendMessageLegacy(request: ChatRequest): AsyncGenerator<string, void, unknown> {
+export async function* sendMessageLegacy(
+  request: ChatRequest
+): AsyncGenerator<string, void, unknown> {
   for await (const chunk of sendMessage(request)) {
     if (chunk.type === 'content' && chunk.content) {
       yield chunk.content;
@@ -184,7 +191,6 @@ export async function* sendMessageLegacy(request: ChatRequest): AsyncGenerator<s
 export function getLastConversationId(): string | null {
   return (sendMessage as any).lastConversationId || null;
 }
-
 
 // ==================== CONVERSATION FUNCTIONS ====================
 
@@ -203,7 +209,7 @@ export async function getConversations(courseId: string): Promise<Conversation[]
     throw error;
   }
 
-  return (data || []).map(conv => ({
+  return (data || []).map((conv) => ({
     id: conv.id,
     title: conv.title || 'Untitled Conversation',
     courseId: conv.course_id,
@@ -214,8 +220,8 @@ export async function getConversations(courseId: string): Promise<Conversation[]
       id: m.id,
       role: m.role,
       content: m.content,
-      timestamp: new Date(m.timestamp)
-    }))
+      timestamp: new Date(m.timestamp),
+    })),
   }));
 }
 
@@ -248,8 +254,8 @@ export async function getConversation(conversationId: string): Promise<Conversat
       id: m.id,
       role: m.role,
       content: m.content,
-      timestamp: new Date(m.timestamp)
-    }))
+      timestamp: new Date(m.timestamp),
+    })),
   };
 }
 
@@ -261,21 +267,21 @@ export async function getConversation(conversationId: string): Promise<Conversat
  */
 export async function getSuggestedQuestions(lessonId: string): Promise<string[]> {
   try {
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
 
     if (sessionError) {
       console.error('Session error in getSuggestedQuestions:', sessionError);
       return getDefaultSuggestions();
     }
 
-    const response = await fetch(
-      getApiUrl('ai-tutor-suggestions'),
-      {
-        method: 'POST',
-        headers: getApiHeaders(session?.access_token),
-        body: JSON.stringify({ lessonId }),
-      }
-    );
+    const response = await fetch(getApiUrl('ai-tutor-suggestions'), {
+      method: 'POST',
+      headers: getApiHeaders(session?.access_token),
+      body: JSON.stringify({ lessonId }),
+    });
 
     // Handle auth errors gracefully - return defaults instead of throwing
     if (response.status === 401 || response.status === 403) {
@@ -302,9 +308,9 @@ export async function getSuggestedQuestions(lessonId: string): Promise<string[]>
  */
 function getDefaultSuggestions(): string[] {
   return [
-    "Can you explain the main concepts in this lesson?",
-    "What are the key takeaways I should remember?",
-    "Can you give me a practical example?"
+    'Can you explain the main concepts in this lesson?',
+    'What are the key takeaways I should remember?',
+    'Can you give me a practical example?',
   ];
 }
 
@@ -314,18 +320,17 @@ function getDefaultSuggestions(): string[] {
  * Get student progress for a course
  */
 export async function getCourseProgress(courseId: string): Promise<CourseProgress> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (!session?.access_token) {
     throw new Error('Not authenticated');
   }
 
-  const response = await fetch(
-    getApiUrl(`ai-tutor-progress?courseId=${courseId}`),
-    {
-      method: 'GET',
-      headers: getApiHeaders(session.access_token),
-    }
-  );
+  const response = await fetch(getApiUrl(`ai-tutor-progress?courseId=${courseId}`), {
+    method: 'GET',
+    headers: getApiHeaders(session.access_token),
+  });
 
   if (!response.ok) {
     const error = await response.json();
@@ -343,19 +348,18 @@ export async function updateLessonProgress(
   lessonId: string,
   status: 'not_started' | 'in_progress' | 'completed'
 ): Promise<void> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (!session?.access_token) {
     throw new Error('Not authenticated');
   }
 
-  const response = await fetch(
-    getApiUrl('ai-tutor-progress'),
-    {
-      method: 'POST',
-      headers: getApiHeaders(session.access_token),
-      body: JSON.stringify({ courseId, lessonId, status }),
-    }
-  );
+  const response = await fetch(getApiUrl('ai-tutor-progress'), {
+    method: 'POST',
+    headers: getApiHeaders(session.access_token),
+    body: JSON.stringify({ courseId, lessonId, status }),
+  });
 
   if (!response.ok) {
     const error = await response.json();
@@ -369,7 +373,9 @@ export async function updateLessonProgress(
  * Delete a conversation and all related data permanently
  */
 export async function deleteConversation(conversationId: string): Promise<void> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (!session?.access_token) {
     throw new Error('Not authenticated');
   }
@@ -406,19 +412,18 @@ export async function submitFeedback(
   rating: 1 | -1,
   feedbackText?: string
 ): Promise<void> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (!session?.access_token) {
     throw new Error('Not authenticated');
   }
 
-  const response = await fetch(
-    getApiUrl('ai-tutor-feedback'),
-    {
-      method: 'POST',
-      headers: getApiHeaders(session.access_token),
-      body: JSON.stringify({ conversationId, messageIndex, rating, feedbackText }),
-    }
-  );
+  const response = await fetch(getApiUrl('ai-tutor-feedback'), {
+    method: 'POST',
+    headers: getApiHeaders(session.access_token),
+    body: JSON.stringify({ conversationId, messageIndex, rating, feedbackText }),
+  });
 
   if (!response.ok) {
     const error = await response.json();

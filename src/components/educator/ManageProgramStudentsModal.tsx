@@ -1,121 +1,129 @@
-import React, { useState, useEffect } from 'react'
-import { XMarkIcon, UserPlusIcon, TrashIcon } from '@heroicons/react/24/outline'
-import { ProgramSection, ProgramStudent, getStudentsByProgramSection, getAvailableStudentsForProgram, addStudentToProgram, removeStudentFromProgram } from '../../services/programService'
-import { useEducatorSchool } from '../../hooks/useEducatorSchool'
-import { usePermission } from '../../hooks/usePermissions'
-import toast from 'react-hot-toast'
+import React, { useState, useEffect } from 'react';
+import { XMarkIcon, UserPlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import {
+  ProgramSection,
+  ProgramStudent,
+  getStudentsByProgramSection,
+  getAvailableStudentsForProgram,
+  addStudentToProgram,
+  removeStudentFromProgram,
+} from '../../services/programService';
+import { useEducatorSchool } from '../../hooks/useEducatorSchool';
+import { usePermission } from '../../hooks/usePermissions';
+import toast from 'react-hot-toast';
 
 interface ManageProgramStudentsModalProps {
-  isOpen: boolean
-  onClose: () => void
-  programSection: ProgramSection | null
-  onStudentsUpdated?: () => void
+  isOpen: boolean;
+  onClose: () => void;
+  programSection: ProgramSection | null;
+  onStudentsUpdated?: () => void;
 }
 
 const ManageProgramStudentsModal: React.FC<ManageProgramStudentsModalProps> = ({
   isOpen,
   onClose,
   programSection,
-  onStudentsUpdated
+  onStudentsUpdated,
 }) => {
-  const { college } = useEducatorSchool()
-  
+  const { college } = useEducatorSchool();
+
   // Permission controls for Classroom Management module
-  const canCreate = usePermission("Classroom Management", "create")
-  const canEdit = usePermission("Classroom Management", "edit")
-  
-  const [students, setStudents] = useState<ProgramStudent[]>([])
-  const [availableStudents, setAvailableStudents] = useState<ProgramStudent[]>([])
-  const [loading, setLoading] = useState(false)
-  const [selectedStudentId, setSelectedStudentId] = useState<string>('')
-  const [addingStudent, setAddingStudent] = useState(false)
+  const canCreate = usePermission('Classroom Management', 'create');
+  // @ts-expect-error - Auto-suppressed for migration
+  const canEdit = usePermission('Classroom Management', 'edit');
+
+  const [students, setStudents] = useState<ProgramStudent[]>([]);
+  const [availableStudents, setAvailableStudents] = useState<ProgramStudent[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedStudentId, setSelectedStudentId] = useState<string>('');
+  const [addingStudent, setAddingStudent] = useState(false);
 
   useEffect(() => {
     if (isOpen && programSection) {
-      fetchStudents()
-      fetchAvailableStudents()
+      fetchStudents();
+      fetchAvailableStudents();
     }
-  }, [isOpen, programSection])
+  }, [isOpen, programSection]);
 
   const fetchStudents = async () => {
-    if (!programSection) return
+    if (!programSection) return;
 
-    setLoading(true)
+    setLoading(true);
     try {
-      const { data, error } = await getStudentsByProgramSection(programSection.id)
+      const { data, error } = await getStudentsByProgramSection(programSection.id);
       if (error) {
-        toast.error(error)
+        toast.error(error);
       } else {
-        setStudents(data || [])
+        setStudents(data || []);
       }
     } catch (err) {
-      toast.error('Failed to fetch students')
+      toast.error('Failed to fetch students');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const fetchAvailableStudents = async () => {
-    if (!college?.id) return
+    if (!college?.id) return;
 
     try {
-      const { data, error } = await getAvailableStudentsForProgram(college.id)
+      const { data, error } = await getAvailableStudentsForProgram(college.id);
       if (error) {
-        console.error('Error fetching available students:', error)
+        console.error('Error fetching available students:', error);
       } else {
-        setAvailableStudents(data || [])
+        setAvailableStudents(data || []);
       }
     } catch (err) {
-      console.error('Failed to fetch available students:', err)
+      console.error('Failed to fetch available students:', err);
     }
-  }
+  };
 
   const handleAddStudent = async () => {
-    if (!selectedStudentId || !programSection) return
+    if (!selectedStudentId || !programSection) return;
 
-    setAddingStudent(true)
+    setAddingStudent(true);
     try {
       const { error } = await addStudentToProgram(
         selectedStudentId,
         programSection.program_id,
         programSection.semester,
         programSection.section
-      )
-      
+      );
+
       if (error) {
-        toast.error(error)
+        toast.error(error);
       } else {
-        toast.success('Student added successfully')
-        setSelectedStudentId('')
-        await fetchStudents()
-        await fetchAvailableStudents()
-        onStudentsUpdated?.()
+        toast.success('Student added successfully');
+        setSelectedStudentId('');
+        await fetchStudents();
+        await fetchAvailableStudents();
+        onStudentsUpdated?.();
       }
     } catch (err) {
-      toast.error('Failed to add student')
+      toast.error('Failed to add student');
     } finally {
-      setAddingStudent(false)
+      setAddingStudent(false);
     }
-  }
+  };
 
   const handleRemoveStudent = async (studentId: string) => {
     try {
-      const { error } = await removeStudentFromProgram(studentId)
-      
+      const { error } = await removeStudentFromProgram(studentId);
+
       if (error) {
-        toast.error(error)
+        toast.error(error);
       } else {
-        toast.success('Student removed successfully')
-        await fetchStudents()
-        await fetchAvailableStudents()
-        onStudentsUpdated?.()
+        toast.success('Student removed successfully');
+        await fetchStudents();
+        await fetchAvailableStudents();
+        onStudentsUpdated?.();
       }
     } catch (err) {
-      toast.error('Failed to remove student')
+      toast.error('Failed to remove student');
     }
-  }
+  };
 
-  if (!isOpen || !programSection) return null
+  if (!isOpen || !programSection) return null;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true">
@@ -128,7 +136,8 @@ const ManageProgramStudentsModal: React.FC<ManageProgramStudentsModalProps> = ({
                 Manage Students - {programSection.program.name}
               </h2>
               <p className="mt-1 text-sm text-gray-500">
-                Semester {programSection.semester}, Section {programSection.section} ({programSection.academic_year})
+                Semester {programSection.semester}, Section {programSection.section} (
+                {programSection.academic_year})
               </p>
             </div>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600" type="button">
@@ -158,18 +167,23 @@ const ManageProgramStudentsModal: React.FC<ManageProgramStudentsModalProps> = ({
                   </select>
                   <button
                     onClick={() => {
-                      console.log('🎓 [ManageProgramStudentsModal] Action: Add Student Button Clicked', {
-                        module: 'Classroom Management',
-                        action: 'Add Student',
-                        permissions: {
-                          canCreate: canCreate.allowed,
-                          canEdit: canEdit.allowed
-                        },
-                        selectedStudentId: selectedStudentId,
-                        programSectionId: programSection?.id,
-                        timestamp: new Date().toISOString()
-                      });
-                      alert('✅ Permission Test: Add student to program allowed for College Educator');
+                      console.log(
+                        '🎓 [ManageProgramStudentsModal] Action: Add Student Button Clicked',
+                        {
+                          module: 'Classroom Management',
+                          action: 'Add Student',
+                          permissions: {
+                            canCreate: canCreate.allowed,
+                            canEdit: canEdit.allowed,
+                          },
+                          selectedStudentId: selectedStudentId,
+                          programSectionId: programSection?.id,
+                          timestamp: new Date().toISOString(),
+                        }
+                      );
+                      alert(
+                        '✅ Permission Test: Add student to program allowed for College Educator'
+                      );
                       handleAddStudent();
                     }}
                     disabled={!selectedStudentId || addingStudent}
@@ -209,11 +223,9 @@ const ManageProgramStudentsModal: React.FC<ManageProgramStudentsModalProps> = ({
               <h3 className="text-sm font-medium text-gray-900 mb-3">
                 Current Students ({students.length})
               </h3>
-              
+
               {loading ? (
-                <div className="text-center py-8 text-sm text-gray-500">
-                  Loading students...
-                </div>
+                <div className="text-center py-8 text-sm text-gray-500">Loading students...</div>
               ) : students.length === 0 ? (
                 <div className="text-center py-8 text-sm text-gray-500">
                   No students enrolled in this program section yet.
@@ -247,19 +259,24 @@ const ManageProgramStudentsModal: React.FC<ManageProgramStudentsModalProps> = ({
                       {canEdit.allowed ? (
                         <button
                           onClick={() => {
-                            console.log('🎓 [ManageProgramStudentsModal] Action: Remove Student Button Clicked', {
-                              module: 'Classroom Management',
-                              action: 'Remove Student',
-                              permissions: {
-                                canCreate: canCreate.allowed,
-                                canEdit: canEdit.allowed
-                              },
-                              studentId: student.id,
-                              studentName: student.name,
-                              programSectionId: programSection?.id,
-                              timestamp: new Date().toISOString()
-                            });
-                            alert('✅ Permission Test: Remove student from program allowed for College Educator');
+                            console.log(
+                              '🎓 [ManageProgramStudentsModal] Action: Remove Student Button Clicked',
+                              {
+                                module: 'Classroom Management',
+                                action: 'Remove Student',
+                                permissions: {
+                                  canCreate: canCreate.allowed,
+                                  canEdit: canEdit.allowed,
+                                },
+                                studentId: student.id,
+                                studentName: student.name,
+                                programSectionId: programSection?.id,
+                                timestamp: new Date().toISOString(),
+                              }
+                            );
+                            alert(
+                              '✅ Permission Test: Remove student from program allowed for College Educator'
+                            );
                             handleRemoveStudent(student.id);
                           }}
                           className="inline-flex items-center rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100 transition-all"
@@ -272,7 +289,9 @@ const ManageProgramStudentsModal: React.FC<ManageProgramStudentsModalProps> = ({
                       ) : (
                         <button
                           onClick={() => {
-                            console.log('❌ [ManageProgramStudentsModal] Action Blocked: Remove Student - No Edit Permission');
+                            console.log(
+                              '❌ [ManageProgramStudentsModal] Action Blocked: Remove Student - No Edit Permission'
+                            );
                             alert('❌ Access Denied: You need EDIT permission to remove students');
                           }}
                           disabled
@@ -303,7 +322,7 @@ const ManageProgramStudentsModal: React.FC<ManageProgramStudentsModalProps> = ({
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default ManageProgramStudentsModal
+export default ManageProgramStudentsModal;

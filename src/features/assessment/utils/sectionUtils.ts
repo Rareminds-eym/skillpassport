@@ -10,10 +10,7 @@ import { SECTION_ID_MAPPINGS, SECTION_COLORS } from '../constants/config';
  * Get section ID based on grade level
  * Maps base section names to grade-specific section IDs
  */
-export const getSectionId = (
-  baseSection: string,
-  gradeLevel: GradeLevel | null
-): string => {
+export const getSectionId = (baseSection: string, gradeLevel: GradeLevel | null): string => {
   if (!gradeLevel) return baseSection;
 
   const mappings = SECTION_ID_MAPPINGS[gradeLevel];
@@ -34,14 +31,16 @@ export const getSectionColor = (sectionId: string): string => {
 /**
  * Get section color classes for Tailwind
  */
-export const getSectionColorClasses = (sectionId: string): {
+export const getSectionColorClasses = (
+  sectionId: string
+): {
   bg: string;
   text: string;
   border: string;
   light: string;
 } => {
   const color = getSectionColor(sectionId);
-  
+
   return {
     bg: `bg-${color}-600`,
     text: `text-${color}-600`,
@@ -79,15 +78,15 @@ export const getSectionProgress = (
 } => {
   const currentSection = sections[currentSectionIndex];
   const totalQuestionsInSection = currentSection?.questions?.length || 0;
-  
+
   // Calculate overall progress
   let questionsCompleted = 0;
   let totalQuestions = 0;
-  
+
   sections.forEach((section, idx) => {
     const sectionQuestions = section.questions?.length || 0;
     totalQuestions += sectionQuestions;
-    
+
     if (idx < currentSectionIndex) {
       questionsCompleted += sectionQuestions;
     } else if (idx === currentSectionIndex) {
@@ -100,9 +99,8 @@ export const getSectionProgress = (
     totalSections: sections.length,
     currentQuestion: currentQuestionIndex + 1,
     totalQuestionsInSection,
-    overallProgress: totalQuestions > 0 
-      ? Math.round((questionsCompleted / totalQuestions) * 100) 
-      : 0,
+    overallProgress:
+      totalQuestions > 0 ? Math.round((questionsCompleted / totalQuestions) * 100) : 0,
   };
 };
 
@@ -151,10 +149,7 @@ export const isInIndividualTimerPhase = (
 /**
  * Get next section index
  */
-export const getNextSectionIndex = (
-  currentIndex: number,
-  totalSections: number
-): number | null => {
+export const getNextSectionIndex = (currentIndex: number, totalSections: number): number | null => {
   const nextIndex = currentIndex + 1;
   return nextIndex < totalSections ? nextIndex : null;
 };
@@ -187,10 +182,7 @@ export const isFirstQuestionOfSection = (questionIndex: number): boolean => {
 /**
  * Check if at last section
  */
-export const isLastSection = (
-  sectionIndex: number,
-  totalSections: number
-): boolean => {
+export const isLastSection = (sectionIndex: number, totalSections: number): boolean => {
   return sectionIndex >= totalSections - 1;
 };
 
@@ -208,15 +200,12 @@ export const getSectionById = (
   sections: AssessmentSection[],
   sectionId: string
 ): AssessmentSection | undefined => {
-  return sections.find(s => s.id === sectionId);
+  return sections.find((s) => s.id === sectionId);
 };
 
 /**
  * Get section index by ID
  */
-export const getSectionIndexById = (
-  sections: AssessmentSection[],
-  sectionId: string
-): number => {
-  return sections.findIndex(s => s.id === sectionId);
+export const getSectionIndexById = (sections: AssessmentSection[], sectionId: string): number => {
+  return sections.findIndex((s) => s.id === sectionId);
 };

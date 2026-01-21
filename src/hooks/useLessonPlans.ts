@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect } from 'react';
 import {
   getLessonPlans,
   createLessonPlan,
@@ -12,7 +12,7 @@ import {
   getClasses,
   LessonPlan,
   LessonPlanFormData,
-} from "../services/lessonPlansService";
+} from '../services/lessonPlansService';
 
 export function useLessonPlans() {
   const [lessonPlans, setLessonPlans] = useState<LessonPlan[]>([]);
@@ -28,8 +28,8 @@ export function useLessonPlans() {
       if (error) throw error;
       setLessonPlans(data || []);
     } catch (err: any) {
-      console.error("Error loading lesson plans:", err);
-      setError(err.message || "Failed to load lesson plans");
+      console.error('Error loading lesson plans:', err);
+      setError(err.message || 'Failed to load lesson plans');
     } finally {
       setLoading(false);
     }
@@ -45,8 +45,8 @@ export function useLessonPlans() {
       }
       return { data, error: null };
     } catch (err: any) {
-      console.error("Error creating lesson plan:", err);
-      return { data: null, error: err.message || "Failed to create lesson plan" };
+      console.error('Error creating lesson plan:', err);
+      return { data: null, error: err.message || 'Failed to create lesson plan' };
     }
   };
 
@@ -56,14 +56,12 @@ export function useLessonPlans() {
       const { data, error } = await updateLessonPlan(id, formData, classId);
       if (error) throw error;
       if (data) {
-        setLessonPlans((prev) =>
-          prev.map((plan) => (plan.id === id ? data : plan))
-        );
+        setLessonPlans((prev) => prev.map((plan) => (plan.id === id ? data : plan)));
       }
       return { data, error: null };
     } catch (err: any) {
-      console.error("Error updating lesson plan:", err);
-      return { data: null, error: err.message || "Failed to update lesson plan" };
+      console.error('Error updating lesson plan:', err);
+      return { data: null, error: err.message || 'Failed to update lesson plan' };
     }
   };
 
@@ -75,8 +73,8 @@ export function useLessonPlans() {
       setLessonPlans((prev) => prev.filter((plan) => plan.id !== id));
       return { error: null };
     } catch (err: any) {
-      console.error("Error deleting lesson plan:", err);
-      return { error: err.message || "Failed to delete lesson plan" };
+      console.error('Error deleting lesson plan:', err);
+      return { error: err.message || 'Failed to delete lesson plan' };
     }
   };
 
@@ -86,14 +84,12 @@ export function useLessonPlans() {
       const { data, error } = await submitLessonPlan(id);
       if (error) throw error;
       if (data) {
-        setLessonPlans((prev) =>
-          prev.map((plan) => (plan.id === id ? data : plan))
-        );
+        setLessonPlans((prev) => prev.map((plan) => (plan.id === id ? data : plan)));
       }
       return { data, error: null };
     } catch (err: any) {
-      console.error("Error submitting lesson plan:", err);
-      return { data: null, error: err.message || "Failed to submit lesson plan" };
+      console.error('Error submitting lesson plan:', err);
+      return { data: null, error: err.message || 'Failed to submit lesson plan' };
     }
   };
 
@@ -136,15 +132,15 @@ export function useCurriculum(subject: string, className: string, academicYear?:
     try {
       const { data, error } = await getCurriculums(subject, className);
       if (error) throw error;
-      
+
       // Filter by academic year if provided
       let filteredData = data || [];
       if (academicYear) {
         filteredData = filteredData.filter((c: any) => c.academic_year === academicYear);
       }
-      
+
       setCurriculums(filteredData);
-      
+
       // Auto-load chapters if there's only one curriculum
       if (filteredData && filteredData.length === 1) {
         loadChapters(filteredData[0].id);
@@ -152,7 +148,7 @@ export function useCurriculum(subject: string, className: string, academicYear?:
         setChapters([]);
       }
     } catch (err) {
-      console.error("Error loading curriculums:", err);
+      console.error('Error loading curriculums:', err);
       setCurriculums([]);
     } finally {
       setLoading(false);
@@ -166,7 +162,7 @@ export function useCurriculum(subject: string, className: string, academicYear?:
       if (error) throw error;
       setChapters(data || []);
     } catch (err) {
-      console.error("Error loading chapters:", err);
+      console.error('Error loading chapters:', err);
       setChapters([]);
     } finally {
       setLoading(false);
@@ -180,7 +176,7 @@ export function useCurriculum(subject: string, className: string, academicYear?:
       if (error) throw error;
       setLearningOutcomes(data || []);
     } catch (err) {
-      console.error("Error loading learning outcomes:", err);
+      console.error('Error loading learning outcomes:', err);
       setLearningOutcomes([]);
     } finally {
       setLoading(false);
@@ -221,7 +217,7 @@ export function useSubjectsAndClasses(schoolId?: string) {
         setClasses(classesResult.data);
       }
     } catch (err) {
-      console.error("Error loading subjects and classes:", err);
+      console.error('Error loading subjects and classes:', err);
     } finally {
       setLoading(false);
     }

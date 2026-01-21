@@ -1,51 +1,51 @@
-"use client";
+'use client';
 
-import { Eye, CheckCircle, BarChart3, Link2 } from "lucide-react";
-import RadialOrbitalTimeline from "./ui/orbit-timeline/radial-orbital-timeline";
+import { Eye, CheckCircle, BarChart3, Link2 } from 'lucide-react';
+import RadialOrbitalTimeline from './ui/orbit-timeline/radial-orbital-timeline';
 
 const corporateFeatures = [
   {
     id: 1,
-    title: "Talent Visibility",
-    date: "Feature 1",
-    content: "View team skills and proficiency levels in real time.",
-    category: "Visibility",
+    title: 'Talent Visibility',
+    date: 'Feature 1',
+    content: 'View team skills and proficiency levels in real time.',
+    category: 'Visibility',
     icon: Eye,
     relatedIds: [2],
-    status: "completed" as const,
+    status: 'completed' as const,
     energy: 100,
   },
   {
     id: 2,
-    title: "Verified Capability",
-    date: "Feature 2",
-    content: "Every badge is backed by assessments and mentor validation.",
-    category: "Verification",
+    title: 'Verified Capability',
+    date: 'Feature 2',
+    content: 'Every badge is backed by assessments and mentor validation.',
+    category: 'Verification',
     icon: CheckCircle,
     relatedIds: [1, 3],
-    status: "completed" as const,
+    status: 'completed' as const,
     energy: 95,
   },
   {
     id: 3,
-    title: "Data-Driven Decisions",
-    date: "Feature 3",
-    content: "Use dashboards to plan upskilling and succession.",
-    category: "Analytics",
+    title: 'Data-Driven Decisions',
+    date: 'Feature 3',
+    content: 'Use dashboards to plan upskilling and succession.',
+    category: 'Analytics',
     icon: BarChart3,
     relatedIds: [2, 4],
-    status: "completed" as const,
+    status: 'completed' as const,
     energy: 90,
   },
   {
     id: 4,
-    title: "Integration Ready",
-    date: "Feature 4",
-    content: "Connect seamlessly with LMS, HRMS, and ERP systems.",
-    category: "Integration",
+    title: 'Integration Ready',
+    date: 'Feature 4',
+    content: 'Connect seamlessly with LMS, HRMS, and ERP systems.',
+    category: 'Integration',
     icon: Link2,
     relatedIds: [3],
-    status: "completed" as const,
+    status: 'completed' as const,
     energy: 85,
   },
 ];
@@ -55,11 +55,9 @@ const BuiltForCorporates = () => {
     <section className="relative w-full bg-white py-8">
       {/* Header Section */}
       <div className="container mx-auto px-4 text-center mb-2">
-        <h2 className="font-bold text-black mb-4">
-          Built For Corporates
-        </h2>
+        <h2 className="font-bold text-black mb-4">Built For Corporates</h2>
         <p className="text-black/70 max-w-2xl mx-auto">
-          Enterprise-grade Capabilities That Scale With Your Organization 
+          Enterprise-grade Capabilities That Scale With Your Organization
         </p>
       </div>
 

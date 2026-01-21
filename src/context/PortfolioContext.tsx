@@ -87,7 +87,7 @@ export const PortfolioProvider: React.FC<PortfolioProviderProps> = ({ children }
 
     setIsLoading(true);
     setIsManuallySet(true); // Mark as manually set
-    
+
     try {
       if (studentData.email) {
         // Use the new portfolio service to get full student data from relational tables
@@ -119,12 +119,12 @@ export const PortfolioProvider: React.FC<PortfolioProviderProps> = ({ children }
     // Load saved settings from localStorage with role-based defaults
     const loadSettings = () => {
       const roleBasedDefaults = getDefaultSettings(user?.role || null);
-      
+
       try {
         // Create a role-specific key for localStorage
         const settingsKey = `portfolioSettings_${user?.role || 'guest'}`;
         const savedSettings = localStorage.getItem(settingsKey);
-        
+
         if (savedSettings) {
           const parsed = JSON.parse(savedSettings);
           // Merge role-based defaults with saved preferences
@@ -195,7 +195,7 @@ export const PortfolioProvider: React.FC<PortfolioProviderProps> = ({ children }
   const updateSettings = (newSettings: Partial<PortfolioSettings>) => {
     const updatedSettings = { ...settings, ...newSettings };
     setSettings(updatedSettings);
-    
+
     // Save settings with role-specific key
     const settingsKey = `portfolioSettings_${user?.role || 'guest'}`;
     localStorage.setItem(settingsKey, JSON.stringify(updatedSettings));
@@ -210,7 +210,7 @@ export const PortfolioProvider: React.FC<PortfolioProviderProps> = ({ children }
   const resetToRoleDefaults = () => {
     const roleBasedDefaults = getDefaultSettings(user?.role || null);
     setSettings(roleBasedDefaults);
-    
+
     // Clear saved settings for this role
     const settingsKey = `portfolioSettings_${user?.role || 'guest'}`;
     localStorage.removeItem(settingsKey);
@@ -228,9 +228,5 @@ export const PortfolioProvider: React.FC<PortfolioProviderProps> = ({ children }
     viewerRole: user?.role || null,
   };
 
-  return (
-    <PortfolioContext.Provider value={value}>
-      {children}
-    </PortfolioContext.Provider>
-  );
+  return <PortfolioContext.Provider value={value}>{children}</PortfolioContext.Provider>;
 };

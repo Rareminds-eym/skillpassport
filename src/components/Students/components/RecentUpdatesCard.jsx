@@ -1,19 +1,19 @@
-import React from "react";
-import { CardHeader, CardContent, CardTitle } from "./ui/card";
-import { Button } from "./ui/button";
-import { BellIcon } from "@heroicons/react/24/outline";
+import React from 'react';
+import { CardHeader, CardContent, CardTitle } from './ui/card';
+import { Button } from './ui/button';
+import { BellIcon } from '@heroicons/react/24/outline';
 
 const RecentUpdatesCard = React.forwardRef(
   (
     {
-      title = "Recent Updates",
+      title = 'Recent Updates',
       icon: Icon = BellIcon,
       badgeContent = null,
       updates = [],
       loading = false,
       error = null,
       onRetry,
-      emptyMessage = "No recent updates available",
+      emptyMessage = 'No recent updates available',
       maxVisible = 5,
       isExpanded,
       onToggle,
@@ -21,21 +21,20 @@ const RecentUpdatesCard = React.forwardRef(
       getMessage,
       getDetails,
       getTimestamp,
-      containerClassName = "bg-white rounded-xl border border-gray-200 shadow-sm",
-      contentClassName = "pt-4 p-6",
-      scrollClassName = "max-h-96 overflow-y-auto pr-2 scroll-smooth recent-updates-scroll",
-      retryButtonClassName = "bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2 text-sm rounded-md transition-colors",
-      retryButtonText = "Retry",
-      seeMoreLabel = "See More",
-      seeLessLabel = "See Less",
-      spinnerClassName = "animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600",
+      containerClassName = 'bg-white rounded-xl border border-gray-200 shadow-sm',
+      contentClassName = 'pt-4 p-6',
+      scrollClassName = 'max-h-96 overflow-y-auto pr-2 scroll-smooth recent-updates-scroll',
+      retryButtonClassName = 'bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2 text-sm rounded-md transition-colors',
+      retryButtonText = 'Retry',
+      seeMoreLabel = 'See More',
+      seeLessLabel = 'See Less',
+      spinnerClassName = 'animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600',
     },
     ref
   ) => {
     const [internalExpanded, setInternalExpanded] = React.useState(false);
 
-    const expanded =
-      typeof isExpanded === "boolean" ? isExpanded : internalExpanded;
+    const expanded = typeof isExpanded === 'boolean' ? isExpanded : internalExpanded;
 
     const handleToggle = () => {
       if (onToggle) {
@@ -47,20 +46,20 @@ const RecentUpdatesCard = React.forwardRef(
 
     const defaultClassName = (type) => {
       switch (type) {
-        case "shortlist_added":
-          return "bg-yellow-50 border-yellow-300";
-        case "offer_extended":
-          return "bg-green-50 border-green-300";
-        case "offer_accepted":
-          return "bg-emerald-50 border-emerald-300";
-        case "placement_hired":
-          return "bg-purple-50 border-purple-300";
-        case "stage_change":
-          return "bg-indigo-50 border-indigo-300";
-        case "application_rejected":
-          return "bg-red-50 border-red-300";
+        case 'shortlist_added':
+          return 'bg-yellow-50 border-yellow-300';
+        case 'offer_extended':
+          return 'bg-green-50 border-green-300';
+        case 'offer_accepted':
+          return 'bg-emerald-50 border-emerald-300';
+        case 'placement_hired':
+          return 'bg-purple-50 border-purple-300';
+        case 'stage_change':
+          return 'bg-indigo-50 border-indigo-300';
+        case 'application_rejected':
+          return 'bg-red-50 border-red-300';
         default:
-          return "bg-gray-50 border-gray-200";
+          return 'bg-gray-50 border-gray-200';
       }
     };
 
@@ -69,19 +68,13 @@ const RecentUpdatesCard = React.forwardRef(
       if (update.message && !update.user && !update.action && !update.candidate) {
         return <span className="text-gray-700">{update.message}</span>;
       }
-      
+
       // Build message from components
       return (
         <>
-          {update.user && (
-            <span className="text-blue-700">{update.user}</span>
-          )}
-          {update.action && (
-            <span className="text-gray-700"> {update.action} </span>
-          )}
-          {update.candidate && (
-            <span className="font-semibold">{update.candidate}</span>
-          )}
+          {update.user && <span className="text-blue-700">{update.user}</span>}
+          {update.action && <span className="text-gray-700"> {update.action} </span>}
+          {update.candidate && <span className="font-semibold">{update.candidate}</span>}
           {update.message && (update.user || update.action || update.candidate) && (
             <span className="text-gray-700"> {update.message}</span>
           )}
@@ -99,16 +92,16 @@ const RecentUpdatesCard = React.forwardRef(
 
       // Priority 2: Use timestamp if it's already formatted (contains "ago")
       if (update.timestamp) {
-        if (typeof update.timestamp === "string" && update.timestamp.includes("ago")) {
+        if (typeof update.timestamp === 'string' && update.timestamp.includes('ago')) {
           return update.timestamp;
         }
-        
+
         // Priority 3: Format timestamp as date/time
         const date = new Date(update.timestamp);
         if (!Number.isNaN(date.getTime())) {
           return date.toLocaleString();
         }
-        
+
         // Fallback: return as-is
         return update.timestamp;
       }
@@ -128,16 +121,10 @@ const RecentUpdatesCard = React.forwardRef(
       if (!update) {
         return false;
       }
-      const messageContent = getMessage
-        ? getMessage(update)
-        : defaultMessage(update);
-      const detailsContent = getDetails
-        ? getDetails(update)
-        : defaultDetails(update);
-      const timestampContent = getTimestamp
-        ? getTimestamp(update)
-        : defaultTimestamp(update);
-      
+      const messageContent = getMessage ? getMessage(update) : defaultMessage(update);
+      const detailsContent = getDetails ? getDetails(update) : defaultDetails(update);
+      const timestampContent = getTimestamp ? getTimestamp(update) : defaultTimestamp(update);
+
       // An update is valid if it has at least a message or details
       if (!messageContent && !detailsContent) {
         return false;
@@ -145,9 +132,7 @@ const RecentUpdatesCard = React.forwardRef(
       return true;
     });
 
-    const visibleUpdates = expanded
-      ? validUpdates
-      : validUpdates.slice(0, maxVisible);
+    const visibleUpdates = expanded ? validUpdates : validUpdates.slice(0, maxVisible);
 
     const shouldShowToggle = validUpdates.length > maxVisible;
 
@@ -184,26 +169,19 @@ const RecentUpdatesCard = React.forwardRef(
             </div>
           ) : (
             <>
-              <div
-                className={`space-y-2 ${
-                  expanded ? scrollClassName : ""
-                }`}
-              >
+              <div className={`space-y-2 ${expanded ? scrollClassName : ''}`}>
                 {visibleUpdates.map((update, idx) => {
-                  const key = update.id || `${update.timestamp || update.rawTimestamp || "update"}-${idx}`;
-                  const messageContent = getMessage
-                    ? getMessage(update)
-                    : defaultMessage(update);
-                  const detailsContent = getDetails
-                    ? getDetails(update)
-                    : defaultDetails(update);
+                  const key =
+                    update.id || `${update.timestamp || update.rawTimestamp || 'update'}-${idx}`;
+                  const messageContent = getMessage ? getMessage(update) : defaultMessage(update);
+                  const detailsContent = getDetails ? getDetails(update) : defaultDetails(update);
                   const timestampContent = getTimestamp
                     ? getTimestamp(update)
                     : defaultTimestamp(update);
                   const className = getUpdateClassName
                     ? getUpdateClassName(update)
                     : defaultClassName(update.type);
-                  
+
                   return (
                     <div
                       key={key}
@@ -246,6 +224,6 @@ const RecentUpdatesCard = React.forwardRef(
   }
 );
 
-RecentUpdatesCard.displayName = "RecentUpdatesCard";
+RecentUpdatesCard.displayName = 'RecentUpdatesCard';
 
-export default RecentUpdatesCard;;
+export default RecentUpdatesCard;

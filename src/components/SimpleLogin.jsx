@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import { useSupabaseAuth } from '../context/SupabaseAuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/Students/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '../components/Students/components/ui/card';
 import { Button } from '../components/Students/components/ui/button';
 import { Input } from '../components/Students/components/ui/input';
 import { Alert, AlertDescription } from '../components/Students/components/ui/alert';
@@ -25,7 +30,7 @@ const SimpleLogin = () => {
 
     try {
       let result;
-      
+
       if (isSignUp) {
         // Sign up new user
         result = await signUp(email, password);
@@ -58,13 +63,12 @@ const SimpleLogin = () => {
             {isSignUp ? 'Create Account' : 'Sign In'}
           </CardTitle>
           <p className="text-gray-600">
-            {isSignUp 
-              ? 'Enter your email and password to create an account' 
-              : 'Enter your email and password to access your dashboard'
-            }
+            {isSignUp
+              ? 'Enter your email and password to create an account'
+              : 'Enter your email and password to access your dashboard'}
           </p>
         </CardHeader>
-        
+
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -81,7 +85,7 @@ const SimpleLogin = () => {
                 className="w-full"
               />
             </div>
-            
+
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
                 Password
@@ -96,48 +100,38 @@ const SimpleLogin = () => {
                 className="w-full"
               />
             </div>
-            
+
             {error && (
               <Alert className="border-red-200 bg-red-50">
-                <AlertDescription className="text-red-800">
-                  {error}
-                </AlertDescription>
+                <AlertDescription className="text-red-800">{error}</AlertDescription>
               </Alert>
             )}
-            
+
             {message && (
               <Alert className="border-green-200 bg-green-50">
-                <AlertDescription className="text-green-800">
-                  {message}
-                </AlertDescription>
+                <AlertDescription className="text-green-800">{message}</AlertDescription>
               </Alert>
             )}
-            
+
             <Button
               type="submit"
               disabled={loading}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white"
             >
-              {loading 
-                ? 'Processing...' 
-                : (isSignUp ? 'Create Account' : 'Sign In')
-              }
+              {loading ? 'Processing...' : isSignUp ? 'Create Account' : 'Sign In'}
             </Button>
           </form>
-          
+
           <div className="mt-4 text-center">
             <button
               type="button"
               onClick={() => setIsSignUp(!isSignUp)}
               className="text-blue-600 hover:text-blue-500 text-sm"
             >
-              {isSignUp 
-                ? 'Already have an account? Sign in' 
-                : 'Need an account? Sign up'
-              }
+              {isSignUp ? 'Already have an account? Sign in' : 'Need an account? Sign up'}
             </button>
           </div>
-          
+
           {/* Quick test login for development */}
           <div className="mt-6 pt-4 border-t border-gray-200">
             <p className="text-xs text-gray-500 text-center mb-2">Development Quick Login:</p>

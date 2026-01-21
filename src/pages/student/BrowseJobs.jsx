@@ -94,7 +94,10 @@ const BrowseJobs = () => {
 
       <div className="space-y-4">
         {jobs.map((job) => (
-          <div key={job.id} className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow">
+          <div
+            key={job.id}
+            className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow"
+          >
             <div className="flex items-start justify-between mb-4">
               <div className="flex-1">
                 <div className="flex items-start justify-between">
@@ -103,7 +106,9 @@ const BrowseJobs = () => {
                     <p className="text-lg text-gray-700 mt-1">{job.company}</p>
                   </div>
                   <button className="text-gray-400 hover:text-blue-600">
-                    <Bookmark className={`w-6 h-6 ${job.saved ? 'fill-blue-600 text-blue-600' : ''}`} />
+                    <Bookmark
+                      className={`w-6 h-6 ${job.saved ? 'fill-blue-600 text-blue-600' : ''}`}
+                    />
                   </button>
                 </div>
                 <p className="text-gray-600 mt-3">{job.description}</p>

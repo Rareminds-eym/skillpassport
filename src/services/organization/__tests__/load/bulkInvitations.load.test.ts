@@ -1,6 +1,6 @@
 /**
  * Load Tests: Bulk Invitations
- * 
+ *
  * Tests system performance for bulk invitation operations.
  * Target: 10,000 member invitations
  * Requirements: Performance, Scalability
@@ -27,7 +27,7 @@ describe('Load Tests: Bulk Invitations', () => {
       successfulInvitations: 0,
       failedInvitations: 0,
       totalDuration: 0,
-      invitationsPerSecond: 0
+      invitationsPerSecond: 0,
     };
     vi.clearAllMocks();
   });
@@ -36,7 +36,7 @@ describe('Load Tests: Bulk Invitations', () => {
     it('should create 10,000 invitation records efficiently', async () => {
       const invitationCount = 10000;
       const emails = Array.from({ length: invitationCount }, (_, i) => `user${i + 1}@example.com`);
-      
+
       const startTime = Date.now();
 
       const generateToken = () => {
@@ -52,9 +52,9 @@ describe('Load Tests: Bulk Invitations', () => {
           status: 'pending',
           invitation_token: generateToken(),
           expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
         };
-        
+
         invitations.set(invitation.id, invitation);
         return invitation;
       };
@@ -78,7 +78,7 @@ describe('Load Tests: Bulk Invitations', () => {
       expect(metrics.successfulInvitations).toBe(10000);
       expect(metrics.failedInvitations).toBe(0);
       expect(invitations.size).toBe(10000);
-      
+
       // Performance target: Should complete in under 10 seconds
       expect(metrics.totalDuration).toBeLessThan(10000);
 
@@ -91,7 +91,7 @@ describe('Load Tests: Bulk Invitations', () => {
       const invitationCount = 10000;
       const batchSize = 500;
       const emails = Array.from({ length: invitationCount }, (_, i) => `user${i + 1}@example.com`);
-      
+
       const startTime = Date.now();
       const batchMetrics: { batchNumber: number; duration: number; count: number }[] = [];
 
@@ -104,9 +104,9 @@ describe('Load Tests: Bulk Invitations', () => {
             id: `inv-${startIndex + i}`,
             email: batch[i],
             status: 'pending',
-            invitation_token: `token_${startIndex + i}`
+            invitation_token: `token_${startIndex + i}`,
           };
-          
+
           invitations.set(invitation.id, invitation);
           results.push(invitation);
         }
@@ -115,7 +115,7 @@ describe('Load Tests: Bulk Invitations', () => {
         batchMetrics.push({
           batchNumber,
           duration: batchEnd - batchStart,
-          count: results.length
+          count: results.length,
         });
 
         return results;
@@ -134,8 +134,9 @@ describe('Load Tests: Bulk Invitations', () => {
       // Assertions
       expect(invitations.size).toBe(10000);
       expect(batchMetrics.length).toBe(20); // 10000 / 500 = 20 batches
-      
-      const avgBatchDuration = batchMetrics.reduce((sum, b) => sum + b.duration, 0) / batchMetrics.length;
+
+      const avgBatchDuration =
+        batchMetrics.reduce((sum, b) => sum + b.duration, 0) / batchMetrics.length;
 
       console.log(`Load Test Results - Batched Invitations (batch size: ${batchSize}):`);
       console.log(`  Total Duration: ${totalDuration}ms`);
@@ -146,7 +147,7 @@ describe('Load Tests: Bulk Invitations', () => {
     it('should handle email queue processing for 10,000 invitations', async () => {
       const invitationCount = 10000;
       const emails = Array.from({ length: invitationCount }, (_, i) => `user${i + 1}@example.com`);
-      
+
       const startTime = Date.now();
 
       // Create invitations and queue emails
@@ -154,17 +155,17 @@ describe('Load Tests: Bulk Invitations', () => {
         const invitation = {
           id: `inv-${i}`,
           email: emails[i],
-          status: 'pending'
+          status: 'pending',
         };
-        
+
         invitations.set(invitation.id, invitation);
-        
+
         // Queue email
         emailQueue.push({
           to: emails[i],
           subject: 'Organization Invitation',
           template: 'invitation',
-          data: { invitationId: invitation.id }
+          data: { invitationId: invitation.id },
         });
       }
 
@@ -183,11 +184,11 @@ describe('Load Tests: Bulk Invitations', () => {
     it('should validate email uniqueness efficiently', async () => {
       const invitationCount = 5000;
       const emails = Array.from({ length: invitationCount }, (_, i) => `user${i + 1}@example.com`);
-      
+
       // Add some duplicates
       const duplicateEmails = ['user1@example.com', 'user100@example.com', 'user500@example.com'];
       const allEmails = [...emails, ...duplicateEmails];
-      
+
       const emailIndex = new Set<string>();
       let duplicatesFound = 0;
       let uniqueCreated = 0;
@@ -196,17 +197,17 @@ describe('Load Tests: Bulk Invitations', () => {
 
       for (let i = 0; i < allEmails.length; i++) {
         const email = allEmails[i].toLowerCase();
-        
+
         if (emailIndex.has(email)) {
           duplicatesFound++;
           continue;
         }
-        
+
         emailIndex.add(email);
         invitations.set(`inv-${i}`, {
           id: `inv-${i}`,
           email: allEmails[i],
-          status: 'pending'
+          status: 'pending',
         });
         uniqueCreated++;
       }
@@ -231,7 +232,7 @@ describe('Load Tests: Bulk Invitations', () => {
       const targetOpsPerSecond = 1000;
       const testDurationMs = 1000;
       const emails = Array.from({ length: 2000 }, (_, i) => `user${i + 1}@example.com`);
-      
+
       const startTime = Date.now();
       let operationsCompleted = 0;
 
@@ -239,7 +240,7 @@ describe('Load Tests: Bulk Invitations', () => {
         invitations.set(`inv-${operationsCompleted}`, {
           id: `inv-${operationsCompleted}`,
           email: emails[operationsCompleted],
-          status: 'pending'
+          status: 'pending',
         });
         operationsCompleted++;
       }
@@ -261,7 +262,7 @@ describe('Load Tests: Bulk Invitations', () => {
         invitations.set(`inv-${i}`, {
           id: `inv-${i}`,
           email: `user${i}@example.com`,
-          status: 'pending'
+          status: 'pending',
         });
       }
 
@@ -276,7 +277,7 @@ describe('Load Tests: Bulk Invitations', () => {
       const endTime = Date.now();
       const duration = endTime - startTime;
 
-      const sentCount = Array.from(invitations.values()).filter(i => i.status === 'sent').length;
+      const sentCount = Array.from(invitations.values()).filter((i) => i.status === 'sent').length;
       expect(sentCount).toBe(5000);
 
       console.log(`Status Update Test Results:`);
@@ -303,7 +304,7 @@ describe('Load Tests: Bulk Invitations', () => {
           invitations.set(`inv-${i}`, {
             id: `inv-${i}`,
             email: `user${i}@example.com`,
-            status: 'pending'
+            status: 'pending',
           });
           creates++;
         } else if (operation === 1 && invitations.size > 0) {
@@ -351,7 +352,7 @@ describe('Load Tests: Bulk Invitations', () => {
           id: `inv-${i}`,
           email: `user${i}@example.com`,
           status: 'pending',
-          expires_at: new Date(now + daysOffset * 24 * 60 * 60 * 1000).toISOString()
+          expires_at: new Date(now + daysOffset * 24 * 60 * 60 * 1000).toISOString(),
         });
       }
 

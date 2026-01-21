@@ -17,7 +17,8 @@ export class StudentPipelineService {
       // Query pipeline_candidates table for this student
       let query = supabase
         .from('pipeline_candidates')
-        .select(`
+        .select(
+          `
           id,
           opportunity_id,
           student_id,
@@ -54,7 +55,8 @@ export class StudentPipelineService {
             experience_required,
             recruiter_id
           )
-        `)
+        `
+        )
         .eq('status', 'active')
         .order('stage_changed_at', { ascending: false });
 
@@ -71,7 +73,6 @@ export class StudentPipelineService {
         console.error('Error fetching pipeline status:', error);
         throw error;
       }
-
 
       return data || [];
     } catch (error) {
@@ -96,7 +97,7 @@ export class StudentPipelineService {
       if (candidatesError) throw candidatesError;
       if (!candidates || candidates.length === 0) return [];
 
-      const candidateIds = candidates.map(c => c.id);
+      const candidateIds = candidates.map((c) => c.id);
 
       // Fetch activities for these candidates
       const { data: activities, error: activitiesError } = await supabase
@@ -152,7 +153,8 @@ export class StudentPipelineService {
         // Applications with opportunity details
         supabase
           .from('applied_jobs')
-          .select(`
+          .select(
+            `
             *,
             opportunity:opportunities!fk_applied_jobs_opportunity (
               id,
@@ -169,15 +171,16 @@ export class StudentPipelineService {
               recruiter_id,
               experience_level
             )
-          `)
+          `
+          )
           .eq('student_id', studentId)
           .order('applied_at', { ascending: false }),
-        
+
         // Pipeline statuses - single query
         this.getStudentPipelineStatus(studentId, studentEmail),
-        
+
         // Interviews - single query
-        this.getStudentInterviews(studentId)
+        this.getStudentInterviews(studentId),
       ]);
 
       const { data: applications, error: appsError } = applicationsResult;
@@ -187,12 +190,10 @@ export class StudentPipelineService {
       const interviews = interviewsResult;
 
       // Create lookup maps for O(1) access
-      const pipelineMap = new Map(
-        pipelineStatuses.map(ps => [ps.opportunity_id, ps])
-      );
+      const pipelineMap = new Map(pipelineStatuses.map((ps) => [ps.opportunity_id, ps]));
 
       const interviewsMap = new Map();
-      interviews.forEach(interview => {
+      interviews.forEach((interview) => {
         const key = interview.opportunity_id || interview.job_title;
         if (!interviewsMap.has(key)) {
           interviewsMap.set(key, []);
@@ -201,11 +202,11 @@ export class StudentPipelineService {
       });
 
       // Combine data - match by opportunity_id
-      const combinedData = (applications || []).map(app => {
+      const combinedData = (applications || []).map((app) => {
         const opportunityId = app.opportunity?.id;
         const pipelineStatus = opportunityId ? pipelineMap.get(opportunityId) : null;
         const jobInterviews = opportunityId ? interviewsMap.get(opportunityId) : [];
-        
+
         return {
           ...app,
           pipeline_status: pipelineStatus,
@@ -216,7 +217,8 @@ export class StudentPipelineService {
           rejection_reason: pipelineStatus?.rejection_reason || null,
           next_action: pipelineStatus?.next_action || null,
           next_action_date: pipelineStatus?.next_action_date || null,
-          pipeline_recruiter_id: pipelineStatus?.assigned_to || pipelineStatus?.opportunities?.recruiter_id || null,
+          pipeline_recruiter_id:
+            pipelineStatus?.assigned_to || pipelineStatus?.opportunities?.recruiter_id || null,
         };
       });
 
@@ -240,16 +242,16 @@ export class StudentPipelineService {
 
       // Filter for stage changes
       const stageChanges = activities
-        .filter(activity => activity.activity_type === 'stage_change')
+        .filter((activity) => activity.activity_type === 'stage_change')
         .slice(0, limit)
-        .map(activity => ({
+        .map((activity) => ({
           id: activity.id,
           from_stage: activity.from_stage,
           to_stage: activity.to_stage,
           changed_at: activity.created_at,
           changed_by: activity.performed_by,
           details: activity.activity_details,
-          type: 'stage_change'
+          type: 'stage_change',
         }));
 
       return stageChanges;
@@ -274,7 +276,7 @@ export class StudentPipelineService {
           event: '*',
           schema: 'public',
           table: 'pipeline_candidates',
-          filter: `student_id=eq.${studentId}`
+          filter: `student_id=eq.${studentId}`,
         },
         (payload) => {
           onUpdate(payload);
@@ -285,7 +287,7 @@ export class StudentPipelineService {
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'pipeline_activities'
+          table: 'pipeline_activities',
         },
         async (payload) => {
           // Check if this activity belongs to this student
@@ -306,7 +308,7 @@ export class StudentPipelineService {
           event: '*',
           schema: 'public',
           table: 'interviews',
-          filter: `student_id=eq.${studentId}`
+          filter: `student_id=eq.${studentId}`,
         },
         (payload) => {
           onUpdate(payload);

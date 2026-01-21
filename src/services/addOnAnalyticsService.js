@@ -1,12 +1,12 @@
 /**
  * AddOnAnalyticsService
- * 
+ *
  * Service for tracking and analyzing add-on subscription analytics including:
  * - Tracking add-on events (views, purchases, cancellations, etc.)
  * - Generating revenue reports
  * - Calculating churn rates
  * - Cohort analysis for adoption patterns
- * 
+ *
  * @requirement REQ-3.5 - Add-On Analytics Service
  * @requirement REQ-10 - Add-On Analytics and Reporting
  */
@@ -16,7 +16,7 @@ import { supabase } from '../lib/supabaseClient';
 class AddOnAnalyticsService {
   /**
    * Track an add-on related event
-   * 
+   *
    * @param {string} userId - The user's UUID
    * @param {string} eventType - Type of event (view, purchase, activation, cancellation, renewal, expiry, upgrade_prompt)
    * @param {string} featureKey - The feature_key of the add-on
@@ -27,23 +27,26 @@ class AddOnAnalyticsService {
   async trackEvent(userId, eventType, featureKey, metadata = {}) {
     try {
       const validEventTypes = [
-        'view', 
-        'purchase', 
-        'activation', 
-        'cancellation', 
-        'renewal', 
-        'expiry', 
+        'view',
+        'purchase',
+        'activation',
+        'cancellation',
+        'renewal',
+        'expiry',
         'upgrade_prompt',
         'bundle_view',
         'bundle_purchase',
         'discount_applied',
         'payment_failed',
         'grace_period_started',
-        'grace_period_ended'
+        'grace_period_ended',
       ];
 
       if (!validEventTypes.includes(eventType)) {
-        return { success: false, error: `Invalid event type. Must be one of: ${validEventTypes.join(', ')}` };
+        return {
+          success: false,
+          error: `Invalid event type. Must be one of: ${validEventTypes.join(', ')}`,
+        };
       }
 
       const eventData = {
@@ -53,8 +56,8 @@ class AddOnAnalyticsService {
         metadata: {
           ...metadata,
           timestamp: new Date().toISOString(),
-          user_agent: typeof window !== 'undefined' ? window.navigator?.userAgent : null
-        }
+          user_agent: typeof window !== 'undefined' ? window.navigator?.userAgent : null,
+        },
       };
 
       // Add bundle_id if provided in metadata
@@ -82,7 +85,7 @@ class AddOnAnalyticsService {
 
   /**
    * Get add-on revenue report
-   * 
+   *
    * @param {Object} options - Report options
    * @param {Date|string} options.startDate - Start date for the report
    * @param {Date|string} options.endDate - End date for the report
@@ -92,10 +95,10 @@ class AddOnAnalyticsService {
    */
   async getAddOnRevenue(options = {}) {
     try {
-      const { 
+      const {
         startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Default: last 30 days
         endDate = new Date(),
-        groupBy = 'day'
+        groupBy = 'day',
       } = options;
 
       const start = new Date(startDate).toISOString();
@@ -136,16 +139,16 @@ class AddOnAnalyticsService {
       }, 0);
 
       const monthlyRevenue = (entitlements || [])
-        .filter(ent => ent.billing_period === 'monthly')
+        .filter((ent) => ent.billing_period === 'monthly')
         .reduce((sum, ent) => sum + (parseFloat(ent.price_at_purchase) || 0), 0);
 
       const annualRevenue = (entitlements || [])
-        .filter(ent => ent.billing_period === 'annual')
+        .filter((ent) => ent.billing_period === 'annual')
         .reduce((sum, ent) => sum + (parseFloat(ent.price_at_purchase) || 0), 0);
 
       // Revenue by feature
       const revenueByFeature = {};
-      (entitlements || []).forEach(ent => {
+      (entitlements || []).forEach((ent) => {
         const key = ent.feature_key || 'unknown';
         if (!revenueByFeature[key]) {
           revenueByFeature[key] = { count: 0, revenue: 0 };
@@ -165,9 +168,9 @@ class AddOnAnalyticsService {
           revenueByPeriod: revenueData,
           revenueByFeature,
           bundleRevenue: (entitlements || [])
-            .filter(ent => ent.bundle_id)
-            .reduce((sum, ent) => sum + (parseFloat(ent.price_at_purchase) || 0), 0)
-        }
+            .filter((ent) => ent.bundle_id)
+            .reduce((sum, ent) => sum + (parseFloat(ent.price_at_purchase) || 0), 0),
+        },
       };
     } catch (error) {
       console.error('Error in getAddOnRevenue:', error);
@@ -182,7 +185,7 @@ class AddOnAnalyticsService {
   calculateRevenueByGroup(entitlements, groupBy) {
     const grouped = {};
 
-    entitlements.forEach(ent => {
+    entitlements.forEach((ent) => {
       const date = new Date(ent.created_at);
       let key;
 
@@ -190,11 +193,12 @@ class AddOnAnalyticsService {
         case 'day':
           key = date.toISOString().split('T')[0];
           break;
-        case 'week':
+        case 'week': {
           const weekStart = new Date(date);
           weekStart.setDate(date.getDate() - date.getDay());
           key = weekStart.toISOString().split('T')[0];
           break;
+        }
         case 'month':
           key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
           break;
@@ -213,18 +217,17 @@ class AddOnAnalyticsService {
     });
 
     // Round revenue values
-    Object.keys(grouped).forEach(key => {
+    Object.keys(grouped).forEach((key) => {
       grouped[key].revenue = Math.round(grouped[key].revenue * 100) / 100;
     });
 
     return grouped;
   }
 
-
   /**
    * Calculate churn rate for a specific add-on
    * Churn rate = (Cancellations in period / Active at start of period) * 100
-   * 
+   *
    * @param {string} featureKey - The feature_key to analyze
    * @param {Object} options - Analysis options
    * @param {Date|string} options.startDate - Start date
@@ -234,10 +237,8 @@ class AddOnAnalyticsService {
    */
   async getChurnRate(featureKey, options = {}) {
     try {
-      const { 
-        startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-        endDate = new Date()
-      } = options;
+      const { startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), endDate = new Date() } =
+        options;
 
       const start = new Date(startDate).toISOString();
       const end = new Date(endDate).toISOString();
@@ -259,35 +260,37 @@ class AddOnAnalyticsService {
       }
 
       // Count active at start of period
-      const activeAtStart = (entitlements || []).filter(ent => {
+      const activeAtStart = (entitlements || []).filter((ent) => {
         const createdAt = new Date(ent.created_at);
-        return createdAt < new Date(start) && 
-               (ent.status === 'active' || ent.status === 'grace_period' ||
-                (ent.cancelled_at && new Date(ent.cancelled_at) > new Date(start)));
+        return (
+          createdAt < new Date(start) &&
+          (ent.status === 'active' ||
+            ent.status === 'grace_period' ||
+            (ent.cancelled_at && new Date(ent.cancelled_at) > new Date(start)))
+        );
       }).length;
 
       // Count cancellations during period
-      const cancellations = (entitlements || []).filter(ent => {
+      const cancellations = (entitlements || []).filter((ent) => {
         if (!ent.cancelled_at) return false;
         const cancelledAt = new Date(ent.cancelled_at);
         return cancelledAt >= new Date(start) && cancelledAt <= new Date(end);
       }).length;
 
       // Count new activations during period
-      const newActivations = (entitlements || []).filter(ent => {
+      const newActivations = (entitlements || []).filter((ent) => {
         const createdAt = new Date(ent.created_at);
         return createdAt >= new Date(start) && createdAt <= new Date(end);
       }).length;
 
       // Count currently active
-      const currentlyActive = (entitlements || []).filter(ent => 
-        ent.status === 'active' || ent.status === 'grace_period'
+      const currentlyActive = (entitlements || []).filter(
+        (ent) => ent.status === 'active' || ent.status === 'grace_period'
       ).length;
 
       // Calculate churn rate
-      const churnRate = activeAtStart > 0 
-        ? Math.round((cancellations / activeAtStart) * 10000) / 100 
-        : 0;
+      const churnRate =
+        activeAtStart > 0 ? Math.round((cancellations / activeAtStart) * 10000) / 100 : 0;
 
       // Calculate net growth
       const netGrowth = newActivations - cancellations;
@@ -303,8 +306,8 @@ class AddOnAnalyticsService {
           currentlyActive,
           churnRate,
           netGrowth,
-          retentionRate: 100 - churnRate
-        }
+          retentionRate: 100 - churnRate,
+        },
       };
     } catch (error) {
       console.error('Error in getChurnRate:', error);
@@ -315,7 +318,7 @@ class AddOnAnalyticsService {
   /**
    * Get cohort analysis for add-on adoption
    * Groups users by their first add-on purchase date and tracks retention
-   * 
+   *
    * @param {Date|string} cohortDate - The cohort start date (month)
    * @param {Object} options - Analysis options
    * @param {number} options.monthsToTrack - Number of months to track (default: 6)
@@ -348,7 +351,7 @@ class AddOnAnalyticsService {
 
       // Get unique users in cohort (first purchase only)
       const userFirstPurchase = new Map();
-      (cohortEntitlements || []).forEach(ent => {
+      (cohortEntitlements || []).forEach((ent) => {
         if (!userFirstPurchase.has(ent.user_id)) {
           userFirstPurchase.set(ent.user_id, ent.created_at);
         }
@@ -364,8 +367,8 @@ class AddOnAnalyticsService {
             cohortMonth: cohortStart.toISOString().slice(0, 7),
             cohortSize: 0,
             retention: [],
-            message: 'No users in this cohort'
-          }
+            message: 'No users in this cohort',
+          },
         };
       }
 
@@ -375,7 +378,7 @@ class AddOnAnalyticsService {
       for (let month = 0; month <= monthsToTrack; month++) {
         const monthStart = new Date(cohortStart);
         monthStart.setMonth(monthStart.getMonth() + month);
-        
+
         const monthEnd = new Date(monthStart);
         monthEnd.setMonth(monthEnd.getMonth() + 1);
 
@@ -392,7 +395,7 @@ class AddOnAnalyticsService {
           continue;
         }
 
-        const uniqueActiveUsers = new Set((activeInMonth || []).map(e => e.user_id));
+        const uniqueActiveUsers = new Set((activeInMonth || []).map((e) => e.user_id));
         const retainedCount = uniqueActiveUsers.size;
         const retentionRate = Math.round((retainedCount / cohortSize) * 10000) / 100;
 
@@ -401,7 +404,7 @@ class AddOnAnalyticsService {
           monthLabel: monthStart.toISOString().slice(0, 7),
           retainedUsers: retainedCount,
           retentionRate,
-          churnedUsers: cohortSize - retainedCount
+          churnedUsers: cohortSize - retainedCount,
         });
       }
 
@@ -411,10 +414,13 @@ class AddOnAnalyticsService {
           cohortMonth: cohortStart.toISOString().slice(0, 7),
           cohortSize,
           retention,
-          averageRetention: retention.length > 0
-            ? Math.round(retention.reduce((sum, r) => sum + r.retentionRate, 0) / retention.length * 100) / 100
-            : 0
-        }
+          averageRetention:
+            retention.length > 0
+              ? Math.round(
+                  (retention.reduce((sum, r) => sum + r.retentionRate, 0) / retention.length) * 100
+                ) / 100
+              : 0,
+        },
       };
     } catch (error) {
       console.error('Error in getCohortAnalysis:', error);
@@ -424,7 +430,7 @@ class AddOnAnalyticsService {
 
   /**
    * Get feature usage statistics for users with active add-ons
-   * 
+   *
    * @param {string} featureKey - The feature_key to analyze
    * @param {Object} options - Analysis options
    * @returns {Promise<{success: boolean, data?: Object, error?: string}>}
@@ -432,10 +438,8 @@ class AddOnAnalyticsService {
    */
   async getFeatureUsage(featureKey, options = {}) {
     try {
-      const { 
-        startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-        endDate = new Date()
-      } = options;
+      const { startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), endDate = new Date() } =
+        options;
 
       const start = new Date(startDate).toISOString();
       const end = new Date(endDate).toISOString();
@@ -460,7 +464,7 @@ class AddOnAnalyticsService {
 
       // Group events by type
       const eventsByType = {};
-      (events || []).forEach(event => {
+      (events || []).forEach((event) => {
         if (!eventsByType[event.event_type]) {
           eventsByType[event.event_type] = 0;
         }
@@ -468,14 +472,12 @@ class AddOnAnalyticsService {
       });
 
       // Get unique users
-      const uniqueUsers = new Set((events || []).map(e => e.user_id).filter(Boolean));
+      const uniqueUsers = new Set((events || []).map((e) => e.user_id).filter(Boolean));
 
       // Calculate conversion rate (views to purchases)
       const views = eventsByType['view'] || 0;
       const purchases = eventsByType['purchase'] || 0;
-      const conversionRate = views > 0 
-        ? Math.round((purchases / views) * 10000) / 100 
-        : 0;
+      const conversionRate = views > 0 ? Math.round((purchases / views) * 10000) / 100 : 0;
 
       return {
         success: true,
@@ -487,10 +489,11 @@ class AddOnAnalyticsService {
           eventsByType,
           conversionRate,
           upgradePromptShown: eventsByType['upgrade_prompt'] || 0,
-          upgradePromptConversion: eventsByType['upgrade_prompt'] > 0
-            ? Math.round((purchases / eventsByType['upgrade_prompt']) * 10000) / 100
-            : 0
-        }
+          upgradePromptConversion:
+            eventsByType['upgrade_prompt'] > 0
+              ? Math.round((purchases / eventsByType['upgrade_prompt']) * 10000) / 100
+              : 0,
+        },
       };
     } catch (error) {
       console.error('Error in getFeatureUsage:', error);
@@ -500,7 +503,7 @@ class AddOnAnalyticsService {
 
   /**
    * Get add-on adoption metrics
-   * 
+   *
    * @returns {Promise<{success: boolean, data?: Object, error?: string}>}
    */
   async getAdoptionMetrics() {
@@ -529,17 +532,17 @@ class AddOnAnalyticsService {
 
       // Calculate adoption by feature
       const adoptionByFeature = {};
-      (addOns || []).forEach(addOn => {
+      (addOns || []).forEach((addOn) => {
         adoptionByFeature[addOn.feature_key] = {
           name: addOn.feature_name,
           activeSubscribers: 0,
           monthlySubscribers: 0,
           annualSubscribers: 0,
-          bundleSubscribers: 0
+          bundleSubscribers: 0,
         };
       });
 
-      (entitlements || []).forEach(ent => {
+      (entitlements || []).forEach((ent) => {
         if (adoptionByFeature[ent.feature_key]) {
           adoptionByFeature[ent.feature_key].activeSubscribers++;
           if (ent.billing_period === 'monthly') {
@@ -555,7 +558,7 @@ class AddOnAnalyticsService {
 
       // Calculate totals
       const totalActiveEntitlements = entitlements?.length || 0;
-      const bundleEntitlements = (entitlements || []).filter(e => e.bundle_id).length;
+      const bundleEntitlements = (entitlements || []).filter((e) => e.bundle_id).length;
       const individualEntitlements = totalActiveEntitlements - bundleEntitlements;
 
       return {
@@ -564,15 +567,16 @@ class AddOnAnalyticsService {
           totalActiveEntitlements,
           bundleEntitlements,
           individualEntitlements,
-          bundleVsIndividualRatio: totalActiveEntitlements > 0
-            ? Math.round((bundleEntitlements / totalActiveEntitlements) * 10000) / 100
-            : 0,
+          bundleVsIndividualRatio:
+            totalActiveEntitlements > 0
+              ? Math.round((bundleEntitlements / totalActiveEntitlements) * 10000) / 100
+              : 0,
           adoptionByFeature,
           topAddOns: Object.entries(adoptionByFeature)
             .sort((a, b) => b[1].activeSubscribers - a[1].activeSubscribers)
             .slice(0, 5)
-            .map(([key, value]) => ({ featureKey: key, ...value }))
-        }
+            .map(([key, value]) => ({ featureKey: key, ...value })),
+        },
       };
     } catch (error) {
       console.error('Error in getAdoptionMetrics:', error);
@@ -587,4 +591,3 @@ export default addOnAnalyticsService;
 
 // Also export the class for testing purposes
 export { AddOnAnalyticsService };
-

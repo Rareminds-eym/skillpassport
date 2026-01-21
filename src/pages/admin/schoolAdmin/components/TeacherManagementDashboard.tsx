@@ -1,10 +1,4 @@
-import {
-    BarChart3,
-    Calendar,
-    Upload,
-    UserPlus,
-    Users
-} from 'lucide-react';
+import { BarChart3, Calendar, Upload, UserPlus, Users } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../../../context/AuthContext';
 import { useUserRole } from '../../../../hooks/useUserRole';
@@ -19,7 +13,9 @@ import TimetableBuilderEnhanced from './TimetableBuilderEnhanced';
 const TeacherManagementDashboard: React.FC = () => {
   const { role, canAddTeacher } = useUserRole();
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'list' | 'onboarding' | 'timetable' | 'analytics' | 'import'>('list');
+  const [activeTab, setActiveTab] = useState<
+    'list' | 'onboarding' | 'timetable' | 'analytics' | 'import'
+  >('list');
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [schoolId, setSchoolId] = useState<string | null>(null);
@@ -105,21 +101,36 @@ const TeacherManagementDashboard: React.FC = () => {
 
   const tabs = [
     { id: 'list', label: 'Teachers', icon: Users, description: 'View and manage all teachers' },
-    { id: 'onboarding', label: 'Onboarding', icon: UserPlus, description: 'Add new teachers', requiresPermission: true },
+    {
+      id: 'onboarding',
+      label: 'Onboarding',
+      icon: UserPlus,
+      description: 'Add new teachers',
+      requiresPermission: true,
+    },
     { id: 'timetable', label: 'Timetable', icon: Calendar, description: 'Manage class schedules' },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3, description: 'Teacher performance metrics' },
-    { id: 'import', label: 'Bulk Import', icon: Upload, description: 'Import multiple teachers', requiresPermission: true },
+    {
+      id: 'analytics',
+      label: 'Analytics',
+      icon: BarChart3,
+      description: 'Teacher performance metrics',
+    },
+    {
+      id: 'import',
+      label: 'Bulk Import',
+      icon: Upload,
+      description: 'Import multiple teachers',
+      requiresPermission: true,
+    },
   ];
 
-  const filteredTabs = tabs.filter(tab => !tab.requiresPermission || canAddTeacher());
+  const filteredTabs = tabs.filter((tab) => !tab.requiresPermission || canAddTeacher());
 
   return (
     <div className="space-y-6">
       {/* Header with Stats */}
       <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 rounded-2xl p-6 border border-indigo-100">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Teacher Management
-        </h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Teacher Management</h1>
         <p className="text-gray-600 mb-6">
           Comprehensive teacher management system for your school
         </p>
@@ -169,7 +180,9 @@ const TeacherManagementDashboard: React.FC = () => {
                 <Icon className="h-6 w-6" />
                 <div className="text-center">
                   <div className="text-sm font-semibold">{tab.label}</div>
-                  <div className={`text-xs mt-1 ${activeTab === tab.id ? 'text-indigo-100' : 'text-gray-500'}`}>
+                  <div
+                    className={`text-xs mt-1 ${activeTab === tab.id ? 'text-indigo-100' : 'text-gray-500'}`}
+                  >
                     {tab.description}
                   </div>
                 </div>

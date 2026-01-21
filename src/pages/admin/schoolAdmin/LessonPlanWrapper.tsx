@@ -1,6 +1,6 @@
-import React from "react";
-import LessonPlan from "./LessonPlan";
-import { useLessonPlans, useSubjectsAndClasses } from "../../../hooks/useLessonPlans";
+import React from 'react';
+import LessonPlan from './LessonPlan';
+import { useLessonPlans, useSubjectsAndClasses } from '../../../hooks/useLessonPlans';
 
 /**
  * Wrapper component that connects the LessonPlan UI to the backend
@@ -8,7 +8,7 @@ import { useLessonPlans, useSubjectsAndClasses } from "../../../hooks/useLessonP
  */
 const LessonPlanWrapper: React.FC = () => {
   // Get current school ID from localStorage or context
-  const schoolId = localStorage.getItem("schoolId") || undefined;
+  const schoolId = localStorage.getItem('schoolId') || undefined;
 
   // Use hooks for data management
   const lessonPlansHook = useLessonPlans();

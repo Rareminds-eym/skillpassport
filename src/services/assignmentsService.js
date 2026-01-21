@@ -30,7 +30,8 @@ export const getAssignmentsByStudentId = async (studentId) => {
     // STEP 2: Fetch student assignments using user_id
     const { data, error } = await supabase
       .from('student_assignments')
-      .select(`
+      .select(
+        `
         *,
         assignments (
           assignment_id,
@@ -51,38 +52,39 @@ export const getAssignmentsByStudentId = async (studentId) => {
           created_date,
           allow_late_submission
         )
-      `)
-      .eq('student_id', uid)               // <-- FIXED
+      `
+      )
+      .eq('student_id', uid) // <-- FIXED
       .eq('is_deleted', false)
       .order('assignments(created_date)', { ascending: false }); // Show newest assignments first
 
     if (error) throw error;
 
     // STEP 3: Flatten the output
-    const flattenedData = data?.map(item => ({
-      ...item.assignments,
-      student_assignment_id: item.student_assignment_id,
-      status: item.status,
-      priority: item.priority,
-      grade_received: item.grade_received,
-      grade_percentage: item.grade_percentage,
-      instructor_feedback: item.instructor_feedback,
-      feedback_date: item.feedback_date,
-      graded_by: item.graded_by,
-      graded_date: item.graded_date,
-      submission_date: item.submission_date,
-      submission_type: item.submission_type,
-      submission_content: item.submission_content,
-      submission_url: item.submission_url,
-      is_late: item.is_late,
-      late_penalty: item.late_penalty,
-      assigned_date: item.assigned_date,
-      started_date: item.started_date,
-      completed_date: item.completed_date
-    })) || [];
+    const flattenedData =
+      data?.map((item) => ({
+        ...item.assignments,
+        student_assignment_id: item.student_assignment_id,
+        status: item.status,
+        priority: item.priority,
+        grade_received: item.grade_received,
+        grade_percentage: item.grade_percentage,
+        instructor_feedback: item.instructor_feedback,
+        feedback_date: item.feedback_date,
+        graded_by: item.graded_by,
+        graded_date: item.graded_date,
+        submission_date: item.submission_date,
+        submission_type: item.submission_type,
+        submission_content: item.submission_content,
+        submission_url: item.submission_url,
+        is_late: item.is_late,
+        late_penalty: item.late_penalty,
+        assigned_date: item.assigned_date,
+        started_date: item.started_date,
+        completed_date: item.completed_date,
+      })) || [];
 
     return flattenedData;
-
   } catch (error) {
     console.error('Error fetching assignments:', error);
     throw error;
@@ -99,7 +101,8 @@ export const getAssignmentsByStatus = async (studentId, status) => {
   try {
     const { data, error } = await supabase
       .from('student_assignments')
-      .select(`
+      .select(
+        `
         *,
         assignments (
           assignment_id,
@@ -114,25 +117,27 @@ export const getAssignmentsByStatus = async (studentId, status) => {
           due_date,
           document_pdf
         )
-      `)
+      `
+      )
       .eq('student_id', studentId)
       .eq('status', status)
       .eq('is_deleted', false)
       .order('assignments(due_date)', { ascending: true });
 
     if (error) throw error;
-    
-    const flattenedData = data?.map(item => ({
-      ...item.assignments,
-      student_assignment_id: item.student_assignment_id,
-      status: item.status,
-      priority: item.priority,
-      grade_received: item.grade_received,
-      grade_percentage: item.grade_percentage,
-      submission_date: item.submission_date,
-      is_late: item.is_late
-    })) || [];
-    
+
+    const flattenedData =
+      data?.map((item) => ({
+        ...item.assignments,
+        student_assignment_id: item.student_assignment_id,
+        status: item.status,
+        priority: item.priority,
+        grade_received: item.grade_received,
+        grade_percentage: item.grade_percentage,
+        submission_date: item.submission_date,
+        is_late: item.is_late,
+      })) || [];
+
     return flattenedData;
   } catch (error) {
     console.error('Error fetching assignments by status:', error);
@@ -156,19 +161,20 @@ export const getAssignmentsByDateRange = async (studentId, startDate, endDate) =
       .gte('due_date', startDate)
       .lte('due_date', endDate)
       .eq('is_deleted', false);
-    
+
     if (assignmentError) throw assignmentError;
-    
+
     if (!assignmentIds || assignmentIds.length === 0) {
       return [];
     }
-    
-    const ids = assignmentIds.map(a => a.assignment_id);
-    
+
+    const ids = assignmentIds.map((a) => a.assignment_id);
+
     // Then get student assignments for those IDs
     const { data, error } = await supabase
       .from('student_assignments')
-      .select(`
+      .select(
+        `
         *,
         assignments (
           assignment_id,
@@ -180,23 +186,25 @@ export const getAssignmentsByDateRange = async (studentId, startDate, endDate) =
           assignment_type,
           due_date
         )
-      `)
+      `
+      )
       .eq('student_id', studentId)
       .in('assignment_id', ids)
       .eq('is_deleted', false)
       .order('assignments(due_date)', { ascending: true });
 
     if (error) throw error;
-    
-    const flattenedData = data?.map(item => ({
-      ...item.assignments,
-      student_assignment_id: item.student_assignment_id,
-      status: item.status,
-      priority: item.priority,
-      grade_received: item.grade_received,
-      submission_date: item.submission_date
-    })) || [];
-    
+
+    const flattenedData =
+      data?.map((item) => ({
+        ...item.assignments,
+        student_assignment_id: item.student_assignment_id,
+        status: item.status,
+        priority: item.priority,
+        grade_received: item.grade_received,
+        submission_date: item.submission_date,
+      })) || [];
+
     return flattenedData;
   } catch (error) {
     console.error('Error fetching assignments by date range:', error);
@@ -234,17 +242,17 @@ export const getAssignmentStats = async (studentId) => {
 
     const stats = {
       total: data.length,
-      todo: data.filter(a => a.status === 'todo').length,
-      inProgress: data.filter(a => a.status === 'in-progress').length,
-      submitted: data.filter(a => a.status === 'submitted').length,
-      graded: data.filter(a => a.status === 'graded').length,
-      averageGrade: 0
+      todo: data.filter((a) => a.status === 'todo').length,
+      inProgress: data.filter((a) => a.status === 'in-progress').length,
+      submitted: data.filter((a) => a.status === 'submitted').length,
+      graded: data.filter((a) => a.status === 'graded').length,
+      averageGrade: 0,
     };
 
     // Calculate average grade for graded assignments
     const gradesArray = data
-      .filter(a => a.grade_percentage !== null)
-      .map(a => a.grade_percentage);
+      .filter((a) => a.grade_percentage !== null)
+      .map((a) => a.grade_percentage);
 
     if (gradesArray.length > 0) {
       stats.averageGrade = Math.round(
@@ -259,7 +267,6 @@ export const getAssignmentStats = async (studentId) => {
   }
 };
 
-
 /**
  * Update assignment status
  * @param {string} studentAssignmentId - The UUID of the student_assignment record
@@ -270,7 +277,7 @@ export const updateAssignmentStatus = async (studentAssignmentId, newStatus) => 
   try {
     const updateData = {
       status: newStatus,
-      updated_date: new Date().toISOString()
+      updated_date: new Date().toISOString(),
     };
 
     // If submitting, add submission date if not present
@@ -311,19 +318,21 @@ export const getAssignmentWithAttachments = async (studentId, assignmentId) => {
   try {
     const { data, error } = await supabase
       .from('student_assignments')
-      .select(`
+      .select(
+        `
         *,
         assignments (
           *,
           assignment_attachments (*)
         )
-      `)
+      `
+      )
       .eq('student_id', studentId)
       .eq('assignment_id', assignmentId)
       .single();
 
     if (error) throw error;
-    
+
     // Flatten the response
     const flattened = {
       ...data.assignments,
@@ -341,9 +350,9 @@ export const getAssignmentWithAttachments = async (studentId, assignmentId) => {
       is_late: data.is_late,
       late_penalty: data.late_penalty,
       started_date: data.started_date,
-      completed_date: data.completed_date
+      completed_date: data.completed_date,
     };
-    
+
     return flattened;
   } catch (error) {
     console.error('Error fetching assignment with attachments:', error);
@@ -361,16 +370,18 @@ export const getStudentAssignment = async (studentId, assignmentId) => {
   try {
     const { data, error } = await supabase
       .from('student_assignments')
-      .select(`
+      .select(
+        `
         *,
         assignments (*)
-      `)
+      `
+      )
       .eq('student_id', studentId)
       .eq('assignment_id', assignmentId)
       .single();
 
     if (error) throw error;
-    
+
     const flattened = {
       ...data.assignments,
       student_assignment_id: data.student_assignment_id,
@@ -390,9 +401,9 @@ export const getStudentAssignment = async (studentId, assignmentId) => {
       late_penalty: data.late_penalty,
       assigned_date: data.assigned_date,
       started_date: data.started_date,
-      completed_date: data.completed_date
+      completed_date: data.completed_date,
     };
-    
+
     return flattened;
   } catch (error) {
     console.error('Error fetching student assignment:', error);
@@ -433,9 +444,9 @@ export const submitAssignmentWithFile = async (studentAssignmentId, submissionDa
       status: 'submitted',
       submission_date: new Date().toISOString(),
       completed_date: new Date().toISOString(),
-      updated_date: new Date().toISOString()
+      updated_date: new Date().toISOString(),
     };
-    
+
     const { data, error } = await supabase
       .from('student_assignments')
       .update(updateData)
@@ -464,9 +475,9 @@ export const submitAssignment = async (studentAssignmentId, submissionData) => {
       status: 'submitted',
       submission_date: new Date().toISOString(),
       completed_date: new Date().toISOString(),
-      updated_date: new Date().toISOString()
+      updated_date: new Date().toISOString(),
     };
-    
+
     const { data, error } = await supabase
       .from('student_assignments')
       .update(updateData)
@@ -518,7 +529,13 @@ export const updateStudentAssignment = async (studentAssignmentId, updateData) =
  * @param {string} token - Auth token
  * @returns {Promise<Object>} Submission result
  */
-export const submitAssignmentWithStagedFiles = async (studentAssignmentId, files, studentId, assignmentId, token) => {
+export const submitAssignmentWithStagedFiles = async (
+  studentAssignmentId,
+  files,
+  studentId,
+  assignmentId,
+  token
+) => {
   try {
     if (files.length === 0) {
       // No files to upload, just update status
@@ -529,12 +546,12 @@ export const submitAssignmentWithStagedFiles = async (studentAssignmentId, files
           submission_type: 'text',
           submission_date: new Date().toISOString(),
           completed_date: new Date().toISOString(),
-          updated_date: new Date().toISOString()
+          updated_date: new Date().toISOString(),
         })
         .eq('student_assignment_id', studentAssignmentId)
         .select()
         .single();
-        
+
       if (error) throw error;
       return data;
     }
@@ -545,13 +562,13 @@ export const submitAssignmentWithStagedFiles = async (studentAssignmentId, files
       const filename = `assignments/${assignmentId}/submissions/${studentAssignmentId}/${timestamp}_${file.name}`;
       return await storageApiService.uploadFile(file, { filename }, token);
     });
-    
+
     const uploadResults = await Promise.all(uploadPromises);
-    
+
     // Save files to assignment_attachments with STUDENT: prefix
     const attachmentPromises = files.map(async (file, index) => {
       const uploadResult = uploadResults[index];
-      
+
       return await supabase
         .from('assignment_attachments')
         .insert({
@@ -559,16 +576,16 @@ export const submitAssignmentWithStagedFiles = async (studentAssignmentId, files
           file_name: `STUDENT:${studentAssignmentId}:${file.name}`, // ✅ STUDENT FILE (with prefix)
           file_type: file.type,
           file_size: file.size,
-          file_url: uploadResult.url // Store original R2 URL
+          file_url: uploadResult.url, // Store original R2 URL
         })
         .select()
         .single();
     });
-    
+
     await Promise.all(attachmentPromises);
-    
+
     // Update student assignment status
-    const fileNames = files.map(file => file.name).join(',');
+    const fileNames = files.map((file) => file.name).join(',');
     const { data, error } = await supabase
       .from('student_assignments')
       .update({
@@ -578,14 +595,14 @@ export const submitAssignmentWithStagedFiles = async (studentAssignmentId, files
         submission_url: uploadResults[0]?.url || null, // Store first file URL for backward compatibility
         submission_date: new Date().toISOString(),
         completed_date: new Date().toISOString(),
-        updated_date: new Date().toISOString()
+        updated_date: new Date().toISOString(),
       })
       .eq('student_assignment_id', studentAssignmentId)
       .select()
       .single();
-      
+
     if (error) throw error;
-    
+
     return data;
   } catch (error) {
     throw error;
@@ -606,15 +623,16 @@ export const getStudentSubmissionFiles = async (assignmentId, studentAssignmentI
       .eq('assignment_id', assignmentId)
       .like('file_name', `STUDENT:${studentAssignmentId}:%`) // ✅ Only this student's files
       .order('uploaded_date', { ascending: false });
-      
+
     if (error) throw error;
-    
+
     // Add original filename without prefix
-    const filesWithOriginalNames = data?.map(file => ({
-      ...file,
-      original_filename: file.file_name.replace(/^STUDENT:[^:]+:/, '')
-    })) || [];
-    
+    const filesWithOriginalNames =
+      data?.map((file) => ({
+        ...file,
+        original_filename: file.file_name.replace(/^STUDENT:[^:]+:/, ''),
+      })) || [];
+
     return filesWithOriginalNames;
   } catch (error) {
     console.error('Error fetching student submission files:', error);
@@ -632,7 +650,7 @@ export const getAssignmentWithFiles = async (studentId, assignmentId) => {
   try {
     // Get basic assignment data
     const assignment = await getAssignmentWithAttachments(studentId, assignmentId);
-    
+
     // Get instruction files (educator files - no prefix)
     const { data: instructionFiles, error: instructionError } = await supabase
       .from('assignment_attachments')
@@ -640,16 +658,19 @@ export const getAssignmentWithFiles = async (studentId, assignmentId) => {
       .eq('assignment_id', assignmentId)
       .not('file_name', 'like', 'STUDENT:%') // ✅ Only educator files
       .order('uploaded_date', { ascending: false });
-      
+
     if (instructionError) throw instructionError;
-    
+
     // Get student's submission files
-    const submissionFiles = await getStudentSubmissionFiles(assignmentId, assignment.student_assignment_id);
-    
+    const submissionFiles = await getStudentSubmissionFiles(
+      assignmentId,
+      assignment.student_assignment_id
+    );
+
     return {
       ...assignment,
       instruction_files: instructionFiles || [],
-      submission_files: submissionFiles
+      submission_files: submissionFiles,
     };
   } catch (error) {
     console.error('Error fetching assignment with files:', error);
@@ -673,12 +694,12 @@ export const deleteStudentSubmissionFile = async (attachmentId, studentAssignmen
       .eq('attachment_id', attachmentId)
       .like('file_name', `STUDENT:${studentAssignmentId}:%`) // ✅ Verify ownership
       .single();
-      
+
     if (fetchError) throw fetchError;
-    
+
     // Extract file key from URL for R2 deletion
     const fileKey = attachment.file_url.split('/').pop();
-    
+
     // Delete from R2 storage
     try {
       await storageApiService.deleteFile(fileKey, token);
@@ -686,13 +707,13 @@ export const deleteStudentSubmissionFile = async (attachmentId, studentAssignmen
       console.warn('Failed to delete file from storage:', storageError);
       // Continue with database deletion even if storage deletion fails
     }
-    
+
     // Delete from database
     const { error } = await supabase
       .from('assignment_attachments')
       .delete()
       .eq('attachment_id', attachmentId);
-      
+
     if (error) throw error;
     return true;
   } catch (error) {

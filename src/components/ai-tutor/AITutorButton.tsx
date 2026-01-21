@@ -11,17 +11,14 @@ interface AITutorButtonProps {
 const AITutorButton: React.FC<AITutorButtonProps> = ({
   courseId,
   lessonId,
-  position = 'bottom-right'
+  position = 'bottom-right',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
-  const positionClasses = position === 'bottom-right' 
-    ? 'right-6 bottom-6' 
-    : 'left-6 bottom-6';
+  const positionClasses = position === 'bottom-right' ? 'right-6 bottom-6' : 'left-6 bottom-6';
 
-  const chatPositionClasses = position === 'bottom-right'
-    ? 'right-6 bottom-24'
-    : 'left-6 bottom-24';
+  const chatPositionClasses =
+    position === 'bottom-right' ? 'right-6 bottom-24' : 'left-6 bottom-24';
 
   return (
     <>
@@ -39,7 +36,7 @@ const AITutorButton: React.FC<AITutorButtonProps> = ({
             <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
           </>
         )}
-        
+
         {/* Tooltip */}
         {!isOpen && (
           <span className="absolute right-full mr-3 px-3 py-1 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
@@ -51,11 +48,7 @@ const AITutorButton: React.FC<AITutorButtonProps> = ({
       {/* Chat Panel */}
       {isOpen && (
         <div className={`fixed ${chatPositionClasses} z-40`}>
-          <AITutorChat
-            courseId={courseId}
-            lessonId={lessonId}
-            onClose={() => setIsOpen(false)}
-          />
+          <AITutorChat courseId={courseId} lessonId={lessonId} onClose={() => setIsOpen(false)} />
         </div>
       )}
     </>

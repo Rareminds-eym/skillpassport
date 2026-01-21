@@ -11,12 +11,12 @@ interface UseTopHiringCollegesOptions {
   enabled?: boolean;
 }
 
-export const useTopHiringColleges = ({ 
-  preset, 
-  startDate, 
+export const useTopHiringColleges = ({
+  preset,
+  startDate,
   endDate,
   limit = 10,
-  enabled = true
+  enabled = true,
 }: UseTopHiringCollegesOptions) => {
   const queryClient = useQueryClient();
   const channelRef = useRef<any>(null);
@@ -25,9 +25,9 @@ export const useTopHiringColleges = ({
 
   // Memoized invalidation callback to prevent unnecessary re-subscriptions
   const invalidateQuery = useCallback(() => {
-    queryClient.invalidateQueries({ 
+    queryClient.invalidateQueries({
       queryKey: ['top-hiring-colleges'],
-      refetchType: 'active' // Only refetch active queries
+      refetchType: 'active', // Only refetch active queries
     });
   }, [queryClient]);
 
@@ -53,24 +53,23 @@ export const useTopHiringColleges = ({
 
     // Use a stable channel name to avoid creating multiple channels
     const channelName = 'top-hiring-colleges-realtime';
-    
+
     // Check if channel already exists
-    const existingChannel = supabase.getChannels().find(ch => ch.topic === channelName);
+    const existingChannel = supabase.getChannels().find((ch) => ch.topic === channelName);
     if (existingChannel) {
       channelRef.current = existingChannel;
       return;
     }
 
     // Subscribe to pipeline changes for real-time updates
-    const channel = supabase.channel(channelName)
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'pipeline_candidates' }, 
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'pipeline_candidates' },
         invalidateQuery
       )
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'students' }, 
-        invalidateQuery
-      );
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, invalidateQuery);
 
     channel.subscribe();
     channelRef.current = channel;

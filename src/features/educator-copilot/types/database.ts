@@ -1,7 +1,7 @@
 /**
  * Database Type Definitions
  * Type-safe interfaces for school_educators and schools tables
- * 
+ *
  * These types map to the actual database schema and should be kept in sync.
  */
 
@@ -14,43 +14,43 @@ export interface SchoolEducatorRow {
   id: string;
   user_id: string;
   school_id: string;
-  
+
   // Personal information (used for AI context)
   first_name: string | null;
   last_name: string | null;
   email: string | null;
-  
+
   // Professional information (used for AI context)
-  designation: string | null;           // e.g., "Senior Lecturer", "Professor"
-  department: string | null;            // e.g., "Computer Science", "Mathematics"
-  specialization: string | null;        // e.g., "Data Science", "Web Development"
-  qualification: string | null;         // e.g., "Ph.D. in Computer Science"
-  experience_years: number | null;      // Years of teaching experience
-  subjects_handled: string[] | null;    // Array of subjects taught
-  
+  designation: string | null; // e.g., "Senior Lecturer", "Professor"
+  department: string | null; // e.g., "Computer Science", "Mathematics"
+  specialization: string | null; // e.g., "Data Science", "Web Development"
+  qualification: string | null; // e.g., "Ph.D. in Computer Science"
+  experience_years: number | null; // Years of teaching experience
+  subjects_handled: string[] | null; // Array of subjects taught
+
   // Account management
-  account_status: string | null;        // 'active' | 'deactivated' | 'suspended'
-  
+  account_status: string | null; // 'active' | 'deactivated' | 'suspended'
+
   // Fields NOT used in AI context (privacy & relevance)
-  employee_id?: string | null;          // Internal HR identifier
-  date_of_joining?: Date | null;        // Employment start date
-  phone_number?: string | null;         // Private contact
-  dob?: Date | null;                    // Personal info
-  gender?: string | null;               // Personal info
-  address?: string | null;              // Private location
-  city?: string | null;                 // Private location
-  state?: string | null;                // Private location
-  country?: string | null;              // Private location
-  pincode?: string | null;              // Private location
-  resume_url?: string | null;           // Sensitive document
-  id_proof_url?: string | null;         // Sensitive document
-  photo_url?: string | null;            // Profile image
-  verification_status?: string | null;  // Internal workflow
-  verified_by?: string | null;          // Internal workflow
-  verified_at?: Date | null;            // Internal workflow
+  employee_id?: string | null; // Internal HR identifier
+  date_of_joining?: Date | null; // Employment start date
+  phone_number?: string | null; // Private contact
+  dob?: Date | null; // Personal info
+  gender?: string | null; // Personal info
+  address?: string | null; // Private location
+  city?: string | null; // Private location
+  state?: string | null; // Private location
+  country?: string | null; // Private location
+  pincode?: string | null; // Private location
+  resume_url?: string | null; // Sensitive document
+  id_proof_url?: string | null; // Sensitive document
+  photo_url?: string | null; // Profile image
+  verification_status?: string | null; // Internal workflow
+  verified_by?: string | null; // Internal workflow
+  verified_at?: Date | null; // Internal workflow
   metadata?: Record<string, any> | null; // Generic JSONB field
-  created_at?: Date | null;             // Audit field
-  updated_at?: Date | null;             // Audit field
+  created_at?: Date | null; // Audit field
+  updated_at?: Date | null; // Audit field
 }
 
 /**
@@ -62,12 +62,12 @@ export interface SchoolRow {
   id: string;
   name: string;
   code: string;
-  
+
   // Location information (used for AI context)
   city: string | null;
   state: string | null;
-  board: string | null;                // e.g., "CBSE", "ICSE", "State Board"
-  
+  board: string | null; // e.g., "CBSE", "ICSE", "State Board"
+
   // Fields NOT used in AI context
   address?: string | null;
   country?: string | null;
@@ -107,7 +107,7 @@ export interface EducatorWithSchool {
   experience_years: number | null;
   subjects_handled: string[] | null;
   account_status: string | null;
-  
+
   // Nested school details
   schools: {
     id: string;
@@ -155,7 +155,7 @@ export enum AccountStatus {
   ACTIVE = 'active',
   INACTIVE = 'inactive',
   SUSPENDED = 'suspended',
-  PENDING = 'pending'
+  PENDING = 'pending',
 }
 
 /**
@@ -166,7 +166,7 @@ export enum EducationalBoard {
   ICSE = 'ICSE',
   STATE_BOARD = 'State Board',
   IB = 'IB',
-  IGCSE = 'IGCSE'
+  IGCSE = 'IGCSE',
 }
 
 /**
@@ -182,5 +182,5 @@ export enum EducatorDesignation {
   PROFESSOR = 'Professor',
   HEAD_OF_DEPARTMENT = 'Head of Department',
   PRINCIPAL = 'Principal',
-  VICE_PRINCIPAL = 'Vice Principal'
+  VICE_PRINCIPAL = 'Vice Principal',
 }

@@ -16,7 +16,7 @@ export class CollegeAdminNotificationService {
     try {
       const { data, error } = await supabase.rpc('get_college_admin_notifications', {
         admin_college_id: collegeId,
-        unread_only: options.unreadOnly || false
+        unread_only: options.unreadOnly || false,
       });
 
       if (error) {
@@ -40,7 +40,7 @@ export class CollegeAdminNotificationService {
     try {
       const { data, error } = await supabase.rpc('get_unread_notification_count', {
         admin_college_id: collegeId,
-        admin_type: 'college_admin'
+        admin_type: 'college_admin',
       });
 
       if (error) {
@@ -63,11 +63,12 @@ export class CollegeAdminNotificationService {
   static async getPendingTrainings(collegeId) {
     try {
       console.log('🎓 Fetching trainings for college admin using approval_authority:', collegeId);
-      
+
       // Get trainings where approval_authority = 'college_admin' and student belongs to this college
       const { data, error } = await supabase
         .from('trainings')
-        .select(`
+        .select(
+          `
           *,
           student:students!trainings_student_id_fkey (
             id,
@@ -78,7 +79,8 @@ export class CollegeAdminNotificationService {
             university_college_id,
             college_school_name
           )
-        `)
+        `
+        )
         .eq('approval_status', 'pending')
         .eq('approval_authority', 'college_admin')
         .order('created_at', { ascending: false });
@@ -89,18 +91,18 @@ export class CollegeAdminNotificationService {
       }
 
       // Filter by college_id to ensure security
-      const filteredTrainings = (data || []).filter(training => {
+      const filteredTrainings = (data || []).filter((training) => {
         const studentCollegeId = training.student?.university_college_id;
         return studentCollegeId === collegeId;
       });
 
       // Format for UI
-      const formattedTrainings = filteredTrainings.map(training => ({
+      const formattedTrainings = filteredTrainings.map((training) => ({
         ...training,
         student_name: training.student?.name || 'Unknown Student',
         student_email: training.student?.email || 'No email',
         student_school_id: training.student?.school_id,
-        student_college_id: training.student?.university_college_id
+        student_college_id: training.student?.university_college_id,
       }));
 
       console.log('✅ Found trainings for college admin:', formattedTrainings.length);
@@ -120,11 +122,12 @@ export class CollegeAdminNotificationService {
   static async getPendingExperiences(collegeId) {
     try {
       console.log('🎓 Fetching experiences for college admin using approval_authority:', collegeId);
-      
+
       // Get experiences where approval_authority = 'college_admin' and student belongs to this college
       const { data, error } = await supabase
         .from('experience')
-        .select(`
+        .select(
+          `
           *,
           student:students!experience_student_id_fkey (
             id,
@@ -135,7 +138,8 @@ export class CollegeAdminNotificationService {
             university_college_id,
             college_school_name
           )
-        `)
+        `
+        )
         .eq('approval_status', 'pending')
         .eq('approval_authority', 'college_admin')
         .order('created_at', { ascending: false });
@@ -146,19 +150,19 @@ export class CollegeAdminNotificationService {
       }
 
       // Filter by college_id to ensure security
-      const filteredExperiences = (data || []).filter(experience => {
+      const filteredExperiences = (data || []).filter((experience) => {
         const studentCollegeId = experience.student?.university_college_id;
         return studentCollegeId === collegeId;
       });
 
       // Format for UI
-      const formattedExperiences = filteredExperiences.map(experience => ({
+      const formattedExperiences = filteredExperiences.map((experience) => ({
         ...experience,
         student_name: experience.student?.name || 'Unknown Student',
         student_email: experience.student?.email || 'No email',
         student_school_id: experience.student?.school_id,
         student_college_id: experience.student?.university_college_id,
-        student_type: experience.student?.student_type
+        student_type: experience.student?.student_type,
       }));
 
       console.log('✅ Found experiences for college admin:', formattedExperiences.length);
@@ -178,7 +182,7 @@ export class CollegeAdminNotificationService {
   static async markAsRead(notificationId) {
     try {
       const { data, error } = await supabase.rpc('mark_notification_read', {
-        notification_id: notificationId
+        notification_id: notificationId,
       });
 
       if (error) {
@@ -210,7 +214,7 @@ export class CollegeAdminNotificationService {
           approved_by: approverId,
           approved_at: new Date().toISOString(),
           approval_notes: notes,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', trainingId)
         .eq('approval_status', 'pending')
@@ -229,7 +233,7 @@ export class CollegeAdminNotificationService {
       return {
         success: true,
         message: 'Training approved successfully',
-        training_id: trainingId
+        training_id: trainingId,
       };
     } catch (error) {
       console.error('Error approving training:', error);
@@ -258,7 +262,7 @@ export class CollegeAdminNotificationService {
           rejected_by: rejectorId,
           rejected_at: new Date().toISOString(),
           approval_notes: notes,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', trainingId)
         .eq('approval_status', 'pending')
@@ -278,7 +282,7 @@ export class CollegeAdminNotificationService {
         success: true,
         message: 'Training rejected successfully',
         training_id: trainingId,
-        reason: notes
+        reason: notes,
       };
     } catch (error) {
       console.error('Error rejecting training:', error);
@@ -304,7 +308,7 @@ export class CollegeAdminNotificationService {
           approved_by: approverId,
           approved_at: new Date().toISOString(),
           approval_notes: notes,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', experienceId)
         .eq('approval_status', 'pending')
@@ -323,7 +327,7 @@ export class CollegeAdminNotificationService {
       return {
         success: true,
         message: 'Experience approved successfully',
-        experience_id: experienceId
+        experience_id: experienceId,
       };
     } catch (error) {
       console.error('Error approving experience:', error);
@@ -343,7 +347,7 @@ export class CollegeAdminNotificationService {
       const { data, error } = await supabase.rpc('reject_experience', {
         experience_id: experienceId,
         rejector_id: rejectorId,
-        notes: notes
+        notes: notes,
       });
 
       if (error) {
@@ -353,7 +357,7 @@ export class CollegeAdminNotificationService {
 
       // The function returns a JSON object, data should contain the result
       const result = data;
-      
+
       if (!result || !result.success) {
         const errorMessage = result?.error || 'Unknown error occurred';
         console.error('Experience rejection failed:', errorMessage);
@@ -375,11 +379,12 @@ export class CollegeAdminNotificationService {
   static async getPendingProjects(collegeId) {
     try {
       console.log('🎓 Fetching projects for college admin using approval_authority:', collegeId);
-      
+
       // Get projects where approval_authority = 'college_admin' and student belongs to this college
       const { data, error } = await supabase
         .from('projects')
-        .select(`
+        .select(
+          `
           *,
           student:students!projects_student_id_fkey (
             id,
@@ -390,7 +395,8 @@ export class CollegeAdminNotificationService {
             university_college_id,
             college_school_name
           )
-        `)
+        `
+        )
         .eq('approval_status', 'pending')
         .eq('approval_authority', 'college_admin')
         .order('created_at', { ascending: false });
@@ -401,18 +407,18 @@ export class CollegeAdminNotificationService {
       }
 
       // Filter by college_id to ensure security
-      const filteredProjects = (data || []).filter(project => {
+      const filteredProjects = (data || []).filter((project) => {
         const studentCollegeId = project.student?.university_college_id;
         return studentCollegeId === collegeId;
       });
 
       // Format for UI
-      const formattedProjects = filteredProjects.map(project => ({
+      const formattedProjects = filteredProjects.map((project) => ({
         ...project,
         student_name: project.student?.name || 'Unknown Student',
         student_email: project.student?.email || 'No email',
         student_school_id: project.student?.school_id,
-        student_college_id: project.student?.university_college_id
+        student_college_id: project.student?.university_college_id,
       }));
 
       console.log('✅ Found projects for college admin:', formattedProjects.length);
@@ -441,7 +447,7 @@ export class CollegeAdminNotificationService {
           approved_by: approverId,
           approved_at: new Date().toISOString(),
           approval_notes: notes,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', projectId)
         .eq('approval_status', 'pending')
@@ -460,7 +466,7 @@ export class CollegeAdminNotificationService {
       return {
         success: true,
         message: 'Project approved successfully',
-        project_id: projectId
+        project_id: projectId,
       };
     } catch (error) {
       console.error('Error approving project:', error);
@@ -489,7 +495,7 @@ export class CollegeAdminNotificationService {
           rejected_by: rejectorId,
           rejected_at: new Date().toISOString(),
           approval_notes: notes,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', projectId)
         .eq('approval_status', 'pending')
@@ -509,7 +515,7 @@ export class CollegeAdminNotificationService {
         success: true,
         message: 'Project rejected successfully',
         project_id: projectId,
-        reason: notes
+        reason: notes,
       };
     } catch (error) {
       console.error('Error rejecting project:', error);
@@ -526,18 +532,26 @@ export class CollegeAdminNotificationService {
   static subscribeToNotifications(collegeId, callback) {
     const subscription = supabase
       .channel('unified_notifications')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'training_notifications',
-        filter: `college_id=eq.${collegeId}`
-      }, (payload) => {
-        const notificationType = payload.new.training_id ? 'training' : 
-                               payload.new.experience_id ? 'experience' : 
-                               payload.new.project_id ? 'project' : 'unknown';
-        console.log(`🔔 New ${notificationType} notification received:`, payload.new);
-        callback(payload.new);
-      })
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'training_notifications',
+          filter: `college_id=eq.${collegeId}`,
+        },
+        (payload) => {
+          const notificationType = payload.new.training_id
+            ? 'training'
+            : payload.new.experience_id
+              ? 'experience'
+              : payload.new.project_id
+                ? 'project'
+                : 'unknown';
+          console.log(`🔔 New ${notificationType} notification received:`, payload.new);
+          callback(payload.new);
+        }
+      )
       .subscribe();
 
     return subscription;

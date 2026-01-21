@@ -81,10 +81,11 @@ const StaffManagement: React.FC = () => {
 
   const categories = ['All', 'Administrative', 'Technical', 'Support', 'Security'];
 
-  const filteredStaff = staffMembers.filter(staff => {
-    const matchesSearch = staff.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         staff.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         staff.department.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredStaff = staffMembers.filter((staff) => {
+    const matchesSearch =
+      staff.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      staff.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      staff.department.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'All' || staff.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
@@ -107,14 +108,18 @@ const StaffManagement: React.FC = () => {
 
   const handleAddStaff = () => {
     // Open add staff modal or navigate to add staff form
-    alert('Opening add staff form...\nThis would typically open a comprehensive form to add new staff members with all required details.');
+    alert(
+      'Opening add staff form...\nThis would typically open a comprehensive form to add new staff members with all required details.'
+    );
     setShowAddModal(true);
   };
 
   const confirmDelete = () => {
     if (selectedStaff) {
       // Here you would typically call an API to delete the staff member
-      alert(`Staff member ${selectedStaff.name} would be deleted from the system.\nThis action would typically require additional confirmation and proper data handling.`);
+      alert(
+        `Staff member ${selectedStaff.name} would be deleted from the system.\nThis action would typically require additional confirmation and proper data handling.`
+      );
       setShowDeleteModal(false);
       setSelectedStaff(null);
     }
@@ -274,19 +279,26 @@ const StaffManagement: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div>
                       <div className="text-sm font-medium text-gray-900">{staff.name}</div>
-                      <div className="text-sm text-gray-500">{staff.employeeId} • {staff.designation}</div>
+                      <div className="text-sm text-gray-500">
+                        {staff.employeeId} • {staff.designation}
+                      </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {staff.department}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      staff.category === 'Administrative' ? 'bg-blue-100 text-blue-800' :
-                      staff.category === 'Technical' ? 'bg-purple-100 text-purple-800' :
-                      staff.category === 'Support' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        staff.category === 'Administrative'
+                          ? 'bg-blue-100 text-blue-800'
+                          : staff.category === 'Technical'
+                            ? 'bg-purple-100 text-purple-800'
+                            : staff.category === 'Support'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-red-100 text-red-800'
+                      }`}
+                    >
                       {staff.category}
                     </span>
                   </td>
@@ -294,31 +306,35 @@ const StaffManagement: React.FC = () => {
                     {new Date(staff.joiningDate).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      staff.status === 'Active' ? 'bg-green-100 text-green-800' :
-                      staff.status === 'On Leave' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        staff.status === 'Active'
+                          ? 'bg-green-100 text-green-800'
+                          : staff.status === 'On Leave'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
                       {staff.status}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">
-                      <button 
+                      <button
                         onClick={() => handleViewStaff(staff)}
                         className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50"
                         title="View Staff Details"
                       >
                         <EyeIcon className="h-4 w-4" />
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleEditStaff(staff)}
                         className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50"
                         title="Edit Staff"
                       >
                         <PencilIcon className="h-4 w-4" />
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleDeleteStaff(staff)}
                         className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
                         title="Delete Staff"
@@ -359,12 +375,17 @@ const StaffManagement: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Category</label>
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                    selectedStaff.category === 'Administrative' ? 'bg-blue-100 text-blue-800' :
-                    selectedStaff.category === 'Technical' ? 'bg-purple-100 text-purple-800' :
-                    selectedStaff.category === 'Support' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-red-100 text-red-800'
-                  }`}>
+                  <span
+                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      selectedStaff.category === 'Administrative'
+                        ? 'bg-blue-100 text-blue-800'
+                        : selectedStaff.category === 'Technical'
+                          ? 'bg-purple-100 text-purple-800'
+                          : selectedStaff.category === 'Support'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-red-100 text-red-800'
+                    }`}
+                  >
                     {selectedStaff.category}
                   </span>
                 </div>
@@ -378,15 +399,21 @@ const StaffManagement: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Joining Date</label>
-                  <p className="text-sm text-gray-900">{new Date(selectedStaff.joiningDate).toLocaleDateString()}</p>
+                  <p className="text-sm text-gray-900">
+                    {new Date(selectedStaff.joiningDate).toLocaleDateString()}
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Status</label>
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                    selectedStaff.status === 'Active' ? 'bg-green-100 text-green-800' :
-                    selectedStaff.status === 'On Leave' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
+                  <span
+                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      selectedStaff.status === 'Active'
+                        ? 'bg-green-100 text-green-800'
+                        : selectedStaff.status === 'On Leave'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-gray-100 text-gray-800'
+                    }`}
+                  >
                     {selectedStaff.status}
                   </span>
                 </div>
@@ -508,8 +535,8 @@ const StaffManagement: React.FC = () => {
               <h3 className="text-lg font-medium text-gray-900 mt-4">Delete Staff Member</h3>
               <div className="mt-2 px-7 py-3">
                 <p className="text-sm text-gray-500">
-                  Are you sure you want to delete <strong>{selectedStaff.name}</strong>? 
-                  This action cannot be undone.
+                  Are you sure you want to delete <strong>{selectedStaff.name}</strong>? This action
+                  cannot be undone.
                 </p>
               </div>
               <div className="flex justify-center space-x-3 mt-6">
@@ -572,9 +599,7 @@ const StaffManagement: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Category</label>
-                  <select
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                  >
+                  <select className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
                     <option value="">Select category</option>
                     <option value="Administrative">Administrative</option>
                     <option value="Technical">Technical</option>

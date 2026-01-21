@@ -1,6 +1,6 @@
 /**
  * PaymentSuccess Component
- * 
+ *
  * Industrial-grade payment success page with:
  * - State machine for predictable flow
  * - Retry logic with exponential backoff for cache refresh
@@ -8,7 +8,7 @@
  * - Proper cleanup and memory leak prevention
  * - Debug logging for troubleshooting
  * - Graceful degradation on failures
- * 
+ *
  * @module PaymentSuccess
  */
 
@@ -32,7 +32,10 @@ import { useAuth } from '../../context/AuthContext';
 import { useSubscriptionContext } from '../../context/SubscriptionContext';
 import { usePaymentVerificationFromURL } from '../../hooks/Subscription/usePaymentVerification';
 import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
-import { downloadReceipt, generateReceiptBase64 } from '../../services/Subscriptions/pdfReceiptGenerator';
+import {
+  downloadReceipt,
+  generateReceiptBase64,
+} from '../../services/Subscriptions/pdfReceiptGenerator';
 import { getPaymentReceiptUrl, uploadPaymentReceipt } from '../../services/storageApiService';
 import { clearPendingUserData } from '../../utils/authCleanup';
 
@@ -131,7 +134,7 @@ const log = {
 };
 
 /** Sleep utility */
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** Retry with exponential backoff */
 async function retryWithBackoff(fn, maxRetries, baseDelayMs, onRetry) {
@@ -154,10 +157,10 @@ async function retryWithBackoff(fn, maxRetries, baseDelayMs, onRetry) {
 /** Format date for display */
 const formatDate = (d) => {
   try {
-    return new Date(d).toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
+    return new Date(d).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
     });
   } catch {
     return 'N/A';
@@ -167,10 +170,10 @@ const formatDate = (d) => {
 /** Format amount for display */
 const formatAmount = (a) => {
   try {
-    return new Intl.NumberFormat('en-IN', { 
-      style: 'currency', 
-      currency: 'INR', 
-      minimumFractionDigits: 0 
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
     }).format(a || 0);
   } catch {
     return '₹0';
@@ -179,12 +182,14 @@ const formatAmount = (a) => {
 
 /** Get user role from various sources */
 const getUserRole = (user, role) => {
-  return user?.user_metadata?.user_role 
-    || role 
-    || user?.user_metadata?.role 
-    || user?.raw_user_meta_data?.user_role 
-    || user?.raw_user_meta_data?.role
-    || 'student';
+  return (
+    user?.user_metadata?.user_role ||
+    role ||
+    user?.user_metadata?.role ||
+    user?.raw_user_meta_data?.user_role ||
+    user?.raw_user_meta_data?.role ||
+    'student'
+  );
 };
 
 // ============================================================================
@@ -200,13 +205,15 @@ function useCacheRefresh(refreshAccess, refreshSubscription) {
     attempts: 0,
     error: null,
   });
-  
+
   const mountedRef = useRef(true);
   const refreshPromiseRef = useRef(null);
 
   useEffect(() => {
     mountedRef.current = true;
-    return () => { mountedRef.current = false; };
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
   const refresh = useCallback(async () => {
@@ -220,10 +227,7 @@ function useCacheRefresh(refreshAccess, refreshSubscription) {
 
     refreshPromiseRef.current = retryWithBackoff(
       async () => {
-        await Promise.all([
-          refreshAccess(),
-          refreshSubscription(),
-        ]);
+        await Promise.all([refreshAccess(), refreshSubscription()]);
         // Small delay to ensure React Query cache is updated
         await sleep(CONFIG.NAVIGATION_DELAY_MS);
       },
@@ -232,7 +236,7 @@ function useCacheRefresh(refreshAccess, refreshSubscription) {
       (attempt, delay, error) => {
         log.warn(`Cache refresh retry ${attempt}/${CONFIG.CACHE_REFRESH_MAX_RETRIES}`, error);
         if (mountedRef.current) {
-          setState(prev => ({ ...prev, attempts: attempt }));
+          setState((prev) => ({ ...prev, attempts: attempt }));
         }
       }
     )
@@ -271,12 +275,14 @@ function useNavigationState(cacheRefresh, getDashboardUrl, navigate) {
     status: NAV_STATES.IDLE,
     error: null,
   });
-  
+
   const mountedRef = useRef(true);
 
   useEffect(() => {
     mountedRef.current = true;
-    return () => { mountedRef.current = false; };
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
   const navigateToDashboard = useCallback(async () => {
@@ -297,11 +303,11 @@ function useNavigationState(cacheRefresh, getDashboardUrl, navigate) {
       if (!mountedRef.current) return;
 
       setState({ status: NAV_STATES.NAVIGATING, error: null });
-      
+
       // Navigate with post-payment flag
       const dashboardUrl = getDashboardUrl();
       log.info('Navigating to:', dashboardUrl);
-      navigate(dashboardUrl, { 
+      navigate(dashboardUrl, {
         state: { fromPayment: true },
         replace: false,
       });
@@ -352,9 +358,7 @@ const ReceiptCard = ({ header, children }) => (
         {header}
       </div>
       <div className="mx-5 border-t-2 border-dashed border-gray-200" />
-      <div className="px-5 pt-5 pb-6">
-        {children}
-      </div>
+      <div className="px-5 pt-5 pb-6">{children}</div>
     </div>
   </div>
 );
@@ -362,7 +366,7 @@ const ReceiptCard = ({ header, children }) => (
 /** Confetti animation */
 const Confetti = ({ show }) => {
   if (!show) return null;
-  
+
   return (
     <div className="fixed inset-0 pointer-events-none z-50">
       {[...Array(40)].map((_, i) => (
@@ -385,11 +389,33 @@ const Confetti = ({ show }) => {
 /** Email status indicator */
 const EmailStatus = ({ status }) => {
   const config = {
-    [EMAIL_STATES.PENDING]: { icon: Loader2, color: 'text-gray-400', text: 'Preparing confirmation...', spin: true },
-    [EMAIL_STATES.SENDING]: { icon: Loader2, color: 'text-[#2663EB]', text: 'Sending confirmation...', spin: true },
-    [EMAIL_STATES.SENT]: { icon: MailCheck, color: 'text-emerald-500', text: 'Confirmation email sent' },
-    [EMAIL_STATES.SKIPPED]: { icon: MailCheck, color: 'text-gray-400', text: 'Email already sent previously' },
-    [EMAIL_STATES.FAILED]: { icon: AlertCircle, color: 'text-amber-500', text: 'Could not send email' },
+    [EMAIL_STATES.PENDING]: {
+      icon: Loader2,
+      color: 'text-gray-400',
+      text: 'Preparing confirmation...',
+      spin: true,
+    },
+    [EMAIL_STATES.SENDING]: {
+      icon: Loader2,
+      color: 'text-[#2663EB]',
+      text: 'Sending confirmation...',
+      spin: true,
+    },
+    [EMAIL_STATES.SENT]: {
+      icon: MailCheck,
+      color: 'text-emerald-500',
+      text: 'Confirmation email sent',
+    },
+    [EMAIL_STATES.SKIPPED]: {
+      icon: MailCheck,
+      color: 'text-gray-400',
+      text: 'Email already sent previously',
+    },
+    [EMAIL_STATES.FAILED]: {
+      icon: AlertCircle,
+      color: 'text-amber-500',
+      text: 'Could not send email',
+    },
   };
 
   const { icon: Icon, color, text, spin } = config[status] || config[EMAIL_STATES.PENDING];
@@ -418,13 +444,18 @@ const ErrorScreen = ({ message, onRetry }) => (
     <div className="max-w-sm w-full bg-white rounded-2xl shadow-lg p-6 text-center">
       <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
         <svg className="w-7 h-7 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M6 18L18 6M6 6l12 12"
+          />
         </svg>
       </div>
       <h2 className="text-lg font-bold text-gray-900 mb-1">Verification Failed</h2>
       <p className="text-sm text-gray-500 mb-5">{message || 'Please try again'}</p>
-      <button 
-        onClick={onRetry} 
+      <button
+        onClick={onRetry}
         className="w-full py-2.5 bg-[#2663EB] text-white rounded-lg font-medium text-sm hover:bg-[#1D4ED8] flex items-center justify-center gap-2"
       >
         <RefreshCw className="w-4 h-4" /> Retry
@@ -519,14 +550,14 @@ function PaymentSuccess() {
   // Upload receipt to R2
   const uploadReceiptToR2 = useCallback(async (receiptData, paymentId, userId) => {
     if (!mountedRef.current) return;
-    
+
     try {
       setReceiptUploading(true);
       const pdfBase64 = await generateReceiptBase64(receiptData);
       const filename = `Receipt-${paymentId?.slice(-8) || 'payment'}-${new Date().toISOString().split('T')[0]}.pdf`;
-      
+
       const result = await uploadPaymentReceipt(pdfBase64, paymentId, userId, filename);
-      
+
       if (result.success && result.fileKey && mountedRef.current) {
         const downloadUrl = getPaymentReceiptUrl(result.fileKey, 'download');
         setReceiptUrl(downloadUrl);
@@ -544,7 +575,11 @@ function PaymentSuccess() {
 
   // Handle subscription activation from worker response
   useEffect(() => {
-    if (verificationStatus !== 'success' || !transactionDetails || activationStatus !== ACTIVATION_STATES.PENDING) {
+    if (
+      verificationStatus !== 'success' ||
+      !transactionDetails ||
+      activationStatus !== ACTIVATION_STATES.PENDING
+    ) {
       return;
     }
 
@@ -562,11 +597,12 @@ function PaymentSuccess() {
       setSubscriptionData(subscription);
 
       // Trigger cache refresh
-      cacheRefresh.refresh().catch(err => {
+      cacheRefresh.refresh().catch((err) => {
         log.error('Initial cache refresh failed:', err);
       });
 
-      const isExistingOrAlreadyProcessed = transactionDetails.already_processed || transactionDetails.is_existing_subscription;
+      const isExistingOrAlreadyProcessed =
+        transactionDetails.already_processed || transactionDetails.is_existing_subscription;
 
       if (!isExistingOrAlreadyProcessed) {
         // Fresh subscription - celebrate!
@@ -590,14 +626,19 @@ function PaymentSuccess() {
         // Handle receipt
         if (transactionDetails.receipt_url) {
           setReceiptUrl(transactionDetails.receipt_url);
-          localStorage.setItem(`receipt_url_${transactionDetails.payment_id}`, transactionDetails.receipt_url);
+          localStorage.setItem(
+            `receipt_url_${transactionDetails.payment_id}`,
+            transactionDetails.receipt_url
+          );
         } else {
           // Upload from frontend as fallback
           const receiptData = {
             transaction: {
               payment_id: transactionDetails.payment_id || 'N/A',
               order_id: transactionDetails.order_id || 'N/A',
-              amount: transactionDetails.amount ? transactionDetails.amount / 100 : subscription.plan_amount || 0,
+              amount: transactionDetails.amount
+                ? transactionDetails.amount / 100
+                : subscription.plan_amount || 0,
               currency: 'INR',
               payment_method: transactionDetails.payment_method || 'Card',
               payment_timestamp: formatDate(new Date()),
@@ -624,7 +665,8 @@ function PaymentSuccess() {
         clearPendingUserData();
         setEmailStatus(EMAIL_STATES.SKIPPED);
 
-        const storedReceiptUrl = transactionDetails.receipt_url || 
+        const storedReceiptUrl =
+          transactionDetails.receipt_url ||
           localStorage.getItem(`receipt_url_${transactionDetails.payment_id}`);
         if (storedReceiptUrl) {
           setReceiptUrl(storedReceiptUrl);
@@ -639,13 +681,23 @@ function PaymentSuccess() {
       setActivationStatus(ACTIVATION_STATES.ACTIVATED);
       clearPendingUserData();
       setEmailStatus(EMAIL_STATES.SENT);
-      toast('Payment successful! Your subscription will be activated shortly.', { duration: 5000, icon: '⏳' });
+      toast('Payment successful! Your subscription will be activated shortly.', {
+        duration: 5000,
+        icon: '⏳',
+      });
     } else {
       setActivationStatus(ACTIVATION_STATES.ACTIVATED);
       clearPendingUserData();
       setEmailStatus(EMAIL_STATES.SENT);
     }
-  }, [verificationStatus, transactionDetails, activationStatus, user, cacheRefresh, uploadReceiptToR2]);
+  }, [
+    verificationStatus,
+    transactionDetails,
+    activationStatus,
+    user,
+    cacheRefresh,
+    uploadReceiptToR2,
+  ]);
 
   // Redirect if no payment params
   useEffect(() => {
@@ -660,7 +712,9 @@ function PaymentSuccess() {
     if (verificationError?.code === 'NO_SESSION') {
       sessionTimeoutRef.current = setTimeout(() => {
         if (!user && mountedRef.current) {
-          navigate(`/auth/login?redirect=${encodeURIComponent(window.location.href)}`, { replace: true });
+          navigate(`/auth/login?redirect=${encodeURIComponent(window.location.href)}`, {
+            replace: true,
+          });
         }
       }, CONFIG.NO_SESSION_REDIRECT_DELAY_MS);
     }
@@ -685,23 +739,26 @@ function PaymentSuccess() {
           payment_timestamp: formatDate(new Date()),
           status: 'Success',
         },
-        subscription: subscriptionData ? {
-          plan_type: subscriptionData.plan_type,
-          billing_cycle: subscriptionData.billing_cycle,
-          subscription_start_date: formatDate(subscriptionData.subscription_start_date),
-          subscription_end_date: formatDate(subscriptionData.subscription_end_date),
-        } : null,
+        subscription: subscriptionData
+          ? {
+              plan_type: subscriptionData.plan_type,
+              billing_cycle: subscriptionData.billing_cycle,
+              subscription_start_date: formatDate(subscriptionData.subscription_start_date),
+              subscription_end_date: formatDate(subscriptionData.subscription_end_date),
+            }
+          : null,
         user: {
           name: transactionDetails?.user_name || user?.user_metadata?.full_name || 'User',
           email: transactionDetails?.user_email || user?.email || '',
           phone: user?.user_metadata?.phone || null,
         },
-        company: { 
-          name: 'RareMinds', 
-          address: '231, 2nd stage, 13th Cross Road\nHoysala Nagar, Indiranagar\nBengaluru, Karnataka 560001', 
+        company: {
+          name: 'RareMinds',
+          address:
+            '231, 2nd stage, 13th Cross Road\nHoysala Nagar, Indiranagar\nBengaluru, Karnataka 560001',
           taxId: 'GSTIN: 29ABCDE1234F1Z5',
           phone: '+91 9902326951',
-          email: 'marketing@rareminds.in'
+          email: 'marketing@rareminds.in',
         },
         generatedAt: new Date().toLocaleString(),
       };
@@ -721,7 +778,13 @@ function PaymentSuccess() {
 
   // Loading state
   if (verificationStatus === 'loading' || activationStatus === ACTIVATION_STATES.ACTIVATING) {
-    return <LoadingScreen message={verificationStatus === 'loading' ? 'Verifying payment...' : 'Activating subscription...'} />;
+    return (
+      <LoadingScreen
+        message={
+          verificationStatus === 'loading' ? 'Verifying payment...' : 'Activating subscription...'
+        }
+      />
+    );
   }
 
   // Error state
@@ -747,16 +810,22 @@ function PaymentSuccess() {
           {/* Transaction Receipt Section */}
           <div className="flex items-center gap-2 mb-4">
             <CreditCard className="w-4 h-4 text-[#2663EB]" />
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Transaction Receipt</span>
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              Transaction Receipt
+            </span>
           </div>
           <div className="space-y-3 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-500">Reference</span>
-              <span className="font-mono font-medium text-gray-900">{paymentParams.razorpay_payment_id?.slice(-10) || 'N/A'}</span>
+              <span className="font-mono font-medium text-gray-900">
+                {paymentParams.razorpay_payment_id?.slice(-10) || 'N/A'}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Method</span>
-              <span className="font-medium text-gray-900">{transactionDetails?.payment_method || 'Card'}</span>
+              <span className="font-medium text-gray-900">
+                {transactionDetails?.payment_method || 'Card'}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Date</span>
@@ -770,20 +839,34 @@ function PaymentSuccess() {
               <div className="my-5 border-t border-dashed border-gray-200" />
               <div className="flex items-center gap-2 mb-4">
                 <Sparkles className="w-4 h-4 text-[#2663EB]" />
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Subscription</span>
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  Subscription
+                </span>
               </div>
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Plan</span>
-                  <span className="font-semibold text-[#2663EB]">{subscriptionData.plan_type || planDetails?.name || 'Premium'}</span>
+                  <span className="font-semibold text-[#2663EB]">
+                    {subscriptionData.plan_type || planDetails?.name || 'Premium'}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-500 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" />Cycle</span>
-                  <span className="font-medium text-gray-900">{subscriptionData.billing_cycle || planDetails?.duration || 'Monthly'}</span>
+                  <span className="text-gray-500 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5" />
+                    Cycle
+                  </span>
+                  <span className="font-medium text-gray-900">
+                    {subscriptionData.billing_cycle || planDetails?.duration || 'Monthly'}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-500 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" />Valid Until</span>
-                  <span className="font-medium text-gray-900">{formatDate(subscriptionData.subscription_end_date)}</span>
+                  <span className="text-gray-500 flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5" />
+                    Valid Until
+                  </span>
+                  <span className="font-medium text-gray-900">
+                    {formatDate(subscriptionData.subscription_end_date)}
+                  </span>
                 </div>
               </div>
             </>
@@ -811,7 +894,7 @@ function PaymentSuccess() {
               </>
             )}
           </button>
-          
+
           <div className="grid grid-cols-2 gap-2.5">
             <button
               onClick={() => managePath && navigate(managePath)}
@@ -837,7 +920,10 @@ function PaymentSuccess() {
 
         {/* Help */}
         <p className="text-center text-xs text-gray-400 pt-2">
-          Need help? <Link to="/contact" className="text-[#2663EB] font-medium">Contact Support</Link>
+          Need help?{' '}
+          <Link to="/contact" className="text-[#2663EB] font-medium">
+            Contact Support
+          </Link>
         </p>
       </div>
 

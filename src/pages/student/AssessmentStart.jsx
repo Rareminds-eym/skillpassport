@@ -22,7 +22,8 @@ const AssessmentStart = () => {
   const { studentData } = useStudentDataByEmail(userEmail, false);
 
   // Get certificate/course data from navigation state
-  const certificateName = location.state?.certificateName || location.state?.courseName || 'General Assessment';
+  const certificateName =
+    location.state?.certificateName || location.state?.courseName || 'General Assessment';
   const courseId = location.state?.courseId || 'default';
   const certificateId = location.state?.certificateId;
   const useDynamicGeneration = location.state?.useDynamicGeneration || false;
@@ -35,20 +36,21 @@ const AssessmentStart = () => {
         setCheckingStatus(true);
         console.log('🔍 Checking assessment status for:', {
           studentId: studentData.id,
-          courseName: certificateName
+          courseName: certificateName,
         });
-        
+
         const result = await checkAssessmentStatus(studentData.id, certificateName);
-        
+
         console.log('📊 Assessment status result:', result);
-        
+
         if (result.status === 'in_progress' && result.attempt) {
           console.log('✅ Found in-progress attempt:', {
             id: result.attempt.id,
             currentQuestionIndex: result.attempt.current_question_index,
             totalQuestions: result.attempt.total_questions,
-            answeredCount: result.attempt.student_answers?.filter(a => a.selected_answer !== null).length,
-            timeRemaining: result.attempt.time_remaining
+            answeredCount: result.attempt.student_answers?.filter((a) => a.selected_answer !== null)
+              .length,
+            timeRemaining: result.attempt.time_remaining,
           });
           setInProgressAttempt(result.attempt);
         } else if (result.status === 'completed') {
@@ -64,60 +66,63 @@ const AssessmentStart = () => {
         setCheckingStatus(false);
       }
     };
-    
+
     checkStatus();
   }, [studentData?.id, certificateName, navigate]);
 
   const handleStartAssessment = async () => {
     setIsStarting(true);
-    
+
     // If there's an in-progress attempt, resume it
     if (inProgressAttempt) {
-      console.log('📝 Resuming in-progress assessment from question', inProgressAttempt.current_question_index + 1);
+      console.log(
+        '📝 Resuming in-progress assessment from question',
+        inProgressAttempt.current_question_index + 1
+      );
       console.log('📦 Passing resumeAttempt to test page:', {
         id: inProgressAttempt.id,
         currentQuestionIndex: inProgressAttempt.current_question_index,
         questionsCount: inProgressAttempt.questions?.length,
-        answersCount: inProgressAttempt.student_answers?.length
+        answersCount: inProgressAttempt.student_answers?.length,
       });
-      
+
       // Navigate to DynamicAssessment with resume data
-      navigate('/student/assessment/dynamic', { 
-        state: { 
+      navigate('/student/assessment/dynamic', {
+        state: {
           courseId,
           certificateId,
           courseName: certificateName,
           userId: user?.id,
           email: user?.email,
           level,
-          resumeAttempt: inProgressAttempt
-        } 
+          resumeAttempt: inProgressAttempt,
+        },
       });
       return;
     }
-    
+
     // If using dynamic generation, pre-load questions here
     if (useDynamicGeneration && certificateName) {
       try {
         console.log('🎯 Pre-generating questions for:', certificateName);
-        
+
         // Use the generateAssessment service which checks database first
         const { generateAssessment } = await import('../../services/assessmentGenerationService');
         const assessment = await generateAssessment(certificateName, level, 15, courseId);
-        
+
         console.log('✅ Questions loaded, navigating to test...');
-        
+
         // Navigate to DynamicAssessment with pre-generated questions
-        navigate('/student/assessment/dynamic', { 
-          state: { 
+        navigate('/student/assessment/dynamic', {
+          state: {
             courseId,
             certificateId,
             courseName: certificateName,
             userId: user?.id,
             email: user?.email,
             level,
-            preGeneratedQuestions: assessment.questions // Pass the questions
-          } 
+            preGeneratedQuestions: assessment.questions, // Pass the questions
+          },
         });
       } catch (error) {
         console.error('❌ Error loading questions:', error);
@@ -126,15 +131,15 @@ const AssessmentStart = () => {
       }
     } else {
       // Navigate to DynamicAssessment for static questions
-      navigate('/student/assessment/dynamic', { 
-        state: { 
+      navigate('/student/assessment/dynamic', {
+        state: {
           courseId,
           certificateId,
           courseName: certificateName,
           userId: user?.id,
           email: user?.email,
-          level
-        } 
+          level,
+        },
       });
     }
   };
@@ -146,9 +151,9 @@ const AssessmentStart = () => {
         <div>
           {/* Logo */}
           <div className="flex items-center gap-3 z-10 mb-6">
-            <img 
-              src="/RareMinds.webp" 
-              alt="RareMinds Logo" 
+            <img
+              src="/RareMinds.webp"
+              alt="RareMinds Logo"
               className="h-14 w-auto object-contain"
             />
           </div>
@@ -188,7 +193,9 @@ const AssessmentStart = () => {
 
         {/* Quote */}
         <div className="text-gray-800 z-10">
-          <p className="text-xl font-medium mb-2">"The secret of getting ahead is getting started."</p>
+          <p className="text-xl font-medium mb-2">
+            "The secret of getting ahead is getting started."
+          </p>
           <p className="text-gray-500">— Mark Twain</p>
         </div>
 
@@ -214,7 +221,8 @@ const AssessmentStart = () => {
 
             {user && (
               <p className="text-white/80">
-                Hello, <span className="font-semibold text-white">{user.email?.split('@')[0]}</span>!
+                Hello, <span className="font-semibold text-white">{user.email?.split('@')[0]}</span>
+                !
               </p>
             )}
           </div>
@@ -228,7 +236,8 @@ const AssessmentStart = () => {
                   <h3 className="text-xs font-semibold text-white mb-1">Assessment In Progress</h3>
                   <p className="text-xs text-white/80">
                     You have an incomplete assessment. You'll resume from question{' '}
-                    {inProgressAttempt.current_question_index + 1} of {inProgressAttempt.total_questions}.
+                    {inProgressAttempt.current_question_index + 1} of{' '}
+                    {inProgressAttempt.total_questions}.
                   </p>
                 </div>
               </div>
@@ -279,7 +288,8 @@ const AssessmentStart = () => {
               <div>
                 <h3 className="text-xs font-semibold text-yellow-200 mb-1">Important:</h3>
                 <p className="text-xs text-yellow-100/90">
-                  Please ensure you have a stable internet connection and won't be interrupted during the assessment.
+                  Please ensure you have a stable internet connection and won't be interrupted
+                  during the assessment.
                 </p>
               </div>
             </div>
@@ -293,32 +303,73 @@ const AssessmentStart = () => {
           >
             {checkingStatus ? (
               <>
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                <svg
+                  className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
                 </svg>
                 Checking status...
               </>
             ) : isStarting ? (
               <>
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                <svg
+                  className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
                 </svg>
                 {inProgressAttempt ? 'Resuming...' : 'Starting Assessment...'}
               </>
             ) : inProgressAttempt ? (
               <>
-                Continue Assessment (Q{inProgressAttempt.current_question_index + 1}/{inProgressAttempt.total_questions})
+                Continue Assessment (Q{inProgressAttempt.current_question_index + 1}/
+                {inProgressAttempt.total_questions})
                 <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 7l5 5m0 0l-5 5m5-5H6"
+                  />
                 </svg>
               </>
             ) : (
               <>
                 {inProgressAttempt ? 'Continue Assessment' : 'Start Assessment'}
                 <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 7l5 5m0 0l-5 5m5-5H6"
+                  />
                 </svg>
               </>
             )}

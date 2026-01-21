@@ -3,11 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
-import { 
-  Bell, 
-  TrendingUp, 
-  CheckCircle, 
-  Star, 
+import {
+  Bell,
+  TrendingUp,
+  CheckCircle,
+  Star,
   ExternalLink,
   Edit,
   Calendar,
@@ -15,14 +15,14 @@ import {
   Users,
   Code,
   MessageCircle,
-  Loader2
+  Loader2,
 } from 'lucide-react';
 import { useStudentData } from '../../../hooks/useStudentData';
 import {
   EducationEditModal,
   TrainingEditModal,
   ExperienceEditModal,
-  SkillsEditModal
+  SkillsEditModal,
 } from './ProfileEditModals';
 
 /**
@@ -47,7 +47,7 @@ const DashboardWithSupabase = ({ studentId }) => {
     deleteTechnicalSkill,
     updateSoftSkill,
     deleteSoftSkill,
-    refresh
+    refresh,
   } = useStudentData(studentId, true); // true = fallback to mock data
 
   // Handle save operations for different sections
@@ -59,29 +59,21 @@ const DashboardWithSupabase = ({ studentId }) => {
           if (Array.isArray(data)) {
             // Update multiple records
             await Promise.all(
-              data.map(item => 
-                item.id ? updateEducation(item.id, item) : null
-              )
+              data.map((item) => (item.id ? updateEducation(item.id, item) : null))
             );
           }
           break;
 
         case 'training':
           if (Array.isArray(data)) {
-            await Promise.all(
-              data.map(item => 
-                item.id ? updateTraining(item.id, item) : null
-              )
-            );
+            await Promise.all(data.map((item) => (item.id ? updateTraining(item.id, item) : null)));
           }
           break;
 
         case 'experience':
           if (Array.isArray(data)) {
             await Promise.all(
-              data.map(item => 
-                item.id ? updateExperience(item.id, item) : null
-              )
+              data.map((item) => (item.id ? updateExperience(item.id, item) : null))
             );
           }
           break;
@@ -89,9 +81,7 @@ const DashboardWithSupabase = ({ studentId }) => {
         case 'technicalSkills':
           if (Array.isArray(data)) {
             await Promise.all(
-              data.map(item => 
-                item.id ? updateTechnicalSkill(item.id, item) : null
-              )
+              data.map((item) => (item.id ? updateTechnicalSkill(item.id, item) : null))
             );
           }
           break;
@@ -99,9 +89,7 @@ const DashboardWithSupabase = ({ studentId }) => {
         case 'softSkills':
           if (Array.isArray(data)) {
             await Promise.all(
-              data.map(item => 
-                item.id ? updateSoftSkill(item.id, item) : null
-              )
+              data.map((item) => (item.id ? updateSoftSkill(item.id, item) : null))
             );
           }
           break;
@@ -164,7 +152,6 @@ const DashboardWithSupabase = ({ studentId }) => {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
-        
         {/* Header Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
@@ -187,7 +174,7 @@ const DashboardWithSupabase = ({ studentId }) => {
                 <div>
                   <p className="text-gray-500 text-sm">Completed Training</p>
                   <h3 className="text-2xl font-bold mt-1">
-                    {training.filter(t => t.status === 'completed').length}
+                    {training.filter((t) => t.status === 'completed').length}
                   </h3>
                 </div>
                 <CheckCircle className="w-10 h-10 text-green-500" />
@@ -201,7 +188,7 @@ const DashboardWithSupabase = ({ studentId }) => {
                 <div>
                   <p className="text-gray-500 text-sm">Verified Skills</p>
                   <h3 className="text-2xl font-bold mt-1">
-                    {technicalSkills.filter(s => s.verified).length}
+                    {technicalSkills.filter((s) => s.verified).length}
                   </h3>
                 </div>
                 <Star className="w-10 h-10 text-yellow-500" />
@@ -214,9 +201,7 @@ const DashboardWithSupabase = ({ studentId }) => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-500 text-sm">Opportunities</p>
-                  <h3 className="text-2xl font-bold mt-1">
-                    {opportunities.length}
-                  </h3>
+                  <h3 className="text-2xl font-bold mt-1">{opportunities.length}</h3>
                 </div>
                 <ExternalLink className="w-10 h-10 text-purple-500" />
               </div>
@@ -227,7 +212,6 @@ const DashboardWithSupabase = ({ studentId }) => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            
             {/* Education */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
@@ -235,29 +219,29 @@ const DashboardWithSupabase = ({ studentId }) => {
                   <Award className="w-5 h-5" />
                   Education
                 </CardTitle>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setActiveModal('education')}
-                >
+                <Button variant="outline" size="sm" onClick={() => setActiveModal('education')}>
                   <Edit className="w-4 h-4 mr-2" />
                   Edit
                 </Button>
               </CardHeader>
               <CardContent className="space-y-4">
-                {education.filter(edu => edu.enabled !== false).map((edu, idx) => (
-                  <div key={edu.id || idx} className="border-l-4 border-blue-500 pl-4 py-2">
-                    <h4 className="font-semibold">{edu.degree}</h4>
-                    <p className="text-sm text-gray-600">{edu.university}</p>
-                    <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                      <span>{edu.year_of_passing || edu.yearOfPassing}</span>
-                      <span>CGPA: {edu.cgpa}</span>
-                      {edu.status === 'ongoing' && (
-                        <Badge variant="outline" className="text-xs">Ongoing</Badge>
-                      )}
+                {education
+                  .filter((edu) => edu.enabled !== false)
+                  .map((edu, idx) => (
+                    <div key={edu.id || idx} className="border-l-4 border-blue-500 pl-4 py-2">
+                      <h4 className="font-semibold">{edu.degree}</h4>
+                      <p className="text-sm text-gray-600">{edu.university}</p>
+                      <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
+                        <span>{edu.year_of_passing || edu.yearOfPassing}</span>
+                        <span>CGPA: {edu.cgpa}</span>
+                        {edu.status === 'ongoing' && (
+                          <Badge variant="outline" className="text-xs">
+                            Ongoing
+                          </Badge>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
               </CardContent>
             </Card>
 
@@ -268,28 +252,26 @@ const DashboardWithSupabase = ({ studentId }) => {
                   <Code className="w-5 h-5" />
                   Training & Certifications
                 </CardTitle>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setActiveModal('training')}
-                >
+                <Button variant="outline" size="sm" onClick={() => setActiveModal('training')}>
                   <Edit className="w-4 h-4 mr-2" />
                   Edit
                 </Button>
               </CardHeader>
               <CardContent className="space-y-4">
-                {training.filter(course => course.enabled !== false).map((course, idx) => (
-                  <div key={course.id || idx} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-semibold">{course.course}</h4>
-                      <Badge variant={course.status === 'completed' ? 'default' : 'secondary'}>
-                        {course.status}
-                      </Badge>
+                {training
+                  .filter((course) => course.enabled !== false)
+                  .map((course, idx) => (
+                    <div key={course.id || idx} className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-semibold">{course.course}</h4>
+                        <Badge variant={course.status === 'completed' ? 'default' : 'secondary'}>
+                          {course.status}
+                        </Badge>
+                      </div>
+                      <Progress value={course.progress} className="h-2" />
+                      <p className="text-sm text-gray-500">{course.progress}% Complete</p>
                     </div>
-                    <Progress value={course.progress} className="h-2" />
-                    <p className="text-sm text-gray-500">{course.progress}% Complete</p>
-                  </div>
-                ))}
+                  ))}
               </CardContent>
             </Card>
 
@@ -300,26 +282,28 @@ const DashboardWithSupabase = ({ studentId }) => {
                   <Users className="w-5 h-5" />
                   Experience
                 </CardTitle>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setActiveModal('experience')}
-                >
+                <Button variant="outline" size="sm" onClick={() => setActiveModal('experience')}>
                   <Edit className="w-4 h-4 mr-2" />
                   Edit
                 </Button>
               </CardHeader>
               <CardContent className="space-y-4">
-                {experience.filter(exp => exp.enabled !== false).map((exp, idx) => (
-                  <div key={exp.id || idx} className="border-l-4 border-green-500 pl-4 py-2">
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-semibold">{exp.role}</h4>
-                      {exp.verified && <Badge variant="outline" className="text-xs">✓ Verified</Badge>}
+                {experience
+                  .filter((exp) => exp.enabled !== false)
+                  .map((exp, idx) => (
+                    <div key={exp.id || idx} className="border-l-4 border-green-500 pl-4 py-2">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-semibold">{exp.role}</h4>
+                        {exp.verified && (
+                          <Badge variant="outline" className="text-xs">
+                            ✓ Verified
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-600">{exp.organization}</p>
+                      <p className="text-sm text-gray-500 mt-1">{exp.duration}</p>
                     </div>
-                    <p className="text-sm text-gray-600">{exp.organization}</p>
-                    <p className="text-sm text-gray-500 mt-1">{exp.duration}</p>
-                  </div>
-                ))}
+                  ))}
               </CardContent>
             </Card>
 
@@ -327,8 +311,8 @@ const DashboardWithSupabase = ({ studentId }) => {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Technical Skills</CardTitle>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   onClick={() => setActiveModal('technicalSkills')}
                 >
@@ -338,23 +322,25 @@ const DashboardWithSupabase = ({ studentId }) => {
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">
-                  {technicalSkills.filter(skill => skill.enabled !== false).map((skill, idx) => (
-                    <Badge key={skill.id || idx} variant="secondary" className="text-sm px-3 py-1">
-                      {skill.icon} {skill.name} 
-                      <span className="ml-2 text-yellow-500">
-                        {'★'.repeat(skill.level)}
-                      </span>
-                    </Badge>
-                  ))}
+                  {technicalSkills
+                    .filter((skill) => skill.enabled !== false)
+                    .map((skill, idx) => (
+                      <Badge
+                        key={skill.id || idx}
+                        variant="secondary"
+                        className="text-sm px-3 py-1"
+                      >
+                        {skill.icon} {skill.name}
+                        <span className="ml-2 text-yellow-500">{'★'.repeat(skill.level)}</span>
+                      </Badge>
+                    ))}
                 </div>
               </CardContent>
             </Card>
-
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
-            
             {/* Recent Updates
             <Card>
               <CardHeader>
@@ -386,7 +372,10 @@ const DashboardWithSupabase = ({ studentId }) => {
               </CardHeader>
               <CardContent className="space-y-2">
                 {suggestions.map((suggestion, idx) => (
-                  <div key={suggestion.id || idx} className="text-sm p-2 bg-yellow-50 border-l-2 border-yellow-500 rounded">
+                  <div
+                    key={suggestion.id || idx}
+                    className="text-sm p-2 bg-yellow-50 border-l-2 border-yellow-500 rounded"
+                  >
                     {suggestion.message}
                   </div>
                 ))}
@@ -403,11 +392,16 @@ const DashboardWithSupabase = ({ studentId }) => {
               </CardHeader>
               <CardContent className="space-y-3">
                 {opportunities.slice(0, 3).map((opp, idx) => (
-                  <div key={opp.id || idx} className="border rounded p-3 hover:shadow-md transition-shadow">
+                  <div
+                    key={opp.id || idx}
+                    className="border rounded p-3 hover:shadow-md transition-shadow"
+                  >
                     <h5 className="font-semibold text-sm">{opp.title}</h5>
                     <p className="text-xs text-gray-600">{opp.company}</p>
                     <div className="flex items-center justify-between mt-2">
-                      <Badge variant="outline" className="text-xs">{opp.type}</Badge>
+                      <Badge variant="outline" className="text-xs">
+                        {opp.type}
+                      </Badge>
                       <span className="text-xs text-gray-500">
                         Due: {new Date(opp.deadline).toLocaleDateString()}
                       </span>
@@ -416,10 +410,8 @@ const DashboardWithSupabase = ({ studentId }) => {
                 ))}
               </CardContent>
             </Card>
-
           </div>
         </div>
-
       </div>
 
       {/* Modals */}

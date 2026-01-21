@@ -1,6 +1,6 @@
 // RBAC Types and Permissions
 
-export type UserRole = 
+export type UserRole =
   | 'principal'
   | 'vice_principal'
   | 'it_admin'
@@ -32,7 +32,7 @@ export const STUDENT_MANAGEMENT_PERMISSIONS: Record<UserRole, Record<string, Per
     view_student_details: ['view'],
     manage_class_section: ['create', 'update', 'delete'],
   },
-  
+
   vice_principal: {
     add_student: ['create'],
     edit_student_profile: ['update'],
@@ -42,7 +42,7 @@ export const STUDENT_MANAGEMENT_PERMISSIONS: Record<UserRole, Record<string, Per
     generate_student_report: ['view'],
     view_student_details: ['view'],
   },
-  
+
   it_admin: {
     add_student: ['create'],
     edit_student_profile: ['update'],
@@ -53,7 +53,7 @@ export const STUDENT_MANAGEMENT_PERMISSIONS: Record<UserRole, Record<string, Per
     view_student_details: ['view'],
     manage_system_settings: ['create', 'update', 'delete'],
   },
-  
+
   class_teacher: {
     add_student: [],
     edit_student_profile: ['view'],
@@ -63,7 +63,7 @@ export const STUDENT_MANAGEMENT_PERMISSIONS: Record<UserRole, Record<string, Per
     generate_student_report: ['view'],
     view_student_details: ['view'],
   },
-  
+
   subject_teacher: {
     add_student: [],
     edit_student_profile: ['view'],
@@ -73,7 +73,7 @@ export const STUDENT_MANAGEMENT_PERMISSIONS: Record<UserRole, Record<string, Per
     generate_student_report: ['view'],
     view_student_details: ['view'],
   },
-  
+
   accountant: {
     add_student: [],
     edit_student_profile: [],
@@ -84,7 +84,7 @@ export const STUDENT_MANAGEMENT_PERMISSIONS: Record<UserRole, Record<string, Per
     view_student_details: ['view'], // limited to fee info
     manage_fees: ['create', 'update', 'view'],
   },
-  
+
   librarian: {
     add_student: [],
     edit_student_profile: [],
@@ -94,7 +94,7 @@ export const STUDENT_MANAGEMENT_PERMISSIONS: Record<UserRole, Record<string, Per
     generate_student_report: [],
     view_student_details: ['view'], // limited
   },
-  
+
   parent: {
     add_student: [],
     edit_student_profile: ['view'], // limited to own child
@@ -104,7 +104,7 @@ export const STUDENT_MANAGEMENT_PERMISSIONS: Record<UserRole, Record<string, Per
     generate_student_report: ['view'], // own child only
     view_student_details: ['view'], // own child only
   },
-  
+
   career_counselor: {
     add_student: [],
     edit_student_profile: ['view'],
@@ -124,11 +124,11 @@ export function hasPermission(
   permission: Permission
 ): boolean {
   const rolePermissions = STUDENT_MANAGEMENT_PERMISSIONS[userRole];
-  
+
   if (!rolePermissions || !rolePermissions[feature]) {
     return false;
   }
-  
+
   return rolePermissions[feature].includes(permission);
 }
 
@@ -143,7 +143,7 @@ export function hasAnyPermission(
   feature: string,
   permissions: Permission[]
 ): boolean {
-  return permissions.some(permission => hasPermission(userRole, feature, permission));
+  return permissions.some((permission) => hasPermission(userRole, feature, permission));
 }
 
 // Check if user has all specified permissions
@@ -152,5 +152,5 @@ export function hasAllPermissions(
   feature: string,
   permissions: Permission[]
 ): boolean {
-  return permissions.every(permission => hasPermission(userRole, feature, permission));
+  return permissions.every((permission) => hasPermission(userRole, feature, permission));
 }

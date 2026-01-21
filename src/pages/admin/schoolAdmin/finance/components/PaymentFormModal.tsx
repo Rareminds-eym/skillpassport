@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { X, CreditCard, Calendar, FileText, AlertCircle } from "lucide-react";
-import { StudentFeeSummary, PaymentMode } from "../types";
+import React, { useState, useEffect } from 'react';
+import { X, CreditCard, Calendar, FileText, AlertCircle } from 'lucide-react';
+import { StudentFeeSummary, PaymentMode } from '../types';
 
 interface Props {
   isOpen: boolean;
@@ -10,32 +10,27 @@ interface Props {
 }
 
 const paymentModes: { value: PaymentMode; label: string }[] = [
-  { value: "cash", label: "Cash" },
-  { value: "cheque", label: "Cheque" },
-  { value: "dd", label: "Demand Draft" },
-  { value: "online", label: "Online Transfer" },
-  { value: "card", label: "Card Payment" },
-  { value: "upi", label: "UPI" },
-  { value: "bank_transfer", label: "Bank Transfer" },
+  { value: 'cash', label: 'Cash' },
+  { value: 'cheque', label: 'Cheque' },
+  { value: 'dd', label: 'Demand Draft' },
+  { value: 'online', label: 'Online Transfer' },
+  { value: 'card', label: 'Card Payment' },
+  { value: 'upi', label: 'UPI' },
+  { value: 'bank_transfer', label: 'Bank Transfer' },
 ];
 
-export const PaymentFormModal: React.FC<Props> = ({
-  isOpen,
-  onClose,
-  onSave,
-  student,
-}) => {
+export const PaymentFormModal: React.FC<Props> = ({ isOpen, onClose, onSave, student }) => {
   const [formData, setFormData] = useState({
-    amount: "",
-    mode: "cash" as PaymentMode,
-    reference_number: "",
-    transaction_id: "",
-    bank_name: "",
-    cheque_number: "",
-    cheque_date: "",
-    dd_number: "",
-    payment_date: new Date().toISOString().split("T")[0],
-    remarks: "",
+    amount: '',
+    mode: 'cash' as PaymentMode,
+    reference_number: '',
+    transaction_id: '',
+    bank_name: '',
+    cheque_number: '',
+    cheque_date: '',
+    dd_number: '',
+    payment_date: new Date().toISOString().split('T')[0],
+    remarks: '',
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -44,15 +39,15 @@ export const PaymentFormModal: React.FC<Props> = ({
     if (isOpen && student) {
       setFormData({
         amount: student.balance.toString(),
-        mode: "cash",
-        reference_number: "",
-        transaction_id: "",
-        bank_name: "",
-        cheque_number: "",
-        cheque_date: "",
-        dd_number: "",
-        payment_date: new Date().toISOString().split("T")[0],
-        remarks: "",
+        mode: 'cash',
+        reference_number: '',
+        transaction_id: '',
+        bank_name: '',
+        cheque_number: '',
+        cheque_date: '',
+        dd_number: '',
+        payment_date: new Date().toISOString().split('T')[0],
+        remarks: '',
       });
       setErrors({});
     }
@@ -62,42 +57,42 @@ export const PaymentFormModal: React.FC<Props> = ({
     const newErrors: Record<string, string> = {};
 
     if (!formData.amount || parseFloat(formData.amount) <= 0) {
-      newErrors.amount = "Amount is required and must be greater than 0";
+      newErrors.amount = 'Amount is required and must be greater than 0';
     }
 
     if (parseFloat(formData.amount) > (student?.balance || 0)) {
-      newErrors.amount = "Amount cannot exceed outstanding balance";
+      newErrors.amount = 'Amount cannot exceed outstanding balance';
     }
 
     if (!formData.payment_date) {
-      newErrors.payment_date = "Payment date is required";
+      newErrors.payment_date = 'Payment date is required';
     }
 
     // Mode-specific validations
-    if (formData.mode === "cheque") {
+    if (formData.mode === 'cheque') {
       if (!formData.cheque_number) {
-        newErrors.cheque_number = "Cheque number is required";
+        newErrors.cheque_number = 'Cheque number is required';
       }
       if (!formData.cheque_date) {
-        newErrors.cheque_date = "Cheque date is required";
+        newErrors.cheque_date = 'Cheque date is required';
       }
       if (!formData.bank_name) {
-        newErrors.bank_name = "Bank name is required";
+        newErrors.bank_name = 'Bank name is required';
       }
     }
 
-    if (formData.mode === "dd") {
+    if (formData.mode === 'dd') {
       if (!formData.dd_number) {
-        newErrors.dd_number = "DD number is required";
+        newErrors.dd_number = 'DD number is required';
       }
       if (!formData.bank_name) {
-        newErrors.bank_name = "Bank name is required";
+        newErrors.bank_name = 'Bank name is required';
       }
     }
 
-    if (["online", "card", "upi"].includes(formData.mode)) {
+    if (['online', 'card', 'upi'].includes(formData.mode)) {
       if (!formData.transaction_id) {
-        newErrors.transaction_id = "Transaction ID is required";
+        newErrors.transaction_id = 'Transaction ID is required';
       }
     }
 
@@ -107,32 +102,32 @@ export const PaymentFormModal: React.FC<Props> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm() || !student) return;
 
     setLoading(true);
     try {
       // Use the first ledger entry for payment recording
-      const ledgerId = student.ledger_entries[0]?.id || "mock-ledger";
+      const ledgerId = student.ledger_entries[0]?.id || 'mock-ledger';
       const success = await onSave(ledgerId, student.student_id, {
         ...formData,
         amount: parseFloat(formData.amount),
       });
-      
+
       if (success) {
         onClose();
       }
     } catch (error) {
-      console.error("Payment submission error:", error);
+      console.error('Payment submission error:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: "" }));
+      setErrors((prev) => ({ ...prev, [field]: '' }));
     }
   };
 
@@ -154,10 +149,7 @@ export const PaymentFormModal: React.FC<Props> = ({
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition"
-          >
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition">
             <X className="h-5 w-5 text-gray-500" />
           </button>
         </div>
@@ -170,8 +162,8 @@ export const PaymentFormModal: React.FC<Props> = ({
           </div>
           <p className="text-2xl font-bold text-red-900">₹{student.balance.toLocaleString()}</p>
           <p className="text-sm text-red-700 mt-1">
-            Total Due: ₹{student.total_due.toLocaleString()} | 
-            Paid: ₹{student.total_paid.toLocaleString()}
+            Total Due: ₹{student.total_due.toLocaleString()} | Paid: ₹
+            {student.total_paid.toLocaleString()}
           </p>
         </div>
 
@@ -179,9 +171,7 @@ export const PaymentFormModal: React.FC<Props> = ({
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Payment Amount */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Payment Amount *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Payment Amount *</label>
             <div className="relative">
               <span className="absolute left-3 top-2.5 text-gray-500">₹</span>
               <input
@@ -190,26 +180,22 @@ export const PaymentFormModal: React.FC<Props> = ({
                 min="0"
                 max={student.balance}
                 value={formData.amount}
-                onChange={(e) => handleInputChange("amount", e.target.value)}
+                onChange={(e) => handleInputChange('amount', e.target.value)}
                 className={`w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                  errors.amount ? "border-red-300" : "border-gray-300"
+                  errors.amount ? 'border-red-300' : 'border-gray-300'
                 }`}
                 placeholder="0.00"
               />
             </div>
-            {errors.amount && (
-              <p className="text-red-600 text-sm mt-1">{errors.amount}</p>
-            )}
+            {errors.amount && <p className="text-red-600 text-sm mt-1">{errors.amount}</p>}
           </div>
 
           {/* Payment Mode */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Payment Mode *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Payment Mode *</label>
             <select
               value={formData.mode}
-              onChange={(e) => handleInputChange("mode", e.target.value)}
+              onChange={(e) => handleInputChange('mode', e.target.value)}
               className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               {paymentModes.map((mode) => (
@@ -222,16 +208,14 @@ export const PaymentFormModal: React.FC<Props> = ({
 
           {/* Payment Date */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Payment Date *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Payment Date *</label>
             <div className="relative">
               <input
                 type="date"
                 value={formData.payment_date}
-                onChange={(e) => handleInputChange("payment_date", e.target.value)}
+                onChange={(e) => handleInputChange('payment_date', e.target.value)}
                 className={`w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                  errors.payment_date ? "border-red-300" : "border-gray-300"
+                  errors.payment_date ? 'border-red-300' : 'border-gray-300'
                 }`}
               />
               <Calendar className="absolute right-3 top-2.5 h-4 w-4 text-gray-400 pointer-events-none" />
@@ -242,7 +226,7 @@ export const PaymentFormModal: React.FC<Props> = ({
           </div>
 
           {/* Mode-specific fields */}
-          {formData.mode === "cheque" && (
+          {formData.mode === 'cheque' && (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -252,9 +236,9 @@ export const PaymentFormModal: React.FC<Props> = ({
                   <input
                     type="text"
                     value={formData.cheque_number}
-                    onChange={(e) => handleInputChange("cheque_number", e.target.value)}
+                    onChange={(e) => handleInputChange('cheque_number', e.target.value)}
                     className={`w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                      errors.cheque_number ? "border-red-300" : "border-gray-300"
+                      errors.cheque_number ? 'border-red-300' : 'border-gray-300'
                     }`}
                     placeholder="Enter cheque number"
                   />
@@ -269,9 +253,9 @@ export const PaymentFormModal: React.FC<Props> = ({
                   <input
                     type="date"
                     value={formData.cheque_date}
-                    onChange={(e) => handleInputChange("cheque_date", e.target.value)}
+                    onChange={(e) => handleInputChange('cheque_date', e.target.value)}
                     className={`w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                      errors.cheque_date ? "border-red-300" : "border-gray-300"
+                      errors.cheque_date ? 'border-red-300' : 'border-gray-300'
                     }`}
                   />
                   {errors.cheque_date && (
@@ -280,54 +264,13 @@ export const PaymentFormModal: React.FC<Props> = ({
                 </div>
               </div>
               <div>
-                <label className="block text-sm foxt-gray-700 mb-2">
-                  Bank Name *
-                </label>
+                <label className="block text-sm foxt-gray-700 mb-2">Bank Name *</label>
                 <input
                   type="text"
                   value={formData.bank_name}
-                  onChange={(e) => handleInputChange("bank_name", e.target.value)}
+                  onChange={(e) => handleInputChange('bank_name', e.target.value)}
                   className={`w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    errors.bank_name ? "border-red-300" : "border-gray-300"
-                  }`}
-                placeholder="Enter bank name"
-                />
-                {errors.bank_name && (
-                  <p className="text-red-600 text-sm mt-1">{errors.bank_name}</p>
-                )}
-              </div>
-            </>
-          )}
-
-          {formData.mode === "dd" && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  DD Number *
-                </label>
-                <input
-                  type="text"
-                  value={formData.dd_number}
-                  onChange={(e) => handleInputChange("dd_number", e.target.value)}
-                  className={`w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    errors.dd_number ? "border-red-300" : "border-gray-300"
-                  }`}
-                  placeholder="Enter DD number"
-                />
-                {errors.dd_number && (
-                  <p className="text-red-600 text-sm mt-1">{errors.dd_number}</p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Bank Name *
-                </label>
-                <input
-                  type="text"
-                  value={formData.bank_name}
-                  onChange={(e) => handleInputChange("bank_name", e.target.value)}
-                  className={`w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    errors.bank_name ? "border-red-300" : "border-gray-300"
+                    errors.bank_name ? 'border-red-300' : 'border-gray-300'
                   }`}
                   placeholder="Enter bank name"
                 />
@@ -338,7 +281,42 @@ export const PaymentFormModal: React.FC<Props> = ({
             </>
           )}
 
-          {["online", "card", "upi"].includes(formData.mode) && (
+          {formData.mode === 'dd' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">DD Number *</label>
+                <input
+                  type="text"
+                  value={formData.dd_number}
+                  onChange={(e) => handleInputChange('dd_number', e.target.value)}
+                  className={`w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    errors.dd_number ? 'border-red-300' : 'border-gray-300'
+                  }`}
+                  placeholder="Enter DD number"
+                />
+                {errors.dd_number && (
+                  <p className="text-red-600 text-sm mt-1">{errors.dd_number}</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Bank Name *</label>
+                <input
+                  type="text"
+                  value={formData.bank_name}
+                  onChange={(e) => handleInputChange('bank_name', e.target.value)}
+                  className={`w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    errors.bank_name ? 'border-red-300' : 'border-gray-300'
+                  }`}
+                  placeholder="Enter bank name"
+                />
+                {errors.bank_name && (
+                  <p className="text-red-600 text-sm mt-1">{errors.bank_name}</p>
+                )}
+              </div>
+            </>
+          )}
+
+          {['online', 'card', 'upi'].includes(formData.mode) && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Transaction ID *
@@ -346,9 +324,9 @@ export const PaymentFormModal: React.FC<Props> = ({
               <input
                 type="text"
                 value={formData.transaction_id}
-                onChange={(e) => handleInputChange("transaction_id", e.target.value)}
+                onChange={(e) => handleInputChange('transaction_id', e.target.value)}
                 className={`w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                  errors.transaction_id ? "border-red-300" : "border-gray-300"
+                  errors.transaction_id ? 'border-red-300' : 'border-gray-300'
                 }`}
                 placeholder="Enter transaction ID"
               />
@@ -360,13 +338,11 @@ export const PaymentFormModal: React.FC<Props> = ({
 
           {/* Reference Number */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Reference Number
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Reference Number</label>
             <input
               type="text"
               value={formData.reference_number}
-              onChange={(e) => handleInputChange("reference_number", e.target.value)}
+              onChange={(e) => handleInputChange('reference_number', e.target.value)}
               className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="Enter reference number (optional)"
             />
@@ -374,13 +350,11 @@ export const PaymentFormModal: React.FC<Props> = ({
 
           {/* Remarks */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 m2">
-              Remarks
-            </label>
+            <label className="block text-sm font-medium text-gray-700 m2">Remarks</label>
             <div className="relative">
               <textarea
                 value={formData.remarks}
-                onChange={(e) => handleInputChange("remarks", e.target.value)}
+                onChange={(e) => handleInputChange('remarks', e.target.value)}
                 rows={3}
                 className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Add any additional notes..."
@@ -403,7 +377,7 @@ export const PaymentFormModal: React.FC<Props> = ({
               disabled={loading}
               className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition"
             >
-              {loading ? "Recording..." : "Record Payment"}
+              {loading ? 'Recording...' : 'Record Payment'}
             </button>
           </div>
         </form>

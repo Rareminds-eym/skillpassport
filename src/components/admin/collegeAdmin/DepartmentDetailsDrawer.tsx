@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from 'react';
 import {
   XMarkIcon,
   ClockIcon,
@@ -7,8 +7,11 @@ import {
   BookOpenIcon,
   UserGroupIcon,
   EnvelopeIcon,
-} from "@heroicons/react/24/outline";
-import { departmentService, DepartmentWithStats } from '../../../services/college/departmentService';
+} from '@heroicons/react/24/outline';
+import {
+  departmentService,
+  DepartmentWithStats,
+} from '../../../services/college/departmentService';
 
 interface Faculty {
   id: string;
@@ -40,14 +43,14 @@ interface StatusBadgeProps {
 
 const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
   const config: Record<string, string> = {
-    Active: "bg-emerald-100 text-emerald-700",
-    Inactive: "bg-gray-100 text-gray-600",
+    Active: 'bg-emerald-100 text-emerald-700',
+    Inactive: 'bg-gray-100 text-gray-600',
   };
 
   return (
     <span
       className={`inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium ${
-        config[status] || "bg-gray-100 text-gray-600"
+        config[status] || 'bg-gray-100 text-gray-600'
       }`}
     >
       {status}
@@ -77,11 +80,12 @@ const DepartmentDetailsDrawer: React.FC<DepartmentDetailsDrawerProps> = ({
   useEffect(() => {
     if (department?.id) {
       setFacultyLoading(true);
-      departmentService.getDepartmentFaculty(department.id)
-        .then(faculty => {
+      departmentService
+        .getDepartmentFaculty(department.id)
+        .then((faculty) => {
           setAssignedFaculty(faculty);
         })
-        .catch(error => {
+        .catch((error) => {
           console.error('Error loading department faculty:', error);
           setAssignedFaculty([]);
         })
@@ -134,33 +138,25 @@ const DepartmentDetailsDrawer: React.FC<DepartmentDetailsDrawerProps> = ({
         <div className="flex-shrink-0 border-b border-gray-200 bg-gray-50 px-4 sm:px-6 py-3 sm:py-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-4 sm:gap-4">
             <div className="rounded-lg border border-gray-200 bg-white p-3 sm:p-4">
-              <p className="text-xs uppercase tracking-wide text-gray-500">
-                Faculty
-              </p>
+              <p className="text-xs uppercase tracking-wide text-gray-500">Faculty</p>
               <p className="mt-1 sm:mt-2 text-xl sm:text-2xl font-semibold text-gray-900">
                 {assignedFaculty.length}
               </p>
             </div>
             <div className="rounded-lg border border-gray-200 bg-white p-3 sm:p-4">
-              <p className="text-xs uppercase tracking-wide text-gray-500">
-                Students
-              </p>
+              <p className="text-xs uppercase tracking-wide text-gray-500">Students</p>
               <p className="mt-1 sm:mt-2 text-xl sm:text-2xl font-semibold text-gray-900">
                 {department.student_count || 0}
               </p>
             </div>
             <div className="rounded-lg border border-gray-200 bg-white p-3 sm:p-4">
-              <p className="text-xs uppercase tracking-wide text-gray-500">
-                Programs
-              </p>
+              <p className="text-xs uppercase tracking-wide text-gray-500">Programs</p>
               <p className="mt-1 sm:mt-2 text-xl sm:text-2xl font-semibold text-gray-900">
                 {department.programs_offered?.length || 0}
               </p>
             </div>
             <div className="rounded-lg border border-gray-200 bg-white p-3 sm:p-4">
-              <p className="text-xs uppercase tracking-wide text-gray-500">
-                Status
-              </p>
+              <p className="text-xs uppercase tracking-wide text-gray-500">Status</p>
               <span className="mt-2 sm:mt-3 inline-flex items-center rounded-full px-2.5 sm:px-3 py-0.5 sm:py-1 text-xs sm:text-sm font-semibold bg-emerald-50 text-emerald-700">
                 {department.status}
               </span>
@@ -197,9 +193,7 @@ const DepartmentDetailsDrawer: React.FC<DepartmentDetailsDrawerProps> = ({
           {/* Description */}
           {department.description && (
             <section>
-              <h3 className="text-sm font-semibold text-gray-900 mb-3">
-                About Department
-              </h3>
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">About Department</h3>
               <p className="text-sm text-gray-600">{department.description}</p>
             </section>
           )}
@@ -214,22 +208,15 @@ const DepartmentDetailsDrawer: React.FC<DepartmentDetailsDrawerProps> = ({
             {department.programs_offered && department.programs_offered.length > 0 ? (
               <div className="space-y-2">
                 {department.programs_offered.map((program) => (
-                  <div
-                    key={program.id}
-                    className="rounded-lg border border-gray-200 bg-white p-3"
-                  >
+                  <div key={program.id} className="rounded-lg border border-gray-200 bg-white p-3">
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-900">
                           {program.code} - {program.name}
                         </p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {program.degree_level}
-                        </p>
+                        <p className="text-xs text-gray-500 mt-1">{program.degree_level}</p>
                         {program.description && (
-                          <p className="text-xs text-gray-600 mt-1">
-                            {program.description}
-                          </p>
+                          <p className="text-xs text-gray-600 mt-1">{program.description}</p>
                         )}
                       </div>
                       <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -271,20 +258,19 @@ const DepartmentDetailsDrawer: React.FC<DepartmentDetailsDrawerProps> = ({
             ) : assignedFaculty.length > 0 ? (
               <div className="space-y-2">
                 {assignedFaculty.map((faculty) => (
-                  <div
-                    key={faculty.id}
-                    className="rounded-lg border border-gray-200 bg-white p-3"
-                  >
+                  <div key={faculty.id} className="rounded-lg border border-gray-200 bg-white p-3">
                     <div className="flex items-start gap-3">
                       <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-indigo-100 to-indigo-200 flex items-center justify-center">
                         <span className="text-sm font-semibold text-indigo-700">
-                          {faculty.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                          {faculty.name
+                            .split(' ')
+                            .map((n) => n[0])
+                            .join('')
+                            .slice(0, 2)}
                         </span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900">
-                          {faculty.name}
-                        </p>
+                        <p className="text-sm font-medium text-gray-900">{faculty.name}</p>
                         <p className="text-xs text-gray-500">
                           {faculty.designation} • {faculty.specialization || 'No specialization'}
                         </p>

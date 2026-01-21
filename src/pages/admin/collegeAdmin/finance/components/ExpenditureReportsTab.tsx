@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { 
-  Download, 
-  Filter, 
-  Search, 
-  RefreshCw, 
-  TrendingUp, 
-  TrendingDown, 
-  Users, 
+import {
+  Download,
+  Filter,
+  Search,
+  RefreshCw,
+  TrendingUp,
+  TrendingDown,
+  Users,
   AlertCircle,
   CheckCircle,
   Clock,
@@ -14,7 +14,7 @@ import {
   Eye,
   Calendar,
   Building2,
-  GraduationCap
+  GraduationCap,
 } from 'lucide-react';
 import { useExpenditureReports } from '../hooks/useExpenditureReports';
 import { ExpenditureFilters } from '../services/expenditureService';
@@ -44,12 +44,14 @@ export const ExpenditureReportsTab: React.FC<ExpenditureReportsTabProps> = ({ on
     changePage,
     changePageSize,
     exportToCSV,
-    refreshData
+    refreshData,
   } = useExpenditureReports();
 
   const [showFilters, setShowFilters] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeView, setActiveView] = useState<'overview' | 'detailed' | 'departments' | 'programs'>('overview');
+  const [activeView, setActiveView] = useState<
+    'overview' | 'detailed' | 'departments' | 'programs'
+  >('overview');
 
   // Handle filter changes
   const handleFilterChange = (key: keyof ExpenditureFilters, value: any) => {
@@ -69,7 +71,7 @@ export const ExpenditureReportsTab: React.FC<ExpenditureReportsTabProps> = ({ on
       style: 'currency',
       currency: 'INR',
       minimumFractionDigits: 0,
-      maximumFractionDigits: 0
+      maximumFractionDigits: 0,
     }).format(amount);
   };
 
@@ -81,20 +83,28 @@ export const ExpenditureReportsTab: React.FC<ExpenditureReportsTabProps> = ({ on
   // Get status color
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'paid': return 'text-green-600 bg-green-100';
-      case 'pending': return 'text-yellow-600 bg-yellow-100';
-      case 'overdue': return 'text-red-600 bg-red-100';
-      default: return 'text-gray-600 bg-gray-100';
+      case 'paid':
+        return 'text-green-600 bg-green-100';
+      case 'pending':
+        return 'text-yellow-600 bg-yellow-100';
+      case 'overdue':
+        return 'text-red-600 bg-red-100';
+      default:
+        return 'text-gray-600 bg-gray-100';
     }
   };
 
   // Get status icon
   const getStatusIcon = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'paid': return <CheckCircle className="h-4 w-4" />;
-      case 'pending': return <Clock className="h-4 w-4" />;
-      case 'overdue': return <AlertCircle className="h-4 w-4" />;
-      default: return <Clock className="h-4 w-4" />;
+      case 'paid':
+        return <CheckCircle className="h-4 w-4" />;
+      case 'pending':
+        return <Clock className="h-4 w-4" />;
+      case 'overdue':
+        return <AlertCircle className="h-4 w-4" />;
+      default:
+        return <Clock className="h-4 w-4" />;
     }
   };
 
@@ -104,9 +114,11 @@ export const ExpenditureReportsTab: React.FC<ExpenditureReportsTabProps> = ({ on
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-gray-900">Expenditure Reports</h2>
-          <p className="text-gray-600 text-sm">Track fee collection, outstanding amounts, and financial analytics</p>
+          <p className="text-gray-600 text-sm">
+            Track fee collection, outstanding amounts, and financial analytics
+          </p>
         </div>
-        
+
         <div className="flex items-center gap-2">
           <button
             onClick={refreshData}
@@ -116,7 +128,7 @@ export const ExpenditureReportsTab: React.FC<ExpenditureReportsTabProps> = ({ on
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
-          
+
           <button
             onClick={() => exportToCSV()}
             disabled={loading}
@@ -135,7 +147,9 @@ export const ExpenditureReportsTab: React.FC<ExpenditureReportsTabProps> = ({ on
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm mb-1">Total Due Amount</p>
-                <p className="text-2xl font-bold text-gray-900">{formatCurrency(summary.total_due_amount)}</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {formatCurrency(summary.total_due_amount)}
+                </p>
               </div>
               <div className="bg-blue-500 p-3 rounded-lg text-white">
                 <IndianRupee className="h-6 w-6" />
@@ -147,7 +161,9 @@ export const ExpenditureReportsTab: React.FC<ExpenditureReportsTabProps> = ({ on
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm mb-1">Total Collected</p>
-                <p className="text-2xl font-bold text-green-600">{formatCurrency(summary.total_paid_amount)}</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {formatCurrency(summary.total_paid_amount)}
+                </p>
               </div>
               <div className="bg-green-500 p-3 rounded-lg text-white">
                 <TrendingUp className="h-6 w-6" />
@@ -159,7 +175,9 @@ export const ExpenditureReportsTab: React.FC<ExpenditureReportsTabProps> = ({ on
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm mb-1">Outstanding Balance</p>
-                <p className="text-2xl font-bold text-red-600">{formatCurrency(summary.total_balance)}</p>
+                <p className="text-2xl font-bold text-red-600">
+                  {formatCurrency(summary.total_balance)}
+                </p>
               </div>
               <div className="bg-red-500 p-3 rounded-lg text-white">
                 <TrendingDown className="h-6 w-6" />
@@ -171,7 +189,9 @@ export const ExpenditureReportsTab: React.FC<ExpenditureReportsTabProps> = ({ on
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm mb-1">Collection Rate</p>
-                <p className="text-2xl font-bold text-purple-600">{formatPercentage(summary.collection_percentage)}</p>
+                <p className="text-2xl font-bold text-purple-600">
+                  {formatPercentage(summary.collection_percentage)}
+                </p>
               </div>
               <div className="bg-purple-500 p-3 rounded-lg text-white">
                 <Users className="h-6 w-6" />
@@ -188,7 +208,7 @@ export const ExpenditureReportsTab: React.FC<ExpenditureReportsTabProps> = ({ on
             { id: 'overview', label: 'Overview', icon: TrendingUp },
             // { id: 'detailed', label: 'Detailed View', icon: Eye },
             { id: 'departments', label: 'By Department', icon: Building2 },
-            { id: 'programs', label: 'By Program', icon: GraduationCap }
+            { id: 'programs', label: 'By Program', icon: GraduationCap },
           ].map((tab) => {
             const Icon = tab.icon;
             return (
@@ -196,7 +216,9 @@ export const ExpenditureReportsTab: React.FC<ExpenditureReportsTabProps> = ({ on
                 key={tab.id}
                 onClick={() => setActiveView(tab.id as any)}
                 className={`flex items-center px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition ${
-                  activeView === tab.id ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  activeView === tab.id
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
                 <Icon className="h-4 w-4 mr-2" />
@@ -219,7 +241,7 @@ export const ExpenditureReportsTab: React.FC<ExpenditureReportsTabProps> = ({ on
                 <Filter className="h-4 w-4 mr-2" />
                 Filters
               </button>
-              
+
               {Object.keys(filters).length > 0 && (
                 <button
                   onClick={clearFilters}
@@ -254,15 +276,19 @@ export const ExpenditureReportsTab: React.FC<ExpenditureReportsTabProps> = ({ on
           {showFilters && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Academic Year</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Academic Year
+                </label>
                 <select
                   value={filters.academic_year || ''}
                   onChange={(e) => handleFilterChange('academic_year', e.target.value || undefined)}
                   className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">All Years</option>
-                  {filterOptions.academicYears.map(year => (
-                    <option key={year} value={year}>{year}</option>
+                  {filterOptions.academicYears.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -275,22 +301,30 @@ export const ExpenditureReportsTab: React.FC<ExpenditureReportsTabProps> = ({ on
                   className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">All Semesters</option>
-                  {filterOptions.semesters.map(semester => (
-                    <option key={semester} value={semester}>{semester}</option>
+                  {filterOptions.semesters.map((semester) => (
+                    <option key={semester} value={semester}>
+                      {semester}
+                    </option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Status</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Payment Status
+                </label>
                 <select
                   value={filters.payment_status || ''}
-                  onChange={(e) => handleFilterChange('payment_status', e.target.value || undefined)}
+                  onChange={(e) =>
+                    handleFilterChange('payment_status', e.target.value || undefined)
+                  }
                   className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">All Statuses</option>
-                  {filterOptions.paymentStatuses.map(status => (
-                    <option key={status} value={status}>{status}</option>
+                  {filterOptions.paymentStatuses.map((status) => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -299,7 +333,12 @@ export const ExpenditureReportsTab: React.FC<ExpenditureReportsTabProps> = ({ on
                 <label className="block text-sm font-medium text-gray-700 mb-1">Overdue Only</label>
                 <select
                   value={filters.is_overdue === undefined ? '' : filters.is_overdue.toString()}
-                  onChange={(e) => handleFilterChange('is_overdue', e.target.value === '' ? undefined : e.target.value === 'true')}
+                  onChange={(e) =>
+                    handleFilterChange(
+                      'is_overdue',
+                      e.target.value === '' ? undefined : e.target.value === 'true'
+                    )
+                  }
                   className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">All Records</option>
@@ -317,7 +356,7 @@ export const ExpenditureReportsTab: React.FC<ExpenditureReportsTabProps> = ({ on
         {activeView === 'overview' && summary && (
           <div className="space-y-6">
             <h3 className="text-lg font-semibold text-gray-900">Financial Overview</h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <h4 className="font-medium text-gray-900">Student Distribution</h4>
@@ -327,23 +366,29 @@ export const ExpenditureReportsTab: React.FC<ExpenditureReportsTabProps> = ({ on
                       <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
                       <span className="text-sm font-medium text-green-900">Paid Students</span>
                     </div>
-                    <span className="text-lg font-bold text-green-600">{summary.paid_students}</span>
+                    <span className="text-lg font-bold text-green-600">
+                      {summary.paid_students}
+                    </span>
                   </div>
-                  
+
                   <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
                     <div className="flex items-center">
                       <Clock className="h-5 w-5 text-yellow-600 mr-2" />
                       <span className="text-sm font-medium text-yellow-900">Pending Students</span>
                     </div>
-                    <span className="text-lg font-bold text-yellow-600">{summary.pending_students}</span>
+                    <span className="text-lg font-bold text-yellow-600">
+                      {summary.pending_students}
+                    </span>
                   </div>
-                  
+
                   <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
                     <div className="flex items-center">
                       <AlertCircle className="h-5 w-5 text-red-600 mr-2" />
                       <span className="text-sm font-medium text-red-900">Overdue Students</span>
                     </div>
-                    <span className="text-lg font-bold text-red-600">{summary.overdue_students}</span>
+                    <span className="text-lg font-bold text-red-600">
+                      {summary.overdue_students}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -353,10 +398,12 @@ export const ExpenditureReportsTab: React.FC<ExpenditureReportsTabProps> = ({ on
                 <div className="space-y-3">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Collection Rate</span>
-                    <span className="font-medium">{formatPercentage(summary.collection_percentage)}</span>
+                    <span className="font-medium">
+                      {formatPercentage(summary.collection_percentage)}
+                    </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-3">
-                    <div 
+                    <div
                       className="bg-blue-600 h-3 rounded-full transition-all duration-300"
                       style={{ width: `${Math.min(summary.collection_percentage, 100)}%` }}
                     ></div>
@@ -412,14 +459,30 @@ export const ExpenditureReportsTab: React.FC<ExpenditureReportsTabProps> = ({ on
                   <table className="w-full border-collapse">
                     <thead>
                       <tr className="bg-gray-50">
-                        <th className="border border-gray-200 px-4 py-3 text-left text-sm font-medium text-gray-900">Student</th>
-                        <th className="border border-gray-200 px-4 py-3 text-left text-sm font-medium text-gray-900">Program</th>
-                        <th className="border border-gray-200 px-4 py-3 text-left text-sm font-medium text-gray-900">Fee Head</th>
-                        <th className="border border-gray-200 px-4 py-3 text-right text-sm font-medium text-gray-900">Due Amount</th>
-                        <th className="border border-gray-200 px-4 py-3 text-right text-sm font-medium text-gray-900">Paid Amount</th>
-                        <th className="border border-gray-200 px-4 py-3 text-right text-sm font-medium text-gray-900">Balance</th>
-                        <th className="border border-gray-200 px-4 py-3 text-center text-sm font-medium text-gray-900">Status</th>
-                        <th className="border border-gray-200 px-4 py-3 text-center text-sm font-medium text-gray-900">Due Date</th>
+                        <th className="border border-gray-200 px-4 py-3 text-left text-sm font-medium text-gray-900">
+                          Student
+                        </th>
+                        <th className="border border-gray-200 px-4 py-3 text-left text-sm font-medium text-gray-900">
+                          Program
+                        </th>
+                        <th className="border border-gray-200 px-4 py-3 text-left text-sm font-medium text-gray-900">
+                          Fee Head
+                        </th>
+                        <th className="border border-gray-200 px-4 py-3 text-right text-sm font-medium text-gray-900">
+                          Due Amount
+                        </th>
+                        <th className="border border-gray-200 px-4 py-3 text-right text-sm font-medium text-gray-900">
+                          Paid Amount
+                        </th>
+                        <th className="border border-gray-200 px-4 py-3 text-right text-sm font-medium text-gray-900">
+                          Balance
+                        </th>
+                        <th className="border border-gray-200 px-4 py-3 text-center text-sm font-medium text-gray-900">
+                          Status
+                        </th>
+                        <th className="border border-gray-200 px-4 py-3 text-center text-sm font-medium text-gray-900">
+                          Due Date
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -436,13 +499,17 @@ export const ExpenditureReportsTab: React.FC<ExpenditureReportsTabProps> = ({ on
                           </td>
                           <td className="border border-gray-200 px-4 py-3">
                             <div>
-                              <div className="text-sm font-medium text-gray-900">{record.program_name_full || 'N/A'}</div>
+                              <div className="text-sm font-medium text-gray-900">
+                                {record.program_name_full || 'N/A'}
+                              </div>
                               <div className="text-xs text-gray-500">{record.department_name}</div>
                             </div>
                           </td>
                           <td className="border border-gray-200 px-4 py-3">
                             <div className="text-sm text-gray-900">{record.fee_head_name}</div>
-                            <div className="text-xs text-gray-500">{record.academic_year} - {record.semester}</div>
+                            <div className="text-xs text-gray-500">
+                              {record.academic_year} - {record.semester}
+                            </div>
                           </td>
                           <td className="border border-gray-200 px-4 py-3 text-right font-medium">
                             {formatCurrency(record.due_amount)}
@@ -454,15 +521,21 @@ export const ExpenditureReportsTab: React.FC<ExpenditureReportsTabProps> = ({ on
                             {formatCurrency(record.balance)}
                           </td>
                           <td className="border border-gray-200 px-4 py-3 text-center">
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(record.status_description)}`}>
+                            <span
+                              className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(record.status_description)}`}
+                            >
                               {getStatusIcon(record.status_description)}
                               <span className="ml-1">{record.status_description}</span>
                             </span>
                           </td>
                           <td className="border border-gray-200 px-4 py-3 text-center">
-                            <div className="text-sm text-gray-900">{new Date(record.due_date).toLocaleDateString()}</div>
+                            <div className="text-sm text-gray-900">
+                              {new Date(record.due_date).toLocaleDateString()}
+                            </div>
                             {record.days_overdue > 0 && (
-                              <div className="text-xs text-red-600">{record.days_overdue} days overdue</div>
+                              <div className="text-xs text-red-600">
+                                {record.days_overdue} days overdue
+                              </div>
                             )}
                           </td>
                         </tr>
@@ -477,7 +550,7 @@ export const ExpenditureReportsTab: React.FC<ExpenditureReportsTabProps> = ({ on
                     <div className="text-sm text-gray-600">
                       Showing {startIndex} to {endIndex} of {totalCount} entries
                     </div>
-                    
+
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => changePage(currentPage - 1)}
@@ -486,12 +559,12 @@ export const ExpenditureReportsTab: React.FC<ExpenditureReportsTabProps> = ({ on
                       >
                         Previous
                       </button>
-                      
+
                       <div className="flex gap-1">
                         {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
                           const page = i + Math.max(1, currentPage - 2);
                           if (page > totalPages) return null;
-                          
+
                           return (
                             <button
                               key={page}
@@ -507,7 +580,7 @@ export const ExpenditureReportsTab: React.FC<ExpenditureReportsTabProps> = ({ on
                           );
                         })}
                       </div>
-                      
+
                       <button
                         onClick={() => changePage(currentPage + 1)}
                         disabled={currentPage === totalPages}
@@ -526,7 +599,7 @@ export const ExpenditureReportsTab: React.FC<ExpenditureReportsTabProps> = ({ on
         {activeView === 'departments' && (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900">Department-wise Expenditure</h3>
-            
+
             {departmentData.length === 0 ? (
               <div className="text-center py-12">
                 <Building2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -537,12 +610,24 @@ export const ExpenditureReportsTab: React.FC<ExpenditureReportsTabProps> = ({ on
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="bg-gray-50">
-                      <th className="border border-gray-200 px-4 py-3 text-left text-sm font-medium text-gray-900">Department</th>
-                      <th className="border border-gray-200 px-4 py-3 text-right text-sm font-medium text-gray-900">Total Due</th>
-                      <th className="border border-gray-200 px-4 py-3 text-right text-sm font-medium text-gray-900">Collected</th>
-                      <th className="border border-gray-200 px-4 py-3 text-right text-sm font-medium text-gray-900">Balance</th>
-                      <th className="border border-gray-200 px-4 py-3 text-center text-sm font-medium text-gray-900">Students</th>
-                      <th className="border border-gray-200 px-4 py-3 text-center text-sm font-medium text-gray-900">Collection %</th>
+                      <th className="border border-gray-200 px-4 py-3 text-left text-sm font-medium text-gray-900">
+                        Department
+                      </th>
+                      <th className="border border-gray-200 px-4 py-3 text-right text-sm font-medium text-gray-900">
+                        Total Due
+                      </th>
+                      <th className="border border-gray-200 px-4 py-3 text-right text-sm font-medium text-gray-900">
+                        Collected
+                      </th>
+                      <th className="border border-gray-200 px-4 py-3 text-right text-sm font-medium text-gray-900">
+                        Balance
+                      </th>
+                      <th className="border border-gray-200 px-4 py-3 text-center text-sm font-medium text-gray-900">
+                        Students
+                      </th>
+                      <th className="border border-gray-200 px-4 py-3 text-center text-sm font-medium text-gray-900">
+                        Collection %
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -569,12 +654,14 @@ export const ExpenditureReportsTab: React.FC<ExpenditureReportsTabProps> = ({ on
                         <td className="border border-gray-200 px-4 py-3 text-center">
                           <div className="flex items-center justify-center">
                             <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
-                              <div 
+                              <div
                                 className="bg-blue-600 h-2 rounded-full"
                                 style={{ width: `${Math.min(dept.collection_percentage, 100)}%` }}
                               ></div>
                             </div>
-                            <span className="text-sm font-medium">{formatPercentage(dept.collection_percentage)}</span>
+                            <span className="text-sm font-medium">
+                              {formatPercentage(dept.collection_percentage)}
+                            </span>
                           </div>
                         </td>
                       </tr>
@@ -589,7 +676,7 @@ export const ExpenditureReportsTab: React.FC<ExpenditureReportsTabProps> = ({ on
         {activeView === 'programs' && (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900">Program-wise Expenditure</h3>
-            
+
             {programData.length === 0 ? (
               <div className="text-center py-12">
                 <GraduationCap className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -600,13 +687,27 @@ export const ExpenditureReportsTab: React.FC<ExpenditureReportsTabProps> = ({ on
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="bg-gray-50">
-                      <th className="border border-gray-200 px-4 py-3 text-left text-sm font-medium text-gray-900">Program</th>
-                      <th className="border border-gray-200 px-4 py-3 text-left text-sm font-medium text-gray-900">Department</th>
-                      <th className="border border-gray-200 px-4 py-3 text-right text-sm font-medium text-gray-900">Total Due</th>
-                      <th className="border border-gray-200 px-4 py-3 text-right text-sm font-medium text-gray-900">Collected</th>
-                      <th className="border border-gray-200 px-4 py-3 text-right text-sm font-medium text-gray-900">Balance</th>
-                      <th className="border border-gray-200 px-4 py-3 text-center text-sm font-medium text-gray-900">Students</th>
-                      <th className="border border-gray-200 px-4 py-3 text-center text-sm font-medium text-gray-900">Collection %</th>
+                      <th className="border border-gray-200 px-4 py-3 text-left text-sm font-medium text-gray-900">
+                        Program
+                      </th>
+                      <th className="border border-gray-200 px-4 py-3 text-left text-sm font-medium text-gray-900">
+                        Department
+                      </th>
+                      <th className="border border-gray-200 px-4 py-3 text-right text-sm font-medium text-gray-900">
+                        Total Due
+                      </th>
+                      <th className="border border-gray-200 px-4 py-3 text-right text-sm font-medium text-gray-900">
+                        Collected
+                      </th>
+                      <th className="border border-gray-200 px-4 py-3 text-right text-sm font-medium text-gray-900">
+                        Balance
+                      </th>
+                      <th className="border border-gray-200 px-4 py-3 text-center text-sm font-medium text-gray-900">
+                        Students
+                      </th>
+                      <th className="border border-gray-200 px-4 py-3 text-center text-sm font-medium text-gray-900">
+                        Collection %
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -636,12 +737,16 @@ export const ExpenditureReportsTab: React.FC<ExpenditureReportsTabProps> = ({ on
                         <td className="border border-gray-200 px-4 py-3 text-center">
                           <div className="flex items-center justify-center">
                             <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
-                              <div 
+                              <div
                                 className="bg-blue-600 h-2 rounded-full"
-                                style={{ width: `${Math.min(program.collection_percentage, 100)}%` }}
+                                style={{
+                                  width: `${Math.min(program.collection_percentage, 100)}%`,
+                                }}
                               ></div>
                             </div>
-                            <span className="text-sm font-medium">{formatPercentage(program.collection_percentage)}</span>
+                            <span className="text-sm font-medium">
+                              {formatPercentage(program.collection_percentage)}
+                            </span>
                           </div>
                         </td>
                       </tr>

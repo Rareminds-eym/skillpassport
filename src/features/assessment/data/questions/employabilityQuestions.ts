@@ -1,7 +1,7 @@
 /**
  * Employability / 21st-Century Skills Diagnostic + SJT
  * Purpose: Baseline for placement readiness; convert to skill-upgrade plan
- * 
+ *
  * @module features/assessment/data/questions/employabilityQuestions
  */
 
@@ -32,44 +32,44 @@ export const selfRatingQuestions = {
   communication: [
     { id: 'com1', text: 'I explain my ideas clearly.' },
     { id: 'com2', text: 'I adjust my communication to the audience.' },
-    { id: 'com3', text: 'I listen actively without interrupting.' }
+    { id: 'com3', text: 'I listen actively without interrupting.' },
   ],
   teamwork: [
     { id: 'tm1', text: 'I contribute reliably in group tasks.' },
     { id: 'tm2', text: 'I handle disagreements respectfully.' },
-    { id: 'tm3', text: 'I help the team stay on track.' }
+    { id: 'tm3', text: 'I help the team stay on track.' },
   ],
   problemSolving: [
     { id: 'ps1', text: 'I break problems into smaller parts.' },
     { id: 'ps2', text: 'I generate multiple solutions.' },
-    { id: 'ps3', text: 'I choose solutions based on evidence.' }
+    { id: 'ps3', text: 'I choose solutions based on evidence.' },
   ],
   adaptability: [
     { id: 'ad1', text: 'I stay calm when plans change.' },
     { id: 'ad2', text: 'I learn new tools quickly.' },
-    { id: 'ad3', text: 'I handle uncertainty without freezing.' }
+    { id: 'ad3', text: 'I handle uncertainty without freezing.' },
   ],
   leadership: [
     { id: 'ld1', text: 'I take initiative when needed.' },
     { id: 'ld2', text: 'I motivate peers toward deadlines.' },
-    { id: 'ld3', text: 'I delegate fairly.' }
+    { id: 'ld3', text: 'I delegate fairly.' },
   ],
   digitalFluency: [
     { id: 'df1', text: "I'm comfortable with new software." },
     { id: 'df2', text: 'I use digital tools to organize work.' },
-    { id: 'df3', text: 'I can learn a tech skill from online resources.' }
+    { id: 'df3', text: 'I can learn a tech skill from online resources.' },
   ],
   professionalism: [
     { id: 'pr1', text: 'I manage time and deadlines well.' },
     { id: 'pr2', text: 'I take feedback constructively.' },
-    { id: 'pr3', text: 'I communicate progress proactively.' }
+    { id: 'pr3', text: 'I communicate progress proactively.' },
   ],
   careerReadiness: [
     { id: 'cr1', text: 'I know how to write a strong CV.' },
     { id: 'cr2', text: 'I can describe my strengths confidently.' },
     { id: 'cr3', text: 'I seek internships/projects actively.' },
-    { id: 'cr4', text: 'I track my skill gaps and work on them.' }
-  ]
+    { id: 'cr4', text: 'I track my skill gaps and work on them.' },
+  ],
 };
 
 // Part B: Situational Judgement Test (6 scenarios)
@@ -82,10 +82,10 @@ export const sjtQuestions: SJTQuestion[] = [
       { label: 'a', text: 'Do their part silently to finish.' },
       { label: 'b', text: "Talk privately, ask what's blocking them, agree on a plan." },
       { label: 'c', text: 'Complain to the faculty immediately.' },
-      { label: 'd', text: 'Exclude them from the group chat.' }
+      { label: 'd', text: 'Exclude them from the group chat.' },
     ],
     best: 'b',
-    worst: 'd'
+    worst: 'd',
   },
   {
     id: 'sjt2',
@@ -95,10 +95,10 @@ export const sjtQuestions: SJTQuestion[] = [
       { label: 'a', text: "Refuse; say it's too late." },
       { label: 'b', text: 'Ask for priority changes and renegotiate timeline.' },
       { label: 'c', text: 'Agree to everything without checking feasibility.' },
-      { label: 'd', text: 'Ignore and continue old plan.' }
+      { label: 'd', text: 'Ignore and continue old plan.' },
     ],
     best: 'b',
-    worst: 'd'
+    worst: 'd',
   },
   {
     id: 'sjt3',
@@ -108,10 +108,10 @@ export const sjtQuestions: SJTQuestion[] = [
       { label: 'a', text: 'Hide it and hope nobody notices.' },
       { label: 'b', text: 'Inform mentor, correct quickly, explain learning.' },
       { label: 'c', text: 'Blame the rubric.' },
-      { label: 'd', text: 'Quit the task.' }
+      { label: 'd', text: 'Quit the task.' },
     ],
     best: 'b',
-    worst: 'a'
+    worst: 'a',
   },
   {
     id: 'sjt4',
@@ -121,10 +121,10 @@ export const sjtQuestions: SJTQuestion[] = [
       { label: 'a', text: 'Take sides with your friend.' },
       { label: 'b', text: 'Facilitate a calm discussion on facts and goals.' },
       { label: 'c', text: 'Tell them to "grow up."' },
-      { label: 'd', text: 'Leave the team.' }
+      { label: 'd', text: 'Leave the team.' },
     ],
     best: 'b',
-    worst: 'c'
+    worst: 'c',
   },
   {
     id: 'sjt5',
@@ -134,10 +134,10 @@ export const sjtQuestions: SJTQuestion[] = [
       { label: 'a', text: 'Delay till last day.' },
       { label: 'b', text: 'Learn basics fast, ask guidance early, deliver in parts.' },
       { label: 'c', text: 'Say no immediately.' },
-      { label: 'd', text: 'Copy from internet without understanding.' }
+      { label: 'd', text: 'Copy from internet without understanding.' },
     ],
     best: 'b',
-    worst: 'd'
+    worst: 'd',
   },
   {
     id: 'sjt6',
@@ -147,40 +147,80 @@ export const sjtQuestions: SJTQuestion[] = [
       { label: 'a', text: 'Skip presenting.' },
       { label: 'b', text: 'Practice small parts, seek feedback, then present.' },
       { label: 'c', text: 'Read slides without eye contact.' },
-      { label: 'd', text: 'Ask someone else to present for you.' }
+      { label: 'd', text: 'Ask someone else to present for you.' },
     ],
     best: 'b',
-    worst: 'a'
-  }
+    worst: 'a',
+  },
 ];
 
 // Flatten all employability questions for the assessment
 export const employabilityQuestions = [
   // Part A: Self-rating (25 items)
-  ...selfRatingQuestions.communication.map(q => ({ ...q, type: 'Communication', partType: 'selfRating', moduleTitle: 'Communication' })),
-  ...selfRatingQuestions.teamwork.map(q => ({ ...q, type: 'Teamwork', partType: 'selfRating', moduleTitle: 'Teamwork' })),
-  ...selfRatingQuestions.problemSolving.map(q => ({ ...q, type: 'ProblemSolving', partType: 'selfRating', moduleTitle: 'Problem Solving' })),
-  ...selfRatingQuestions.adaptability.map(q => ({ ...q, type: 'Adaptability', partType: 'selfRating', moduleTitle: 'Adaptability' })),
-  ...selfRatingQuestions.leadership.map(q => ({ ...q, type: 'Leadership', partType: 'selfRating', moduleTitle: 'Leadership' })),
-  ...selfRatingQuestions.digitalFluency.map(q => ({ ...q, type: 'DigitalFluency', partType: 'selfRating', moduleTitle: 'Digital Fluency' })),
-  ...selfRatingQuestions.professionalism.map(q => ({ ...q, type: 'Professionalism', partType: 'selfRating', moduleTitle: 'Professionalism' })),
-  ...selfRatingQuestions.careerReadiness.map(q => ({ ...q, type: 'CareerReadiness', partType: 'selfRating', moduleTitle: 'Career Readiness' })),
-  
+  ...selfRatingQuestions.communication.map((q) => ({
+    ...q,
+    type: 'Communication',
+    partType: 'selfRating',
+    moduleTitle: 'Communication',
+  })),
+  ...selfRatingQuestions.teamwork.map((q) => ({
+    ...q,
+    type: 'Teamwork',
+    partType: 'selfRating',
+    moduleTitle: 'Teamwork',
+  })),
+  ...selfRatingQuestions.problemSolving.map((q) => ({
+    ...q,
+    type: 'ProblemSolving',
+    partType: 'selfRating',
+    moduleTitle: 'Problem Solving',
+  })),
+  ...selfRatingQuestions.adaptability.map((q) => ({
+    ...q,
+    type: 'Adaptability',
+    partType: 'selfRating',
+    moduleTitle: 'Adaptability',
+  })),
+  ...selfRatingQuestions.leadership.map((q) => ({
+    ...q,
+    type: 'Leadership',
+    partType: 'selfRating',
+    moduleTitle: 'Leadership',
+  })),
+  ...selfRatingQuestions.digitalFluency.map((q) => ({
+    ...q,
+    type: 'DigitalFluency',
+    partType: 'selfRating',
+    moduleTitle: 'Digital Fluency',
+  })),
+  ...selfRatingQuestions.professionalism.map((q) => ({
+    ...q,
+    type: 'Professionalism',
+    partType: 'selfRating',
+    moduleTitle: 'Professionalism',
+  })),
+  ...selfRatingQuestions.careerReadiness.map((q) => ({
+    ...q,
+    type: 'CareerReadiness',
+    partType: 'selfRating',
+    moduleTitle: 'Career Readiness',
+  })),
+
   // Part B: SJT (6 scenarios)
-  ...sjtQuestions.map(q => ({
+  ...sjtQuestions.map((q) => ({
     id: q.id,
     type: 'SJT',
     partType: 'sjt',
     moduleTitle: 'Situational Judgement',
     text: q.text,
     scenario: q.scenario,
-    options: q.options.map(o => o.text),
-    optionLabels: q.options.map(o => o.label),
-    bestAnswer: q.options.find(o => o.label === q.best)?.text,
-    worstAnswer: q.options.find(o => o.label === q.worst)?.text,
+    options: q.options.map((o) => o.text),
+    optionLabels: q.options.map((o) => o.label),
+    bestAnswer: q.options.find((o) => o.label === q.best)?.text,
+    worstAnswer: q.options.find((o) => o.label === q.worst)?.text,
     best: q.best,
-    worst: q.worst
-  }))
+    worst: q.worst,
+  })),
 ];
 
 // Get current module based on question index
@@ -195,9 +235,9 @@ export const getCurrentEmployabilityModule = (questionIndex: number) => {
       { id: 'leadership', title: 'Leadership', count: 3 },
       { id: 'digitalFluency', title: 'Digital Fluency', count: 3 },
       { id: 'professionalism', title: 'Professionalism', count: 3 },
-      { id: 'careerReadiness', title: 'Career Readiness', count: 4 }
+      { id: 'careerReadiness', title: 'Career Readiness', count: 4 },
     ];
-    
+
     for (const domain of domains) {
       if (questionIndex < cumulative + domain.count) {
         return {
@@ -205,26 +245,26 @@ export const getCurrentEmployabilityModule = (questionIndex: number) => {
           partTitle: 'Part A: Self-Rating Skills',
           domain: domain.title,
           questionInDomain: questionIndex - cumulative + 1,
-          domainTotal: domain.count
+          domainTotal: domain.count,
         };
       }
       cumulative += domain.count;
     }
   }
-  
+
   return {
     part: 'B',
     partTitle: 'Part B: Situational Judgement Test',
     domain: 'SJT Scenarios',
     questionInDomain: questionIndex - 24,
-    domainTotal: 6
+    domainTotal: 6,
   };
 };
 
 export const getEmployabilityQuestionCounts = () => ({
   selfRating: 25,
   sjt: 6,
-  total: 31
+  total: 31,
 });
 
 export default employabilityQuestions;

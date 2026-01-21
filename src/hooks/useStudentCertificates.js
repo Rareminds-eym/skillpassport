@@ -17,7 +17,7 @@
 //         .from('certificates')
 //         .select('*')
 //         .eq('student_id', studentId)
-//         .is('training_id', null) 
+//         .is('training_id', null)
 //         .order('issued_on', { ascending: false });
 
 //       if (fetchError) {
@@ -96,7 +96,7 @@ export const useStudentCertificates = (studentId, enabled = true) => {
       }
 
       // Transform data to match UI expectations
-      const transformedData = data.map(item => ({
+      const transformedData = data.map((item) => ({
         id: item.id,
         title: item.title || item.name,
         issuer: item.issuer || item.organization,
@@ -112,7 +112,7 @@ export const useStudentCertificates = (studentId, enabled = true) => {
         processing: false, // Already filtered, so won't be pending
         enabled: item.enabled !== false,
         createdAt: item.created_at,
-        updatedAt: item.updated_at
+        updatedAt: item.updated_at,
       }));
 
       setCertificates(transformedData);
@@ -136,6 +136,6 @@ export const useStudentCertificates = (studentId, enabled = true) => {
     certificates,
     loading,
     error,
-    refresh
+    refresh,
   };
 };

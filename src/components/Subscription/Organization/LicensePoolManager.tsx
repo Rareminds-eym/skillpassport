@@ -1,6 +1,6 @@
 /**
  * LicensePoolManager Component
- * 
+ *
  * Manages license pools for organization subscriptions.
  * Allows creating, editing, and viewing pool allocations.
  */
@@ -47,13 +47,10 @@ function LicensePoolManager({
     setOpenMenuId((prev) => (prev === poolId ? null : poolId));
   }, []);
 
-  const handleAction = useCallback(
-    (action: () => void) => {
-      action();
-      setOpenMenuId(null);
-    },
-    []
-  );
+  const handleAction = useCallback((action: () => void) => {
+    action();
+    setOpenMenuId(null);
+  }, []);
 
   if (isLoading) {
     return (
@@ -176,8 +173,8 @@ function LicensePoolManager({
                             utilization >= 90
                               ? 'bg-red-500'
                               : utilization >= 70
-                              ? 'bg-amber-500'
-                              : 'bg-blue-500'
+                                ? 'bg-amber-500'
+                                : 'bg-blue-500'
                           }`}
                           style={{ width: `${utilization}%` }}
                         />
@@ -208,10 +205,7 @@ function LicensePoolManager({
 
                     {openMenuId === pool.id && (
                       <>
-                        <div
-                          className="fixed inset-0 z-10"
-                          onClick={() => setOpenMenuId(null)}
-                        />
+                        <div className="fixed inset-0 z-10" onClick={() => setOpenMenuId(null)} />
                         <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
                           <button
                             onClick={() => handleAction(() => onEditPool(pool.id))}

@@ -4,7 +4,7 @@ import {
   ChevronDownIcon,
   CheckIcon,
   ArrowUpIcon,
-  ArrowDownIcon
+  ArrowDownIcon,
 } from '@heroicons/react/24/outline';
 import { PipelineSortOptions, PipelineSortField, SortDirection } from '../../../types/recruiter';
 
@@ -24,11 +24,15 @@ const SORT_OPTIONS: SortOption[] = [
   { field: 'ai_score', label: 'AI Score', description: 'Sort by AI assessment score' },
   { field: 'added_at', label: 'Date Added', description: 'Sort by when added to pipeline' },
   { field: 'updated_at', label: 'Last Updated', description: 'Sort by last activity' },
-  { field: 'next_action_date', label: 'Next Action Date', description: 'Sort by scheduled next action' },
+  {
+    field: 'next_action_date',
+    label: 'Next Action Date',
+    description: 'Sort by scheduled next action',
+  },
   { field: 'stage_changed_at', label: 'Stage Changed', description: 'Sort by last stage change' },
   { field: 'source', label: 'Source', description: 'Sort by candidate source' },
   { field: 'department', label: 'Department', description: 'Sort by department' },
-  { field: 'location', label: 'Location', description: 'Sort by location' }
+  { field: 'location', label: 'Location', description: 'Sort by location' },
 ];
 
 const PipelineSortMenu: React.FC<PipelineSortMenuProps> = ({ sortOptions, onSortChange }) => {
@@ -62,7 +66,7 @@ const PipelineSortMenu: React.FC<PipelineSortMenuProps> = ({ sortOptions, onSort
     onSortChange({ ...sortOptions, direction: newDirection });
   };
 
-  const currentSortOption = SORT_OPTIONS.find(opt => opt.field === sortOptions.field);
+  const currentSortOption = SORT_OPTIONS.find((opt) => opt.field === sortOptions.field);
   const isDefaultSort = sortOptions.field === 'updated_at' && sortOptions.direction === 'desc';
 
   return (
@@ -88,8 +92,8 @@ const PipelineSortMenu: React.FC<PipelineSortMenuProps> = ({ sortOptions, onSort
             )}
           </span>
         )}
-        <ChevronDownIcon 
-          className={`h-4 w-4 transition-transform ${isOpen ? 'transform rotate-180' : ''}`} 
+        <ChevronDownIcon
+          className={`h-4 w-4 transition-transform ${isOpen ? 'transform rotate-180' : ''}`}
         />
       </button>
 
@@ -123,7 +127,7 @@ const PipelineSortMenu: React.FC<PipelineSortMenuProps> = ({ sortOptions, onSort
           <div className="max-h-96 overflow-y-auto">
             {SORT_OPTIONS.map((option) => {
               const isSelected = sortOptions.field === option.field;
-              
+
               return (
                 <button
                   key={option.field}
@@ -140,14 +144,14 @@ const PipelineSortMenu: React.FC<PipelineSortMenuProps> = ({ sortOptions, onSort
                     )}
                   </div>
                   <div className="flex-1 text-left">
-                    <div className={`text-sm font-medium ${
-                      isSelected ? 'text-primary-900' : 'text-gray-900'
-                    }`}>
+                    <div
+                      className={`text-sm font-medium ${
+                        isSelected ? 'text-primary-900' : 'text-gray-900'
+                      }`}
+                    >
                       {option.label}
                     </div>
-                    <div className="text-xs text-gray-500 mt-0.5">
-                      {option.description}
-                    </div>
+                    <div className="text-xs text-gray-500 mt-0.5">{option.description}</div>
                   </div>
                 </button>
               );

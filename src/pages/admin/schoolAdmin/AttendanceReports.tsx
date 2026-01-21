@@ -1,32 +1,32 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
-    AcademicCapIcon,
-    ArrowDownTrayIcon,
-    BellAlertIcon,
-    CalendarIcon,
-    ChartBarIcon,
-    CheckCircleIcon,
-    ChevronDownIcon,
-    ClipboardDocumentListIcon,
-    ClockIcon,
-    DocumentChartBarIcon,
-    DocumentTextIcon,
-    ExclamationCircleIcon,
-    FunnelIcon,
-    PrinterIcon,
-    ShieldCheckIcon,
-    TableCellsIcon,
-    UserGroupIcon,
-    UserIcon,
-    XCircleIcon,
-    XMarkIcon,
-} from "@heroicons/react/24/outline";
-import React, { useEffect, useMemo, useState } from "react";
-import ReactApexChart from "react-apexcharts";
-import KPICard from "../../../components/admin/KPICard";
-import Pagination from "../../../components/admin/Pagination";
-import SearchBar from "../../../components/common/SearchBar";
-import { supabase } from "../../../lib/supabaseClient";
+  AcademicCapIcon,
+  ArrowDownTrayIcon,
+  BellAlertIcon,
+  CalendarIcon,
+  ChartBarIcon,
+  CheckCircleIcon,
+  ChevronDownIcon,
+  ClipboardDocumentListIcon,
+  ClockIcon,
+  DocumentChartBarIcon,
+  DocumentTextIcon,
+  ExclamationCircleIcon,
+  FunnelIcon,
+  PrinterIcon,
+  ShieldCheckIcon,
+  TableCellsIcon,
+  UserGroupIcon,
+  UserIcon,
+  XCircleIcon,
+  XMarkIcon,
+} from '@heroicons/react/24/outline';
+import React, { useEffect, useMemo, useState } from 'react';
+import ReactApexChart from 'react-apexcharts';
+import KPICard from '../../../components/admin/KPICard';
+import Pagination from '../../../components/admin/Pagination';
+import SearchBar from '../../../components/common/SearchBar';
+import { supabase } from '../../../lib/supabaseClient';
 
 // ==================== TYPES ====================
 interface AttendanceRecord {
@@ -37,12 +37,12 @@ interface AttendanceRecord {
   class: string;
   section: string;
   date: string;
-  status: "present" | "absent" | "late" | "excused";
+  status: 'present' | 'absent' | 'late' | 'excused';
   timeIn?: string;
   timeOut?: string;
   remarks?: string;
   teacher: string;
-  source?: "manual" | "rfid" | "biometric";
+  source?: 'manual' | 'rfid' | 'biometric';
   deviceId?: string;
 }
 
@@ -58,46 +58,46 @@ interface Student {
 
 // ==================== UTILITIES ====================
 const formatDate = (date: string) => {
-  return new Date(date).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
+  return new Date(date).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
   });
 };
 
 const getStatusConfig = (status: string) => {
   const configs = {
     present: {
-      color: "from-emerald-500 to-green-500",
-      bg: "bg-emerald-50",
-      text: "text-emerald-700",
-      border: "border-emerald-200",
+      color: 'from-emerald-500 to-green-500',
+      bg: 'bg-emerald-50',
+      text: 'text-emerald-700',
+      border: 'border-emerald-200',
       icon: CheckCircleIcon,
-      label: "Present",
+      label: 'Present',
     },
     absent: {
-      color: "from-rose-500 to-red-500",
-      bg: "bg-rose-50",
-      text: "text-rose-700",
-      border: "border-rose-200",
+      color: 'from-rose-500 to-red-500',
+      bg: 'bg-rose-50',
+      text: 'text-rose-700',
+      border: 'border-rose-200',
       icon: XCircleIcon,
-      label: "Absent",
+      label: 'Absent',
     },
     late: {
-      color: "from-amber-500 to-orange-500",
-      bg: "bg-amber-50",
-      text: "text-amber-700",
-      border: "border-amber-200",
+      color: 'from-amber-500 to-orange-500',
+      bg: 'bg-amber-50',
+      text: 'text-amber-700',
+      border: 'border-amber-200',
       icon: ClockIcon,
-      label: "Late",
+      label: 'Late',
     },
     excused: {
-      color: "from-blue-500 to-indigo-500",
-      bg: "bg-blue-50",
-      text: "text-blue-700",
-      border: "border-blue-200",
+      color: 'from-blue-500 to-indigo-500',
+      bg: 'bg-blue-50',
+      text: 'text-blue-700',
+      border: 'border-blue-200',
       icon: ShieldCheckIcon,
-      label: "Excused",
+      label: 'Excused',
     },
   };
   return configs[status as keyof typeof configs] || configs.present;
@@ -114,11 +114,7 @@ const FilterSection = ({ title, children, defaultOpen = false }: any) => {
         type="button"
       >
         <span className="text-sm font-medium text-gray-900">{title}</span>
-        <ChevronDownIcon
-          className={`h-4 w-4 transition-transform ${
-            isOpen ? "rotate-180" : ""
-          }`}
-        />
+        <ChevronDownIcon className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {isOpen && <div className="mt-3 space-y-2">{children}</div>}
     </div>
@@ -128,10 +124,7 @@ const FilterSection = ({ title, children, defaultOpen = false }: any) => {
 const CheckboxGroup = ({ options, selectedValues, onChange }: any) => (
   <>
     {options.map((opt: any) => (
-      <label
-        key={opt.value}
-        className="flex items-center text-sm text-gray-700"
-      >
+      <label key={opt.value} className="flex items-center text-sm text-gray-700">
         <input
           type="checkbox"
           checked={selectedValues.includes(opt.value)}
@@ -155,7 +148,9 @@ const StatusBadge = ({ status }: { status: string }) => {
   const Icon = config.icon;
 
   return (
-    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full ${config.bg} ${config.text} border ${config.border} font-medium text-xs shadow-sm`}>
+    <span
+      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full ${config.bg} ${config.text} border ${config.border} font-medium text-xs shadow-sm`}
+    >
       <Icon className="h-3.5 w-3.5" />
       {config.label}
     </span>
@@ -164,15 +159,17 @@ const StatusBadge = ({ status }: { status: string }) => {
 
 // ==================== MAIN COMPONENT ====================
 const AttendanceReports: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"daily" | "student" | "chronic" | "classwise" | "rawlogs">("daily");
+  const [activeTab, setActiveTab] = useState<
+    'daily' | 'student' | 'chronic' | 'classwise' | 'rawlogs'
+  >('daily');
   const [showFilters, setShowFilters] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [dateRange, setDateRange] = useState({
-    from: "",
-    to: "",
+    from: '',
+    to: '',
   });
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 
@@ -212,8 +209,10 @@ const AttendanceReports: React.FC = () => {
 
         // If not found in localStorage, try Supabase Auth (for educators/teachers)
         if (!currentSchoolId) {
-          const { data: { user } } = await supabase.auth.getUser();
-          
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+
           if (user) {
             // Check school_educators table - use maybeSingle() to avoid 406 error
             const { data: educator } = await supabase
@@ -260,19 +259,23 @@ const AttendanceReports: React.FC = () => {
     const fetchAttendanceData = async () => {
       try {
         setLoading(true);
-        
+
         console.log('📊 Fetching attendance for school:', schoolId);
-        
+
         // Calculate date range (last 30 days)
         const endDate = new Date().toISOString().split('T')[0];
-        const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-        
+        const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+          .toISOString()
+          .split('T')[0];
+
         console.log('📅 Date range:', startDate, 'to', endDate);
         console.log('🔍 Query params:', { schoolId, startDate, endDate });
-        
+
         // Fetch ALL attendance records for this school (last 60 days to be safe)
-        const safeStartDate = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-        
+        const safeStartDate = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000)
+          .toISOString()
+          .split('T')[0];
+
         const { data: attendanceData, error } = await supabase
           .from('attendance_records')
           .select('*')
@@ -286,13 +289,13 @@ const AttendanceReports: React.FC = () => {
         }
 
         console.log('✅ Fetched attendance records:', attendanceData?.length || 0);
-        
+
         // Fetch students separately
         const { data: studentsData } = await supabase
           .from('students')
           .select('id, name, roll_number, grade, section')
           .eq('school_id', schoolId);
-        
+
         // Create a student lookup map
         const studentMap = new Map();
         (studentsData || []).forEach((s: any) => {
@@ -310,12 +313,12 @@ const AttendanceReports: React.FC = () => {
             class: student?.grade || 'N/A',
             section: student?.section || 'N/A',
             date: record.date,
-            status: record.status as "present" | "absent" | "late" | "excused",
+            status: record.status as 'present' | 'absent' | 'late' | 'excused',
             timeIn: record.time_in,
             timeOut: record.time_out,
             remarks: record.remarks,
             teacher: 'Teacher',
-            source: record.mode as "manual" | "rfid" | "biometric",
+            source: record.mode as 'manual' | 'rfid' | 'biometric',
           };
         });
 
@@ -344,7 +347,7 @@ const AttendanceReports: React.FC = () => {
     const fetchStudents = async () => {
       try {
         console.log('👥 Fetching students for school:', schoolId);
-        
+
         const { data, error } = await supabase
           .from('students')
           .select('id, roll_number, name, grade, section, email, contactNumber')
@@ -378,25 +381,44 @@ const AttendanceReports: React.FC = () => {
 
   // Filtered records (MUST be defined before analytics)
   const filteredRecords = useMemo(() => {
-    console.log('🔍 Filtering', attendanceRecords.length, 'records with filters:', filters, 'search:', searchQuery);
+    console.log(
+      '🔍 Filtering',
+      attendanceRecords.length,
+      'records with filters:',
+      filters,
+      'search:',
+      searchQuery
+    );
     const filtered = attendanceRecords.filter((record) => {
       const matchesSearch =
-        searchQuery === "" ||
+        searchQuery === '' ||
         record.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         record.rollNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
         record.class.toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesClass = filters.classes.length === 0 || filters.classes.includes(record.class);
-      const matchesSection = filters.sections.length === 0 || filters.sections.includes(record.section);
-      const matchesTeacher = filters.teachers.length === 0 || filters.teachers.includes(record.teacher);
-      const matchesStatus = filters.statuses.length === 0 || filters.statuses.includes(record.status);
-      const matchesSource = filters.sources.length === 0 || (record.source && filters.sources.includes(record.source));
+      const matchesSection =
+        filters.sections.length === 0 || filters.sections.includes(record.section);
+      const matchesTeacher =
+        filters.teachers.length === 0 || filters.teachers.includes(record.teacher);
+      const matchesStatus =
+        filters.statuses.length === 0 || filters.statuses.includes(record.status);
+      const matchesSource =
+        filters.sources.length === 0 || (record.source && filters.sources.includes(record.source));
 
       const matchesDateRange =
         (!dateRange.from || record.date >= dateRange.from) &&
         (!dateRange.to || record.date <= dateRange.to);
 
-      return matchesSearch && matchesClass && matchesSection && matchesTeacher && matchesStatus && matchesSource && matchesDateRange;
+      return (
+        matchesSearch &&
+        matchesClass &&
+        matchesSection &&
+        matchesTeacher &&
+        matchesStatus &&
+        matchesSource &&
+        matchesDateRange
+      );
     });
     console.log('✅ Filtered to', filtered.length, 'records');
     return filtered;
@@ -404,51 +426,93 @@ const AttendanceReports: React.FC = () => {
 
   // Filter options
   const classOptions = useMemo(() => {
-    const classes = new Set(attendanceRecords.map(r => r.class));
-    return Array.from(classes).map(c => ({ value: c, label: `Class ${c}`, count: attendanceRecords.filter(r => r.class === c).length }));
+    const classes = new Set(attendanceRecords.map((r) => r.class));
+    return Array.from(classes).map((c) => ({
+      value: c,
+      label: `Class ${c}`,
+      count: attendanceRecords.filter((r) => r.class === c).length,
+    }));
   }, [attendanceRecords]);
 
   const sectionOptions = useMemo(() => {
-    const sections = new Set(attendanceRecords.map(r => r.section));
-    return Array.from(sections).map(s => ({ value: s, label: `Section ${s}`, count: attendanceRecords.filter(r => r.section === s).length }));
+    const sections = new Set(attendanceRecords.map((r) => r.section));
+    return Array.from(sections).map((s) => ({
+      value: s,
+      label: `Section ${s}`,
+      count: attendanceRecords.filter((r) => r.section === s).length,
+    }));
   }, [attendanceRecords]);
 
   const teacherOptions = useMemo(() => {
-    const teachers = new Set(attendanceRecords.map(r => r.teacher));
-    return Array.from(teachers).map(t => ({ value: t, label: t, count: attendanceRecords.filter(r => r.teacher === t).length }));
+    const teachers = new Set(attendanceRecords.map((r) => r.teacher));
+    return Array.from(teachers).map((t) => ({
+      value: t,
+      label: t,
+      count: attendanceRecords.filter((r) => r.teacher === t).length,
+    }));
   }, [attendanceRecords]);
 
   const statusOptions = [
-    { value: "present", label: "Present", count: attendanceRecords.filter(r => r.status === "present").length },
-    { value: "absent", label: "Absent", count: attendanceRecords.filter(r => r.status === "absent").length },
-    { value: "late", label: "Late", count: attendanceRecords.filter(r => r.status === "late").length },
-    { value: "excused", label: "Excused", count: attendanceRecords.filter(r => r.status === "excused").length },
+    {
+      value: 'present',
+      label: 'Present',
+      count: attendanceRecords.filter((r) => r.status === 'present').length,
+    },
+    {
+      value: 'absent',
+      label: 'Absent',
+      count: attendanceRecords.filter((r) => r.status === 'absent').length,
+    },
+    {
+      value: 'late',
+      label: 'Late',
+      count: attendanceRecords.filter((r) => r.status === 'late').length,
+    },
+    {
+      value: 'excused',
+      label: 'Excused',
+      count: attendanceRecords.filter((r) => r.status === 'excused').length,
+    },
   ];
 
   const sourceOptions = [
-    { value: "manual", label: "Manual", count: attendanceRecords.filter(r => r.source === "manual").length },
-    { value: "rfid", label: "RFID", count: attendanceRecords.filter(r => r.source === "rfid").length },
-    { value: "biometric", label: "Biometric", count: attendanceRecords.filter(r => r.source === "biometric").length },
+    {
+      value: 'manual',
+      label: 'Manual',
+      count: attendanceRecords.filter((r) => r.source === 'manual').length,
+    },
+    {
+      value: 'rfid',
+      label: 'RFID',
+      count: attendanceRecords.filter((r) => r.source === 'rfid').length,
+    },
+    {
+      value: 'biometric',
+      label: 'Biometric',
+      count: attendanceRecords.filter((r) => r.source === 'biometric').length,
+    },
   ];
 
   // Analytics calculations (use filtered records)
   const analytics = useMemo(() => {
-    const todayRecords = filteredRecords.filter(r => r.date === selectedDate);
-    const totalStudents = new Set(todayRecords.map(r => r.studentId)).size;
-    const presentCount = todayRecords.filter(r => r.status === "present" || r.status === "late" || r.status === "excused").length;
-    const absentCount = todayRecords.filter(r => r.status === "absent").length;
+    const todayRecords = filteredRecords.filter((r) => r.date === selectedDate);
+    const totalStudents = new Set(todayRecords.map((r) => r.studentId)).size;
+    const presentCount = todayRecords.filter(
+      (r) => r.status === 'present' || r.status === 'late' || r.status === 'excused'
+    ).length;
+    const absentCount = todayRecords.filter((r) => r.status === 'absent').length;
     const attendancePercentage = totalStudents > 0 ? (presentCount / totalStudents) * 100 : 0;
 
     // Calculate chronic absentees (attendance < 75% in last 30 days)
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const recentRecords = filteredRecords.filter(r => new Date(r.date) >= thirtyDaysAgo);
-    
+    const recentRecords = filteredRecords.filter((r) => new Date(r.date) >= thirtyDaysAgo);
+
     const studentAttendance = new Map<string, { present: number; total: number }>();
-    recentRecords.forEach(record => {
+    recentRecords.forEach((record) => {
       const current = studentAttendance.get(record.studentId) || { present: 0, total: 0 };
       current.total++;
-      if (record.status === "present" || record.status === "late" || record.status === "excused") {
+      if (record.status === 'present' || record.status === 'late' || record.status === 'excused') {
         current.present++;
       }
       studentAttendance.set(record.studentId, current);
@@ -479,7 +543,7 @@ const AttendanceReports: React.FC = () => {
       statuses: [],
       sources: [],
     });
-    setDateRange({ from: "", to: "" });
+    setDateRange({ from: '', to: '' });
   };
 
   // Export functions
@@ -489,7 +553,7 @@ const AttendanceReports: React.FC = () => {
     const headers = Object.keys(data[0]);
     const csvContent = [
       headers.join(','),
-      ...data.map(row => headers.map(header => `"${row[header] || ''}"`).join(','))
+      ...data.map((row) => headers.map((header) => `"${row[header] || ''}"`).join(',')),
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -530,11 +594,11 @@ const AttendanceReports: React.FC = () => {
 
   // Tab configurations
   const tabs = [
-    { id: "daily", label: "Daily Summary", icon: CalendarIcon },
-    { id: "student", label: "Student Trend", icon: UserIcon },
-    { id: "chronic", label: "Chronic Absentee", icon: BellAlertIcon },
-    { id: "classwise", label: "Class-wise Analysis", icon: AcademicCapIcon },
-    { id: "rawlogs", label: "Raw Logs", icon: TableCellsIcon },
+    { id: 'daily', label: 'Daily Summary', icon: CalendarIcon },
+    { id: 'student', label: 'Student Trend', icon: UserIcon },
+    { id: 'chronic', label: 'Chronic Absentee', icon: BellAlertIcon },
+    { id: 'classwise', label: 'Class-wise Analysis', icon: AcademicCapIcon },
+    { id: 'rawlogs', label: 'Raw Logs', icon: TableCellsIcon },
   ];
 
   // Show loading state
@@ -557,7 +621,12 @@ const AttendanceReports: React.FC = () => {
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
               <DocumentChartBarIcon className="h-8 w-8 text-indigo-600" />
-              Attendance Reports {attendanceRecords.length > 0 && <span className="text-sm font-normal text-gray-500">({attendanceRecords.length} records)</span>}
+              Attendance Reports{' '}
+              {attendanceRecords.length > 0 && (
+                <span className="text-sm font-normal text-gray-500">
+                  ({attendanceRecords.length} records)
+                </span>
+              )}
             </h1>
             <p className="text-sm sm:text-base mt-2 text-gray-600">
               Comprehensive attendance analytics and reporting
@@ -585,19 +654,22 @@ const AttendanceReports: React.FC = () => {
                   alert('No data to export. Please adjust your filters or date range.');
                   return;
                 }
-                exportToCSV(filteredRecords.map(r => ({
-                  Date: r.date,
-                  'Roll Number': r.rollNumber,
-                  'Student Name': r.studentName,
-                  Class: r.class,
-                  Section: r.section,
-                  Status: r.status,
-                  'Time In': r.timeIn || '',
-                  'Time Out': r.timeOut || '',
-                  Teacher: r.teacher,
-                  Source: r.source || '',
-                  Remarks: r.remarks || '',
-                })), `attendance_report_${new Date().toISOString().split('T')[0]}.csv`);
+                exportToCSV(
+                  filteredRecords.map((r) => ({
+                    Date: r.date,
+                    'Roll Number': r.rollNumber,
+                    'Student Name': r.studentName,
+                    Class: r.class,
+                    Section: r.section,
+                    Status: r.status,
+                    'Time In': r.timeIn || '',
+                    'Time Out': r.timeOut || '',
+                    Teacher: r.teacher,
+                    Source: r.source || '',
+                    Remarks: r.remarks || '',
+                  })),
+                  `attendance_report_${new Date().toISOString().split('T')[0]}.csv`
+                );
               }}
               className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
             >
@@ -658,8 +730,8 @@ const AttendanceReports: React.FC = () => {
                     }}
                     className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                       activeTab === tab.id
-                        ? "border-indigo-600 text-indigo-600 bg-indigo-50"
-                        : "border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                        ? 'border-indigo-600 text-indigo-600 bg-indigo-50'
+                        : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                     }`}
                   >
                     <Icon className="h-5 w-5" />
@@ -673,7 +745,7 @@ const AttendanceReports: React.FC = () => {
           {/* Tab Content */}
           <div className="p-6">
             {/* Daily Summary Tab */}
-            {activeTab === "daily" && (
+            {activeTab === 'daily' && (
               <DailySummaryTab
                 selectedDate={selectedDate}
                 setSelectedDate={setSelectedDate}
@@ -688,7 +760,7 @@ const AttendanceReports: React.FC = () => {
             )}
 
             {/* Student Trend Tab */}
-            {activeTab === "student" && (
+            {activeTab === 'student' && (
               <StudentTrendTab
                 students={students}
                 attendanceRecords={filteredRecords}
@@ -699,7 +771,7 @@ const AttendanceReports: React.FC = () => {
             )}
 
             {/* Chronic Absentee Tab */}
-            {activeTab === "chronic" && (
+            {activeTab === 'chronic' && (
               <ChronicAbsenteeTab
                 attendanceRecords={filteredRecords}
                 students={students}
@@ -710,7 +782,7 @@ const AttendanceReports: React.FC = () => {
             )}
 
             {/* Class-wise Tab */}
-            {activeTab === "classwise" && (
+            {activeTab === 'classwise' && (
               <ClasswiseTab
                 attendanceRecords={filteredRecords}
                 dateRange={dateRange}
@@ -721,7 +793,7 @@ const AttendanceReports: React.FC = () => {
             )}
 
             {/* Raw Logs Tab */}
-            {activeTab === "rawlogs" && (
+            {activeTab === 'rawlogs' && (
               <RawLogsTab
                 attendanceRecords={attendanceRecords}
                 filteredRecords={filteredRecords}
@@ -768,28 +840,20 @@ const AttendanceReports: React.FC = () => {
                 <FilterSection title="Date Range" defaultOpen>
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        From
-                      </label>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">From</label>
                       <input
                         type="date"
                         value={dateRange.from}
-                        onChange={(e) =>
-                          setDateRange({ ...dateRange, from: e.target.value })
-                        }
+                        onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        To
-                      </label>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">To</label>
                       <input
                         type="date"
                         value={dateRange.to}
-                        onChange={(e) =>
-                          setDateRange({ ...dateRange, to: e.target.value })
-                        }
+                        onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                       />
                     </div>
@@ -800,9 +864,7 @@ const AttendanceReports: React.FC = () => {
                   <CheckboxGroup
                     options={classOptions}
                     selectedValues={filters.classes}
-                    onChange={(values: string[]) =>
-                      setFilters({ ...filters, classes: values })
-                    }
+                    onChange={(values: string[]) => setFilters({ ...filters, classes: values })}
                   />
                 </FilterSection>
 
@@ -810,9 +872,7 @@ const AttendanceReports: React.FC = () => {
                   <CheckboxGroup
                     options={sectionOptions}
                     selectedValues={filters.sections}
-                    onChange={(values: string[]) =>
-                      setFilters({ ...filters, sections: values })
-                    }
+                    onChange={(values: string[]) => setFilters({ ...filters, sections: values })}
                   />
                 </FilterSection>
 
@@ -820,9 +880,7 @@ const AttendanceReports: React.FC = () => {
                   <CheckboxGroup
                     options={teacherOptions}
                     selectedValues={filters.teachers}
-                    onChange={(values: string[]) =>
-                      setFilters({ ...filters, teachers: values })
-                    }
+                    onChange={(values: string[]) => setFilters({ ...filters, teachers: values })}
                   />
                 </FilterSection>
 
@@ -830,9 +888,7 @@ const AttendanceReports: React.FC = () => {
                   <CheckboxGroup
                     options={statusOptions}
                     selectedValues={filters.statuses}
-                    onChange={(values: string[]) =>
-                      setFilters({ ...filters, statuses: values })
-                    }
+                    onChange={(values: string[]) => setFilters({ ...filters, statuses: values })}
                   />
                 </FilterSection>
 
@@ -840,9 +896,7 @@ const AttendanceReports: React.FC = () => {
                   <CheckboxGroup
                     options={sourceOptions}
                     selectedValues={filters.sources}
-                    onChange={(values: string[]) =>
-                      setFilters({ ...filters, sources: values })
-                    }
+                    onChange={(values: string[]) => setFilters({ ...filters, sources: values })}
                   />
                 </FilterSection>
               </div>
@@ -850,7 +904,6 @@ const AttendanceReports: React.FC = () => {
           </div>
         </>
       )}
-
     </div>
   );
 };
@@ -858,10 +911,20 @@ const AttendanceReports: React.FC = () => {
 // ==================== TAB COMPONENTS ====================
 
 // Daily Summary Tab
-const DailySummaryTab = ({ selectedDate, setSelectedDate, attendanceRecords, filters, searchQuery, exportToCSV, showFilters, setShowFilters, totalFilters }: any) => {
+const DailySummaryTab = ({
+  selectedDate,
+  setSelectedDate,
+  attendanceRecords,
+  filters,
+  searchQuery,
+  exportToCSV,
+  showFilters,
+  setShowFilters,
+  totalFilters,
+}: any) => {
   const dailyData = useMemo(() => {
     const records = attendanceRecords.filter((r: AttendanceRecord) => r.date === selectedDate);
-    
+
     // Group by class and section
     const grouped = new Map<string, any>();
     records.forEach((record: AttendanceRecord) => {
@@ -880,15 +943,15 @@ const DailySummaryTab = ({ selectedDate, setSelectedDate, attendanceRecords, fil
       }
       const group = grouped.get(key)!;
       group.totalStudents++;
-      if (record.status === "present") group.present++;
-      if (record.status === "absent") group.absent++;
-      if (record.status === "late") group.late++;
-      if (record.status === "excused") group.excused++;
+      if (record.status === 'present') group.present++;
+      if (record.status === 'absent') group.absent++;
+      if (record.status === 'late') group.late++;
+      if (record.status === 'excused') group.excused++;
     });
 
-    return Array.from(grouped.values()).map(g => ({
+    return Array.from(grouped.values()).map((g) => ({
       ...g,
-      percentage: ((g.present + g.late + g.excused) / g.totalStudents * 100).toFixed(1),
+      percentage: (((g.present + g.late + g.excused) / g.totalStudents) * 100).toFixed(1),
     }));
   }, [attendanceRecords, selectedDate]);
 
@@ -896,9 +959,7 @@ const DailySummaryTab = ({ selectedDate, setSelectedDate, attendanceRecords, fil
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Select Date
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Select Date</label>
           <input
             type="date"
             value={selectedDate}
@@ -920,17 +981,22 @@ const DailySummaryTab = ({ selectedDate, setSelectedDate, attendanceRecords, fil
             )}
           </button>
           <button
-            onClick={() => exportToCSV(dailyData.map((d: any) => ({
-              Class: d.class,
-              Section: d.section,
-              'Total Students': d.totalStudents,
-              Present: d.present,
-              Absent: d.absent,
-              Late: d.late,
-              Excused: d.excused,
-              'Attendance %': d.percentage,
-              Teacher: d.teacher,
-            })), `daily_summary_${selectedDate}.csv`)}
+            onClick={() =>
+              exportToCSV(
+                dailyData.map((d: any) => ({
+                  Class: d.class,
+                  Section: d.section,
+                  'Total Students': d.totalStudents,
+                  Present: d.present,
+                  Absent: d.absent,
+                  Late: d.late,
+                  Excused: d.excused,
+                  'Attendance %': d.percentage,
+                  Teacher: d.teacher,
+                })),
+                `daily_summary_${selectedDate}.csv`
+              )
+            }
             className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700"
           >
             <ArrowDownTrayIcon className="h-4 w-4" />
@@ -974,13 +1040,11 @@ const DailySummaryTab = ({ selectedDate, setSelectedDate, attendanceRecords, fil
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {dailyData.map((row: any, idx: number) => (
-              <tr key={idx} className={parseFloat(row.percentage) < 75 ? "bg-rose-50" : ""}>
+              <tr key={idx} className={parseFloat(row.percentage) < 75 ? 'bg-rose-50' : ''}>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                   {row.class}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {row.section}
-                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.section}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {row.totalStudents}
                 </td>
@@ -997,17 +1061,17 @@ const DailySummaryTab = ({ selectedDate, setSelectedDate, attendanceRecords, fil
                   {row.excused}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    parseFloat(row.percentage) >= 75 
-                      ? "bg-emerald-100 text-emerald-800" 
-                      : "bg-rose-100 text-rose-800"
-                  }`}>
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      parseFloat(row.percentage) >= 75
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-rose-100 text-rose-800'
+                    }`}
+                  >
                     {row.percentage}%
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {row.teacher}
-                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.teacher}</td>
               </tr>
             ))}
           </tbody>
@@ -1028,10 +1092,16 @@ const DailySummaryTab = ({ selectedDate, setSelectedDate, attendanceRecords, fil
 };
 
 // Student Trend Tab
-const StudentTrendTab = ({ students, attendanceRecords, selectedStudent, setSelectedStudent, exportToCSV }: any) => {
-  const [studentSearch, setStudentSearch] = useState("");
-  const [selectedClass, setSelectedClass] = useState<string>("all");
-  const [selectedSection, setSelectedSection] = useState<string>("all");
+const StudentTrendTab = ({
+  students,
+  attendanceRecords,
+  selectedStudent,
+  setSelectedStudent,
+  exportToCSV,
+}: any) => {
+  const [studentSearch, setStudentSearch] = useState('');
+  const [selectedClass, setSelectedClass] = useState<string>('all');
+  const [selectedSection, setSelectedSection] = useState<string>('all');
 
   // Get unique classes and sections
   const { classes, sections } = useMemo(() => {
@@ -1049,26 +1119,30 @@ const StudentTrendTab = ({ students, attendanceRecords, selectedStudent, setSele
 
   // Calculate stats for all students
   const allStudentStats = useMemo(() => {
-    return students.map((student: Student) => {
-      const records = attendanceRecords.filter((r: AttendanceRecord) => r.studentId === student.id);
-      const present = records.filter((r: AttendanceRecord) => r.status === "present").length;
-      const absent = records.filter((r: AttendanceRecord) => r.status === "absent").length;
-      const late = records.filter((r: AttendanceRecord) => r.status === "late").length;
-      const excused = records.filter((r: AttendanceRecord) => r.status === "excused").length;
-      const total = records.length;
-      const percentage = total > 0 ? ((present + late + excused) / total * 100) : 0;
+    return students
+      .map((student: Student) => {
+        const records = attendanceRecords.filter(
+          (r: AttendanceRecord) => r.studentId === student.id
+        );
+        const present = records.filter((r: AttendanceRecord) => r.status === 'present').length;
+        const absent = records.filter((r: AttendanceRecord) => r.status === 'absent').length;
+        const late = records.filter((r: AttendanceRecord) => r.status === 'late').length;
+        const excused = records.filter((r: AttendanceRecord) => r.status === 'excused').length;
+        const total = records.length;
+        const percentage = total > 0 ? ((present + late + excused) / total) * 100 : 0;
 
-      return {
-        ...student,
-        present,
-        absent,
-        late,
-        excused,
-        total,
-        percentage: percentage.toFixed(1),
-        records,
-      };
-    }).sort((a: any, b: any) => parseFloat(b.percentage) - parseFloat(a.percentage));
+        return {
+          ...student,
+          present,
+          absent,
+          late,
+          excused,
+          total,
+          percentage: percentage.toFixed(1),
+          records,
+        };
+      })
+      .sort((a: any, b: any) => parseFloat(b.percentage) - parseFloat(a.percentage));
   }, [students, attendanceRecords]);
 
   // Filter students based on search, class, and section
@@ -1076,21 +1150,21 @@ const StudentTrendTab = ({ students, attendanceRecords, selectedStudent, setSele
     let filtered = allStudentStats;
 
     // Apply class filter
-    if (selectedClass !== "all") {
+    if (selectedClass !== 'all') {
       filtered = filtered.filter((s: any) => s.class === selectedClass);
     }
 
     // Apply section filter
-    if (selectedSection !== "all") {
+    if (selectedSection !== 'all') {
       filtered = filtered.filter((s: any) => s.section === selectedSection);
     }
 
     // Apply search filter
     if (studentSearch) {
       const query = studentSearch.toLowerCase();
-      filtered = filtered.filter((s: any) => 
-        s.name.toLowerCase().includes(query) ||
-        s.rollNumber.toLowerCase().includes(query)
+      filtered = filtered.filter(
+        (s: any) =>
+          s.name.toLowerCase().includes(query) || s.rollNumber.toLowerCase().includes(query)
       );
     }
 
@@ -1114,7 +1188,7 @@ const StudentTrendTab = ({ students, attendanceRecords, selectedStudent, setSele
       }
       const data = monthlyData.get(month)!;
       data.total++;
-      if (record.status === "present" || record.status === "late" || record.status === "excused") {
+      if (record.status === 'present' || record.status === 'late' || record.status === 'excused') {
         data.present++;
       } else {
         data.absent++;
@@ -1122,32 +1196,36 @@ const StudentTrendTab = ({ students, attendanceRecords, selectedStudent, setSele
     });
 
     const sortedMonths = Array.from(monthlyData.keys()).sort();
-    const percentages = sortedMonths.map(month => {
+    const percentages = sortedMonths.map((month) => {
       const data = monthlyData.get(month)!;
-      return (data.present / data.total * 100).toFixed(1);
+      return ((data.present / data.total) * 100).toFixed(1);
     });
 
     return {
-      series: [{
-        name: "Attendance %",
-        data: percentages.map(p => parseFloat(p)),
-      }],
+      series: [
+        {
+          name: 'Attendance %',
+          data: percentages.map((p) => parseFloat(p)),
+        },
+      ],
       options: {
-        chart: { type: "line" as const, toolbar: { show: false }, height: 300 },
-        stroke: { curve: "smooth" as const, width: 3 },
-        colors: ["#4f46e5"],
+        chart: { type: 'line' as const, toolbar: { show: false }, height: 300 },
+        stroke: { curve: 'smooth' as const, width: 3 },
+        colors: ['#4f46e5'],
         dataLabels: { enabled: false },
         xaxis: {
-          categories: sortedMonths.map(m => new Date(m + "-01").toLocaleDateString("en-US", { month: "short", year: "numeric" })),
-          labels: { style: { colors: "#6b7280" } },
+          categories: sortedMonths.map((m) =>
+            new Date(m + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+          ),
+          labels: { style: { colors: '#6b7280' } },
         },
         yaxis: {
           min: 0,
           max: 100,
-          labels: { style: { colors: "#6b7280" } },
+          labels: { style: { colors: '#6b7280' } },
         },
-        tooltip: { theme: "light" },
-        grid: { borderColor: "#f1f5f9" },
+        tooltip: { theme: 'light' },
+        grid: { borderColor: '#f1f5f9' },
       },
     };
   }, [selectedStudentStats]);
@@ -1161,7 +1239,12 @@ const StudentTrendTab = ({ students, attendanceRecords, selectedStudent, setSele
           className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
           </svg>
           Back to student list
         </button>
@@ -1178,7 +1261,9 @@ const StudentTrendTab = ({ students, attendanceRecords, selectedStudent, setSele
               <div className="flex-1">
                 <h3 className="text-2xl font-bold">{selectedStudent.name}</h3>
                 <p className="text-indigo-100 mt-1">Roll No: {selectedStudent.rollNumber}</p>
-                <p className="text-indigo-100">Class {selectedStudent.class} - Section {selectedStudent.section}</p>
+                <p className="text-indigo-100">
+                  Class {selectedStudent.class} - Section {selectedStudent.section}
+                </p>
               </div>
             </div>
             <div className="text-right">
@@ -1195,7 +1280,9 @@ const StudentTrendTab = ({ students, attendanceRecords, selectedStudent, setSele
             <div className="text-sm text-gray-600">Total Days</div>
           </div>
           <div className="bg-emerald-50 rounded-xl border border-emerald-200 p-4 shadow-sm">
-            <div className="text-2xl font-bold text-emerald-700">{selectedStudentStats.present}</div>
+            <div className="text-2xl font-bold text-emerald-700">
+              {selectedStudentStats.present}
+            </div>
             <div className="text-sm text-emerald-600">Present</div>
           </div>
           <div className="bg-rose-50 rounded-xl border border-rose-200 p-4 shadow-sm">
@@ -1214,14 +1301,19 @@ const StudentTrendTab = ({ students, attendanceRecords, selectedStudent, setSele
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Monthly Attendance Trend</h3>
               <button
-                onClick={() => exportToCSV(selectedStudentStats.records.map((r: AttendanceRecord) => ({
-                  Date: r.date,
-                  Status: r.status,
-                  'Time In': r.timeIn || '',
-                  'Time Out': r.timeOut || '',
-                  Teacher: r.teacher,
-                  Remarks: r.remarks || '',
-                })), `${selectedStudent.name}_attendance_history.csv`)}
+                onClick={() =>
+                  exportToCSV(
+                    selectedStudentStats.records.map((r: AttendanceRecord) => ({
+                      Date: r.date,
+                      Status: r.status,
+                      'Time In': r.timeIn || '',
+                      'Time Out': r.timeOut || '',
+                      Teacher: r.teacher,
+                      Remarks: r.remarks || '',
+                    })),
+                    `${selectedStudent.name}_attendance_history.csv`
+                  )
+                }
                 className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700"
               >
                 <ArrowDownTrayIcon className="h-4 w-4" />
@@ -1246,11 +1338,21 @@ const StudentTrendTab = ({ students, attendanceRecords, selectedStudent, setSele
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time In</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time Out</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Remarks</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Date
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Time In
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Time Out
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Remarks
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -1263,14 +1365,12 @@ const StudentTrendTab = ({ students, attendanceRecords, selectedStudent, setSele
                       <StatusBadge status={record.status} />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {record.timeIn || "-"}
+                      {record.timeIn || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {record.timeOut || "-"}
+                      {record.timeOut || '-'}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {record.remarks || "-"}
-                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{record.remarks || '-'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1296,8 +1396,18 @@ const StudentTrendTab = ({ students, attendanceRecords, selectedStudent, setSele
                 placeholder="Search by name or roll number..."
                 className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
-              <svg className="absolute left-3 top-3 h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              <svg
+                className="absolute left-3 top-3 h-5 w-5 text-gray-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
               </svg>
             </div>
           </div>
@@ -1308,7 +1418,7 @@ const StudentTrendTab = ({ students, attendanceRecords, selectedStudent, setSele
               value={selectedClass}
               onChange={(e) => {
                 setSelectedClass(e.target.value);
-                setSelectedSection("all"); // Reset section when class changes
+                setSelectedSection('all'); // Reset section when class changes
               }}
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
             >
@@ -1341,19 +1451,19 @@ const StudentTrendTab = ({ students, attendanceRecords, selectedStudent, setSele
         {/* Results Count and Clear Filters */}
         <div className="flex items-center justify-between">
           <div className="text-sm text-gray-600">
-            Showing <span className="font-semibold text-gray-900">{filteredStudents.length}</span> of <span className="font-semibold text-gray-900">{allStudentStats.length}</span> students
-            {(selectedClass !== "all" || selectedSection !== "all" || studentSearch) && (
-              <span className="ml-2 text-indigo-600">
-                (filtered)
-              </span>
+            Showing <span className="font-semibold text-gray-900">{filteredStudents.length}</span>{' '}
+            of <span className="font-semibold text-gray-900">{allStudentStats.length}</span>{' '}
+            students
+            {(selectedClass !== 'all' || selectedSection !== 'all' || studentSearch) && (
+              <span className="ml-2 text-indigo-600">(filtered)</span>
             )}
           </div>
-          {(selectedClass !== "all" || selectedSection !== "all" || studentSearch) && (
+          {(selectedClass !== 'all' || selectedSection !== 'all' || studentSearch) && (
             <button
               onClick={() => {
-                setSelectedClass("all");
-                setSelectedSection("all");
-                setStudentSearch("");
+                setSelectedClass('all');
+                setSelectedSection('all');
+                setStudentSearch('');
               }}
               className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
             >
@@ -1373,14 +1483,18 @@ const StudentTrendTab = ({ students, attendanceRecords, selectedStudent, setSele
           >
             <div className="flex items-start gap-4">
               <div className="flex-shrink-0">
-                <div className={`h-12 w-12 rounded-full flex items-center justify-center ${
-                  parseFloat(student.percentage) >= 75 
-                    ? "bg-emerald-100 group-hover:bg-emerald-200" 
-                    : "bg-rose-100 group-hover:bg-rose-200"
-                }`}>
-                  <UserIcon className={`h-6 w-6 ${
-                    parseFloat(student.percentage) >= 75 ? "text-emerald-600" : "text-rose-600"
-                  }`} />
+                <div
+                  className={`h-12 w-12 rounded-full flex items-center justify-center ${
+                    parseFloat(student.percentage) >= 75
+                      ? 'bg-emerald-100 group-hover:bg-emerald-200'
+                      : 'bg-rose-100 group-hover:bg-rose-200'
+                  }`}
+                >
+                  <UserIcon
+                    className={`h-6 w-6 ${
+                      parseFloat(student.percentage) >= 75 ? 'text-emerald-600' : 'text-rose-600'
+                    }`}
+                  />
                 </div>
               </div>
               <div className="flex-1 min-w-0">
@@ -1392,30 +1506,32 @@ const StudentTrendTab = ({ students, attendanceRecords, selectedStudent, setSele
                     {student.class}-{student.section}
                   </span>
                 </div>
-                <p className="text-sm text-gray-600 mt-1">
-                  {student.rollNumber}
-                </p>
+                <p className="text-sm text-gray-600 mt-1">{student.rollNumber}</p>
                 <div className="mt-3 flex items-center gap-3">
-                  <div className={`text-2xl font-bold ${
-                    parseFloat(student.percentage) >= 75 ? "text-emerald-600" : "text-rose-600"
-                  }`}>
+                  <div
+                    className={`text-2xl font-bold ${
+                      parseFloat(student.percentage) >= 75 ? 'text-emerald-600' : 'text-rose-600'
+                    }`}
+                  >
                     {student.percentage}%
                   </div>
                   <div className="text-xs text-gray-500">
-                    <div>{student.present}P • {student.absent}A • {student.late}L</div>
+                    <div>
+                      {student.present}P • {student.absent}A • {student.late}L
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-            
+
             {/* Progress Bar */}
             <div className="mt-4">
               <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                <div 
+                <div
                   className={`h-full rounded-full transition-all ${
-                    parseFloat(student.percentage) >= 75 
-                      ? "bg-gradient-to-r from-emerald-500 to-green-500" 
-                      : "bg-gradient-to-r from-rose-500 to-red-500"
+                    parseFloat(student.percentage) >= 75
+                      ? 'bg-gradient-to-r from-emerald-500 to-green-500'
+                      : 'bg-gradient-to-r from-rose-500 to-red-500'
                   }`}
                   style={{ width: `${student.percentage}%` }}
                 />
@@ -1437,9 +1553,7 @@ const StudentTrendTab = ({ students, attendanceRecords, selectedStudent, setSele
         <div className="text-center py-12">
           <UserGroupIcon className="mx-auto h-12 w-12 text-gray-400" />
           <h3 className="mt-2 text-sm font-medium text-gray-900">No students found</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            Try adjusting your search query.
-          </p>
+          <p className="mt-1 text-sm text-gray-500">Try adjusting your search query.</p>
         </div>
       )}
     </div>
@@ -1447,22 +1561,30 @@ const StudentTrendTab = ({ students, attendanceRecords, selectedStudent, setSele
 };
 
 // Chronic Absentee Tab
-const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery, exportToCSV }: any) => {
+const ChronicAbsenteeTab = ({
+  attendanceRecords,
+  students,
+  filters,
+  searchQuery,
+  exportToCSV,
+}: any) => {
   const [duration, setDuration] = useState(30);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [showCounselorModal, setShowCounselorModal] = useState(false);
   const [selectedStudentForAction, setSelectedStudentForAction] = useState<any>(null);
-  const [meetingDate, setMeetingDate] = useState("");
-  const [meetingTime, setMeetingTime] = useState("");
-  const [meetingNotes, setMeetingNotes] = useState("");
-  const [selectedCounselor, setSelectedCounselor] = useState("");
+  const [meetingDate, setMeetingDate] = useState('');
+  const [meetingTime, setMeetingTime] = useState('');
+  const [meetingNotes, setMeetingNotes] = useState('');
+  const [selectedCounselor, setSelectedCounselor] = useState('');
 
   const chronicData = useMemo(() => {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - duration);
 
-    const recentRecords = attendanceRecords.filter((r: AttendanceRecord) => new Date(r.date) >= cutoffDate);
-    
+    const recentRecords = attendanceRecords.filter(
+      (r: AttendanceRecord) => new Date(r.date) >= cutoffDate
+    );
+
     const studentMap = new Map<string, any>();
     recentRecords.forEach((record: AttendanceRecord) => {
       if (!studentMap.has(record.studentId)) {
@@ -1484,15 +1606,15 @@ const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery,
       }
       const data = studentMap.get(record.studentId)!;
       data.totalDays++;
-      if (record.status === "present") data.present++;
-      if (record.status === "absent") {
+      if (record.status === 'present') data.present++;
+      if (record.status === 'absent') {
         data.absent++;
         if (!data.lastAbsentDate || new Date(record.date) > new Date(data.lastAbsentDate)) {
           data.lastAbsentDate = record.date;
         }
       }
-      if (record.status === "late") data.late++;
-      if (record.status === "excused") data.excused++;
+      if (record.status === 'late') data.late++;
+      if (record.status === 'excused') data.excused++;
     });
 
     // Calculate consecutive absences
@@ -1500,10 +1622,10 @@ const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery,
       const studentRecords = recentRecords
         .filter((r: AttendanceRecord) => r.studentId === studentId)
         .sort((a: AttendanceRecord, b: AttendanceRecord) => b.date.localeCompare(a.date));
-      
+
       let consecutive = 0;
       for (const record of studentRecords) {
-        if (record.status === "absent") {
+        if (record.status === 'absent') {
           consecutive++;
         } else {
           break;
@@ -1514,11 +1636,11 @@ const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery,
 
     // Filter chronic absentees (< 75% or 5+ consecutive absences)
     return Array.from(studentMap.values())
-      .map(d => ({
+      .map((d) => ({
         ...d,
-        percentage: ((d.present + d.late + d.excused) / d.totalDays * 100).toFixed(1),
+        percentage: (((d.present + d.late + d.excused) / d.totalDays) * 100).toFixed(1),
       }))
-      .filter(d => parseFloat(d.percentage) < 75 || d.consecutiveAbsences >= 5)
+      .filter((d) => parseFloat(d.percentage) < 75 || d.consecutiveAbsences >= 5)
       .sort((a, b) => parseFloat(a.percentage) - parseFloat(b.percentage));
   }, [attendanceRecords, students, duration]);
 
@@ -1534,45 +1656,45 @@ const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery,
 
   const submitMeeting = () => {
     // In production, this would call an API
-    console.log("Scheduling meeting:", {
+    console.log('Scheduling meeting:', {
       student: selectedStudentForAction,
       date: meetingDate,
       time: meetingTime,
       notes: meetingNotes,
     });
-    alert(`Parent meeting scheduled for ${selectedStudentForAction.studentName} on ${meetingDate} at ${meetingTime}`);
+    alert(
+      `Parent meeting scheduled for ${selectedStudentForAction.studentName} on ${meetingDate} at ${meetingTime}`
+    );
     setShowMeetingModal(false);
-    setMeetingDate("");
-    setMeetingTime("");
-    setMeetingNotes("");
+    setMeetingDate('');
+    setMeetingTime('');
+    setMeetingNotes('');
   };
 
   const submitCounselor = () => {
     // In production, this would call an API
-    console.log("Assigning counselor:", {
+    console.log('Assigning counselor:', {
       student: selectedStudentForAction,
       counselor: selectedCounselor,
     });
     alert(`Counselor ${selectedCounselor} assigned to ${selectedStudentForAction.studentName}`);
     setShowCounselorModal(false);
-    setSelectedCounselor("");
+    setSelectedCounselor('');
   };
 
   const counselors = [
-    "Dr. Sarah Johnson",
-    "Mr. Michael Chen",
-    "Ms. Emily Rodriguez",
-    "Dr. David Kumar",
-    "Ms. Lisa Anderson",
+    'Dr. Sarah Johnson',
+    'Mr. Michael Chen',
+    'Ms. Emily Rodriguez',
+    'Dr. David Kumar',
+    'Ms. Lisa Anderson',
   ];
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Duration
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Duration</label>
           <select
             value={duration}
             onChange={(e) => setDuration(parseInt(e.target.value))}
@@ -1584,19 +1706,24 @@ const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery,
           </select>
         </div>
         <button
-          onClick={() => exportToCSV(chronicData.map((d: any) => ({
-            'Roll Number': d.rollNumber,
-            'Student Name': d.studentName,
-            Class: d.class,
-            Section: d.section,
-            'Attendance %': d.percentage,
-            'Total Days': d.totalDays,
-            Present: d.present,
-            Absent: d.absent,
-            Late: d.late,
-            Excused: d.excused,
-            'Consecutive Absences': d.consecutiveAbsences,
-          })), `chronic_absentee_report_${duration}days.csv`)}
+          onClick={() =>
+            exportToCSV(
+              chronicData.map((d: any) => ({
+                'Roll Number': d.rollNumber,
+                'Student Name': d.studentName,
+                Class: d.class,
+                Section: d.section,
+                'Attendance %': d.percentage,
+                'Total Days': d.totalDays,
+                Present: d.present,
+                Absent: d.absent,
+                Late: d.late,
+                Excused: d.excused,
+                'Consecutive Absences': d.consecutiveAbsences,
+              })),
+              `chronic_absentee_report_${duration}days.csv`
+            )
+          }
           className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700"
         >
           <ArrowDownTrayIcon className="h-4 w-4" />
@@ -1609,7 +1736,8 @@ const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery,
           <div className="flex items-center gap-2">
             <BellAlertIcon className="h-5 w-5 text-rose-600" />
             <p className="text-sm font-medium text-rose-800">
-              {chronicData.length} student{chronicData.length !== 1 ? 's' : ''} requiring intervention
+              {chronicData.length} student{chronicData.length !== 1 ? 's' : ''} requiring
+              intervention
             </p>
           </div>
         </div>
@@ -1619,15 +1747,33 @@ const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery,
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Attendance %</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Days</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Present</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Absent</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Late</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Consecutive Absences</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Student
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Class
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Attendance %
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Total Days
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Present
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Absent
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Late
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Consecutive Absences
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -1641,20 +1787,30 @@ const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery,
                   {row.class}-{row.section}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    parseFloat(row.percentage) < 50 
-                      ? "bg-rose-100 text-rose-800" 
-                      : parseFloat(row.percentage) < 75
-                      ? "bg-amber-100 text-amber-800"
-                      : "bg-emerald-100 text-emerald-800"
-                  }`}>
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      parseFloat(row.percentage) < 50
+                        ? 'bg-rose-100 text-rose-800'
+                        : parseFloat(row.percentage) < 75
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-emerald-100 text-emerald-800'
+                    }`}
+                  >
                     {row.percentage}%
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.totalDays}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-emerald-600 font-medium">{row.present}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-rose-600 font-medium">{row.absent}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-amber-600 font-medium">{row.late}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {row.totalDays}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-emerald-600 font-medium">
+                  {row.present}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-rose-600 font-medium">
+                  {row.absent}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-amber-600 font-medium">
+                  {row.late}
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   {row.consecutiveAbsences >= 5 ? (
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-100 text-rose-800">
@@ -1666,33 +1822,63 @@ const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery,
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                   <div className="flex items-center gap-2">
-                    <button 
+                    <button
                       onClick={() => handleScheduleMeeting(row)}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-medium hover:bg-indigo-100 transition-colors"
                       title="Schedule parent meeting"
                     >
-                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      <svg
+                        className="h-3.5 w-3.5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                        />
                       </svg>
                       Meeting
                     </button>
-                    <button 
+                    <button
                       onClick={() => handleAssignCounselor(row)}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-700 rounded-lg text-xs font-medium hover:bg-amber-100 transition-colors"
                       title="Assign counselor"
                     >
-                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      <svg
+                        className="h-3.5 w-3.5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                        />
                       </svg>
                       Counselor
                     </button>
-                    <button 
+                    <button
                       className="inline-flex items-center justify-center h-8 w-8 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
                       title="Send notification to parent"
                       onClick={() => alert(`Notification sent to parent of ${row.studentName}`)}
                     >
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                      <svg
+                        className="h-4 w-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                        />
                       </svg>
                     </button>
                   </div>
@@ -1707,9 +1893,7 @@ const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery,
         <div className="text-center py-12">
           <CheckCircleIcon className="mx-auto h-12 w-12 text-emerald-400" />
           <h3 className="mt-2 text-sm font-medium text-gray-900">No chronic absentees</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            All students have good attendance records.
-          </p>
+          <p className="mt-1 text-sm text-gray-500">All students have good attendance records.</p>
         </div>
       )}
 
@@ -1717,14 +1901,27 @@ const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery,
       {showMeetingModal && selectedStudentForAction && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={() => setShowMeetingModal(false)} />
-            
+            <div
+              className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75"
+              onClick={() => setShowMeetingModal(false)}
+            />
+
             <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
               <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                 <div className="sm:flex sm:items-start">
                   <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-indigo-100 sm:mx-0 sm:h-10 sm:w-10">
-                    <svg className="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    <svg
+                      className="h-6 w-6 text-indigo-600"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                      />
                     </svg>
                   </div>
                   <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left flex-1">
@@ -1734,13 +1931,19 @@ const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery,
                     <div className="mt-4 space-y-4">
                       <div>
                         <p className="text-sm text-gray-600">
-                          Student: <span className="font-semibold text-gray-900">{selectedStudentForAction.studentName}</span>
+                          Student:{' '}
+                          <span className="font-semibold text-gray-900">
+                            {selectedStudentForAction.studentName}
+                          </span>
                         </p>
                         <p className="text-sm text-gray-600">
-                          Class: <span className="font-semibold text-gray-900">{selectedStudentForAction.class}-{selectedStudentForAction.section}</span>
+                          Class:{' '}
+                          <span className="font-semibold text-gray-900">
+                            {selectedStudentForAction.class}-{selectedStudentForAction.section}
+                          </span>
                         </p>
                       </div>
-                      
+
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Meeting Date
@@ -1808,14 +2011,27 @@ const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery,
       {showCounselorModal && selectedStudentForAction && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={() => setShowCounselorModal(false)} />
-            
+            <div
+              className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75"
+              onClick={() => setShowCounselorModal(false)}
+            />
+
             <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
               <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                 <div className="sm:flex sm:items-start">
                   <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-amber-100 sm:mx-0 sm:h-10 sm:w-10">
-                    <svg className="h-6 w-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    <svg
+                      className="h-6 w-6 text-amber-600"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                      />
                     </svg>
                   </div>
                   <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left flex-1">
@@ -1825,16 +2041,25 @@ const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery,
                     <div className="mt-4 space-y-4">
                       <div>
                         <p className="text-sm text-gray-600">
-                          Student: <span className="font-semibold text-gray-900">{selectedStudentForAction.studentName}</span>
+                          Student:{' '}
+                          <span className="font-semibold text-gray-900">
+                            {selectedStudentForAction.studentName}
+                          </span>
                         </p>
                         <p className="text-sm text-gray-600">
-                          Class: <span className="font-semibold text-gray-900">{selectedStudentForAction.class}-{selectedStudentForAction.section}</span>
+                          Class:{' '}
+                          <span className="font-semibold text-gray-900">
+                            {selectedStudentForAction.class}-{selectedStudentForAction.section}
+                          </span>
                         </p>
                         <p className="text-sm text-rose-600 mt-2">
-                          Attendance: <span className="font-semibold">{selectedStudentForAction.percentage}%</span>
+                          Attendance:{' '}
+                          <span className="font-semibold">
+                            {selectedStudentForAction.percentage}%
+                          </span>
                         </p>
                       </div>
-                      
+
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Select Counselor
@@ -1855,7 +2080,8 @@ const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery,
 
                       <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
                         <p className="text-xs text-amber-800">
-                          <strong>Note:</strong> The assigned counselor will be notified and will receive the student's attendance history.
+                          <strong>Note:</strong> The assigned counselor will be notified and will
+                          receive the student's attendance history.
                         </p>
                       </div>
                     </div>
@@ -1888,14 +2114,19 @@ const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery,
 };
 
 // Class-wise Analysis Tab
-const ClasswiseTab = ({ attendanceRecords, dateRange, setDateRange, filters, exportToCSV }: any) => {
+const ClasswiseTab = ({
+  attendanceRecords,
+  dateRange,
+  setDateRange,
+  filters,
+  exportToCSV,
+}: any) => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
 
   const classwiseData = useMemo(() => {
     const filtered = attendanceRecords.filter((r: AttendanceRecord) => {
       return (
-        (!dateRange.from || r.date >= dateRange.from) &&
-        (!dateRange.to || r.date <= dateRange.to)
+        (!dateRange.from || r.date >= dateRange.from) && (!dateRange.to || r.date <= dateRange.to)
       );
     });
 
@@ -1915,22 +2146,24 @@ const ClasswiseTab = ({ attendanceRecords, dateRange, setDateRange, filters, exp
       }
       const group = grouped.get(key)!;
       group.totalDays++;
-      if (record.status === "present") group.present++;
-      if (record.status === "absent") group.absent++;
-      if (record.status === "late") group.late++;
-      if (record.status === "excused") group.excused++;
+      if (record.status === 'present') group.present++;
+      if (record.status === 'absent') group.absent++;
+      if (record.status === 'late') group.late++;
+      if (record.status === 'excused') group.excused++;
     });
 
-    return Array.from(grouped.values()).map(g => ({
+    return Array.from(grouped.values()).map((g) => ({
       ...g,
-      percentage: ((g.present + g.late + g.excused) / g.totalDays * 100).toFixed(1),
+      percentage: (((g.present + g.late + g.excused) / g.totalDays) * 100).toFixed(1),
     }));
   }, [attendanceRecords, dateRange]);
 
   // Monthly data for chart
   const monthlyData = useMemo(() => {
-    const filtered = attendanceRecords.filter((r: AttendanceRecord) => r.date.startsWith(selectedMonth));
-    
+    const filtered = attendanceRecords.filter((r: AttendanceRecord) =>
+      r.date.startsWith(selectedMonth)
+    );
+
     const grouped = new Map<string, any>();
     filtered.forEach((record: AttendanceRecord) => {
       const key = `${record.class}-${record.section}`;
@@ -1947,15 +2180,15 @@ const ClasswiseTab = ({ attendanceRecords, dateRange, setDateRange, filters, exp
       }
       const group = grouped.get(key)!;
       group.totalDays++;
-      if (record.status === "present") group.present++;
-      if (record.status === "absent") group.absent++;
-      if (record.status === "late") group.late++;
-      if (record.status === "excused") group.excused++;
+      if (record.status === 'present') group.present++;
+      if (record.status === 'absent') group.absent++;
+      if (record.status === 'late') group.late++;
+      if (record.status === 'excused') group.excused++;
     });
 
-    return Array.from(grouped.values()).map(g => ({
+    return Array.from(grouped.values()).map((g) => ({
       ...g,
-      percentage: ((g.present + g.late + g.excused) / g.totalDays * 100).toFixed(1),
+      percentage: (((g.present + g.late + g.excused) / g.totalDays) * 100).toFixed(1),
     }));
   }, [attendanceRecords, selectedMonth]);
 
@@ -1963,32 +2196,34 @@ const ClasswiseTab = ({ attendanceRecords, dateRange, setDateRange, filters, exp
     if (monthlyData.length === 0) return null;
 
     return {
-      series: [{
-        name: "Attendance %",
-        data: monthlyData.map((d: any) => parseFloat(d.percentage)),
-      }],
+      series: [
+        {
+          name: 'Attendance %',
+          data: monthlyData.map((d: any) => parseFloat(d.percentage)),
+        },
+      ],
       options: {
-        chart: { type: "bar" as const, toolbar: { show: false }, height: 350 },
+        chart: { type: 'bar' as const, toolbar: { show: false }, height: 350 },
         plotOptions: {
           bar: {
             horizontal: false,
-            columnWidth: "55%",
+            columnWidth: '55%',
             borderRadius: 4,
           },
         },
         dataLabels: { enabled: false },
-        colors: ["#4f46e5"],
+        colors: ['#4f46e5'],
         xaxis: {
           categories: monthlyData.map((d: any) => `${d.class}-${d.section}`),
-          labels: { style: { colors: "#6b7280" } },
+          labels: { style: { colors: '#6b7280' } },
         },
         yaxis: {
           min: 0,
           max: 100,
-          labels: { style: { colors: "#6b7280" } },
+          labels: { style: { colors: '#6b7280' } },
         },
-        tooltip: { theme: "light" },
-        grid: { borderColor: "#f1f5f9" },
+        tooltip: { theme: 'light' },
+        grid: { borderColor: '#f1f5f9' },
       },
     };
   }, [monthlyData]);
@@ -2018,16 +2253,21 @@ const ClasswiseTab = ({ attendanceRecords, dateRange, setDateRange, filters, exp
           </div>
         </div>
         <button
-          onClick={() => exportToCSV(classwiseData.map((d: any) => ({
-            Class: d.class,
-            Section: d.section,
-            'Total Days': d.totalDays,
-            Present: d.present,
-            Absent: d.absent,
-            Late: d.late,
-            Excused: d.excused,
-            'Attendance %': d.percentage,
-          })), `classwise_report_${dateRange.from}_${dateRange.to}.csv`)}
+          onClick={() =>
+            exportToCSV(
+              classwiseData.map((d: any) => ({
+                Class: d.class,
+                Section: d.section,
+                'Total Days': d.totalDays,
+                Present: d.present,
+                Absent: d.absent,
+                Late: d.late,
+                Excused: d.excused,
+                'Attendance %': d.percentage,
+              })),
+              `classwise_report_${dateRange.from}_${dateRange.to}.csv`
+            )
+          }
           className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700"
         >
           <ArrowDownTrayIcon className="h-4 w-4" />
@@ -2073,32 +2313,64 @@ const ClasswiseTab = ({ attendanceRecords, dateRange, setDateRange, filters, exp
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Section</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Days</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Present</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Absent</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Late</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Excused</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Attendance %</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Class
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Section
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Total Days
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Present
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Absent
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Late
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Excused
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Attendance %
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {classwiseData.map((row: any, idx: number) => (
-                <tr key={idx} className={parseFloat(row.percentage) < 75 ? "bg-rose-50" : ""}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{row.class}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.section}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.totalDays}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-emerald-600 font-medium">{row.present}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-rose-600 font-medium">{row.absent}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-amber-600 font-medium">{row.late}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600 font-medium">{row.excused}</td>
+                <tr key={idx} className={parseFloat(row.percentage) < 75 ? 'bg-rose-50' : ''}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {row.class}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {row.section}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {row.totalDays}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-emerald-600 font-medium">
+                    {row.present}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-rose-600 font-medium">
+                    {row.absent}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-amber-600 font-medium">
+                    {row.late}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600 font-medium">
+                    {row.excused}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      parseFloat(row.percentage) >= 75 
-                        ? "bg-emerald-100 text-emerald-800" 
-                        : "bg-rose-100 text-rose-800"
-                    }`}>
+                    <span
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        parseFloat(row.percentage) >= 75
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : 'bg-rose-100 text-rose-800'
+                      }`}
+                    >
                       {row.percentage}%
                     </span>
                   </td>
@@ -2123,7 +2395,16 @@ const ClasswiseTab = ({ attendanceRecords, dateRange, setDateRange, filters, exp
 };
 
 // Raw Logs Tab
-const RawLogsTab = ({ attendanceRecords, filteredRecords, searchQuery, setSearchQuery, currentPage, setCurrentPage, itemsPerPage, exportToCSV }: any) => {
+const RawLogsTab = ({
+  attendanceRecords,
+  filteredRecords,
+  searchQuery,
+  setSearchQuery,
+  currentPage,
+  setCurrentPage,
+  itemsPerPage,
+  exportToCSV,
+}: any) => {
   const paginatedRecords = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     return filteredRecords.slice(startIndex, startIndex + itemsPerPage);
@@ -2140,20 +2421,25 @@ const RawLogsTab = ({ attendanceRecords, filteredRecords, searchQuery, setSearch
           placeholder="Search by student name, roll number, or class..."
         />
         <button
-          onClick={() => exportToCSV(filteredRecords.map((r: AttendanceRecord) => ({
-            Date: r.date,
-            'Roll Number': r.rollNumber,
-            'Student Name': r.studentName,
-            Class: r.class,
-            Section: r.section,
-            Status: r.status,
-            'Time In': r.timeIn || '',
-            'Time Out': r.timeOut || '',
-            Teacher: r.teacher,
-            Source: r.source || '',
-            'Device ID': r.deviceId || '',
-            Remarks: r.remarks || '',
-          })), `raw_attendance_logs_${new Date().toISOString().split('T')[0]}.csv`)}
+          onClick={() =>
+            exportToCSV(
+              filteredRecords.map((r: AttendanceRecord) => ({
+                Date: r.date,
+                'Roll Number': r.rollNumber,
+                'Student Name': r.studentName,
+                Class: r.class,
+                Section: r.section,
+                Status: r.status,
+                'Time In': r.timeIn || '',
+                'Time Out': r.timeOut || '',
+                Teacher: r.teacher,
+                Source: r.source || '',
+                'Device ID': r.deviceId || '',
+                Remarks: r.remarks || '',
+              })),
+              `raw_attendance_logs_${new Date().toISOString().split('T')[0]}.csv`
+            )
+          }
           className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700"
         >
           <ArrowDownTrayIcon className="h-4 w-4" />
@@ -2165,15 +2451,33 @@ const RawLogsTab = ({ attendanceRecords, filteredRecords, searchQuery, setSearch
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time In</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time Out</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Source</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Teacher</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Remarks</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Date
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Student
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Class
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Status
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Time In
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Time Out
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Source
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Teacher
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Remarks
+              </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -2193,10 +2497,10 @@ const RawLogsTab = ({ attendanceRecords, filteredRecords, searchQuery, setSearch
                   <StatusBadge status={record.status} />
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {record.timeIn || "-"}
+                  {record.timeIn || '-'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {record.timeOut || "-"}
+                  {record.timeOut || '-'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   {record.source && (
@@ -2208,9 +2512,7 @@ const RawLogsTab = ({ attendanceRecords, filteredRecords, searchQuery, setSearch
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {record.teacher}
                 </td>
-                <td className="px-6 py-4 text-sm text-gray-600">
-                  {record.remarks || "-"}
-                </td>
+                <td className="px-6 py-4 text-sm text-gray-600">{record.remarks || '-'}</td>
               </tr>
             ))}
           </tbody>

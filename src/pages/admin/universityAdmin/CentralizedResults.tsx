@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  AcademicCapIcon, 
-  ChartBarIcon, 
-  DocumentTextIcon, 
+import {
+  AcademicCapIcon,
+  ChartBarIcon,
+  DocumentTextIcon,
   PencilIcon,
   TrashIcon,
   PlusIcon,
@@ -12,14 +12,14 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   ClockIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
-import { 
-  ResultStatusBadge, 
-  GradeBadge, 
-  QuickStatsCard, 
+import {
+  ResultStatusBadge,
+  GradeBadge,
+  QuickStatsCard,
   ResultsSummary,
-  ExportOptionsModal
+  ExportOptionsModal,
 } from '../../../components/admin/universityAdmin/ResultsComponents';
 import ResultsAnalytics from '../../../components/admin/universityAdmin/ResultsAnalytics';
 
@@ -63,7 +63,7 @@ const CentralizedResults: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [results, setResults] = useState<Result[]>([]);
-  
+
   // Filter states
   const [filters, setFilters] = useState({
     program: '',
@@ -71,14 +71,14 @@ const CentralizedResults: React.FC = () => {
     college: '',
     examType: '',
     status: '',
-    academicYear: '2024-25'
+    academicYear: '2024-25',
   });
-  
+
   // Search and pagination
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
-  
+
   // Modal states
   const [showAddResult, setShowAddResult] = useState(false);
   const [showEditResult, setShowEditResult] = useState(false);
@@ -101,7 +101,7 @@ const CentralizedResults: React.FC = () => {
         semester: '6',
         college: 'Engineering College A',
         email: 'john.doe@example.com',
-        phone: '+91 9876543210'
+        phone: '+91 9876543210',
       },
       {
         id: '2',
@@ -111,7 +111,7 @@ const CentralizedResults: React.FC = () => {
         semester: '6',
         college: 'Engineering College A',
         email: 'jane.smith@example.com',
-        phone: '+91 9876543211'
+        phone: '+91 9876543211',
       },
       {
         id: '3',
@@ -121,8 +121,8 @@ const CentralizedResults: React.FC = () => {
         semester: '4',
         college: 'Engineering College B',
         email: 'mike.johnson@example.com',
-        phone: '+91 9876543212'
-      }
+        phone: '+91 9876543212',
+      },
     ];
 
     // Mock subjects data
@@ -132,7 +132,7 @@ const CentralizedResults: React.FC = () => {
       { id: '3', code: 'CS303', name: 'Software Engineering', credits: 3, type: 'theory' },
       { id: '4', code: 'CS304', name: 'Web Development Lab', credits: 2, type: 'practical' },
       { id: '5', code: 'ME201', name: 'Thermodynamics', credits: 4, type: 'theory' },
-      { id: '6', code: 'ME202', name: 'Fluid Mechanics', credits: 3, type: 'theory' }
+      { id: '6', code: 'ME202', name: 'Fluid Mechanics', credits: 3, type: 'theory' },
     ];
 
     // Mock results data
@@ -149,7 +149,7 @@ const CentralizedResults: React.FC = () => {
         semester: '6',
         academicYear: '2024-25',
         publishedAt: '2024-01-15',
-        publishedBy: 'Dr. Smith'
+        publishedBy: 'Dr. Smith',
       },
       {
         id: '2',
@@ -163,7 +163,7 @@ const CentralizedResults: React.FC = () => {
         semester: '6',
         academicYear: '2024-25',
         publishedAt: '2024-01-15',
-        publishedBy: 'Dr. Johnson'
+        publishedBy: 'Dr. Johnson',
       },
       {
         id: '3',
@@ -177,7 +177,7 @@ const CentralizedResults: React.FC = () => {
         semester: '6',
         academicYear: '2024-25',
         publishedAt: '2024-01-15',
-        publishedBy: 'Dr. Smith'
+        publishedBy: 'Dr. Smith',
       },
       {
         id: '4',
@@ -189,8 +189,8 @@ const CentralizedResults: React.FC = () => {
         grade: 'F',
         status: 'absent',
         semester: '4',
-        academicYear: '2024-25'
-      }
+        academicYear: '2024-25',
+      },
     ];
 
     setStudents(mockStudents);
@@ -199,16 +199,16 @@ const CentralizedResults: React.FC = () => {
   };
 
   // Helper functions
-  const getStudentById = (id: string) => students.find(s => s.id === id);
-  const getSubjectById = (id: string) => subjects.find(s => s.id === id);
+  const getStudentById = (id: string) => students.find((s) => s.id === id);
+  const getSubjectById = (id: string) => subjects.find((s) => s.id === id);
 
   // Filter and search results
-  const filteredResults = results.filter(result => {
+  const filteredResults = results.filter((result) => {
     const student = getStudentById(result.studentId);
     const subject = getSubjectById(result.subjectId);
-    
+
     if (!student || !subject) return false;
-    
+
     // Apply filters
     if (filters.program && student.program !== filters.program) return false;
     if (filters.semester && result.semester !== filters.semester) return false;
@@ -216,7 +216,7 @@ const CentralizedResults: React.FC = () => {
     if (filters.examType && result.examType !== filters.examType) return false;
     if (filters.status && result.status !== filters.status) return false;
     if (filters.academicYear && result.academicYear !== filters.academicYear) return false;
-    
+
     // Apply search
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
@@ -227,7 +227,7 @@ const CentralizedResults: React.FC = () => {
         subject.code.toLowerCase().includes(searchLower)
       );
     }
-    
+
     return true;
   });
 
@@ -239,11 +239,11 @@ const CentralizedResults: React.FC = () => {
   // Statistics
   const stats = {
     totalResults: results.length,
-    published: results.filter(r => r.publishedAt).length,
-    pending: results.filter(r => !r.publishedAt).length,
-    passed: results.filter(r => r.status === 'pass').length,
-    failed: results.filter(r => r.status === 'fail').length,
-    absent: results.filter(r => r.status === 'absent').length
+    published: results.filter((r) => r.publishedAt).length,
+    pending: results.filter((r) => !r.publishedAt).length,
+    passed: results.filter((r) => r.status === 'pass').length,
+    failed: results.filter((r) => r.status === 'fail').length,
+    absent: results.filter((r) => r.status === 'absent').length,
   };
   // Action handlers
   const handleAddResult = () => {
@@ -258,32 +258,40 @@ const CentralizedResults: React.FC = () => {
 
   const handleDeleteResult = (resultId: string) => {
     if (window.confirm('Are you sure you want to delete this result?')) {
-      setResults(prev => prev.filter(r => r.id !== resultId));
+      setResults((prev) => prev.filter((r) => r.id !== resultId));
     }
   };
 
   const handlePublishResult = (resultId: string) => {
-    setResults(prev => prev.map(r => 
-      r.id === resultId 
-        ? { ...r, publishedAt: new Date().toISOString().split('T')[0], publishedBy: 'Current User' }
-        : r
-    ));
+    setResults((prev) =>
+      prev.map((r) =>
+        r.id === resultId
+          ? {
+              ...r,
+              publishedAt: new Date().toISOString().split('T')[0],
+              publishedBy: 'Current User',
+            }
+          : r
+      )
+    );
   };
 
   const handleBulkPublish = () => {
-    const unpublishedResults = filteredResults.filter(r => !r.publishedAt);
+    const unpublishedResults = filteredResults.filter((r) => !r.publishedAt);
     if (unpublishedResults.length === 0) {
       alert('No unpublished results to publish');
       return;
     }
-    
+
     if (window.confirm(`Publish ${unpublishedResults.length} results?`)) {
       const today = new Date().toISOString().split('T')[0];
-      setResults(prev => prev.map(r => 
-        unpublishedResults.some(ur => ur.id === r.id)
-          ? { ...r, publishedAt: today, publishedBy: 'Current User' }
-          : r
-      ));
+      setResults((prev) =>
+        prev.map((r) =>
+          unpublishedResults.some((ur) => ur.id === r.id)
+            ? { ...r, publishedAt: today, publishedBy: 'Current User' }
+            : r
+        )
+      );
     }
   };
 
@@ -293,7 +301,10 @@ const CentralizedResults: React.FC = () => {
 
   const handleExportWithOptions = (format: string, options: any) => {
     // Mock export functionality with options
-    console.log(`Exporting ${filteredResults.length} results as ${format.toUpperCase()} with options:`, options);
+    console.log(
+      `Exporting ${filteredResults.length} results as ${format.toUpperCase()} with options:`,
+      options
+    );
     alert(`Exporting ${filteredResults.length} results as ${format.toUpperCase()}`);
   };
 
@@ -308,7 +319,7 @@ const CentralizedResults: React.FC = () => {
       college: '',
       examType: '',
       status: '',
-      academicYear: '2024-25'
+      academicYear: '2024-25',
     });
     setSearchTerm('');
     setCurrentPage(1);
@@ -402,7 +413,7 @@ const CentralizedResults: React.FC = () => {
               {[
                 { id: 'overview', name: 'Overview', icon: ChartBarIcon },
                 { id: 'results', name: 'Results Management', icon: DocumentTextIcon },
-                { id: 'analytics', name: 'Analytics', icon: ChartBarIcon }
+                { id: 'analytics', name: 'Analytics', icon: ChartBarIcon },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -435,7 +446,7 @@ const CentralizedResults: React.FC = () => {
                   <p className="text-sm font-medium text-blue-700">Bulk Publish Results</p>
                   <p className="text-xs text-blue-600">{stats.pending} pending</p>
                 </button>
-                
+
                 <button
                   onClick={handleExport}
                   className="p-4 border-2 border-dashed border-green-300 rounded-lg hover:border-green-500 hover:bg-green-50 transition-colors"
@@ -444,7 +455,7 @@ const CentralizedResults: React.FC = () => {
                   <p className="text-sm font-medium text-green-700">Export to Excel</p>
                   <p className="text-xs text-green-600">Download all results</p>
                 </button>
-                
+
                 <button
                   onClick={handleExport}
                   className="p-4 border-2 border-dashed border-purple-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors"
@@ -453,7 +464,7 @@ const CentralizedResults: React.FC = () => {
                   <p className="text-sm font-medium text-purple-700">Generate Reports</p>
                   <p className="text-xs text-purple-600">PDF format</p>
                 </button>
-                
+
                 <button
                   onClick={() => setShowBulkUpload(true)}
                   className="p-4 border-2 border-dashed border-orange-300 rounded-lg hover:border-orange-500 hover:bg-orange-50 transition-colors"
@@ -469,26 +480,32 @@ const CentralizedResults: React.FC = () => {
             <div className="bg-white rounded-lg shadow-sm border p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
               <div className="space-y-3">
-                {results.filter(r => r.publishedAt).slice(0, 5).map((result) => {
-                  const student = getStudentById(result.studentId);
-                  const subject = getSubjectById(result.subjectId);
-                  return (
-                    <div key={result.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <CheckCircleIcon className="h-5 w-5 text-green-500" />
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">
-                            Result published for {student?.name} - {subject?.name}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            Grade: {result.grade} | Published by: {result.publishedBy}
-                          </p>
+                {results
+                  .filter((r) => r.publishedAt)
+                  .slice(0, 5)
+                  .map((result) => {
+                    const student = getStudentById(result.studentId);
+                    const subject = getSubjectById(result.subjectId);
+                    return (
+                      <div
+                        key={result.id}
+                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                      >
+                        <div className="flex items-center gap-3">
+                          <CheckCircleIcon className="h-5 w-5 text-green-500" />
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">
+                              Result published for {student?.name} - {subject?.name}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              Grade: {result.grade} | Published by: {result.publishedBy}
+                            </p>
+                          </div>
                         </div>
+                        <span className="text-xs text-gray-500">{result.publishedAt}</span>
                       </div>
-                      <span className="text-xs text-gray-500">{result.publishedAt}</span>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
               </div>
             </div>
           </div>
@@ -507,13 +524,13 @@ const CentralizedResults: React.FC = () => {
                   Reset All
                 </button>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Program</label>
                   <select
                     value={filters.program}
-                    onChange={(e) => setFilters(prev => ({ ...prev, program: e.target.value }))}
+                    onChange={(e) => setFilters((prev) => ({ ...prev, program: e.target.value }))}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">All Programs</option>
@@ -522,26 +539,28 @@ const CentralizedResults: React.FC = () => {
                     <option value="Electrical Engineering">Electrical Engineering</option>
                   </select>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Semester</label>
                   <select
                     value={filters.semester}
-                    onChange={(e) => setFilters(prev => ({ ...prev, semester: e.target.value }))}
+                    onChange={(e) => setFilters((prev) => ({ ...prev, semester: e.target.value }))}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">All Semesters</option>
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map(sem => (
-                      <option key={sem} value={sem.toString()}>Semester {sem}</option>
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
+                      <option key={sem} value={sem.toString()}>
+                        Semester {sem}
+                      </option>
                     ))}
                   </select>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Exam Type</label>
                   <select
                     value={filters.examType}
-                    onChange={(e) => setFilters(prev => ({ ...prev, examType: e.target.value }))}
+                    onChange={(e) => setFilters((prev) => ({ ...prev, examType: e.target.value }))}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">All Types</option>
@@ -550,12 +569,12 @@ const CentralizedResults: React.FC = () => {
                     <option value="Internal Assessment">Internal Assessment</option>
                   </select>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                   <select
                     value={filters.status}
-                    onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+                    onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">All Status</option>
@@ -566,7 +585,7 @@ const CentralizedResults: React.FC = () => {
                   </select>
                 </div>
               </div>
-              
+
               <div className="flex gap-4">
                 <div className="flex-1">
                   <div className="relative">
@@ -615,7 +634,7 @@ const CentralizedResults: React.FC = () => {
                   </div>
                 </div>
               </div>
-              
+
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-gray-50">
@@ -650,7 +669,7 @@ const CentralizedResults: React.FC = () => {
                     {paginatedResults.map((result) => {
                       const student = getStudentById(result.studentId);
                       const subject = getSubjectById(result.subjectId);
-                      
+
                       return (
                         <tr key={result.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -728,22 +747,24 @@ const CentralizedResults: React.FC = () => {
                   </tbody>
                 </table>
               </div>
-              
+
               {/* Pagination */}
               {totalPages > 1 && (
                 <div className="px-6 py-3 border-t border-gray-200 flex items-center justify-between">
                   <div className="text-sm text-gray-700">
-                    Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredResults.length)} of {filteredResults.length} results
+                    Showing {startIndex + 1} to{' '}
+                    {Math.min(startIndex + itemsPerPage, filteredResults.length)} of{' '}
+                    {filteredResults.length} results
                   </div>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                       disabled={currentPage === 1}
                       className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
                     >
                       Previous
                     </button>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                       <button
                         key={page}
                         onClick={() => setCurrentPage(page)}
@@ -757,7 +778,7 @@ const CentralizedResults: React.FC = () => {
                       </button>
                     ))}
                     <button
-                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
                       disabled={currentPage === totalPages}
                       className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
                     >
@@ -781,10 +802,7 @@ const CentralizedResults: React.FC = () => {
         {/* Modals */}
         {showAddResult && <AddResultModal onClose={() => setShowAddResult(false)} />}
         {showEditResult && selectedResult && (
-          <EditResultModal 
-            result={selectedResult} 
-            onClose={() => setShowEditResult(false)} 
-          />
+          <EditResultModal result={selectedResult} onClose={() => setShowEditResult(false)} />
         )}
         {showBulkUpload && <BulkUploadModal onClose={() => setShowBulkUpload(false)} />}
         <ExportOptionsModal
@@ -853,7 +871,10 @@ const AddResultModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   );
 };
 
-const EditResultModal: React.FC<{ result: Result; onClose: () => void }> = ({ result, onClose }) => {
+const EditResultModal: React.FC<{ result: Result; onClose: () => void }> = ({
+  result,
+  onClose,
+}) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-md">
@@ -862,24 +883,27 @@ const EditResultModal: React.FC<{ result: Result; onClose: () => void }> = ({ re
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Marks Obtained</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 defaultValue={result.marksObtained}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2" 
+                className="w-full border border-gray-300 rounded-lg px-3 py-2"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Total Marks</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 defaultValue={result.totalMarks}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2" 
+                className="w-full border border-gray-300 rounded-lg px-3 py-2"
               />
             </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Grade</label>
-            <select defaultValue={result.grade} className="w-full border border-gray-300 rounded-lg px-3 py-2">
+            <select
+              defaultValue={result.grade}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2"
+            >
               <option value="A+">A+</option>
               <option value="A">A</option>
               <option value="B+">B+</option>

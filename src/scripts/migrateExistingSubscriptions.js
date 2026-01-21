@@ -1,9 +1,9 @@
 /**
  * Migration Script for Existing Subscriptions
- * 
+ *
  * This script migrates existing users with active subscriptions to the new
  * add-on based system while preserving their current access and pricing.
- * 
+ *
  * @requirement Task 8.1 - Create migration script for existing users
  */
 
@@ -21,7 +21,7 @@ const MIGRATION_CONFIG = {
   // Price protection duration in months
   priceProtectionMonths: 12,
   // Notification lead time in days
-  notificationLeadDays: 30
+  notificationLeadDays: 30,
 };
 
 /**
@@ -31,20 +31,20 @@ const MIGRATION_CONFIG = {
 const PLAN_ADDON_MAPPING = {
   basic: {
     addOns: [],
-    description: 'Basic plan - no add-ons included'
+    description: 'Basic plan - no add-ons included',
   },
   professional: {
     addOns: ['career_ai'],
-    description: 'Professional plan includes Career AI'
+    description: 'Professional plan includes Career AI',
   },
   enterprise: {
     addOns: ['career_ai', 'kpi_dashboard', 'educator_ai'],
-    description: 'Enterprise plan includes Career AI, KPI Dashboard and Educator AI'
+    description: 'Enterprise plan includes Career AI, KPI Dashboard and Educator AI',
   },
   ecosystem: {
     addOns: ['career_ai', 'kpi_dashboard', 'educator_ai', 'sso', 'api_webhooks'],
-    description: 'Ecosystem plan includes all features'
-  }
+    description: 'Ecosystem plan includes all features',
+  },
 };
 
 /**
@@ -115,12 +115,12 @@ async function createEntitlementsForUser(subscription, dryRun = true) {
       success: true,
       dryRun: true,
       message: `Would create ${addOns.length} entitlements`,
-      addOns: addOns.map(a => a.feature_key)
+      addOns: addOns.map((a) => a.feature_key),
     };
   }
 
   // Create entitlements
-  const entitlements = addOns.map(addOn => ({
+  const entitlements = addOns.map((addOn) => ({
     user_id: userId,
     feature_key: addOn.feature_key,
     source: 'migration',
@@ -130,7 +130,7 @@ async function createEntitlementsForUser(subscription, dryRun = true) {
     end_date: endDate,
     auto_renew: subscription.auto_renew || false,
     price_at_purchase: 0, // Migrated users get it free until their plan expires
-    original_subscription_id: subscription.id
+    original_subscription_id: subscription.id,
   }));
 
   const { data: created, error: createError } = await supabase
@@ -146,7 +146,7 @@ async function createEntitlementsForUser(subscription, dryRun = true) {
   return {
     success: true,
     message: `Created ${created.length} entitlements`,
-    addOns: created.map(e => e.feature_key)
+    addOns: created.map((e) => e.feature_key),
   };
 }
 
@@ -165,12 +165,10 @@ async function recordMigration(subscription, result, dryRun = true) {
     ).toISOString(),
     migration_status: result.success ? 'completed' : 'failed',
     error_message: result.error || null,
-    migrated_at: new Date().toISOString()
+    migrated_at: new Date().toISOString(),
   };
 
-  const { error } = await supabase
-    .from('subscription_migrations')
-    .insert(migrationRecord);
+  const { error } = await supabase.from('subscription_migrations').insert(migrationRecord);
 
   if (error) {
     console.error('Error recording migration:', error);
@@ -182,7 +180,7 @@ async function recordMigration(subscription, result, dryRun = true) {
  */
 export async function migrateExistingSubscriptions(options = {}) {
   const config = { ...MIGRATION_CONFIG, ...options };
-  
+
   console.log('Starting subscription migration...');
   console.log('Configuration:', config);
 
@@ -192,7 +190,7 @@ export async function migrateExistingSubscriptions(options = {}) {
     migrated: 0,
     skipped: 0,
     failed: 0,
-    errors: []
+    errors: [],
   };
 
   let offset = 0;
@@ -200,7 +198,7 @@ export async function migrateExistingSubscriptions(options = {}) {
 
   while (hasMore) {
     const { subscriptions, totalCount } = await fetchActiveSubscriptions(offset, config.batchSize);
-    
+
     if (results.total === 0) {
       results.total = totalCount;
       console.log(`Found ${totalCount} active subscriptions to process`);
@@ -213,11 +211,11 @@ export async function migrateExistingSubscriptions(options = {}) {
 
     for (const subscription of subscriptions) {
       results.processed++;
-      
+
       try {
         // Check if already migrated
         const hasEntitlements = await hasExistingEntitlements(subscription.user_id);
-        
+
         if (hasEntitlements) {
           console.log(`Skipping user ${subscription.user_id} - already has entitlements`);
           results.skipped++;
@@ -226,10 +224,12 @@ export async function migrateExistingSubscriptions(options = {}) {
 
         // Create entitlements
         const result = await createEntitlementsForUser(subscription, config.dryRun);
-        
+
         if (result.success) {
           results.migrated++;
-          console.log(`${config.dryRun ? '[DRY RUN] ' : ''}Migrated user ${subscription.user_id}: ${result.message}`);
+          console.log(
+            `${config.dryRun ? '[DRY RUN] ' : ''}Migrated user ${subscription.user_id}: ${result.message}`
+          );
         } else {
           results.failed++;
           results.errors.push({ userId: subscription.user_id, error: result.error });
@@ -238,7 +238,6 @@ export async function migrateExistingSubscriptions(options = {}) {
 
         // Record migration
         await recordMigration(subscription, result, config.dryRun);
-
       } catch (error) {
         results.failed++;
         results.errors.push({ userId: subscription.user_id, error: error.message });
@@ -290,15 +289,15 @@ export async function scheduleMigrationNotifications() {
 if (typeof process !== 'undefined' && process.argv[1]?.includes('migrateExistingSubscriptions')) {
   const args = process.argv.slice(2);
   const dryRun = !args.includes('--execute');
-  
+
   console.log(dryRun ? 'Running in DRY RUN mode' : 'Running in EXECUTE mode');
-  
+
   migrateExistingSubscriptions({ dryRun })
-    .then(results => {
+    .then((results) => {
       console.log('Migration completed:', results);
       process.exit(results.failed > 0 ? 1 : 0);
     })
-    .catch(error => {
+    .catch((error) => {
       console.error('Migration failed:', error);
       process.exit(1);
     });
@@ -308,5 +307,5 @@ export default {
   migrateExistingSubscriptions,
   scheduleMigrationNotifications,
   PLAN_ADDON_MAPPING,
-  MIGRATION_CONFIG
+  MIGRATION_CONFIG,
 };

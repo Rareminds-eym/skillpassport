@@ -14,10 +14,10 @@ import {
 import { useAssessmentPromotionalContext } from '../../contexts/AssessmentPromotionalContext';
 
 const Home = () => {
-  const { 
-    showModal: showAssessmentModal, 
+  const {
+    showModal: showAssessmentModal,
     dismissModal: dismissAssessmentModal,
-    getTimeRemaining: getAssessmentTimeRemaining
+    getTimeRemaining: getAssessmentTimeRemaining,
   } = useAssessmentPromotionalContext();
 
   return (

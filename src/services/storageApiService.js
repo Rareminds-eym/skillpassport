@@ -47,7 +47,7 @@ export async function uploadFile(file, { folder = 'uploads', filename, contentTy
       } catch (e) {
         errorDetails = { error: `HTTP ${response.status}: ${response.statusText}` };
       }
-      
+
       // Provide more specific error messages
       if (response.status === 401) {
         throw new Error('Authentication failed. Please refresh the page and log in again.');
@@ -108,7 +108,10 @@ export async function extractContent(fileUrl, token) {
 /**
  * Get presigned URL for large file upload
  */
-export async function getPresignedUrl({ filename, contentType, fileSize, courseId, lessonId }, token) {
+export async function getPresignedUrl(
+  { filename, contentType, fileSize, courseId, lessonId },
+  token
+) {
   const response = await fetch(`${getBaseUrl()}/presigned`, {
     method: 'POST',
     headers: getAuthHeaders(token),

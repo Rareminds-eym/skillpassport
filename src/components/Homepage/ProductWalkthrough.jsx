@@ -27,23 +27,23 @@ const ProductWalkthrough = () => {
   const highlights = [
     {
       icon: <Award className="w-8 h-8" strokeWidth={2.5} />,
-      title: "Digital Skill Cards",
-      description: "Transform skills into verifiable credentials"
+      title: 'Digital Skill Cards',
+      description: 'Transform skills into verifiable credentials',
     },
     {
       icon: <TrendingUp className="w-8 h-8" strokeWidth={2.5} />,
-      title: "Career Pathways",
-      description: "Track progress from learning to employment"
+      title: 'Career Pathways',
+      description: 'Track progress from learning to employment',
     },
     {
       icon: <Users className="w-8 h-8" strokeWidth={2.5} />,
-      title: "Connect with Opportunities",
-      description: "Match with recruiters seeking your skills"
-    }
+      title: 'Connect with Opportunities',
+      description: 'Match with recruiters seeking your skills',
+    },
   ];
 
   return (
-    <section 
+    <section
       ref={sectionRef}
       className="relative py-16 sm:py-24 bg-gradient-to-b from-white via-amber-50/30 to-white overflow-hidden"
     >
@@ -55,7 +55,9 @@ const ProductWalkthrough = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className={`text-center mb-12 sm:mb-16 transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+        <div
+          className={`text-center mb-12 sm:mb-16 transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
+        >
           <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-amber-50 via-yellow-50 to-amber-50 rounded-full border-2 border-amber-200/50 mb-6 shadow-sm">
             <Sparkles className="w-4 h-4 text-amber-600" />
             <span className="text-sm font-bold text-gray-800 uppercase tracking-wide">
@@ -76,10 +78,12 @@ const ProductWalkthrough = () => {
         </div>
 
         {/* Video Container */}
-        <div className={`relative max-w-5xl mx-auto mb-0 transition-all duration-1000 delay-200 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+        <div
+          className={`relative max-w-5xl mx-auto mb-0 transition-all duration-1000 delay-200 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
+        >
           {/* Decorative ring */}
           <div className="absolute -inset-4 bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-400 rounded-3xl blur-2xl opacity-20 -z-10" />
-          
+
           <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-black ring-1 ring-gray-900/5">
             {/* 16:9 Aspect Ratio Container */}
             <div className="relative pt-[56.25%]">

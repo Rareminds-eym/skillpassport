@@ -1,7 +1,7 @@
 /**
  * RIASEC Interest Inventory - 48 items (8 per type)
  * Based on Holland's RIASEC model (Realistic, Investigative, Artistic, Social, Enterprising, Conventional)
- * 
+ *
  * @module features/assessment/data/questions/riasecQuestions
  */
 
@@ -50,7 +50,7 @@ export const riasecQuestions: RIASECQuestion[] = [
   { id: 's3', type: 'S', text: 'Feel good supporting people in difficulty.' },
   { id: 's4', type: 'S', text: 'Prefer work that benefits others.' },
   { id: 's5', type: 'S', text: 'Like group activities and collaboration.' },
-  { id: 's6', type: 'S', text: 'Try to understand people\'s feelings.' },
+  { id: 's6', type: 'S', text: "Try to understand people's feelings." },
   { id: 's7', type: 'S', text: 'Enjoy guiding teams to work better together.' },
   { id: 's8', type: 'S', text: 'Like roles involving care, service, or community.' },
 
@@ -72,7 +72,7 @@ export const riasecQuestions: RIASECQuestion[] = [
   { id: 'c5', type: 'C', text: 'Keep things neat and systematically arranged.' },
   { id: 'c6', type: 'C', text: 'Enjoy routine tasks that need precision.' },
   { id: 'c7', type: 'C', text: 'Follow step-by-step processes comfortably.' },
-  { id: 'c8', type: 'C', text: 'Like jobs that involve planning and scheduling.' }
+  { id: 'c8', type: 'C', text: 'Like jobs that involve planning and scheduling.' },
 ];
 
 export default riasecQuestions;

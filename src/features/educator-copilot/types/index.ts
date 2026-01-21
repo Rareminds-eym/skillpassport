@@ -86,7 +86,7 @@ export interface EducatorContext {
   recent_activities: string[];
 }
 
-export type EducatorIntent = 
+export type EducatorIntent =
   | 'student-insights'
   | 'class-analytics'
   | 'intervention-needed'

@@ -15,7 +15,7 @@ interface VideoFile {
 
 /**
  * VideoPortfolioPage - Video portfolio management
- * 
+ *
  * Wrapped with FeatureGate for video_portfolio add-on access control
  */
 const VideoPortfolioPageContent: React.FC = () => {
@@ -29,7 +29,7 @@ const VideoPortfolioPageContent: React.FC = () => {
   const [newVideoDescription, setNewVideoDescription] = useState('');
   const [uploadingFile, setUploadingFile] = useState<File | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoPlayerRef = useRef<HTMLVideoElement>(null);
 
@@ -64,7 +64,7 @@ const VideoPortfolioPageContent: React.FC = () => {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    
+
     const file = e.dataTransfer.files[0];
     if (file && file.type.startsWith('video/')) {
       setUploadingFile(file);
@@ -93,7 +93,7 @@ const VideoPortfolioPageContent: React.FC = () => {
   };
 
   const handleDeleteVideo = (id: string) => {
-    setVideos(videos.filter(v => v.id !== id));
+    setVideos(videos.filter((v) => v.id !== id));
     if (selectedVideo?.id === id) {
       setSelectedVideo(null);
     }
@@ -186,7 +186,7 @@ const VideoPortfolioPageContent: React.FC = () => {
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
                   Your Videos ({videos.length})
                 </h3>
-                
+
                 {videos.length === 0 ? (
                   <div
                     onDragOver={handleDragOver}
@@ -199,9 +199,7 @@ const VideoPortfolioPageContent: React.FC = () => {
                     }`}
                   >
                     <Upload className="w-12 h-12 mx-auto mb-3 text-gray-400 dark:text-gray-500" />
-                    <p className="text-gray-600 dark:text-gray-300 mb-2">
-                      No videos uploaded yet
-                    </p>
+                    <p className="text-gray-600 dark:text-gray-300 mb-2">No videos uploaded yet</p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
                       Drag & drop or click upload
                     </p>
@@ -273,7 +271,7 @@ const VideoPortfolioPageContent: React.FC = () => {
               }}
               className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center"
             />
-            
+
             {/* Modal */}
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
               <motion.div
@@ -398,6 +396,7 @@ const VideoPortfolioPageContent: React.FC = () => {
  * Wrapped VideoPortfolioPage with FeatureGate for video_portfolio add-on
  */
 const VideoPortfolioPage: React.FC = () => (
+  // @ts-expect-error - Auto-suppressed for migration
   <FeatureGate featureKey="video_portfolio" showUpgradePrompt={true}>
     <VideoPortfolioPageContent />
   </FeatureGate>

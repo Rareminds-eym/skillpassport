@@ -16,13 +16,13 @@ import {
   deleteTechnicalSkill,
   addSoftSkill,
   updateSoftSkill,
-  deleteSoftSkill
+  deleteSoftSkill,
 } from '../services/studentServiceAdapted';
 
 /**
  * Custom hook to manage student data from Supabase (ADAPTED for existing schema)
  * Works with existing students table that uses JSONB profile column
- * 
+ *
  * @param {string} userId - The userId (UUID) of the student from auth.users
  * @param {boolean} useMockData - Whether to use mock data as fallback (default: false)
  */
@@ -70,8 +70,8 @@ export const useStudentDataAdapted = (userId, useMockData = false) => {
             id: idx + 1,
             message: msg,
             priority: mockData.suggestions.length - idx,
-            isActive: true
-          }))
+            isActive: true,
+          })),
         });
       }
     } finally {
@@ -81,7 +81,7 @@ export const useStudentDataAdapted = (userId, useMockData = false) => {
 
   // Trigger refresh
   const refresh = useCallback(() => {
-    setRefreshKey(prev => prev + 1);
+    setRefreshKey((prev) => prev + 1);
   }, []);
 
   // Load data on mount and when userId or refreshKey changes
@@ -292,36 +292,36 @@ export const useStudentDataAdapted = (userId, useMockData = false) => {
     studentData,
     loading,
     error,
-    
+
     // Refresh function
     refresh,
-    
+
     // Profile operations
     updateProfile,
-    
+
     // Education operations
     addEducation: addEducationRecord,
     updateEducation: updateEducationRecord,
     deleteEducation: deleteEducationRecord,
-    
+
     // Training operations
     addTraining: addTrainingRecord,
     updateTraining: updateTrainingRecord,
     deleteTraining: deleteTrainingRecord,
-    
+
     // Experience operations
     addExperience: addExperienceRecord,
     updateExperience: updateExperienceRecord,
     deleteExperience: deleteExperienceRecord,
-    
+
     // Technical skills operations
     addTechnicalSkill: addTechnicalSkillRecord,
     updateTechnicalSkill: updateTechnicalSkillRecord,
     deleteTechnicalSkill: deleteTechnicalSkillRecord,
-    
+
     // Soft skills operations
     addSoftSkill: addSoftSkillRecord,
     updateSoftSkill: updateSoftSkillRecord,
-    deleteSoftSkill: deleteSoftSkillRecord
+    deleteSoftSkill: deleteSoftSkillRecord,
   };
 };

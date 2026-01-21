@@ -1,14 +1,13 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/Students/components/ui/card';
 import { Button } from '@/components/Students/components/ui/button';
 import { Badge } from '@/components/Students/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/Students/components/ui/tabs';
-import { 
-  Clock, 
-  XCircle, 
-  User, 
-  BookOpen, 
+import {
+  Clock,
+  XCircle,
+  User,
+  BookOpen,
   Briefcase,
   GraduationCap,
   Building2,
@@ -24,7 +23,7 @@ import {
   Grid3X3,
   List,
   Mail,
-  Award
+  Award,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabaseClient';
@@ -46,16 +45,16 @@ const CollegeVerifications = () => {
   const [showTrainingModal, setShowTrainingModal] = useState(false);
   const [showExperienceModal, setShowExperienceModal] = useState(false);
   const [showProjectModal, setShowProjectModal] = useState(false);
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
-  
+
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
-  
+
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -63,10 +62,10 @@ const CollegeVerifications = () => {
   const fetchPendingTrainings = async () => {
     try {
       console.log('🎓 Fetching pending trainings using CollegeAdminNotificationService...');
-      
+
       // Get college_id from user or college_lecturers table
       let collegeId = user?.college_id;
-      
+
       if (!collegeId) {
         // Fallback: get college_id from college_lecturers table
         console.log('🔍 Looking up college_id for user:', user?.id);
@@ -75,32 +74,32 @@ const CollegeVerifications = () => {
           .select('collegeId')
           .eq('user_id', user?.id)
           .single();
-          
+
         if (educatorError) {
           console.error('❌ Error fetching educator data:', educatorError);
           throw new Error('Could not determine college admin college');
         }
-        
+
         collegeId = educatorData?.collegeId;
       }
-      
+
       if (!collegeId) {
         throw new Error('College ID not found for current user');
       }
-      
+
       console.log('🏫 Using college_id:', collegeId);
-      
+
       // Use the notification service which now uses approval_authority
       const trainings = await CollegeAdminNotificationService.getPendingTrainings(collegeId);
-      
+
       console.log('✅ Trainings fetched via notification service:', trainings.length);
       setPendingTrainings(trainings);
     } catch (error) {
       console.error('❌ Error in fetchPendingTrainings:', error);
       toast({
-        title: "Error",
-        description: "Failed to fetch pending trainings",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to fetch pending trainings',
+        variant: 'destructive',
       });
     }
   };
@@ -109,10 +108,10 @@ const CollegeVerifications = () => {
   const fetchPendingExperiences = async () => {
     try {
       console.log('🎓 Fetching pending experiences using CollegeAdminNotificationService...');
-      
+
       // Get college_id from user or college_lecturers table
       let collegeId = user?.college_id;
-      
+
       if (!collegeId) {
         // Fallback: get college_id from college_lecturers table
         console.log('🔍 Looking up college_id for user:', user?.id);
@@ -121,32 +120,32 @@ const CollegeVerifications = () => {
           .select('collegeId')
           .eq('user_id', user?.id)
           .single();
-          
+
         if (educatorError) {
           console.error('❌ Error fetching educator data:', educatorError);
           throw new Error('Could not determine college admin college');
         }
-        
+
         collegeId = educatorData?.collegeId;
       }
-      
+
       if (!collegeId) {
         throw new Error('College ID not found for current user');
       }
-      
+
       console.log('🏫 Using college_id:', collegeId);
-      
+
       // Use the notification service which now uses approval_authority
       const experiences = await CollegeAdminNotificationService.getPendingExperiences(collegeId);
-      
+
       console.log('✅ Experiences fetched via notification service:', experiences.length);
       setPendingExperiences(experiences);
     } catch (error) {
       console.error('❌ Error in fetchPendingExperiences:', error);
       toast({
-        title: "Error",
-        description: "Failed to fetch pending experiences",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to fetch pending experiences',
+        variant: 'destructive',
       });
     }
   };
@@ -155,10 +154,10 @@ const CollegeVerifications = () => {
   const fetchPendingProjects = async () => {
     try {
       console.log('🏗️ Fetching pending projects using CollegeAdminNotificationService...');
-      
+
       // Get college_id from user or college_lecturers table
       let collegeId = user?.college_id;
-      
+
       if (!collegeId) {
         // Fallback: get college_id from college_lecturers table
         console.log('🔍 Looking up college_id for user:', user?.id);
@@ -167,32 +166,32 @@ const CollegeVerifications = () => {
           .select('collegeId')
           .eq('user_id', user?.id)
           .single();
-          
+
         if (educatorError) {
           console.error('❌ Error fetching educator data:', educatorError);
           throw new Error('Could not determine college admin college');
         }
-        
+
         collegeId = educatorData?.collegeId;
       }
-      
+
       if (!collegeId) {
         throw new Error('College ID not found for current user');
       }
-      
+
       console.log('🏫 Using college_id:', collegeId);
-      
+
       // Use the notification service which now uses approval_authority
       const projects = await CollegeAdminNotificationService.getPendingProjects(collegeId);
-      
+
       console.log('✅ Projects fetched via notification service:', projects.length);
       setPendingProjects(projects);
     } catch (error) {
       console.error('❌ Error in fetchPendingProjects:', error);
       toast({
-        title: "Error",
-        description: error.message || "Failed to load pending projects",
-        variant: "destructive",
+        title: 'Error',
+        description: error.message || 'Failed to load pending projects',
+        variant: 'destructive',
       });
     }
   };
@@ -204,7 +203,7 @@ const CollegeVerifications = () => {
       await Promise.all([
         fetchPendingTrainings(),
         fetchPendingExperiences(),
-        fetchPendingProjects()
+        fetchPendingProjects(),
       ]);
       setLoading(false);
     };
@@ -223,7 +222,7 @@ const CollegeVerifications = () => {
       // Refresh data after approval/rejection
       await fetchPendingTrainings();
       toast({
-        title: "Success",
+        title: 'Success',
         description: `Training ${action} successfully!`,
       });
     }
@@ -238,7 +237,7 @@ const CollegeVerifications = () => {
       // Refresh data after approval/rejection
       await fetchPendingExperiences();
       toast({
-        title: "Success",
+        title: 'Success',
         description: `Experience ${action} successfully!`,
       });
     }
@@ -253,7 +252,7 @@ const CollegeVerifications = () => {
       // Refresh data after approval/rejection
       await fetchPendingProjects();
       toast({
-        title: "Success",
+        title: 'Success',
         description: `Project ${action} successfully!`,
       });
     }
@@ -262,15 +261,11 @@ const CollegeVerifications = () => {
   // Refresh all data
   const refreshData = async () => {
     setLoading(true);
-    await Promise.all([
-      fetchPendingTrainings(),
-      fetchPendingExperiences(),
-      fetchPendingProjects()
-    ]);
+    await Promise.all([fetchPendingTrainings(), fetchPendingExperiences(), fetchPendingProjects()]);
     setLoading(false);
     toast({
-      title: "Refreshed",
-      description: "Data has been refreshed successfully",
+      title: 'Refreshed',
+      description: 'Data has been refreshed successfully',
     });
   };
 
@@ -298,37 +293,40 @@ const CollegeVerifications = () => {
 
   // Filter functions
   const getFilteredTrainings = () => {
-    return pendingTrainings.filter(training => {
-      const matchesSearch = (training.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           (training.student?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           (training.organization || '').toLowerCase().includes(searchQuery.toLowerCase());
-      
+    return pendingTrainings.filter((training) => {
+      const matchesSearch =
+        (training.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (training.student?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (training.organization || '').toLowerCase().includes(searchQuery.toLowerCase());
+
       const matchesStatus = statusFilter === 'all' || training.approval_status === statusFilter;
-      
+
       return matchesSearch && matchesStatus;
     });
   };
 
   const getFilteredExperiences = () => {
-    return pendingExperiences.filter(experience => {
-      const matchesSearch = (experience.role || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           (experience.student?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           (experience.organization || '').toLowerCase().includes(searchQuery.toLowerCase());
-      
+    return pendingExperiences.filter((experience) => {
+      const matchesSearch =
+        (experience.role || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (experience.student?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (experience.organization || '').toLowerCase().includes(searchQuery.toLowerCase());
+
       const matchesStatus = statusFilter === 'all' || experience.approval_status === statusFilter;
-      
+
       return matchesSearch && matchesStatus;
     });
   };
 
   const getFilteredProjects = () => {
-    return pendingProjects.filter(project => {
-      const matchesSearch = (project.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           (project.student_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           (project.organization || '').toLowerCase().includes(searchQuery.toLowerCase());
-      
+    return pendingProjects.filter((project) => {
+      const matchesSearch =
+        (project.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (project.student_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (project.organization || '').toLowerCase().includes(searchQuery.toLowerCase());
+
       const matchesStatus = statusFilter === 'all' || project.approval_status === statusFilter;
-      
+
       return matchesSearch && matchesStatus;
     });
   };
@@ -337,7 +335,7 @@ const CollegeVerifications = () => {
   const filteredTrainings = getFilteredTrainings();
   const filteredExperiences = getFilteredExperiences();
   const filteredProjects = getFilteredProjects();
-  
+
   const currentTrainings = getCurrentPageData(filteredTrainings);
   const currentExperiences = getCurrentPageData(filteredExperiences);
   const currentProjects = getCurrentPageData(filteredProjects);
@@ -365,7 +363,7 @@ const CollegeVerifications = () => {
         <div className="text-sm text-gray-600">
           Page {currentPage} of {totalPages}
         </div>
-        
+
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
@@ -377,13 +375,13 @@ const CollegeVerifications = () => {
             <ChevronLeft className="w-4 h-4" />
             Previous
           </Button>
-          
+
           {/* Page numbers */}
           <div className="flex items-center gap-1">
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
               <Button
                 key={page}
-                variant={page === currentPage ? "default" : "outline"}
+                variant={page === currentPage ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => onPageChange(page)}
                 className="w-8 h-8 p-0"
@@ -392,7 +390,7 @@ const CollegeVerifications = () => {
               </Button>
             ))}
           </div>
-          
+
           <Button
             variant="outline"
             size="sm"
@@ -423,7 +421,7 @@ const CollegeVerifications = () => {
             Submitted: {new Date(training.created_at).toLocaleDateString()}
           </div>
         </div>
-       
+
         <div className="space-y-2 mb-3">
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Mail className="w-4 h-4" />
@@ -431,48 +429,44 @@ const CollegeVerifications = () => {
           </div>
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Award className="w-4 h-4" />
-            <span>
-              {training.title}
-            </span>
+            <span>{training.title}</span>
           </div>
           {training.organization && (
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Building2 className="w-4 h-4" />
               <span>{training.organization}</span>
               {training.organization.toLowerCase() === 'rareminds' && (
-                <Badge className="bg-purple-100 text-purple-700 text-xs">
-                   Rareminds Training
-                </Badge>
+                <Badge className="bg-purple-100 text-purple-700 text-xs">Rareminds Training</Badge>
               )}
             </div>
           )}
-          
+
           {training.duration && (
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Calendar className="w-4 h-4" />
               <span>{training.duration}</span>
             </div>
           )}
-          
+
           {/* {training.hours_spent > 0 && (
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Timer className="w-4 h-4" />
               <span>{training.hours_spent} hours</span>
             </div>
           )} */}
-          
+
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <GraduationCap className="w-4 h-4" />
             <span>College: {training.student?.college_school_name || 'Unknown'}</span>
           </div>
         </div>
-        
+
         {/* {training.description && (
           <p className="text-sm text-gray-600 mb-4 line-clamp-2">
             {training.description}
           </p>
         )} */}
-        
+
         {training.skills && training.skills.length > 0 && (
           <div className="mb-4">
             <div className="flex flex-wrap gap-1">
@@ -489,16 +483,14 @@ const CollegeVerifications = () => {
             </div>
           </div>
         )}
-        
+
         <div className="flex justify-between items-center gap-2">
           <div className="flex gap-2 flex-wrap">
             <Badge className="bg-yellow-100 text-yellow-800 text-xs">
               <Clock className="w-3 h-3 mr-1" />
               Pending
             </Badge>
-            <Badge className="bg-blue-100 text-blue-700 text-xs">
-              College Admin
-            </Badge>
+            <Badge className="bg-blue-100 text-blue-700 text-xs">College Admin</Badge>
           </div>
           <Button
             onClick={() => handleTrainingAction('view', training)}
@@ -541,37 +533,33 @@ const CollegeVerifications = () => {
           </div> */}
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Briefcase className="w-4 h-4" />
-            <span>
-              {experience.role}
-            </span>
+            <span>{experience.role}</span>
           </div>
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Building2 className="w-4 h-4" />
             <span>{experience.organization}</span>
           </div>
-          
+
           {experience.duration && (
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Calendar className="w-4 h-4" />
               <span>{experience.duration}</span>
             </div>
           )}
-          
+
           {/* <div className="flex items-center gap-2 text-sm text-gray-600">
             <GraduationCap className="w-4 h-4" />
             <span>College: {experience.student?.college_school_name || 'Unknown'}</span>
           </div> */}
         </div>
-        
+
         <div className="flex justify-between items-center gap-2">
           <div className="flex gap-2 flex-wrap">
             <Badge className="bg-yellow-100 text-yellow-800 text-xs">
               <Clock className="w-3 h-3 mr-1" />
               Pending Review
             </Badge>
-            <Badge className="bg-blue-100 text-blue-700 text-xs">
-              College Admin
-            </Badge>
+            <Badge className="bg-blue-100 text-blue-700 text-xs">College Admin</Badge>
           </div>
           <Button
             onClick={() => handleExperienceAction('view', experience)}
@@ -592,9 +580,7 @@ const CollegeVerifications = () => {
       <CardContent className="p-6">
         <div className="flex justify-between items-start mb-2">
           <div className="flex-1">
-            <h3 className="font-semibold text-lg text-gray-900 mb-2">
-              {project.title}
-            </h3>
+            <h3 className="font-semibold text-lg text-gray-900 mb-2">{project.title}</h3>
           </div>
           <div className="text-xs text-gray-500 ml-4">
             Submitted: {new Date(project.created_at).toLocaleDateString()}
@@ -608,26 +594,26 @@ const CollegeVerifications = () => {
               {project.student_name || 'Unknown Student'}
             </span>
           </div>
-          
+
           {project.organization && (
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Building2 className="w-4 h-4" />
               <span>{project.organization}</span>
             </div>
           )}
-          
+
           {project.status && (
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Clock className="w-4 h-4" />
               <span>Status: {project.status}</span>
             </div>
           )}
-          
+
           {(project.start_date || project.end_date) && (
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Calendar className="w-4 h-4" />
               <span>
-                {project.start_date ? new Date(project.start_date).toLocaleDateString() : 'N/A'} - 
+                {project.start_date ? new Date(project.start_date).toLocaleDateString() : 'N/A'} -
                 {project.end_date ? new Date(project.end_date).toLocaleDateString() : 'Ongoing'}
               </span>
             </div>
@@ -652,20 +638,16 @@ const CollegeVerifications = () => {
         </div>
 
         {project.description && (
-          <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-            {project.description}
-          </p>
+          <p className="text-sm text-gray-600 mb-4 line-clamp-2">{project.description}</p>
         )}
-        
+
         <div className="flex justify-between items-center gap-2">
           <div className="flex gap-2 flex-wrap">
             <Badge className="bg-yellow-100 text-yellow-800 text-xs">
               <Clock className="w-3 h-3 mr-1" />
               Pending Review
             </Badge>
-            <Badge className="bg-blue-100 text-blue-700 text-xs">
-              College Admin
-            </Badge>
+            <Badge className="bg-blue-100 text-blue-700 text-xs">College Admin</Badge>
           </div>
           <Button
             onClick={() => handleProjectAction('view', project)}
@@ -720,7 +702,7 @@ const CollegeVerifications = () => {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-green-50">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -732,7 +714,7 @@ const CollegeVerifications = () => {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-orange-50">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -746,7 +728,7 @@ const CollegeVerifications = () => {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-purple-50">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -763,22 +745,22 @@ const CollegeVerifications = () => {
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
           <TabsList className="grid w-full grid-cols-3 bg-gray-100 p-1 rounded-lg">
-            <TabsTrigger 
-              value="trainings" 
+            <TabsTrigger
+              value="trainings"
               className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-gray-200 transition-all duration-200 rounded-md"
             >
               <BookOpen className="w-4 h-4" />
               Training Approvals ({pendingTrainings.length})
             </TabsTrigger>
-            <TabsTrigger 
-              value="experiences" 
+            <TabsTrigger
+              value="experiences"
               className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-gray-200 transition-all duration-200 rounded-md"
             >
               <Briefcase className="w-4 h-4" />
               Experience Approvals ({pendingExperiences.length})
             </TabsTrigger>
-            <TabsTrigger 
-              value="projects" 
+            <TabsTrigger
+              value="projects"
               className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-gray-200 transition-all duration-200 rounded-md"
             >
               <Building2 className="w-4 h-4" />
@@ -803,7 +785,7 @@ const CollegeVerifications = () => {
                     />
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-4">
                   {/* View Toggle Buttons */}
                   <div className="flex items-center border border-gray-300 rounded-lg p-1">
@@ -824,7 +806,7 @@ const CollegeVerifications = () => {
                       <List className="h-4 w-4" />
                     </Button>
                   </div>
-                  
+
                   <div className="flex items-center gap-2">
                     <select
                       value={statusFilter}
@@ -846,22 +828,26 @@ const CollegeVerifications = () => {
                 <CardContent className="p-12 text-center">
                   <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-gray-600 mb-2">
-                    {searchQuery || statusFilter !== 'all' ? 'No trainings found' : 'No Pending Training Approvals'}
+                    {searchQuery || statusFilter !== 'all'
+                      ? 'No trainings found'
+                      : 'No Pending Training Approvals'}
                   </h3>
                   <p className="text-gray-500">
-                    {searchQuery || statusFilter !== 'all' 
+                    {searchQuery || statusFilter !== 'all'
                       ? 'Try adjusting your search or filter criteria'
-                      : 'All training submissions have been reviewed. New submissions will appear here.'
-                    }
+                      : 'All training submissions have been reviewed. New submissions will appear here.'}
                   </p>
                 </CardContent>
               </Card>
             ) : (
               <>
-                <div className={viewMode === 'grid' 
-                  ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
-                  : "space-y-4"
-                }>
+                <div
+                  className={
+                    viewMode === 'grid'
+                      ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
+                      : 'space-y-4'
+                  }
+                >
                   {currentTrainings.map((training) => (
                     <TrainingCard key={training.id} training={training} />
                   ))}
@@ -892,7 +878,7 @@ const CollegeVerifications = () => {
                     />
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-4">
                   {/* View Toggle Buttons */}
                   <div className="flex items-center border border-gray-300 rounded-lg p-1">
@@ -913,7 +899,7 @@ const CollegeVerifications = () => {
                       <List className="h-4 w-4" />
                     </Button>
                   </div>
-                  
+
                   <div className="flex items-center gap-2">
                     <Filter className="h-4 w-4 text-gray-500" />
                     <select
@@ -936,22 +922,26 @@ const CollegeVerifications = () => {
                 <CardContent className="p-12 text-center">
                   <Briefcase className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-gray-600 mb-2">
-                    {searchQuery || statusFilter !== 'all' ? 'No experiences found' : 'No Pending Experience Approvals'}
+                    {searchQuery || statusFilter !== 'all'
+                      ? 'No experiences found'
+                      : 'No Pending Experience Approvals'}
                   </h3>
                   <p className="text-gray-500">
-                    {searchQuery || statusFilter !== 'all' 
+                    {searchQuery || statusFilter !== 'all'
                       ? 'Try adjusting your search or filter criteria'
-                      : 'All experience submissions have been reviewed. New submissions will appear here.'
-                    }
+                      : 'All experience submissions have been reviewed. New submissions will appear here.'}
                   </p>
                 </CardContent>
               </Card>
             ) : (
               <>
-                <div className={viewMode === 'grid' 
-                  ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
-                  : "space-y-4"
-                }>
+                <div
+                  className={
+                    viewMode === 'grid'
+                      ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
+                      : 'space-y-4'
+                  }
+                >
                   {currentExperiences.map((experience) => (
                     <ExperienceCard key={experience.id} experience={experience} />
                   ))}
@@ -982,7 +972,7 @@ const CollegeVerifications = () => {
                     />
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-4">
                   {/* View Toggle Buttons */}
                   <div className="flex items-center border border-gray-300 rounded-lg p-1">
@@ -1003,7 +993,7 @@ const CollegeVerifications = () => {
                       <List className="h-4 w-4" />
                     </Button>
                   </div>
-                  
+
                   <div className="flex items-center gap-2">
                     <Filter className="h-4 w-4 text-gray-500" />
                     <select
@@ -1026,22 +1016,26 @@ const CollegeVerifications = () => {
                 <CardContent className="p-12 text-center">
                   <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-gray-600 mb-2">
-                    {searchQuery || statusFilter !== 'all' ? 'No projects found' : 'No Pending Project Approvals'}
+                    {searchQuery || statusFilter !== 'all'
+                      ? 'No projects found'
+                      : 'No Pending Project Approvals'}
                   </h3>
                   <p className="text-gray-500">
-                    {searchQuery || statusFilter !== 'all' 
+                    {searchQuery || statusFilter !== 'all'
                       ? 'Try adjusting your search or filter criteria'
-                      : 'All project submissions have been reviewed. New submissions will appear here.'
-                    }
+                      : 'All project submissions have been reviewed. New submissions will appear here.'}
                   </p>
                 </CardContent>
               </Card>
             ) : (
               <>
-                <div className={viewMode === 'grid' 
-                  ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
-                  : "space-y-4"
-                }>
+                <div
+                  className={
+                    viewMode === 'grid'
+                      ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
+                      : 'space-y-4'
+                  }
+                >
                   {currentProjects.map((project) => (
                     <ProjectCard key={project.project_id} project={project} />
                   ))}

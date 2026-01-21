@@ -1,6 +1,6 @@
 /**
  * AI Thinking Indicators - Usage Examples
- * 
+ *
  * This file demonstrates how to use the various AI thinking/loading components
  * in your chat interfaces.
  */
@@ -10,7 +10,7 @@ import {
   AIThinkingBubble,
   AIStatusPill,
   AISkeletonMessage,
-  AITypingIndicator
+  AITypingIndicator,
 } from './AIThinkingIndicators';
 
 // ============================================================
@@ -35,9 +35,9 @@ export const Example2_ThinkingWithStatus = () => {
       'Analyzing your request...',
       'Searching talent database...',
       'Processing insights...',
-      'Generating response...'
+      'Generating response...',
     ];
-    
+
     let currentIndex = 0;
     const interval = setInterval(() => {
       currentIndex = (currentIndex + 1) % statusSequence.length;
@@ -108,8 +108,8 @@ export const Example6_FullChatImplementation = () => {
 
   const handleSendMessage = async (text: string) => {
     // Add user message
-    setMessages(prev => [...prev, { role: 'user', content: text }]);
-    
+    setMessages((prev) => [...prev, { role: 'user', content: text }]);
+
     // Show loading with status
     setLoading(true);
     setAiStatus('Analyzing your request...');
@@ -117,13 +117,16 @@ export const Example6_FullChatImplementation = () => {
     // Simulate AI processing with status updates
     setTimeout(() => setAiStatus('Searching database...'), 800);
     setTimeout(() => setAiStatus('Processing insights...'), 1600);
-    
+
     // Simulate response after 3 seconds
     setTimeout(() => {
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
-        content: 'Here is my response to your query.' 
-      }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: 'Here is my response to your query.',
+        },
+      ]);
       setLoading(false);
       setAiStatus('');
     }, 3000);
@@ -132,17 +135,17 @@ export const Example6_FullChatImplementation = () => {
   return (
     <div className="flex flex-col gap-4 p-6">
       {messages.map((msg, i) => (
-        <div 
-          key={i}
-          className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-        >
-          <div className={`
+        <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+          <div
+            className={`
             max-w-md px-6 py-4 rounded-2xl
-            ${msg.role === 'user' 
-              ? 'bg-blue-600 text-white rounded-br-sm' 
-              : 'bg-white text-gray-900 rounded-bl-sm shadow-md'
+            ${
+              msg.role === 'user'
+                ? 'bg-blue-600 text-white rounded-br-sm'
+                : 'bg-white text-gray-900 rounded-bl-sm shadow-md'
             }
-          `}>
+          `}
+          >
             {msg.content}
           </div>
         </div>
@@ -170,27 +173,24 @@ export const Example6_FullChatImplementation = () => {
 // ============================================================
 export const Example7_MultiStageProgress = () => {
   const [stage, setStage] = useState(0);
-  
+
   const stages = [
     { status: 'Understanding your query...', variant: 'default' as const },
     { status: 'Searching knowledge base...', variant: 'searching' as const },
     { status: 'Analyzing results...', variant: 'processing' as const },
-    { status: 'Generating insights...', variant: 'running' as const }
+    { status: 'Generating insights...', variant: 'running' as const },
   ];
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setStage(prev => (prev + 1) % stages.length);
+      setStage((prev) => (prev + 1) % stages.length);
     }, 2000);
     return () => clearInterval(interval);
   }, []);
 
   return (
     <div className="flex flex-col gap-3">
-      <AIStatusPill 
-        status={stages[stage].status} 
-        variant={stages[stage].variant} 
-      />
+      <AIStatusPill status={stages[stage].status} variant={stages[stage].variant} />
       <AIThinkingBubble />
     </div>
   );
@@ -201,18 +201,18 @@ export const Example7_MultiStageProgress = () => {
 // ============================================================
 export const Example8_ConditionalIndicators = () => {
   const [taskType, setTaskType] = useState<'search' | 'code' | 'analyze'>('search');
-  
+
   const statusMap = {
     search: { text: 'Searching talent database...', variant: 'searching' as const },
     code: { text: 'Running code analysis...', variant: 'running' as const },
-    analyze: { text: 'Analyzing data patterns...', variant: 'processing' as const }
+    analyze: { text: 'Analyzing data patterns...', variant: 'processing' as const },
   };
 
   return (
     <div className="space-y-4">
       {/* Task selector */}
       <div className="flex gap-2">
-        {(['search', 'code', 'analyze'] as const).map(type => (
+        {(['search', 'code', 'analyze'] as const).map((type) => (
           <button
             key={type}
             onClick={() => setTaskType(type)}
@@ -226,9 +226,7 @@ export const Example8_ConditionalIndicators = () => {
       </div>
 
       {/* Dynamic indicator */}
-      <AIThinkingBubble 
-        status={statusMap[taskType].text}
-      />
+      <AIThinkingBubble status={statusMap[taskType].text} />
     </div>
   );
 };
@@ -270,4 +268,3 @@ const handleSend = async (query: string) => {
 )}
 
 */
-

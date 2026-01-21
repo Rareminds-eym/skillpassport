@@ -5,7 +5,8 @@ export const mockProjects: Project[] = [
     id: 'proj-001',
     recruiter_id: 'rec-001',
     title: 'E-commerce Website Development',
-    description: 'Build a modern e-commerce platform with React, Node.js, and MongoDB. The platform should support product catalog, shopping cart, payment integration, and admin dashboard.',
+    description:
+      'Build a modern e-commerce platform with React, Node.js, and MongoDB. The platform should support product catalog, shopping cart, payment integration, and admin dashboard.',
     category: 'web_development',
     budget_min: 50000,
     budget_max: 80000,
@@ -19,13 +20,13 @@ export const mockProjects: Project[] = [
       'Admin dashboard',
       'Payment integration',
       'Mobile responsive design',
-      'Deployment and documentation'
+      'Deployment and documentation',
     ],
     milestones: [
       { name: 'UI/UX Design & Prototype', amount: 15000, deadline: '2025-12-01' },
       { name: 'Frontend Development', amount: 25000, deadline: '2025-12-15' },
       { name: 'Backend & API Integration', amount: 25000, deadline: '2025-12-29' },
-      { name: 'Testing & Deployment', amount: 15000, deadline: '2026-01-05' }
+      { name: 'Testing & Deployment', amount: 15000, deadline: '2026-01-05' },
     ],
     status: 'open',
     priority: 'high',
@@ -37,13 +38,14 @@ export const mockProjects: Project[] = [
     project_start_date: '2025-11-20',
     project_end_date: '2026-01-15',
     created_at: '2025-11-10T10:00:00Z',
-    updated_at: '2025-11-15T14:30:00Z'
+    updated_at: '2025-11-15T14:30:00Z',
   },
   {
     id: 'proj-002',
     recruiter_id: 'rec-001',
     title: 'Mobile App for Food Delivery',
-    description: 'Develop a cross-platform mobile application for food delivery using React Native. Features include real-time tracking, payment gateway, and restaurant management.',
+    description:
+      'Develop a cross-platform mobile application for food delivery using React Native. Features include real-time tracking, payment gateway, and restaurant management.',
     category: 'mobile_app',
     budget_min: 70000,
     budget_max: 100000,
@@ -57,13 +59,13 @@ export const mockProjects: Project[] = [
       'Real-time order tracking',
       'Payment integration',
       'Push notifications',
-      'Restaurant admin panel'
+      'Restaurant admin panel',
     ],
     milestones: [
       { name: 'App Architecture & Design', amount: 20000, deadline: '2025-12-05' },
       { name: 'Core Features Development', amount: 35000, deadline: '2025-12-20' },
       { name: 'Integration & Testing', amount: 25000, deadline: '2026-01-05' },
-      { name: 'Launch & Support', amount: 20000, deadline: '2026-01-15' }
+      { name: 'Launch & Support', amount: 20000, deadline: '2026-01-15' },
     ],
     status: 'in_progress',
     priority: 'urgent',
@@ -76,13 +78,14 @@ export const mockProjects: Project[] = [
     project_start_date: '2025-11-08',
     project_end_date: '2026-01-20',
     created_at: '2025-10-20T09:00:00Z',
-    updated_at: '2025-11-16T16:45:00Z'
+    updated_at: '2025-11-16T16:45:00Z',
   },
   {
     id: 'proj-003',
     recruiter_id: 'rec-001',
     title: 'Data Analysis Dashboard',
-    description: 'Create an interactive data visualization dashboard using Python, pandas, and Plotly. Should include data processing pipelines and automated reporting.',
+    description:
+      'Create an interactive data visualization dashboard using Python, pandas, and Plotly. Should include data processing pipelines and automated reporting.',
     category: 'data_science',
     budget_min: 35000,
     budget_max: 55000,
@@ -95,12 +98,12 @@ export const mockProjects: Project[] = [
       'Interactive dashboard',
       'Data processing scripts',
       'Automated reports',
-      'Documentation'
+      'Documentation',
     ],
     milestones: [
       { name: 'Data Pipeline Setup', amount: 15000, deadline: '2025-11-28' },
       { name: 'Dashboard Development', amount: 25000, deadline: '2025-12-12' },
-      { name: 'Testing & Optimization', amount: 15000, deadline: '2025-12-20' }
+      { name: 'Testing & Optimization', amount: 15000, deadline: '2025-12-20' },
     ],
     status: 'open',
     priority: 'medium',
@@ -112,13 +115,14 @@ export const mockProjects: Project[] = [
     project_start_date: '2025-11-25',
     project_end_date: '2025-12-25',
     created_at: '2025-11-12T11:30:00Z',
-    updated_at: '2025-11-14T09:20:00Z'
+    updated_at: '2025-11-14T09:20:00Z',
   },
   {
     id: 'proj-004',
     recruiter_id: 'rec-001',
     title: 'Brand Identity & UI/UX Design',
-    description: 'Complete brand identity redesign including logo, color palette, typography, and UI/UX design for web and mobile applications.',
+    description:
+      'Complete brand identity redesign including logo, color palette, typography, and UI/UX design for web and mobile applications.',
     category: 'ui_ux_design',
     budget_min: 25000,
     budget_max: 40000,
@@ -132,12 +136,12 @@ export const mockProjects: Project[] = [
       'Logo designs',
       'UI/UX mockups',
       'Design system',
-      'Prototype'
+      'Prototype',
     ],
     milestones: [
       { name: 'Brand Research & Concepts', amount: 10000, deadline: '2025-11-28' },
       { name: 'UI/UX Design', amount: 20000, deadline: '2025-12-10' },
-      { name: 'Final Deliverables', amount: 10000, deadline: '2025-12-15' }
+      { name: 'Final Deliverables', amount: 10000, deadline: '2025-12-15' },
     ],
     status: 'completed',
     priority: 'medium',
@@ -151,13 +155,14 @@ export const mockProjects: Project[] = [
     project_end_date: '2025-12-01',
     completed_at: '2025-11-28T18:00:00Z',
     created_at: '2025-10-15T14:00:00Z',
-    updated_at: '2025-11-28T18:00:00Z'
+    updated_at: '2025-11-28T18:00:00Z',
   },
   {
     id: 'proj-005',
     recruiter_id: 'rec-001',
     title: 'Content Writing for Tech Blog',
-    description: 'Write 20 high-quality technical blog posts covering AI, machine learning, and software development topics. Each article should be SEO-optimized and 1500+ words.',
+    description:
+      'Write 20 high-quality technical blog posts covering AI, machine learning, and software development topics. Each article should be SEO-optimized and 1500+ words.',
     category: 'content_writing',
     budget_min: 15000,
     budget_max: 25000,
@@ -170,12 +175,12 @@ export const mockProjects: Project[] = [
       '20 blog posts (1500+ words each)',
       'SEO optimization',
       'Images and graphics',
-      'Content calendar'
+      'Content calendar',
     ],
     milestones: [
       { name: 'First 8 Articles', amount: 8000, deadline: '2025-12-05' },
       { name: 'Next 7 Articles', amount: 7000, deadline: '2025-12-15' },
-      { name: 'Final 5 Articles', amount: 5000, deadline: '2025-12-22' }
+      { name: 'Final 5 Articles', amount: 5000, deadline: '2025-12-22' },
     ],
     status: 'open',
     priority: 'low',
@@ -187,13 +192,14 @@ export const mockProjects: Project[] = [
     project_start_date: '2025-11-30',
     project_end_date: '2025-12-25',
     created_at: '2025-11-14T08:00:00Z',
-    updated_at: '2025-11-16T10:15:00Z'
+    updated_at: '2025-11-16T10:15:00Z',
   },
   {
     id: 'proj-006',
     recruiter_id: 'rec-001',
     title: 'DevOps CI/CD Pipeline Setup',
-    description: 'Set up complete CI/CD pipeline using GitHub Actions, Docker, and AWS. Includes automated testing, deployment, and monitoring.',
+    description:
+      'Set up complete CI/CD pipeline using GitHub Actions, Docker, and AWS. Includes automated testing, deployment, and monitoring.',
     category: 'devops',
     budget_min: 40000,
     budget_max: 60000,
@@ -207,12 +213,12 @@ export const mockProjects: Project[] = [
       'Docker containerization',
       'AWS infrastructure setup',
       'Monitoring & alerts',
-      'Documentation'
+      'Documentation',
     ],
     milestones: [
       { name: 'Pipeline Setup', amount: 20000, deadline: '2025-11-30' },
       { name: 'AWS Configuration', amount: 25000, deadline: '2025-12-10' },
-      { name: 'Testing & Handover', amount: 15000, deadline: '2025-12-15' }
+      { name: 'Testing & Handover', amount: 15000, deadline: '2025-12-15' },
     ],
     status: 'draft',
     priority: 'medium',
@@ -221,30 +227,29 @@ export const mockProjects: Project[] = [
     proposal_count: 0,
     posted_at: '2025-11-16T12:00:00Z',
     created_at: '2025-11-16T12:00:00Z',
-    updated_at: '2025-11-16T12:00:00Z'
-  }
+    updated_at: '2025-11-16T12:00:00Z',
+  },
 ];
 
 export const getProjectById = (id: string): Project | undefined => {
-  return mockProjects.find(project => project.id === id);
+  return mockProjects.find((project) => project.id === id);
 };
 
 export const getProjectsByStatus = (status: string): Project[] => {
   if (status === 'all') return mockProjects;
-  return mockProjects.filter(project => project.status === status);
+  return mockProjects.filter((project) => project.status === status);
 };
 
 export const getProjectStats = () => {
   return {
     total: mockProjects.length,
-    open: mockProjects.filter(p => p.status === 'open').length,
-    in_progress: mockProjects.filter(p => p.status === 'in_progress').length,
-    completed: mockProjects.filter(p => p.status === 'completed').length,
-    draft: mockProjects.filter(p => p.status === 'draft').length,
+    open: mockProjects.filter((p) => p.status === 'open').length,
+    in_progress: mockProjects.filter((p) => p.status === 'in_progress').length,
+    completed: mockProjects.filter((p) => p.status === 'completed').length,
+    draft: mockProjects.filter((p) => p.status === 'draft').length,
     totalBudget: mockProjects.reduce((sum, p) => sum + (p.budget_max || 0), 0),
     avgProposals: Math.round(
       mockProjects.reduce((sum, p) => sum + p.proposal_count, 0) / mockProjects.length
-    )
+    ),
   };
 };
-

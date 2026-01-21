@@ -4,7 +4,13 @@ import { GraduationCap, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { loginAdmin } from '../../services/adminAuthService';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/Students/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '../../components/Students/components/ui/card';
 import { Label } from '../../components/Students/components/ui/label';
 import { Input } from '../../components/Students/components/ui/input';
 import Button from '../../components/Button';
@@ -62,7 +68,7 @@ const LoginAdmin = () => {
       // Check if it's a demo credential
       if (DEMO_CREDENTIALS[email.trim().toLowerCase()]) {
         const demoUser = DEMO_CREDENTIALS[email.trim().toLowerCase()];
-        
+
         login(demoUser);
 
         toast({
@@ -72,18 +78,18 @@ const LoginAdmin = () => {
 
         // Route based on role
         const dashboardRoutes = {
-          'university_admin': '/university-admin/dashboard',
-          'college_admin': '/college-admin/dashboard',
-          'school_admin': '/school-admin/dashboard',
+          university_admin: '/university-admin/dashboard',
+          college_admin: '/college-admin/dashboard',
+          school_admin: '/school-admin/dashboard',
         };
-        
+
         navigate(dashboardRoutes[demoUser.role] || '/school-admin/dashboard');
         return;
       }
 
       // Use the loginAdmin service for actual authentication
       const result = await loginAdmin(email, password);
-      
+
       if (!result.success) {
         throw new Error(result.error || 'Login failed');
       }
@@ -126,9 +132,7 @@ const LoginAdmin = () => {
             </div>
           </div>
           <h1 className="text-3xl font-bold text-gray-900">Admin Login Portal</h1>
-          <p className="text-gray-600">
-            Manage your institution with unified access
-          </p>
+          <p className="text-gray-600">Manage your institution with unified access</p>
         </div>
 
         {/* Login Card */}
@@ -200,8 +204,8 @@ const LoginAdmin = () => {
         <Card className="bg-blue-50 border-blue-200">
           <CardContent className="pt-4">
             <p className="text-sm text-blue-800">
-              <strong>Note:</strong> Only schools with approved status can login. 
-              If your registration is pending or rejected, please contact RareMinds admin.
+              <strong>Note:</strong> Only schools with approved status can login. If your
+              registration is pending or rejected, please contact RareMinds admin.
             </p>
           </CardContent>
         </Card>

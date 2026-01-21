@@ -1,6 +1,3 @@
-
-
-
 // // // import React, { useEffect, useState, useRef } from "react";
 // // // import { supabase } from "../../lib/supabaseClient";
 // // // import { User, Calendar, Edit3, MessageCircle } from "lucide-react";
@@ -1465,23 +1462,21 @@
 
 // export default MentorNotes;
 import {
-    Calendar,
-    ChevronLeft,
-    ChevronRight,
-    Edit3,
-    Eye,
-    MessageCircle,
-    Trash2,
-    User,
-    X,
-} from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { FeatureGate } from "../../components/Subscription/FeatureGate";
-import { useEducatorSchool } from "../../hooks/useEducatorSchool";
-import { supabase } from "../../lib/supabaseClient";
-import {
-    saveMentorNote,
-} from "../../services/educator/mentorNotes";
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Edit3,
+  Eye,
+  MessageCircle,
+  Trash2,
+  User,
+  X,
+} from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { FeatureGate } from '../../components/Subscription/FeatureGate';
+import { useEducatorSchool } from '../../hooks/useEducatorSchool';
+import { supabase } from '../../lib/supabaseClient';
+import { saveMentorNote } from '../../services/educator/mentorNotes';
 
 interface Student {
   id: string;
@@ -1504,7 +1499,14 @@ interface MentorNote {
 
 const MentorNotesContent = () => {
   // Get educator's school information with class assignments
-  const { school: educatorSchool, college: educatorCollege, educatorType, educatorRole, assignedClassIds, loading: schoolLoading } = useEducatorSchool();
+  const {
+    school: educatorSchool,
+    college: educatorCollege,
+    educatorType,
+    educatorRole,
+    assignedClassIds,
+    loading: schoolLoading,
+  } = useEducatorSchool();
 
   // main data
   const [students, setStudents] = useState<Student[]>([]);
@@ -1513,40 +1515,40 @@ const MentorNotesContent = () => {
   // form state for adding new note
   const [loading, setLoading] = useState(false);
 
-  const [selectedStudent, setSelectedStudent] = useState("");
+  const [selectedStudent, setSelectedStudent] = useState('');
   const [selectedQuickNotes, setSelectedQuickNotes] = useState<string[]>([]);
-  const [feedback, setFeedback] = useState("");
-  const [actionPoints, setActionPoints] = useState("");
-  const [otherNote, setOtherNote] = useState("");
+  const [feedback, setFeedback] = useState('');
+  const [actionPoints, setActionPoints] = useState('');
+  const [otherNote, setOtherNote] = useState('');
   const [isOtherSelected, setIsOtherSelected] = useState(false);
 
   const quickNoteOptions = [
-    "Excellent Progress",
-    "Needs Improvement",
-    "Strong Communication Skills",
-    "Great Technical Knowledge",
-    "Consistent Performance",
-    "Slow but Improving",
-    "Good Leadership Quality",
-    "Teamwork is Improving",
-    "Needs Extra Practice",
-    "Outstanding Creativity",
-    "Others",
+    'Excellent Progress',
+    'Needs Improvement',
+    'Strong Communication Skills',
+    'Great Technical Knowledge',
+    'Consistent Performance',
+    'Slow but Improving',
+    'Good Leadership Quality',
+    'Teamwork is Improving',
+    'Needs Extra Practice',
+    'Outstanding Creativity',
+    'Others',
   ];
 
   // chip colors
   const chipColors = [
-    "bg-blue-100 text-blue-700 border-blue-300",
-    "bg-green-100 text-green-700 border-green-300",
-    "bg-purple-100 text-purple-700 border-purple-300",
-    "bg-pink-100 text-pink-700 border-pink-300",
-    "bg-yellow-100 text-yellow-700 border-yellow-300",
-    "bg-indigo-100 text-indigo-700 border-indigo-300",
+    'bg-blue-100 text-blue-700 border-blue-300',
+    'bg-green-100 text-green-700 border-green-300',
+    'bg-purple-100 text-purple-700 border-purple-300',
+    'bg-pink-100 text-pink-700 border-pink-300',
+    'bg-yellow-100 text-yellow-700 border-yellow-300',
+    'bg-indigo-100 text-indigo-700 border-indigo-300',
   ];
 
   // Student dropdown search
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Quick-notes dropdown
@@ -1561,9 +1563,9 @@ const MentorNotesContent = () => {
   const [viewingNote, setViewingNote] = useState<MentorNote | null>(null);
   const [editingNote, setEditingNote] = useState<MentorNote | null>(null);
   const [editQuickNotes, setEditQuickNotes] = useState<string[]>([]);
-  const [editFeedback, setEditFeedback] = useState("");
-  const [editActionPoints, setEditActionPoints] = useState("");
-  const [editOther, setEditOther] = useState("");
+  const [editFeedback, setEditFeedback] = useState('');
+  const [editActionPoints, setEditActionPoints] = useState('');
+  const [editOther, setEditOther] = useState('');
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -1575,8 +1577,8 @@ const MentorNotesContent = () => {
       }
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   // filtered students for dropdown search
@@ -1584,7 +1586,7 @@ const MentorNotesContent = () => {
     s.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
   const displayStudents =
-    searchTerm.trim() === "" ? filteredStudents.slice(0, 8) : filteredStudents;
+    searchTerm.trim() === '' ? filteredStudents.slice(0, 8) : filteredStudents;
 
   // Load students and notes filtered by educator's assigned classes
   useEffect(() => {
@@ -1599,31 +1601,34 @@ const MentorNotesContent = () => {
         console.log('🔍 [MentorNotes] Loading students for educator type:', educatorType);
 
         let students: Student[] = [];
-        
+
         if (educatorType === 'school' && educatorSchool) {
           // For school educators, check role and class assignments
           if (educatorRole === 'admin' || educatorRole === 'school_admin') {
             // School admins can see all students in their school
             console.log('👨‍💼 [MentorNotes] Fetching all school students (admin)');
             const { data: schoolStudents, error: studentsError } = await supabase
-              .from("students")
-              .select("id, name, user_id, grade, section, school_class_id")
-              .eq("school_id", educatorSchool.id)
-              .eq("is_deleted", false)
-              .order("name", { ascending: true });
+              .from('students')
+              .select('id, name, user_id, grade, section, school_class_id')
+              .eq('school_id', educatorSchool.id)
+              .eq('is_deleted', false)
+              .order('name', { ascending: true });
 
             if (studentsError) throw studentsError;
             students = schoolStudents || [];
           } else if (assignedClassIds && assignedClassIds.length > 0) {
             // Regular educators can only see students in their assigned classes
-            console.log('📚 [MentorNotes] Fetching students for assigned classes:', assignedClassIds);
+            console.log(
+              '📚 [MentorNotes] Fetching students for assigned classes:',
+              assignedClassIds
+            );
             const { data: schoolStudents, error: studentsError } = await supabase
-              .from("students")
-              .select("id, name, user_id, grade, section, school_class_id")
-              .eq("school_id", educatorSchool.id)
-              .in("school_class_id", assignedClassIds)
-              .eq("is_deleted", false)
-              .order("name", { ascending: true });
+              .from('students')
+              .select('id, name, user_id, grade, section, school_class_id')
+              .eq('school_id', educatorSchool.id)
+              .in('school_class_id', assignedClassIds)
+              .eq('is_deleted', false)
+              .order('name', { ascending: true });
 
             if (studentsError) throw studentsError;
             students = schoolStudents || [];
@@ -1634,23 +1639,28 @@ const MentorNotesContent = () => {
           }
         } else if (educatorType === 'college' && educatorCollege) {
           // For college educators, filter by college
-          console.log('🎓 [MentorNotes] Fetching college students for college:', educatorCollege.id);
+          console.log(
+            '🎓 [MentorNotes] Fetching college students for college:',
+            educatorCollege.id
+          );
           const { data: collegeStudents, error: studentsError } = await supabase
-            .from("students")
-            .select("id, name, user_id, grade, section")
-            .eq("college_id", educatorCollege.id)
-            .eq("is_deleted", false)
-            .order("name", { ascending: true });
+            .from('students')
+            .select('id, name, user_id, grade, section')
+            .eq('college_id', educatorCollege.id)
+            .eq('is_deleted', false)
+            .order('name', { ascending: true });
 
           if (studentsError) throw studentsError;
           students = collegeStudents || [];
         }
 
-        console.log(`✅ [MentorNotes] Loaded ${students.length} students for ${educatorType} educator`);
+        console.log(
+          `✅ [MentorNotes] Loaded ${students.length} students for ${educatorType} educator`
+        );
         setStudents(students);
 
         // Get student user_ids for filtering notes
-        const studentUserIds = students.map(s => s.user_id).filter(Boolean);
+        const studentUserIds = students.map((s) => s.user_id).filter(Boolean);
 
         if (studentUserIds.length === 0) {
           console.log('⚠️ [MentorNotes] No students found, clearing notes');
@@ -1661,8 +1671,9 @@ const MentorNotesContent = () => {
         // Fetch notes only for students in educator's assigned classes/college
         console.log('📝 [MentorNotes] Fetching notes for', studentUserIds.length, 'students');
         const { data: filteredNotes, error: notesError } = await supabase
-          .from("mentor_notes")
-          .select(`
+          .from('mentor_notes')
+          .select(
+            `
             id,
             student_id,
             feedback,
@@ -1670,16 +1681,16 @@ const MentorNotesContent = () => {
             quick_notes,
             note_date,
             students(name)
-          `)
-          .in("student_id", studentUserIds)
-          .order("note_date", { ascending: false });
+          `
+          )
+          .in('student_id', studentUserIds)
+          .order('note_date', { ascending: false });
 
         if (notesError) throw notesError;
         console.log(`✅ [MentorNotes] Loaded ${filteredNotes?.length || 0} notes`);
         setNotes(filteredNotes || []);
-
       } catch (err) {
-        console.error("❌ [MentorNotes] Error loading mentor data:", err);
+        console.error('❌ [MentorNotes] Error loading mentor data:', err);
       } finally {
         setLoading(false);
       }
@@ -1687,7 +1698,6 @@ const MentorNotesContent = () => {
 
     loadData();
   }, [educatorSchool?.id, educatorCollege?.id, educatorType, assignedClassIds, schoolLoading]);
-
 
   // -------------------------
   // helper: refresh notes (filtered by educator's assigned classes/college)
@@ -1700,8 +1710,8 @@ const MentorNotesContent = () => {
 
     try {
       // Get student user_ids from current filtered students
-      const studentUserIds = students.map(s => s.user_id).filter(Boolean);
-      
+      const studentUserIds = students.map((s) => s.user_id).filter(Boolean);
+
       if (studentUserIds.length === 0) {
         setNotes([]);
         return;
@@ -1709,8 +1719,9 @@ const MentorNotesContent = () => {
 
       // Fetch notes only for students in educator's assigned classes/college
       const { data: filteredNotes, error } = await supabase
-        .from("mentor_notes")
-        .select(`
+        .from('mentor_notes')
+        .select(
+          `
           id,
           student_id,
           feedback,
@@ -1718,9 +1729,10 @@ const MentorNotesContent = () => {
           quick_notes,
           note_date,
           students(name)
-        `)
-        .in("student_id", studentUserIds)
-        .order("note_date", { ascending: false });
+        `
+        )
+        .in('student_id', studentUserIds)
+        .order('note_date', { ascending: false });
 
       if (error) throw error;
       setNotes(filteredNotes || []);
@@ -1729,7 +1741,7 @@ const MentorNotesContent = () => {
       const lastPage = Math.max(1, Math.ceil((filteredNotes?.length || 0) / pageSize));
       if (page > lastPage) setPage(lastPage);
     } catch (err) {
-      console.error("Error refreshing notes:", err);
+      console.error('Error refreshing notes:', err);
     }
   };
 
@@ -1776,19 +1788,21 @@ const MentorNotesContent = () => {
   const handleSaveNote = async () => {
     try {
       if (!educatorSchool?.id && !educatorCollege?.id) {
-        alert("School/College information not found!");
+        alert('School/College information not found!');
         return;
       }
 
       if (!selectedStudent) {
-        alert("Please select a student!");
+        alert('Please select a student!');
         return;
       }
 
       // Get the current user
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
-        alert("User not authenticated!");
+        alert('User not authenticated!');
         return;
       }
 
@@ -1797,67 +1811,67 @@ const MentorNotesContent = () => {
       if (educatorType === 'school') {
         // Get the educator ID from school_educators table
         const { data: educator, error: educatorError } = await supabase
-          .from("school_educators")
-          .select("id")
-          .eq("user_id", user.id)
+          .from('school_educators')
+          .select('id')
+          .eq('user_id', user.id)
           .maybeSingle();
 
         if (educatorError || !educator) {
-          alert("School educator profile not found!");
+          alert('School educator profile not found!');
           return;
         }
 
         payload = {
           student_id: selectedStudent,
-          mentor_type: "school",
+          mentor_type: 'school',
           school_educator_id: educator.id,
           college_lecturer_id: null,
           quick_notes: selectedQuickNotes || [],
-          feedback: feedback || "",
-          action_points: actionPoints || "",
+          feedback: feedback || '',
+          action_points: actionPoints || '',
         };
       } else if (educatorType === 'college') {
         // Get the lecturer ID from college_lecturers table
         const { data: lecturer, error: lecturerError } = await supabase
-          .from("college_lecturers")
-          .select("id")
-          .eq("user_id", user.id)
+          .from('college_lecturers')
+          .select('id')
+          .eq('user_id', user.id)
           .maybeSingle();
 
         if (lecturerError || !lecturer) {
-          alert("College lecturer profile not found!");
+          alert('College lecturer profile not found!');
           return;
         }
 
         payload = {
           student_id: selectedStudent,
-          mentor_type: "college",
+          mentor_type: 'college',
           school_educator_id: null,
           college_lecturer_id: lecturer.id,
           quick_notes: selectedQuickNotes || [],
-          feedback: feedback || "",
-          action_points: actionPoints || "",
+          feedback: feedback || '',
+          action_points: actionPoints || '',
         };
       } else {
-        alert("Educator type not recognized!");
+        alert('Educator type not recognized!');
         return;
       }
 
       await saveMentorNote(payload);
 
-      alert("Note saved successfully!");
+      alert('Note saved successfully!');
       await refreshNotes();
-      
+
       // Reset form
-      setSelectedStudent("");
+      setSelectedStudent('');
       setSelectedQuickNotes([]);
-      setFeedback("");
-      setActionPoints("");
-      setOtherNote("");
+      setFeedback('');
+      setActionPoints('');
+      setOtherNote('');
       setIsOtherSelected(false);
     } catch (err) {
-      console.error("Save note failed:", err);
-      alert("Failed to save note.");
+      console.error('Save note failed:', err);
+      alert('Failed to save note.');
     }
   };
 
@@ -1866,16 +1880,16 @@ const MentorNotesContent = () => {
   // -------------------------
   const updateMentorNote = async (id: string, updates: Partial<MentorNote>) => {
     const { data, error } = await supabase
-      .from("mentor_notes")
+      .from('mentor_notes')
       .update(updates)
-      .eq("id", id)
+      .eq('id', id)
       .select();
     if (error) throw error;
     return data;
   };
 
   const deleteMentorNote = async (id: string) => {
-    const { data, error } = await supabase.from("mentor_notes").delete().eq("id", id);
+    const { data, error } = await supabase.from('mentor_notes').delete().eq('id', id);
     if (error) throw error;
     return data;
   };
@@ -1889,13 +1903,13 @@ const MentorNotesContent = () => {
   const handleEditOpen = (note: MentorNote) => {
     setEditingNote(note);
     setEditQuickNotes(Array.isArray(note.quick_notes) ? [...note.quick_notes] : []);
-    setEditFeedback(note.feedback || "");
-    setEditActionPoints(note.action_points || "");
+    setEditFeedback(note.feedback || '');
+    setEditActionPoints(note.action_points || '');
     // if a custom note exists in quick_notes that is not in quickNoteOptions, set editOther
     const custom = (note.quick_notes || []).find((n) => !quickNoteOptions.includes(n));
-    setEditOther(custom || "");
+    setEditOther(custom || '');
     // scroll modal into view on small screens
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleEditToggle = (opt: string) => {
@@ -1916,22 +1930,22 @@ const MentorNotesContent = () => {
       await updateMentorNote(editingNote.id, updates);
       await refreshNotes();
       setEditingNote(null);
-      alert("Updated successfully");
+      alert('Updated successfully');
     } catch (err) {
       console.error(err);
-      alert("Failed to update note");
+      alert('Failed to update note');
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this note?")) return;
+    if (!window.confirm('Are you sure you want to delete this note?')) return;
     try {
       await deleteMentorNote(id);
       await refreshNotes();
-      alert("Deleted");
+      alert('Deleted');
     } catch (err) {
       console.error(err);
-      alert("Delete failed");
+      alert('Delete failed');
     }
   };
 
@@ -1939,20 +1953,22 @@ const MentorNotesContent = () => {
   // quick notes add/remove for new note form
   // -------------------------
   const toggleQuickNote = (note: string) => {
-    if (note === "Others") {
+    if (note === 'Others') {
       setIsOtherSelected(true);
       setQuickDropdownOpen(true);
       return;
     }
     setIsOtherSelected(false);
-    setSelectedQuickNotes((prev) => (prev.includes(note) ? prev.filter((n) => n !== note) : [...prev, note]));
+    setSelectedQuickNotes((prev) =>
+      prev.includes(note) ? prev.filter((n) => n !== note) : [...prev, note]
+    );
   };
 
   const handleOtherNoteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setOtherNote(value);
 
-    if (value.trim() === "") {
+    if (value.trim() === '') {
       setSelectedQuickNotes((prev) => prev.filter((n) => quickNoteOptions.includes(n)));
       return;
     }
@@ -1967,7 +1983,7 @@ const MentorNotesContent = () => {
   const removeQuickNote = (note: string) => {
     setSelectedQuickNotes((prev) => prev.filter((n) => n !== note));
     if (note === otherNote) {
-      setOtherNote("");
+      setOtherNote('');
       setIsOtherSelected(false);
     }
   };
@@ -2012,19 +2028,23 @@ const MentorNotesContent = () => {
             <MessageCircle className="text-green-600" size={22} />
             Mentor Notes
           </h1>
-          <p className="text-gray-600 mt-1">Track and record qualitative feedback for your students.</p>
+          <p className="text-gray-600 mt-1">
+            Track and record qualitative feedback for your students.
+          </p>
         </div>
 
         <div className="flex items-center gap-3">
           <div className="text-sm text-gray-600 hidden sm:block">
-            Showing <strong>{Math.min((page - 1) * pageSize + 1, totalNotes || 0)}</strong> - <strong>{Math.min(page * pageSize, totalNotes || 0)}</strong> of <strong>{totalNotes}</strong>
+            Showing <strong>{Math.min((page - 1) * pageSize + 1, totalNotes || 0)}</strong> -{' '}
+            <strong>{Math.min(page * pageSize, totalNotes || 0)}</strong> of{' '}
+            <strong>{totalNotes}</strong>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
-              className={`px-3 py-1 rounded-md border ${page === 1 ? "text-gray-300 border-gray-200" : "text-gray-700 border-gray-200 hover:bg-gray-50"}`}
+              className={`px-3 py-1 rounded-md border ${page === 1 ? 'text-gray-300 border-gray-200' : 'text-gray-700 border-gray-200 hover:bg-gray-50'}`}
               aria-label="Previous page"
             >
               <ChevronLeft size={16} />
@@ -2037,7 +2057,7 @@ const MentorNotesContent = () => {
                   <button
                     key={p}
                     onClick={() => setPage(p)}
-                    className={`px-3 py-1 rounded-md border ${p === page ? "bg-blue-600 text-white border-blue-600" : "text-gray-700 border-gray-200 hover:bg-gray-50"}`}
+                    className={`px-3 py-1 rounded-md border ${p === page ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-700 border-gray-200 hover:bg-gray-50'}`}
                     aria-label={`Go to page ${p}`}
                   >
                     {p}
@@ -2049,7 +2069,7 @@ const MentorNotesContent = () => {
             <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
-              className={`px-3 py-1 rounded-md border ${page === totalPages ? "text-gray-300 border-gray-200" : "text-gray-700 border-gray-200 hover:bg-gray-50"}`}
+              className={`px-3 py-1 rounded-md border ${page === totalPages ? 'text-gray-300 border-gray-200' : 'text-gray-700 border-gray-200 hover:bg-gray-50'}`}
               aria-label="Next page"
             >
               <ChevronRight size={16} />
@@ -2065,7 +2085,9 @@ const MentorNotesContent = () => {
             <Edit3 className="text-blue-600" size={20} />
             Add New Note
           </h2>
-          <div className="text-sm text-gray-500 hidden sm:block">Quickly add feedback for a student</div>
+          <div className="text-sm text-gray-500 hidden sm:block">
+            Quickly add feedback for a student
+          </div>
         </div>
 
         <div className="space-y-5">
@@ -2076,19 +2098,30 @@ const MentorNotesContent = () => {
             <div
               onClick={() => students.length > 0 && setDropdownOpen((v) => !v)}
               className={`w-full border border-gray-300 bg-white rounded-lg px-4 py-3 flex justify-between items-center transition-colors ${
-                students.length > 0 
-                  ? 'cursor-pointer hover:border-gray-400' 
+                students.length > 0
+                  ? 'cursor-pointer hover:border-gray-400'
                   : 'cursor-not-allowed bg-gray-50 text-gray-400'
               }`}
               role="button"
               tabIndex={students.length > 0 ? 0 : -1}
-              onKeyDown={(e) => students.length > 0 && e.key === "Enter" && setDropdownOpen((v) => !v)}
+              onKeyDown={(e) =>
+                students.length > 0 && e.key === 'Enter' && setDropdownOpen((v) => !v)
+              }
             >
-              <span className={students.length > 0 ? "text-gray-700" : "text-gray-400"}>
-                {selectedStudent ? students.find((s) => s.id === selectedStudent)?.name : 
-                 students.length === 0 ? "No students available" : "Select Student"}
+              <span className={students.length > 0 ? 'text-gray-700' : 'text-gray-400'}>
+                {selectedStudent
+                  ? students.find((s) => s.id === selectedStudent)?.name
+                  : students.length === 0
+                    ? 'No students available'
+                    : 'Select Student'}
               </span>
-              <svg className={`w-5 h-5 text-gray-400 transition-transform ${dropdownOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <svg
+                className={`w-5 h-5 text-gray-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
               </svg>
             </div>
@@ -2111,7 +2144,7 @@ const MentorNotesContent = () => {
                           setSelectedStudent(s.id);
                           setDropdownOpen(false);
                         }}
-                       className="px-3 py-2 rounded-md cursor-pointer hover:bg-gray-50 text-gray-800 text-sm"
+                        className="px-3 py-2 rounded-md cursor-pointer hover:bg-gray-50 text-gray-800 text-sm"
                       >
                         {s.name}
                       </div>
@@ -2120,13 +2153,17 @@ const MentorNotesContent = () => {
                     <div className="px-3 py-4 text-center">
                       <p className="text-sm text-gray-500 mb-1">No students available</p>
                       <p className="text-xs text-gray-400">
-                        {educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0
+                        {educatorType === 'school' &&
+                        educatorRole !== 'admin' &&
+                        assignedClassIds.length === 0
                           ? 'You have not been assigned to any classes yet'
                           : 'No students found in your assigned classes'}
                       </p>
                     </div>
                   ) : (
-                     <p className="text-sm text-gray-500 px-3 py-2 text-center">No matching students</p>
+                    <p className="text-sm text-gray-500 px-3 py-2 text-center">
+                      No matching students
+                    </p>
                   )}
                 </div>
               </div>
@@ -2135,15 +2172,23 @@ const MentorNotesContent = () => {
 
           {/* Quick Add Notes */}
           <div className="relative" ref={quickDropdownRef}>
-   <label className="block text-sm font-medium text-gray-700 mb-2">Quick Add Notes</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Quick Add Notes</label>
             <div
               onClick={() => setQuickDropdownOpen((v) => !v)}
               className="w-full border border-gray-300 bg-white rounded-lg px-4 py-3 cursor-pointer flex justify-between items-center hover:border-gray-400 transition-colors"
             >
               <span className="text-gray-700">
-                {selectedQuickNotes.length > 0 ? `${selectedQuickNotes.length} selected` : "Select Quick Notes"}
+                {selectedQuickNotes.length > 0
+                  ? `${selectedQuickNotes.length} selected`
+                  : 'Select Quick Notes'}
               </span>
-              <svg className={`w-5 h-5 text-gray-500 transition-transform ${quickDropdownOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <svg
+                className={`w-5 h-5 text-gray-500 transition-transform ${quickDropdownOpen ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
               </svg>
             </div>
@@ -2162,7 +2207,12 @@ const MentorNotesContent = () => {
                           toggleQuickNote(note);
                         }}
                       >
-                        <input type="checkbox" checked={checked} readOnly className="cursor-pointer w-4 h-4 text-blue-600" />
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          readOnly
+                          className="cursor-pointer w-4 h-4 text-blue-600"
+                        />
                         <span className="text-gray-800 text-sm">{note}</span>
                       </label>
                     );
@@ -2177,9 +2227,17 @@ const MentorNotesContent = () => {
               {selectedQuickNotes.map((note, idx) => {
                 const colorClass = chipColors[idx % chipColors.length];
                 return (
-                  <span key={idx} className={`px-3 py-1 rounded-full border text-sm flex items-center gap-2 ${colorClass}`}>
+                  <span
+                    key={idx}
+                    className={`px-3 py-1 rounded-full border text-sm flex items-center gap-2 ${colorClass}`}
+                  >
                     <span className="whitespace-nowrap">{note}</span>
-                    <button onClick={() => removeQuickNote(note)} className="text-gray-700 hover:text-red-600 ml-1" type="button" aria-label={`Remove ${note}`}>
+                    <button
+                      onClick={() => removeQuickNote(note)}
+                      className="text-gray-700 hover:text-red-600 ml-1"
+                      type="button"
+                      aria-label={`Remove ${note}`}
+                    >
                       ✕
                     </button>
                   </span>
@@ -2189,7 +2247,9 @@ const MentorNotesContent = () => {
           )}
           {isOtherSelected && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Enter Custom Note</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Enter Custom Note
+              </label>
               <input
                 type="text"
                 value={otherNote}
@@ -2212,7 +2272,7 @@ const MentorNotesContent = () => {
             />
           </div>
 
-             {/* Action Points */}
+          {/* Action Points */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Action Points</label>
             <textarea
@@ -2223,11 +2283,11 @@ const MentorNotesContent = () => {
               placeholder="Enter action points..."
             />
           </div>
-          
-            {/* Action Buttons */}
+
+          {/* Action Buttons */}
           <div className="flex items-center gap-3 pt-3">
-            <button 
-              onClick={handleSaveNote} 
+            <button
+              onClick={handleSaveNote}
               disabled={students.length === 0 || !selectedStudent}
               className="bg-blue-600 text-white px-6 py-2.5 rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
@@ -2236,9 +2296,9 @@ const MentorNotesContent = () => {
             <button
               onClick={() => {
                 setSelectedQuickNotes([]);
-                setFeedback("");
-                setActionPoints("");
-                setOtherNote("");
+                setFeedback('');
+                setActionPoints('');
+                setOtherNote('');
                 setIsOtherSelected(false);
               }}
               className="px-6 py-2.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors font-medium"
@@ -2247,7 +2307,6 @@ const MentorNotesContent = () => {
             </button>
           </div>
         </div>
-
       </div>
 
       {/* Notes grid */}
@@ -2275,29 +2334,47 @@ const MentorNotesContent = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   {/* compact icon buttons */}
-                  <button onClick={() => handleView(note)} title="View" className="p-2 rounded-md hover:bg-gray-50">
+                  <button
+                    onClick={() => handleView(note)}
+                    title="View"
+                    className="p-2 rounded-md hover:bg-gray-50"
+                  >
                     <Eye size={16} className="text-gray-600" />
                   </button>
-                  <button onClick={() => handleEditOpen(note)} title="Edit" className="p-2 rounded-md hover:bg-gray-50">
+                  <button
+                    onClick={() => handleEditOpen(note)}
+                    title="Edit"
+                    className="p-2 rounded-md hover:bg-gray-50"
+                  >
                     <Edit3 size={16} className="text-blue-600" />
                   </button>
-                  <button onClick={() => handleDelete(note.id)} title="Delete" className="p-2 rounded-md hover:bg-red-50">
+                  <button
+                    onClick={() => handleDelete(note.id)}
+                    title="Delete"
+                    className="p-2 rounded-md hover:bg-red-50"
+                  >
                     <Trash2 size={16} className="text-red-600" />
                   </button>
                 </div>
               </header>
 
               <div>
-                <p className="text-gray-700 min-h-[48px]">{note.feedback || <span className="text-gray-400">No feedback</span>}</p>
+                <p className="text-gray-700 min-h-[48px]">
+                  {note.feedback || <span className="text-gray-400">No feedback</span>}
+                </p>
                 <p className="text-sm text-gray-600 mt-3">
-                  <strong>Action Points:</strong> {note.action_points || <span className="text-gray-400">—</span>}
+                  <strong>Action Points:</strong>{' '}
+                  {note.action_points || <span className="text-gray-400">—</span>}
                 </p>
 
                 {/* quick notes chips preview */}
                 {Array.isArray(note.quick_notes) && note.quick_notes.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-3">
                     {note.quick_notes.map((qn, i) => (
-                      <span key={i} className={`px-2 py-0.5 rounded-full text-xs border ${colorForText(qn)}`}>
+                      <span
+                        key={i}
+                        className={`px-2 py-0.5 rounded-full text-xs border ${colorForText(qn)}`}
+                      >
                         {qn}
                       </span>
                     ))}
@@ -2307,15 +2384,24 @@ const MentorNotesContent = () => {
 
               {/* action buttons (labelled) */}
               <div className="flex gap-3 mt-4">
-                <button onClick={() => handleView(note)} className="px-3 py-1 rounded-md border text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
+                <button
+                  onClick={() => handleView(note)}
+                  className="px-3 py-1 rounded-md border text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                >
                   <Eye size={14} /> View
                 </button>
 
-                <button onClick={() => handleEditOpen(note)} className="px-3 py-1 rounded-md border text-sm bg-blue-50 text-blue-700 hover:bg-blue-50 flex items-center gap-2">
+                <button
+                  onClick={() => handleEditOpen(note)}
+                  className="px-3 py-1 rounded-md border text-sm bg-blue-50 text-blue-700 hover:bg-blue-50 flex items-center gap-2"
+                >
                   <Edit3 size={14} /> Edit
                 </button>
 
-                <button onClick={() => handleDelete(note.id)} className="px-3 py-1 rounded-md border text-sm bg-red-50 text-red-600 hover:bg-red-50 flex items-center gap-2">
+                <button
+                  onClick={() => handleDelete(note.id)}
+                  className="px-3 py-1 rounded-md border text-sm bg-red-50 text-red-600 hover:bg-red-50 flex items-center gap-2"
+                >
                   <Trash2 size={14} /> Delete
                 </button>
               </div>
@@ -2327,7 +2413,9 @@ const MentorNotesContent = () => {
               <div className="text-gray-500 mb-2">No notes found.</div>
               {students.length === 0 && (
                 <div className="text-sm text-gray-400">
-                  {educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0
+                  {educatorType === 'school' &&
+                  educatorRole !== 'admin' &&
+                  assignedClassIds.length === 0
                     ? 'You need to be assigned to classes before you can add mentor notes.'
                     : 'Start by adding a note for one of your students above.'}
                 </div>
@@ -2339,24 +2427,41 @@ const MentorNotesContent = () => {
         {/* Bottom pagination for mobile (visible) */}
         <div className="mt-6 flex items-center justify-between">
           <div className="text-sm text-gray-600">
-            Showing <strong>{Math.min((page - 1) * pageSize + 1, totalNotes || 0)}</strong> - <strong>{Math.min(page * pageSize, totalNotes || 0)}</strong> of <strong>{totalNotes}</strong>
+            Showing <strong>{Math.min((page - 1) * pageSize + 1, totalNotes || 0)}</strong> -{' '}
+            <strong>{Math.min(page * pageSize, totalNotes || 0)}</strong> of{' '}
+            <strong>{totalNotes}</strong>
           </div>
 
           <div className="flex items-center gap-2">
-            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className={`px-3 py-1 rounded-md border ${page === 1 ? "text-gray-300 border-gray-200" : "text-gray-700 border-gray-200 hover:bg-gray-50"}`} aria-label="Previous">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className={`px-3 py-1 rounded-md border ${page === 1 ? 'text-gray-300 border-gray-200' : 'text-gray-700 border-gray-200 hover:bg-gray-50'}`}
+              aria-label="Previous"
+            >
               Prev
             </button>
             <div className="flex items-center gap-1">
               {Array.from({ length: totalPages }).map((_, i) => {
                 const p = i + 1;
                 return (
-                  <button key={p} onClick={() => setPage(p)} className={`px-3 py-1 rounded-md border ${p === page ? "bg-blue-600 text-white border-blue-600" : "text-gray-700 border-gray-200 hover:bg-gray-50"}`} aria-label={`Page ${p}`}>
+                  <button
+                    key={p}
+                    onClick={() => setPage(p)}
+                    className={`px-3 py-1 rounded-md border ${p === page ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-700 border-gray-200 hover:bg-gray-50'}`}
+                    aria-label={`Page ${p}`}
+                  >
                     {p}
                   </button>
                 );
               })}
             </div>
-            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className={`px-3 py-1 rounded-md border ${page === totalPages ? "text-gray-300 border-gray-200" : "text-gray-700 border-gray-200 hover:bg-gray-50"}`} aria-label="Next">
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className={`px-3 py-1 rounded-md border ${page === totalPages ? 'text-gray-300 border-gray-200' : 'text-gray-700 border-gray-200 hover:bg-gray-50'}`}
+              aria-label="Next"
+            >
               Next
             </button>
           </div>
@@ -2375,11 +2480,16 @@ const MentorNotesContent = () => {
                 <div>
                   <h3 className="text-lg font-semibold">View Note</h3>
                   <div className="text-sm text-gray-500">
-                    {Array.isArray(viewingNote.students) ? viewingNote.students[0]?.name : viewingNote.students?.name}
+                    {Array.isArray(viewingNote.students)
+                      ? viewingNote.students[0]?.name
+                      : viewingNote.students?.name}
                   </div>
                 </div>
               </div>
-              <button onClick={() => setViewingNote(null)} className="p-2 rounded-md hover:bg-gray-100">
+              <button
+                onClick={() => setViewingNote(null)}
+                className="p-2 rounded-md hover:bg-gray-100"
+              >
                 <X size={18} />
               </button>
             </div>
@@ -2387,13 +2497,18 @@ const MentorNotesContent = () => {
             <div className="mt-4">
               <div className="flex items-center gap-3">
                 <Calendar size={16} className="text-gray-400" />
-                <div className="text-sm text-gray-500">{new Date(viewingNote.note_date).toLocaleString()}</div>
+                <div className="text-sm text-gray-500">
+                  {new Date(viewingNote.note_date).toLocaleString()}
+                </div>
               </div>
 
               {Array.isArray(viewingNote.quick_notes) && viewingNote.quick_notes.length > 0 && (
                 <div className="flex gap-2 flex-wrap mt-3">
                   {viewingNote.quick_notes.map((qn, i) => (
-                    <span key={i} className={`px-2 py-0.5 rounded-full text-xs border ${colorForText(qn)}`}>
+                    <span
+                      key={i}
+                      className={`px-2 py-0.5 rounded-full text-xs border ${colorForText(qn)}`}
+                    >
                       {qn}
                     </span>
                   ))}
@@ -2402,17 +2517,22 @@ const MentorNotesContent = () => {
 
               <div className="mt-4">
                 <h4 className="text-sm font-semibold text-gray-700">Feedback</h4>
-                <p className="mt-1 text-gray-700">{viewingNote.feedback || "—"}</p>
+                <p className="mt-1 text-gray-700">{viewingNote.feedback || '—'}</p>
               </div>
 
               <div className="mt-3">
                 <h4 className="text-sm font-semibold text-gray-700">Action Points</h4>
-                <p className="mt-1 text-gray-700">{viewingNote.action_points || "—"}</p>
+                <p className="mt-1 text-gray-700">{viewingNote.action_points || '—'}</p>
               </div>
             </div>
 
             <div className="mt-6 flex justify-end gap-2">
-              <button onClick={() => setViewingNote(null)} className="px-4 py-2 rounded-md border text-sm">Close</button>
+              <button
+                onClick={() => setViewingNote(null)}
+                className="px-4 py-2 rounded-md border text-sm"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
@@ -2430,11 +2550,16 @@ const MentorNotesContent = () => {
                 <div>
                   <h3 className="text-lg font-semibold">Edit Note</h3>
                   <div className="text-sm text-gray-500">
-                    {Array.isArray(editingNote.students) ? editingNote.students[0]?.name : editingNote.students?.name}
+                    {Array.isArray(editingNote.students)
+                      ? editingNote.students[0]?.name
+                      : editingNote.students?.name}
                   </div>
                 </div>
               </div>
-              <button onClick={() => setEditingNote(null)} className="p-2 rounded-md hover:bg-gray-100">
+              <button
+                onClick={() => setEditingNote(null)}
+                className="p-2 rounded-md hover:bg-gray-100"
+              >
                 <X size={18} />
               </button>
             </div>
@@ -2446,8 +2571,16 @@ const MentorNotesContent = () => {
                   {quickNoteOptions.map((opt, i) => {
                     const checked = editQuickNotes.includes(opt);
                     return (
-                      <label key={i} className="flex items-center gap-2 p-2 border rounded-lg cursor-pointer hover:bg-gray-50">
-                        <input type="checkbox" checked={checked} onChange={() => handleEditToggle(opt)} readOnly />
+                      <label
+                        key={i}
+                        className="flex items-center gap-2 p-2 border rounded-lg cursor-pointer hover:bg-gray-50"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => handleEditToggle(opt)}
+                          readOnly
+                        />
                         <span className="text-sm">{opt}</span>
                       </label>
                     );
@@ -2478,18 +2611,38 @@ const MentorNotesContent = () => {
 
               <div>
                 <label className="text-sm text-gray-600">Feedback</label>
-                <textarea value={editFeedback} onChange={(e) => setEditFeedback(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2 mt-1" rows={3} />
+                <textarea
+                  value={editFeedback}
+                  onChange={(e) => setEditFeedback(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg p-2 mt-1"
+                  rows={3}
+                />
               </div>
 
               <div>
                 <label className="text-sm text-gray-600">Action Points</label>
-                <textarea value={editActionPoints} onChange={(e) => setEditActionPoints(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2 mt-1" rows={2} />
+                <textarea
+                  value={editActionPoints}
+                  onChange={(e) => setEditActionPoints(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg p-2 mt-1"
+                  rows={2}
+                />
               </div>
             </div>
 
             <div className="mt-6 flex justify-end gap-2">
-              <button onClick={() => setEditingNote(null)} className="px-4 py-2 rounded-md border text-sm">Cancel</button>
-              <button onClick={handleEditSave} className="px-4 py-2 rounded-md bg-blue-600 text-white">Save</button>
+              <button
+                onClick={() => setEditingNote(null)}
+                className="px-4 py-2 rounded-md border text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleEditSave}
+                className="px-4 py-2 rounded-md bg-blue-600 text-white"
+              >
+                Save
+              </button>
             </div>
           </div>
         </div>
@@ -2502,13 +2655,14 @@ const MentorNotesContent = () => {
  * Wrapped MentorNotes with FeatureGate for mentor_notes add-on
  */
 const MentorNotes = () => (
+  // @ts-expect-error - Auto-suppressed for migration
   <FeatureGate featureKey="mentor_notes" showUpgradePrompt={true}>
     <MentorNotesContent />
   </FeatureGate>
 );
 
 export default MentorNotes;
- // load mentor + lists
+// load mentor + lists
 //   useEffect(() => {
 //     const load = async () => {
 //   try {

@@ -1,12 +1,12 @@
 import {
-    BuildingOffice2Icon,
-    ChevronDownIcon,
-    EyeIcon,
-    FolderIcon,
-    FunnelIcon,
-    Squares2X2Icon,
-    StarIcon,
-    TableCellsIcon,
+  BuildingOffice2Icon,
+  ChevronDownIcon,
+  EyeIcon,
+  FolderIcon,
+  FunnelIcon,
+  Squares2X2Icon,
+  StarIcon,
+  TableCellsIcon,
 } from '@heroicons/react/24/outline';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -64,7 +64,10 @@ const BadgeComponent = ({ badges }: { badges: string[] }) => {
   const badgeConfig: Record<string, { color: string; label: string }> = {
     self_verified: { color: 'bg-gray-100 text-gray-800', label: 'Self' },
     institution_verified: { color: 'bg-blue-100 text-blue-800', label: 'Institution' },
-    external_audited: { color: 'bg-yellow-100 text-yellow-800 border border-yellow-300', label: 'External' }
+    external_audited: {
+      color: 'bg-yellow-100 text-yellow-800 border border-yellow-300',
+      label: 'External',
+    },
   };
 
   return (
@@ -87,7 +90,7 @@ const BadgeComponent = ({ badges }: { badges: string[] }) => {
 // Portfolio Card Component
 const PortfolioCard = ({ student, onViewPortfolio }: any) => {
   return (
-    <div 
+    <div
       className="bg-white border border-gray-200 rounded-lg p-5 hover:shadow-md transition-all duration-200 cursor-pointer group"
       onClick={() => onViewPortfolio(student)}
     >
@@ -109,7 +112,9 @@ const PortfolioCard = ({ student, onViewPortfolio }: any) => {
         <div className="flex flex-col items-end space-y-1 ml-3">
           <div className="flex items-center bg-yellow-50 px-2 py-1 rounded-full">
             <StarIcon className="h-3.5 w-3.5 text-yellow-400 fill-current mr-1" />
-            <span className="text-xs font-medium text-yellow-700">{student.ai_score_overall || 'N/A'}</span>
+            <span className="text-xs font-medium text-yellow-700">
+              {student.ai_score_overall || 'N/A'}
+            </span>
           </div>
           <BadgeComponent badges={student.badges || []} />
         </div>
@@ -118,7 +123,9 @@ const PortfolioCard = ({ student, onViewPortfolio }: any) => {
       <div className="mb-4 pb-4 border-b border-gray-100">
         <div className="flex items-center space-x-2 mb-3">
           <FolderIcon className="h-4 w-4 text-gray-400" />
-          <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Portfolio Highlights</span>
+          <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">
+            Portfolio Highlights
+          </span>
         </div>
         <div className="space-y-2">
           {student.skills && student.skills.length > 0 && (
@@ -132,7 +139,9 @@ const PortfolioCard = ({ student, onViewPortfolio }: any) => {
                 </span>
               ))}
               {student.skills.length > 4 && (
-                <span className="text-xs text-gray-500 self-center">+{student.skills.length - 4} more</span>
+                <span className="text-xs text-gray-500 self-center">
+                  +{student.skills.length - 4} more
+                </span>
               )}
             </div>
           )}
@@ -155,7 +164,8 @@ const PortfolioCard = ({ student, onViewPortfolio }: any) => {
 
       <div className="flex items-center justify-between">
         <span className="text-xs text-gray-500">
-          Updated {student.last_updated ? new Date(student.last_updated).toLocaleDateString() : 'N/A'}
+          Updated{' '}
+          {student.last_updated ? new Date(student.last_updated).toLocaleDateString() : 'N/A'}
         </span>
         <button
           onClick={(e) => {
@@ -174,27 +184,27 @@ const PortfolioCard = ({ student, onViewPortfolio }: any) => {
 
 const UniversityAdminDigitalPortfolio: React.FC = () => {
   const navigate = useNavigate();
-  
+
   // State
   const [students, setStudents] = useState<any[]>([]);
   const [colleges, setColleges] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(24);
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState('relevance');
-  
+
   const [filters, setFilters] = useState({
     skills: [] as string[],
     departments: [] as string[],
     badges: [] as string[],
     colleges: [] as string[],
     minScore: 0,
-    maxScore: 100
+    maxScore: 100,
   });
 
   // Fetch students for this university
@@ -205,7 +215,7 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
 
       // Get university admin's universityId
       let universityId: string | null = null;
-      
+
       // Check localStorage first
       const storedUser = localStorage.getItem('user');
       if (storedUser) {
@@ -218,25 +228,24 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
           console.error('Error parsing stored user:', e);
         }
       }
-      
+
       // If not in localStorage, check Supabase auth
       if (!universityId) {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (user) {
           const { data: dbUser } = await supabase
             .from('users')
             .select('organizationId')
             .eq('id', user.id)
             .single();
-          
+
           universityId = dbUser?.organizationId || null;
         }
       }
 
-      let query = supabase
-        .from('students')
-        .select('*')
-        .order('created_at', { ascending: false });
+      let query = supabase.from('students').select('*').order('created_at', { ascending: false });
 
       // Filter by universityId if available
       if (universityId) {
@@ -263,7 +272,7 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
     try {
       // Get university admin's universityId
       let universityId: string | null = null;
-      
+
       const storedUser = localStorage.getItem('user');
       if (storedUser) {
         try {
@@ -275,22 +284,24 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
           console.error('Error parsing stored user:', e);
         }
       }
-      
+
       if (!universityId) {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (user) {
           const { data: dbUser } = await supabase
             .from('users')
             .select('organizationId')
             .eq('id', user.id)
             .single();
-          
+
           universityId = dbUser?.organizationId || null;
         }
       }
 
       // Query organizations table for colleges under this university
-      let query = supabase
+      const query = supabase
         .from('organizations')
         .select('id, name')
         .eq('organization_type', 'college')
@@ -300,7 +311,7 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
       // For now, we'll fetch all colleges
 
       const { data, error } = await query;
-      
+
       if (!error && data) {
         setColleges(data);
       }
@@ -321,7 +332,7 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
   // Generate filter options from data
   const skillOptions = useMemo(() => {
     const skillCounts: Record<string, number> = {};
-    students.forEach(student => {
+    students.forEach((student) => {
       if (student.skills && Array.isArray(student.skills)) {
         student.skills.forEach((skill: any) => {
           const skillName = typeof skill === 'string' ? skill : skill?.name;
@@ -336,7 +347,7 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
       .map(([skill, count]) => ({
         value: skill,
         label: skill.charAt(0).toUpperCase() + skill.slice(1),
-        count
+        count,
       }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 15);
@@ -344,7 +355,7 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
 
   const departmentOptions = useMemo(() => {
     const deptCounts: Record<string, number> = {};
-    students.forEach(student => {
+    students.forEach((student) => {
       if (student.dept) {
         const normalized = student.dept.toLowerCase();
         deptCounts[normalized] = (deptCounts[normalized] || 0) + 1;
@@ -354,14 +365,14 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
       .map(([dept, count]) => ({
         value: dept,
         label: dept,
-        count
+        count,
       }))
       .sort((a, b) => b.count - a.count);
   }, [students]);
 
   const badgeOptions = useMemo(() => {
     const badgeCounts: Record<string, number> = {};
-    students.forEach(student => {
+    students.forEach((student) => {
       if (student.badges && Array.isArray(student.badges)) {
         student.badges.forEach((badge: string) => {
           badgeCounts[badge] = (badgeCounts[badge] || 0) + 1;
@@ -371,15 +382,18 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
     return Object.entries(badgeCounts)
       .map(([badge, count]) => ({
         value: badge,
-        label: badge.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
-        count
+        label: badge
+          .split('_')
+          .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+          .join(' '),
+        count,
       }))
       .sort((a, b) => b.count - a.count);
   }, [students]);
 
   const collegeOptions = useMemo(() => {
     const collegeCounts: Record<string, number> = {};
-    students.forEach(student => {
+    students.forEach((student) => {
       if (student.college) {
         const normalized = student.college.toLowerCase();
         collegeCounts[normalized] = (collegeCounts[normalized] || 0) + 1;
@@ -389,7 +403,7 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
       .map(([college, count]) => ({
         value: college,
         label: college,
-        count
+        count,
       }))
       .sort((a, b) => b.count - a.count);
   }, [students]);
@@ -401,20 +415,21 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
     // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      result = result.filter(student =>
-        student.name?.toLowerCase().includes(query) ||
-        student.dept?.toLowerCase().includes(query) ||
-        student.college?.toLowerCase().includes(query) ||
-        student.skills?.some((skill: any) => {
-          const skillName = typeof skill === 'string' ? skill : skill?.name;
-          return skillName?.toLowerCase().includes(query);
-        })
+      result = result.filter(
+        (student) =>
+          student.name?.toLowerCase().includes(query) ||
+          student.dept?.toLowerCase().includes(query) ||
+          student.college?.toLowerCase().includes(query) ||
+          student.skills?.some((skill: any) => {
+            const skillName = typeof skill === 'string' ? skill : skill?.name;
+            return skillName?.toLowerCase().includes(query);
+          })
       );
     }
 
     // Skills filter
     if (filters.skills.length > 0) {
-      result = result.filter(student =>
+      result = result.filter((student) =>
         student.skills?.some((skill: any) => {
           const skillName = typeof skill === 'string' ? skill : skill?.name;
           return skillName && filters.skills.includes(skillName.toLowerCase());
@@ -424,27 +439,27 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
 
     // Department filter
     if (filters.departments.length > 0) {
-      result = result.filter(student =>
-        student.dept && filters.departments.includes(student.dept.toLowerCase())
+      result = result.filter(
+        (student) => student.dept && filters.departments.includes(student.dept.toLowerCase())
       );
     }
 
     // Badge filter
     if (filters.badges.length > 0) {
-      result = result.filter(student =>
+      result = result.filter((student) =>
         student.badges?.some((badge: string) => filters.badges.includes(badge))
       );
     }
 
     // College filter
     if (filters.colleges.length > 0) {
-      result = result.filter(student =>
-        student.college && filters.colleges.includes(student.college.toLowerCase())
+      result = result.filter(
+        (student) => student.college && filters.colleges.includes(student.college.toLowerCase())
       );
     }
 
     // AI score filter
-    result = result.filter(student => {
+    result = result.filter((student) => {
       const score = student.ai_score_overall || 0;
       return score >= filters.minScore && score <= filters.maxScore;
     });
@@ -459,8 +474,9 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
         sorted.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
         break;
       case 'last_updated':
-        sorted.sort((a, b) =>
-          new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime()
+        sorted.sort(
+          (a, b) =>
+            new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime()
         );
         break;
       default:
@@ -487,12 +503,15 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
       badges: [],
       colleges: [],
       minScore: 0,
-      maxScore: 100
+      maxScore: 100,
     });
   };
 
-  const activeFilterCount = filters.skills.length + filters.departments.length + 
-    filters.badges.length + filters.colleges.length;
+  const activeFilterCount =
+    filters.skills.length +
+    filters.departments.length +
+    filters.badges.length +
+    filters.colleges.length;
 
   if (loading) {
     return (
@@ -534,7 +553,7 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
               size="md"
             />
           </div>
-          
+
           <button
             onClick={() => setShowFilters(!showFilters)}
             className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
@@ -642,7 +661,9 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
                       min="0"
                       max="100"
                       value={filters.minScore}
-                      onChange={(e) => setFilters({ ...filters, minScore: parseInt(e.target.value) })}
+                      onChange={(e) =>
+                        setFilters({ ...filters, minScore: parseInt(e.target.value) })
+                      }
                       className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
                     />
                   </div>
@@ -679,7 +700,8 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
           ) : (
             <>
               <div className="mb-4 text-sm text-gray-600">
-                Showing {startIndex + 1}-{Math.min(endIndex, filteredStudents.length)} of {filteredStudents.length} portfolios
+                Showing {startIndex + 1}-{Math.min(endIndex, filteredStudents.length)} of{' '}
+                {filteredStudents.length} portfolios
               </div>
 
               {viewMode === 'grid' ? (
@@ -697,11 +719,21 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">College</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Skills</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">AI Score</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Student
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          College
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Skills
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          AI Score
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Actions
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -715,7 +747,9 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
                                 </span>
                               </div>
                               <div className="ml-4">
-                                <div className="text-sm font-medium text-gray-900">{student.name}</div>
+                                <div className="text-sm font-medium text-gray-900">
+                                  {student.name}
+                                </div>
                                 <div className="text-sm text-gray-500">{student.dept}</div>
                               </div>
                             </div>
@@ -734,14 +768,18 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
                                 </span>
                               ))}
                               {student.skills && student.skills.length > 3 && (
-                                <span className="text-xs text-gray-500">+{student.skills.length - 3}</span>
+                                <span className="text-xs text-gray-500">
+                                  +{student.skills.length - 3}
+                                </span>
                               )}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
                               <StarIcon className="h-4 w-4 text-yellow-400 fill-current mr-1" />
-                              <span className="text-sm font-medium">{student.ai_score_overall || 'N/A'}</span>
+                              <span className="text-sm font-medium">
+                                {student.ai_score_overall || 'N/A'}
+                              </span>
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -763,7 +801,7 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
               {totalPages > 1 && (
                 <div className="mt-6 flex items-center justify-center gap-2">
                   <button
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
                     className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50"
                   >
@@ -773,7 +811,7 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
                     Page {currentPage} of {totalPages}
                   </span>
                   <button
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages}
                     className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50"
                   >

@@ -8,7 +8,6 @@ interface AcademicTabProps {
 const AcademicTab: React.FC<AcademicTabProps> = ({ student }) => {
   return (
     <div className="p-6 space-y-6">
-
       {student.school_id ? (
         // School Student Academic Info
         <div>
@@ -17,7 +16,9 @@ const AcademicTab: React.FC<AcademicTabProps> = ({ student }) => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div className="flex flex-col">
                 <span className="text-gray-500 text-xs mb-1">School</span>
-                <span className="font-medium text-gray-900">{student.college_school_name || 'N/A'}</span>
+                <span className="font-medium text-gray-900">
+                  {student.college_school_name || 'N/A'}
+                </span>
               </div>
               <div className="flex flex-col">
                 <span className="text-gray-500 text-xs mb-1">Grade</span>
@@ -59,14 +60,21 @@ const AcademicTab: React.FC<AcademicTabProps> = ({ student }) => {
               )}
             </div>
             <div className="mt-3">
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                student.approval_status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-              }`}>
-                {student.approval_status ? student.approval_status.charAt(0).toUpperCase() + student.approval_status.slice(1) : 'Pending'}
+              <span
+                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                  student.approval_status === 'approved'
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-yellow-100 text-yellow-800'
+                }`}
+              >
+                {student.approval_status
+                  ? student.approval_status.charAt(0).toUpperCase() +
+                    student.approval_status.slice(1)
+                  : 'Pending'}
               </span>
             </div>
           </div>
-          
+
           {/* Show subjects if available */}
           {student.subjects && student.subjects.length > 0 && (
             <div className="mt-6">
@@ -92,11 +100,18 @@ const AcademicTab: React.FC<AcademicTabProps> = ({ student }) => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div className="flex flex-col">
                 <span className="text-gray-500 text-xs mb-1">College</span>
-                <span className="font-medium text-gray-900">{student.college || student.profile?.university || student.college_school_name || 'N/A'}</span>
+                <span className="font-medium text-gray-900">
+                  {student.college ||
+                    student.profile?.university ||
+                    student.college_school_name ||
+                    'N/A'}
+                </span>
               </div>
               <div className="flex flex-col">
                 <span className="text-gray-500 text-xs mb-1">Degree</span>
-                <span className="font-medium text-gray-900">{student.profile?.education?.[0]?.degree || student.branch_field || 'N/A'}</span>
+                <span className="font-medium text-gray-900">
+                  {student.profile?.education?.[0]?.degree || student.branch_field || 'N/A'}
+                </span>
               </div>
               <div className="flex flex-col">
                 <span className="text-gray-500 text-xs mb-1">Section</span>
@@ -104,7 +119,9 @@ const AcademicTab: React.FC<AcademicTabProps> = ({ student }) => {
               </div>
               <div className="flex flex-col">
                 <span className="text-gray-500 text-xs mb-1">CGPA</span>
-                <span className="font-medium text-gray-900">{student.profile?.education?.[0]?.cgpa || student.currentCgpa || 'N/A'}</span>
+                <span className="font-medium text-gray-900">
+                  {student.profile?.education?.[0]?.cgpa || student.currentCgpa || 'N/A'}
+                </span>
               </div>
               {student.enrollment_number && (
                 <div className="flex flex-col">
@@ -138,10 +155,17 @@ const AcademicTab: React.FC<AcademicTabProps> = ({ student }) => {
               )}
             </div>
             <div className="mt-3">
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                student.approval_status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-              }`}>
-                {student.approval_status ? student.approval_status.charAt(0).toUpperCase() + student.approval_status.slice(1) : 'Pending'}
+              <span
+                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                  student.approval_status === 'approved'
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-yellow-100 text-yellow-800'
+                }`}
+              >
+                {student.approval_status
+                  ? student.approval_status.charAt(0).toUpperCase() +
+                    student.approval_status.slice(1)
+                  : 'Pending'}
               </span>
             </div>
           </div>
@@ -152,7 +176,10 @@ const AcademicTab: React.FC<AcademicTabProps> = ({ student }) => {
               <h3 className="text-lg font-medium text-gray-900 mb-4">Education History</h3>
               <div className="space-y-4">
                 {student.profile.education.map((edu: any, index: number) => (
-                  <div key={edu.id || index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                  <div
+                    key={edu.id || index}
+                    className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+                  >
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                       <div className="flex flex-col">
                         <span className="text-gray-500 text-xs mb-1">Degree</span>
@@ -184,10 +211,16 @@ const AcademicTab: React.FC<AcademicTabProps> = ({ student }) => {
                       )}
                     </div>
                     <div className="mt-3">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        edu.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
-                      }`}>
-                        {edu.status ? edu.status.charAt(0).toUpperCase() + edu.status.slice(1) : 'N/A'}
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          edu.status === 'completed'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-blue-100 text-blue-800'
+                        }`}
+                      >
+                        {edu.status
+                          ? edu.status.charAt(0).toUpperCase() + edu.status.slice(1)
+                          : 'N/A'}
                       </span>
                     </div>
                   </div>

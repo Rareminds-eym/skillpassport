@@ -13,7 +13,7 @@ export const useUnreadMessagesCount = (recruiterId: string | undefined) => {
     queryKey: ['recruiter-unread-count', recruiterId],
     queryFn: async () => {
       if (!recruiterId) return 0;
-      
+
       try {
         // Fetch all active conversations (not archived)
         const conversations = await MessageService.getUserConversations(
@@ -21,12 +21,9 @@ export const useUnreadMessagesCount = (recruiterId: string | undefined) => {
           'recruiter',
           false
         );
-        
+
         // Sum up all unread counts
-        return conversations.reduce(
-          (sum, conv) => sum + (conv.recruiter_unread_count || 0),
-          0
-        );
+        return conversations.reduce((sum, conv) => sum + (conv.recruiter_unread_count || 0), 0);
       } catch (error) {
         console.error('Failed to fetch unread count:', error);
         return 0;
@@ -42,15 +39,15 @@ export const useUnreadMessagesCount = (recruiterId: string | undefined) => {
   // Subscribe to conversation updates - this ensures sidebar updates even when not on Messages page
   useEffect(() => {
     if (!recruiterId || subscriptionRef.current) return;
-    
+
     subscriptionRef.current = MessageService.subscribeToUserConversations(
       recruiterId,
       'recruiter',
       () => {
         // Invalidate the unread count query to trigger refetch
-        queryClient.invalidateQueries({ 
+        queryClient.invalidateQueries({
           queryKey: ['recruiter-unread-count', recruiterId],
-          refetchType: 'active'
+          refetchType: 'active',
         });
       }
     );
@@ -62,6 +59,6 @@ export const useUnreadMessagesCount = (recruiterId: string | undefined) => {
       }
     };
   }, [recruiterId, queryClient]);
-  
+
   return { unreadCount };
 };

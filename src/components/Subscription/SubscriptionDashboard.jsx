@@ -1,8 +1,8 @@
 /**
  * SubscriptionDashboard Component
- * 
+ *
  * Dashboard for managing user's subscription and add-on entitlements.
- * 
+ *
  * Features:
  * - Display current plan
  * - List active add-on entitlements
@@ -10,23 +10,23 @@
  * - Toggle auto-renew per add-on
  * - Cancel add-on functionality
  * - Total monthly/annual cost display
- * 
+ *
  * @requirement REQ-5.6 - Subscription Dashboard Component
  * @requirement REQ-7 - Subscription Management
  */
 
 import {
-    AlertCircle,
-    Calendar,
-    Check,
-    ChevronRight,
-    Clock,
-    CreditCard,
-    DollarSign,
-    Package,
-    RefreshCw,
-    Sparkles,
-    X
+  AlertCircle,
+  Calendar,
+  Check,
+  ChevronRight,
+  Clock,
+  CreditCard,
+  DollarSign,
+  Package,
+  RefreshCw,
+  Sparkles,
+  X,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -61,7 +61,7 @@ export function SubscriptionDashboard({ className = '' }) {
     isLoadingEntitlements,
     fetchUserEntitlements,
     cancelAddOn,
-    isCancelling
+    isCancelling,
   } = useSubscriptionContext();
 
   const [cancellingId, setCancellingId] = useState(null);
@@ -69,7 +69,11 @@ export function SubscriptionDashboard({ className = '' }) {
 
   // Handle cancel add-on
   const handleCancel = async (entitlementId) => {
-    if (!window.confirm('Are you sure you want to cancel this add-on? You will retain access until the end of your billing period.')) {
+    if (
+      !window.confirm(
+        'Are you sure you want to cancel this add-on? You will retain access until the end of your billing period.'
+      )
+    ) {
       return;
     }
 
@@ -97,9 +101,9 @@ export function SubscriptionDashboard({ className = '' }) {
   };
 
   // Group entitlements by status
-  const activeEnts = userEntitlements.filter(e => e.status === 'active');
-  const gracePeriodEnts = userEntitlements.filter(e => e.status === 'grace_period');
-  const cancelledEnts = userEntitlements.filter(e => e.status === 'cancelled');
+  const activeEnts = userEntitlements.filter((e) => e.status === 'active');
+  const gracePeriodEnts = userEntitlements.filter((e) => e.status === 'grace_period');
+  const cancelledEnts = userEntitlements.filter((e) => e.status === 'cancelled');
 
   if (isLoadingEntitlements) {
     return <DashboardSkeleton />;
@@ -127,9 +131,7 @@ export function SubscriptionDashboard({ className = '' }) {
         <div className="flex items-start justify-between">
           <div>
             <p className="text-indigo-200 text-sm font-medium">Current Plan</p>
-            <h2 className="text-2xl font-bold mt-1">
-              {subscription?.plan_name || 'Free Plan'}
-            </h2>
+            <h2 className="text-2xl font-bold mt-1">{subscription?.plan_name || 'Free Plan'}</h2>
             {subscription?.current_period_end && (
               <p className="text-indigo-200 text-sm mt-2 flex items-center gap-1">
                 <Calendar className="w-4 h-4" />
@@ -139,16 +141,15 @@ export function SubscriptionDashboard({ className = '' }) {
           </div>
           <div className="text-right">
             <p className="text-indigo-200 text-sm">Monthly Cost</p>
-            <p className="text-3xl font-bold">
-              ₹{subscription?.plan_amount || 0}
-            </p>
+            <p className="text-3xl font-bold">₹{subscription?.plan_amount || 0}</p>
           </div>
         </div>
 
         {subscription && (
           <div className="mt-4 pt-4 border-t border-white/20 flex items-center justify-between">
             <span className="text-sm text-indigo-200">
-              Status: <span className="text-white font-medium capitalize">{subscription.status}</span>
+              Status:{' '}
+              <span className="text-white font-medium capitalize">{subscription.status}</span>
             </span>
             <button
               onClick={() => {
@@ -159,7 +160,7 @@ export function SubscriptionDashboard({ className = '' }) {
                   '/educator': 'educator',
                   '/college-admin': 'college_admin',
                   '/school-admin': 'school_admin',
-                  '/university-admin': 'university_admin'
+                  '/university-admin': 'university_admin',
                 };
                 const userType = typeMap[basePath] || 'student';
                 navigate(`/subscription/plans?type=${userType}&mode=upgrade`);
@@ -181,12 +182,7 @@ export function SubscriptionDashboard({ className = '' }) {
           period="month"
           icon={CreditCard}
         />
-        <CostCard
-          title="Add-ons"
-          amount={totalAddOnCost.monthly}
-          period="month"
-          icon={Package}
-        />
+        <CostCard title="Add-ons" amount={totalAddOnCost.monthly} period="month" icon={Package} />
         <CostCard
           title="Total"
           amount={(subscription?.plan_amount || 0) + totalAddOnCost.monthly}
@@ -203,7 +199,8 @@ export function SubscriptionDashboard({ className = '' }) {
           <div>
             <h3 className="font-medium text-amber-800">Payment Required</h3>
             <p className="text-sm text-amber-700 mt-1">
-              {gracePeriodEnts.length} add-on(s) are in grace period. Please update your payment method to avoid losing access.
+              {gracePeriodEnts.length} add-on(s) are in grace period. Please update your payment
+              method to avoid losing access.
             </p>
           </div>
         </div>
@@ -232,7 +229,7 @@ export function SubscriptionDashboard({ className = '' }) {
           </div>
         ) : (
           <div className="space-y-3">
-            {[...gracePeriodEnts, ...activeEnts].map(entitlement => (
+            {[...gracePeriodEnts, ...activeEnts].map((entitlement) => (
               <EntitlementCard
                 key={entitlement.id}
                 entitlement={entitlement}
@@ -255,12 +252,8 @@ export function SubscriptionDashboard({ className = '' }) {
           </h2>
 
           <div className="space-y-3">
-            {cancelledEnts.map(entitlement => (
-              <EntitlementCard
-                key={entitlement.id}
-                entitlement={entitlement}
-                isCancelled
-              />
+            {cancelledEnts.map((entitlement) => (
+              <EntitlementCard key={entitlement.id} entitlement={entitlement} isCancelled />
             ))}
           </div>
         </section>
@@ -274,13 +267,12 @@ export function SubscriptionDashboard({ className = '' }) {
  */
 function CostCard({ title, amount, period, icon: Icon, highlight = false }) {
   return (
-    <div className={`
+    <div
+      className={`
       rounded-xl p-4 border
-      ${highlight 
-        ? 'bg-indigo-50 border-indigo-200' 
-        : 'bg-white border-gray-200'
-      }
-    `}>
+      ${highlight ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-gray-200'}
+    `}
+    >
       <div className="flex items-center gap-2 mb-2">
         <Icon className={`w-4 h-4 ${highlight ? 'text-indigo-600' : 'text-gray-400'}`} />
         <span className="text-sm text-gray-600">{title}</span>
@@ -298,36 +290,41 @@ function CostCard({ title, amount, period, icon: Icon, highlight = false }) {
 /**
  * EntitlementCard - Displays a single entitlement
  */
-function EntitlementCard({ 
-  entitlement, 
-  onCancel, 
-  onToggleAutoRenew, 
+function EntitlementCard({
+  entitlement,
+  onCancel,
+  onToggleAutoRenew,
   isCancelling = false,
   isToggling = false,
-  isCancelled = false 
+  isCancelled = false,
 }) {
   const endDate = new Date(entitlement.end_date);
   const daysRemaining = Math.ceil((endDate - new Date()) / (1000 * 60 * 60 * 24));
   const isGracePeriod = entitlement.status === 'grace_period';
 
   return (
-    <div className={`
+    <div
+      className={`
       bg-white rounded-lg border p-4
       ${isGracePeriod ? 'border-amber-300 bg-amber-50/50' : 'border-gray-200'}
       ${isCancelled ? 'opacity-75' : ''}
-    `}>
+    `}
+    >
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-3">
           {/* Status Indicator */}
-          <div className={`
+          <div
+            className={`
             w-10 h-10 rounded-lg flex items-center justify-center
-            ${isGracePeriod 
-              ? 'bg-amber-100 text-amber-600' 
-              : isCancelled 
-                ? 'bg-gray-100 text-gray-400'
-                : 'bg-green-100 text-green-600'
+            ${
+              isGracePeriod
+                ? 'bg-amber-100 text-amber-600'
+                : isCancelled
+                  ? 'bg-gray-100 text-gray-400'
+                  : 'bg-green-100 text-green-600'
             }
-          `}>
+          `}
+          >
             {isGracePeriod ? (
               <AlertCircle className="w-5 h-5" />
             ) : isCancelled ? (
@@ -344,9 +341,12 @@ function EntitlementCard({
             <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
               <span className="capitalize">{entitlement.billing_period}</span>
               <span>•</span>
-              <span>₹{entitlement.price_at_purchase}/{entitlement.billing_period === 'monthly' ? 'mo' : 'yr'}</span>
+              <span>
+                ₹{entitlement.price_at_purchase}/
+                {entitlement.billing_period === 'monthly' ? 'mo' : 'yr'}
+              </span>
             </div>
-            
+
             {/* Renewal/Expiry Info */}
             <p className={`text-sm mt-2 ${isGracePeriod ? 'text-amber-600' : 'text-gray-500'}`}>
               {isCancelled ? (
@@ -371,9 +371,10 @@ function EntitlementCard({
               disabled={isToggling}
               className={`
                 px-3 py-1.5 text-sm rounded-lg border transition-colors flex items-center gap-1
-                ${entitlement.auto_renew 
-                  ? 'border-green-200 bg-green-50 text-green-700' 
-                  : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                ${
+                  entitlement.auto_renew
+                    ? 'border-green-200 bg-green-50 text-green-700'
+                    : 'border-gray-200 text-gray-600 hover:bg-gray-50'
                 }
                 ${isToggling ? 'opacity-50' : ''}
               `}
@@ -422,12 +423,12 @@ function DashboardSkeleton() {
       <div className="h-8 w-48 bg-gray-200 rounded" />
       <div className="h-40 bg-gray-200 rounded-2xl" />
       <div className="grid md:grid-cols-3 gap-4">
-        {[1, 2, 3].map(i => (
+        {[1, 2, 3].map((i) => (
           <div key={i} className="h-24 bg-gray-200 rounded-xl" />
         ))}
       </div>
       <div className="space-y-3">
-        {[1, 2, 3].map(i => (
+        {[1, 2, 3].map((i) => (
           <div key={i} className="h-24 bg-gray-200 rounded-lg" />
         ))}
       </div>

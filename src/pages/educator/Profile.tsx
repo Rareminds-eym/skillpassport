@@ -1,14 +1,14 @@
 import {
-    AcademicCapIcon,
-    BuildingOfficeIcon,
-    CalendarIcon,
-    CheckCircleIcon,
-    EnvelopeIcon,
-    MapPinIcon,
-    PencilIcon,
-    PhoneIcon,
-    UserCircleIcon,
-    XCircleIcon,
+  AcademicCapIcon,
+  BuildingOfficeIcon,
+  CalendarIcon,
+  CheckCircleIcon,
+  EnvelopeIcon,
+  MapPinIcon,
+  PencilIcon,
+  PhoneIcon,
+  UserCircleIcon,
+  XCircleIcon,
 } from '@heroicons/react/24/outline';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -73,22 +73,22 @@ const Profile = () => {
 
   useEffect(() => {
     let isMounted = true;
-    
+
     // Check authentication from multiple sources
     const checkAuth = async () => {
       if (!isMounted) return;
-      
+
       // Method 1: Try AuthContext user
       if (authUser && authUser.email) {
         console.log('✅ Using AuthContext user:', authUser.email);
         if (isMounted) await loadProfileByEmail(authUser.email);
         return;
       }
-      
+
       // Method 2: Try localStorage directly
       const storedUser = localStorage.getItem('user');
       const storedEmail = localStorage.getItem('userEmail');
-      
+
       if (storedUser) {
         try {
           const userData = JSON.parse(storedUser);
@@ -99,29 +99,31 @@ const Profile = () => {
           console.error('Error parsing stored user:', e);
         }
       }
-      
+
       if (storedEmail) {
         console.log('✅ Using stored email:', storedEmail);
         if (isMounted) await loadProfileByEmail(storedEmail);
         return;
       }
-      
+
       // Method 3: Fallback to Supabase auth
-      const { data: { user } } = await supabase.auth.getUser();
-      
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       if (user && user.email) {
         console.log('✅ Using Supabase user:', user.email);
         if (isMounted) await loadProfileByEmail(user.email);
         return;
       }
-      
+
       // No authentication found
       console.log('❌ No authenticated user found, redirecting to login');
       if (isMounted) navigate('/login/educator');
     };
-    
+
     checkAuth();
-    
+
     return () => {
       isMounted = false;
     };
@@ -132,11 +134,11 @@ const Profile = () => {
       console.log('⏳ Profile already loading, skipping...');
       return;
     }
-    
+
     try {
       setLoadingProfile(true);
       setLoading(true);
-      
+
       console.log('🔍 Loading profile by email:', email);
 
       // Try multiple approaches to fetch educator data
@@ -147,19 +149,21 @@ const Profile = () => {
       console.log('📧 Trying direct email query...');
       const { data: directData, error: directError } = await supabase
         .from('school_educators')
-        .select(`
+        .select(
+          `
           *,
           school:organizations!school_educators_school_id_fkey (
             name,
             organization_type
           )
-        `)
+        `
+        )
         .eq('email', email)
         .maybeSingle();
 
       if (directError) {
         console.log('❌ Direct query error:', directError.message);
-        
+
         // Approach 2: Try with RLS bypass (if we have service role)
         console.log('🔓 Trying with different approach...');
         const { data: altData, error: altError } = await supabase
@@ -168,7 +172,7 @@ const Profile = () => {
           .ilike('email', email)
           .limit(1)
           .maybeSingle();
-          
+
         if (altError) {
           console.log('❌ Alternative query error:', altError.message);
           educatorError = altError;
@@ -186,7 +190,7 @@ const Profile = () => {
       console.log('Educator data:', educatorData);
       console.log('Educator error:', educatorError);
       console.log('Data fields:', educatorData ? Object.keys(educatorData) : 'No data');
-      
+
       if (educatorData) {
         console.log('📋 Educator details:', {
           id: educatorData.id,
@@ -219,13 +223,15 @@ const Profile = () => {
   const loadProfile = async (user?: any) => {
     try {
       setLoading(true);
-      
+
       // Get current user from Supabase Auth if not provided
       if (!user) {
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        const {
+          data: { user: currentUser },
+        } = await supabase.auth.getUser();
         user = currentUser;
       }
-      
+
       if (!user) {
         console.error('No authenticated user found');
         return;
@@ -244,7 +250,7 @@ const Profile = () => {
       console.log('User ID:', user.id);
       console.log('Educator data:', educatorData);
       console.log('Educator error:', educatorError);
-      
+
       if (educatorError) {
         console.error('Error fetching educator data:', educatorError);
       }
@@ -261,7 +267,7 @@ const Profile = () => {
   const processEducatorData = async (educatorData: any, email: string, user?: any) => {
     // Extract school name from joined data or fetch separately
     let schoolName = '';
-    
+
     if (educatorData?.schools?.name) {
       // School data was joined in the query
       schoolName = educatorData.schools.name;
@@ -274,7 +280,7 @@ const Profile = () => {
         .select('name')
         .eq('id', educatorData.school_id)
         .maybeSingle();
-      
+
       if (orgError) {
         console.log('❌ Organization fetch error:', orgError.message);
       } else {
@@ -291,22 +297,28 @@ const Profile = () => {
       school_id: educatorData?.school_id || '',
       employee_id: educatorData?.employee_id || '',
       account_status: educatorData?.account_status || 'active',
+      // @ts-expect-error - Auto-suppressed for migration
       created_at: educatorData?.created_at,
       updated_at: educatorData?.updated_at,
       metadata: educatorData?.metadata || {},
-      
+
       // Professional Information
       specialization: educatorData?.specialization || '',
       qualification: educatorData?.qualification || '',
       experience_years: educatorData?.experience_years || 0,
-      date_of_joining: educatorData?.date_of_joining || educatorData?.created_at || new Date().toISOString(),
+      date_of_joining:
+        educatorData?.date_of_joining || educatorData?.created_at || new Date().toISOString(),
       designation: educatorData?.designation || '',
       department: educatorData?.department || '',
       subjects_handled: educatorData?.subjects_handled || [],
-      
+
       // Personal Information
-      first_name: educatorData?.first_name && educatorData.first_name !== 'null' ? educatorData.first_name : '',
-      last_name: educatorData?.last_name && educatorData.last_name !== 'null' ? educatorData.last_name : '',
+      first_name:
+        educatorData?.first_name && educatorData.first_name !== 'null'
+          ? educatorData.first_name
+          : '',
+      last_name:
+        educatorData?.last_name && educatorData.last_name !== 'null' ? educatorData.last_name : '',
       email: educatorData?.email || email || '',
       phone_number: educatorData?.phone_number || '',
       dob: educatorData?.dob || '',
@@ -317,26 +329,29 @@ const Profile = () => {
       country: educatorData?.country || '',
       pincode: educatorData?.pincode || '',
       photo_url: educatorData?.photo_url || '',
-      
+
       // Documents
       resume_url: educatorData?.resume_url || '',
       id_proof_url: educatorData?.id_proof_url || '',
-      
+
       // Verification
       verification_status: educatorData?.verification_status || 'Pending',
       verified_by: educatorData?.verified_by || '',
       verified_at: educatorData?.verified_at || '',
-      
+
       // Computed fields
-      full_name: educatorData?.first_name && educatorData?.last_name && 
-                 educatorData.first_name !== 'null' && educatorData.last_name !== 'null'
-        ? `${educatorData.first_name} ${educatorData.last_name}`
-        : educatorData?.first_name && educatorData.first_name !== 'null' 
-          ? educatorData.first_name 
-          : user?.user_metadata?.full_name || 'Educator',
+      full_name:
+        educatorData?.first_name &&
+        educatorData?.last_name &&
+        educatorData.first_name !== 'null' &&
+        educatorData.last_name !== 'null'
+          ? `${educatorData.first_name} ${educatorData.last_name}`
+          : educatorData?.first_name && educatorData.first_name !== 'null'
+            ? educatorData.first_name
+            : user?.user_metadata?.full_name || 'Educator',
       phone: educatorData?.phone_number || '',
       school_name: schoolName,
-      
+
       // Stats (placeholder for now)
       total_students: 0,
       verified_activities: 0,
@@ -351,7 +366,7 @@ const Profile = () => {
       qualification: profileData.qualification,
       school_name: profileData.school_name,
     });
-    
+
     setProfile(profileData);
   };
 
@@ -388,7 +403,7 @@ const Profile = () => {
 
     try {
       setSaving(true);
-      
+
       const updateData = {
         first_name: formData.first_name || profile.first_name,
         last_name: formData.last_name || profile.last_name,
@@ -397,7 +412,9 @@ const Profile = () => {
         city: formData.city || profile.city,
         specialization: formData.specialization || profile.specialization,
         qualification: formData.qualification || profile.qualification,
-        experience_years: parseInt(formData.experience_years as string) || profile.experience_years || 0,
+        experience_years:
+          // @ts-expect-error - Auto-suppressed for migration
+          parseInt(formData.experience_years as string) || profile.experience_years || 0,
         designation: formData.designation || profile.designation,
         department: formData.department || profile.department,
         updated_at: new Date().toISOString(),
@@ -418,7 +435,7 @@ const Profile = () => {
 
         if (idError) {
           console.log('❌ Update by ID failed:', idError.message);
-          
+
           // Approach 2: Update by email
           console.log('📝 Trying update by email:', profile.email);
           const { error: emailError } = await supabase
@@ -460,11 +477,11 @@ const Profile = () => {
         setProfile(updatedProfile);
         setEditing(false);
         setFormData({});
-        
+
         // Notify Header component to refresh
-        console.log('📢 Emitting profile update event for header refresh')
-        window.dispatchEvent(new CustomEvent('educatorProfileUpdated'))
-        
+        console.log('📢 Emitting profile update event for header refresh');
+        window.dispatchEvent(new CustomEvent('educatorProfileUpdated'));
+
         // Show success message
         alert('Profile saved successfully!');
       }
@@ -477,7 +494,7 @@ const Profile = () => {
   };
 
   const handleInputChange = (field: keyof EducatorProfile, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const formatDate = (dateString?: string) => {
@@ -485,7 +502,7 @@ const Profile = () => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
     });
   };
 
@@ -561,7 +578,9 @@ const Profile = () => {
               </div>
 
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Professional Information</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Professional Information
+                </h3>
                 <div className="space-y-4">
                   <div className="flex items-center space-x-3">
                     <AcademicCapIcon className="h-5 w-5 text-gray-400" />
@@ -645,7 +664,11 @@ const Profile = () => {
           <div className="flex">
             <div className="flex-shrink-0">
               <svg className="h-5 w-5 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                <path
+                  fillRule="evenodd"
+                  d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                  clipRule="evenodd"
+                />
               </svg>
             </div>
             <div className="ml-3">
@@ -657,7 +680,9 @@ const Profile = () => {
                   <li>Your profile hasn't been set up yet</li>
                   <li>Database connection problems</li>
                 </ul>
-                <p className="mt-3">Please try refreshing the page or contact support if the problem persists.</p>
+                <p className="mt-3">
+                  Please try refreshing the page or contact support if the problem persists.
+                </p>
               </div>
             </div>
           </div>
@@ -744,7 +769,7 @@ const Profile = () => {
                     <span className="text-gray-900 font-medium">{profile.email}</span>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center space-x-3">
                   <PhoneIcon className="h-5 w-5 text-gray-400" />
                   <div className="flex-1">
@@ -758,7 +783,9 @@ const Profile = () => {
                         placeholder="Enter phone number"
                       />
                     ) : (
-                      <span className="text-gray-900 font-medium">{profile.phone_number || 'Not provided'}</span>
+                      <span className="text-gray-900 font-medium">
+                        {profile.phone_number || 'Not provided'}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -776,7 +803,9 @@ const Profile = () => {
                         placeholder="Enter address"
                       />
                     ) : (
-                      <span className="text-gray-900 font-medium">{profile.address || 'Not provided'}</span>
+                      <span className="text-gray-900 font-medium">
+                        {profile.address || 'Not provided'}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -794,7 +823,9 @@ const Profile = () => {
                         placeholder="Enter city"
                       />
                     ) : (
-                      <span className="text-gray-900 font-medium">{profile.city || 'Not provided'}</span>
+                      <span className="text-gray-900 font-medium">
+                        {profile.city || 'Not provided'}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -817,7 +848,9 @@ const Profile = () => {
                         placeholder="e.g., Computer Science"
                       />
                     ) : (
-                      <span className="text-gray-900 font-medium">{profile.specialization || 'Not specified'}</span>
+                      <span className="text-gray-900 font-medium">
+                        {profile.specialization || 'Not specified'}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -835,7 +868,9 @@ const Profile = () => {
                         placeholder="e.g., M.Tech"
                       />
                     ) : (
-                      <span className="text-gray-900 font-medium">{profile.qualification || 'Not specified'}</span>
+                      <span className="text-gray-900 font-medium">
+                        {profile.qualification || 'Not specified'}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -855,7 +890,9 @@ const Profile = () => {
                       />
                     ) : (
                       <span className="text-gray-900 font-medium">
-                        {profile.experience_years ? `${profile.experience_years} years` : 'Not specified'}
+                        {profile.experience_years
+                          ? `${profile.experience_years} years`
+                          : 'Not specified'}
                       </span>
                     )}
                   </div>
@@ -874,7 +911,9 @@ const Profile = () => {
                         placeholder="e.g., Senior Educator"
                       />
                     ) : (
-                      <span className="text-gray-900 font-medium">{profile.designation || 'Not specified'}</span>
+                      <span className="text-gray-900 font-medium">
+                        {profile.designation || 'Not specified'}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -892,7 +931,9 @@ const Profile = () => {
                         placeholder="e.g., Computer Science"
                       />
                     ) : (
-                      <span className="text-gray-900 font-medium">{profile.department || 'Not specified'}</span>
+                      <span className="text-gray-900 font-medium">
+                        {profile.department || 'Not specified'}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -901,7 +942,9 @@ const Profile = () => {
                   <CalendarIcon className="h-5 w-5 text-gray-400" />
                   <div className="flex-1">
                     <p className="text-xs text-gray-500">Date of Joining</p>
-                    <span className="text-gray-900 font-medium">{formatDate(profile.date_of_joining)}</span>
+                    <span className="text-gray-900 font-medium">
+                      {formatDate(profile.date_of_joining)}
+                    </span>
                   </div>
                 </div>
 
@@ -909,7 +952,9 @@ const Profile = () => {
                   <BuildingOfficeIcon className="h-5 w-5 text-gray-400" />
                   <div className="flex-1">
                     <p className="text-xs text-gray-500">School</p>
-                    <span className="text-gray-900 font-medium">{profile.school_name || 'Not specified'}</span>
+                    <span className="text-gray-900 font-medium">
+                      {profile.school_name || 'Not specified'}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -921,12 +966,12 @@ const Profile = () => {
             <h3 className="text-lg font-semibold text-gray-900 mb-4">About</h3>
             {editing ? (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Bio
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
                 <textarea
                   value={formData.metadata?.bio || ''}
-                  onChange={(e) => handleInputChange('metadata', { ...formData.metadata, bio: e.target.value })}
+                  onChange={(e) =>
+                    handleInputChange('metadata', { ...formData.metadata, bio: e.target.value })
+                  }
                   rows={4}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   placeholder="Tell us about yourself, your teaching philosophy, and experience..."
@@ -934,7 +979,8 @@ const Profile = () => {
               </div>
             ) : (
               <p className="text-gray-700">
-                {profile.metadata?.bio || 'No bio provided yet. Click "Edit Profile" to add information about yourself.'}
+                {profile.metadata?.bio ||
+                  'No bio provided yet. Click "Edit Profile" to add information about yourself.'}
               </p>
             )}
           </div>
@@ -987,7 +1033,9 @@ const Profile = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Verified Activities</p>
-              <p className="text-2xl font-semibold text-gray-900">{profile.verified_activities || 0}</p>
+              <p className="text-2xl font-semibold text-gray-900">
+                {profile.verified_activities || 0}
+              </p>
             </div>
           </div>
         </div>
@@ -1001,7 +1049,9 @@ const Profile = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Pending Reviews</p>
-              <p className="text-2xl font-semibold text-gray-900">{profile.pending_activities || 0}</p>
+              <p className="text-2xl font-semibold text-gray-900">
+                {profile.pending_activities || 0}
+              </p>
             </div>
           </div>
         </div>

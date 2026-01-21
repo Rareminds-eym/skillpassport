@@ -18,18 +18,11 @@ const HomePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-slate-900 dark:to-indigo-950 transition-colors duration-300">
-
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 px-6 min-h-[90vh] flex items-center justify-center overflow-hidden">
         {/* Video Background */}
         <div className="absolute inset-0 z-0">
-          <video
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="w-full h-full object-cover"
-          >
+          <video autoPlay loop muted playsInline className="w-full h-full object-cover">
             <source src="/video-bg.mp4" type="video/mp4" />
           </video>
           {/* Dark overlay for better text readability */}
@@ -78,10 +71,7 @@ const HomePage: React.FC = () => {
             transition={{ delay: 0.6 }}
             className="flex justify-center"
           >
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Link
                 to="/student/digital-portfolio/portfolio"
                 className="inline-flex items-center px-10 py-5 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-full font-semibold text-lg shadow-2xl hover:shadow-purple-500/50 transition-all group relative overflow-hidden"
@@ -101,21 +91,21 @@ const HomePage: React.FC = () => {
       <section className="relative py-20 px-6 bg-white dark:bg-gray-900 transition-colors duration-300 overflow-hidden">
         {/* Transparent gradient overlay at the top to distinguish from hero section */}
         <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-black/30 via-black/10 to-transparent dark:from-black/50 dark:via-black/20 dark:to-transparent pointer-events-none z-[1]"></div>
-        
+
         {/* Background Ripple Effect - Light mode version (soft blue/purple to match gradient) */}
         <div className="block dark:hidden absolute inset-0 pointer-events-auto">
-          <BackgroundRippleEffect 
-            rows={8} 
+          <BackgroundRippleEffect
+            rows={8}
             cols={25}
             borderColor="rgba(99, 102, 241, 0.4)" // much stronger indigo border
             fillColor="rgba(147, 197, 253, 0.25)" // highly prominent blue fill (blue-300)
           />
         </div>
-        
+
         {/* Background Ripple Effect - Dark mode version (indigo theme) */}
         <div className="hidden dark:block absolute inset-0 pointer-events-auto">
-          <BackgroundRippleEffect 
-            rows={8} 
+          <BackgroundRippleEffect
+            rows={8}
             cols={25}
             borderColor="rgba(99, 102, 241, 0.25)" // stronger indigo border for dark
             fillColor="rgba(99, 102, 241, 0.08)" // indigo fill
@@ -134,7 +124,8 @@ const HomePage: React.FC = () => {
               Choose Your Presentation Mode
             </h2>
             <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-              Two powerful ways to showcase your professional journey. Pick the one that suits your style.
+              Two powerful ways to showcase your professional journey. Pick the one that suits your
+              style.
             </p>
           </motion.div>
 
@@ -150,7 +141,7 @@ const HomePage: React.FC = () => {
             >
               <div className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/50 dark:to-purple-950/50 rounded-3xl p-8 h-full border-2 border-indigo-200 dark:border-indigo-800 hover:border-indigo-400 dark:hover:border-indigo-600 transition-all hover:shadow-2xl animate-border-glow dark:animate-none">
                 {/* Badge */}
-                <motion.div 
+                <motion.div
                   whileHover={{ scale: 1.05 }}
                   className="inline-flex items-center space-x-2 bg-indigo-600 dark:bg-indigo-500 text-white px-4 py-2 rounded-full mb-6"
                 >
@@ -163,63 +154,72 @@ const HomePage: React.FC = () => {
                 </h3>
 
                 <p className="text-gray-700 dark:text-gray-300 mb-6 text-lg leading-relaxed">
-                  Create a stunning, interactive portfolio with multiple customizable layouts. 
-                  Perfect for showcasing your work with modern animations, color themes, and professional designs.
+                  Create a stunning, interactive portfolio with multiple customizable layouts.
+                  Perfect for showcasing your work with modern animations, color themes, and
+                  professional designs.
                 </p>
 
                 {/* Features */}
-                <motion.ul 
+                <motion.ul
                   initial="hidden"
                   whileInView="visible"
                   viewport={{ once: true }}
                   variants={{
                     visible: {
                       transition: {
-                        staggerChildren: 0.1
-                      }
-                    }
+                        staggerChildren: 0.1,
+                      },
+                    },
                   }}
                   className="space-y-3 mb-8"
                 >
-                  <motion.li 
+                  <motion.li
                     variants={{
                       hidden: { opacity: 0, x: -20 },
-                      visible: { opacity: 1, x: 0 }
+                      visible: { opacity: 1, x: 0 },
                     }}
                     className="flex items-start space-x-3"
                   >
                     <CheckCircle className="w-5 h-5 text-indigo-600 dark:text-indigo-400 mt-1 flex-shrink-0" />
-                    <span className="text-gray-700 dark:text-gray-300">7 unique layout options (Modern, Creative, Split-Screen, AI Persona, etc.)</span>
+                    <span className="text-gray-700 dark:text-gray-300">
+                      7 unique layout options (Modern, Creative, Split-Screen, AI Persona, etc.)
+                    </span>
                   </motion.li>
-                  <motion.li 
+                  <motion.li
                     variants={{
                       hidden: { opacity: 0, x: -20 },
-                      visible: { opacity: 1, x: 0 }
+                      visible: { opacity: 1, x: 0 },
                     }}
                     className="flex items-start space-x-3"
                   >
                     <CheckCircle className="w-5 h-5 text-indigo-600 dark:text-indigo-400 mt-1 flex-shrink-0" />
-                    <span className="text-gray-700 dark:text-gray-300">Customizable color themes and animations</span>
+                    <span className="text-gray-700 dark:text-gray-300">
+                      Customizable color themes and animations
+                    </span>
                   </motion.li>
-                  <motion.li 
+                  <motion.li
                     variants={{
                       hidden: { opacity: 0, x: -20 },
-                      visible: { opacity: 1, x: 0 }
+                      visible: { opacity: 1, x: 0 },
                     }}
                     className="flex items-start space-x-3"
                   >
                     <CheckCircle className="w-5 h-5 text-indigo-600 dark:text-indigo-400 mt-1 flex-shrink-0" />
-                    <span className="text-gray-700 dark:text-gray-300">Interactive project showcases and skill displays</span>
+                    <span className="text-gray-700 dark:text-gray-300">
+                      Interactive project showcases and skill displays
+                    </span>
                   </motion.li>
-                  <motion.li 
+                  <motion.li
                     variants={{
                       hidden: { opacity: 0, x: -20 },
-                      visible: { opacity: 1, x: 0 }
+                      visible: { opacity: 1, x: 0 },
                     }}
                     className="flex items-start space-x-3"
                   >
                     <CheckCircle className="w-5 h-5 text-indigo-600 dark:text-indigo-400 mt-1 flex-shrink-0" />
-                    <span className="text-gray-700 dark:text-gray-300">Responsive design for all devices</span>
+                    <span className="text-gray-700 dark:text-gray-300">
+                      Responsive design for all devices
+                    </span>
                   </motion.li>
                 </motion.ul>
 
@@ -242,15 +242,15 @@ const HomePage: React.FC = () => {
                 </motion.div>
 
                 {/* Decorative Element */}
-                <motion.div 
-                  animate={{ 
+                <motion.div
+                  animate={{
                     scale: [1, 1.2, 1],
-                    opacity: [0.5, 0.7, 0.5]
+                    opacity: [0.5, 0.7, 0.5],
                   }}
-                  transition={{ 
+                  transition={{
                     duration: 4,
                     repeat: Infinity,
-                    ease: "easeInOut"
+                    ease: 'easeInOut',
                   }}
                   className="absolute -top-4 -right-4 w-24 h-24 bg-indigo-200 dark:bg-indigo-800 rounded-full blur-2xl"
                 />
@@ -268,7 +268,7 @@ const HomePage: React.FC = () => {
             >
               <div className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/50 dark:to-purple-950/50 rounded-3xl p-8 h-full border-2 border-indigo-200 dark:border-indigo-800 hover:border-indigo-400 dark:hover:border-indigo-600 transition-all hover:shadow-2xl animate-border-glow dark:animate-none">
                 {/* Badge */}
-                <motion.div 
+                <motion.div
                   whileHover={{ scale: 1.05 }}
                   className="inline-flex items-center space-x-2 bg-indigo-600 dark:bg-indigo-500 text-white px-4 py-2 rounded-full mb-6"
                 >
@@ -281,63 +281,72 @@ const HomePage: React.FC = () => {
                 </h3>
 
                 <p className="text-gray-700 dark:text-gray-300 mb-6 text-lg leading-relaxed">
-                  Present your credentials in a traditional passport format with page-flip animations. 
-                  A unique and memorable way to display your professional journey and achievements.
+                  Present your credentials in a traditional passport format with page-flip
+                  animations. A unique and memorable way to display your professional journey and
+                  achievements.
                 </p>
 
                 {/* Features */}
-                <motion.ul 
+                <motion.ul
                   initial="hidden"
                   whileInView="visible"
                   viewport={{ once: true }}
                   variants={{
                     visible: {
                       transition: {
-                        staggerChildren: 0.1
-                      }
-                    }
+                        staggerChildren: 0.1,
+                      },
+                    },
                   }}
                   className="space-y-3 mb-8"
                 >
-                  <motion.li 
+                  <motion.li
                     variants={{
                       hidden: { opacity: 0, x: -20 },
-                      visible: { opacity: 1, x: 0 }
+                      visible: { opacity: 1, x: 0 },
                     }}
                     className="flex items-start space-x-3"
                   >
                     <CheckCircle className="w-5 h-5 text-indigo-600 dark:text-indigo-400 mt-1 flex-shrink-0" />
-                    <span className="text-gray-700 dark:text-gray-300">Authentic passport-style design with official look</span>
+                    <span className="text-gray-700 dark:text-gray-300">
+                      Authentic passport-style design with official look
+                    </span>
                   </motion.li>
-                  <motion.li 
+                  <motion.li
                     variants={{
                       hidden: { opacity: 0, x: -20 },
-                      visible: { opacity: 1, x: 0 }
+                      visible: { opacity: 1, x: 0 },
                     }}
                     className="flex items-start space-x-3"
                   >
                     <CheckCircle className="w-5 h-5 text-indigo-600 dark:text-indigo-400 mt-1 flex-shrink-0" />
-                    <span className="text-gray-700 dark:text-gray-300">Smooth page-flip animations (desktop & mobile)</span>
+                    <span className="text-gray-700 dark:text-gray-300">
+                      Smooth page-flip animations (desktop & mobile)
+                    </span>
                   </motion.li>
-                  <motion.li 
+                  <motion.li
                     variants={{
                       hidden: { opacity: 0, x: -20 },
-                      visible: { opacity: 1, x: 0 }
+                      visible: { opacity: 1, x: 0 },
                     }}
                     className="flex items-start space-x-3"
                   >
                     <CheckCircle className="w-5 h-5 text-indigo-600 dark:text-indigo-400 mt-1 flex-shrink-0" />
-                    <span className="text-gray-700 dark:text-gray-300">Organized sections: Education, Skills, Projects, Certifications</span>
+                    <span className="text-gray-700 dark:text-gray-300">
+                      Organized sections: Education, Skills, Projects, Certifications
+                    </span>
                   </motion.li>
-                  <motion.li 
+                  <motion.li
                     variants={{
                       hidden: { opacity: 0, x: -20 },
-                      visible: { opacity: 1, x: 0 }
+                      visible: { opacity: 1, x: 0 },
                     }}
                     className="flex items-start space-x-3"
                   >
                     <CheckCircle className="w-5 h-5 text-indigo-600 dark:text-indigo-400 mt-1 flex-shrink-0" />
-                    <span className="text-gray-700 dark:text-gray-300">Touch-enabled navigation for mobile devices</span>
+                    <span className="text-gray-700 dark:text-gray-300">
+                      Touch-enabled navigation for mobile devices
+                    </span>
                   </motion.li>
                 </motion.ul>
 
@@ -360,16 +369,16 @@ const HomePage: React.FC = () => {
                 </motion.div>
 
                 {/* Decorative Element */}
-                <motion.div 
-                  animate={{ 
+                <motion.div
+                  animate={{
                     scale: [1, 1.2, 1],
-                    opacity: [0.5, 0.7, 0.5]
+                    opacity: [0.5, 0.7, 0.5],
                   }}
-                  transition={{ 
+                  transition={{
                     duration: 4,
                     repeat: Infinity,
-                    ease: "easeInOut",
-                    delay: 0.5
+                    ease: 'easeInOut',
+                    delay: 0.5,
                   }}
                   className="absolute -top-4 -right-4 w-24 h-24 bg-indigo-200 dark:bg-indigo-800 rounded-full blur-2xl"
                 />
@@ -378,7 +387,6 @@ const HomePage: React.FC = () => {
           </div>
         </div>
       </section>
-
     </div>
   );
 };

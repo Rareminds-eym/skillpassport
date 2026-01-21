@@ -1,13 +1,13 @@
 // Unified Profile Edit Modal System
 // This provides both the new unified modal and backward-compatible named exports
 
-import UnifiedProfileEditModal from "./UnifiedProfileEditModal";
-import PersonalInfoEditModalComponent from "./PersonalInfoEditModal";
-export { FIELD_CONFIGS } from "./fieldConfigs";
-export * from "./utils";
+import UnifiedProfileEditModal from './UnifiedProfileEditModal';
+import PersonalInfoEditModalComponent from './PersonalInfoEditModal';
+export { FIELD_CONFIGS } from './fieldConfigs';
+export * from './utils';
 
 // Export the unified modal
-export { default as UnifiedProfileEditModal } from "./UnifiedProfileEditModal";
+export { default as UnifiedProfileEditModal } from './UnifiedProfileEditModal';
 
 // Backward-compatible wrapper components
 // These allow existing code to continue working without changes
@@ -74,12 +74,7 @@ export const SkillsEditModal = ({ isOpen, onClose, data, onSave }) => (
 );
 
 export const PersonalInfoEditModal = ({ isOpen, onClose, data, onSave }) => (
-  <PersonalInfoEditModalComponent
-    isOpen={isOpen}
-    onClose={onClose}
-    data={data}
-    onSave={onSave}
-  />
+  <PersonalInfoEditModalComponent isOpen={isOpen} onClose={onClose} data={data} onSave={onSave} />
 );
 
 // Default export for convenience

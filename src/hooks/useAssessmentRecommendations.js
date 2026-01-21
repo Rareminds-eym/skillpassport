@@ -16,7 +16,13 @@ export const useAssessmentRecommendations = (studentIdOrUserId, enabled = true) 
 
   useEffect(() => {
     if (!studentIdOrUserId || !enabled) {
-      console.log('⏸️ useAssessmentRecommendations: Skipping (studentId:', studentIdOrUserId, 'enabled:', enabled, ')');
+      console.log(
+        '⏸️ useAssessmentRecommendations: Skipping (studentId:',
+        studentIdOrUserId,
+        'enabled:',
+        enabled,
+        ')'
+      );
       setLoading(false);
       return;
     }
@@ -35,7 +41,7 @@ export const useAssessmentRecommendations = (studentIdOrUserId, enabled = true) 
           console.log('🔍 Calling getInProgressAttempt with studentId:', studentIdOrUserId);
           const inProgress = await getInProgressAttempt(studentIdOrUserId);
           console.log('📊 getInProgressAttempt result:', inProgress);
-          
+
           if (inProgress) {
             console.log('✅ Found in-progress attempt:', inProgress.id);
             setHasInProgressAssessment(true);
@@ -51,8 +57,8 @@ export const useAssessmentRecommendations = (studentIdOrUserId, enabled = true) 
         }
 
         // getLatestResult can handle both student.id and user.id
-        let result = await getLatestResult(studentIdOrUserId);
-        
+        const result = await getLatestResult(studentIdOrUserId);
+
         if (!result) {
           console.log('❌ No assessment result found');
           setRecommendations(null);
@@ -60,7 +66,7 @@ export const useAssessmentRecommendations = (studentIdOrUserId, enabled = true) 
           setLoading(false);
           return;
         }
-        
+
         // Mark as having completed assessment if result exists with completed status
         if (result.status === 'completed') {
           setHasCompletedAssessment(true);
@@ -84,45 +90,52 @@ export const useAssessmentRecommendations = (studentIdOrUserId, enabled = true) 
         const processedRecommendations = {
           // Primary recommended track
           recommendedTrack: skillGap.recommendedTrack || geminiResults.skillGap?.recommendedTrack,
-          
+
           // Learning tracks with topics
           learningTracks: skillGap.learningTracks || geminiResults.skillGap?.learningTracks || [],
-          
+
           // Courses by type (technical and soft skills) - NEW
           coursesByType: geminiResults.coursesByType || {
             technical: [],
-            soft: []
+            soft: [],
           },
-          
+
           // Career clusters (High fit careers)
-          careerClusters: careerFit.clusters?.filter(c => c.fit === 'High') || 
-                         geminiResults.careerFit?.clusters?.filter(c => c.fit === 'High') || [],
-          
+          careerClusters:
+            careerFit.clusters?.filter((c) => c.fit === 'High') ||
+            geminiResults.careerFit?.clusters?.filter((c) => c.fit === 'High') ||
+            [],
+
           // Priority skills to develop
           prioritySkills: [
             ...(skillGap.priorityA || geminiResults.skillGap?.priorityA || []),
-            ...(skillGap.priorityB || geminiResults.skillGap?.priorityB || [])
+            ...(skillGap.priorityB || geminiResults.skillGap?.priorityB || []),
           ],
-          
+
           // Current strengths
           strengths: skillGap.currentStrengths || geminiResults.skillGap?.currentStrengths || [],
-          
+
           // Certifications to pursue
-          certifications: roadmap.exposure?.certifications || geminiResults.roadmap?.exposure?.certifications || [],
-          
+          certifications:
+            roadmap.exposure?.certifications ||
+            geminiResults.roadmap?.exposure?.certifications ||
+            [],
+
           // Projects to build
           projects: roadmap.projects || geminiResults.roadmap?.projects || [],
-          
+
           // Overall career readiness
           readiness: result.employability_readiness,
-          
+
           // RIASEC code for interest alignment
           riasecCode: result.riasec_code,
-          
+
           // Top aptitude strengths
-          aptitudeStrengths: result.profile_snapshot?.aptitudeStrengths || 
-                            geminiResults.profileSnapshot?.aptitudeStrengths || [],
-          
+          aptitudeStrengths:
+            result.profile_snapshot?.aptitudeStrengths ||
+            geminiResults.profileSnapshot?.aptitudeStrengths ||
+            [],
+
           // Assessment metadata
           assessmentDate: result.created_at,
           streamId: result.stream_id,

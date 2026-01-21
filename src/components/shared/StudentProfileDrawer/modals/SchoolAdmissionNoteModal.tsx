@@ -1,8 +1,4 @@
-import {
-    ChatBubbleLeftRightIcon,
-    DocumentTextIcon,
-    XMarkIcon,
-} from '@heroicons/react/24/outline';
+import { ChatBubbleLeftRightIcon, DocumentTextIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../../../../lib/supabaseClient';
@@ -63,7 +59,11 @@ const SchoolAdmissionNoteModal: React.FC<SchoolAdmissionNoteModalProps> = ({
       }
 
       console.log('🔍 Looking up school ID for user:', user.id);
-      console.log('📋 Student data:', { id: student.id, name: student.name, school_id: (student as any).school_id });
+      console.log('📋 Student data:', {
+        id: student.id,
+        name: student.name,
+        school_id: (student as any).school_id,
+      });
 
       // Get school ID for the admin - match the same logic as StudentCommunication.tsx
       let schoolId: string | null = null;
@@ -103,7 +103,9 @@ const SchoolAdmissionNoteModal: React.FC<SchoolAdmissionNoteModalProps> = ({
 
       if (!schoolId) {
         console.error('❌ Could not determine school ID for user:', user.id);
-        throw new Error('Could not determine school ID. Please ensure you are logged in as a school admin.');
+        throw new Error(
+          'Could not determine school ID. Please ensure you are logged in as a school admin.'
+        );
       }
 
       console.log('✅ Found school ID:', schoolId);
@@ -180,13 +182,8 @@ const SchoolAdmissionNoteModal: React.FC<SchoolAdmissionNoteModalProps> = ({
 
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-medium text-gray-900">
-              Add Admission Note
-            </h3>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
-            >
+            <h3 className="text-lg font-medium text-gray-900">Add Admission Note</h3>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
               <XMarkIcon className="h-6 w-6" />
             </button>
           </div>
@@ -214,19 +211,13 @@ const SchoolAdmissionNoteModal: React.FC<SchoolAdmissionNoteModalProps> = ({
                 onChange={(e) => setSendToCommunication(e.target.checked)}
                 className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
               />
-              <label
-                htmlFor="sendToCommunicationSchool"
-                className="flex-1 cursor-pointer"
-              >
+              <label htmlFor="sendToCommunicationSchool" className="flex-1 cursor-pointer">
                 <div className="flex items-center space-x-2">
                   <ChatBubbleLeftRightIcon className="h-5 w-5 text-blue-600" />
-                  <span className="text-sm font-medium text-blue-900">
-                    Send to Communication
-                  </span>
+                  <span className="text-sm font-medium text-blue-900">Send to Communication</span>
                 </div>
                 <p className="text-xs text-blue-700 mt-1">
-                  This will send the note as a message to the student in the
-                  Communication section
+                  This will send the note as a message to the student in the Communication section
                 </p>
               </label>
             </div>

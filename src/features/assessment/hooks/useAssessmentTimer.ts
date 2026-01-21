@@ -1,9 +1,9 @@
 /**
  * Assessment Timer Hook
- * 
+ *
  * Provides countdown and elapsed time tracking for assessments.
  * Supports both timed sections (countdown) and untimed sections (elapsed time).
- * 
+ *
  * @module features/assessment/hooks/useAssessmentTimer
  */
 
@@ -49,7 +49,9 @@ export interface UseAssessmentTimerReturn {
   getTimePercentage: () => number;
 }
 
-export function useAssessmentTimer(options: UseAssessmentTimerOptions = {}): UseAssessmentTimerReturn {
+export function useAssessmentTimer(
+  options: UseAssessmentTimerOptions = {}
+): UseAssessmentTimerReturn {
   const {
     initialTime = 0,
     autoStart = false,
@@ -63,7 +65,7 @@ export function useAssessmentTimer(options: UseAssessmentTimerOptions = {}): Use
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isRunning, setIsRunning] = useState(autoStart);
   const [isTimeUp, setIsTimeUp] = useState(false);
-  
+
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const triggeredWarningsRef = useRef<Set<number>>(new Set());
   const initialTimeRef = useRef(initialTime);
@@ -88,31 +90,31 @@ export function useAssessmentTimer(options: UseAssessmentTimerOptions = {}): Use
     }
 
     intervalRef.current = setInterval(() => {
-      setElapsedTime(prev => prev + 1);
-      
+      setElapsedTime((prev) => prev + 1);
+
       if (initialTimeRef.current > 0) {
         // Countdown mode
-        setTimeRemaining(prev => {
+        setTimeRemaining((prev) => {
           const newTime = Math.max(0, prev - 1);
-          
+
           // Check warning thresholds
-          warningThresholds.forEach(threshold => {
+          warningThresholds.forEach((threshold) => {
             if (newTime === threshold && !triggeredWarningsRef.current.has(threshold)) {
               triggeredWarningsRef.current.add(threshold);
               onWarning?.(threshold);
             }
           });
-          
+
           // Call onTick
           onTick?.(newTime, elapsedTime + 1);
-          
+
           // Check if time is up
           if (newTime === 0) {
             setIsTimeUp(true);
             setIsRunning(false);
             onTimeUp?.();
           }
-          
+
           return newTime;
         });
       } else {
@@ -161,17 +163,20 @@ export function useAssessmentTimer(options: UseAssessmentTimerOptions = {}): Use
     }
   }, []);
 
-  const formatTime = useCallback((seconds?: number): string => {
-    const time = seconds ?? timeRemaining;
-    const hrs = Math.floor(time / 3600);
-    const mins = Math.floor((time % 3600) / 60);
-    const secs = time % 60;
-    
-    if (hrs > 0) {
-      return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    }
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  }, [timeRemaining]);
+  const formatTime = useCallback(
+    (seconds?: number): string => {
+      const time = seconds ?? timeRemaining;
+      const hrs = Math.floor(time / 3600);
+      const mins = Math.floor((time % 3600) / 60);
+      const secs = time % 60;
+
+      if (hrs > 0) {
+        return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+      }
+      return `${mins}:${secs.toString().padStart(2, '0')}`;
+    },
+    [timeRemaining]
+  );
 
   const getTimePercentage = useCallback((): number => {
     if (initialTimeRef.current === 0) return 100;

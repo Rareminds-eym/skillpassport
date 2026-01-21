@@ -58,7 +58,7 @@ Create a safe and supportive environment.`,
 
 Always maintain a supportive and professional tone.
 Provide comprehensive and accurate information.
-Be encouraging and help students make informed decisions.`
+Be encouraging and help students make informed decisions.`,
 };
 
 /**
@@ -66,26 +66,26 @@ Be encouraging and help students make informed decisions.`
  */
 export function buildStudentContextPrompt(context?: StudentContext): string {
   if (!context) return '';
-  
+
   let prompt = `\n\n=== Student Information ===\n`;
-  
+
   if (context.name) prompt += `Name: ${context.name}\n`;
   if (context.department) prompt += `Department: ${context.department}\n`;
   if (context.year) prompt += `Year: ${context.year}\n`;
   if (context.gpa) prompt += `GPA: ${context.gpa}\n`;
-  
+
   if (context.courses && context.courses.length > 0) {
     prompt += `Enrolled Courses: ${context.courses.join(', ')}\n`;
   }
-  
+
   if (context.interests && context.interests.length > 0) {
     prompt += `Interests: ${context.interests.join(', ')}\n`;
   }
-  
+
   if (context.goals && context.goals.length > 0) {
     prompt += `Goals: ${context.goals.join(', ')}\n`;
   }
-  
+
   prompt += `========================\n\n`;
   return prompt;
 }
@@ -98,29 +98,29 @@ export function getFollowUpSuggestions(topic: CounsellingTopic): string[] {
     academic: [
       'What study techniques work best for technical subjects?',
       'How do I balance multiple courses effectively?',
-      'Can you help me plan my next semester?'
+      'Can you help me plan my next semester?',
     ],
     career: [
       'What skills should I focus on for my career goals?',
       'How do I build a strong professional network?',
-      'What internship opportunities should I consider?'
+      'What internship opportunities should I consider?',
     ],
     performance: [
       'How can I improve my grades this semester?',
       'What are some effective study habits?',
-      'How do I stay motivated during exams?'
+      'How do I stay motivated during exams?',
     ],
     wellbeing: [
       'What are some stress management techniques?',
       'How do I maintain work-life balance?',
-      'Can you suggest healthy study routines?'
+      'Can you suggest healthy study routines?',
     ],
     general: [
       'What campus resources are available to me?',
       'How can I get more involved in campus activities?',
-      'What extracurriculars would complement my major?'
-    ]
+      'What extracurriculars would complement my major?',
+    ],
   };
-  
+
   return suggestions[topic] || [];
 }

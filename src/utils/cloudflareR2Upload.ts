@@ -4,7 +4,8 @@
  */
 
 // Storage API worker URL - update this with your deployed worker URL
-const STORAGE_API_URL = import.meta.env.VITE_STORAGE_API_URL || 'https://storage-api.rareminds.workers.dev';
+const STORAGE_API_URL =
+  import.meta.env.VITE_STORAGE_API_URL || 'https://storage-api.rareminds.workers.dev';
 
 interface R2UploadResponse {
   success: boolean;
@@ -27,7 +28,7 @@ export async function uploadToCloudflareR2(
     if (!file.type.startsWith('image/')) {
       return {
         success: false,
-        error: 'Please upload an image file (PNG, JPG, JPEG, GIF, WebP)'
+        error: 'Please upload an image file (PNG, JPG, JPEG, GIF, WebP)',
       };
     }
 
@@ -36,7 +37,7 @@ export async function uploadToCloudflareR2(
     if (file.size > maxSize) {
       return {
         success: false,
-        error: 'Image size must be less than 5MB'
+        error: 'Image size must be less than 5MB',
       };
     }
 
@@ -47,14 +48,14 @@ export async function uploadToCloudflareR2(
     const filename = `${folder}/${timestamp}-${randomString}.${extension}`;
 
     console.log('🚀 Uploading to Cloudflare R2...');
-    
+
     const formData = new FormData();
     formData.append('file', file);
     formData.append('filename', filename);
 
     const response = await fetch(`${STORAGE_API_URL}/upload`, {
       method: 'POST',
-      body: formData
+      body: formData,
     });
 
     if (!response.ok) {
@@ -62,23 +63,22 @@ export async function uploadToCloudflareR2(
       console.error('❌ Upload failed:', errorData);
       return {
         success: false,
-        error: errorData.error || `Upload failed with status ${response.status}`
+        error: errorData.error || `Upload failed with status ${response.status}`,
       };
     }
 
     const data = await response.json();
     console.log('✅ Uploaded to Cloudflare R2:', data.url);
-    
+
     return {
       success: true,
-      url: data.url
+      url: data.url,
     };
-
   } catch (error) {
     console.error('❌ Error uploading image:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Upload failed'
+      error: error instanceof Error ? error.message : 'Upload failed',
     };
   }
 }
@@ -93,9 +93,9 @@ export async function deleteFromCloudflareR2(url: string): Promise<boolean> {
     const response = await fetch(`${STORAGE_API_URL}/delete`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ url })
+      body: JSON.stringify({ url }),
     });
 
     if (!response.ok) {

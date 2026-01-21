@@ -1,4 +1,15 @@
-import { Building2, Calendar, Check, ChevronDown, ChevronUp, Clock, Shield, Sparkles, TrendingUp, X } from 'lucide-react';
+import {
+  Building2,
+  Calendar,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  Shield,
+  Sparkles,
+  TrendingUp,
+  X,
+} from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -16,7 +27,7 @@ import { calculateDaysRemaining, isActiveOrPaused } from '../../utils/subscripti
  */
 function getManagePath(userRole) {
   if (!userRole) return null; // Return null instead of default to prevent wrong redirects
-  
+
   const manageRoutes = {
     super_admin: '/admin/subscription/manage',
     rm_admin: '/admin/subscription/manage',
@@ -40,35 +51,35 @@ function getManagePath(userRole) {
  */
 function getManagePathFromType(type) {
   if (!type) return null; // Return null instead of default to prevent wrong redirects
-  
+
   const typeToPath = {
     // Student types
-    'student': '/student/subscription/manage',
-    'school_student': '/student/subscription/manage',
+    student: '/student/subscription/manage',
+    school_student: '/student/subscription/manage',
     'school-student': '/student/subscription/manage',
-    'college_student': '/student/subscription/manage',
+    college_student: '/student/subscription/manage',
     'college-student': '/student/subscription/manage',
     // Educator types
-    'educator': '/educator/subscription/manage',
-    'school_educator': '/educator/subscription/manage',
+    educator: '/educator/subscription/manage',
+    school_educator: '/educator/subscription/manage',
     'school-educator': '/educator/subscription/manage',
-    'college_educator': '/educator/subscription/manage',
+    college_educator: '/educator/subscription/manage',
     'college-educator': '/educator/subscription/manage',
     // Admin types
-    'school_admin': '/school-admin/subscription/manage',
+    school_admin: '/school-admin/subscription/manage',
     'school-admin': '/school-admin/subscription/manage',
-    'college_admin': '/college-admin/subscription/manage',
+    college_admin: '/college-admin/subscription/manage',
     'college-admin': '/college-admin/subscription/manage',
-    'university_admin': '/university-admin/subscription/manage',
+    university_admin: '/university-admin/subscription/manage',
     'university-admin': '/university-admin/subscription/manage',
     // Recruiter
-    'recruiter': '/recruitment/subscription/manage',
+    recruiter: '/recruitment/subscription/manage',
     // Generic admin (super_admin, rm_admin)
-    'admin': '/admin/subscription/manage',
-    'super_admin': '/admin/subscription/manage',
-    'rm_admin': '/admin/subscription/manage',
+    admin: '/admin/subscription/manage',
+    super_admin: '/admin/subscription/manage',
+    rm_admin: '/admin/subscription/manage',
   };
-  
+
   return typeToPath[type] || null; // Return null instead of default to prevent wrong redirects
 }
 
@@ -80,16 +91,16 @@ const FEATURE_COMPARISON = {
     'Basic Reports': [true, true, true, true],
     'Advanced Analytics': [false, true, true, true],
   },
-  'Support': {
+  Support: {
     'Email Support': [true, true, true, true],
     'Priority Support': [false, true, true, true],
     'Dedicated Manager': [false, false, true, true],
     '24/7 Support': [false, false, false, true],
   },
-  'Integrations': {
+  Integrations: {
     'API Access': [false, true, true, true],
     'Custom Integrations': [false, false, true, true],
-    'SSO': [false, false, true, true],
+    SSO: [false, false, true, true],
   },
 };
 
@@ -98,14 +109,14 @@ const FeatureComparisonTable = memo(({ plans }) => {
   const [showComparison, setShowComparison] = useState(true);
   const [expandedCategories, setExpandedCategories] = useState({
     'Core Features': true,
-    'Support': false,
-    'Integrations': false,
+    Support: false,
+    Integrations: false,
   });
 
   const toggleCategory = useCallback((category) => {
-    setExpandedCategories(prev => ({
+    setExpandedCategories((prev) => ({
       ...prev,
-      [category]: !prev[category]
+      [category]: !prev[category],
     }));
   }, []);
 
@@ -139,9 +150,12 @@ const FeatureComparisonTable = memo(({ plans }) => {
           <ChevronUp className="h-4 w-4" /> Hide
         </button>
       </div>
-      
+
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className={`grid bg-gray-50 border-b border-gray-200`} style={{ gridTemplateColumns: `1fr repeat(${plans.length}, 1fr)` }}>
+        <div
+          className={`grid bg-gray-50 border-b border-gray-200`}
+          style={{ gridTemplateColumns: `1fr repeat(${plans.length}, 1fr)` }}
+        >
           <div className="p-4 font-semibold text-gray-700">Feature</div>
           {plans.map((plan) => (
             <div key={plan.id} className="p-4 text-center">
@@ -156,14 +170,22 @@ const FeatureComparisonTable = memo(({ plans }) => {
               onClick={() => toggleCategory(category)}
               className="w-full p-4 flex items-center gap-2 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
             >
-              {expandedCategories[category] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              {expandedCategories[category] ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
               <span className="font-semibold text-gray-800">{category}</span>
             </button>
 
             {expandedCategories[category] && (
               <div>
                 {Object.entries(features).map(([feature, values]) => (
-                  <div key={feature} className={`grid border-t border-gray-100 hover:bg-gray-50`} style={{ gridTemplateColumns: `1fr repeat(${plans.length}, 1fr)` }}>
+                  <div
+                    key={feature}
+                    className={`grid border-t border-gray-100 hover:bg-gray-50`}
+                    style={{ gridTemplateColumns: `1fr repeat(${plans.length}, 1fr)` }}
+                  >
                     <div className="p-4 text-sm text-gray-600">{feature}</div>
                     {values.slice(0, plans.length).map((value, index) => (
                       <div key={index} className="p-4 text-center flex items-center justify-center">
@@ -183,229 +205,270 @@ const FeatureComparisonTable = memo(({ plans }) => {
 
 FeatureComparisonTable.displayName = 'FeatureComparisonTable';
 
-
 // Plan Card Component - Clean solid design
-const PlanCard = memo(({ plan, isCurrentPlan, onSelect, subscriptionData, daysRemaining, allPlans, index, isOrganizationMode, onOrganizationPurchase }) => {
-  const [showAllFeatures, setShowAllFeatures] = useState(false);
-  const isUpgrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) > parseInt(allPlans.find(p => p.id === subscriptionData.plan)?.price || 0);
-  const isDowngrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) < parseInt(allPlans.find(p => p.id === subscriptionData.plan)?.price || 0);
-  const isContactSales = plan.contactSales;
-  
-  const displayedFeatures = showAllFeatures ? plan.features : plan.features.slice(0, 6);
-  const hasMoreFeatures = plan.features.length > 6;
+const PlanCard = memo(
+  ({
+    plan,
+    isCurrentPlan,
+    onSelect,
+    subscriptionData,
+    daysRemaining,
+    allPlans,
+    index,
+    isOrganizationMode,
+    onOrganizationPurchase,
+  }) => {
+    const [showAllFeatures, setShowAllFeatures] = useState(false);
+    const isUpgrade =
+      subscriptionData &&
+      !isCurrentPlan &&
+      parseInt(plan.price) >
+        parseInt(allPlans.find((p) => p.id === subscriptionData.plan)?.price || 0);
+    const isDowngrade =
+      subscriptionData &&
+      !isCurrentPlan &&
+      parseInt(plan.price) <
+        parseInt(allPlans.find((p) => p.id === subscriptionData.plan)?.price || 0);
+    const isContactSales = plan.contactSales;
 
-  // Handle organization purchase click
-  const handleClick = useCallback(() => {
-    if (isOrganizationMode && onOrganizationPurchase) {
-      onOrganizationPurchase(plan);
-    } else {
-      onSelect(plan);
-    }
-  }, [isOrganizationMode, onOrganizationPurchase, onSelect, plan]);
+    const displayedFeatures = showAllFeatures ? plan.features : plan.features.slice(0, 6);
+    const hasMoreFeatures = plan.features.length > 6;
 
-  return (
-    <div
-      className={`relative bg-white rounded-2xl border-2 transition-all duration-300 h-full flex flex-col ${
-        isCurrentPlan 
-          ? 'border-blue-500 shadow-lg' 
-          : plan.recommended 
-          ? 'border-blue-500 shadow-lg' 
-          : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
-      }`}
-    >
-      {/* Badge */}
-      {isCurrentPlan && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-          <span className="bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-medium flex items-center gap-1.5">
-            <Shield className="h-3.5 w-3.5" /> Active Plan
-          </span>
-        </div>
-      )}
-      {!isCurrentPlan && plan.recommended && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-          <span className="bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-medium">
-            Most Popular
-          </span>
-        </div>
-      )}
-      
-      {/* Organization Mode Badge */}
-      {isOrganizationMode && !isCurrentPlan && (
-        <div className="absolute -top-3 right-4">
-          <span className="bg-purple-600 text-white px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1">
-            <Building2 className="h-3 w-3" /> Bulk
-          </span>
-        </div>
-      )}
+    // Handle organization purchase click
+    const handleClick = useCallback(() => {
+      if (isOrganizationMode && onOrganizationPurchase) {
+        onOrganizationPurchase(plan);
+      } else {
+        onSelect(plan);
+      }
+    }, [isOrganizationMode, onOrganizationPurchase, onSelect, plan]);
 
-      <div className="p-6 flex flex-col h-full">
-        {/* Header */}
-        <div className="mb-5 pt-2">
-          <h3 className="text-xl font-bold text-gray-900">{plan.name}</h3>
-          {plan.tagline && <p className="text-sm text-blue-600 font-medium mt-1">{plan.tagline}</p>}
-          
-          <div className="mt-4">
-            {isContactSales ? (
-              <span className="text-2xl font-bold text-gray-900">Contact Sales</span>
-            ) : (
-              <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-bold text-gray-900">₹{parseInt(plan.price).toLocaleString()}</span>
-                <span className="text-gray-500">/{plan.duration}</span>
-                {isOrganizationMode && (
-                  <span className="text-sm text-gray-400 ml-1">/seat</span>
-                )}
-              </div>
-            )}
+    return (
+      <div
+        className={`relative bg-white rounded-2xl border-2 transition-all duration-300 h-full flex flex-col ${
+          isCurrentPlan
+            ? 'border-blue-500 shadow-lg'
+            : plan.recommended
+              ? 'border-blue-500 shadow-lg'
+              : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
+        }`}
+      >
+        {/* Badge */}
+        {isCurrentPlan && (
+          <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+            <span className="bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-medium flex items-center gap-1.5">
+              <Shield className="h-3.5 w-3.5" /> Active Plan
+            </span>
           </div>
-          
-          {/* Volume Discount Indicator for Organization Mode */}
-          {isOrganizationMode && !isContactSales && (
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
-                50+ seats: 10% off
-              </span>
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
-                100+: 20% off
-              </span>
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
-                500+: 30% off
-              </span>
-            </div>
-          )}
-
-          {plan.positioning && (
-            <p className="mt-3 text-sm text-gray-500">{plan.positioning}</p>
-          )}
-
-          {isCurrentPlan && daysRemaining !== null && (
-            <div className={`mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${
-              daysRemaining <= 7 ? 'bg-red-100 text-red-700' : daysRemaining <= 15 ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
-            }`}>
-              <Clock className="h-4 w-4" />
-              {daysRemaining} days remaining
-            </div>
-          )}
-        </div>
-
-        {/* Capacity */}
-        {plan.limits && (
-          <div className="mb-5 p-4 bg-gray-50 rounded-xl">
-            <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Capacity</h4>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between items-start gap-4">
-                <span className="text-gray-600 flex-shrink-0">Learners</span>
-                <span className="font-medium text-gray-900 text-right">
-                  {typeof plan.limits.learners === 'number' ? `Up to ${plan.limits.learners.toLocaleString()}` : plan.limits.learners}
-                </span>
-              </div>
-              <div className="flex justify-between items-start gap-4">
-                <span className="text-gray-600 flex-shrink-0">Admins</span>
-                <span className="font-medium text-gray-900 text-right">{plan.limits.admins}</span>
-              </div>
-              <div className="flex justify-between items-start gap-4">
-                <span className="text-gray-600 flex-shrink-0">Storage</span>
-                <span className="font-medium text-gray-900 text-right">{plan.limits.storage}</span>
-              </div>
-            </div>
+        )}
+        {!isCurrentPlan && plan.recommended && (
+          <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+            <span className="bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-medium">
+              Most Popular
+            </span>
           </div>
         )}
 
-        {/* Features */}
-        <div className="flex-1 mb-5">
-          <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Features</h4>
-          <ul className="space-y-2.5">
-            {displayedFeatures.map((feature, idx) => (
-              <li key={idx} className="flex items-start gap-2.5">
-                <Check className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                <span className="text-sm text-gray-600">{feature}</span>
-              </li>
-            ))}
-          </ul>
-          {hasMoreFeatures && (
-            <button
-              onClick={() => setShowAllFeatures(!showAllFeatures)}
-              className="mt-3 text-sm font-medium text-blue-600 hover:text-blue-700"
-            >
-              {showAllFeatures ? 'Show less' : `+${plan.features.length - 6} more`}
-            </button>
-          )}
-        </div>
+        {/* Organization Mode Badge */}
+        {isOrganizationMode && !isCurrentPlan && (
+          <div className="absolute -top-3 right-4">
+            <span className="bg-purple-600 text-white px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1">
+              <Building2 className="h-3 w-3" /> Bulk
+            </span>
+          </div>
+        )}
 
-        {/* Actions */}
-        <div className="mt-auto space-y-2">
-          {isCurrentPlan ? (
-            <>
-              <div className="w-full py-3 px-4 rounded-lg font-medium bg-blue-50 border border-blue-200 text-blue-700 text-center flex items-center justify-center gap-2">
-                <Check className="h-5 w-5" /> Your Current Plan
-              </div>
-              <button
-                onClick={() => onSelect(plan)}
-                className="w-full py-3 px-4 rounded-lg font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                Manage Subscription
-              </button>
-            </>
-          ) : isContactSales ? (
-            <a
-              href="mailto:sales@skillpassport.in?subject=Enterprise%20Plan%20Inquiry"
-              className="w-full py-3 px-4 rounded-lg font-medium bg-gray-900 text-white hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
-            >
-              Contact Sales
-            </a>
-          ) : (
-            <button
-              onClick={handleClick}
-              className={`w-full py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
-                isOrganizationMode
-                  ? 'bg-purple-600 text-white hover:bg-purple-700'
-                  : isUpgrade || plan.recommended
-                  ? 'bg-blue-600 text-white hover:bg-blue-700'
-                  : 'bg-gray-100 text-gray-900 hover:bg-gray-200 border border-gray-300'
-              }`}
-            >
-              {isOrganizationMode ? (
-                <>
-                  <Building2 className="h-5 w-5" />
-                  Buy for Organization
-                </>
+        <div className="p-6 flex flex-col h-full">
+          {/* Header */}
+          <div className="mb-5 pt-2">
+            <h3 className="text-xl font-bold text-gray-900">{plan.name}</h3>
+            {plan.tagline && (
+              <p className="text-sm text-blue-600 font-medium mt-1">{plan.tagline}</p>
+            )}
+
+            <div className="mt-4">
+              {isContactSales ? (
+                <span className="text-2xl font-bold text-gray-900">Contact Sales</span>
               ) : (
-                <>
-                  {isUpgrade && <TrendingUp className="h-5 w-5" />}
-                  {subscriptionData ? (isUpgrade ? 'Upgrade' : isDowngrade ? 'Switch Plan' : 'Select') : 'Get Started'}
-                </>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-bold text-gray-900">
+                    ₹{parseInt(plan.price).toLocaleString()}
+                  </span>
+                  <span className="text-gray-500">/{plan.duration}</span>
+                  {isOrganizationMode && <span className="text-sm text-gray-400 ml-1">/seat</span>}
+                </div>
               )}
-            </button>
+            </div>
+
+            {/* Volume Discount Indicator for Organization Mode */}
+            {isOrganizationMode && !isContactSales && (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
+                  50+ seats: 10% off
+                </span>
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
+                  100+: 20% off
+                </span>
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
+                  500+: 30% off
+                </span>
+              </div>
+            )}
+
+            {plan.positioning && <p className="mt-3 text-sm text-gray-500">{plan.positioning}</p>}
+
+            {isCurrentPlan && daysRemaining !== null && (
+              <div
+                className={`mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${
+                  daysRemaining <= 7
+                    ? 'bg-red-100 text-red-700'
+                    : daysRemaining <= 15
+                      ? 'bg-amber-100 text-amber-700'
+                      : 'bg-blue-100 text-blue-700'
+                }`}
+              >
+                <Clock className="h-4 w-4" />
+                {daysRemaining} days remaining
+              </div>
+            )}
+          </div>
+
+          {/* Capacity */}
+          {plan.limits && (
+            <div className="mb-5 p-4 bg-gray-50 rounded-xl">
+              <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">
+                Capacity
+              </h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between items-start gap-4">
+                  <span className="text-gray-600 flex-shrink-0">Learners</span>
+                  <span className="font-medium text-gray-900 text-right">
+                    {typeof plan.limits.learners === 'number'
+                      ? `Up to ${plan.limits.learners.toLocaleString()}`
+                      : plan.limits.learners}
+                  </span>
+                </div>
+                <div className="flex justify-between items-start gap-4">
+                  <span className="text-gray-600 flex-shrink-0">Admins</span>
+                  <span className="font-medium text-gray-900 text-right">{plan.limits.admins}</span>
+                </div>
+                <div className="flex justify-between items-start gap-4">
+                  <span className="text-gray-600 flex-shrink-0">Storage</span>
+                  <span className="font-medium text-gray-900 text-right">
+                    {plan.limits.storage}
+                  </span>
+                </div>
+              </div>
+            </div>
           )}
+
+          {/* Features */}
+          <div className="flex-1 mb-5">
+            <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">
+              Features
+            </h4>
+            <ul className="space-y-2.5">
+              {displayedFeatures.map((feature, idx) => (
+                <li key={idx} className="flex items-start gap-2.5">
+                  <Check className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <span className="text-sm text-gray-600">{feature}</span>
+                </li>
+              ))}
+            </ul>
+            {hasMoreFeatures && (
+              <button
+                onClick={() => setShowAllFeatures(!showAllFeatures)}
+                className="mt-3 text-sm font-medium text-blue-600 hover:text-blue-700"
+              >
+                {showAllFeatures ? 'Show less' : `+${plan.features.length - 6} more`}
+              </button>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="mt-auto space-y-2">
+            {isCurrentPlan ? (
+              <>
+                <div className="w-full py-3 px-4 rounded-lg font-medium bg-blue-50 border border-blue-200 text-blue-700 text-center flex items-center justify-center gap-2">
+                  <Check className="h-5 w-5" /> Your Current Plan
+                </div>
+                <button
+                  onClick={() => onSelect(plan)}
+                  className="w-full py-3 px-4 rounded-lg font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Manage Subscription
+                </button>
+              </>
+            ) : isContactSales ? (
+              <a
+                href="mailto:sales@skillpassport.in?subject=Enterprise%20Plan%20Inquiry"
+                className="w-full py-3 px-4 rounded-lg font-medium bg-gray-900 text-white hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
+              >
+                Contact Sales
+              </a>
+            ) : (
+              <button
+                onClick={handleClick}
+                className={`w-full py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
+                  isOrganizationMode
+                    ? 'bg-purple-600 text-white hover:bg-purple-700'
+                    : isUpgrade || plan.recommended
+                      ? 'bg-blue-600 text-white hover:bg-blue-700'
+                      : 'bg-gray-100 text-gray-900 hover:bg-gray-200 border border-gray-300'
+                }`}
+              >
+                {isOrganizationMode ? (
+                  <>
+                    <Building2 className="h-5 w-5" />
+                    Buy for Organization
+                  </>
+                ) : (
+                  <>
+                    {isUpgrade && <TrendingUp className="h-5 w-5" />}
+                    {subscriptionData
+                      ? isUpgrade
+                        ? 'Upgrade'
+                        : isDowngrade
+                          ? 'Switch Plan'
+                          : 'Select'
+                      : 'Get Started'}
+                  </>
+                )}
+              </button>
+            )}
+          </div>
         </div>
       </div>
-    </div>
-  );
-});
+    );
+  }
+);
 
 PlanCard.displayName = 'PlanCard';
-
 
 function SubscriptionPlans() {
   const navigate = useNavigate();
   const location = useLocation();
   const { type: pathType } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
-  
+
   // Get type from path params OR query params (for redirects from protected routes)
   const type = pathType || searchParams.get('type');
-  
+
   // Tab state - 'plans' or 'addons'
   const activeTab = searchParams.get('tab') || 'plans';
-  const setActiveTab = useCallback((tab) => {
-    setSearchParams(prev => {
-      prev.set('tab', tab);
-      return prev;
-    });
-  }, [setSearchParams]);
-  
+  const setActiveTab = useCallback(
+    (tab) => {
+      setSearchParams((prev) => {
+        prev.set('tab', tab);
+        return prev;
+      });
+    },
+    [setSearchParams]
+  );
+
   // Use new authentication hook
   const { isAuthenticated, user, loading: authLoading, role: userRole } = useAuth();
-  
+
   // Debug logging for redirect loop investigation
   const DEBUG = import.meta.env.DEV || localStorage.getItem('DEBUG_SUBSCRIPTION') === 'true';
   useEffect(() => {
@@ -421,8 +484,18 @@ function SubscriptionPlans() {
         search: location.search,
       });
     }
-  }, [type, pathType, searchParams, userRole, isAuthenticated, authLoading, location.pathname, location.search, DEBUG]);
-  
+  }, [
+    type,
+    pathType,
+    searchParams,
+    userRole,
+    isAuthenticated,
+    authLoading,
+    location.pathname,
+    location.search,
+    DEBUG,
+  ]);
+
   // Get the manage path based on URL type parameter (more reliable than userRole)
   // Falls back to userRole if type is not available
   // CRITICAL FIX: Ensure we never redirect to wrong path
@@ -433,46 +506,56 @@ function SubscriptionPlans() {
       if (DEBUG) console.log('[SubscriptionPlans] managePath from type:', type, '->', pathFromType);
       return pathFromType;
     }
-    
+
     // Fall back to userRole from auth
     if (userRole) {
       const pathFromRole = getManagePath(userRole);
-      if (DEBUG) console.log('[SubscriptionPlans] managePath from userRole:', userRole, '->', pathFromRole);
+      if (DEBUG)
+        console.log('[SubscriptionPlans] managePath from userRole:', userRole, '->', pathFromRole);
       return pathFromRole;
     }
-    
+
     // SAFETY: If neither type nor userRole is available, don't redirect
     // This prevents the redirect loop when auth is still loading or role is not set
-    if (DEBUG) console.log('[SubscriptionPlans] managePath: no type or userRole, returning null to prevent redirect');
+    if (DEBUG)
+      console.log(
+        '[SubscriptionPlans] managePath: no type or userRole, returning null to prevent redirect'
+      );
     return null;
   }, [type, userRole, DEBUG]);
-  
+
   // Parse entity and role from type
   const { entity, role: pageRole } = useMemo(() => parseStudentType(type || 'student'), [type]);
-  
+
   // Fetch plans from database
-  const { 
-    plans: dbPlans, 
-    loading: plansLoading, 
-    error: plansError 
+  const {
+    plans: dbPlans,
+    loading: plansLoading,
+    error: plansError,
   } = useSubscriptionPlansData({
     businessType: 'b2b',
     entityType: entity,
-    roleType: pageRole
+    roleType: pageRole,
   });
-  
+
   // Cache database plans for getEntityContent fallback
   useEffect(() => {
     if (dbPlans && dbPlans.length > 0) {
       setDatabasePlans(dbPlans);
     }
   }, [dbPlans]);
-  
+
   // Get dynamic content based on entity type (uses cached db plans if available)
-  const { title, subtitle, heroMessage, plans: configPlans, ctaText } = useMemo(() => {
+  const {
+    title,
+    subtitle,
+    heroMessage,
+    plans: configPlans,
+    ctaText,
+  } = useMemo(() => {
     return getEntityContent(type || 'student');
   }, [type, dbPlans]); // Re-compute when dbPlans change
-  
+
   // Use database plans if available, otherwise fall back to config plans
   const plans = useMemo(() => {
     if (dbPlans && dbPlans.length > 0) {
@@ -484,9 +567,17 @@ function SubscriptionPlans() {
   }, [dbPlans, configPlans, type]);
 
   const studentType = type || 'student';
-  
-  const { subscriptionData, loading: subscriptionLoading, error: subscriptionError, refreshSubscription } = useSubscriptionQuery();
-  const daysRemaining = useMemo(() => calculateDaysRemaining(subscriptionData?.endDate), [subscriptionData?.endDate]);
+
+  const {
+    subscriptionData,
+    loading: subscriptionLoading,
+    error: subscriptionError,
+    refreshSubscription,
+  } = useSubscriptionQuery();
+  const daysRemaining = useMemo(
+    () => calculateDaysRemaining(subscriptionData?.endDate),
+    [subscriptionData?.endDate]
+  );
 
   // Combined loading state - wait for auth, subscription, and plans data
   const isFullyLoaded = useMemo(
@@ -501,15 +592,12 @@ function SubscriptionPlans() {
   );
 
   const currentPlanData = useMemo(
-    () => subscriptionData ? plans.find(p => p.id === subscriptionData.plan) : null,
+    () => (subscriptionData ? plans.find((p) => p.id === subscriptionData.plan) : null),
     [subscriptionData, plans]
   );
 
   // Check if user is in upgrade mode (should not redirect to manage page)
-  const isUpgradeMode = useMemo(
-    () => searchParams.get('mode') === 'upgrade',
-    [searchParams]
-  );
+  const isUpgradeMode = useMemo(() => searchParams.get('mode') === 'upgrade', [searchParams]);
 
   // Check if user is in organization purchase mode
   const isOrganizationMode = useMemo(
@@ -534,7 +622,12 @@ function SubscriptionPlans() {
   // Don't redirect if user is in upgrade mode or organization mode - they want to see plans
   // CRITICAL FIX: Also don't redirect if managePath is null (prevents redirect loop)
   const shouldRedirect = useMemo(
-    () => isAuthenticated && hasActiveOrPausedSubscription && !isUpgradeMode && !isOrganizationMode && managePath !== null,
+    () =>
+      isAuthenticated &&
+      hasActiveOrPausedSubscription &&
+      !isUpgradeMode &&
+      !isOrganizationMode &&
+      managePath !== null,
     [isAuthenticated, hasActiveOrPausedSubscription, isUpgradeMode, isOrganizationMode, managePath]
   );
 
@@ -557,139 +650,168 @@ function SubscriptionPlans() {
     if (isFullyLoaded && shouldRedirect && managePath) {
       const DEBUG = import.meta.env.DEV || localStorage.getItem('DEBUG_SUBSCRIPTION') === 'true';
       if (DEBUG) {
-        console.log('[SubscriptionPlans] Redirecting to manage page:', managePath + location.search);
+        console.log(
+          '[SubscriptionPlans] Redirecting to manage page:',
+          managePath + location.search
+        );
       }
       navigate(`${managePath}${location.search}`, { replace: true });
     }
   }, [isFullyLoaded, shouldRedirect, navigate, location.search, managePath]);
 
-  const handlePlanSelection = useCallback((plan) => {
-    // If user is currently on their active plan, go to manage page
-    if (subscriptionData && subscriptionData.plan === plan.id) {
-      // Use managePath if available, otherwise construct from type or userRole
-      const targetPath = managePath || getManagePathFromType(type) || getManagePath(userRole) || `/subscription/plans?type=${studentType}`;
-      navigate(targetPath);
-      return;
-    }
-    
-    // CRITICAL FIX: Check if auth is still loading
-    if (authLoading) {
-      console.log('🔄 Auth still loading, please wait...');
-      return; // Don't redirect while auth is loading
-    }
-    
-    // If not authenticated, redirect to signup
-    if (!isAuthenticated) {
-      console.log('🔐 User not authenticated, redirecting to signup');
-      navigate('/signup', { 
-        state: { 
-          plan, 
-          studentType, 
-          returnTo: '/subscription/payment' 
-        } 
-      });
-      return;
-    }
-    
-    // If user has active/paused subscription, show upgrade mode
-    if (hasActiveOrPausedSubscription) {
-      navigate(`/subscription/plans?type=${studentType}&mode=upgrade`);
-      return;
-    }
-    
-    // ENHANCED: Validate user exists in database before allowing payment
-    // This prevents the payment page from redirecting back to signup
-    const validateUserAndProceed = async () => {
-      try {
-        // Check if user exists in database
-        const { data: userData, error } = await supabase
-          .from('users')
-          .select('id, firstName, lastName, email')
-          .eq('id', user.id)
-          .maybeSingle();
-        
-        if (error) {
-          console.error('❌ Error checking user in database:', error);
-          toast.error('Unable to verify account. Please try again.');
-          return;
-        }
-        
-        if (!userData) {
-          console.warn('⚠️ User not found in database, redirecting to complete signup');
-          navigate('/signup', { 
-            state: { 
-              plan, 
-              studentType, 
-              returnTo: '/subscription/payment',
-              message: 'Please complete your account setup to continue with payment.'
-            } 
-          });
-          return;
-        }
-        
-        // User exists in database, proceed to payment
-        console.log('✅ User validated, proceeding to payment');
-        navigate('/subscription/payment', { 
-          state: { 
-            plan, 
-            studentType, 
-            isUpgrade: !!subscriptionData 
-          } 
-        });
-        
-      } catch (err) {
-        console.error('❌ Error validating user:', err);
-        toast.error('Unable to proceed with payment. Please try again.');
+  const handlePlanSelection = useCallback(
+    (plan) => {
+      // If user is currently on their active plan, go to manage page
+      if (subscriptionData && subscriptionData.plan === plan.id) {
+        // Use managePath if available, otherwise construct from type or userRole
+        const targetPath =
+          managePath ||
+          getManagePathFromType(type) ||
+          getManagePath(userRole) ||
+          `/subscription/plans?type=${studentType}`;
+        navigate(targetPath);
+        return;
       }
-    };
-    
-    // Execute validation
-    validateUserAndProceed();
-    
-  }, [isAuthenticated, authLoading, user, navigate, studentType, subscriptionData, hasActiveOrPausedSubscription, managePath, type, userRole]);
+
+      // CRITICAL FIX: Check if auth is still loading
+      if (authLoading) {
+        console.log('🔄 Auth still loading, please wait...');
+        return; // Don't redirect while auth is loading
+      }
+
+      // If not authenticated, redirect to signup
+      if (!isAuthenticated) {
+        console.log('🔐 User not authenticated, redirecting to signup');
+        navigate('/signup', {
+          state: {
+            plan,
+            studentType,
+            returnTo: '/subscription/payment',
+          },
+        });
+        return;
+      }
+
+      // If user has active/paused subscription, show upgrade mode
+      if (hasActiveOrPausedSubscription) {
+        navigate(`/subscription/plans?type=${studentType}&mode=upgrade`);
+        return;
+      }
+
+      // ENHANCED: Validate user exists in database before allowing payment
+      // This prevents the payment page from redirecting back to signup
+      const validateUserAndProceed = async () => {
+        try {
+          // Check if user exists in database
+          const { data: userData, error } = await supabase
+            .from('users')
+            .select('id, firstName, lastName, email')
+            .eq('id', user.id)
+            .maybeSingle();
+
+          if (error) {
+            console.error('❌ Error checking user in database:', error);
+            toast.error('Unable to verify account. Please try again.');
+            return;
+          }
+
+          if (!userData) {
+            console.warn('⚠️ User not found in database, redirecting to complete signup');
+            navigate('/signup', {
+              state: {
+                plan,
+                studentType,
+                returnTo: '/subscription/payment',
+                message: 'Please complete your account setup to continue with payment.',
+              },
+            });
+            return;
+          }
+
+          // User exists in database, proceed to payment
+          console.log('✅ User validated, proceeding to payment');
+          navigate('/subscription/payment', {
+            state: {
+              plan,
+              studentType,
+              isUpgrade: !!subscriptionData,
+            },
+          });
+        } catch (err) {
+          console.error('❌ Error validating user:', err);
+          toast.error('Unable to proceed with payment. Please try again.');
+        }
+      };
+
+      // Execute validation
+      validateUserAndProceed();
+    },
+    [
+      isAuthenticated,
+      authLoading,
+      user,
+      navigate,
+      studentType,
+      subscriptionData,
+      hasActiveOrPausedSubscription,
+      managePath,
+      type,
+      userRole,
+    ]
+  );
 
   const formatDate = useCallback((dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
   }, []);
 
   // Handler for organization purchase button click
-  const handleOrganizationPurchase = useCallback((plan) => {
-    if (!isAuthenticated) {
-      toast.error('Please log in to purchase organization subscriptions');
-      navigate('/login');
-      return;
-    }
-    setSelectedPlanForOrg(plan);
-    setShowOrgPurchasePanel(true);
-  }, [isAuthenticated, navigate]);
+  const handleOrganizationPurchase = useCallback(
+    (plan) => {
+      if (!isAuthenticated) {
+        toast.error('Please log in to purchase organization subscriptions');
+        navigate('/login');
+        return;
+      }
+      setSelectedPlanForOrg(plan);
+      setShowOrgPurchasePanel(true);
+    },
+    [isAuthenticated, navigate]
+  );
 
   // Handler for organization purchase confirmation
-  const handleOrgPurchaseConfirm = useCallback(async (config) => {
-    setIsOrgPurchaseLoading(true);
-    try {
-      // Navigate to payment page with organization purchase config
-      navigate('/subscription/payment', {
-        state: {
-          plan: selectedPlanForOrg,
-          studentType,
-          isOrganizationPurchase: true,
-          organizationConfig: {
-            organizationType,
-            seatCount: config.seatCount,
-            memberType: config.memberType,
-            billingCycle: config.billingCycle,
-            pricing: config.pricing,
+  const handleOrgPurchaseConfirm = useCallback(
+    async (config) => {
+      setIsOrgPurchaseLoading(true);
+      try {
+        // Navigate to payment page with organization purchase config
+        navigate('/subscription/payment', {
+          state: {
+            plan: selectedPlanForOrg,
+            studentType,
+            isOrganizationPurchase: true,
+            organizationConfig: {
+              organizationType,
+              seatCount: config.seatCount,
+              memberType: config.memberType,
+              billingCycle: config.billingCycle,
+              pricing: config.pricing,
+            },
           },
-        },
-      });
-    } catch (error) {
-      console.error('Organization purchase error:', error);
-      toast.error('Failed to process organization purchase');
-    } finally {
-      setIsOrgPurchaseLoading(false);
-      setShowOrgPurchasePanel(false);
-    }
-  }, [navigate, selectedPlanForOrg, studentType, organizationType]);
+        });
+      } catch (error) {
+        console.error('Organization purchase error:', error);
+        toast.error('Failed to process organization purchase');
+      } finally {
+        setIsOrgPurchaseLoading(false);
+        setShowOrgPurchasePanel(false);
+      }
+    },
+    [navigate, selectedPlanForOrg, studentType, organizationType]
+  );
 
   // Handler for canceling organization purchase
   const handleOrgPurchaseCancel = useCallback(() => {
@@ -708,7 +830,6 @@ function SubscriptionPlans() {
     );
   }
 
-
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
@@ -717,14 +838,19 @@ function SubscriptionPlans() {
           <div className="mb-8 bg-red-50 border border-red-200 rounded-xl p-4 flex items-center justify-between">
             <div>
               <p className="text-red-800 font-medium">Unable to load subscription status</p>
-              <p className="text-red-600 text-sm">{subscriptionError?.message || 'Please try again.'}</p>
+              <p className="text-red-600 text-sm">
+                {subscriptionError?.message || 'Please try again.'}
+              </p>
             </div>
-            <button onClick={refreshSubscription} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium">
+            <button
+              onClick={refreshSubscription}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium"
+            >
               Retry
             </button>
           </div>
         )}
-        
+
         {/* Error banner for plans fetch failures */}
         {plansError && (
           <div className="mb-6 bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4">
@@ -736,21 +862,31 @@ function SubscriptionPlans() {
         {/* Enhanced subscription status banner - Show only for authenticated users with active or paused subscription */}
         {isAuthenticated && hasActiveOrPausedSubscription && (
           <div className="mb-10">
-            <div className={`rounded-2xl p-6 ${subscriptionData.status === 'active' ? 'bg-blue-600' : 'bg-amber-500'}`}>
+            <div
+              className={`rounded-2xl p-6 ${subscriptionData.status === 'active' ? 'bg-blue-600' : 'bg-amber-500'}`}
+            >
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                   <Shield className="h-6 w-6 text-white" />
                 </div>
                 <div className="flex-1">
                   <h2 className="text-xl font-bold text-white">
-                    {subscriptionData.status === 'active' ? 'Active Subscription' : 'Paused Subscription'}
+                    {subscriptionData.status === 'active'
+                      ? 'Active Subscription'
+                      : 'Paused Subscription'}
                   </h2>
                   <p className="text-white/80">{currentPlanData?.name || 'Unknown'} Plan</p>
                 </div>
                 {daysRemaining !== null && (
-                  <div className={`px-4 py-2 rounded-full text-sm font-medium ${
-                    daysRemaining <= 7 ? 'bg-red-500 text-white' : daysRemaining <= 15 ? 'bg-amber-400 text-amber-900' : 'bg-white/20 text-white'
-                  }`}>
+                  <div
+                    className={`px-4 py-2 rounded-full text-sm font-medium ${
+                      daysRemaining <= 7
+                        ? 'bg-red-500 text-white'
+                        : daysRemaining <= 15
+                          ? 'bg-amber-400 text-amber-900'
+                          : 'bg-white/20 text-white'
+                    }`}
+                  >
                     <Clock className="h-4 w-4 inline mr-1.5" />
                     {daysRemaining} days left
                   </div>
@@ -771,15 +907,21 @@ function SubscriptionPlans() {
                 <div className="space-y-3">
                   <div className="flex justify-between py-2 border-b border-gray-100">
                     <span className="text-gray-500">Start Date</span>
-                    <span className="font-medium text-gray-900">{formatDate(subscriptionData.startDate)}</span>
+                    <span className="font-medium text-gray-900">
+                      {formatDate(subscriptionData.startDate)}
+                    </span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-gray-100">
                     <span className="text-gray-500">End Date</span>
-                    <span className="font-medium text-gray-900">{formatDate(subscriptionData.endDate)}</span>
+                    <span className="font-medium text-gray-900">
+                      {formatDate(subscriptionData.endDate)}
+                    </span>
                   </div>
                   <div className="flex justify-between py-2">
                     <span className="text-gray-500">Auto Renewal</span>
-                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${subscriptionData.autoRenew ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
+                    <span
+                      className={`px-2 py-0.5 rounded text-xs font-medium ${subscriptionData.autoRenew ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}
+                    >
                       {subscriptionData.autoRenew ? 'Enabled' : 'Disabled'}
                     </span>
                   </div>
@@ -813,7 +955,9 @@ function SubscriptionPlans() {
             {isAuthenticated && hasActiveOrPausedSubscription ? 'Manage Your Plan' : title}
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            {isAuthenticated && hasActiveOrPausedSubscription ? 'Upgrade to unlock more features' : subtitle}
+            {isAuthenticated && hasActiveOrPausedSubscription
+              ? 'Upgrade to unlock more features'
+              : subtitle}
           </p>
         </div>
 
@@ -841,7 +985,9 @@ function SubscriptionPlans() {
             >
               <Sparkles className="w-4 h-4" />
               Add-Ons
-              <span className="ml-1 px-1.5 py-0.5 text-xs bg-green-100 text-green-700 rounded">New</span>
+              <span className="ml-1 px-1.5 py-0.5 text-xs bg-green-100 text-green-700 rounded">
+                New
+              </span>
             </button>
           </div>
         </div>
@@ -859,7 +1005,8 @@ function SubscriptionPlans() {
                   <div>
                     <h3 className="font-semibold text-purple-900">Organization Purchase Mode</h3>
                     <p className="text-sm text-purple-700">
-                      Purchase subscriptions for your entire {organizationType}. Volume discounts available for 50+ seats.
+                      Purchase subscriptions for your entire {organizationType}. Volume discounts
+                      available for 50+ seats.
                     </p>
                   </div>
                 </div>
@@ -874,10 +1021,18 @@ function SubscriptionPlans() {
                   plan={plan}
                   index={index}
                   allPlans={plans}
-                  isCurrentPlan={isAuthenticated && hasActiveOrPausedSubscription && subscriptionData?.plan === plan.id}
+                  isCurrentPlan={
+                    isAuthenticated &&
+                    hasActiveOrPausedSubscription &&
+                    subscriptionData?.plan === plan.id
+                  }
                   onSelect={handlePlanSelection}
-                  subscriptionData={isAuthenticated && hasActiveOrPausedSubscription ? subscriptionData : null}
-                  daysRemaining={isAuthenticated && hasActiveOrPausedSubscription ? daysRemaining : null}
+                  subscriptionData={
+                    isAuthenticated && hasActiveOrPausedSubscription ? subscriptionData : null
+                  }
+                  daysRemaining={
+                    isAuthenticated && hasActiveOrPausedSubscription ? daysRemaining : null
+                  }
                   isOrganizationMode={isOrganizationMode}
                   onOrganizationPurchase={handleOrganizationPurchase}
                 />
@@ -899,24 +1054,24 @@ function SubscriptionPlans() {
           </>
         ) : (
           /* Add-Ons Marketplace - compact mode without duplicate header */
-          <AddOnMarketplace 
-            role={pageRole} 
-            showBundles={true}
-            showHeader={false}
-            compact={true}
-          />
+          <AddOnMarketplace role={pageRole} showBundles={true} showHeader={false} compact={true} />
         )}
 
         {/* Contact Section */}
         <div className="mt-16 text-center bg-white rounded-xl border border-gray-200 p-8">
           <h3 className="text-xl font-bold text-gray-900 mb-2">Need Help Choosing?</h3>
-          <p className="text-gray-600 mb-4">Our team can help you find the right plan for your organization.</p>
-          <a href="mailto:support@skillpassport.in" className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors">
+          <p className="text-gray-600 mb-4">
+            Our team can help you find the right plan for your organization.
+          </p>
+          <a
+            href="mailto:support@skillpassport.in"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+          >
             Contact Support
           </a>
         </div>
       </div>
-      
+
       {/* Organization Purchase Panel */}
       {showOrgPurchasePanel && selectedPlanForOrg && (
         <OrganizationPurchasePanel

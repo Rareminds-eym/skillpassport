@@ -8,7 +8,7 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   ClockIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 
 // Result Status Badge Component
@@ -19,31 +19,31 @@ export const ResultStatusBadge: React.FC<{ status: string }> = ({ status }) => {
         return {
           icon: CheckCircleIcon,
           className: 'bg-green-100 text-green-800',
-          text: 'Pass'
+          text: 'Pass',
         };
       case 'fail':
         return {
           icon: XCircleIcon,
           className: 'bg-red-100 text-red-800',
-          text: 'Fail'
+          text: 'Fail',
         };
       case 'absent':
         return {
           icon: ExclamationTriangleIcon,
           className: 'bg-gray-100 text-gray-800',
-          text: 'Absent'
+          text: 'Absent',
         };
       case 'pending':
         return {
           icon: ClockIcon,
           className: 'bg-yellow-100 text-yellow-800',
-          text: 'Pending'
+          text: 'Pending',
         };
       default:
         return {
           icon: ClockIcon,
           className: 'bg-gray-100 text-gray-800',
-          text: status
+          text: status,
         };
     }
   };
@@ -52,7 +52,9 @@ export const ResultStatusBadge: React.FC<{ status: string }> = ({ status }) => {
   const Icon = config.icon;
 
   return (
-    <span className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${config.className}`}>
+    <span
+      className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${config.className}`}
+    >
       <Icon className="h-3 w-3 mr-1" />
       {config.text}
     </span>
@@ -69,7 +71,9 @@ export const GradeBadge: React.FC<{ grade: string }> = ({ grade }) => {
   };
 
   return (
-    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getGradeColor(grade)}`}>
+    <span
+      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getGradeColor(grade)}`}
+    >
       {grade}
     </span>
   );
@@ -111,14 +115,11 @@ export const ResultsFilterPanel: React.FC<{
     <div className="bg-white rounded-lg shadow-sm border p-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-900">Filters & Search</h3>
-        <button
-          onClick={onReset}
-          className="text-sm text-blue-600 hover:text-blue-800"
-        >
+        <button onClick={onReset} className="text-sm text-blue-600 hover:text-blue-800">
           Reset All
         </button>
       </div>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Academic Year</label>
@@ -132,7 +133,7 @@ export const ResultsFilterPanel: React.FC<{
             <option value="2022-23">2022-23</option>
           </select>
         </div>
-        
+
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Program</label>
           <select
@@ -147,7 +148,7 @@ export const ResultsFilterPanel: React.FC<{
             <option value="Civil Engineering">Civil Engineering</option>
           </select>
         </div>
-        
+
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Semester</label>
           <select
@@ -156,12 +157,14 @@ export const ResultsFilterPanel: React.FC<{
             className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="">All Semesters</option>
-            {[1, 2, 3, 4, 5, 6, 7, 8].map(sem => (
-              <option key={sem} value={sem.toString()}>Semester {sem}</option>
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
+              <option key={sem} value={sem.toString()}>
+                Semester {sem}
+              </option>
             ))}
           </select>
         </div>
-        
+
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">College</label>
           <select
@@ -267,7 +270,7 @@ export const ExportOptionsModal: React.FC<{
   const handleExport = () => {
     onExport(exportFormat, {
       includeFilters,
-      includeStats
+      includeStats,
     });
     onClose();
   };
@@ -276,7 +279,7 @@ export const ExportOptionsModal: React.FC<{
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-md">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Export Options</h3>
-        
+
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Export Format</label>
@@ -313,7 +316,7 @@ export const ExportOptionsModal: React.FC<{
               </label>
             </div>
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Include Options</label>
             <div className="space-y-2">
@@ -338,7 +341,7 @@ export const ExportOptionsModal: React.FC<{
             </div>
           </div>
         </div>
-        
+
         <div className="flex gap-3 mt-6">
           <button
             onClick={onClose}

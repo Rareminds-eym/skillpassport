@@ -66,11 +66,11 @@ IMPORTANT: Generate questions that someone studying {{COURSE_NAME}} would expect
 export async function saveGeneratedAssessment(courseName, courseId, assessment) {
   try {
     const { supabase } = await import('../lib/supabaseClient');
-    
+
     console.log('💾 Saving generated assessment to database...', {
       courseName,
       courseId,
-      questionCount: assessment.questions?.length
+      questionCount: assessment.questions?.length,
     });
 
     const { data, error } = await supabase
@@ -81,7 +81,7 @@ export async function saveGeneratedAssessment(courseName, courseId, assessment) 
         assessment_level: assessment.level,
         total_questions: assessment.questions.length,
         questions: assessment.questions,
-        generated_by: 'AI'
+        generated_by: 'AI',
       })
       .select()
       .single();
@@ -109,7 +109,7 @@ export async function saveGeneratedAssessment(courseName, courseId, assessment) 
 export async function loadGeneratedAssessment(courseName) {
   try {
     const { supabase } = await import('../lib/supabaseClient');
-    
+
     console.log('🔍 Loading generated assessment from database...', courseName);
 
     const { data, error } = await supabase
@@ -129,7 +129,7 @@ export async function loadGeneratedAssessment(courseName) {
     console.log('✅ Loaded assessment from database:', {
       id: data.id,
       questionCount: data.questions?.length,
-      generatedAt: data.generated_at
+      generatedAt: data.generated_at,
     });
 
     // Transform to expected format
@@ -137,7 +137,7 @@ export async function loadGeneratedAssessment(courseName) {
       course: data.certificate_name,
       level: data.assessment_level,
       total_questions: data.total_questions,
-      questions: data.questions
+      questions: data.questions,
     };
   } catch (error) {
     console.error('❌ Error loading assessment from database:', error);
@@ -148,13 +148,19 @@ export async function loadGeneratedAssessment(courseName) {
 /**
  * Generate assessment using backend API (which calls Claude AI)
  */
-export async function generateAssessment(courseName, level = 'Intermediate', questionCount = 15, courseId = null) {
+export async function generateAssessment(
+  courseName,
+  level = 'Intermediate',
+  questionCount = 15,
+  courseId = null
+) {
   try {
     console.log('🎯 Generating assessment for:', courseName, 'Level:', level);
 
     // Call backend API (Cloudflare Worker) to generate assessment
     // Use unified question generation API
-    const backendUrl = import.meta.env.VITE_QUESTION_GENERATION_API_URL || 
+    const backendUrl =
+      import.meta.env.VITE_QUESTION_GENERATION_API_URL ||
       'https://question-generation-api.dark-mode-d021.workers.dev';
     const apiUrl = `${backendUrl}/api/assessment/generate`;
 
@@ -168,30 +174,32 @@ export async function generateAssessment(courseName, level = 'Intermediate', que
       body: JSON.stringify({
         courseName,
         level,
-        questionCount
-      })
+        questionCount,
+      }),
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
       console.error('❌ API Error:', errorData);
-      
+
       if (response.status === 401) {
         throw new Error('Invalid API key on server. Please check server configuration.');
       }
-      
-      throw new Error(errorData.error || `API Error (${response.status}): Failed to generate assessment`);
+
+      throw new Error(
+        errorData.error || `API Error (${response.status}): Failed to generate assessment`
+      );
     }
 
     const assessment = await response.json();
-    
+
     console.log('✅ Generated assessment with AI:', {
       course: assessment.course,
       level: assessment.level,
       questionCount: assessment.questions?.length,
-      firstQuestion: assessment.questions?.[0]?.question?.substring(0, 50) + '...'
+      firstQuestion: assessment.questions?.[0]?.question?.substring(0, 50) + '...',
     });
-    
+
     // Validate the assessment
     const validation = validateAssessment(assessment);
     if (!validation.valid) {
@@ -213,7 +221,7 @@ export async function generateAssessment(courseName, level = 'Intermediate', que
  */
 export function validateAssessment(assessment) {
   const errors = [];
-  
+
   if (!assessment.course) errors.push('Missing course name');
   if (!['Beginner', 'Intermediate', 'Advanced'].includes(assessment.level)) {
     errors.push('Invalid level');
@@ -224,7 +232,7 @@ export function validateAssessment(assessment) {
   if (assessment.questions && assessment.questions.length !== assessment.total_questions) {
     errors.push('Question count mismatch');
   }
-  
+
   if (assessment.questions) {
     assessment.questions.forEach((q, idx) => {
       if (!q.id) errors.push(`Question ${idx + 1}: Missing id`);
@@ -232,13 +240,13 @@ export function validateAssessment(assessment) {
       if (!q.question) errors.push(`Question ${idx + 1}: Missing question text`);
       if (!q.correct_answer) errors.push(`Question ${idx + 1}: Missing correct answer`);
       if (!q.skill_tag) errors.push(`Question ${idx + 1}: Missing skill tag`);
-      
+
       if (q.type === 'mcq' && (!q.options || q.options.length < 2)) {
         errors.push(`Question ${idx + 1}: MCQ must have at least 2 options`);
       }
     });
   }
-  
+
   return { valid: errors.length === 0, errors };
 }
 
@@ -248,10 +256,13 @@ export function validateAssessment(assessment) {
 export function cacheAssessment(courseName, assessment) {
   try {
     const cacheKey = `assessment_${courseName.toLowerCase().replace(/\s+/g, '_')}`;
-    localStorage.setItem(cacheKey, JSON.stringify({
-      ...assessment,
-      cachedAt: new Date().toISOString()
-    }));
+    localStorage.setItem(
+      cacheKey,
+      JSON.stringify({
+        ...assessment,
+        cachedAt: new Date().toISOString(),
+      })
+    );
   } catch (error) {
     console.error('Error caching assessment:', error);
   }
@@ -264,18 +275,18 @@ export function getCachedAssessment(courseName) {
   try {
     const cacheKey = `assessment_${courseName.toLowerCase().replace(/\s+/g, '_')}`;
     const cached = localStorage.getItem(cacheKey);
-    
+
     if (cached) {
       const assessment = JSON.parse(cached);
       // Check if cache is less than 7 days old
       const cacheAge = Date.now() - new Date(assessment.cachedAt).getTime();
       const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
-      
+
       if (cacheAge < maxAge) {
         return assessment;
       }
     }
-    
+
     return null;
   } catch (error) {
     console.error('Error loading cached assessment:', error);

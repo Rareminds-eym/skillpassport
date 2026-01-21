@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo } from 'react';
 import {
   PlusCircleIcon,
   XMarkIcon,
@@ -16,8 +16,8 @@ import {
   UserCircleIcon,
   CalendarDaysIcon,
   ChatBubbleLeftRightIcon,
-} from "@heroicons/react/24/outline";
-import SearchBar from "../../../components/common/SearchBar";
+} from '@heroicons/react/24/outline';
+import SearchBar from '../../../components/common/SearchBar';
 
 /* ==============================
    TYPES & INTERFACES
@@ -26,18 +26,18 @@ interface Circular {
   id: string;
   title: string;
   content: string;
-  category: "academic" | "event" | "fee" | "general" | "urgent";
-  targetAudience: "all" | "class-specific" | "student-specific";
+  category: 'academic' | 'event' | 'fee' | 'general' | 'urgent';
+  targetAudience: 'all' | 'class-specific' | 'student-specific';
   targetClasses?: string[];
   targetStudents?: string[];
   createdAt: string;
   createdBy: string;
-  status: "draft" | "sent" | "scheduled";
+  status: 'draft' | 'sent' | 'scheduled';
   scheduledFor?: string;
   totalRecipients: number;
   readBy: number;
   acknowledgedBy: number;
-  priority: "low" | "medium" | "high";
+  priority: 'low' | 'medium' | 'high';
 }
 
 interface Feedback {
@@ -45,11 +45,11 @@ interface Feedback {
   parentName: string;
   studentName: string;
   studentClass: string;
-  category: "academic" | "infrastructure" | "transport" | "staff" | "other";
+  category: 'academic' | 'infrastructure' | 'transport' | 'staff' | 'other';
   subject: string;
   message: string;
   rating: number;
-  status: "new" | "in-review" | "resolved" | "closed";
+  status: 'new' | 'in-review' | 'resolved' | 'closed';
   submittedAt: string;
   respondedAt?: string;
   response?: string;
@@ -62,17 +62,17 @@ interface Grievance {
   studentName: string;
   studentClass: string;
   category:
-    | "academic"
-    | "discipline"
-    | "infrastructure"
-    | "transport"
-    | "staff"
-    | "safety"
-    | "other";
-  priority: "low" | "medium" | "high" | "critical";
+    | 'academic'
+    | 'discipline'
+    | 'infrastructure'
+    | 'transport'
+    | 'staff'
+    | 'safety'
+    | 'other';
+  priority: 'low' | 'medium' | 'high' | 'critical';
   subject: string;
   description: string;
-  status: "new" | "in-progress" | "resolved" | "closed" | "escalated";
+  status: 'new' | 'in-progress' | 'resolved' | 'closed' | 'escalated';
   submittedAt: string;
   assignedTo?: string;
   resolvedAt?: string;
@@ -86,7 +86,7 @@ interface Grievance {
 interface GrievanceComment {
   id: string;
   author: string;
-  role: "parent" | "admin" | "teacher";
+  role: 'parent' | 'admin' | 'teacher';
   message: string;
   timestamp: string;
 }
@@ -98,44 +98,40 @@ const StatsCard = ({
   label,
   value,
   icon: Icon,
-  color = "blue",
+  color = 'blue',
   trend,
 }: {
   label: string;
   value: number | string;
   icon: any;
-  color?: "blue" | "green" | "purple" | "amber" | "red";
+  color?: 'blue' | 'green' | 'purple' | 'amber' | 'red';
   trend?: { value: string; isPositive: boolean };
 }) => {
   const colorClasses = {
-    blue: "bg-blue-50 text-blue-600 border-blue-200",
-    green: "bg-green-50 text-green-600 border-green-200",
-    purple: "bg-purple-50 text-purple-600 border-purple-200",
-    amber: "bg-amber-50 text-amber-600 border-amber-200",
-    red: "bg-red-50 text-red-600 border-red-200",
+    blue: 'bg-blue-50 text-blue-600 border-blue-200',
+    green: 'bg-green-50 text-green-600 border-green-200',
+    purple: 'bg-purple-50 text-purple-600 border-purple-200',
+    amber: 'bg-amber-50 text-amber-600 border-amber-200',
+    red: 'bg-red-50 text-red-600 border-red-200',
   };
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between">
         <div className="flex-1">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-            {label}
-          </p>
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">{label}</p>
           <p className="text-2xl font-bold text-gray-900">{value}</p>
           {trend && (
             <p
               className={`text-xs font-medium mt-1 ${
-                trend.isPositive ? "text-green-600" : "text-red-600"
+                trend.isPositive ? 'text-green-600' : 'text-red-600'
               }`}
             >
-              {trend.isPositive ? "↑" : "↓"} {trend.value}
+              {trend.isPositive ? '↑' : '↓'} {trend.value}
             </p>
           )}
         </div>
-        <div
-          className={`p-3 rounded-xl border ${colorClasses[color]} transition-colors`}
-        >
+        <div className={`p-3 rounded-xl border ${colorClasses[color]} transition-colors`}>
           <Icon className="h-6 w-6" />
         </div>
       </div>
@@ -155,28 +151,28 @@ const CreateCircularModal = ({
   onClose: () => void;
   onCreated: (circular: any) => void;
 }) => {
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [category, setCategory] = useState<string>("general");
-  const [targetAudience, setTargetAudience] = useState<string>("all");
-  const [priority, setPriority] = useState<string>("medium");
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
+  const [category, setCategory] = useState<string>('general');
+  const [targetAudience, setTargetAudience] = useState<string>('all');
+  const [priority, setPriority] = useState<string>('medium');
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const classes = ["9-A", "9-B", "10-A", "10-B", "11-A", "11-B", "12-A", "12-B"];
+  const classes = ['9-A', '9-B', '10-A', '10-B', '11-A', '11-B', '12-A', '12-B'];
 
   const handleSubmit = () => {
     if (!title.trim()) {
-      setError("Title is required");
+      setError('Title is required');
       return;
     }
     if (!content.trim()) {
-      setError("Content is required");
+      setError('Content is required');
       return;
     }
-    if (targetAudience === "class-specific" && selectedClasses.length === 0) {
-      setError("Please select at least one class");
+    if (targetAudience === 'class-specific' && selectedClasses.length === 0) {
+      setError('Please select at least one class');
       return;
     }
 
@@ -189,7 +185,7 @@ const CreateCircularModal = ({
         content,
         category,
         targetAudience,
-        targetClasses: targetAudience === "class-specific" ? selectedClasses : undefined,
+        targetClasses: targetAudience === 'class-specific' ? selectedClasses : undefined,
         priority,
       });
       setSubmitting(false);
@@ -198,11 +194,11 @@ const CreateCircularModal = ({
   };
 
   const handleClose = () => {
-    setTitle("");
-    setContent("");
-    setCategory("general");
-    setTargetAudience("all");
-    setPriority("medium");
+    setTitle('');
+    setContent('');
+    setCategory('general');
+    setTargetAudience('all');
+    setPriority('medium');
     setSelectedClasses([]);
     setError(null);
     onClose();
@@ -221,12 +217,8 @@ const CreateCircularModal = ({
         <div className="relative w-full max-w-3xl transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all">
           <div className="flex items-start justify-between border-b border-gray-100 px-6 py-5">
             <div className="flex-1">
-              <h2 className="text-xl font-semibold text-gray-900">
-                Create New Circular
-              </h2>
-              <p className="mt-1 text-sm text-gray-500">
-                Broadcast announcement to parents
-              </p>
+              <h2 className="text-xl font-semibold text-gray-900">Create New Circular</h2>
+              <p className="mt-1 text-sm text-gray-500">Broadcast announcement to parents</p>
             </div>
             <button
               onClick={handleClose}
@@ -259,9 +251,7 @@ const CreateCircularModal = ({
 
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Category
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
@@ -276,9 +266,7 @@ const CreateCircularModal = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Priority
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
                   <select
                     value={priority}
                     onChange={(e) => setPriority(e.target.value)}
@@ -305,17 +293,14 @@ const CreateCircularModal = ({
                 </div>
               </div>
 
-              {targetAudience === "class-specific" && (
+              {targetAudience === 'class-specific' && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Select Classes <span className="text-red-500">*</span>
                   </label>
                   <div className="grid grid-cols-4 gap-2">
                     {classes.map((cls) => (
-                      <label
-                        key={cls}
-                        className="inline-flex items-center gap-2 cursor-pointer"
-                      >
+                      <label key={cls} className="inline-flex items-center gap-2 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={selectedClasses.includes(cls)}
@@ -323,9 +308,7 @@ const CreateCircularModal = ({
                             if (e.target.checked) {
                               setSelectedClasses([...selectedClasses, cls]);
                             } else {
-                              setSelectedClasses(
-                                selectedClasses.filter((c) => c !== cls)
-                              );
+                              setSelectedClasses(selectedClasses.filter((c) => c !== cls));
                             }
                           }}
                           className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
@@ -397,17 +380,17 @@ const CircularCard = ({
   onDelete: () => void;
 }) => {
   const categoryColors = {
-    academic: "bg-blue-100 text-blue-700",
-    event: "bg-purple-100 text-purple-700",
-    fee: "bg-amber-100 text-amber-700",
-    general: "bg-gray-100 text-gray-700",
-    urgent: "bg-red-100 text-red-700",
+    academic: 'bg-blue-100 text-blue-700',
+    event: 'bg-purple-100 text-purple-700',
+    fee: 'bg-amber-100 text-amber-700',
+    general: 'bg-gray-100 text-gray-700',
+    urgent: 'bg-red-100 text-red-700',
   };
 
   const priorityColors = {
-    low: "bg-green-100 text-green-700",
-    medium: "bg-yellow-100 text-yellow-700",
-    high: "bg-red-100 text-red-700",
+    low: 'bg-green-100 text-green-700',
+    medium: 'bg-yellow-100 text-yellow-700',
+    high: 'bg-red-100 text-red-700',
   };
 
   const readPercentage = Math.round((circular.readBy / circular.totalRecipients) * 100);
@@ -432,33 +415,23 @@ const CircularCard = ({
               {circular.priority}
             </span>
           </div>
-          <h3 className="text-base font-semibold text-gray-900 mb-2">
-            {circular.title}
-          </h3>
-          <p className="text-sm text-gray-600 line-clamp-2">
-            {circular.content}
-          </p>
+          <h3 className="text-base font-semibold text-gray-900 mb-2">{circular.title}</h3>
+          <p className="text-sm text-gray-600 line-clamp-2">{circular.content}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-3 gap-3 mb-4">
         <div className="bg-gray-50 rounded-lg p-3">
           <p className="text-xs text-gray-600 mb-1">Recipients</p>
-          <p className="text-lg font-bold text-gray-900">
-            {circular.totalRecipients}
-          </p>
+          <p className="text-lg font-bold text-gray-900">{circular.totalRecipients}</p>
         </div>
         <div className="bg-green-50 rounded-lg p-3">
           <p className="text-xs text-green-600 mb-1">Read</p>
-          <p className="text-lg font-bold text-green-700">
-            {circular.readBy}
-          </p>
+          <p className="text-lg font-bold text-green-700">{circular.readBy}</p>
         </div>
         <div className="bg-blue-50 rounded-lg p-3">
           <p className="text-xs text-blue-600 mb-1">Acknowledged</p>
-          <p className="text-lg font-bold text-blue-700">
-            {circular.acknowledgedBy}
-          </p>
+          <p className="text-lg font-bold text-blue-700">{circular.acknowledgedBy}</p>
         </div>
       </div>
 
@@ -502,18 +475,12 @@ const CircularCard = ({
 /* ==============================
    FEEDBACK CARD
    ============================== */
-const FeedbackCard = ({
-  feedback,
-  onRespond,
-}: {
-  feedback: Feedback;
-  onRespond: () => void;
-}) => {
+const FeedbackCard = ({ feedback, onRespond }: { feedback: Feedback; onRespond: () => void }) => {
   const statusColors = {
-    new: "bg-blue-100 text-blue-700",
-    "in-review": "bg-yellow-100 text-yellow-700",
-    resolved: "bg-green-100 text-green-700",
-    closed: "bg-gray-100 text-gray-700",
+    new: 'bg-blue-100 text-blue-700',
+    'in-review': 'bg-yellow-100 text-yellow-700',
+    resolved: 'bg-green-100 text-green-700',
+    closed: 'bg-gray-100 text-gray-700',
   };
 
   return (
@@ -528,13 +495,9 @@ const FeedbackCard = ({
             >
               {feedback.status}
             </span>
-            <span className="text-xs text-gray-500">
-              {feedback.category}
-            </span>
+            <span className="text-xs text-gray-500">{feedback.category}</span>
           </div>
-          <h3 className="text-base font-semibold text-gray-900 mb-1">
-            {feedback.subject}
-          </h3>
+          <h3 className="text-base font-semibold text-gray-900 mb-1">{feedback.subject}</h3>
           <p className="text-sm text-gray-600 mb-2">
             {feedback.parentName} • {feedback.studentName} ({feedback.studentClass})
           </p>
@@ -544,26 +507,20 @@ const FeedbackCard = ({
             <StarIcon
               key={i}
               className={`h-4 w-4 ${
-                i < feedback.rating
-                  ? "text-yellow-500 fill-yellow-500"
-                  : "text-gray-300"
+                i < feedback.rating ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'
               }`}
             />
           ))}
         </div>
       </div>
 
-      <p className="text-sm text-gray-700 mb-4 line-clamp-3">
-        {feedback.message}
-      </p>
+      <p className="text-sm text-gray-700 mb-4 line-clamp-3">{feedback.message}</p>
 
       {feedback.response && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
           <p className="text-xs font-semibold text-green-800 mb-1">Response:</p>
           <p className="text-sm text-green-900">{feedback.response}</p>
-          <p className="text-xs text-green-600 mt-2">
-            Responded: {feedback.respondedAt}
-          </p>
+          <p className="text-xs text-green-600 mt-2">Responded: {feedback.respondedAt}</p>
         </div>
       )}
 
@@ -571,7 +528,7 @@ const FeedbackCard = ({
         <span>Submitted: {feedback.submittedAt}</span>
       </div>
 
-      {feedback.status !== "resolved" && feedback.status !== "closed" && (
+      {feedback.status !== 'resolved' && feedback.status !== 'closed' && (
         <button
           onClick={onRespond}
           className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
@@ -587,36 +544,30 @@ const FeedbackCard = ({
 /* ==============================
    GRIEVANCE CARD
    ============================== */
-const GrievanceCard = ({
-  grievance,
-  onView,
-}: {
-  grievance: Grievance;
-  onView: () => void;
-}) => {
+const GrievanceCard = ({ grievance, onView }: { grievance: Grievance; onView: () => void }) => {
   const statusColors = {
-    new: "bg-blue-100 text-blue-700 border-blue-200",
-    "in-progress": "bg-yellow-100 text-yellow-700 border-yellow-200",
-    resolved: "bg-green-100 text-green-700 border-green-200",
-    closed: "bg-gray-100 text-gray-700 border-gray-200",
-    escalated: "bg-red-100 text-red-700 border-red-200",
+    new: 'bg-blue-100 text-blue-700 border-blue-200',
+    'in-progress': 'bg-yellow-100 text-yellow-700 border-yellow-200',
+    resolved: 'bg-green-100 text-green-700 border-green-200',
+    closed: 'bg-gray-100 text-gray-700 border-gray-200',
+    escalated: 'bg-red-100 text-red-700 border-red-200',
   };
 
   const priorityColors = {
-    low: "bg-green-100 text-green-700",
-    medium: "bg-yellow-100 text-yellow-700",
-    high: "bg-orange-100 text-orange-700",
-    critical: "bg-red-100 text-red-700",
+    low: 'bg-green-100 text-green-700',
+    medium: 'bg-yellow-100 text-yellow-700',
+    high: 'bg-orange-100 text-orange-700',
+    critical: 'bg-red-100 text-red-700',
   };
 
   const categoryIcons = {
-    academic: "📚",
-    discipline: "⚖️",
-    infrastructure: "🏫",
-    transport: "🚌",
-    staff: "👥",
-    safety: "🛡️",
-    other: "📋",
+    academic: '📚',
+    discipline: '⚖️',
+    infrastructure: '🏫',
+    transport: '🚌',
+    staff: '👥',
+    safety: '🛡️',
+    other: '📋',
   };
 
   return (
@@ -638,9 +589,7 @@ const GrievanceCard = ({
                 {grievance.priority}
               </span>
             </div>
-            <h3 className="text-base font-semibold text-gray-900 mb-1">
-              {grievance.subject}
-            </h3>
+            <h3 className="text-base font-semibold text-gray-900 mb-1">{grievance.subject}</h3>
           </div>
         </div>
         <span
@@ -669,9 +618,7 @@ const GrievanceCard = ({
       </div>
 
       {/* Description */}
-      <p className="text-sm text-gray-700 mb-3 line-clamp-2">
-        {grievance.description}
-      </p>
+      <p className="text-sm text-gray-700 mb-3 line-clamp-2">{grievance.description}</p>
 
       {/* Footer */}
       <div className="flex items-center justify-between pt-3 border-t border-gray-100">
@@ -712,24 +659,24 @@ const GrievanceDetailsModal = ({
   isOpen: boolean;
   onClose: () => void;
 }) => {
-  const [newComment, setNewComment] = useState("");
-  const [selectedAction, setSelectedAction] = useState("");
-  const [resolution, setResolution] = useState("");
+  const [newComment, setNewComment] = useState('');
+  const [selectedAction, setSelectedAction] = useState('');
+  const [resolution, setResolution] = useState('');
 
   if (!isOpen || !grievance) return null;
 
   const handleSubmitComment = () => {
     if (!newComment.trim()) return;
-    console.log("New comment:", newComment);
-    setNewComment("");
+    console.log('New comment:', newComment);
+    setNewComment('');
   };
 
   const handleResolve = () => {
-    if (!resolution.trim() && selectedAction === "resolve") {
-      alert("Please provide resolution details");
+    if (!resolution.trim() && selectedAction === 'resolve') {
+      alert('Please provide resolution details');
       return;
     }
-    console.log("Resolving grievance:", { grievanceId: grievance.id, resolution });
+    console.log('Resolving grievance:', { grievanceId: grievance.id, resolution });
     onClose();
   };
 
@@ -746,9 +693,7 @@ const GrievanceDetailsModal = ({
           <div className="flex items-start justify-between border-b border-gray-100 px-6 py-5">
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
-                <h2 className="text-xl font-semibold text-gray-900">
-                  Grievance Details
-                </h2>
+                <h2 className="text-xl font-semibold text-gray-900">Grievance Details</h2>
                 <span className="text-sm font-mono font-semibold text-gray-600 bg-gray-100 px-3 py-1 rounded-lg">
                   #{grievance.ticketNumber}
                 </span>
@@ -768,28 +713,28 @@ const GrievanceDetailsModal = ({
             <div className="flex items-center gap-3 mb-6">
               <span
                 className={`px-4 py-2 rounded-lg text-sm font-semibold ${
-                  grievance.status === "new"
-                    ? "bg-blue-100 text-blue-700"
-                    : grievance.status === "in-progress"
-                    ? "bg-yellow-100 text-yellow-700"
-                    : grievance.status === "resolved"
-                    ? "bg-green-100 text-green-700"
-                    : grievance.status === "escalated"
-                    ? "bg-red-100 text-red-700"
-                    : "bg-gray-100 text-gray-700"
+                  grievance.status === 'new'
+                    ? 'bg-blue-100 text-blue-700'
+                    : grievance.status === 'in-progress'
+                      ? 'bg-yellow-100 text-yellow-700'
+                      : grievance.status === 'resolved'
+                        ? 'bg-green-100 text-green-700'
+                        : grievance.status === 'escalated'
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-gray-100 text-gray-700'
                 }`}
               >
                 Status: {grievance.status}
               </span>
               <span
                 className={`px-4 py-2 rounded-lg text-sm font-semibold ${
-                  grievance.priority === "critical"
-                    ? "bg-red-100 text-red-700"
-                    : grievance.priority === "high"
-                    ? "bg-orange-100 text-orange-700"
-                    : grievance.priority === "medium"
-                    ? "bg-yellow-100 text-yellow-700"
-                    : "bg-green-100 text-green-700"
+                  grievance.priority === 'critical'
+                    ? 'bg-red-100 text-red-700'
+                    : grievance.priority === 'high'
+                      ? 'bg-orange-100 text-orange-700'
+                      : grievance.priority === 'medium'
+                        ? 'bg-yellow-100 text-yellow-700'
+                        : 'bg-green-100 text-green-700'
                 }`}
               >
                 Priority: {grievance.priority}
@@ -801,48 +746,34 @@ const GrievanceDetailsModal = ({
 
             {/* Complainant Info */}
             <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-5 mb-6 border border-indigo-100">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Complainant Information
-              </h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Complainant Information</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Parent Name</p>
-                  <p className="font-semibold text-gray-900">
-                    {grievance.parentName}
-                  </p>
+                  <p className="font-semibold text-gray-900">{grievance.parentName}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Student Name</p>
-                  <p className="font-semibold text-gray-900">
-                    {grievance.studentName}
-                  </p>
+                  <p className="font-semibold text-gray-900">{grievance.studentName}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Class</p>
-                  <p className="font-semibold text-gray-900">
-                    {grievance.studentClass}
-                  </p>
+                  <p className="font-semibold text-gray-900">{grievance.studentClass}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Submitted On</p>
-                  <p className="font-semibold text-gray-900">
-                    {grievance.submittedAt}
-                  </p>
+                  <p className="font-semibold text-gray-900">{grievance.submittedAt}</p>
                 </div>
                 {grievance.assignedTo && (
                   <div>
                     <p className="text-sm text-gray-600 mb-1">Assigned To</p>
-                    <p className="font-semibold text-gray-900">
-                      {grievance.assignedTo}
-                    </p>
+                    <p className="font-semibold text-gray-900">{grievance.assignedTo}</p>
                   </div>
                 )}
                 {grievance.responseTime && (
                   <div>
                     <p className="text-sm text-gray-600 mb-1">Response Time</p>
-                    <p className="font-semibold text-gray-900">
-                      {grievance.responseTime}
-                    </p>
+                    <p className="font-semibold text-gray-900">{grievance.responseTime}</p>
                   </div>
                 )}
               </div>
@@ -850,26 +781,18 @@ const GrievanceDetailsModal = ({
 
             {/* Description */}
             <div className="mb-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                Description
-              </h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">Description</h3>
               <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <p className="text-sm text-gray-800 leading-relaxed">
-                  {grievance.description}
-                </p>
+                <p className="text-sm text-gray-800 leading-relaxed">{grievance.description}</p>
               </div>
             </div>
 
             {/* Resolution (if resolved) */}
             {grievance.resolution && (
               <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                  Resolution
-                </h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Resolution</h3>
                 <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-                  <p className="text-sm text-green-900 leading-relaxed">
-                    {grievance.resolution}
-                  </p>
+                  <p className="text-sm text-green-900 leading-relaxed">{grievance.resolution}</p>
                   {grievance.resolvedAt && (
                     <p className="text-xs text-green-600 mt-2">
                       Resolved on: {grievance.resolvedAt}
@@ -889,21 +812,17 @@ const GrievanceDetailsModal = ({
                   <div
                     key={comment.id}
                     className={`rounded-lg p-4 ${
-                      comment.role === "parent"
-                        ? "bg-blue-50 border border-blue-200"
-                        : "bg-gray-50 border border-gray-200"
+                      comment.role === 'parent'
+                        ? 'bg-blue-50 border border-blue-200'
+                        : 'bg-gray-50 border border-gray-200'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-semibold text-gray-900">
-                        {comment.author}{" "}
-                        <span className="text-xs text-gray-600">
-                          ({comment.role})
-                        </span>
+                        {comment.author}{' '}
+                        <span className="text-xs text-gray-600">({comment.role})</span>
                       </span>
-                      <span className="text-xs text-gray-500">
-                        {comment.timestamp}
-                      </span>
+                      <span className="text-xs text-gray-500">{comment.timestamp}</span>
                     </div>
                     <p className="text-sm text-gray-700">{comment.message}</p>
                   </div>
@@ -911,7 +830,7 @@ const GrievanceDetailsModal = ({
               </div>
 
               {/* Add Comment */}
-              {grievance.status !== "closed" && (
+              {grievance.status !== 'closed' && (
                 <div className="flex gap-2">
                   <textarea
                     value={newComment}
@@ -931,17 +850,13 @@ const GrievanceDetailsModal = ({
             </div>
 
             {/* Actions */}
-            {grievance.status !== "resolved" && grievance.status !== "closed" && (
+            {grievance.status !== 'resolved' && grievance.status !== 'closed' && (
               <div className="border-t border-gray-200 pt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Take Action
-                </h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Take Action</h3>
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Action
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Action</label>
                     <select
                       value={selectedAction}
                       onChange={(e) => setSelectedAction(e.target.value)}
@@ -955,7 +870,7 @@ const GrievanceDetailsModal = ({
                     </select>
                   </div>
 
-                  {selectedAction === "resolve" && (
+                  {selectedAction === 'resolve' && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Resolution Details
@@ -1000,149 +915,146 @@ const GrievanceDetailsModal = ({
    MAIN COMPONENT
    ============================== */
 const CircularsFeedback: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"circulars" | "feedback" | "grievances">(
-    "circulars"
-  );
+  const [activeTab, setActiveTab] = useState<'circulars' | 'feedback' | 'grievances'>('circulars');
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterCategory, setFilterCategory] = useState("all");
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [filterPriority, setFilterPriority] = useState("all");
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterCategory, setFilterCategory] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterPriority, setFilterPriority] = useState('all');
   const [selectedGrievance, setSelectedGrievance] = useState<Grievance | null>(null);
   const [showGrievanceModal, setShowGrievanceModal] = useState(false);
 
   // Sample data
   const [circulars] = useState<Circular[]>([
     {
-      id: "1",
-      title: "Parent-Teacher Meeting Scheduled",
+      id: '1',
+      title: 'Parent-Teacher Meeting Scheduled',
       content:
-        "We are pleased to inform you that the parent-teacher meeting for this semester is scheduled for January 15, 2025. Please mark your calendars.",
-      category: "event",
-      targetAudience: "all",
-      createdAt: "Jan 5, 2025",
-      createdBy: "Admin",
-      status: "sent",
+        'We are pleased to inform you that the parent-teacher meeting for this semester is scheduled for January 15, 2025. Please mark your calendars.',
+      category: 'event',
+      targetAudience: 'all',
+      createdAt: 'Jan 5, 2025',
+      createdBy: 'Admin',
+      status: 'sent',
       totalRecipients: 450,
       readBy: 380,
       acknowledgedBy: 320,
-      priority: "high",
+      priority: 'high',
     },
     {
-      id: "2",
-      title: "Fee Payment Reminder",
+      id: '2',
+      title: 'Fee Payment Reminder',
       content:
-        "This is a reminder to pay the second installment of school fees by January 20, 2025. Late payments will incur a fine.",
-      category: "fee",
-      targetAudience: "all",
-      createdAt: "Jan 3, 2025",
-      createdBy: "Finance Dept",
-      status: "sent",
+        'This is a reminder to pay the second installment of school fees by January 20, 2025. Late payments will incur a fine.',
+      category: 'fee',
+      targetAudience: 'all',
+      createdAt: 'Jan 3, 2025',
+      createdBy: 'Finance Dept',
+      status: 'sent',
       totalRecipients: 450,
       readBy: 425,
       acknowledgedBy: 410,
-      priority: "medium",
+      priority: 'medium',
     },
   ]);
 
   const [feedback] = useState<Feedback[]>([
     {
-      id: "1",
-      parentName: "Rajesh Kumar",
-      studentName: "Ananya Kumar",
-      studentClass: "10-A",
-      category: "academic",
-      subject: "Request for Extra Classes",
+      id: '1',
+      parentName: 'Rajesh Kumar',
+      studentName: 'Ananya Kumar',
+      studentClass: '10-A',
+      category: 'academic',
+      subject: 'Request for Extra Classes',
       message:
-        "My daughter is struggling with Mathematics. Could we arrange extra coaching sessions?",
+        'My daughter is struggling with Mathematics. Could we arrange extra coaching sessions?',
       rating: 4,
-      status: "new",
-      submittedAt: "Jan 6, 2025",
+      status: 'new',
+      submittedAt: 'Jan 6, 2025',
     },
     {
-      id: "2",
-      parentName: "Priya Sharma",
-      studentName: "Rohan Sharma",
-      studentClass: "9-B",
-      category: "infrastructure",
-      subject: "Library Facilities",
+      id: '2',
+      parentName: 'Priya Sharma',
+      studentName: 'Rohan Sharma',
+      studentClass: '9-B',
+      category: 'infrastructure',
+      subject: 'Library Facilities',
       message:
-        "The school library has limited books on Science. Please consider adding more reference books.",
+        'The school library has limited books on Science. Please consider adding more reference books.',
       rating: 3,
-      status: "in-review",
-      submittedAt: "Jan 5, 2025",
+      status: 'in-review',
+      submittedAt: 'Jan 5, 2025',
     },
   ]);
 
   const [grievances] = useState<Grievance[]>([
     {
-      id: "1",
-      ticketNumber: "GRV-2025-001",
-      parentName: "Rajesh Kumar",
-      studentName: "Ananya Kumar",
-      studentClass: "10-A",
-      category: "academic",
-      priority: "high",
-      subject: "Excessive Homework Load",
+      id: '1',
+      ticketNumber: 'GRV-2025-001',
+      parentName: 'Rajesh Kumar',
+      studentName: 'Ananya Kumar',
+      studentClass: '10-A',
+      category: 'academic',
+      priority: 'high',
+      subject: 'Excessive Homework Load',
       description:
-        "My daughter is receiving too much homework daily which is affecting her health. She stays up late every night to complete assignments. Request to review the homework policy.",
-      status: "new",
-      submittedAt: "Jan 6, 2025 10:30 AM",
+        'My daughter is receiving too much homework daily which is affecting her health. She stays up late every night to complete assignments. Request to review the homework policy.',
+      status: 'new',
+      submittedAt: 'Jan 6, 2025 10:30 AM',
       comments: [],
     },
     {
-      id: "2",
-      ticketNumber: "GRV-2025-002",
-      parentName: "Priya Sharma",
-      studentName: "Rohan Sharma",
-      studentClass: "9-B",
-      category: "discipline",
-      priority: "critical",
-      subject: "Bullying Incident",
+      id: '2',
+      ticketNumber: 'GRV-2025-002',
+      parentName: 'Priya Sharma',
+      studentName: 'Rohan Sharma',
+      studentClass: '9-B',
+      category: 'discipline',
+      priority: 'critical',
+      subject: 'Bullying Incident',
       description:
-        "My son has been subjected to bullying by senior students for the past week. This is affecting his mental health and he is scared to come to school. Immediate action required.",
-      status: "in-progress",
-      submittedAt: "Jan 5, 2025 2:15 PM",
-      assignedTo: "Principal",
-      responseTime: "2 hours",
+        'My son has been subjected to bullying by senior students for the past week. This is affecting his mental health and he is scared to come to school. Immediate action required.',
+      status: 'in-progress',
+      submittedAt: 'Jan 5, 2025 2:15 PM',
+      assignedTo: 'Principal',
+      responseTime: '2 hours',
       comments: [
         {
-          id: "1",
-          author: "Principal",
-          role: "admin",
+          id: '1',
+          author: 'Principal',
+          role: 'admin',
           message:
-            "We have taken this matter seriously. Investigation is underway and counseling has been arranged for your son.",
-          timestamp: "Jan 5, 2025 4:30 PM",
+            'We have taken this matter seriously. Investigation is underway and counseling has been arranged for your son.',
+          timestamp: 'Jan 5, 2025 4:30 PM',
         },
       ],
     },
     {
-      id: "3",
-      ticketNumber: "GRV-2025-003",
-      parentName: "Amit Patel",
-      studentName: "Diya Patel",
-      studentClass: "11-C",
-      category: "infrastructure",
-      priority: "medium",
-      subject: "Laboratory Equipment Issues",
+      id: '3',
+      ticketNumber: 'GRV-2025-003',
+      parentName: 'Amit Patel',
+      studentName: 'Diya Patel',
+      studentClass: '11-C',
+      category: 'infrastructure',
+      priority: 'medium',
+      subject: 'Laboratory Equipment Issues',
       description:
-        "The chemistry lab lacks proper equipment for practical sessions. Students are not getting hands-on experience which is crucial for board exams.",
-      status: "resolved",
-      submittedAt: "Jan 3, 2025 11:00 AM",
-      assignedTo: "Lab Coordinator",
-      resolvedAt: "Jan 5, 2025",
-      responseTime: "4 hours",
+        'The chemistry lab lacks proper equipment for practical sessions. Students are not getting hands-on experience which is crucial for board exams.',
+      status: 'resolved',
+      submittedAt: 'Jan 3, 2025 11:00 AM',
+      assignedTo: 'Lab Coordinator',
+      resolvedAt: 'Jan 5, 2025',
+      responseTime: '4 hours',
       resolution:
-        "New equipment has been ordered and will be installed by Jan 15, 2025. Temporary arrangements have been made with nearby school for practical sessions.",
+        'New equipment has been ordered and will be installed by Jan 15, 2025. Temporary arrangements have been made with nearby school for practical sessions.',
       satisfactionRating: 4,
       comments: [
         {
-          id: "1",
-          author: "Lab Coordinator",
-          role: "admin",
-          message:
-            "Thank you for bringing this to our attention. We are procuring new equipment.",
-          timestamp: "Jan 3, 2025 3:00 PM",
+          id: '1',
+          author: 'Lab Coordinator',
+          role: 'admin',
+          message: 'Thank you for bringing this to our attention. We are procuring new equipment.',
+          timestamp: 'Jan 3, 2025 3:00 PM',
         },
       ],
     },
@@ -1157,31 +1069,25 @@ const CircularsFeedback: React.FC = () => {
         grievance.parentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         grievance.studentName.toLowerCase().includes(searchQuery.toLowerCase());
 
-      const matchesStatus =
-        filterStatus === "all" || grievance.status === filterStatus;
+      const matchesStatus = filterStatus === 'all' || grievance.status === filterStatus;
 
-      const matchesPriority =
-        filterPriority === "all" || grievance.priority === filterPriority;
+      const matchesPriority = filterPriority === 'all' || grievance.priority === filterPriority;
 
-      const matchesCategory =
-        filterCategory === "all" || grievance.category === filterCategory;
+      const matchesCategory = filterCategory === 'all' || grievance.category === filterCategory;
 
-      return (
-        matchesSearch && matchesStatus && matchesPriority && matchesCategory
-      );
+      return matchesSearch && matchesStatus && matchesPriority && matchesCategory;
     });
   }, [grievances, searchQuery, filterStatus, filterPriority, filterCategory]);
 
   const stats = {
     totalCirculars: circulars.length,
     totalFeedback: feedback.length,
-    newFeedback: feedback.filter((f) => f.status === "new").length,
-    avgRating:
-      feedback.reduce((sum, f) => sum + f.rating, 0) / feedback.length || 0,
+    newFeedback: feedback.filter((f) => f.status === 'new').length,
+    avgRating: feedback.reduce((sum, f) => sum + f.rating, 0) / feedback.length || 0,
     totalGrievances: grievances.length,
-    newGrievances: grievances.filter((g) => g.status === "new").length,
-    inProgressGrievances: grievances.filter((g) => g.status === "in-progress").length,
-    resolvedGrievances: grievances.filter((g) => g.status === "resolved").length,
+    newGrievances: grievances.filter((g) => g.status === 'new').length,
+    inProgressGrievances: grievances.filter((g) => g.status === 'in-progress').length,
+    resolvedGrievances: grievances.filter((g) => g.status === 'resolved').length,
   };
 
   const handleViewGrievance = (grievance: Grievance) => {
@@ -1208,7 +1114,7 @@ const CircularsFeedback: React.FC = () => {
             </div>
           </div>
 
-          {activeTab === "circulars" && (
+          {activeTab === 'circulars' && (
             <button
               onClick={() => setShowCreateModal(true)}
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium shadow-md"
@@ -1222,7 +1128,7 @@ const CircularsFeedback: React.FC = () => {
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {activeTab === "circulars" && (
+        {activeTab === 'circulars' && (
           <>
             <StatsCard
               label="Total Circulars"
@@ -1236,21 +1142,11 @@ const CircularsFeedback: React.FC = () => {
               icon={PaperAirplaneIcon}
               color="green"
             />
-            <StatsCard
-              label="Avg Read Rate"
-              value="85%"
-              icon={EyeIcon}
-              color="purple"
-            />
-            <StatsCard
-              label="Acknowledged"
-              value="72%"
-              icon={CheckCircleIcon}
-              color="amber"
-            />
+            <StatsCard label="Avg Read Rate" value="85%" icon={EyeIcon} color="purple" />
+            <StatsCard label="Acknowledged" value="72%" icon={CheckCircleIcon} color="amber" />
           </>
         )}
-        {activeTab === "feedback" && (
+        {activeTab === 'feedback' && (
           <>
             <StatsCard
               label="Total Feedback"
@@ -1270,15 +1166,10 @@ const CircularsFeedback: React.FC = () => {
               icon={StarIcon}
               color="green"
             />
-            <StatsCard
-              label="Response Rate"
-              value="90%"
-              icon={CheckCircleIcon}
-              color="purple"
-            />
+            <StatsCard label="Response Rate" value="90%" icon={CheckCircleIcon} color="purple" />
           </>
         )}
-        {activeTab === "grievances" && (
+        {activeTab === 'grievances' && (
           <>
             <StatsCard
               label="Total Grievances"
@@ -1286,12 +1177,7 @@ const CircularsFeedback: React.FC = () => {
               icon={ExclamationTriangleIcon}
               color="blue"
             />
-            <StatsCard
-              label="New"
-              value={stats.newGrievances}
-              icon={ClockIcon}
-              color="amber"
-            />
+            <StatsCard label="New" value={stats.newGrievances} icon={ClockIcon} color="amber" />
             <StatsCard
               label="In Progress"
               value={stats.inProgressGrievances}
@@ -1313,31 +1199,31 @@ const CircularsFeedback: React.FC = () => {
         <div className="border-b border-gray-200">
           <div className="flex">
             <button
-              onClick={() => setActiveTab("circulars")}
+              onClick={() => setActiveTab('circulars')}
               className={`flex-1 px-6 py-4 text-sm font-semibold transition-colors ${
-                activeTab === "circulars"
-                  ? "text-indigo-600 border-b-2 border-indigo-600"
-                  : "text-gray-600 hover:text-gray-900"
+                activeTab === 'circulars'
+                  ? 'text-indigo-600 border-b-2 border-indigo-600'
+                  : 'text-gray-600 hover:text-gray-900'
               }`}
             >
               Circulars ({circulars.length})
             </button>
             <button
-              onClick={() => setActiveTab("feedback")}
+              onClick={() => setActiveTab('feedback')}
               className={`flex-1 px-6 py-4 text-sm font-semibold transition-colors ${
-                activeTab === "feedback"
-                  ? "text-indigo-600 border-b-2 border-indigo-600"
-                  : "text-gray-600 hover:text-gray-900"
+                activeTab === 'feedback'
+                  ? 'text-indigo-600 border-b-2 border-indigo-600'
+                  : 'text-gray-600 hover:text-gray-900'
               }`}
             >
               Feedback ({feedback.length})
             </button>
             <button
-              onClick={() => setActiveTab("grievances")}
+              onClick={() => setActiveTab('grievances')}
               className={`flex-1 px-6 py-4 text-sm font-semibold transition-colors ${
-                activeTab === "grievances"
-                  ? "text-indigo-600 border-b-2 border-indigo-600"
-                  : "text-gray-600 hover:text-gray-900"
+                activeTab === 'grievances'
+                  ? 'text-indigo-600 border-b-2 border-indigo-600'
+                  : 'text-gray-600 hover:text-gray-900'
               }`}
             >
               Grievances ({grievances.length})
@@ -1347,7 +1233,7 @@ const CircularsFeedback: React.FC = () => {
 
         <div className="p-5">
           {/* Filters */}
-          {activeTab === "grievances" ? (
+          {activeTab === 'grievances' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               <SearchBar
                 value={searchQuery}
@@ -1410,7 +1296,7 @@ const CircularsFeedback: React.FC = () => {
               >
                 <option value="all">All Categories</option>
                 <option value="academic">Academic</option>
-                {activeTab === "circulars" && (
+                {activeTab === 'circulars' && (
                   <>
                     <option value="event">Event</option>
                     <option value="fee">Fee</option>
@@ -1418,7 +1304,7 @@ const CircularsFeedback: React.FC = () => {
                     <option value="urgent">Urgent</option>
                   </>
                 )}
-                {activeTab === "feedback" && (
+                {activeTab === 'feedback' && (
                   <>
                     <option value="infrastructure">Infrastructure</option>
                     <option value="transport">Transport</option>
@@ -1431,7 +1317,7 @@ const CircularsFeedback: React.FC = () => {
           )}
 
           {/* Content */}
-          {activeTab === "circulars" ? (
+          {activeTab === 'circulars' ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
               {circulars.map((circular) => (
                 <CircularCard
@@ -1442,7 +1328,7 @@ const CircularsFeedback: React.FC = () => {
                 />
               ))}
             </div>
-          ) : activeTab === "feedback" ? (
+          ) : activeTab === 'feedback' ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
               {feedback.map((fb) => (
                 <FeedbackCard
@@ -1459,9 +1345,7 @@ const CircularsFeedback: React.FC = () => {
                   <div className="p-4 bg-gray-100 rounded-full mb-4">
                     <ExclamationTriangleIcon className="h-12 w-12 text-gray-400" />
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    No grievances found
-                  </h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No grievances found</h3>
                   <p className="text-sm text-gray-500 max-w-sm">
                     Try adjusting your search or filter criteria
                   </p>
@@ -1485,7 +1369,7 @@ const CircularsFeedback: React.FC = () => {
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onCreated={(circular) => {
-          console.log("New circular:", circular);
+          console.log('New circular:', circular);
           setShowCreateModal(false);
         }}
       />

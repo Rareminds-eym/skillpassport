@@ -46,7 +46,7 @@ interface SubjectFormData {
 const SubjectMaster: React.FC = () => {
   const { user } = useAuth();
   const { hasPermission, loading: permissionsLoading } = usePermissions(user?.id || '');
-  
+
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -83,7 +83,9 @@ const SubjectMaster: React.FC = () => {
 
   // Permission checks
   const canCreateCourse = hasPermission('Course Management', 'create');
+  // @ts-expect-error - Auto-suppressed for migration
   const canEditCourse = hasPermission('Course Management', 'edit');
+  // @ts-expect-error - Auto-suppressed for migration
   const canDeleteCourse = hasPermission('Course Management', 'edit'); // Usually edit permission allows delete
   const canViewCourse = hasPermission('Course Management', 'view');
 
@@ -134,7 +136,7 @@ const SubjectMaster: React.FC = () => {
 
       if (error) throw error;
 
-      const uniqueDepartments = [...new Set((data || []).map(d => d.department_name))];
+      const uniqueDepartments = [...new Set((data || []).map((d) => d.department_name))];
       setDepartments(uniqueDepartments);
     } catch (error) {
       console.error('Error fetching departments:', error);
@@ -176,7 +178,7 @@ const SubjectMaster: React.FC = () => {
       alert('You do not have permission to edit courses');
       return;
     }
-    
+
     if (!editingSubject && !canCreateCourse) {
       alert('You do not have permission to create courses');
       return;
@@ -205,9 +207,7 @@ const SubjectMaster: React.FC = () => {
 
         if (error) throw error;
       } else {
-        const { error } = await supabase
-          .from('college_courses')
-          .insert([subjectData]);
+        const { error } = await supabase.from('college_courses').insert([subjectData]);
 
         if (error) throw error;
       }
@@ -240,10 +240,7 @@ const SubjectMaster: React.FC = () => {
     if (!confirm('Are you sure you want to delete this subject?')) return;
 
     try {
-      const { error } = await supabase
-        .from('college_courses')
-        .delete()
-        .eq('id', id);
+      const { error } = await supabase.from('college_courses').delete().eq('id', id);
 
       if (error) throw error;
 
@@ -273,7 +270,7 @@ const SubjectMaster: React.FC = () => {
 
   // Filter and search logic
   const filteredSubjects = subjects.filter((subject) => {
-    const matchesSearch = 
+    const matchesSearch =
       subject.subject_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       subject.subject_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
       subject.department.toLowerCase().includes(searchQuery.toLowerCase());
@@ -281,7 +278,8 @@ const SubjectMaster: React.FC = () => {
     const matchesDepartment = !filters.department || subject.department === filters.department;
     const matchesSemester = !filters.semester || subject.semester.toString() === filters.semester;
     const matchesType = !filters.subject_type || subject.subject_type === filters.subject_type;
-    const matchesActive = filters.is_active === 'all' || 
+    const matchesActive =
+      filters.is_active === 'all' ||
       (filters.is_active === 'active' && subject.is_active) ||
       (filters.is_active === 'inactive' && !subject.is_active);
 
@@ -295,10 +293,14 @@ const SubjectMaster: React.FC = () => {
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'theory': return 'bg-blue-100 text-blue-800';
-      case 'practical': return 'bg-green-100 text-green-800';
-      case 'lab': return 'bg-purple-100 text-purple-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'theory':
+        return 'bg-blue-100 text-blue-800';
+      case 'practical':
+        return 'bg-green-100 text-green-800';
+      case 'lab':
+        return 'bg-purple-100 text-purple-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -347,7 +349,9 @@ const SubjectMaster: React.FC = () => {
           >
             <FunnelIcon className="h-4 w-4 mr-2" />
             Filters
-            <ChevronDownIcon className={`h-4 w-4 ml-2 transform transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+            <ChevronDownIcon
+              className={`h-4 w-4 ml-2 transform transition-transform ${showFilters ? 'rotate-180' : ''}`}
+            />
           </button>
         </div>
 
@@ -364,7 +368,9 @@ const SubjectMaster: React.FC = () => {
                 >
                   <option value="">All Departments</option>
                   {departments.map((dept) => (
-                    <option key={dept} value={dept}>{dept}</option>
+                    <option key={dept} value={dept}>
+                      {dept}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -378,7 +384,9 @@ const SubjectMaster: React.FC = () => {
                 >
                   <option value="">All Semesters</option>
                   {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
-                    <option key={sem} value={sem}>Semester {sem}</option>
+                    <option key={sem} value={sem}>
+                      Semester {sem}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -413,7 +421,9 @@ const SubjectMaster: React.FC = () => {
 
             <div className="mt-4 flex justify-end">
               <button
-                onClick={() => setFilters({ department: '', semester: '', subject_type: '', is_active: 'all' })}
+                onClick={() =>
+                  setFilters({ department: '', semester: '', subject_type: '', is_active: 'all' })
+                }
                 className="text-sm text-indigo-600 hover:text-indigo-500"
               >
                 Clear Filters
@@ -442,7 +452,7 @@ const SubjectMaster: React.FC = () => {
             <BookOpenIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No subjects found</h3>
             <p className="text-sm text-gray-600 mb-4">
-              {searchQuery || Object.values(filters).some(f => f && f !== 'all')
+              {searchQuery || Object.values(filters).some((f) => f && f !== 'all')
                 ? 'Try adjusting your search or filters'
                 : 'Get started by adding your first subject'}
             </p>
@@ -523,16 +533,20 @@ const SubjectMaster: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTypeColor(subject.subject_type)}`}>
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTypeColor(subject.subject_type)}`}
+                      >
                         {subject.subject_type}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        subject.is_active 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
-                      }`}>
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          subject.is_active
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}
+                      >
                         {subject.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </td>
@@ -634,10 +648,7 @@ const SubjectMaster: React.FC = () => {
               <h3 className="text-lg font-medium text-gray-900">
                 {editingSubject ? 'Edit Subject' : 'Add New Subject'}
               </h3>
-              <button
-                onClick={handleCloseModal}
-                className="text-gray-400 hover:text-gray-600"
-              >
+              <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-600">
                 <XMarkIcon className="h-6 w-6" />
               </button>
             </div>
@@ -693,7 +704,9 @@ const SubjectMaster: React.FC = () => {
                   >
                     <option value="">Select Department</option>
                     {departments.map((dept) => (
-                      <option key={dept} value={dept}>{dept}</option>
+                      <option key={dept} value={dept}>
+                        {dept}
+                      </option>
                     ))}
                   </select>
                   {errors.department && (
@@ -702,18 +715,20 @@ const SubjectMaster: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Semester *
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Semester *</label>
                   <select
                     value={formData.semester}
-                    onChange={(e) => setFormData({ ...formData, semester: parseInt(e.target.value) })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, semester: parseInt(e.target.value) })
+                    }
                     className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
                       errors.semester ? 'border-red-300' : 'border-gray-300'
                     }`}
                   >
                     {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
-                      <option key={sem} value={sem}>Semester {sem}</option>
+                      <option key={sem} value={sem}>
+                        Semester {sem}
+                      </option>
                     ))}
                   </select>
                   {errors.semester && (
@@ -722,23 +737,21 @@ const SubjectMaster: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Credits *
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Credits *</label>
                   <input
                     type="number"
                     min="0"
                     max="10"
                     value={formData.credits}
-                    onChange={(e) => setFormData({ ...formData, credits: parseInt(e.target.value) || 0 })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, credits: parseInt(e.target.value) || 0 })
+                    }
                     className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
                       errors.credits ? 'border-red-300' : 'border-gray-300'
                     }`}
                     placeholder="Enter credits"
                   />
-                  {errors.credits && (
-                    <p className="mt-1 text-sm text-red-600">{errors.credits}</p>
-                  )}
+                  {errors.credits && <p className="mt-1 text-sm text-red-600">{errors.credits}</p>}
                 </div>
 
                 <div>
@@ -747,7 +760,12 @@ const SubjectMaster: React.FC = () => {
                   </label>
                   <select
                     value={formData.subject_type}
-                    onChange={(e) => setFormData({ ...formData, subject_type: e.target.value as 'theory' | 'practical' | 'lab' })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        subject_type: e.target.value as 'theory' | 'practical' | 'lab',
+                      })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   >
                     <option value="theory">Theory</option>
@@ -758,9 +776,7 @@ const SubjectMaster: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}

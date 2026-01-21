@@ -20,7 +20,7 @@ export const getSubscriptionRouteDecision = (user, subscriptionData) => {
       reason: 'not_authenticated',
       canAccessManage: false,
       canAccessPayment: true,
-      canAccessPlans: true
+      canAccessPlans: true,
     };
   }
 
@@ -32,7 +32,7 @@ export const getSubscriptionRouteDecision = (user, subscriptionData) => {
       reason: 'no_subscription',
       canAccessManage: false,
       canAccessPayment: true,
-      canAccessPlans: true
+      canAccessPlans: true,
     };
   }
 
@@ -44,7 +44,7 @@ export const getSubscriptionRouteDecision = (user, subscriptionData) => {
       reason: subscriptionData.status === 'active' ? 'active_subscription' : 'paused_subscription',
       canAccessManage: true,
       canAccessPayment: false, // Should redirect to manage
-      canAccessPlans: true
+      canAccessPlans: true,
     };
   }
 
@@ -55,7 +55,7 @@ export const getSubscriptionRouteDecision = (user, subscriptionData) => {
     reason: 'expired_subscription',
     canAccessManage: true, // Can view past subscription
     canAccessPayment: true,
-    canAccessPlans: true
+    canAccessPlans: true,
   };
 };
 
@@ -74,7 +74,7 @@ export const shouldRedirectFrom = (currentRoute, user, subscriptionData) => {
     return {
       redirect: true,
       to: decision.targetRoute,
-      reason: 'User already has active subscription'
+      reason: 'User already has active subscription',
     };
   }
 
@@ -83,9 +83,10 @@ export const shouldRedirectFrom = (currentRoute, user, subscriptionData) => {
     return {
       redirect: true,
       to: decision.targetRoute,
-      reason: decision.reason === 'not_authenticated' 
-        ? 'User not authenticated' 
-        : 'No subscription found'
+      reason:
+        decision.reason === 'not_authenticated'
+          ? 'User not authenticated'
+          : 'No subscription found',
     };
   }
 
@@ -104,7 +105,7 @@ export const getSubscriptionCTA = (subscriptionData, planId) => {
     return {
       label: 'Select Plan',
       action: 'purchase',
-      variant: 'primary'
+      variant: 'primary',
     };
   }
 
@@ -115,7 +116,7 @@ export const getSubscriptionCTA = (subscriptionData, planId) => {
     return {
       label: 'Manage Subscription',
       action: 'manage',
-      variant: 'secondary'
+      variant: 'secondary',
     };
   }
 
@@ -124,13 +125,13 @@ export const getSubscriptionCTA = (subscriptionData, planId) => {
       return {
         label: 'Upgrade Plan',
         action: 'upgrade',
-        variant: 'primary'
+        variant: 'primary',
       };
     } else {
       return {
         label: 'Switch to This Plan',
         action: 'downgrade',
-        variant: 'secondary'
+        variant: 'secondary',
       };
     }
   }
@@ -138,7 +139,7 @@ export const getSubscriptionCTA = (subscriptionData, planId) => {
   return {
     label: 'Renew with This Plan',
     action: 'renew',
-    variant: 'primary'
+    variant: 'primary',
   };
 };
 
@@ -149,7 +150,7 @@ const getPlanPrice = (planId) => {
   const prices = {
     basic: 499,
     pro: 999,
-    enterprise: 1999
+    enterprise: 1999,
   };
   return prices[planId] || 0;
 };
@@ -166,7 +167,7 @@ export const isValidStatusTransition = (currentStatus, newStatus) => {
     active: ['expired', 'cancelled', 'paused'],
     paused: ['active', 'cancelled'],
     expired: ['active'], // Renewal
-    cancelled: ['active'] // Reactivation
+    cancelled: ['active'], // Reactivation
   };
 
   return validTransitions[currentStatus]?.includes(newStatus) || false;
@@ -190,7 +191,7 @@ export const getSubscriptionUrgency = (subscriptionData) => {
     return {
       level: 'warning',
       message: 'Your subscription is paused. Resume it to continue accessing premium features.',
-      daysRemaining
+      daysRemaining,
     };
   }
 
@@ -198,7 +199,7 @@ export const getSubscriptionUrgency = (subscriptionData) => {
     return {
       level: 'critical',
       message: 'Your subscription has expired. Renew now to restore access.',
-      daysRemaining: 0
+      daysRemaining: 0,
     };
   }
 
@@ -206,7 +207,7 @@ export const getSubscriptionUrgency = (subscriptionData) => {
     return {
       level: 'critical',
       message: `Only ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''} left! Renew now to avoid interruption.`,
-      daysRemaining
+      daysRemaining,
     };
   }
 
@@ -214,7 +215,7 @@ export const getSubscriptionUrgency = (subscriptionData) => {
     return {
       level: 'warning',
       message: `Your subscription expires in ${daysRemaining} days.`,
-      daysRemaining
+      daysRemaining,
     };
   }
 
@@ -222,14 +223,13 @@ export const getSubscriptionUrgency = (subscriptionData) => {
     return {
       level: 'info',
       message: `${daysRemaining} days remaining in your subscription.`,
-      daysRemaining
+      daysRemaining,
     };
   }
 
   return {
     level: 'normal',
     message: null,
-    daysRemaining
+    daysRemaining,
   };
 };
-

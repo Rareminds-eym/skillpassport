@@ -7,7 +7,17 @@ interface FeeStructure {
   college_name: string;
   program_id: string;
   program_name: string;
-  fee_type: 'tuition' | 'admission' | 'examination' | 'library' | 'laboratory' | 'hostel' | 'transport' | 'development' | 'sports' | 'other';
+  fee_type:
+    | 'tuition'
+    | 'admission'
+    | 'examination'
+    | 'library'
+    | 'laboratory'
+    | 'hostel'
+    | 'transport'
+    | 'development'
+    | 'sports'
+    | 'other';
   fee_name: string;
   amount: number;
   currency: string;
@@ -42,7 +52,7 @@ const FeeStructureModal: React.FC<FeeStructureModalProps> = ({
   onSave,
   editingStructure,
   colleges,
-  programs
+  programs,
 }) => {
   const [formData, setFormData] = useState<Partial<FeeStructure>>({
     college_id: '',
@@ -62,7 +72,7 @@ const FeeStructureModal: React.FC<FeeStructureModalProps> = ({
     installment_allowed: false,
     max_installments: 1,
     status: 'active',
-    description: ''
+    description: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -73,7 +83,7 @@ const FeeStructureModal: React.FC<FeeStructureModalProps> = ({
     if (editingStructure) {
       setFormData({
         ...editingStructure,
-        due_date: editingStructure.due_date.split('T')[0] // Format date for input
+        due_date: editingStructure.due_date.split('T')[0], // Format date for input
       });
     } else {
       // Reset form for new structure
@@ -95,7 +105,7 @@ const FeeStructureModal: React.FC<FeeStructureModalProps> = ({
         installment_allowed: false,
         max_installments: 1,
         status: 'active',
-        description: ''
+        description: '',
       });
     }
     setErrors({});
@@ -104,7 +114,7 @@ const FeeStructureModal: React.FC<FeeStructureModalProps> = ({
   useEffect(() => {
     // Filter programs based on selected college
     if (formData.college_id) {
-      setFilteredPrograms(programs.filter(p => p.college_id === formData.college_id));
+      setFilteredPrograms(programs.filter((p) => p.college_id === formData.college_id));
     } else {
       setFilteredPrograms(programs);
     }
@@ -115,7 +125,8 @@ const FeeStructureModal: React.FC<FeeStructureModalProps> = ({
 
     if (!formData.college_id) newErrors.college_id = 'College is required';
     if (!formData.fee_name?.trim()) newErrors.fee_name = 'Fee name is required';
-    if (!formData.amount || formData.amount <= 0) newErrors.amount = 'Amount must be greater than 0';
+    if (!formData.amount || formData.amount <= 0)
+      newErrors.amount = 'Amount must be greater than 0';
     if (!formData.due_date) newErrors.due_date = 'Due date is required';
     if (!formData.academic_year) newErrors.academic_year = 'Academic year is required';
 
@@ -125,8 +136,12 @@ const FeeStructureModal: React.FC<FeeStructureModalProps> = ({
     }
 
     // Validate installments
-    if (formData.installment_allowed && (!formData.max_installments || formData.max_installments < 2)) {
-      newErrors.max_installments = 'Max installments must be at least 2 when installments are allowed';
+    if (
+      formData.installment_allowed &&
+      (!formData.max_installments || formData.max_installments < 2)
+    ) {
+      newErrors.max_installments =
+        'Max installments must be at least 2 when installments are allowed';
     }
 
     setErrors(newErrors);
@@ -135,7 +150,7 @@ const FeeStructureModal: React.FC<FeeStructureModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
 
     setLoading(true);
@@ -152,10 +167,10 @@ const FeeStructureModal: React.FC<FeeStructureModalProps> = ({
   };
 
   const handleInputChange = (field: keyof FeeStructure, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
     // Clear error when user starts typing
     if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
+      setErrors((prev) => ({ ...prev, [field]: '' }));
     }
   };
 
@@ -169,10 +184,7 @@ const FeeStructureModal: React.FC<FeeStructureModalProps> = ({
           <h2 className="text-xl font-semibold text-gray-900">
             {editingStructure ? 'Edit Fee Structure' : 'Create Fee Structure'}
           </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
             <X className="h-6 w-6" />
           </button>
         </div>
@@ -182,9 +194,7 @@ const FeeStructureModal: React.FC<FeeStructureModalProps> = ({
           {/* Basic Information */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                College *
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">College *</label>
               <select
                 value={formData.college_id || ''}
                 onChange={(e) => handleInputChange('college_id', e.target.value)}
@@ -193,7 +203,7 @@ const FeeStructureModal: React.FC<FeeStructureModalProps> = ({
                 }`}
               >
                 <option value="">Select College</option>
-                {colleges.map(college => (
+                {colleges.map((college) => (
                   <option key={college.id} value={college.id}>
                     {college.name}
                   </option>
@@ -208,9 +218,7 @@ const FeeStructureModal: React.FC<FeeStructureModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Program
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Program</label>
               <select
                 value={formData.program_id || ''}
                 onChange={(e) => handleInputChange('program_id', e.target.value)}
@@ -218,7 +226,7 @@ const FeeStructureModal: React.FC<FeeStructureModalProps> = ({
                 disabled={!formData.college_id}
               >
                 <option value="">All Programs</option>
-                {filteredPrograms.map(program => (
+                {filteredPrograms.map((program) => (
                   <option key={program.id} value={program.id}>
                     {program.name}
                   </option>
@@ -227,9 +235,7 @@ const FeeStructureModal: React.FC<FeeStructureModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Fee Type *
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Fee Type *</label>
               <select
                 value={formData.fee_type || 'tuition'}
                 onChange={(e) => handleInputChange('fee_type', e.target.value)}
@@ -249,9 +255,7 @@ const FeeStructureModal: React.FC<FeeStructureModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Fee Name *
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Fee Name *</label>
               <input
                 type="text"
                 value={formData.fee_name || ''}
@@ -273,9 +277,7 @@ const FeeStructureModal: React.FC<FeeStructureModalProps> = ({
           {/* Amount and Academic Details */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Amount *
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Amount *</label>
               <input
                 type="number"
                 min="0"
@@ -310,16 +312,16 @@ const FeeStructureModal: React.FC<FeeStructureModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Semester
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Semester</label>
               <select
                 value={formData.semester || 1}
                 onChange={(e) => handleInputChange('semester', parseInt(e.target.value))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                {[1, 2, 3, 4, 5, 6, 7, 8].map(sem => (
-                  <option key={sem} value={sem}>Semester {sem}</option>
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
+                  <option key={sem} value={sem}>
+                    Semester {sem}
+                  </option>
                 ))}
               </select>
             </div>
@@ -328,9 +330,7 @@ const FeeStructureModal: React.FC<FeeStructureModalProps> = ({
           {/* Due Date and Late Fee */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Due Date *
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Due Date *</label>
               <input
                 type="date"
                 value={formData.due_date || ''}
@@ -357,7 +357,9 @@ const FeeStructureModal: React.FC<FeeStructureModalProps> = ({
                 max="100"
                 step="0.1"
                 value={formData.late_fee_percentage || ''}
-                onChange={(e) => handleInputChange('late_fee_percentage', parseFloat(e.target.value) || 0)}
+                onChange={(e) =>
+                  handleInputChange('late_fee_percentage', parseFloat(e.target.value) || 0)
+                }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
@@ -371,7 +373,9 @@ const FeeStructureModal: React.FC<FeeStructureModalProps> = ({
                 min="0"
                 step="0.01"
                 value={formData.late_fee_amount || ''}
-                onChange={(e) => handleInputChange('late_fee_amount', parseFloat(e.target.value) || 0)}
+                onChange={(e) =>
+                  handleInputChange('late_fee_amount', parseFloat(e.target.value) || 0)
+                }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
@@ -436,7 +440,9 @@ const FeeStructureModal: React.FC<FeeStructureModalProps> = ({
                   type="number"
                   min="0"
                   value={formData.grace_period_days || 0}
-                  onChange={(e) => handleInputChange('grace_period_days', parseInt(e.target.value) || 0)}
+                  onChange={(e) =>
+                    handleInputChange('grace_period_days', parseInt(e.target.value) || 0)
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -451,7 +457,9 @@ const FeeStructureModal: React.FC<FeeStructureModalProps> = ({
                     min="2"
                     max="12"
                     value={formData.max_installments || 1}
-                    onChange={(e) => handleInputChange('max_installments', parseInt(e.target.value) || 1)}
+                    onChange={(e) =>
+                      handleInputChange('max_installments', parseInt(e.target.value) || 1)
+                    }
                     className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                       errors.max_installments ? 'border-red-300' : 'border-gray-300'
                     }`}
@@ -466,9 +474,7 @@ const FeeStructureModal: React.FC<FeeStructureModalProps> = ({
               )}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
                 <select
                   value={formData.status || 'active'}
                   onChange={(e) => handleInputChange('status', e.target.value)}
@@ -484,9 +490,7 @@ const FeeStructureModal: React.FC<FeeStructureModalProps> = ({
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Description
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
             <textarea
               value={formData.description || ''}
               onChange={(e) => handleInputChange('description', e.target.value)}

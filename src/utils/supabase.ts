@@ -14,7 +14,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
   global: {
     headers: {
-      'Accept': 'application/json',
+      Accept: 'application/json',
       'Content-Type': 'application/json',
     },
   },
@@ -23,11 +23,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 export const studentService = {
   async getStudent(id: string): Promise<Student | null> {
     try {
-      const { data, error } = await supabase
-        .from('students')
-        .select('*')
-        .eq('id', id)
-        .single();
+      const { data, error } = await supabase.from('students').select('*').eq('id', id).single();
 
       if (error) {
         console.error('Error fetching student:', error);
@@ -63,10 +59,7 @@ export const studentService = {
 
   async updateStudentProfile(id: string, profile: any): Promise<boolean> {
     try {
-      const { error } = await supabase
-        .from('students')
-        .update({ profile })
-        .eq('id', id);
+      const { error } = await supabase.from('students').update({ profile }).eq('id', id);
 
       if (error) {
         console.error('Error updating student profile:', error);
@@ -94,16 +87,14 @@ export const studentService = {
         return null;
       }
 
-      const { data } = supabase.storage
-        .from('profile-images')
-        .getPublicUrl(fileName);
+      const { data } = supabase.storage.from('profile-images').getPublicUrl(fileName);
 
       return data.publicUrl;
     } catch (error) {
       console.error('Error uploading profile image:', error);
       return null;
     }
-  }
+  },
 };
 
 // Mock data for development/demo purposes
@@ -114,14 +105,15 @@ export const mockStudent: Student = {
     name: 'John Doe',
     email: 'john.doe@example.com',
     passportId: 'DP2024001',
-    profileImage: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face',
+    profileImage:
+      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face',
     bio: 'Passionate full-stack developer with expertise in React, Node.js, and cloud technologies. Love creating innovative solutions and learning new technologies.',
     skills: [
       { name: 'JavaScript', level: 'Expert', category: 'Programming' },
       { name: 'React', level: 'Advanced', category: 'Frontend' },
       { name: 'Node.js', level: 'Advanced', category: 'Backend' },
       { name: 'Python', level: 'Intermediate', category: 'Programming' },
-      { name: 'AWS', level: 'Intermediate', category: 'Cloud' }
+      { name: 'AWS', level: 'Intermediate', category: 'Cloud' },
     ],
     technicalSkills: [
       { name: 'JavaScript', level: 9, category: 'Programming Languages' },
@@ -129,7 +121,7 @@ export const mockStudent: Student = {
       { name: 'React', level: 9, category: 'Frontend Frameworks' },
       { name: 'Node.js', level: 8, category: 'Backend Technologies' },
       { name: 'MongoDB', level: 7, category: 'Databases' },
-      { name: 'AWS', level: 6, category: 'Cloud Platforms' }
+      { name: 'AWS', level: 6, category: 'Cloud Platforms' },
     ],
     projects: [
       {
@@ -141,7 +133,7 @@ export const mockStudent: Student = {
         live_url: 'https://myecommerce.com',
         image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=600&h=400&fit=crop',
         startDate: '2024-01-01',
-        endDate: '2024-03-01'
+        endDate: '2024-03-01',
       },
       {
         id: '2',
@@ -152,8 +144,8 @@ export const mockStudent: Student = {
         live_url: 'https://mytaskmanager.com',
         image: 'https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=600&h=400&fit=crop',
         startDate: '2023-10-01',
-        endDate: '2023-12-01'
-      }
+        endDate: '2023-12-01',
+      },
     ],
     education: [
       {
@@ -164,8 +156,8 @@ export const mockStudent: Student = {
         startDate: '2020-08-01',
         endDate: '2024-05-01',
         grade: '8.5 CGPA',
-        description: 'Specialized in software engineering and web technologies'
-      }
+        description: 'Specialized in software engineering and web technologies',
+      },
     ],
     experience: [
       {
@@ -174,9 +166,10 @@ export const mockStudent: Student = {
         position: 'Frontend Developer Intern',
         startDate: '2023-06-01',
         endDate: '2023-08-01',
-        description: 'Developed responsive web applications using React and collaborated with the design team',
-        technologies: ['React', 'JavaScript', 'CSS', 'Git']
-      }
+        description:
+          'Developed responsive web applications using React and collaborated with the design team',
+        technologies: ['React', 'JavaScript', 'CSS', 'Git'],
+      },
     ],
     certifications: [
       {
@@ -184,38 +177,44 @@ export const mockStudent: Student = {
         name: 'AWS Certified Developer Associate',
         issuer: 'Amazon Web Services',
         date: '2024-02-15',
-        url: 'https://aws.amazon.com/certification/'
+        url: 'https://aws.amazon.com/certification/',
       },
       {
         id: '2',
         name: 'React Developer Certification',
         issuer: 'Meta',
         date: '2023-11-20',
-        url: 'https://developers.facebook.com/docs/react/'
-      }
+        url: 'https://developers.facebook.com/docs/react/',
+      },
     ],
     languages: [
       { name: 'English', proficiency: 'Fluent' },
       { name: 'Spanish', proficiency: 'Conversational' },
-      { name: 'French', proficiency: 'Basic' }
+      { name: 'French', proficiency: 'Basic' },
     ],
     hobbies: ['Photography', 'Hiking', 'Reading', 'Gaming', 'Cooking'],
-    interests: ['Artificial Intelligence', 'Machine Learning', 'Blockchain', 'IoT', 'Cybersecurity'],
+    interests: [
+      'Artificial Intelligence',
+      'Machine Learning',
+      'Blockchain',
+      'IoT',
+      'Cybersecurity',
+    ],
     achievements: [
       {
         id: '1',
         title: 'Best Project Award',
         description: 'Won first place in university hackathon for innovative web application',
         date: '2023-11-15',
-        category: 'Academic'
+        category: 'Academic',
       },
       {
         id: '2',
-        title: 'Dean\'s List',
-        description: 'Achieved Dean\'s List recognition for academic excellence',
+        title: "Dean's List",
+        description: "Achieved Dean's List recognition for academic excellence",
         date: '2023-05-01',
-        category: 'Academic'
-      }
+        category: 'Academic',
+      },
     ],
     training: [
       {
@@ -223,9 +222,9 @@ export const mockStudent: Student = {
         name: 'Full Stack Web Development',
         provider: 'Coding Bootcamp',
         completionDate: '2023-08-01',
-        skills: ['React', 'Node.js', 'MongoDB', 'Express']
-      }
-    ]
+        skills: ['React', 'Node.js', 'MongoDB', 'Express'],
+      },
+    ],
   },
   createdAt: '2024-01-01T00:00:00Z',
   updatedAt: '2024-01-01T00:00:00Z',
@@ -248,9 +247,9 @@ export const mockStudent: Student = {
   portfolio_link: 'https://johndoe.dev',
   other_social_links: [
     { platform: 'YouTube', url: 'https://youtube.com/johndoe' },
-    { platform: 'Medium', url: 'https://medium.com/@johndoe' }
+    { platform: 'Medium', url: 'https://medium.com/@johndoe' },
   ],
   approval_status: 'approved',
   created_at: '2024-01-01T00:00:00Z',
-  updated_at: '2024-01-01T00:00:00Z'
+  updated_at: '2024-01-01T00:00:00Z',
 };

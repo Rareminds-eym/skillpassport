@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { generateRoleResponsibilities, getFallbackResponsibilities } from '../services/aiCareerPathService';
+import {
+  generateRoleResponsibilities,
+  getFallbackResponsibilities,
+} from '../services/aiCareerPathService';
 
 /**
  * Cache structure for storing role responsibilities
@@ -33,11 +36,11 @@ function getCacheKey(roleName: string, clusterTitle: string): string {
 export function checkCache(roleName: string, clusterTitle: string): string[] | null {
   const key = getCacheKey(roleName, clusterTitle);
   const entry = sessionCache[key];
-  
+
   if (entry && entry.responsibilities.length === 3) {
     return entry.responsibilities;
   }
-  
+
   return null;
 }
 
@@ -57,7 +60,7 @@ function setCache(roleName: string, clusterTitle: string, responsibilities: stri
  * Clear the session cache (useful for testing)
  */
 export function clearResponsibilitiesCache(): void {
-  Object.keys(sessionCache).forEach(key => delete sessionCache[key]);
+  Object.keys(sessionCache).forEach((key) => delete sessionCache[key]);
 }
 
 /**
@@ -71,16 +74,16 @@ interface UseRoleResponsibilitiesReturn {
 
 /**
  * Custom hook for fetching and caching role responsibilities
- * 
+ *
  * @param roleName - The job role name (e.g., "Software Engineer")
  * @param clusterTitle - The career cluster title (e.g., "Technology")
  * @returns Object containing responsibilities array, loading state, and error (internal only)
- * 
+ *
  * Features:
  * - Session-based caching: Same role/cluster combo returns cached result
  * - Automatic fallback: Returns generic responsibilities on error
  * - Loading state: Indicates when AI generation is in progress
- * 
+ *
  * @example
  * const { responsibilities, loading } = useRoleResponsibilities('Software Engineer', 'Technology');
  */
@@ -91,7 +94,7 @@ export function useRoleResponsibilities(
   const [responsibilities, setResponsibilities] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
-  
+
   // Track the current request to handle race conditions
   const currentRequestRef = useRef<string | null>(null);
 
@@ -113,7 +116,7 @@ export function useRoleResponsibilities(
 
     try {
       const result = await generateRoleResponsibilities(role, cluster);
-      
+
       // Only update state if this is still the current request
       if (currentRequestRef.current === requestKey) {
         setResponsibilities(result);
@@ -125,7 +128,7 @@ export function useRoleResponsibilities(
       if (currentRequestRef.current === requestKey) {
         console.error('Error fetching role responsibilities:', err);
         setError(err instanceof Error ? err : new Error('Failed to generate responsibilities'));
-        
+
         // Return fallback without exposing error to user
         const fallback = getFallbackResponsibilities(role);
         setResponsibilities(fallback);

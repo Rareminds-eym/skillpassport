@@ -5,14 +5,17 @@ import {
   PromotionalEventProvider,
   usePromotionalEventContext,
 } from '../contexts/PromotionalEventContext';
-import { AssessmentPromotionalProvider, useAssessmentPromotionalContext } from '../contexts/AssessmentPromotionalContext';
+import {
+  AssessmentPromotionalProvider,
+  useAssessmentPromotionalContext,
+} from '../contexts/AssessmentPromotionalContext';
 
 const PortfolioLayoutContent = () => {
   const { event, showBanner, dismissBanner, getTimeRemaining } = usePromotionalEventContext();
-  const { 
-    showBanner: showAssessmentBanner, 
+  const {
+    showBanner: showAssessmentBanner,
     dismissBanner: dismissAssessmentBanner,
-    getTimeRemaining: getAssessmentTimeRemaining
+    getTimeRemaining: getAssessmentTimeRemaining,
   } = useAssessmentPromotionalContext();
 
   // Show assessment banner if assessment modal was dismissed, otherwise show promo banner

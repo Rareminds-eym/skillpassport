@@ -160,7 +160,7 @@ export const getNotificationPreferencesByEmail = async (email) => {
 
     // Get settings
     const result = await getUserSettings(student.user_id);
-    
+
     if (!result.success) {
       return result;
     }
@@ -196,7 +196,7 @@ export const getPrivacySettingsByEmail = async (email) => {
 
     // Get settings
     const result = await getUserSettings(student.user_id);
-    
+
     if (!result.success) {
       return result;
     }

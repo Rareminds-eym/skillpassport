@@ -88,7 +88,9 @@ const FeedbackCertification: React.FC = () => {
   const [showCertificationModal, setShowCertificationModal] = useState(false);
   const [showAddFeedbackModal, setShowAddFeedbackModal] = useState(false);
   const [showIssueCertificateModal, setShowIssueCertificateModal] = useState(false);
-  const [selectedRecord, setSelectedRecord] = useState<FeedbackRecord | CertificationRecord | null>(null);
+  const [selectedRecord, setSelectedRecord] = useState<FeedbackRecord | CertificationRecord | null>(
+    null
+  );
 
   // Form data states
   const [feedbackFormData, setFeedbackFormData] = useState<FeedbackFormData>({
@@ -102,7 +104,7 @@ const FeedbackCertification: React.FC = () => {
     feedbackType: 'student',
     rating: 5,
     comments: '',
-    submittedBy: ''
+    submittedBy: '',
   });
 
   const [certificateFormData, setCertificateFormData] = useState<CertificateFormData>({
@@ -111,7 +113,7 @@ const FeedbackCertification: React.FC = () => {
     collegeName: '',
     certificationType: '',
     validityPeriod: '12',
-    remarks: ''
+    remarks: '',
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -306,26 +308,33 @@ const FeedbackCertification: React.FC = () => {
   ];
 
   // Filter functions
-  const filteredFeedbackRecords = feedbackRecords.filter(record => {
-    const matchesSearch = record.facultyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         record.collegeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         record.subject.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredFeedbackRecords = feedbackRecords.filter((record) => {
+    const matchesSearch =
+      record.facultyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      record.collegeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      record.subject.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCollege = !selectedCollege || record.collegeName === selectedCollege;
     const matchesDepartment = !selectedDepartment || record.department === selectedDepartment;
     const matchesStatus = !selectedStatus || record.status === selectedStatus;
-    const matchesFeedbackType = !selectedFeedbackType || record.feedbackType === selectedFeedbackType;
+    const matchesFeedbackType =
+      !selectedFeedbackType || record.feedbackType === selectedFeedbackType;
 
-    return matchesSearch && matchesCollege && matchesDepartment && matchesStatus && matchesFeedbackType;
+    return (
+      matchesSearch && matchesCollege && matchesDepartment && matchesStatus && matchesFeedbackType
+    );
   });
 
-  const filteredCertificationRecords = certificationRecords.filter(record => {
-    const matchesSearch = record.facultyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         record.collegeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         record.certificationType.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredCertificationRecords = certificationRecords.filter((record) => {
+    const matchesSearch =
+      record.facultyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      record.collegeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      record.certificationType.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCollege = !selectedCollege || record.collegeName === selectedCollege;
-    const matchesCertificationType = !selectedCertificationType || record.certificationType === selectedCertificationType;
-    const matchesCertificationStatus = !selectedCertificationStatus || record.status === selectedCertificationStatus;
-    
+    const matchesCertificationType =
+      !selectedCertificationType || record.certificationType === selectedCertificationType;
+    const matchesCertificationStatus =
+      !selectedCertificationStatus || record.status === selectedCertificationStatus;
+
     // Date range filtering
     let matchesDateRange = true;
     if (selectedDateRange) {
@@ -333,7 +342,7 @@ const FeedbackCertification: React.FC = () => {
       const now = new Date();
       const diffTime = now.getTime() - issueDate.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
+
       switch (selectedDateRange) {
         case 'last_month':
           matchesDateRange = diffDays <= 30;
@@ -353,7 +362,7 @@ const FeedbackCertification: React.FC = () => {
           break;
       }
     }
-    
+
     // Validity status filtering
     let matchesValidityStatus = true;
     if (selectedValidityStatus) {
@@ -361,7 +370,7 @@ const FeedbackCertification: React.FC = () => {
       const now = new Date();
       const diffTime = validUntil.getTime() - now.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
+
       switch (selectedValidityStatus) {
         case 'valid':
           matchesValidityStatus = diffDays > 30 && record.status === 'active';
@@ -378,15 +387,19 @@ const FeedbackCertification: React.FC = () => {
       }
     }
 
-    return matchesSearch && matchesCollege && matchesCertificationType && 
-           matchesCertificationStatus && matchesDateRange && matchesValidityStatus;
+    return (
+      matchesSearch &&
+      matchesCollege &&
+      matchesCertificationType &&
+      matchesCertificationStatus &&
+      matchesDateRange &&
+      matchesValidityStatus
+    );
   });
 
   const handleSelectRecord = (recordId: string) => {
-    setSelectedRecords(prev => 
-      prev.includes(recordId) 
-        ? prev.filter(id => id !== recordId)
-        : [...prev, recordId]
+    setSelectedRecords((prev) =>
+      prev.includes(recordId) ? prev.filter((id) => id !== recordId) : [...prev, recordId]
     );
   };
 
@@ -416,7 +429,7 @@ const FeedbackCertification: React.FC = () => {
     const certificateContent = generateCertificateContent(record);
     const blob = new Blob([certificateContent], { type: 'text/html' });
     const url = window.URL.createObjectURL(blob);
-    
+
     const link = document.createElement('a');
     link.href = url;
     link.download = `${record.certificationType.replace(/\s+/g, '_')}_${record.facultyName.replace(/\s+/g, '_')}_${record.issueDate}.html`;
@@ -424,20 +437,22 @@ const FeedbackCertification: React.FC = () => {
     link.click();
     document.body.removeChild(link);
     window.URL.revokeObjectURL(url);
-    
+
     // Show success message
-    alert(`Certificate downloaded successfully: ${record.certificationType} for ${record.facultyName}`);
+    alert(
+      `Certificate downloaded successfully: ${record.certificationType} for ${record.facultyName}`
+    );
   };
 
   const handlePrintCertificate = (record: CertificationRecord) => {
     // Create a printable certificate
     const certificateContent = generateCertificateContent(record);
     const printWindow = window.open('', '_blank');
-    
+
     if (printWindow) {
       printWindow.document.write(certificateContent);
       printWindow.document.close();
-      
+
       // Wait for content to load then print
       printWindow.onload = () => {
         printWindow.print();
@@ -630,18 +645,18 @@ const FeedbackCertification: React.FC = () => {
         <div class="dates-section">
             <div class="date-item">
                 <div class="date-label">Issue Date</div>
-                <div class="date-value">${new Date(record.issueDate).toLocaleDateString('en-US', { 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
+                <div class="date-value">${new Date(record.issueDate).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
                 })}</div>
             </div>
             <div class="date-item">
                 <div class="date-label">Valid Until</div>
-                <div class="date-value">${new Date(record.validUntil).toLocaleDateString('en-US', { 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
+                <div class="date-value">${new Date(record.validUntil).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
                 })}</div>
             </div>
         </div>
@@ -678,7 +693,9 @@ const FeedbackCertification: React.FC = () => {
       alert('Please select records to perform bulk action');
       return;
     }
-    alert(`Bulk action for ${selectedRecords.length} records - This would open bulk action options`);
+    alert(
+      `Bulk action for ${selectedRecords.length} records - This would open bulk action options`
+    );
   };
 
   const handleExportRecords = () => {
@@ -695,12 +712,14 @@ const FeedbackCertification: React.FC = () => {
   };
 
   const exportFeedbackRecords = () => {
-    const selectedFeedback = feedbackRecords.filter(record => selectedRecords.includes(record.id));
-    
+    const selectedFeedback = feedbackRecords.filter((record) =>
+      selectedRecords.includes(record.id)
+    );
+
     // Create CSV content
     const headers = [
       'Faculty Name',
-      'Faculty ID', 
+      'Faculty ID',
       'College',
       'Department',
       'Subject',
@@ -711,34 +730,38 @@ const FeedbackCertification: React.FC = () => {
       'Comments',
       'Submitted By',
       'Submission Date',
-      'Status'
+      'Status',
     ];
-    
+
     const csvContent = [
       headers.join(','),
-      ...selectedFeedback.map(record => [
-        `"${record.facultyName}"`,
-        `"${record.facultyId}"`,
-        `"${record.collegeName}"`,
-        `"${record.department}"`,
-        `"${record.subject}"`,
-        `"${record.semester}"`,
-        `"${record.academicYear}"`,
-        `"${record.feedbackType}"`,
-        record.rating,
-        `"${record.comments.replace(/"/g, '""')}"`,
-        `"${record.submittedBy}"`,
-        `"${record.submissionDate}"`,
-        `"${record.status}"`
-      ].join(','))
+      ...selectedFeedback.map((record) =>
+        [
+          `"${record.facultyName}"`,
+          `"${record.facultyId}"`,
+          `"${record.collegeName}"`,
+          `"${record.department}"`,
+          `"${record.subject}"`,
+          `"${record.semester}"`,
+          `"${record.academicYear}"`,
+          `"${record.feedbackType}"`,
+          record.rating,
+          `"${record.comments.replace(/"/g, '""')}"`,
+          `"${record.submittedBy}"`,
+          `"${record.submissionDate}"`,
+          `"${record.status}"`,
+        ].join(',')
+      ),
     ].join('\n');
 
     downloadCSV(csvContent, `feedback_records_${new Date().toISOString().split('T')[0]}.csv`);
   };
 
   const exportCertificationRecords = () => {
-    const selectedCertifications = certificationRecords.filter(record => selectedRecords.includes(record.id));
-    
+    const selectedCertifications = certificationRecords.filter((record) =>
+      selectedRecords.includes(record.id)
+    );
+
     // Create CSV content
     const headers = [
       'Faculty Name',
@@ -748,21 +771,23 @@ const FeedbackCertification: React.FC = () => {
       'Issue Date',
       'Valid Until',
       'Status',
-      'Download URL'
+      'Download URL',
     ];
-    
+
     const csvContent = [
       headers.join(','),
-      ...selectedCertifications.map(record => [
-        `"${record.facultyName}"`,
-        `"${record.facultyId}"`,
-        `"${record.collegeName}"`,
-        `"${record.certificationType}"`,
-        `"${record.issueDate}"`,
-        `"${record.validUntil}"`,
-        `"${record.status}"`,
-        `"${record.downloadUrl}"`
-      ].join(','))
+      ...selectedCertifications.map((record) =>
+        [
+          `"${record.facultyName}"`,
+          `"${record.facultyId}"`,
+          `"${record.collegeName}"`,
+          `"${record.certificationType}"`,
+          `"${record.issueDate}"`,
+          `"${record.validUntil}"`,
+          `"${record.status}"`,
+          `"${record.downloadUrl}"`,
+        ].join(',')
+      ),
     ].join('\n');
 
     downloadCSV(csvContent, `certification_records_${new Date().toISOString().split('T')[0]}.csv`);
@@ -778,18 +803,18 @@ const FeedbackCertification: React.FC = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
+
     alert(`Exported ${selectedRecords.length} records to ${filename}`);
   };
 
   const handlePrintFeedbackReport = (record: FeedbackRecord) => {
     const reportContent = generateFeedbackReportContent(record);
     const printWindow = window.open('', '_blank');
-    
+
     if (printWindow) {
       printWindow.document.write(reportContent);
       printWindow.document.close();
-      
+
       printWindow.onload = () => {
         printWindow.print();
         printWindow.close();
@@ -803,7 +828,7 @@ const FeedbackCertification: React.FC = () => {
     const reportContent = generateFeedbackReportContent(record);
     const blob = new Blob([reportContent], { type: 'text/html' });
     const url = window.URL.createObjectURL(blob);
-    
+
     const link = document.createElement('a');
     link.href = url;
     link.download = `Feedback_Report_${record.facultyName.replace(/\s+/g, '_')}_${record.submissionDate}.html`;
@@ -811,7 +836,7 @@ const FeedbackCertification: React.FC = () => {
     link.click();
     document.body.removeChild(link);
     window.URL.revokeObjectURL(url);
-    
+
     alert(`Feedback report downloaded for ${record.facultyName}`);
   };
 
@@ -945,10 +970,10 @@ const FeedbackCertification: React.FC = () => {
     <div class="report">
         <div class="header">
             <div class="report-title">Faculty Feedback Report</div>
-            <div class="report-subtitle">Generated on ${new Date().toLocaleDateString('en-US', { 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric' 
+            <div class="report-subtitle">Generated on ${new Date().toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
             })}</div>
         </div>
 
@@ -1053,11 +1078,11 @@ const FeedbackCertification: React.FC = () => {
     setIsSubmitting(true);
     try {
       // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       // Here you would make the actual API call to save the feedback
       console.log('Submitting feedback:', feedbackFormData);
-      
+
       // Reset form and close modal
       setFeedbackFormData({
         facultyId: '',
@@ -1070,7 +1095,7 @@ const FeedbackCertification: React.FC = () => {
         feedbackType: 'student',
         rating: 5,
         comments: '',
-        submittedBy: ''
+        submittedBy: '',
       });
       setShowAddFeedbackModal(false);
       alert('Feedback submitted successfully!');
@@ -1085,11 +1110,11 @@ const FeedbackCertification: React.FC = () => {
     setIsSubmitting(true);
     try {
       // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       // Here you would make the actual API call to issue the certificate
       console.log('Issuing certificate:', certificateFormData);
-      
+
       // Reset form and close modal
       setCertificateFormData({
         facultyId: '',
@@ -1097,7 +1122,7 @@ const FeedbackCertification: React.FC = () => {
         collegeName: '',
         certificationType: '',
         validityPeriod: '12',
-        remarks: ''
+        remarks: '',
       });
       setShowIssueCertificateModal(false);
       alert('Certificate issued successfully!');
@@ -1120,16 +1145,24 @@ const FeedbackCertification: React.FC = () => {
     setSelectedValidityStatus('');
   };
 
-  const hasActiveFilters = searchTerm || selectedCollege || selectedDepartment || selectedStatus || 
-                          selectedFeedbackType || selectedCertificationType || selectedCertificationStatus || 
-                          selectedDateRange || selectedValidityStatus;
+  const hasActiveFilters =
+    searchTerm ||
+    selectedCollege ||
+    selectedDepartment ||
+    selectedStatus ||
+    selectedFeedbackType ||
+    selectedCertificationType ||
+    selectedCertificationStatus ||
+    selectedDateRange ||
+    selectedValidityStatus;
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Calculate pagination
-  const currentRecords = activeTab === 'feedback' ? filteredFeedbackRecords : filteredCertificationRecords;
+  const currentRecords =
+    activeTab === 'feedback' ? filteredFeedbackRecords : filteredCertificationRecords;
   const totalPages = Math.ceil(currentRecords.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
@@ -1138,8 +1171,18 @@ const FeedbackCertification: React.FC = () => {
   // Reset pagination when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, selectedCollege, selectedDepartment, selectedStatus, selectedFeedbackType, 
-      selectedCertificationType, selectedCertificationStatus, selectedDateRange, selectedValidityStatus, activeTab]);
+  }, [
+    searchTerm,
+    selectedCollege,
+    selectedDepartment,
+    selectedStatus,
+    selectedFeedbackType,
+    selectedCertificationType,
+    selectedCertificationStatus,
+    selectedDateRange,
+    selectedValidityStatus,
+    activeTab,
+  ]);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -1156,9 +1199,7 @@ const FeedbackCertification: React.FC = () => {
         {[1, 2, 3, 4, 5].map((star) => (
           <StarIconSolid
             key={star}
-            className={`h-4 w-4 ${
-              star <= rating ? 'text-yellow-400' : 'text-gray-300'
-            }`}
+            className={`h-4 w-4 ${star <= rating ? 'text-yellow-400' : 'text-gray-300'}`}
           />
         ))}
         <span className="ml-2 text-sm text-gray-600">{rating.toFixed(1)}</span>
@@ -1181,7 +1222,9 @@ const FeedbackCertification: React.FC = () => {
     const IconComponent = config.icon;
 
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
+      <span
+        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}
+      >
         <IconComponent className="w-3 h-3 mr-1" />
         {status.charAt(0).toUpperCase() + status.slice(1)}
       </span>
@@ -1200,40 +1243,71 @@ const FeedbackCertification: React.FC = () => {
             <XCircleIcon className="h-6 w-6" />
           </button>
         </div>
-        
+
         {selectedRecord && 'rating' in selectedRecord && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Faculty Information</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Faculty Information
+                </label>
                 <div className="bg-gray-50 p-4 rounded-lg">
-                  <p><strong>Name:</strong> {selectedRecord.facultyName}</p>
-                  <p><strong>ID:</strong> {selectedRecord.facultyId}</p>
-                  <p><strong>College:</strong> {selectedRecord.collegeName}</p>
-                  <p><strong>Department:</strong> {selectedRecord.department}</p>
+                  <p>
+                    <strong>Name:</strong> {selectedRecord.facultyName}
+                  </p>
+                  <p>
+                    <strong>ID:</strong> {selectedRecord.facultyId}
+                  </p>
+                  <p>
+                    <strong>College:</strong> {selectedRecord.collegeName}
+                  </p>
+                  <p>
+                    <strong>Department:</strong> {selectedRecord.department}
+                  </p>
                 </div>
               </div>
-              
+
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Course Information</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Course Information
+                </label>
                 <div className="bg-gray-50 p-4 rounded-lg">
-                  <p><strong>Subject:</strong> {selectedRecord.subject}</p>
-                  <p><strong>Semester:</strong> {selectedRecord.semester}</p>
-                  <p><strong>Academic Year:</strong> {selectedRecord.academicYear}</p>
+                  <p>
+                    <strong>Subject:</strong> {selectedRecord.subject}
+                  </p>
+                  <p>
+                    <strong>Semester:</strong> {selectedRecord.semester}
+                  </p>
+                  <p>
+                    <strong>Academic Year:</strong> {selectedRecord.academicYear}
+                  </p>
                 </div>
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Feedback Details</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Feedback Details
+              </label>
               <div className="bg-gray-50 p-4 rounded-lg space-y-3">
                 <div className="flex items-center justify-between">
-                  <span><strong>Type:</strong> {selectedRecord.feedbackType}</span>
-                  <span><strong>Rating:</strong> {renderStars(selectedRecord.rating)}</span>
+                  <span>
+                    <strong>Type:</strong> {selectedRecord.feedbackType}
+                  </span>
+                  <span>
+                    <strong>Rating:</strong> {renderStars(selectedRecord.rating)}
+                  </span>
                 </div>
-                <p><strong>Submitted by:</strong> {selectedRecord.submittedBy}</p>
-                <p><strong>Date:</strong> {new Date(selectedRecord.submissionDate).toLocaleDateString()}</p>
-                <p><strong>Status:</strong> {getStatusBadge(selectedRecord.status)}</p>
+                <p>
+                  <strong>Submitted by:</strong> {selectedRecord.submittedBy}
+                </p>
+                <p>
+                  <strong>Date:</strong>{' '}
+                  {new Date(selectedRecord.submissionDate).toLocaleDateString()}
+                </p>
+                <p>
+                  <strong>Status:</strong> {getStatusBadge(selectedRecord.status)}
+                </p>
               </div>
             </div>
 
@@ -1251,33 +1325,33 @@ const FeedbackCertification: React.FC = () => {
               >
                 Close
               </button>
-              <button 
+              <button
                 onClick={() => handlePrintFeedbackReport(selectedRecord)}
                 className="px-4 py-2 bg-gray-600 text-white rounded-md text-sm font-medium hover:bg-gray-700 flex items-center transition-colors"
               >
                 <PrinterIcon className="h-4 w-4 mr-2" />
                 Print Report
               </button>
-              <button 
+              <button
                 onClick={() => handleDownloadFeedbackReport(selectedRecord)}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 flex items-center transition-colors"
               >
                 <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
                 Download Report
               </button>
-              <button 
+              <button
                 onClick={() => handleUpdateStatus(selectedRecord.id, 'approved')}
                 className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 transition-colors"
               >
                 Approve
               </button>
-              <button 
+              <button
                 onClick={() => handleUpdateStatus(selectedRecord.id, 'rejected')}
                 className="px-4 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700 transition-colors"
               >
                 Reject
               </button>
-              <button 
+              <button
                 onClick={() => handleUpdateStatus(selectedRecord.id, 'reviewed')}
                 className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 transition-colors"
               >
@@ -1302,18 +1376,32 @@ const FeedbackCertification: React.FC = () => {
             <XCircleIcon className="h-6 w-6" />
           </button>
         </div>
-        
+
         {selectedRecord && 'certificationType' in selectedRecord && (
           <div className="space-y-6">
             <div className="bg-gray-50 p-4 rounded-lg">
               <h4 className="font-medium text-gray-900 mb-3">{selectedRecord.certificationType}</h4>
               <div className="grid grid-cols-2 gap-4 text-sm">
-                <p><strong>Faculty:</strong> {selectedRecord.facultyName}</p>
-                <p><strong>Faculty ID:</strong> {selectedRecord.facultyId}</p>
-                <p><strong>College:</strong> {selectedRecord.collegeName}</p>
-                <p><strong>Issue Date:</strong> {new Date(selectedRecord.issueDate).toLocaleDateString()}</p>
-                <p><strong>Valid Until:</strong> {new Date(selectedRecord.validUntil).toLocaleDateString()}</p>
-                <p><strong>Status:</strong> {getStatusBadge(selectedRecord.status)}</p>
+                <p>
+                  <strong>Faculty:</strong> {selectedRecord.facultyName}
+                </p>
+                <p>
+                  <strong>Faculty ID:</strong> {selectedRecord.facultyId}
+                </p>
+                <p>
+                  <strong>College:</strong> {selectedRecord.collegeName}
+                </p>
+                <p>
+                  <strong>Issue Date:</strong>{' '}
+                  {new Date(selectedRecord.issueDate).toLocaleDateString()}
+                </p>
+                <p>
+                  <strong>Valid Until:</strong>{' '}
+                  {new Date(selectedRecord.validUntil).toLocaleDateString()}
+                </p>
+                <p>
+                  <strong>Status:</strong> {getStatusBadge(selectedRecord.status)}
+                </p>
               </div>
             </div>
 
@@ -1324,14 +1412,14 @@ const FeedbackCertification: React.FC = () => {
               >
                 Close
               </button>
-              <button 
+              <button
                 onClick={() => handlePrintCertificate(selectedRecord)}
                 className="px-4 py-2 bg-gray-600 text-white rounded-md text-sm font-medium hover:bg-gray-700 flex items-center transition-colors"
               >
                 <PrinterIcon className="h-4 w-4 mr-2" />
                 Print
               </button>
-              <button 
+              <button
                 onClick={() => handleDownloadCertificate(selectedRecord)}
                 className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 flex items-center transition-colors"
               >
@@ -1357,7 +1445,7 @@ const FeedbackCertification: React.FC = () => {
             <XCircleIcon className="h-6 w-6" />
           </button>
         </div>
-        
+
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
@@ -1365,92 +1453,117 @@ const FeedbackCertification: React.FC = () => {
               <input
                 type="text"
                 value={feedbackFormData.facultyId}
-                onChange={(e) => setFeedbackFormData(prev => ({ ...prev, facultyId: e.target.value }))}
+                onChange={(e) =>
+                  setFeedbackFormData((prev) => ({ ...prev, facultyId: e.target.value }))
+                }
                 className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 placeholder="Enter faculty ID"
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Faculty Name</label>
               <input
                 type="text"
                 value={feedbackFormData.facultyName}
-                onChange={(e) => setFeedbackFormData(prev => ({ ...prev, facultyName: e.target.value }))}
+                onChange={(e) =>
+                  setFeedbackFormData((prev) => ({ ...prev, facultyName: e.target.value }))
+                }
                 className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 placeholder="Enter faculty name"
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">College</label>
               <select
                 value={feedbackFormData.collegeName}
-                onChange={(e) => setFeedbackFormData(prev => ({ ...prev, collegeName: e.target.value }))}
+                onChange={(e) =>
+                  setFeedbackFormData((prev) => ({ ...prev, collegeName: e.target.value }))
+                }
                 className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               >
                 <option value="">Select College</option>
-                {colleges.map(college => (
-                  <option key={college} value={college}>{college}</option>
+                {colleges.map((college) => (
+                  <option key={college} value={college}>
+                    {college}
+                  </option>
                 ))}
               </select>
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
               <select
                 value={feedbackFormData.department}
-                onChange={(e) => setFeedbackFormData(prev => ({ ...prev, department: e.target.value }))}
+                onChange={(e) =>
+                  setFeedbackFormData((prev) => ({ ...prev, department: e.target.value }))
+                }
                 className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               >
                 <option value="">Select Department</option>
-                {departments.map(dept => (
-                  <option key={dept} value={dept}>{dept}</option>
+                {departments.map((dept) => (
+                  <option key={dept} value={dept}>
+                    {dept}
+                  </option>
                 ))}
               </select>
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Subject</label>
               <input
                 type="text"
                 value={feedbackFormData.subject}
-                onChange={(e) => setFeedbackFormData(prev => ({ ...prev, subject: e.target.value }))}
+                onChange={(e) =>
+                  setFeedbackFormData((prev) => ({ ...prev, subject: e.target.value }))
+                }
                 className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 placeholder="Enter subject name"
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Semester</label>
               <select
                 value={feedbackFormData.semester}
-                onChange={(e) => setFeedbackFormData(prev => ({ ...prev, semester: e.target.value }))}
+                onChange={(e) =>
+                  setFeedbackFormData((prev) => ({ ...prev, semester: e.target.value }))
+                }
                 className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               >
                 <option value="">Select Semester</option>
-                {['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'].map(sem => (
-                  <option key={sem} value={sem}>{sem}</option>
+                {['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'].map((sem) => (
+                  <option key={sem} value={sem}>
+                    {sem}
+                  </option>
                 ))}
               </select>
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Academic Year</label>
               <input
                 type="text"
                 value={feedbackFormData.academicYear}
-                onChange={(e) => setFeedbackFormData(prev => ({ ...prev, academicYear: e.target.value }))}
+                onChange={(e) =>
+                  setFeedbackFormData((prev) => ({ ...prev, academicYear: e.target.value }))
+                }
                 className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 placeholder="e.g., 2024-25"
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Feedback Type</label>
               <select
                 value={feedbackFormData.feedbackType}
-                onChange={(e) => setFeedbackFormData(prev => ({ ...prev, feedbackType: e.target.value as 'student' | 'peer' | 'admin' }))}
+                onChange={(e) =>
+                  setFeedbackFormData((prev) => ({
+                    ...prev,
+                    feedbackType: e.target.value as 'student' | 'peer' | 'admin',
+                  }))
+                }
                 className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               >
                 <option value="student">Student Feedback</option>
@@ -1459,7 +1572,7 @@ const FeedbackCertification: React.FC = () => {
               </select>
             </div>
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Rating</label>
             <div className="flex items-center space-x-2">
@@ -1469,33 +1582,39 @@ const FeedbackCertification: React.FC = () => {
                 max="5"
                 step="0.1"
                 value={feedbackFormData.rating}
-                onChange={(e) => setFeedbackFormData(prev => ({ ...prev, rating: parseFloat(e.target.value) }))}
+                onChange={(e) =>
+                  setFeedbackFormData((prev) => ({ ...prev, rating: parseFloat(e.target.value) }))
+                }
                 className="flex-1"
               />
-              <span className="text-sm font-medium text-gray-700 w-12">{feedbackFormData.rating.toFixed(1)}</span>
+              <span className="text-sm font-medium text-gray-700 w-12">
+                {feedbackFormData.rating.toFixed(1)}
+              </span>
             </div>
-            <div className="mt-2">
-              {renderStars(feedbackFormData.rating)}
-            </div>
+            <div className="mt-2">{renderStars(feedbackFormData.rating)}</div>
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Comments</label>
             <textarea
               value={feedbackFormData.comments}
-              onChange={(e) => setFeedbackFormData(prev => ({ ...prev, comments: e.target.value }))}
+              onChange={(e) =>
+                setFeedbackFormData((prev) => ({ ...prev, comments: e.target.value }))
+              }
               rows={4}
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               placeholder="Enter detailed feedback comments..."
             />
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Submitted By</label>
             <input
               type="text"
               value={feedbackFormData.submittedBy}
-              onChange={(e) => setFeedbackFormData(prev => ({ ...prev, submittedBy: e.target.value }))}
+              onChange={(e) =>
+                setFeedbackFormData((prev) => ({ ...prev, submittedBy: e.target.value }))
+              }
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               placeholder="Enter submitter name/designation"
             />
@@ -1511,7 +1630,12 @@ const FeedbackCertification: React.FC = () => {
             </button>
             <button
               onClick={handleSubmitFeedback}
-              disabled={isSubmitting || !feedbackFormData.facultyId || !feedbackFormData.facultyName || !feedbackFormData.collegeName}
+              disabled={
+                isSubmitting ||
+                !feedbackFormData.facultyId ||
+                !feedbackFormData.facultyName ||
+                !feedbackFormData.collegeName
+              }
               className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center"
             >
               {isSubmitting && (
@@ -1537,7 +1661,7 @@ const FeedbackCertification: React.FC = () => {
             <XCircleIcon className="h-6 w-6" />
           </button>
         </div>
-        
+
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
@@ -1545,57 +1669,71 @@ const FeedbackCertification: React.FC = () => {
               <input
                 type="text"
                 value={certificateFormData.facultyId}
-                onChange={(e) => setCertificateFormData(prev => ({ ...prev, facultyId: e.target.value }))}
+                onChange={(e) =>
+                  setCertificateFormData((prev) => ({ ...prev, facultyId: e.target.value }))
+                }
                 className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 placeholder="Enter faculty ID"
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Faculty Name</label>
               <input
                 type="text"
                 value={certificateFormData.facultyName}
-                onChange={(e) => setCertificateFormData(prev => ({ ...prev, facultyName: e.target.value }))}
+                onChange={(e) =>
+                  setCertificateFormData((prev) => ({ ...prev, facultyName: e.target.value }))
+                }
                 className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 placeholder="Enter faculty name"
               />
             </div>
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">College</label>
             <select
               value={certificateFormData.collegeName}
-              onChange={(e) => setCertificateFormData(prev => ({ ...prev, collegeName: e.target.value }))}
+              onChange={(e) =>
+                setCertificateFormData((prev) => ({ ...prev, collegeName: e.target.value }))
+              }
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             >
               <option value="">Select College</option>
-              {colleges.map(college => (
-                <option key={college} value={college}>{college}</option>
+              {colleges.map((college) => (
+                <option key={college} value={college}>
+                  {college}
+                </option>
               ))}
             </select>
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Certificate Type</label>
             <select
               value={certificateFormData.certificationType}
-              onChange={(e) => setCertificateFormData(prev => ({ ...prev, certificationType: e.target.value }))}
+              onChange={(e) =>
+                setCertificateFormData((prev) => ({ ...prev, certificationType: e.target.value }))
+              }
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             >
               <option value="">Select Certificate Type</option>
-              {certificationTypes.map(type => (
-                <option key={type} value={type}>{type}</option>
+              {certificationTypes.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
               ))}
             </select>
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Validity Period</label>
             <select
               value={certificateFormData.validityPeriod}
-              onChange={(e) => setCertificateFormData(prev => ({ ...prev, validityPeriod: e.target.value }))}
+              onChange={(e) =>
+                setCertificateFormData((prev) => ({ ...prev, validityPeriod: e.target.value }))
+              }
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             >
               <option value="6">6 Months</option>
@@ -1605,12 +1743,16 @@ const FeedbackCertification: React.FC = () => {
               <option value="60">5 Years</option>
             </select>
           </div>
-          
+
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Remarks (Optional)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Remarks (Optional)
+            </label>
             <textarea
               value={certificateFormData.remarks}
-              onChange={(e) => setCertificateFormData(prev => ({ ...prev, remarks: e.target.value }))}
+              onChange={(e) =>
+                setCertificateFormData((prev) => ({ ...prev, remarks: e.target.value }))
+              }
               rows={3}
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               placeholder="Enter any additional remarks or notes..."
@@ -1627,7 +1769,13 @@ const FeedbackCertification: React.FC = () => {
             </button>
             <button
               onClick={handleSubmitCertificate}
-              disabled={isSubmitting || !certificateFormData.facultyId || !certificateFormData.facultyName || !certificateFormData.collegeName || !certificateFormData.certificationType}
+              disabled={
+                isSubmitting ||
+                !certificateFormData.facultyId ||
+                !certificateFormData.facultyName ||
+                !certificateFormData.collegeName ||
+                !certificateFormData.certificationType
+              }
               className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center"
             >
               {isSubmitting && (
@@ -1701,9 +1849,11 @@ const FeedbackCertification: React.FC = () => {
           >
             <FunnelIcon className="h-5 w-5 mr-2" />
             Filters
-            <ChevronDownIcon className={`h-4 w-4 ml-2 transform transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+            <ChevronDownIcon
+              className={`h-4 w-4 ml-2 transform transition-transform ${showFilters ? 'rotate-180' : ''}`}
+            />
           </button>
-          <button 
+          <button
             onClick={activeTab === 'feedback' ? handleAddFeedback : handleIssueCertificate}
             className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center transition-colors"
           >
@@ -1726,7 +1876,7 @@ const FeedbackCertification: React.FC = () => {
                 </button>
               )}
             </div>
-            
+
             {activeTab === 'feedback' ? (
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
@@ -1737,12 +1887,14 @@ const FeedbackCertification: React.FC = () => {
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
                   >
                     <option value="">All Colleges</option>
-                    {colleges.map(college => (
-                      <option key={college} value={college}>{college}</option>
+                    {colleges.map((college) => (
+                      <option key={college} value={college}>
+                        {college}
+                      </option>
                     ))}
                   </select>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
                   <select
@@ -1751,26 +1903,32 @@ const FeedbackCertification: React.FC = () => {
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
                   >
                     <option value="">All Departments</option>
-                    {departments.map(dept => (
-                      <option key={dept} value={dept}>{dept}</option>
+                    {departments.map((dept) => (
+                      <option key={dept} value={dept}>
+                        {dept}
+                      </option>
                     ))}
                   </select>
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Feedback Type</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Feedback Type
+                  </label>
                   <select
                     value={selectedFeedbackType}
                     onChange={(e) => setSelectedFeedbackType(e.target.value)}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
                   >
                     <option value="">All Types</option>
-                    {feedbackTypes.map(type => (
-                      <option key={type} value={type}>{type.charAt(0).toUpperCase() + type.slice(1)}</option>
+                    {feedbackTypes.map((type) => (
+                      <option key={type} value={type}>
+                        {type.charAt(0).toUpperCase() + type.slice(1)}
+                      </option>
                     ))}
                   </select>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                   <select
@@ -1779,8 +1937,10 @@ const FeedbackCertification: React.FC = () => {
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
                   >
                     <option value="">All Statuses</option>
-                    {statuses.map(status => (
-                      <option key={status} value={status}>{status.charAt(0).toUpperCase() + status.slice(1)}</option>
+                    {statuses.map((status) => (
+                      <option key={status} value={status}>
+                        {status.charAt(0).toUpperCase() + status.slice(1)}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -1795,26 +1955,30 @@ const FeedbackCertification: React.FC = () => {
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
                   >
                     <option value="">All Colleges</option>
-                    {colleges.map(college => (
-                      <option key={college} value={college}>{college}</option>
+                    {colleges.map((college) => (
+                      <option key={college} value={college}>
+                        {college}
+                      </option>
                     ))}
                   </select>
                 </div>
-                
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Certificate Type</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Certificate Type
+                  </label>
                   <select
                     value={selectedCertificationType}
                     onChange={(e) => setSelectedCertificationType(e.target.value)}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
                   >
                     <option value="">All Certificate Types</option>
-                    {certificationTypes.map(type => (
-                      <option key={type} value={type}>{type}</option>
+                    {certificationTypes.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
                     ))}
                   </select>
                 </div>
-                
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                   <select
@@ -1823,12 +1987,13 @@ const FeedbackCertification: React.FC = () => {
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
                   >
                     <option value="">All Statuses</option>
-                    {certificationStatuses.map(status => (
-                      <option key={status} value={status}>{status.charAt(0).toUpperCase() + status.slice(1)}</option>
+                    {certificationStatuses.map((status) => (
+                      <option key={status} value={status}>
+                        {status.charAt(0).toUpperCase() + status.slice(1)}
+                      </option>
                     ))}
                   </select>
                 </div>
-                
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Issue Date</label>
                   <select
@@ -1837,27 +2002,31 @@ const FeedbackCertification: React.FC = () => {
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
                   >
                     <option value="">All Dates</option>
-                    {dateRanges.map(range => (
-                      <option key={range.value} value={range.value}>{range.label}</option>
+                    {dateRanges.map((range) => (
+                      <option key={range.value} value={range.value}>
+                        {range.label}
+                      </option>
                     ))}
                   </select>
                 </div>
-                
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Validity Status</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Validity Status
+                  </label>
                   <select
                     value={selectedValidityStatus}
                     onChange={(e) => setSelectedValidityStatus(e.target.value)}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
                   >
                     <option value="">All Validity</option>
-                    {validityStatuses.map(status => (
-                      <option key={status.value} value={status.value}>{status.label}</option>
+                    {validityStatuses.map((status) => (
+                      <option key={status.value} value={status.value}>
+                        {status.label}
+                      </option>
                     ))}
                   </select>
                 </div>
-                
-               add
+                add
               </div>
             )}
           </div>
@@ -1950,7 +2119,7 @@ const FeedbackCertification: React.FC = () => {
                 )}
                 {activeTab === 'certification' && selectedDateRange && (
                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                    Date: {dateRanges.find(r => r.value === selectedDateRange)?.label}
+                    Date: {dateRanges.find((r) => r.value === selectedDateRange)?.label}
                     <button
                       onClick={() => setSelectedDateRange('')}
                       className="ml-1 text-blue-600 hover:text-blue-800"
@@ -1961,7 +2130,8 @@ const FeedbackCertification: React.FC = () => {
                 )}
                 {activeTab === 'certification' && selectedValidityStatus && (
                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                    Validity: {validityStatuses.find(s => s.value === selectedValidityStatus)?.label}
+                    Validity:{' '}
+                    {validityStatuses.find((s) => s.value === selectedValidityStatus)?.label}
                     <button
                       onClick={() => setSelectedValidityStatus('')}
                       className="ml-1 text-blue-600 hover:text-blue-800"
@@ -1987,16 +2157,17 @@ const FeedbackCertification: React.FC = () => {
         <div className="mb-4 bg-indigo-50 border border-indigo-200 rounded-lg p-4">
           <div className="flex items-center justify-between">
             <span className="text-sm text-indigo-700">
-              {selectedRecords.length} {activeTab === 'feedback' ? 'feedback record(s)' : 'certification(s)'} selected
+              {selectedRecords.length}{' '}
+              {activeTab === 'feedback' ? 'feedback record(s)' : 'certification(s)'} selected
             </span>
             <div className="flex space-x-2">
-              <button 
+              <button
                 onClick={handleBulkAction}
                 className="px-3 py-1 bg-indigo-600 text-white rounded text-sm hover:bg-indigo-700 transition-colors"
               >
                 Bulk Action
               </button>
-              <button 
+              <button
                 onClick={handleExportRecords}
                 className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 flex items-center transition-colors"
               >
@@ -2136,14 +2307,13 @@ const FeedbackCertification: React.FC = () => {
       {/* Results Summary */}
       <div className="mb-4 flex items-center justify-between">
         <div className="text-sm text-gray-600">
-          Showing {currentRecords.length} {activeTab === 'feedback' ? 'feedback record(s)' : 'certification(s)'}
-          {hasActiveFilters && (
-            <span className="text-indigo-600 font-medium"> (filtered)</span>
-          )}
+          Showing {currentRecords.length}{' '}
+          {activeTab === 'feedback' ? 'feedback record(s)' : 'certification(s)'}
+          {hasActiveFilters && <span className="text-indigo-600 font-medium"> (filtered)</span>}
         </div>
         <div className="flex items-center space-x-2">
           <span className="text-sm text-gray-500">Sort by:</span>
-          <select 
+          <select
             className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             onChange={(e) => {
               // Sort functionality would be implemented here
@@ -2166,9 +2336,7 @@ const FeedbackCertification: React.FC = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left">
-                  
-                </th>
+                <th className="px-6 py-3 text-left"></th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Faculty
                 </th>
@@ -2209,153 +2377,159 @@ const FeedbackCertification: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {activeTab === 'feedback' ? (
-                paginatedRecords.map((record) => {
-                  const feedbackRecord = record as FeedbackRecord;
-                  return (
-                  <tr key={feedbackRecord.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <input
-                        type="checkbox"
-                        checked={selectedRecords.includes(feedbackRecord.id)}
-                        onChange={() => handleSelectRecord(feedbackRecord.id)}
-                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                      />
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center">
-                        <UserIcon className="h-8 w-8 text-gray-400 mr-3" />
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">{feedbackRecord.facultyName}</div>
-                          <div className="text-sm text-gray-500">{feedbackRecord.facultyId}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900">{feedbackRecord.collegeName}</div>
-                      <div className="text-sm text-gray-500">{feedbackRecord.department}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900">{feedbackRecord.subject}</div>
-                      <div className="text-sm text-gray-500">Sem {feedbackRecord.semester} • {feedbackRecord.academicYear}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {feedbackRecord.feedbackType}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      {renderStars(feedbackRecord.rating)}
-                    </td>
-                    <td className="px-6 py-4">
-                      {getStatusBadge(feedbackRecord.status)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handleViewRecord(feedbackRecord)}
-                          className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50 transition-colors"
-                          title="View Details"
-                        >
-                          <EyeIcon className="h-4 w-4" />
-                        </button>
-                        <button 
-                          onClick={() => handlePrintFeedbackReport(feedbackRecord)}
-                          className="text-gray-600 hover:text-gray-900 p-1 rounded hover:bg-gray-50 transition-colors"
-                          title="Print Report"
-                        >
-                          <PrinterIcon className="h-4 w-4" />
-                        </button>
-                        <button 
-                          onClick={() => handleDownloadFeedbackReport(feedbackRecord)}
-                          className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors"
-                          title="Download Report"
-                        >
-                          <ArrowDownTrayIcon className="h-4 w-4" />
-                        </button>
-                        <button 
-                          onClick={() => handleEditRecord(feedbackRecord.id)}
-                          className="text-amber-600 hover:text-amber-900 p-1 rounded hover:bg-amber-50 transition-colors"
-                          title="Edit Record"
-                        >
-                          <PencilIcon className="h-4 w-4" />
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteRecord(feedbackRecord.id)}
-                          className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors"
-                          title="Delete Record"
-                        >
-                          <TrashIcon className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                  );
-                })
-              ) : (
-                paginatedRecords.map((record) => {
-                  const certRecord = record as CertificationRecord;
-                  return (
-                  <tr key={certRecord.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <input
-                        type="checkbox"
-                        checked={selectedRecords.includes(certRecord.id)}
-                        onChange={() => handleSelectRecord(certRecord.id)}
-                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                      />
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center">
-                        <UserIcon className="h-8 w-8 text-gray-400 mr-3" />
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">{certRecord.facultyName}</div>
-                          <div className="text-sm text-gray-500">{certRecord.facultyId}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900">{certRecord.collegeName}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900">{certRecord.certificationType}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900">{new Date(certRecord.issueDate).toLocaleDateString()}</div>
-                      <div className="text-sm text-gray-500">Valid until {new Date(certRecord.validUntil).toLocaleDateString()}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      {getStatusBadge(certRecord.status)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handleViewRecord(certRecord)}
-                          className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50 transition-colors"
-                          title="View Details"
-                        >
-                          <EyeIcon className="h-4 w-4" />
-                        </button>
-                        <button 
-                          onClick={() => handlePrintCertificate(certRecord)}
-                          className="text-gray-600 hover:text-gray-900 p-1 rounded hover:bg-gray-50 transition-colors"
-                          title="Print Certificate"
-                        >
-                          <PrinterIcon className="h-4 w-4" />
-                        </button>
-                        <button 
-                          onClick={() => handleDownloadCertificate(certRecord)}
-                          className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50 transition-colors"
-                          title="Download Certificate"
-                        >
-                          <ArrowDownTrayIcon className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                  );
-                })
-              )}
+              {activeTab === 'feedback'
+                ? paginatedRecords.map((record) => {
+                    const feedbackRecord = record as FeedbackRecord;
+                    return (
+                      <tr key={feedbackRecord.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4">
+                          <input
+                            type="checkbox"
+                            checked={selectedRecords.includes(feedbackRecord.id)}
+                            onChange={() => handleSelectRecord(feedbackRecord.id)}
+                            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                          />
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center">
+                            <UserIcon className="h-8 w-8 text-gray-400 mr-3" />
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">
+                                {feedbackRecord.facultyName}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {feedbackRecord.facultyId}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900">{feedbackRecord.collegeName}</div>
+                          <div className="text-sm text-gray-500">{feedbackRecord.department}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900">{feedbackRecord.subject}</div>
+                          <div className="text-sm text-gray-500">
+                            Sem {feedbackRecord.semester} • {feedbackRecord.academicYear}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            {feedbackRecord.feedbackType}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">{renderStars(feedbackRecord.rating)}</td>
+                        <td className="px-6 py-4">{getStatusBadge(feedbackRecord.status)}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => handleViewRecord(feedbackRecord)}
+                              className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50 transition-colors"
+                              title="View Details"
+                            >
+                              <EyeIcon className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handlePrintFeedbackReport(feedbackRecord)}
+                              className="text-gray-600 hover:text-gray-900 p-1 rounded hover:bg-gray-50 transition-colors"
+                              title="Print Report"
+                            >
+                              <PrinterIcon className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDownloadFeedbackReport(feedbackRecord)}
+                              className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors"
+                              title="Download Report"
+                            >
+                              <ArrowDownTrayIcon className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleEditRecord(feedbackRecord.id)}
+                              className="text-amber-600 hover:text-amber-900 p-1 rounded hover:bg-amber-50 transition-colors"
+                              title="Edit Record"
+                            >
+                              <PencilIcon className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteRecord(feedbackRecord.id)}
+                              className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors"
+                              title="Delete Record"
+                            >
+                              <TrashIcon className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                : paginatedRecords.map((record) => {
+                    const certRecord = record as CertificationRecord;
+                    return (
+                      <tr key={certRecord.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4">
+                          <input
+                            type="checkbox"
+                            checked={selectedRecords.includes(certRecord.id)}
+                            onChange={() => handleSelectRecord(certRecord.id)}
+                            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                          />
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center">
+                            <UserIcon className="h-8 w-8 text-gray-400 mr-3" />
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">
+                                {certRecord.facultyName}
+                              </div>
+                              <div className="text-sm text-gray-500">{certRecord.facultyId}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900">{certRecord.collegeName}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900">
+                            {certRecord.certificationType}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900">
+                            {new Date(certRecord.issueDate).toLocaleDateString()}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            Valid until {new Date(certRecord.validUntil).toLocaleDateString()}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">{getStatusBadge(certRecord.status)}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => handleViewRecord(certRecord)}
+                              className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50 transition-colors"
+                              title="View Details"
+                            >
+                              <EyeIcon className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handlePrintCertificate(certRecord)}
+                              className="text-gray-600 hover:text-gray-900 p-1 rounded hover:bg-gray-50 transition-colors"
+                              title="Print Certificate"
+                            >
+                              <PrinterIcon className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDownloadCertificate(certRecord)}
+                              className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50 transition-colors"
+                              title="Download Certificate"
+                            >
+                              <ArrowDownTrayIcon className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
             </tbody>
           </table>
         </div>
@@ -2368,10 +2542,9 @@ const FeedbackCertification: React.FC = () => {
               No {activeTab === 'feedback' ? 'feedback records' : 'certifications'} found
             </h3>
             <p className="mt-1 text-sm text-gray-500">
-              {activeTab === 'feedback' 
-                ? 'Get started by adding a new feedback record.' 
-                : 'Get started by issuing a new certificate.'
-              }
+              {activeTab === 'feedback'
+                ? 'Get started by adding a new feedback record.'
+                : 'Get started by issuing a new certificate.'}
             </p>
           </div>
         )}
@@ -2415,7 +2588,10 @@ const FeedbackCertification: React.FC = () => {
               </select>
             </div>
             <div>
-              <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+              <nav
+                className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
+                aria-label="Pagination"
+              >
                 <button
                   onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
                   disabled={currentPage === 1}

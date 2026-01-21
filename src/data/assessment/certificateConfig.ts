@@ -18,33 +18,33 @@ export interface CertificateConfig {
  */
 export const certificateConfigs: Record<string, CertificateConfig> = {
   // Computer Science & Programming
-  'javascript': {
+  javascript: {
     name: 'JavaScript',
     questionCount: 10,
     timeLimit: 600, // 10 minutes
     passingScore: 70,
-    difficulty: 'medium'
+    difficulty: 'medium',
   },
-  'python': {
+  python: {
     name: 'Python',
     questionCount: 10,
     timeLimit: 600,
     passingScore: 70,
-    difficulty: 'medium'
+    difficulty: 'medium',
   },
-  'react': {
+  react: {
     name: 'React',
     questionCount: 12,
     timeLimit: 720,
     passingScore: 75,
-    difficulty: 'medium'
+    difficulty: 'medium',
   },
-  'node': {
+  node: {
     name: 'Node.js',
     questionCount: 10,
     timeLimit: 600,
     passingScore: 70,
-    difficulty: 'medium'
+    difficulty: 'medium',
   },
 
   // Science & Chemistry
@@ -53,14 +53,14 @@ export const certificateConfigs: Record<string, CertificateConfig> = {
     questionCount: 15,
     timeLimit: 900, // 15 minutes
     passingScore: 70,
-    difficulty: 'medium'
+    difficulty: 'medium',
   },
-  'chemistry': {
+  chemistry: {
     name: 'Chemistry',
     questionCount: 12,
     timeLimit: 720,
     passingScore: 70,
-    difficulty: 'medium'
+    difficulty: 'medium',
   },
 
   // Engineering
@@ -69,14 +69,14 @@ export const certificateConfigs: Record<string, CertificateConfig> = {
     questionCount: 15,
     timeLimit: 900,
     passingScore: 75,
-    difficulty: 'hard'
+    difficulty: 'hard',
   },
   'ev-battery-management': {
     name: 'EV Battery Management',
     questionCount: 15,
     timeLimit: 900,
     passingScore: 75,
-    difficulty: 'hard'
+    difficulty: 'hard',
   },
 
   // Food Science
@@ -85,14 +85,14 @@ export const certificateConfigs: Record<string, CertificateConfig> = {
     questionCount: 12,
     timeLimit: 720,
     passingScore: 70,
-    difficulty: 'medium'
+    difficulty: 'medium',
   },
   'food-analysis': {
     name: 'Food Analysis',
     questionCount: 15,
     timeLimit: 900,
     passingScore: 75,
-    difficulty: 'hard'
+    difficulty: 'hard',
   },
 
   // Data Science
@@ -101,14 +101,14 @@ export const certificateConfigs: Record<string, CertificateConfig> = {
     questionCount: 15,
     timeLimit: 900,
     passingScore: 75,
-    difficulty: 'hard'
+    difficulty: 'hard',
   },
   'machine-learning': {
     name: 'Machine Learning',
     questionCount: 15,
     timeLimit: 900,
     passingScore: 80,
-    difficulty: 'hard'
+    difficulty: 'hard',
   },
 
   // Business & Management
@@ -117,14 +117,14 @@ export const certificateConfigs: Record<string, CertificateConfig> = {
     questionCount: 10,
     timeLimit: 600,
     passingScore: 70,
-    difficulty: 'easy'
+    difficulty: 'easy',
   },
   'project-management': {
     name: 'Project Management',
     questionCount: 12,
     timeLimit: 720,
     passingScore: 75,
-    difficulty: 'medium'
+    difficulty: 'medium',
   },
 
   // Design
@@ -133,14 +133,14 @@ export const certificateConfigs: Record<string, CertificateConfig> = {
     questionCount: 10,
     timeLimit: 600,
     passingScore: 70,
-    difficulty: 'medium'
+    difficulty: 'medium',
   },
   'graphic-design': {
     name: 'Graphic Design',
     questionCount: 8,
     timeLimit: 480,
     passingScore: 70,
-    difficulty: 'easy'
+    difficulty: 'easy',
   },
 
   // Quick Assessments (1-5 questions)
@@ -149,31 +149,31 @@ export const certificateConfigs: Record<string, CertificateConfig> = {
     questionCount: 5,
     timeLimit: 300,
     passingScore: 60,
-    difficulty: 'easy'
+    difficulty: 'easy',
   },
   'basic-assessment': {
     name: 'Basic Assessment',
     questionCount: 3,
     timeLimit: 180,
     passingScore: 60,
-    difficulty: 'easy'
+    difficulty: 'easy',
   },
 
   // Default
-  'csevbm': {
+  csevbm: {
     name: 'CSEVBM',
     questionCount: 15,
     timeLimit: 900,
     passingScore: 70,
-    difficulty: 'medium'
+    difficulty: 'medium',
   },
-  'default': {
+  default: {
     name: 'General Assessment',
     questionCount: 10,
     timeLimit: 600,
     passingScore: 70,
-    difficulty: 'medium'
-  }
+    difficulty: 'medium',
+  },
 };
 
 /**

@@ -147,9 +147,12 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
       baseTabs.push({ key: 'curriculum', label: 'Curriculum & Lessons' });
       baseTabs.push({ key: 'clubs', label: 'Clubs & Competitions' });
     }
-    
+
     // For college educators: show college-specific tabs
-    if (userRole === 'college_educator' || (userRole.includes('admin') && student.college_id && !student.school_id)) {
+    if (
+      userRole === 'college_educator' ||
+      (userRole.includes('admin') && student.college_id && !student.school_id)
+    ) {
       baseTabs.push({ key: 'clubs', label: 'Clubs & Activities' });
     }
 
@@ -202,26 +205,11 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
           />
         );
       case 'exam-results':
-        return (
-          <ExamResultsTab
-            student={student}
-            loading={false}
-          />
-        );
+        return <ExamResultsTab student={student} loading={false} />;
       case 'events':
-        return (
-          <EventsTab
-            student={student}
-            loading={false}
-          />
-        );
+        return <EventsTab student={student} loading={false} />;
       case 'documents':
-        return (
-          <DocumentsTab
-            student={student}
-            loading={false}
-          />
-        );
+        return <DocumentsTab student={student} loading={false} />;
       case 'curriculum':
         return (
           <CurriculumTab
@@ -233,12 +221,7 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
           />
         );
       case 'clubs':
-        return (
-          <ClubsCompetitionsTab
-            student={student}
-            loading={false}
-          />
-        );
+        return <ClubsCompetitionsTab student={student} loading={false} />;
       case 'notes':
         return (
           <NotesTab
@@ -253,9 +236,17 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden" aria-labelledby="slide-over-title" role="dialog" aria-modal="true">
+    <div
+      className="fixed inset-0 z-50 overflow-hidden"
+      aria-labelledby="slide-over-title"
+      role="dialog"
+      aria-modal="true"
+    >
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        <div
+          className="absolute inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          onClick={onClose}
+        ></div>
 
         <div className="fixed inset-y-0 right-0 pl-4 sm:pl-10 max-w-full flex">
           <div className="w-screen max-w-full sm:max-w-2xl md:max-w-3xl lg:max-w-4xl xl:max-w-5xl">
@@ -274,15 +265,21 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                         <>
                           <div>
                             <p className="text-xs text-gray-500 uppercase tracking-wide">School</p>
-                            <p className="text-sm font-medium text-gray-900 mt-1">{student.school_name || student.college_school_name || 'N/A'}</p>
+                            <p className="text-sm font-medium text-gray-900 mt-1">
+                              {student.school_name || student.college_school_name || 'N/A'}
+                            </p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-500 uppercase tracking-wide">Grade</p>
-                            <p className="text-sm font-medium text-gray-900 mt-1">{student.grade || 'N/A'}</p>
+                            <p className="text-sm font-medium text-gray-900 mt-1">
+                              {student.grade || 'N/A'}
+                            </p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-500 uppercase tracking-wide">Section</p>
-                            <p className="text-sm font-medium text-gray-900 mt-1">{student.section || 'N/A'}</p>
+                            <p className="text-sm font-medium text-gray-900 mt-1">
+                              {student.section || 'N/A'}
+                            </p>
                           </div>
                         </>
                       ) : (
@@ -290,47 +287,61 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                         <>
                           <div>
                             <p className="text-xs text-gray-500 uppercase tracking-wide">College</p>
-                            <p className="text-sm font-medium text-gray-900 mt-1">{student.college || student.profile?.university || student.college_school_name || 'N/A'}</p>
+                            <p className="text-sm font-medium text-gray-900 mt-1">
+                              {student.college ||
+                                student.profile?.university ||
+                                student.college_school_name ||
+                                'N/A'}
+                            </p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-500 uppercase tracking-wide">Degree</p>
-                            <p className="text-sm font-medium text-gray-900 mt-1">{student.profile?.education?.[0]?.degree || student.branch_field || 'N/A'}</p>
+                            <p className="text-sm font-medium text-gray-900 mt-1">
+                              {student.profile?.education?.[0]?.degree ||
+                                student.branch_field ||
+                                'N/A'}
+                            </p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-500 uppercase tracking-wide">Section</p>
-                            <p className="text-sm font-medium text-gray-900 mt-1">{student.section || 'N/A'}</p>
+                            <p className="text-sm font-medium text-gray-900 mt-1">
+                              {student.section || 'N/A'}
+                            </p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-500 uppercase tracking-wide">CGPA</p>
-                            <p className="text-sm font-medium text-gray-900 mt-1">{student.profile?.education?.[0]?.cgpa || student.currentCgpa || 'N/A'}</p>
+                            <p className="text-sm font-medium text-gray-900 mt-1">
+                              {student.profile?.education?.[0]?.cgpa ||
+                                student.currentCgpa ||
+                                'N/A'}
+                            </p>
                           </div>
                         </>
                       )}
                     </div>
-                    
+
                     <div className="mt-3 flex items-center justify-between">
                       <div className="flex items-center gap-1">
                         <p className="text-xs text-gray-500 uppercase tracking-wide">
                           {student.school_id ? 'Admission Status:' : 'Enrollment Status:'}
                         </p>
                         <Badge type={student.approval_status || 'pending'} />
-                        
                       </div>
-                      
+
                       {/* Academic Progress Indicator */}
                       {!student.school_id && (
                         <div className="flex items-center gap-2">
-                          <div className="text-xs text-gray-500">
-                            Academic Progress:
-                          </div>
+                          <div className="text-xs text-gray-500">Academic Progress:</div>
                           <div className="flex items-center bg-gray-100 rounded-full px-2 py-1">
                             <div className="text-xs font-medium text-gray-700">
                               Semester {getCurrentSemester()} of {getTotalSemesters()}
                             </div>
                             <div className="ml-2 w-12 bg-gray-200 rounded-full h-1.5">
-                              <div 
-                                className="bg-primary-600 h-1.5 rounded-full transition-all duration-300" 
-                                style={{ width: `${(getCurrentSemester() / getTotalSemesters()) * 100}%` }}
+                              <div
+                                className="bg-primary-600 h-1.5 rounded-full transition-all duration-300"
+                                style={{
+                                  width: `${(getCurrentSemester() / getTotalSemesters()) * 100}%`,
+                                }}
                               ></div>
                             </div>
                           </div>
@@ -375,14 +386,20 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                   <div className="flex items-center space-x-4 text-sm">
                     <div className="flex items-center text-gray-600">
                       <PhoneIcon className="h-4 w-4 mr-1" />
-                      <span>{student.contact_number || student.contactNumber || student.profile?.contact_number || student.phone || 'Not provided'}</span>
+                      <span>
+                        {student.contact_number ||
+                          student.contactNumber ||
+                          student.profile?.contact_number ||
+                          student.phone ||
+                          'Not provided'}
+                      </span>
                     </div>
                     <div className="flex items-center text-gray-600">
                       <EnvelopeIcon className="h-4 w-4 mr-1" />
                       <span>{student.email || student.profile?.email || 'Not provided'}</span>
                     </div>
                   </div>
-                  
+
                   {/* Action Indicators */}
                   <div className="flex items-center space-x-2">
                     {actions.showApproval && (
@@ -391,14 +408,14 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                         Verification Required
                       </div>
                     )}
-                    
+
                     {actions.showPromotion && (
                       <div className="flex items-center text-xs text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">
                         <ArrowUpIcon className="h-3 w-3 mr-1" />
                         Ready for Promotion
                       </div>
                     )}
-                    
+
                     {actions.showGraduation && (
                       <div className="flex items-center text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">
                         <Trophy className="h-3 w-3 mr-1" />
@@ -410,11 +427,14 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
               </div>
 
               {/* Tabs */}
-              <div 
+              <div
                 ref={tabsContainerRef}
                 className="border-b border-gray-200 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
               >
-                <nav className="-mb-px flex space-x-2 sm:space-x-4 lg:space-x-6 px-4 sm:px-6 whitespace-nowrap" aria-label="Tabs">
+                <nav
+                  className="-mb-px flex space-x-2 sm:space-x-4 lg:space-x-6 px-4 sm:px-6 whitespace-nowrap"
+                  aria-label="Tabs"
+                >
                   {tabs.map((tab) => (
                     <TabButton
                       key={tab.key}
@@ -428,9 +448,7 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
               </div>
 
               {/* Tab Content */}
-              <div className="flex-1 overflow-y-auto">
-                {renderTabContent()}
-              </div>
+              <div className="flex-1 overflow-y-auto">{renderTabContent()}</div>
 
               {/* Action Bar - Bottom Section */}
               <div className="border-t border-gray-200 px-6 py-4 bg-gray-50">
@@ -445,9 +463,11 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                         {userRole.includes('educator') ? 'Add Mentor Note' : 'Add Note'}
                       </button>
                     )}
-                    
+
                     <button
-                      onClick={() => navigate('/digital-pp/homepage', { state: { candidate: student } })}
+                      onClick={() =>
+                        navigate('/digital-pp/homepage', { state: { candidate: student } })
+                      }
                       className="inline-flex items-center px-4 py-2 border border-green-300 rounded-md text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100"
                     >
                       <File className="h-4 w-4 mr-2" />
@@ -488,7 +508,7 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                       </button>
                     )}
                   </div>
-                  
+
                   <div className="flex items-center space-x-3">
                     {/* Semester Status - Only for College Students */}
                     {!student.school_id && (
@@ -496,7 +516,7 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                         Sem {getCurrentSemester()}/{getTotalSemesters()}
                       </div>
                     )}
-                    
+
                     <div className="flex space-x-2">
                       {actions.showMessage && (
                         <button
@@ -507,7 +527,7 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                           Message
                         </button>
                       )}
-                      
+
                       {actions.showExport && (
                         <button
                           onClick={() => setShowExportModal(true)}

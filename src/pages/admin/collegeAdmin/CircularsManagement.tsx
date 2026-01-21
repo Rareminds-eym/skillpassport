@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 import {
   BellIcon,
   PlusCircleIcon,
@@ -18,22 +18,32 @@ import {
   LinkIcon,
   DocumentIcon,
   ArrowPathIcon,
-} from "@heroicons/react/24/outline";
-import { circularsService, Circular, CreateCircularData, CircularsFilters } from "../../../services/circularsService";
-import { uploadFile, validateFile, getDocumentUrl, deleteFile } from "../../../services/fileUploadService";
-import { ConfirmModal } from "../../../components/shared/ConfirmModal";
-
-
-
-
+} from '@heroicons/react/24/outline';
+import {
+  circularsService,
+  Circular,
+  CreateCircularData,
+  CircularsFilters,
+} from '../../../services/circularsService';
+import {
+  uploadFile,
+  validateFile,
+  getDocumentUrl,
+  deleteFile,
+} from '../../../services/fileUploadService';
+import { ConfirmModal } from '../../../components/shared/ConfirmModal';
 
 const CircularsManagement: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedCircular, setSelectedCircular] = useState<Circular | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState<"all" | "published" | "draft" | "archived">("all");
-  const [filterPriority, setFilterPriority] = useState<"all" | "low" | "medium" | "high" | "urgent">("all");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'published' | 'draft' | 'archived'>(
+    'all'
+  );
+  const [filterPriority, setFilterPriority] = useState<
+    'all' | 'low' | 'medium' | 'high' | 'urgent'
+  >('all');
   const [showFilters, setShowFilters] = useState(false);
   const [circulars, setCirculars] = useState<Circular[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,36 +55,32 @@ const CircularsManagement: React.FC = () => {
     urgent_priority: 0,
   });
 
-
-
-
-
   const [formData, setFormData] = useState<{
     title: string;
     audience: 'all' | 'students' | 'faculty' | 'staff';
-    priority: "low" | "medium" | "high" | "urgent";
+    priority: 'low' | 'medium' | 'high' | 'urgent';
     content: string;
     publish_date: string;
     expire_date: string;
     attachment_url: string;
     attachment_filename: string;
     attachment_file_size: number;
-    status: "draft" | "published" | "archived";
+    status: 'draft' | 'published' | 'archived';
   }>({
-    title: "",
-    audience: "all",
-    priority: "medium",
-    content: "",
-    publish_date: "",
-    expire_date: "",
-    attachment_url: "",
-    attachment_filename: "",
+    title: '',
+    audience: 'all',
+    priority: 'medium',
+    content: '',
+    publish_date: '',
+    expire_date: '',
+    attachment_url: '',
+    attachment_filename: '',
     attachment_file_size: 0,
-    status: "draft",
+    status: 'draft',
   });
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  
+
   // File upload states
   const [attachmentMode, setAttachmentMode] = useState<'url' | 'upload'>('url');
   const [uploadingFile, setUploadingFile] = useState(false);
@@ -84,7 +90,7 @@ const CircularsManagement: React.FC = () => {
     size: number;
     url: string;
   } | null>(null);
-  
+
   // Confirmation modal state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [pendingDeleteAction, setPendingDeleteAction] = useState<(() => void) | null>(null);
@@ -93,9 +99,9 @@ const CircularsManagement: React.FC = () => {
     message: string;
     confirmText: string;
   }>({
-    title: "Delete File",
-    message: "Are you sure you want to delete this file?",
-    confirmText: "Delete File"
+    title: 'Delete File',
+    message: 'Are you sure you want to delete this file?',
+    confirmText: 'Delete File',
   });
 
   // Load circulars on component mount and when filters change
@@ -112,7 +118,7 @@ const CircularsManagement: React.FC = () => {
   const loadCirculars = async () => {
     setLoading(true);
     setError(null);
-    
+
     const filters: CircularsFilters = {
       status: filterStatus,
       priority: filterPriority,
@@ -120,21 +126,21 @@ const CircularsManagement: React.FC = () => {
     };
 
     const { data, error } = await circularsService.getCirculars(filters);
-    
+
     if (error) {
       setError('Failed to load circulars');
       console.error('Error loading circulars:', error);
     } else {
       setCirculars(data || []);
     }
-    
+
     setLoading(false);
   };
 
   // Load statistics
   const loadStats = async () => {
     const { data, error } = await circularsService.getCircularsStats();
-    
+
     if (error) {
       console.error('Error loading stats:', error);
     } else if (data) {
@@ -145,23 +151,23 @@ const CircularsManagement: React.FC = () => {
   // Helper functions
   const validateForm = () => {
     const errors: Record<string, string> = {};
-    
+
     if (!formData.title.trim()) {
-      errors.title = "Title is required";
+      errors.title = 'Title is required';
     }
-    
+
     if (!formData.content.trim()) {
-      errors.content = "Content is required";
+      errors.content = 'Content is required';
     }
-    
+
     if (!formData.publish_date) {
-      errors.publish_date = "Publish date is required";
+      errors.publish_date = 'Publish date is required';
     }
-    
+
     if (formData.expire_date && new Date(formData.expire_date) < new Date(formData.publish_date)) {
-      errors.expire_date = "Expiry date must be after publish date";
+      errors.expire_date = 'Expiry date must be after publish date';
     }
-    
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -169,7 +175,7 @@ const CircularsManagement: React.FC = () => {
   const handleCreateCircular = async () => {
     if (validateForm()) {
       setLoading(true);
-      
+
       const circularData: CreateCircularData = {
         title: formData.title,
         content: formData.content,
@@ -182,14 +188,14 @@ const CircularsManagement: React.FC = () => {
         attachment_file_size: formData.attachment_file_size || undefined,
         status: formData.status,
       };
-      
+
       if (selectedCircular) {
         // Update existing circular
         const { error } = await circularsService.updateCircular({
           id: selectedCircular.id,
           ...circularData,
         });
-        
+
         if (error) {
           setError('Failed to update circular');
           console.error('Error updating circular:', error);
@@ -202,7 +208,7 @@ const CircularsManagement: React.FC = () => {
       } else {
         // Create new circular
         const { error } = await circularsService.createCircular(circularData);
-        
+
         if (error) {
           setError('Failed to create circular');
           console.error('Error creating circular:', error);
@@ -213,23 +219,23 @@ const CircularsManagement: React.FC = () => {
           resetForm();
         }
       }
-      
+
       setLoading(false);
     }
   };
 
   const resetForm = () => {
     setFormData({
-      title: "",
-      audience: "all",
-      priority: "medium",
-      content: "",
-      publish_date: "",
-      expire_date: "",
-      attachment_url: "",
-      attachment_filename: "",
+      title: '',
+      audience: 'all',
+      priority: 'medium',
+      content: '',
+      publish_date: '',
+      expire_date: '',
+      attachment_url: '',
+      attachment_filename: '',
       attachment_file_size: 0,
-      status: "draft",
+      status: 'draft',
     });
     setFormErrors({});
     setSelectedCircular(null);
@@ -240,9 +246,9 @@ const CircularsManagement: React.FC = () => {
 
   const handlePublishToggle = async (id: string, currentStatus: string) => {
     setLoading(true);
-    
+
     const { error } = await circularsService.toggleCircularStatus(id, currentStatus);
-    
+
     if (error) {
       setError('Failed to update circular status');
       console.error('Error toggling status:', error);
@@ -250,32 +256,34 @@ const CircularsManagement: React.FC = () => {
       await loadCirculars();
       await loadStats();
     }
-    
+
     setLoading(false);
   };
 
   const handleDelete = async (id: string) => {
-    const circularToDelete = circulars.find(c => c.id === id);
-    const hasAttachment = circularToDelete?.attachment_url && 
-      (circularToDelete.attachment_url.includes('.r2.dev') || circularToDelete.attachment_url.includes('r2.cloudflarestorage.com'));
-    
+    const circularToDelete = circulars.find((c) => c.id === id);
+    const hasAttachment =
+      circularToDelete?.attachment_url &&
+      (circularToDelete.attachment_url.includes('.r2.dev') ||
+        circularToDelete.attachment_url.includes('r2.cloudflarestorage.com'));
+
     // Set up confirmation context for circular deletion
     setDeleteContext({
-      title: "Delete Circular",
-      message: hasAttachment 
+      title: 'Delete Circular',
+      message: hasAttachment
         ? `Are you sure you want to delete the circular "${circularToDelete?.title}"? This action will permanently remove the circular and any attached files.`
         : `Are you sure you want to delete the circular "${circularToDelete?.title}"? This action cannot be undone.`,
-      confirmText: "Delete Circular"
+      confirmText: 'Delete Circular',
     });
-    
+
     setPendingDeleteAction(() => async () => {
       setLoading(true);
-      
+
       try {
         // If there's an attachment URL and it's an uploaded file (R2), delete it first
         if (hasAttachment && circularToDelete?.attachment_url) {
           console.log('Deleting associated file:', circularToDelete.attachment_url);
-          
+
           const fileDeleteResult = await deleteFile(circularToDelete.attachment_url);
           if (!fileDeleteResult) {
             console.warn('Failed to delete associated file, but continuing with circular deletion');
@@ -283,10 +291,10 @@ const CircularsManagement: React.FC = () => {
             console.log('Successfully deleted associated file');
           }
         }
-        
+
         // Now delete the circular from database
         const { error } = await circularsService.deleteCircular(id);
-        
+
         if (error) {
           setError('Failed to delete circular');
           console.error('Error deleting circular:', error);
@@ -298,10 +306,10 @@ const CircularsManagement: React.FC = () => {
         console.error('Error in delete process:', error);
         setError('Failed to delete circular and associated files');
       }
-      
+
       setLoading(false);
     });
-    
+
     setShowDeleteConfirm(true);
   };
 
@@ -313,27 +321,30 @@ const CircularsManagement: React.FC = () => {
       priority: circular.priority,
       content: circular.content,
       publish_date: circular.publish_date,
-      expire_date: circular.expire_date || "",
-      attachment_url: circular.attachment_url || "",
-      attachment_filename: circular.attachment_filename || "",
+      expire_date: circular.expire_date || '',
+      attachment_url: circular.attachment_url || '',
+      attachment_filename: circular.attachment_filename || '',
       attachment_file_size: circular.attachment_file_size || 0,
       status: circular.status,
     });
-    
+
     // Set attachment mode and file info based on existing data
     if (circular.attachment_url) {
       // Check if it's an uploaded file (R2) or external URL
-      if (circular.attachment_url.includes('.r2.dev') || circular.attachment_url.includes('r2.cloudflarestorage.com')) {
+      if (
+        circular.attachment_url.includes('.r2.dev') ||
+        circular.attachment_url.includes('r2.cloudflarestorage.com')
+      ) {
         // It's an uploaded file - set upload mode and create file info
         setAttachmentMode('upload');
-        
+
         // Use stored filename if available, otherwise extract from URL
         let filename = circular.attachment_filename || 'uploaded-file';
         if (!filename || filename === '') {
           // Fallback to URL extraction
           const urlParts = circular.attachment_url.split('/');
           const lastPart = urlParts[urlParts.length - 1];
-          
+
           if (lastPart && lastPart.includes('.')) {
             filename = lastPart;
           } else {
@@ -344,18 +355,18 @@ const CircularsManagement: React.FC = () => {
               }
             }
           }
-          
+
           // Clean up filename (remove timestamp prefixes if present)
           filename = filename.replace(/^\d+_[a-z0-9]+\./, '');
           if (!filename || filename === '') {
             filename = 'uploaded-file';
           }
         }
-        
+
         setUploadedFile({
           name: filename,
           size: circular.attachment_file_size || 0,
-          url: circular.attachment_url
+          url: circular.attachment_url,
         });
       } else {
         // It's an external URL - set URL mode
@@ -367,7 +378,7 @@ const CircularsManagement: React.FC = () => {
       setAttachmentMode('url');
       setUploadedFile(null);
     }
-    
+
     setShowCreateModal(true);
   };
 
@@ -379,7 +390,7 @@ const CircularsManagement: React.FC = () => {
     // Validate file
     const validation = validateFile(file, {
       maxSize: 10, // 10MB
-      allowedTypes: ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'gif', 'txt']
+      allowedTypes: ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'gif', 'txt'],
     });
 
     if (!validation.valid) {
@@ -393,7 +404,11 @@ const CircularsManagement: React.FC = () => {
     try {
       // If we're editing and there's an existing uploaded file, delete it first
       const oldAttachmentUrl = selectedCircular?.attachment_url || formData.attachment_url;
-      if (oldAttachmentUrl && (oldAttachmentUrl.includes('.r2.dev') || oldAttachmentUrl.includes('r2.cloudflarestorage.com'))) {
+      if (
+        oldAttachmentUrl &&
+        (oldAttachmentUrl.includes('.r2.dev') ||
+          oldAttachmentUrl.includes('r2.cloudflarestorage.com'))
+      ) {
         console.log('Deleting old file before uploading new one:', oldAttachmentUrl);
         const deleteResult = await deleteFile(oldAttachmentUrl);
         if (deleteResult) {
@@ -415,13 +430,13 @@ const CircularsManagement: React.FC = () => {
         setUploadedFile({
           name: file.name,
           size: file.size,
-          url: result.url
+          url: result.url,
         });
-        setFormData(prev => ({ 
-          ...prev, 
-          attachment_url: result.url || "",
+        setFormData((prev) => ({
+          ...prev,
+          attachment_url: result.url || '',
           attachment_filename: file.name,
-          attachment_file_size: file.size
+          attachment_file_size: file.size,
         }));
       } else {
         alert(`Failed to upload file: ${result.error}`);
@@ -433,7 +448,7 @@ const CircularsManagement: React.FC = () => {
       setUploadingFile(false);
       setUploadProgress(0);
       // Reset input
-      e.target.value = "";
+      e.target.value = '';
     }
   };
 
@@ -441,17 +456,20 @@ const CircularsManagement: React.FC = () => {
   const handleRemoveFile = () => {
     // Show confirmation modal before deleting
     const filename = uploadedFile?.name || 'this file';
-    
+
     setDeleteContext({
-      title: "Delete File",
+      title: 'Delete File',
       message: `Are you sure you want to delete "${filename}"? This action cannot be undone and the file will be permanently removed from storage.`,
-      confirmText: "Delete File"
+      confirmText: 'Delete File',
     });
-    
+
     setPendingDeleteAction(() => async () => {
       // If there's an uploaded file URL, delete it from R2
       const fileUrl = uploadedFile?.url || formData.attachment_url;
-      if (fileUrl && (fileUrl.includes('.r2.dev') || fileUrl.includes('r2.cloudflarestorage.com'))) {
+      if (
+        fileUrl &&
+        (fileUrl.includes('.r2.dev') || fileUrl.includes('r2.cloudflarestorage.com'))
+      ) {
         try {
           console.log('Deleting file from R2:', fileUrl);
           const deleteResult = await deleteFile(fileUrl);
@@ -464,13 +482,13 @@ const CircularsManagement: React.FC = () => {
           console.error('Error deleting file from R2:', error);
         }
       }
-      
+
       setUploadedFile(null);
-      setFormData(prev => ({ 
-        ...prev, 
-        attachment_url: "",
-        attachment_filename: "",
-        attachment_file_size: 0
+      setFormData((prev) => ({
+        ...prev,
+        attachment_url: '',
+        attachment_filename: '',
+        attachment_file_size: 0,
       }));
     });
     setShowDeleteConfirm(true);
@@ -509,25 +527,15 @@ const CircularsManagement: React.FC = () => {
     return url;
   };
 
-
-
-
-
-
-
-
-
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 border border-blue-100">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
-          Circulars Management
-        </h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Circulars Management</h1>
         <p className="text-gray-600 text-sm sm:text-base">
           Manage institutional circulars and notices
         </p>
-        
+
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">
           <div className="bg-white rounded-lg p-3 text-center">
@@ -553,7 +561,7 @@ const CircularsManagement: React.FC = () => {
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <p className="text-red-700">{error}</p>
-          <button 
+          <button
             onClick={() => setError(null)}
             className="text-red-600 hover:text-red-800 text-sm underline mt-1"
           >
@@ -565,199 +573,199 @@ const CircularsManagement: React.FC = () => {
       {/* Main Content */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
         <div className="p-6">
-              {/* Circulars Header */}
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                <h2 className="text-lg font-semibold text-gray-900">Circulars Management</h2>
-                <button 
-                  onClick={() => setShowCreateModal(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                >
-                  <PlusCircleIcon className="h-5 w-5" />
-                  Create Circular
-                </button>
-              </div>
+          {/* Circulars Header */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <h2 className="text-lg font-semibold text-gray-900">Circulars Management</h2>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            >
+              <PlusCircleIcon className="h-5 w-5" />
+              Create Circular
+            </button>
+          </div>
 
-              {/* Search and Filters */}
-              <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                <div className="flex-1 relative">
-                  <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search circulars..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
+          {/* Search and Filters */}
+          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <div className="flex-1 relative">
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search circulars..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              <FunnelIcon className="h-5 w-5" />
+              Filters
+            </button>
+          </div>
+
+          {/* Filter Panel */}
+          {showFilters && (
+            <div className="bg-gray-50 rounded-lg p-4 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value as any)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="all">All Status</option>
+                    <option value="published">Published</option>
+                    <option value="draft">Draft</option>
+                    <option value="archived">Archived</option>
+                  </select>
                 </div>
-                <button
-                  onClick={() => setShowFilters(!showFilters)}
-                  className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                >
-                  <FunnelIcon className="h-5 w-5" />
-                  Filters
-                </button>
-              </div>
-
-              {/* Filter Panel */}
-              {showFilters && (
-                <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                      <select
-                        value={filterStatus}
-                        onChange={(e) => setFilterStatus(e.target.value as any)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="all">All Status</option>
-                        <option value="published">Published</option>
-                        <option value="draft">Draft</option>
-                        <option value="archived">Archived</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
-                      <select
-                        value={filterPriority}
-                        onChange={(e) => setFilterPriority(e.target.value as any)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="all">All Priorities</option>
-                        <option value="low">Low</option>
-                        <option value="medium">Medium</option>
-                        <option value="high">High</option>
-                        <option value="urgent">Urgent</option>
-                      </select>
-                    </div>
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
+                  <select
+                    value={filterPriority}
+                    onChange={(e) => setFilterPriority(e.target.value as any)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="all">All Priorities</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="urgent">Urgent</option>
+                  </select>
                 </div>
-              )}
+              </div>
+            </div>
+          )}
 
-              {/* Circulars List */}
-              <div className="space-y-3">
-                {loading ? (
-                  <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                    <p className="text-gray-500 mt-2">Loading circulars...</p>
-                  </div>
-                ) : circulars.length > 0 ? (
-                  circulars.map((circular) => (
-                    <div
-                      key={circular.id}
-                      className="p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition"
-                    >
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h3 className="font-semibold text-gray-900">{circular.title}</h3>
-                            <span
-                              className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                circular.priority === "urgent"
-                                  ? "bg-red-100 text-red-700"
-                                  : circular.priority === "high"
-                                  ? "bg-orange-100 text-orange-700"
-                                  : circular.priority === "medium"
-                                  ? "bg-yellow-100 text-yellow-700"
-                                  : "bg-gray-100 text-gray-700"
-                              }`}
-                            >
-                              {circular.priority}
-                            </span>
-                            <span
-                              className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                circular.status === "published"
-                                  ? "bg-green-100 text-green-700"
-                                  : "bg-yellow-100 text-yellow-700"
-                              }`}
-                            >
-                              {circular.status}
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-600 mb-1">
-                            <UserGroupIcon className="inline h-4 w-4 mr-1" />
-                            Audience: {circular.audience}
-                          </p>
-                          <p className="text-sm text-gray-500 mb-2">
-                            <CalendarIcon className="inline h-4 w-4 mr-1" />
-                            Published: {circular.publish_date} 
-                            {circular.expire_date && ` • Expires: ${circular.expire_date}`}
-                          </p>
-                          <p className="text-sm text-gray-500 mb-2">
-                            Created by: {circular.creator_name || 'College Admin'}
-                          </p>
-                          {circular.attachment_url && (
-                            <div className="flex items-center gap-2">
-                              <p className="text-sm text-blue-600">
-                                <PaperClipIcon className="inline h-4 w-4 mr-1" />
-                                Attachment available
-                              </p>
-                              <a
-                                href={getAttachmentUrl(circular.attachment_url)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-xs text-blue-600 hover:text-blue-800 underline flex items-center gap-1"
-                                title="View attachment"
-                              >
-                                <EyeIcon className="h-3 w-3" />
-                                View
-                              </a>
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex gap-2">
-                          <button 
-                            onClick={() => {
-                              setSelectedCircular(circular);
-                              setShowViewModal(true);
-                            }}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded"
-                            title="View"
-                          >
-                            <EyeIcon className="h-5 w-5" />
-                          </button>
-                          <button 
-                            onClick={() => handleEdit(circular)}
-                            className="p-2 text-green-600 hover:bg-green-50 rounded"
-                            title="Edit"
-                          >
-                            <PencilSquareIcon className="h-5 w-5" />
-                          </button>
-                          <button 
-                            onClick={() => handlePublishToggle(circular.id, circular.status)}
-                            className={`p-2 rounded ${
-                              circular.status === "published"
-                                ? "text-yellow-600 hover:bg-yellow-50"
-                                : "text-green-600 hover:bg-green-50"
-                            }`}
-                            title={circular.status === "published" ? "Unpublish" : "Publish"}
-                            disabled={loading}
-                          >
-                            {circular.status === "published" ? (
-                              <ClockIcon className="h-5 w-5" />
-                            ) : (
-                              <CheckCircleIcon className="h-5 w-5" />
-                            )}
-                          </button>
-                          <button 
-                            onClick={() => handleDelete(circular.id)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded"
-                            title="Delete"
-                            disabled={loading}
-                          >
-                            <TrashIcon className="h-5 w-5" />
-                          </button>
-                        </div>
+          {/* Circulars List */}
+          <div className="space-y-3">
+            {loading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="text-gray-500 mt-2">Loading circulars...</p>
+              </div>
+            ) : circulars.length > 0 ? (
+              circulars.map((circular) => (
+                <div
+                  key={circular.id}
+                  className="p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition"
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="font-semibold text-gray-900">{circular.title}</h3>
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            circular.priority === 'urgent'
+                              ? 'bg-red-100 text-red-700'
+                              : circular.priority === 'high'
+                                ? 'bg-orange-100 text-orange-700'
+                                : circular.priority === 'medium'
+                                  ? 'bg-yellow-100 text-yellow-700'
+                                  : 'bg-gray-100 text-gray-700'
+                          }`}
+                        >
+                          {circular.priority}
+                        </span>
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            circular.status === 'published'
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-yellow-100 text-yellow-700'
+                          }`}
+                        >
+                          {circular.status}
+                        </span>
                       </div>
+                      <p className="text-sm text-gray-600 mb-1">
+                        <UserGroupIcon className="inline h-4 w-4 mr-1" />
+                        Audience: {circular.audience}
+                      </p>
+                      <p className="text-sm text-gray-500 mb-2">
+                        <CalendarIcon className="inline h-4 w-4 mr-1" />
+                        Published: {circular.publish_date}
+                        {circular.expire_date && ` • Expires: ${circular.expire_date}`}
+                      </p>
+                      <p className="text-sm text-gray-500 mb-2">
+                        Created by: {circular.creator_name || 'College Admin'}
+                      </p>
+                      {circular.attachment_url && (
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm text-blue-600">
+                            <PaperClipIcon className="inline h-4 w-4 mr-1" />
+                            Attachment available
+                          </p>
+                          <a
+                            href={getAttachmentUrl(circular.attachment_url)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-600 hover:text-blue-800 underline flex items-center gap-1"
+                            title="View attachment"
+                          >
+                            <EyeIcon className="h-3 w-3" />
+                            View
+                          </a>
+                        </div>
+                      )}
                     </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <BellIcon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                    <p className="text-lg font-medium mb-2">No circulars found</p>
-                    <p className="text-sm">Create your first circular to get started.</p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setSelectedCircular(circular);
+                          setShowViewModal(true);
+                        }}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded"
+                        title="View"
+                      >
+                        <EyeIcon className="h-5 w-5" />
+                      </button>
+                      <button
+                        onClick={() => handleEdit(circular)}
+                        className="p-2 text-green-600 hover:bg-green-50 rounded"
+                        title="Edit"
+                      >
+                        <PencilSquareIcon className="h-5 w-5" />
+                      </button>
+                      <button
+                        onClick={() => handlePublishToggle(circular.id, circular.status)}
+                        className={`p-2 rounded ${
+                          circular.status === 'published'
+                            ? 'text-yellow-600 hover:bg-yellow-50'
+                            : 'text-green-600 hover:bg-green-50'
+                        }`}
+                        title={circular.status === 'published' ? 'Unpublish' : 'Publish'}
+                        disabled={loading}
+                      >
+                        {circular.status === 'published' ? (
+                          <ClockIcon className="h-5 w-5" />
+                        ) : (
+                          <CheckCircleIcon className="h-5 w-5" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => handleDelete(circular.id)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded"
+                        title="Delete"
+                        disabled={loading}
+                      >
+                        <TrashIcon className="h-5 w-5" />
+                      </button>
+                    </div>
                   </div>
-                )}
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <BellIcon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                <p className="text-lg font-medium mb-2">No circulars found</p>
+                <p className="text-sm">Create your first circular to get started.</p>
               </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -768,7 +776,7 @@ const CircularsManagement: React.FC = () => {
             <div className="p-6 border-b border-gray-200">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-semibold text-gray-900">
-                  {selectedCircular ? "Edit Circular" : "Create New Circular"}
+                  {selectedCircular ? 'Edit Circular' : 'Create New Circular'}
                 </h3>
                 <button
                   onClick={() => {
@@ -782,19 +790,17 @@ const CircularsManagement: React.FC = () => {
                 </button>
               </div>
             </div>
-            
+
             <div className="p-6 space-y-4">
               {/* Title */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Title *
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Title *</label>
                 <input
                   type="text"
                   value={formData.title}
-                  onChange={(e) => setFormData({...formData, title: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                    formErrors.title ? "border-red-300" : "border-gray-300"
+                    formErrors.title ? 'border-red-300' : 'border-gray-300'
                   }`}
                   placeholder="Enter circular title"
                 />
@@ -805,12 +811,10 @@ const CircularsManagement: React.FC = () => {
 
               {/* Audience */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Audience *
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Audience *</label>
                 <select
                   value={formData.audience}
-                  onChange={(e) => setFormData({...formData, audience: e.target.value as any})}
+                  onChange={(e) => setFormData({ ...formData, audience: e.target.value as any })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="all">All</option>
@@ -822,12 +826,10 @@ const CircularsManagement: React.FC = () => {
 
               {/* Priority */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Priority
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
                 <select
                   value={formData.priority}
-                  onChange={(e) => setFormData({...formData, priority: e.target.value as any})}
+                  onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="low">Low</option>
@@ -840,25 +842,26 @@ const CircularsManagement: React.FC = () => {
               {/* Status */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Status
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700">Status</label>
                   <span
                     className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      formData.status === "published"
-                        ? "bg-green-100 text-green-700"
-                        : formData.status === "archived"
-                        ? "bg-gray-100 text-gray-700"
-                        : "bg-yellow-100 text-yellow-700"
+                      formData.status === 'published'
+                        ? 'bg-green-100 text-green-700'
+                        : formData.status === 'archived'
+                          ? 'bg-gray-100 text-gray-700'
+                          : 'bg-yellow-100 text-yellow-700'
                     }`}
                   >
-                    {formData.status === "published" ? "Published" : 
-                     formData.status === "archived" ? "Archived" : "Draft"}
+                    {formData.status === 'published'
+                      ? 'Published'
+                      : formData.status === 'archived'
+                        ? 'Archived'
+                        : 'Draft'}
                   </span>
                 </div>
                 <select
                   value={formData.status}
-                  onChange={(e) => setFormData({...formData, status: e.target.value as any})}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="draft">Draft</option>
@@ -866,23 +869,21 @@ const CircularsManagement: React.FC = () => {
                   <option value="archived">Archived</option>
                 </select>
                 <p className="text-xs text-gray-500 mt-1">
-                  <span className="font-medium">Draft:</span> Save for later editing • 
-                  <span className="font-medium"> Published:</span> Visible to audience • 
+                  <span className="font-medium">Draft:</span> Save for later editing •
+                  <span className="font-medium"> Published:</span> Visible to audience •
                   <span className="font-medium"> Archived:</span> Hidden from view
                 </p>
               </div>
 
               {/* Content */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Content *
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Content *</label>
                 <textarea
                   value={formData.content}
-                  onChange={(e) => setFormData({...formData, content: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, content: e.target.value })}
                   rows={4}
                   className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                    formErrors.content ? "border-red-300" : "border-gray-300"
+                    formErrors.content ? 'border-red-300' : 'border-gray-300'
                   }`}
                   placeholder="Enter the circular content..."
                 />
@@ -900,9 +901,9 @@ const CircularsManagement: React.FC = () => {
                   <input
                     type="date"
                     value={formData.publish_date}
-                    onChange={(e) => setFormData({...formData, publish_date: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, publish_date: e.target.value })}
                     className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                      formErrors.publish_date ? "border-red-300" : "border-gray-300"
+                      formErrors.publish_date ? 'border-red-300' : 'border-gray-300'
                     }`}
                   />
                   {formErrors.publish_date && (
@@ -916,9 +917,9 @@ const CircularsManagement: React.FC = () => {
                   <input
                     type="date"
                     value={formData.expire_date}
-                    onChange={(e) => setFormData({...formData, expire_date: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, expire_date: e.target.value })}
                     className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                      formErrors.expire_date ? "border-red-300" : "border-gray-300"
+                      formErrors.expire_date ? 'border-red-300' : 'border-gray-300'
                     }`}
                   />
                   {formErrors.expire_date && (
@@ -929,10 +930,8 @@ const CircularsManagement: React.FC = () => {
 
               {/* Attachment Section */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  Attachment
-                </label>
-                
+                <label className="block text-sm font-medium text-gray-700 mb-3">Attachment</label>
+
                 {/* Attachment Mode Toggle */}
                 <div className="flex gap-2 mb-4">
                   <button
@@ -941,14 +940,17 @@ const CircularsManagement: React.FC = () => {
                       // If switching from upload mode and there's an uploaded file, ask for confirmation
                       if (attachmentMode === 'upload' && uploadedFile?.url) {
                         setDeleteContext({
-                          title: "Switch to URL Mode",
+                          title: 'Switch to URL Mode',
                           message: `Switching to URL mode will permanently delete the uploaded file "${uploadedFile.name}". Are you sure you want to continue?`,
-                          confirmText: "Switch Mode"
+                          confirmText: 'Switch Mode',
                         });
-                        
+
                         setPendingDeleteAction(() => async () => {
                           // Delete the uploaded file from R2
-                          if (uploadedFile.url.includes('.r2.dev') || uploadedFile.url.includes('r2.cloudflarestorage.com')) {
+                          if (
+                            uploadedFile.url.includes('.r2.dev') ||
+                            uploadedFile.url.includes('r2.cloudflarestorage.com')
+                          ) {
                             try {
                               await deleteFile(uploadedFile.url);
                               console.log('Deleted file when switching to URL mode');
@@ -956,27 +958,27 @@ const CircularsManagement: React.FC = () => {
                               console.error('Failed to delete file when switching modes:', error);
                             }
                           }
-                          
+
                           setAttachmentMode('url');
                           setUploadedFile(null);
-                          setFormData(prev => ({ 
-                            ...prev, 
-                            attachment_url: "",
-                            attachment_filename: "",
-                            attachment_file_size: 0
+                          setFormData((prev) => ({
+                            ...prev,
+                            attachment_url: '',
+                            attachment_filename: '',
+                            attachment_file_size: 0,
                           }));
                         });
                         setShowDeleteConfirm(true);
                         return;
                       }
-                      
+
                       setAttachmentMode('url');
                       setUploadedFile(null);
-                      setFormData(prev => ({ 
-                        ...prev, 
-                        attachment_url: "",
-                        attachment_filename: "",
-                        attachment_file_size: 0
+                      setFormData((prev) => ({
+                        ...prev,
+                        attachment_url: '',
+                        attachment_filename: '',
+                        attachment_file_size: 0,
                       }));
                     }}
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -992,11 +994,11 @@ const CircularsManagement: React.FC = () => {
                     type="button"
                     onClick={() => {
                       setAttachmentMode('upload');
-                      setFormData(prev => ({ 
-                        ...prev, 
-                        attachment_url: "",
-                        attachment_filename: "",
-                        attachment_file_size: 0
+                      setFormData((prev) => ({
+                        ...prev,
+                        attachment_url: '',
+                        attachment_filename: '',
+                        attachment_file_size: 0,
                       }));
                     }}
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -1016,11 +1018,13 @@ const CircularsManagement: React.FC = () => {
                     <input
                       type="url"
                       value={formData.attachment_url}
-                      onChange={(e) => setFormData({...formData, attachment_url: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, attachment_url: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                       placeholder="https://example.com/document.pdf"
                     />
-                    <p className="text-xs text-gray-500 mt-1">Enter a URL to an external document or file</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Enter a URL to an external document or file
+                    </p>
                   </div>
                 )}
 
@@ -1035,18 +1039,24 @@ const CircularsManagement: React.FC = () => {
                               <ArrowPathIcon className="h-8 w-8 text-blue-600 mb-2 animate-spin" />
                               <span className="text-sm text-blue-600 mb-1">Uploading file...</span>
                               <div className="w-full max-w-xs bg-gray-200 rounded-full h-2 mb-2">
-                                <div 
-                                  className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                                <div
+                                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                                   style={{ width: `${uploadProgress}%` }}
                                 ></div>
                               </div>
-                              <span className="text-xs text-gray-500">{uploadProgress}% complete</span>
+                              <span className="text-xs text-gray-500">
+                                {uploadProgress}% complete
+                              </span>
                             </>
                           ) : (
                             <>
                               <ArrowUpTrayIcon className="h-8 w-8 text-gray-400 mb-2" />
-                              <span className="text-sm text-gray-600 mb-1">Click to upload or drag and drop</span>
-                              <span className="text-xs text-gray-500">PDF, DOC, DOCX, JPG, PNG, GIF, TXT (Max 10MB)</span>
+                              <span className="text-sm text-gray-600 mb-1">
+                                Click to upload or drag and drop
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                PDF, DOC, DOCX, JPG, PNG, GIF, TXT (Max 10MB)
+                              </span>
                               <input
                                 type="file"
                                 onChange={handleFileUpload}
@@ -1069,7 +1079,9 @@ const CircularsManagement: React.FC = () => {
                       <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg border border-green-200">
                         <DocumentIcon className="h-5 w-5 text-green-600" />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">{uploadedFile.name}</p>
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {uploadedFile.name}
+                          </p>
                           <p className="text-xs text-gray-500">
                             {uploadedFile.size > 0 ? formatFileSize(uploadedFile.size) + ' • ' : ''}
                             Uploaded successfully
@@ -1078,7 +1090,9 @@ const CircularsManagement: React.FC = () => {
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            onClick={() => window.open(getAttachmentUrl(uploadedFile.url), '_blank')}
+                            onClick={() =>
+                              window.open(getAttachmentUrl(uploadedFile.url), '_blank')
+                            }
                             className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
                             title="View file"
                           >
@@ -1130,10 +1144,10 @@ const CircularsManagement: React.FC = () => {
                     <ArrowPathIcon className="inline h-4 w-4 mr-2 animate-spin" />
                     Uploading...
                   </>
+                ) : selectedCircular ? (
+                  `Update Circular (${formData.status === 'published' ? 'Publish' : formData.status === 'archived' ? 'Archive' : 'Save as Draft'})`
                 ) : (
-                  selectedCircular 
-                    ? `Update Circular (${formData.status === 'published' ? 'Publish' : formData.status === 'archived' ? 'Archive' : 'Save as Draft'})`
-                    : `Create Circular (${formData.status === 'published' ? 'Publish' : formData.status === 'archived' ? 'Archive' : 'Save as Draft'})`
+                  `Create Circular (${formData.status === 'published' ? 'Publish' : formData.status === 'archived' ? 'Archive' : 'Save as Draft'})`
                 )}
               </button>
             </div>
@@ -1159,29 +1173,31 @@ const CircularsManagement: React.FC = () => {
                 </button>
               </div>
             </div>
-            
+
             <div className="p-6 space-y-4">
               <div>
-                <h4 className="font-semibold text-gray-900 text-xl mb-2">{selectedCircular.title}</h4>
+                <h4 className="font-semibold text-gray-900 text-xl mb-2">
+                  {selectedCircular.title}
+                </h4>
                 <div className="flex items-center gap-3 mb-4">
                   <span
                     className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      selectedCircular.priority === "urgent"
-                        ? "bg-red-100 text-red-700"
-                        : selectedCircular.priority === "high"
-                        ? "bg-orange-100 text-orange-700"
-                        : selectedCircular.priority === "medium"
-                        ? "bg-yellow-100 text-yellow-700"
-                        : "bg-gray-100 text-gray-700"
+                      selectedCircular.priority === 'urgent'
+                        ? 'bg-red-100 text-red-700'
+                        : selectedCircular.priority === 'high'
+                          ? 'bg-orange-100 text-orange-700'
+                          : selectedCircular.priority === 'medium'
+                            ? 'bg-yellow-100 text-yellow-700'
+                            : 'bg-gray-100 text-gray-700'
                     }`}
                   >
                     {selectedCircular.priority} priority
                   </span>
                   <span
                     className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      selectedCircular.status === "published"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-yellow-100 text-yellow-700"
+                      selectedCircular.status === 'published'
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-yellow-100 text-yellow-700'
                     }`}
                   >
                     {selectedCircular.status}
@@ -1196,7 +1212,9 @@ const CircularsManagement: React.FC = () => {
                 </div>
                 <div>
                   <span className="font-medium text-gray-700">Created by:</span>
-                  <p className="text-gray-600">{selectedCircular.creator_name || 'College Admin'}</p>
+                  <p className="text-gray-600">
+                    {selectedCircular.creator_name || 'College Admin'}
+                  </p>
                 </div>
                 <div>
                   <span className="font-medium text-gray-700">Publish Date:</span>
@@ -1236,9 +1254,13 @@ const CircularsManagement: React.FC = () => {
               {selectedCircular.created_at && (
                 <div className="text-xs text-gray-500 pt-2 border-t">
                   Created: {new Date(selectedCircular.created_at).toLocaleString()}
-                  {selectedCircular.updated_at && selectedCircular.updated_at !== selectedCircular.created_at && (
-                    <span> • Updated: {new Date(selectedCircular.updated_at).toLocaleString()}</span>
-                  )}
+                  {selectedCircular.updated_at &&
+                    selectedCircular.updated_at !== selectedCircular.created_at && (
+                      <span>
+                        {' '}
+                        • Updated: {new Date(selectedCircular.updated_at).toLocaleString()}
+                      </span>
+                    )}
                 </div>
               )}
             </div>

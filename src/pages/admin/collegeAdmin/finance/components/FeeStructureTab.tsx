@@ -1,8 +1,21 @@
-import React, { useState } from "react";
-import { Plus, Search, Pencil, Trash2, Copy, ToggleLeft, ToggleRight, IndianRupee, ChevronDown, ChevronUp, Eye, FileDown } from "lucide-react";
-import { FeeStructure } from "../types";
-import { FeeStructureViewModal } from "./FeeStructureViewModal";
-import { exportFeeStructurePDF } from "../utils/exportFeeStructurePDF";
+import React, { useState } from 'react';
+import {
+  Plus,
+  Search,
+  Pencil,
+  Trash2,
+  Copy,
+  ToggleLeft,
+  ToggleRight,
+  IndianRupee,
+  ChevronDown,
+  ChevronUp,
+  Eye,
+  FileDown,
+} from 'lucide-react';
+import { FeeStructure } from '../types';
+import { FeeStructureViewModal } from './FeeStructureViewModal';
+import { exportFeeStructurePDF } from '../utils/exportFeeStructurePDF';
 
 interface Props {
   feeStructures: FeeStructure[];
@@ -24,9 +37,9 @@ export const FeeStructureTab: React.FC<Props> = ({
   onToggleActive,
   onDuplicate,
 }) => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterCategory, setFilterCategory] = useState("");
-  const [filterStatus, setFilterStatus] = useState<"all" | "active" | "inactive">("all");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [selectedStructure, setSelectedStructure] = useState<FeeStructure | null>(null);
@@ -41,12 +54,14 @@ export const FeeStructureTab: React.FC<Props> = ({
   };
 
   const filteredStructures = feeStructures.filter((fs) => {
-    const matchesSearch = fs.program_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch =
+      fs.program_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       fs.academic_year.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = !filterCategory || fs.category === filterCategory;
-    const matchesStatus = filterStatus === "all" || 
-      (filterStatus === "active" && fs.is_active) || 
-      (filterStatus === "inactive" && !fs.is_active);
+    const matchesStatus =
+      filterStatus === 'all' ||
+      (filterStatus === 'active' && fs.is_active) ||
+      (filterStatus === 'inactive' && !fs.is_active);
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
@@ -62,7 +77,10 @@ export const FeeStructureTab: React.FC<Props> = ({
     <div>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <h2 className="text-xl font-bold text-gray-900">Fee Structure Setup</h2>
-        <button onClick={onCreate} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+        <button
+          onClick={onCreate}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+        >
           <Plus className="h-4 w-4" />
           Add Fee Structure
         </button>
@@ -106,23 +124,27 @@ export const FeeStructureTab: React.FC<Props> = ({
         </select>
       </div>
 
-
       {filteredStructures.length === 0 ? (
         <div className="p-8 bg-blue-50 border border-blue-200 rounded-xl text-center">
           <IndianRupee className="h-12 w-12 text-blue-400 mx-auto mb-3" />
           <p className="text-blue-900 font-medium mb-1">
-            {feeStructures.length === 0 ? "No fee structures added yet" : "No matching fee structures"}
+            {feeStructures.length === 0
+              ? 'No fee structures added yet'
+              : 'No matching fee structures'}
           </p>
           <p className="text-sm text-blue-700">
-            {feeStructures.length === 0 
+            {feeStructures.length === 0
               ? 'Click "Add Fee Structure" to create your first fee structure'
-              : "Try adjusting your search or filters"}
+              : 'Try adjusting your search or filters'}
           </p>
         </div>
       ) : (
         <div className="space-y-4">
           {filteredStructures.map((fs) => (
-            <div key={fs.id} className={`border rounded-xl overflow-hidden ${fs.is_active ? "border-gray-200" : "border-gray-300 bg-gray-50"}`}>
+            <div
+              key={fs.id}
+              className={`border rounded-xl overflow-hidden ${fs.is_active ? 'border-gray-200' : 'border-gray-300 bg-gray-50'}`}
+            >
               {/* Header Row */}
               <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white">
                 <div className="flex items-center gap-4">
@@ -130,39 +152,82 @@ export const FeeStructureTab: React.FC<Props> = ({
                     onClick={() => setExpandedId(expandedId === fs.id ? null : fs.id)}
                     className="p-1 hover:bg-gray-100 rounded"
                   >
-                    {expandedId === fs.id ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                    {expandedId === fs.id ? (
+                      <ChevronUp className="h-5 w-5" />
+                    ) : (
+                      <ChevronDown className="h-5 w-5" />
+                    )}
                   </button>
                   <div>
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold text-gray-900">{fs.program_name}</h3>
-                      <span className={`px-2 py-0.5 text-xs rounded-full ${fs.is_active ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-600"}`}>
-                        {fs.is_active ? "Active" : "Inactive"}
+                      <span
+                        className={`px-2 py-0.5 text-xs rounded-full ${fs.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}`}
+                      >
+                        {fs.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </div>
                     <p className="text-sm text-gray-500">
-                      {fs.semester === 1 ? "1st Year" : fs.semester === 2 ? "2nd Year" : fs.semester === 3 ? "3rd Year" : `${fs.semester}th Year`} • {fs.academic_year} • {fs.category} • {fs.quota}
+                      {fs.semester === 1
+                        ? '1st Year'
+                        : fs.semester === 2
+                          ? '2nd Year'
+                          : fs.semester === 3
+                            ? '3rd Year'
+                            : `${fs.semester}th Year`}{' '}
+                      • {fs.academic_year} • {fs.category} • {fs.quota}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-lg font-bold text-green-600">₹{(fs.total_amount || 0).toLocaleString()}</span>
+                  <span className="text-lg font-bold text-green-600">
+                    ₹{(fs.total_amount || 0).toLocaleString()}
+                  </span>
                   <div className="flex gap-1 ml-4">
-                    <button onClick={() => handleView(fs)} className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg" title="View Details">
+                    <button
+                      onClick={() => handleView(fs)}
+                      className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg"
+                      title="View Details"
+                    >
                       <Eye className="h-4 w-4" />
                     </button>
-                    <button onClick={() => handleExportPDF(fs)} className="p-2 text-green-600 hover:bg-green-50 rounded-lg" title="Export PDF">
+                    <button
+                      onClick={() => handleExportPDF(fs)}
+                      className="p-2 text-green-600 hover:bg-green-50 rounded-lg"
+                      title="Export PDF"
+                    >
                       <FileDown className="h-4 w-4" />
                     </button>
-                    <button onClick={() => onEdit(fs)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg" title="Edit">
+                    <button
+                      onClick={() => onEdit(fs)}
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                      title="Edit"
+                    >
                       <Pencil className="h-4 w-4" />
                     </button>
-                    <button onClick={() => onDuplicate(fs)} className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg" title="Duplicate">
+                    <button
+                      onClick={() => onDuplicate(fs)}
+                      className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg"
+                      title="Duplicate"
+                    >
                       <Copy className="h-4 w-4" />
                     </button>
-                    <button onClick={() => onToggleActive(fs.id, fs.is_active)} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg" title={fs.is_active ? "Deactivate" : "Activate"}>
-                      {fs.is_active ? <ToggleRight className="h-4 w-4 text-green-600" /> : <ToggleLeft className="h-4 w-4" />}
+                    <button
+                      onClick={() => onToggleActive(fs.id, fs.is_active)}
+                      className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                      title={fs.is_active ? 'Deactivate' : 'Activate'}
+                    >
+                      {fs.is_active ? (
+                        <ToggleRight className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <ToggleLeft className="h-4 w-4" />
+                      )}
                     </button>
-                    <button onClick={() => onDelete(fs.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg" title="Delete">
+                    <button
+                      onClick={() => onDelete(fs.id)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                      title="Delete"
+                    >
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
@@ -178,12 +243,19 @@ export const FeeStructureTab: React.FC<Props> = ({
                       <h4 className="font-medium text-gray-900 mb-2">Fee Heads</h4>
                       <div className="space-y-2">
                         {(fs.fee_heads || []).map((head, idx) => (
-                          <div key={idx} className="flex justify-between items-center p-2 bg-white rounded border">
+                          <div
+                            key={idx}
+                            className="flex justify-between items-center p-2 bg-white rounded border"
+                          >
                             <span className="text-sm text-gray-700">
                               {head.name}
-                              {head.is_mandatory && <span className="ml-1 text-xs text-red-500">*</span>}
+                              {head.is_mandatory && (
+                                <span className="ml-1 text-xs text-red-500">*</span>
+                              )}
                             </span>
-                            <span className="text-sm font-medium">₹{(head.amount || 0).toLocaleString()}</span>
+                            <span className="text-sm font-medium">
+                              ₹{(head.amount || 0).toLocaleString()}
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -195,12 +267,21 @@ export const FeeStructureTab: React.FC<Props> = ({
                       {(fs.due_schedule || []).length > 0 ? (
                         <div className="space-y-2">
                           {(fs.due_schedule || []).map((schedule, idx) => (
-                            <div key={idx} className="flex justify-between items-center p-2 bg-white rounded border">
-                              <span className="text-sm text-gray-700">Installment {schedule.installment}</span>
+                            <div
+                              key={idx}
+                              className="flex justify-between items-center p-2 bg-white rounded border"
+                            >
+                              <span className="text-sm text-gray-700">
+                                Installment {schedule.installment}
+                              </span>
                               <div className="text-right">
-                                <span className="text-sm font-medium">₹{(schedule.amount || 0).toLocaleString()}</span>
+                                <span className="text-sm font-medium">
+                                  ₹{(schedule.amount || 0).toLocaleString()}
+                                </span>
                                 {schedule.due_date && (
-                                  <p className="text-xs text-gray-500">{new Date(schedule.due_date).toLocaleDateString()}</p>
+                                  <p className="text-xs text-gray-500">
+                                    {new Date(schedule.due_date).toLocaleDateString()}
+                                  </p>
                                 )}
                               </div>
                             </div>
@@ -216,7 +297,11 @@ export const FeeStructureTab: React.FC<Props> = ({
                   <div className="mt-4 pt-4 border-t grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                     <div>
                       <span className="text-gray-500">Scholarship:</span>
-                      <span className="ml-2 font-medium">{fs.scholarship_applicable ? `₹${(fs.scholarship_amount || 0).toLocaleString()}` : "N/A"}</span>
+                      <span className="ml-2 font-medium">
+                        {fs.scholarship_applicable
+                          ? `₹${(fs.scholarship_amount || 0).toLocaleString()}`
+                          : 'N/A'}
+                      </span>
                     </div>
                     <div>
                       <span className="text-gray-500">Discount:</span>
@@ -224,11 +309,17 @@ export const FeeStructureTab: React.FC<Props> = ({
                     </div>
                     <div>
                       <span className="text-gray-500">Effective From:</span>
-                      <span className="ml-2 font-medium">{fs.effective_from ? new Date(fs.effective_from).toLocaleDateString() : "-"}</span>
+                      <span className="ml-2 font-medium">
+                        {fs.effective_from ? new Date(fs.effective_from).toLocaleDateString() : '-'}
+                      </span>
                     </div>
                     <div>
                       <span className="text-gray-500">Effective To:</span>
-                      <span className="ml-2 font-medium">{fs.effective_to ? new Date(fs.effective_to).toLocaleDateString() : "Ongoing"}</span>
+                      <span className="ml-2 font-medium">
+                        {fs.effective_to
+                          ? new Date(fs.effective_to).toLocaleDateString()
+                          : 'Ongoing'}
+                      </span>
                     </div>
                   </div>
                 </div>

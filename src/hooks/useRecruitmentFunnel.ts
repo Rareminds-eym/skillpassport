@@ -9,7 +9,11 @@ interface UseRecruitmentFunnelOptions {
   endDate?: string;
 }
 
-export const useRecruitmentFunnel = ({ preset, startDate, endDate }: UseRecruitmentFunnelOptions) => {
+export const useRecruitmentFunnel = ({
+  preset,
+  startDate,
+  endDate,
+}: UseRecruitmentFunnelOptions) => {
   const queryClient = useQueryClient();
   const channelRef = useRef<any>(null);
 
@@ -25,14 +29,23 @@ export const useRecruitmentFunnel = ({ preset, startDate, endDate }: UseRecruitm
 
   useEffect(() => {
     // subscribe to stage changes and pipeline candidate changes
-    const channel = supabase.channel(`recruitment-funnel-${Date.now()}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pipeline_activities' }, () => {
-        // invalidate on any activity change
-        queryClient.invalidateQueries({ queryKey: ['recruitment-funnel'] });
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pipeline_candidates' }, () => {
-        queryClient.invalidateQueries({ queryKey: ['recruitment-funnel'] });
-      });
+    const channel = supabase
+      .channel(`recruitment-funnel-${Date.now()}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'pipeline_activities' },
+        () => {
+          // invalidate on any activity change
+          queryClient.invalidateQueries({ queryKey: ['recruitment-funnel'] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'pipeline_candidates' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['recruitment-funnel'] });
+        }
+      );
 
     channel.subscribe();
     channelRef.current = channel;

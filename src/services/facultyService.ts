@@ -45,22 +45,23 @@ export const getFacultyStatistics = async (collegeId: string) => {
     .select('accountStatus, verification_status')
     .eq('collegeId', collegeId);
 
-  if (!faculty) return {
-    total: 0,
-    active: 0,
-    pending: 0,
-    inactive: 0,
-    suspended: 0,
-    verified: 0,
-  };
+  if (!faculty)
+    return {
+      total: 0,
+      active: 0,
+      pending: 0,
+      inactive: 0,
+      suspended: 0,
+      verified: 0,
+    };
 
   const stats = {
     total: faculty.length,
-    active: faculty.filter(f => f.accountStatus === 'active').length,
-    pending: faculty.filter(f => f.accountStatus === 'pending').length,
-    deactivated: faculty.filter(f => f.accountStatus === 'deactivated').length,
-    suspended: faculty.filter(f => f.accountStatus === 'suspended').length,
-    verified: faculty.filter(f => f.verification_status === 'verified').length,
+    active: faculty.filter((f) => f.accountStatus === 'active').length,
+    pending: faculty.filter((f) => f.accountStatus === 'pending').length,
+    deactivated: faculty.filter((f) => f.accountStatus === 'deactivated').length,
+    suspended: faculty.filter((f) => f.accountStatus === 'suspended').length,
+    verified: faculty.filter((f) => f.verification_status === 'verified').length,
   };
 
   return stats;
@@ -72,7 +73,7 @@ export const getFaculty = async (collegeId: string) => {
     .from('college_lecturers')
     .select('*')
     .eq('collegeId', collegeId)
-    .order('createdAt', { ascending: false});
+    .order('createdAt', { ascending: false });
 
   if (error) throw error;
   return data as Faculty[];
@@ -117,18 +118,12 @@ export const updateFaculty = async (facultyId: string, updates: Partial<Faculty>
 
 // Delete faculty
 export const deleteFaculty = async (facultyId: string) => {
-  const { error } = await supabase
-    .from('college_lecturers')
-    .delete()
-    .eq('id', facultyId);
+  const { error } = await supabase.from('college_lecturers').delete().eq('id', facultyId);
 
   if (error) throw error;
 };
 
 // Update faculty status
-export const updateFacultyStatus = async (
-  facultyId: string,
-  status: Faculty['accountStatus']
-) => {
+export const updateFacultyStatus = async (facultyId: string, status: Faculty['accountStatus']) => {
   return updateFaculty(facultyId, { accountStatus: status });
 };

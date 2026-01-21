@@ -1,14 +1,14 @@
 /**
  * UpgradePrompt Component
- * 
+ *
  * Modal or inline prompt for upgrading to premium features.
- * 
+ *
  * Features:
  * - Modal or inline display modes
  * - Display required add-on details
  * - Quick purchase button
  * - "Learn More" link to marketplace
- * 
+ *
  * @requirement REQ-5.7 - Upgrade Prompt Component
  */
 
@@ -35,7 +35,7 @@ function getSubscriptionBasePath(pathname) {
 
 /**
  * UpgradePrompt - Modal prompt for upgrading
- * 
+ *
  * @param {Object} props
  * @param {Object} props.addOn - Add-on data to display
  * @param {string} props.featureKey - Feature key if addOn not provided
@@ -50,14 +50,15 @@ export function UpgradePrompt({
   isOpen = true,
   onClose,
   variant = 'modal',
-  className = ''
+  className = '',
 }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { purchaseAddOn, isPurchasing, refreshAccess, fetchUserEntitlements, activeEntitlements } = useSubscriptionContext();
+  const { purchaseAddOn, isPurchasing, refreshAccess, fetchUserEntitlements, activeEntitlements } =
+    useSubscriptionContext();
   const [billingPeriod, setBillingPeriod] = useState('monthly');
   const [error, setError] = useState(null);
-  
+
   const basePath = getSubscriptionBasePath(location.pathname);
 
   // Check if user already owns this add-on (including cancelled but not expired)
@@ -65,11 +66,12 @@ export function UpgradePrompt({
     const key = addOn?.feature_key || featureKey;
     if (!key || !activeEntitlements) return false;
     const now = new Date();
-    return activeEntitlements.some(ent => 
-      ent.feature_key === key && 
-      (ent.status === 'active' || 
-       ent.status === 'grace_period' ||
-       (ent.status === 'cancelled' && ent.end_date && new Date(ent.end_date) >= now))
+    return activeEntitlements.some(
+      (ent) =>
+        ent.feature_key === key &&
+        (ent.status === 'active' ||
+          ent.status === 'grace_period' ||
+          (ent.status === 'cancelled' && ent.end_date && new Date(ent.end_date) >= now))
     );
   }, [addOn?.feature_key, featureKey, activeEntitlements]);
 
@@ -93,16 +95,16 @@ export function UpgradePrompt({
 
     try {
       setError(null);
-      
+
       // Load Razorpay script first
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
         setError('Failed to load payment system. Please refresh and try again.');
         return;
       }
-      
+
       const orderData = await purchaseAddOn(key, billingPeriod);
-      
+
       if (orderData && window.Razorpay) {
         const options = {
           key: orderData.razorpayKeyId,
@@ -111,51 +113,54 @@ export function UpgradePrompt({
           name: 'SkillPassport',
           description: addOn?.feature_name || 'Premium Feature',
           order_id: orderData.orderId,
-          handler: async function(response) {
+          handler: async function (response) {
             // Payment successful - verify and create entitlement
             console.log('[UpgradePrompt] Payment successful, verifying...', response);
-            
+
             try {
               const verifyResult = await addOnPaymentService.verifyAddonPayment(
                 response.razorpay_order_id,
                 response.razorpay_payment_id,
                 response.razorpay_signature
               );
-              
+
               if (verifyResult.success) {
                 console.log('[UpgradePrompt] Payment verified and entitlement created!');
                 // Clear feature access cache to force re-check
                 clearFeatureAccessCache();
                 // Refresh entitlements in context instead of page reload
-                await Promise.all([
-                  refreshAccess(),
-                  fetchUserEntitlements()
-                ]);
+                await Promise.all([refreshAccess(), fetchUserEntitlements()]);
                 onClose?.();
               } else {
-                setError(`Payment verification failed: ${verifyResult.error}. Please contact support with Order ID: ${response.razorpay_order_id}`);
+                setError(
+                  `Payment verification failed: ${verifyResult.error}. Please contact support with Order ID: ${response.razorpay_order_id}`
+                );
               }
             } catch (verifyError) {
               console.error('[UpgradePrompt] Verification error:', verifyError);
-              setError(`Payment completed but verification failed. Please contact support with Order ID: ${response.razorpay_order_id}`);
+              setError(
+                `Payment completed but verification failed. Please contact support with Order ID: ${response.razorpay_order_id}`
+              );
             }
           },
           theme: { color: '#4F46E5' },
           modal: {
             ondismiss: () => {
               console.log('[UpgradePrompt] Payment modal dismissed');
-            }
-          }
+            },
+          },
         };
-        
+
         const rzp = new window.Razorpay(options);
-        
+
         // Handle payment failure
         rzp.on('payment.failed', (response) => {
           console.error('[UpgradePrompt] Payment failed:', response.error);
-          setError(`Payment failed: ${response.error.description || 'Unknown error'}. Please try again.`);
+          setError(
+            `Payment failed: ${response.error.description || 'Unknown error'}. Please try again.`
+          );
         });
-        
+
         rzp.open();
       }
     } catch (err) {
@@ -196,7 +201,9 @@ export function UpgradePrompt({
   // Modal variant (default)
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-      <div className={`bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden ${className}`}>
+      <div
+        className={`bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden ${className}`}
+      >
         {/* Header with gradient */}
         <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white relative">
           <button
@@ -212,9 +219,7 @@ export function UpgradePrompt({
             </div>
             <div>
               <h2 className="text-xl font-bold">Unlock Premium Feature</h2>
-              <p className="text-white/80 text-sm">
-                {addOn?.feature_name || 'Premium Feature'}
-              </p>
+              <p className="text-white/80 text-sm">{addOn?.feature_name || 'Premium Feature'}</p>
             </div>
           </div>
         </div>
@@ -223,7 +228,7 @@ export function UpgradePrompt({
         <div className="p-6">
           {/* Description */}
           <p className="text-gray-600 mb-6">
-            {addOn?.addon_description || 
+            {addOn?.addon_description ||
               'Get access to this premium feature and enhance your experience.'}
           </p>
 
@@ -256,8 +261,9 @@ export function UpgradePrompt({
           <div className="text-center mb-6">
             <div className="flex items-baseline justify-center gap-1">
               <span className="text-4xl font-bold text-gray-900">
-                ₹{billingPeriod === 'monthly' 
-                  ? addOn?.addon_price_monthly 
+                ₹
+                {billingPeriod === 'monthly'
+                  ? addOn?.addon_price_monthly
                   : addOn?.addon_price_annual}
               </span>
               <span className="text-gray-500">
@@ -312,7 +318,9 @@ export function UpgradePrompt({
  */
 function InlineUpgradePrompt({ addOn, onPurchase, onLearnMore, isPurchasing, className }) {
   return (
-    <div className={`bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-6 ${className}`}>
+    <div
+      className={`bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-6 ${className}`}
+    >
       <div className="flex items-start gap-4">
         <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0">
           <Lock className="w-6 h-6 text-white" />
@@ -332,7 +340,9 @@ function InlineUpgradePrompt({ addOn, onPurchase, onLearnMore, isPurchasing, cla
               disabled={isPurchasing}
               className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center gap-2"
             >
-              {isPurchasing ? 'Processing...' : (
+              {isPurchasing ? (
+                'Processing...'
+              ) : (
                 <>
                   <Sparkles className="w-4 h-4" />
                   Unlock for ₹{addOn?.addon_price_monthly}/mo
@@ -359,12 +369,15 @@ function InlineUpgradePrompt({ addOn, onPurchase, onLearnMore, isPurchasing, cla
  */
 function BannerUpgradePrompt({ addOn, onPurchase, onClose, isPurchasing, className }) {
   return (
-    <div className={`bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-3 ${className}`}>
+    <div
+      className={`bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-3 ${className}`}
+    >
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Sparkles className="w-5 h-5" />
           <span className="font-medium">
-            Unlock {addOn?.feature_name || 'Premium Features'} starting at ₹{addOn?.addon_price_monthly}/mo
+            Unlock {addOn?.feature_name || 'Premium Features'} starting at ₹
+            {addOn?.addon_price_monthly}/mo
           </span>
         </div>
 
@@ -409,7 +422,7 @@ export function useUpgradePrompt() {
     isOpen,
     addOn,
     showPrompt,
-    hidePrompt
+    hidePrompt,
   };
 }
 

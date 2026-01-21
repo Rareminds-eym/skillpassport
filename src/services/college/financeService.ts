@@ -83,14 +83,20 @@ export async function createFeeStructure(data: Partial<FeeStructure>): Promise<F
 
   if (error) {
     if (error.code === '23505') {
-      throw new Error('DUPLICATE_ENTRY: Fee structure already exists for this program/semester/category/year');
+      throw new Error(
+        'DUPLICATE_ENTRY: Fee structure already exists for this program/semester/category/year'
+      );
     }
     throw error;
   }
   return structure;
 }
 
-export async function recordPayment(studentId: string, feeHeadId: string, payment: Partial<Payment>): Promise<Payment> {
+export async function recordPayment(
+  studentId: string,
+  feeHeadId: string,
+  payment: Partial<Payment>
+): Promise<Payment> {
   // Get ledger
   const { data: ledger, error: ledgerError } = await supabase
     .from('student_ledgers')
@@ -112,12 +118,14 @@ export async function recordPayment(studentId: string, feeHeadId: string, paymen
   // Record payment
   const { data: paymentRecord, error: paymentError } = await supabase
     .from('payments')
-    .insert([{
-      ...payment,
-      ledger_id: ledger.id,
-      receipt_number: receiptNumber,
-      paid_at: new Date().toISOString()
-    }])
+    .insert([
+      {
+        ...payment,
+        ledger_id: ledger.id,
+        receipt_number: receiptNumber,
+        paid_at: new Date().toISOString(),
+      },
+    ])
     .select()
     .single();
 
@@ -144,7 +152,12 @@ export async function getStudentLedger(studentId: string): Promise<StudentLedger
   return data || [];
 }
 
-export async function applyScholarship(studentId: string, feeHeadId: string, amount: number, reason: string): Promise<void> {
+export async function applyScholarship(
+  studentId: string,
+  feeHeadId: string,
+  amount: number,
+  reason: string
+): Promise<void> {
   const { data: ledger, error: ledgerError } = await supabase
     .from('student_ledgers')
     .select('*')
@@ -164,23 +177,30 @@ export async function applyScholarship(studentId: string, feeHeadId: string, amo
   // Log scholarship (would need a scholarships table in real implementation)
 }
 
-export async function getDefaulterReport(filters?: { program_id?: string; semester?: number }): Promise<any[]> {
-  let query = supabase
+export async function getDefaulterReport(filters?: {
+  program_id?: string;
+  semester?: number;
+}): Promise<any[]> {
+  const query = supabase
     .from('student_ledgers')
-    .select(`
+    .select(
+      `
       *,
       student:student_id (name, email),
       fee_structure:fee_structure_id (program_id, semester)
-    `)
+    `
+    )
     .gt('balance', 0);
 
   const { data, error } = await query;
   if (error) throw error;
 
   return (data || [])
-    .filter(ledger => {
-      if (filters?.program_id && (ledger.fee_structure as any)?.program_id !== filters.program_id) return false;
-      if (filters?.semester && (ledger.fee_structure as any)?.semester !== filters.semester) return false;
+    .filter((ledger) => {
+      if (filters?.program_id && (ledger.fee_structure as any)?.program_id !== filters.program_id)
+        return false;
+      if (filters?.semester && (ledger.fee_structure as any)?.semester !== filters.semester)
+        return false;
       return true;
     })
     .sort((a, b) => b.balance - a.balance);
@@ -199,10 +219,16 @@ export async function allocateBudget(data: Partial<DepartmentBudget>): Promise<D
 
 export async function recordExpenditure(data: Partial<Expenditure>): Promise<Expenditure> {
   // Validate budget limit
-  const isValid = await validateBudgetLimit(data.department_id!, data.budget_head_id!, data.amount!);
-  
+  const isValid = await validateBudgetLimit(
+    data.department_id!,
+    data.budget_head_id!,
+    data.amount!
+  );
+
   if (!isValid && !data.override_reason) {
-    throw new Error('LIMIT_EXCEEDED: Expenditure exceeds allocated budget. Override reason required.');
+    throw new Error(
+      'LIMIT_EXCEEDED: Expenditure exceeds allocated budget. Override reason required.'
+    );
   }
 
   const { data: expenditure, error } = await supabase
@@ -219,7 +245,11 @@ export async function recordExpenditure(data: Partial<Expenditure>): Promise<Exp
   return expenditure;
 }
 
-export async function validateBudgetLimit(deptId: string, budgetHeadId: string, amount: number): Promise<boolean> {
+export async function validateBudgetLimit(
+  deptId: string,
+  budgetHeadId: string,
+  amount: number
+): Promise<boolean> {
   // Get current budget
   const { data: budget, error } = await supabase
     .from('department_budgets')
@@ -232,17 +262,17 @@ export async function validateBudgetLimit(deptId: string, budgetHeadId: string, 
 
   if (error) return false;
 
-  const budgetHead = (budget.budget_heads as BudgetHead[]).find(bh => bh.id === budgetHeadId);
+  const budgetHead = (budget.budget_heads as BudgetHead[]).find((bh) => bh.id === budgetHeadId);
   if (!budgetHead) return false;
 
   return budgetHead.remaining >= amount;
 }
 
-export async function getBudgetReport(deptId: string, period?: { from: string; to: string }): Promise<any> {
-  let query = supabase
-    .from('department_budgets')
-    .select('*')
-    .eq('department_id', deptId);
+export async function getBudgetReport(
+  deptId: string,
+  period?: { from: string; to: string }
+): Promise<any> {
+  let query = supabase.from('department_budgets').select('*').eq('department_id', deptId);
 
   if (period) {
     query = query.gte('period_from', period.from).lte('period_to', period.to);

@@ -127,7 +127,7 @@ document.addEventListener('submit', (e) => {
   // Log form data (be careful with passwords)
   const formData = new FormData(e.target);
   const formEntries = {};
-  for (let [key, value] of formData.entries()) {
+  for (const [key, value] of formData.entries()) {
     if (key.toLowerCase().includes('password')) {
       formEntries[key] = '[HIDDEN]';
     } else {

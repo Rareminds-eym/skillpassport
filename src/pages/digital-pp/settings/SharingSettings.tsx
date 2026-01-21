@@ -1,8 +1,25 @@
-import { Check, Copy, Globe, Link2, Linkedin, Lock, Mail, MessageCircle, Share2, Twitter } from 'lucide-react';
+import {
+  Check,
+  Copy,
+  Globe,
+  Link2,
+  Linkedin,
+  Lock,
+  Mail,
+  MessageCircle,
+  Share2,
+  Twitter,
+} from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePortfolio } from '../../../context/PortfolioContext';
-import { copyToClipboard, downloadQRCode, generateQRCode, generateShareableLink, sharePortfolio } from '../../../utils/exportppUtils';
+import {
+  copyToClipboard,
+  downloadQRCode,
+  generateQRCode,
+  generateShareableLink,
+  sharePortfolio,
+} from '../../../utils/exportppUtils';
 
 const SharingSettings: React.FC = () => {
   const navigate = useNavigate();
@@ -17,13 +34,15 @@ const SharingSettings: React.FC = () => {
     const userId = student?.id || 'demo-user';
     const link = generateShareableLink(userId);
     setShareLink(link);
-    
+
     // Generate QR code
-    generateQRCode(link).then(url => {
-      setQrCodeUrl(url);
-    }).catch(err => {
-      console.error('Failed to generate QR code:', err);
-    });
+    generateQRCode(link)
+      .then((url) => {
+        setQrCodeUrl(url);
+      })
+      .catch((err) => {
+        console.error('Failed to generate QR code:', err);
+      });
   }, [student?.id]);
 
   const handleCopyLink = async () => {
@@ -40,25 +59,33 @@ const SharingSettings: React.FC = () => {
     const randomId = Math.random().toString(36).substring(7);
     const newLink = generateShareableLink(randomId);
     setShareLink(newLink);
-    
+
     // Regenerate QR code
-    generateQRCode(newLink).then(url => {
-      setQrCodeUrl(url);
-    }).catch(err => {
-      console.error('Failed to generate QR code:', err);
-    });
+    generateQRCode(newLink)
+      .then((url) => {
+        setQrCodeUrl(url);
+      })
+      .catch((err) => {
+        console.error('Failed to generate QR code:', err);
+      });
   };
 
   const handleSocialShare = async (platform: string) => {
     const title = `${student?.profile.name || 'My'} Portfolio`;
     const text = `Check out my digital portfolio!`;
-    
+
     switch (platform) {
       case 'linkedin':
-        window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareLink)}`, '_blank');
+        window.open(
+          `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareLink)}`,
+          '_blank'
+        );
         break;
       case 'twitter':
-        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareLink)}`, '_blank');
+        window.open(
+          `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareLink)}`,
+          '_blank'
+        );
         break;
       case 'email':
         window.location.href = `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(text + '\n\n' + shareLink)}`;
@@ -97,7 +124,9 @@ const SharingSettings: React.FC = () => {
                 <Link2 className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Your Portfolio Link</h2>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  Your Portfolio Link
+                </h2>
                 <p className="text-gray-600 dark:text-gray-400">Share your portfolio with others</p>
               </div>
             </div>
@@ -138,8 +167,12 @@ const SharingSettings: React.FC = () => {
                 <Lock className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Privacy Settings</h2>
-                <p className="text-gray-600 dark:text-gray-400">Control who can see your portfolio</p>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  Privacy Settings
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400">
+                  Control who can see your portfolio
+                </p>
               </div>
             </div>
 
@@ -148,13 +181,19 @@ const SharingSettings: React.FC = () => {
               <div className="flex items-center justify-between p-6 bg-gradient-to-r from-gray-50 to-slate-100 dark:from-gray-700 dark:to-gray-600 rounded-xl border border-gray-200 dark:border-gray-600">
                 <div>
                   <div className="flex items-center space-x-2 mb-1">
-                    {isPublic ? <Globe className="w-5 h-5 text-green-600 dark:text-green-400" /> : <Lock className="w-5 h-5 text-orange-600 dark:text-orange-400" />}
+                    {isPublic ? (
+                      <Globe className="w-5 h-5 text-green-600 dark:text-green-400" />
+                    ) : (
+                      <Lock className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                    )}
                     <span className="font-semibold text-lg text-gray-900 dark:text-white">
                       {isPublic ? 'Portfolio is Public' : 'Portfolio is Private'}
                     </span>
                   </div>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {isPublic ? 'Anyone with the link can view your portfolio' : 'Only you can view your portfolio'}
+                    {isPublic
+                      ? 'Anyone with the link can view your portfolio'
+                      : 'Only you can view your portfolio'}
                   </p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
@@ -171,7 +210,9 @@ const SharingSettings: React.FC = () => {
               {/* Privacy Options */}
               <div className="space-y-3">
                 <label className="flex items-center justify-between p-4 rounded-xl border border-gray-200 dark:border-gray-600 cursor-pointer hover:border-indigo-300 dark:hover:border-indigo-500 transition-all">
-                  <span className="text-gray-700 dark:text-gray-300">Allow search engine indexing</span>
+                  <span className="text-gray-700 dark:text-gray-300">
+                    Allow search engine indexing
+                  </span>
                   <input
                     type="checkbox"
                     defaultChecked={isPublic}
@@ -227,7 +268,7 @@ const SharingSettings: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <button 
+              <button
                 onClick={() => handleSocialShare('linkedin')}
                 className="group p-6 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white transition-all hover:shadow-2xl hover:scale-105 relative overflow-hidden"
               >
@@ -235,7 +276,7 @@ const SharingSettings: React.FC = () => {
                 <Linkedin className="w-8 h-8 mb-2 mx-auto drop-shadow-lg" />
                 <div className="font-semibold text-sm">LinkedIn</div>
               </button>
-              <button 
+              <button
                 onClick={() => handleSocialShare('twitter')}
                 className="group p-6 rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white transition-all hover:shadow-2xl hover:scale-105 relative overflow-hidden"
               >
@@ -243,7 +284,7 @@ const SharingSettings: React.FC = () => {
                 <Twitter className="w-8 h-8 mb-2 mx-auto drop-shadow-lg" />
                 <div className="font-semibold text-sm">Twitter</div>
               </button>
-              <button 
+              <button
                 onClick={() => handleSocialShare('email')}
                 className="group p-6 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-700 hover:from-purple-700 hover:to-indigo-800 text-white transition-all hover:shadow-2xl hover:scale-105 relative overflow-hidden"
               >
@@ -251,7 +292,7 @@ const SharingSettings: React.FC = () => {
                 <Mail className="w-8 h-8 mb-2 mx-auto drop-shadow-lg" />
                 <div className="font-semibold text-sm">Email</div>
               </button>
-              <button 
+              <button
                 onClick={() => handleSocialShare('whatsapp')}
                 className="group p-6 rounded-xl bg-gradient-to-br from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white transition-all hover:shadow-2xl hover:scale-105 relative overflow-hidden"
               >
@@ -282,7 +323,7 @@ const SharingSettings: React.FC = () => {
                   <div className="text-6xl">📱</div>
                 )}
               </div>
-              <button 
+              <button
                 onClick={handleDownloadQR}
                 disabled={!qrCodeUrl}
                 className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 dark:from-indigo-500 dark:to-blue-500 text-white rounded-lg hover:shadow-lg transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState } from 'react';
 import {
   AcademicCapIcon,
   PlusCircleIcon,
@@ -12,8 +12,8 @@ import {
   PhoneIcon,
   BriefcaseIcon,
   DocumentTextIcon,
-} from "@heroicons/react/24/outline";
-import FacultyDocumentViewerModal from "../../../components/admin/modals/FacultyDocumentViewerModal";
+} from '@heroicons/react/24/outline';
+import FacultyDocumentViewerModal from '../../../components/admin/modals/FacultyDocumentViewerModal';
 
 interface Educator {
   id: string;
@@ -21,7 +21,7 @@ interface Educator {
   email: string;
   department: string;
   phone: string;
-  status: "Active" | "Inactive";
+  status: 'Active' | 'Inactive';
   assignedStudents: number;
   createdAt: string;
   employeeId?: string;
@@ -40,11 +40,11 @@ interface FormData {
 }
 
 const departments = [
-  "Computer Science & Engineering",
-  "Electronics & Communication Engineering",
-  "Mechanical Engineering",
-  "Civil Engineering",
-  "Other",
+  'Computer Science & Engineering',
+  'Electronics & Communication Engineering',
+  'Mechanical Engineering',
+  'Civil Engineering',
+  'Other',
 ];
 
 const EducatorCard = ({
@@ -59,9 +59,9 @@ const EducatorCard = ({
   onViewDocuments: (educator: Educator) => void;
 }) => {
   const initials = educator.name
-    .split(" ")
+    .split(' ')
     .map((n) => n[0])
-    .join("")
+    .join('')
     .toUpperCase();
 
   return (
@@ -96,12 +96,14 @@ const EducatorCard = ({
         <div>
           <p className="text-xs text-gray-500 mb-0.5">Status</p>
           <div className="flex items-center gap-1.5">
-            {educator.status === "Active" && (
+            {educator.status === 'Active' && (
               <div className="h-2 w-2 rounded-full bg-green-500"></div>
             )}
-            <span className={`text-sm font-medium ${
-              educator.status === "Active" ? "text-green-700" : "text-gray-500"
-            }`}>
+            <span
+              className={`text-sm font-medium ${
+                educator.status === 'Active' ? 'text-green-700' : 'text-gray-500'
+              }`}
+            >
               {educator.status}
             </span>
           </div>
@@ -143,19 +145,19 @@ const StatsCard = ({
   label,
   value,
   icon: Icon,
-  color = "blue",
+  color = 'blue',
   subtext,
 }: {
   label: string;
   value: number | string;
   icon: any;
-  color?: "blue" | "green" | "purple";
+  color?: 'blue' | 'green' | 'purple';
   subtext?: string;
 }) => {
   const colorClasses = {
-    blue: "bg-blue-600",
-    green: "bg-green-600",
-    purple: "bg-purple-600",
+    blue: 'bg-blue-600',
+    green: 'bg-green-600',
+    purple: 'bg-purple-600',
   };
 
   return (
@@ -177,65 +179,68 @@ const StatsCard = ({
 const EducatorManagement: React.FC = () => {
   const [educators, setEducators] = useState<Educator[]>([
     {
-      id: "EDU001",
-      name: "Dr. Anil Sharma",
-      email: "anil.sharma@college.edu",
-      department: "Computer Science & Engineering",
-      phone: "9123456789",
-      status: "Active",
+      id: 'EDU001',
+      name: 'Dr. Anil Sharma',
+      email: 'anil.sharma@college.edu',
+      department: 'Computer Science & Engineering',
+      phone: '9123456789',
+      status: 'Active',
       assignedStudents: 12,
-      createdAt: "2024-01-15T10:00:00Z",
-      employeeId: "FAC001",
+      createdAt: '2024-01-15T10:00:00Z',
+      employeeId: 'FAC001',
       metadata: {
-        degree_certificate_url: "https://pub-ad91abcd16cd9e9c569d83d9ef46e398.r2.dev/teachers/degrees/sample-degree.pdf",
-        id_proof_url: "https://pub-ad91abcd16cd9e9c569d83d9ef46e398.r2.dev/teachers/id-proofs/sample-id.pdf",
+        degree_certificate_url:
+          'https://pub-ad91abcd16cd9e9c569d83d9ef46e398.r2.dev/teachers/degrees/sample-degree.pdf',
+        id_proof_url:
+          'https://pub-ad91abcd16cd9e9c569d83d9ef46e398.r2.dev/teachers/id-proofs/sample-id.pdf',
         experience_letters_url: [
-          "https://pub-ad91abcd16cd9e9c569d83d9ef46e398.r2.dev/teachers/experience-letters/exp1.pdf",
-          "https://pub-ad91abcd16cd9e9c569d83d9ef46e398.r2.dev/teachers/experience-letters/exp2.pdf"
-        ]
-      }
+          'https://pub-ad91abcd16cd9e9c569d83d9ef46e398.r2.dev/teachers/experience-letters/exp1.pdf',
+          'https://pub-ad91abcd16cd9e9c569d83d9ef46e398.r2.dev/teachers/experience-letters/exp2.pdf',
+        ],
+      },
     },
     {
-      id: "EDU002",
-      name: "Prof. Meera Gupta",
-      email: "meera.gupta@college.edu",
-      department: "Electronics & Communication Engineering",
-      phone: "9123456790",
-      status: "Active",
+      id: 'EDU002',
+      name: 'Prof. Meera Gupta',
+      email: 'meera.gupta@college.edu',
+      department: 'Electronics & Communication Engineering',
+      phone: '9123456790',
+      status: 'Active',
       assignedStudents: 8,
-      createdAt: "2024-01-20T10:00:00Z",
-      employeeId: "FAC002",
+      createdAt: '2024-01-20T10:00:00Z',
+      employeeId: 'FAC002',
       metadata: {
-        degree_certificate_url: "https://pub-ad91abcd16cd9e9c569d83d9ef46e398.r2.dev/teachers/degrees/sample-degree2.pdf",
-        id_proof_url: "https://pub-ad91abcd16cd9e9c569d83d9ef46e398.r2.dev/teachers/id-proofs/sample-id2.pdf"
-      }
+        degree_certificate_url:
+          'https://pub-ad91abcd16cd9e9c569d83d9ef46e398.r2.dev/teachers/degrees/sample-degree2.pdf',
+        id_proof_url:
+          'https://pub-ad91abcd16cd9e9c569d83d9ef46e398.r2.dev/teachers/id-proofs/sample-id2.pdf',
+      },
     },
   ]);
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<FormData>({
-    name: "",
-    email: "",
-    department: "",
-    phone: "",
+    name: '',
+    email: '',
+    department: '',
+    phone: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [searchQuery, setSearchQuery] = useState("");
-  
+  const [searchQuery, setSearchQuery] = useState('');
+
   // Document viewer modal state
   const [showDocumentModal, setShowDocumentModal] = useState(false);
   const [selectedEducatorForDocs, setSelectedEducatorForDocs] = useState<Educator | null>(null);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-    if (!formData.name.trim()) newErrors.name = "Name is required";
-    if (!formData.email.trim()) newErrors.email = "Email is required";
-    else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = "Invalid email";
-    if (!formData.department.trim()) newErrors.department = "Department is required";
-    if (!formData.phone.trim()) newErrors.phone = "Phone is required";
-    else if (!/^[0-9]{10}$/.test(formData.phone))
-      newErrors.phone = "Phone must be 10 digits";
+    if (!formData.name.trim()) newErrors.name = 'Name is required';
+    if (!formData.email.trim()) newErrors.email = 'Email is required';
+    else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Invalid email';
+    if (!formData.department.trim()) newErrors.department = 'Department is required';
+    if (!formData.phone.trim()) newErrors.phone = 'Phone is required';
+    else if (!/^[0-9]{10}$/.test(formData.phone)) newErrors.phone = 'Phone must be 10 digits';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -245,9 +250,7 @@ const EducatorManagement: React.FC = () => {
     if (validateForm()) {
       if (editingId) {
         setEducators(
-          educators.map((edu) =>
-            edu.id === editingId ? { ...edu, ...formData } : edu
-          )
+          educators.map((edu) => (edu.id === editingId ? { ...edu, ...formData } : edu))
         );
       } else {
         setEducators([
@@ -255,7 +258,7 @@ const EducatorManagement: React.FC = () => {
           {
             id: `EDU${Date.now()}`,
             ...formData,
-            status: "Active",
+            status: 'Active',
             assignedStudents: 0,
             createdAt: new Date().toISOString(),
           },
@@ -277,7 +280,7 @@ const EducatorManagement: React.FC = () => {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this educator?")) {
+    if (confirm('Are you sure you want to delete this educator?')) {
       setEducators(educators.filter((edu) => edu.id !== id));
     }
   };
@@ -293,7 +296,7 @@ const EducatorManagement: React.FC = () => {
   };
 
   const resetForm = () => {
-    setFormData({ name: "", email: "", department: "", phone: "" });
+    setFormData({ name: '', email: '', department: '', phone: '' });
     setErrors({});
     setShowForm(false);
     setEditingId(null);
@@ -306,11 +309,8 @@ const EducatorManagement: React.FC = () => {
       edu.department.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const activeEducators = educators.filter((edu) => edu.status === "Active").length;
-  const totalAssignedStudents = educators.reduce(
-    (sum, edu) => sum + edu.assignedStudents,
-    0
-  );
+  const activeEducators = educators.filter((edu) => edu.status === 'Active').length;
+  const totalAssignedStudents = educators.reduce((sum, edu) => sum + edu.assignedStudents, 0);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -323,16 +323,14 @@ const EducatorManagement: React.FC = () => {
                 <AcademicCapIcon className="h-8 w-8 text-blue-600" />
                 Educator Management
               </h1>
-              <p className="mt-2 text-gray-600">
-                Manage educators and their student assignments
-              </p>
+              <p className="mt-2 text-gray-600">Manage educators and their student assignments</p>
             </div>
             <button
               onClick={() => setShowForm(!showForm)}
               className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
                 showForm
-                  ? "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-                  : "bg-blue-600 text-white hover:bg-blue-700"
+                  ? 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
               }`}
             >
               {showForm ? (
@@ -382,7 +380,7 @@ const EducatorManagement: React.FC = () => {
               <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-2xl">
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-bold text-gray-900">
-                    {editingId ? "Edit Educator" : "Add New Educator"}
+                    {editingId ? 'Edit Educator' : 'Add New Educator'}
                   </h2>
                   <button
                     onClick={resetForm}
@@ -392,7 +390,7 @@ const EducatorManagement: React.FC = () => {
                   </button>
                 </div>
               </div>
-              
+
               <div className="p-6 space-y-5">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div>
@@ -404,7 +402,7 @@ const EducatorManagement: React.FC = () => {
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
-                        errors.name ? "border-red-300 bg-red-50" : "border-gray-300"
+                        errors.name ? 'border-red-300 bg-red-50' : 'border-gray-300'
                       }`}
                       placeholder="Dr. John Smith"
                     />
@@ -424,7 +422,7 @@ const EducatorManagement: React.FC = () => {
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
-                        errors.email ? "border-red-300 bg-red-50" : "border-gray-300"
+                        errors.email ? 'border-red-300 bg-red-50' : 'border-gray-300'
                       }`}
                       placeholder="john.smith@college.edu"
                     />
@@ -441,11 +439,9 @@ const EducatorManagement: React.FC = () => {
                     </label>
                     <select
                       value={formData.department}
-                      onChange={(e) =>
-                        setFormData({ ...formData, department: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                       className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
-                        errors.department ? "border-red-300 bg-red-50" : "border-gray-300"
+                        errors.department ? 'border-red-300 bg-red-50' : 'border-gray-300'
                       }`}
                     >
                       <option value="">Select Department</option>
@@ -471,7 +467,7 @@ const EducatorManagement: React.FC = () => {
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                       className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
-                        errors.phone ? "border-red-300 bg-red-50" : "border-gray-300"
+                        errors.phone ? 'border-red-300 bg-red-50' : 'border-gray-300'
                       }`}
                       placeholder="9876543210"
                     />
@@ -494,7 +490,7 @@ const EducatorManagement: React.FC = () => {
                     onClick={handleSubmit}
                     className="flex-1 px-5 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-all shadow-sm"
                   >
-                    {editingId ? "Update Educator" : "Add Educator"}
+                    {editingId ? 'Update Educator' : 'Add Educator'}
                   </button>
                 </div>
               </div>
@@ -521,9 +517,10 @@ const EducatorManagement: React.FC = () => {
           {/* Results Info */}
           <div className="px-6 py-3 border-b border-gray-100 bg-white">
             <p className="text-sm text-gray-600">
-              Showing <span className="font-semibold text-gray-900">{filteredEducators.length}</span> of{" "}
+              Showing{' '}
+              <span className="font-semibold text-gray-900">{filteredEducators.length}</span> of{' '}
               <span className="font-semibold text-gray-900">{educators.length}</span> educator
-              {educators.length !== 1 ? "s" : ""}
+              {educators.length !== 1 ? 's' : ''}
             </p>
           </div>
 
@@ -534,13 +531,11 @@ const EducatorManagement: React.FC = () => {
                 <div className="p-4 bg-gray-100 rounded-full mb-4">
                   <UserGroupIcon className="h-12 w-12 text-gray-400" />
                 </div>
-                <p className="text-lg font-semibold text-gray-900 mb-1">
-                  No educators found
-                </p>
+                <p className="text-lg font-semibold text-gray-900 mb-1">No educators found</p>
                 <p className="text-sm text-gray-500">
                   {educators.length === 0
-                    ? "Create your first educator to get started"
-                    : "Try adjusting your search criteria"}
+                    ? 'Create your first educator to get started'
+                    : 'Try adjusting your search criteria'}
                 </p>
               </div>
             ) : (
@@ -559,17 +554,21 @@ const EducatorManagement: React.FC = () => {
           </div>
         </div>
       </div>
-      
+
       {/* Faculty Document Viewer Modal */}
       <FacultyDocumentViewerModal
         isOpen={showDocumentModal}
         onClose={handleCloseDocumentModal}
-        facultyData={selectedEducatorForDocs ? {
-          name: selectedEducatorForDocs.name,
-          email: selectedEducatorForDocs.email,
-          employeeId: selectedEducatorForDocs.employeeId || selectedEducatorForDocs.id,
-          metadata: selectedEducatorForDocs.metadata
-        } : null}
+        facultyData={
+          selectedEducatorForDocs
+            ? {
+                name: selectedEducatorForDocs.name,
+                email: selectedEducatorForDocs.email,
+                employeeId: selectedEducatorForDocs.employeeId || selectedEducatorForDocs.id,
+                metadata: selectedEducatorForDocs.metadata,
+              }
+            : null
+        }
       />
     </div>
   );

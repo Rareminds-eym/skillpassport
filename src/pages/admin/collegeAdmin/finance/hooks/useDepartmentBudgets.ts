@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { supabase } from "../../../../../lib/supabaseClient";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { supabase } from '../../../../../lib/supabaseClient';
 
 export interface DepartmentBudget {
   id: string;
@@ -37,16 +37,21 @@ export const useDepartmentBudgets = () => {
       if (storedUser) {
         const userData = JSON.parse(storedUser);
         if (userData.role === 'college_admin' && userData.collegeId) {
-          console.log('✅ College admin detected, using collegeId from localStorage:', userData.collegeId);
+          console.log(
+            '✅ College admin detected, using collegeId from localStorage:',
+            userData.collegeId
+          );
           return userData.collegeId;
         }
       }
 
       // If not found in localStorage, try Supabase Auth
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (user) {
         console.log('🔍 Checking Supabase auth user for college admin:', user.email);
-        
+
         // Get user role from users table
         const { data: userRecord } = await supabase
           .from('users')
@@ -67,31 +72,34 @@ export const useDepartmentBudgets = () => {
             console.log('✅ Found college_id for college admin:', org.id, 'College:', org.name);
             return org.id;
           } else {
-            console.warn('⚠️ College admin but no matching organization found for email:', user.email);
+            console.warn(
+              '⚠️ College admin but no matching organization found for email:',
+              user.email
+            );
           }
         }
       }
-      
+
       return null;
     } catch (err) {
-      console.error("Failed to get college ID:", err);
+      console.error('Failed to get college ID:', err);
       return null;
     }
   }, []);
 
   const loadBudgets = useCallback(async () => {
     if (!collegeId) return;
-    
+
     try {
       setLoading(true);
       console.log('🚀 [Department Budgets] Loading budgets for college:', collegeId);
 
       // Try to load from department_budgets table (if it exists)
       const { data, error } = await supabase
-        .from("department_budgets")
-        .select("*")
-        .eq("college_id", collegeId)
-        .order("department_name", { ascending: true });
+        .from('department_budgets')
+        .select('*')
+        .eq('college_id', collegeId)
+        .order('department_name', { ascending: true });
 
       if (error && error.code === '42P01') {
         // Table doesn't exist, create mock data
@@ -109,7 +117,7 @@ export const useDepartmentBudgets = () => {
       console.log(`✅ [Department Budgets] Loaded ${data?.length || 0} budget records`);
       setBudgets(data || []);
     } catch (err) {
-      console.error("Failed to load department budgets:", err);
+      console.error('Failed to load department budgets:', err);
       await createMockBudgets();
     } finally {
       setLoading(false);
@@ -129,10 +137,30 @@ export const useDepartmentBudgets = () => {
         remaining_amount: 180000,
         status: 'active',
         budget_categories: [
-          { category: 'Equipment', allocated_amount: 200000, spent_amount: 150000, remaining_amount: 50000 },
-          { category: 'Software Licenses', allocated_amount: 100000, spent_amount: 80000, remaining_amount: 20000 },
-          { category: 'Training', allocated_amount: 75000, spent_amount: 45000, remaining_amount: 30000 },
-          { category: 'Maintenance', allocated_amount: 125000, spent_amount: 45000, remaining_amount: 80000 },
+          {
+            category: 'Equipment',
+            allocated_amount: 200000,
+            spent_amount: 150000,
+            remaining_amount: 50000,
+          },
+          {
+            category: 'Software Licenses',
+            allocated_amount: 100000,
+            spent_amount: 80000,
+            remaining_amount: 20000,
+          },
+          {
+            category: 'Training',
+            allocated_amount: 75000,
+            spent_amount: 45000,
+            remaining_amount: 30000,
+          },
+          {
+            category: 'Maintenance',
+            allocated_amount: 125000,
+            spent_amount: 45000,
+            remaining_amount: 80000,
+          },
         ],
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -147,10 +175,30 @@ export const useDepartmentBudgets = () => {
         remaining_amount: 120000,
         status: 'active',
         budget_categories: [
-          { category: 'Books & Resources', allocated_amount: 100000, spent_amount: 75000, remaining_amount: 25000 },
-          { category: 'Guest Lectures', allocated_amount: 50000, spent_amount: 30000, remaining_amount: 20000 },
-          { category: 'Field Trips', allocated_amount: 75000, spent_amount: 40000, remaining_amount: 35000 },
-          { category: 'Office Supplies', allocated_amount: 75000, spent_amount: 35000, remaining_amount: 40000 },
+          {
+            category: 'Books & Resources',
+            allocated_amount: 100000,
+            spent_amount: 75000,
+            remaining_amount: 25000,
+          },
+          {
+            category: 'Guest Lectures',
+            allocated_amount: 50000,
+            spent_amount: 30000,
+            remaining_amount: 20000,
+          },
+          {
+            category: 'Field Trips',
+            allocated_amount: 75000,
+            spent_amount: 40000,
+            remaining_amount: 35000,
+          },
+          {
+            category: 'Office Supplies',
+            allocated_amount: 75000,
+            spent_amount: 35000,
+            remaining_amount: 40000,
+          },
         ],
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -165,10 +213,30 @@ export const useDepartmentBudgets = () => {
         remaining_amount: 180000,
         status: 'active',
         budget_categories: [
-          { category: 'Lab Equipment', allocated_amount: 300000, spent_amount: 250000, remaining_amount: 50000 },
-          { category: 'Chemicals & Reagents', allocated_amount: 150000, spent_amount: 100000, remaining_amount: 50000 },
-          { category: 'Safety Equipment', allocated_amount: 75000, spent_amount: 45000, remaining_amount: 30000 },
-          { category: 'Maintenance', allocated_amount: 75000, spent_amount: 25000, remaining_amount: 50000 },
+          {
+            category: 'Lab Equipment',
+            allocated_amount: 300000,
+            spent_amount: 250000,
+            remaining_amount: 50000,
+          },
+          {
+            category: 'Chemicals & Reagents',
+            allocated_amount: 150000,
+            spent_amount: 100000,
+            remaining_amount: 50000,
+          },
+          {
+            category: 'Safety Equipment',
+            allocated_amount: 75000,
+            spent_amount: 45000,
+            remaining_amount: 30000,
+          },
+          {
+            category: 'Maintenance',
+            allocated_amount: 75000,
+            spent_amount: 25000,
+            remaining_amount: 50000,
+          },
         ],
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -184,7 +252,7 @@ export const useDepartmentBudgets = () => {
       const id = await getCollegeId();
       setCollegeId(id);
     };
-    
+
     initializeCollegeId();
   }, [getCollegeId]);
 

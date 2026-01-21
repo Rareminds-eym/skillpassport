@@ -28,14 +28,20 @@ interface OverviewTabProps {
 }
 
 // Helper component for section headers
-const SectionHeader: React.FC<{ icon: React.ReactNode; title: string; count?: number }> = ({ icon, title, count }) => (
+const SectionHeader: React.FC<{ icon: React.ReactNode; title: string; count?: number }> = ({
+  icon,
+  title,
+  count,
+}) => (
   <div className="flex items-center justify-between mb-4">
     <div className="flex items-center gap-2">
       <span className="text-primary-600">{icon}</span>
       <h3 className="text-lg font-medium text-gray-900">{title}</h3>
     </div>
     {count !== undefined && (
-      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">{count} items</span>
+      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+        {count} items
+      </span>
     )}
   </div>
 );
@@ -60,7 +66,9 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
     excused: 'bg-gray-100 text-gray-800',
   };
   return (
-    <span className={`text-xs px-2 py-0.5 rounded-full ${colors[status?.toLowerCase()] || 'bg-gray-100 text-gray-800'}`}>
+    <span
+      className={`text-xs px-2 py-0.5 rounded-full ${colors[status?.toLowerCase()] || 'bg-gray-100 text-gray-800'}`}
+    >
       {status || 'N/A'}
     </span>
   );
@@ -318,7 +326,6 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
         .eq('student_id', student.user_id)
         .order('date', { ascending: false });
       setInterviews(interviewsData || []);
-
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -329,12 +336,15 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
   // Calculate attendance stats
   const attendanceStats = {
     total: attendance.length,
-    present: attendance.filter(a => a.status === 'present').length,
-    absent: attendance.filter(a => a.status === 'absent').length,
-    late: attendance.filter(a => a.status === 'late').length,
-    percentage: attendance.length > 0 
-      ? Math.round((attendance.filter(a => a.status === 'present').length / attendance.length) * 100) 
-      : 0
+    present: attendance.filter((a) => a.status === 'present').length,
+    absent: attendance.filter((a) => a.status === 'absent').length,
+    late: attendance.filter((a) => a.status === 'late').length,
+    percentage:
+      attendance.length > 0
+        ? Math.round(
+            (attendance.filter((a) => a.status === 'present').length / attendance.length) * 100
+          )
+        : 0,
   };
 
   // Social links from student data
@@ -346,7 +356,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
     { name: 'YouTube', url: student.youtube_link, icon: '📺' },
     { name: 'Instagram', url: student.instagram_link, icon: '📷' },
     { name: 'Facebook', url: student.facebook_link, icon: '👤' },
-  ].filter(link => link.url);
+  ].filter((link) => link.url);
 
   if (loading) {
     return (
@@ -373,15 +383,25 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
           </div>
           <div className="flex flex-col">
             <span className="text-gray-500 text-xs mb-1">Contact</span>
-            <span className="font-medium text-gray-900">{student.contact_number || student.contactNumber || student.phone || 'N/A'}</span>
+            <span className="font-medium text-gray-900">
+              {student.contact_number || student.contactNumber || student.phone || 'N/A'}
+            </span>
           </div>
           <div className="flex flex-col">
-            <span className="text-gray-500 text-xs mb-1">{student.school_id ? 'School' : 'College'}</span>
-            <span className="font-medium text-gray-900">{student.college_school_name || student.college || 'N/A'}</span>
+            <span className="text-gray-500 text-xs mb-1">
+              {student.school_id ? 'School' : 'College'}
+            </span>
+            <span className="font-medium text-gray-900">
+              {student.college_school_name || student.college || 'N/A'}
+            </span>
           </div>
           <div className="flex flex-col">
-            <span className="text-gray-500 text-xs mb-1">{student.school_id ? 'Grade' : 'Degree'}</span>
-            <span className="font-medium text-gray-900">{student.grade || student.branch_field || 'N/A'}</span>
+            <span className="text-gray-500 text-xs mb-1">
+              {student.school_id ? 'Grade' : 'Degree'}
+            </span>
+            <span className="font-medium text-gray-900">
+              {student.grade || student.branch_field || 'N/A'}
+            </span>
           </div>
           <div className="flex flex-col">
             <span className="text-gray-500 text-xs mb-1">Section</span>
@@ -396,7 +416,9 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
           {student.date_of_birth && (
             <div className="flex flex-col">
               <span className="text-gray-500 text-xs mb-1">Date of Birth</span>
-              <span className="font-medium text-gray-900">{new Date(student.date_of_birth).toLocaleDateString()}</span>
+              <span className="font-medium text-gray-900">
+                {new Date(student.date_of_birth).toLocaleDateString()}
+              </span>
             </div>
           )}
           {student.gender && (
@@ -429,19 +451,28 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
       {/* Learning Streaks */}
       {streaks && (
         <div className="bg-gradient-to-r from-orange-50 to-yellow-50 rounded-lg border border-orange-200 p-4">
-          <SectionHeader icon={<FireIcon className="h-5 w-5 text-orange-500" />} title="Learning Streaks" />
+          <SectionHeader
+            icon={<FireIcon className="h-5 w-5 text-orange-500" />}
+            title="Learning Streaks"
+          />
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="text-center p-3 bg-white rounded-lg shadow-sm">
-              <div className="text-2xl font-bold text-orange-600">{streaks.current_streak || 0}</div>
+              <div className="text-2xl font-bold text-orange-600">
+                {streaks.current_streak || 0}
+              </div>
               <div className="text-xs text-gray-500">Current Streak</div>
             </div>
             <div className="text-center p-3 bg-white rounded-lg shadow-sm">
-              <div className="text-2xl font-bold text-yellow-600">{streaks.longest_streak || 0}</div>
+              <div className="text-2xl font-bold text-yellow-600">
+                {streaks.longest_streak || 0}
+              </div>
               <div className="text-xs text-gray-500">Longest Streak</div>
             </div>
             <div className="text-center p-3 bg-white rounded-lg shadow-sm">
               <div className="text-sm font-medium text-gray-700">
-                {streaks.last_activity_date ? new Date(streaks.last_activity_date).toLocaleDateString() : 'N/A'}
+                {streaks.last_activity_date
+                  ? new Date(streaks.last_activity_date).toLocaleDateString()
+                  : 'N/A'}
               </div>
               <div className="text-xs text-gray-500">Last Activity</div>
             </div>
@@ -460,14 +491,19 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
       {/* Skill Passport */}
       {skillPassport && (
         <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border border-purple-200 p-4">
-          <SectionHeader icon={<TrophyIcon className="h-5 w-5 text-purple-500" />} title="Skill Passport" />
+          <SectionHeader
+            icon={<TrophyIcon className="h-5 w-5 text-purple-500" />}
+            title="Skill Passport"
+          />
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="text-center p-3 bg-white rounded-lg shadow-sm">
               <StatusBadge status={skillPassport.status || 'pending'} />
               <div className="text-xs text-gray-500 mt-1">Status</div>
             </div>
             <div className="text-center p-3 bg-white rounded-lg shadow-sm">
-              <div className="text-lg font-bold text-purple-600">{skillPassport.nsqfLevel || 'N/A'}</div>
+              <div className="text-lg font-bold text-purple-600">
+                {skillPassport.nsqfLevel || 'N/A'}
+              </div>
               <div className="text-xs text-gray-500">NSQF Level</div>
             </div>
             <div className="text-center p-3 bg-white rounded-lg shadow-sm">
@@ -479,7 +515,9 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
               <div className="text-xs text-gray-500">AI Verified</div>
             </div>
             <div className="text-center p-3 bg-white rounded-lg shadow-sm">
-              <div className="text-lg font-bold text-indigo-600">{skillPassport.skills?.length || 0}</div>
+              <div className="text-lg font-bold text-indigo-600">
+                {skillPassport.skills?.length || 0}
+              </div>
               <div className="text-xs text-gray-500">Skills</div>
             </div>
           </div>
@@ -489,7 +527,11 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
       {/* Attendance Summary (School Students) */}
       {student.school_id && attendance.length > 0 && (
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <SectionHeader icon={<CalendarIcon className="h-5 w-5" />} title="Attendance Summary" count={attendanceStats.total} />
+          <SectionHeader
+            icon={<CalendarIcon className="h-5 w-5" />}
+            title="Attendance Summary"
+            count={attendanceStats.total}
+          />
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-4">
             <div className="text-center p-3 bg-green-50 rounded-lg">
               <div className="text-xl font-bold text-green-600">{attendanceStats.present}</div>
@@ -526,7 +568,9 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
                 {attendance.slice(0, 10).map((record, idx) => (
                   <tr key={record.id || idx} className="border-t">
                     <td className="px-2 py-1">{new Date(record.date).toLocaleDateString()}</td>
-                    <td className="px-2 py-1"><StatusBadge status={record.status} /></td>
+                    <td className="px-2 py-1">
+                      <StatusBadge status={record.status} />
+                    </td>
                     <td className="px-2 py-1">{record.time_in || '-'}</td>
                     <td className="px-2 py-1">{record.time_out || '-'}</td>
                   </tr>
@@ -540,22 +584,30 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
       {/* Skills */}
       {skills.length > 0 && (
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <SectionHeader icon={<StarIcon className="h-5 w-5" />} title="Skills" count={skills.length} />
+          <SectionHeader
+            icon={<StarIcon className="h-5 w-5" />}
+            title="Skills"
+            count={skills.length}
+          />
           <div className="flex flex-wrap gap-2">
-            {skills.filter(s => s.enabled !== false).map((skill, idx) => (
-              <span
-                key={skill.id || idx}
-                className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${
-                  skill.type === 'technical' 
-                    ? 'bg-blue-100 text-blue-800 border-blue-200' 
-                    : 'bg-purple-100 text-purple-800 border-purple-200'
-                }`}
-              >
-                {skill.name}
-                {skill.level && <span className="ml-1 text-xs opacity-75">({skill.level}/5)</span>}
-                {skill.verified && <CheckCircleIcon className="h-3 w-3 ml-1 text-green-500" />}
-              </span>
-            ))}
+            {skills
+              .filter((s) => s.enabled !== false)
+              .map((skill, idx) => (
+                <span
+                  key={skill.id || idx}
+                  className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${
+                    skill.type === 'technical'
+                      ? 'bg-blue-100 text-blue-800 border-blue-200'
+                      : 'bg-purple-100 text-purple-800 border-purple-200'
+                  }`}
+                >
+                  {skill.name}
+                  {skill.level && (
+                    <span className="ml-1 text-xs opacity-75">({skill.level}/5)</span>
+                  )}
+                  {skill.verified && <CheckCircleIcon className="h-3 w-3 ml-1 text-green-500" />}
+                </span>
+              ))}
           </div>
         </div>
       )}
@@ -563,14 +615,23 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
       {/* Education */}
       {education.length > 0 && (
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <SectionHeader icon={<AcademicCapIcon className="h-5 w-5" />} title="Education" count={education.length} />
+          <SectionHeader
+            icon={<AcademicCapIcon className="h-5 w-5" />}
+            title="Education"
+            count={education.length}
+          />
           <div className="space-y-3">
             {education.map((edu, idx) => (
-              <div key={edu.id || idx} className="flex items-start justify-between p-3 bg-gray-50 rounded-lg">
+              <div
+                key={edu.id || idx}
+                className="flex items-start justify-between p-3 bg-gray-50 rounded-lg"
+              >
                 <div>
                   <div className="font-medium text-gray-900">{edu.degree || edu.level}</div>
                   <div className="text-sm text-gray-600">{edu.university || edu.department}</div>
-                  <div className="text-xs text-gray-500">Year: {edu.year_of_passing} | CGPA: {edu.cgpa || 'N/A'}</div>
+                  <div className="text-xs text-gray-500">
+                    Year: {edu.year_of_passing} | CGPA: {edu.cgpa || 'N/A'}
+                  </div>
                 </div>
                 <StatusBadge status={edu.approval_status || edu.status || 'pending'} />
               </div>
@@ -582,15 +643,22 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
       {/* Experience */}
       {experience.length > 0 && (
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <SectionHeader icon={<BriefcaseIcon className="h-5 w-5" />} title="Experience" count={experience.length} />
+          <SectionHeader
+            icon={<BriefcaseIcon className="h-5 w-5" />}
+            title="Experience"
+            count={experience.length}
+          />
           <div className="space-y-3">
             {experience.map((exp, idx) => (
-              <div key={exp.id || idx} className="flex items-start justify-between p-3 bg-gray-50 rounded-lg">
+              <div
+                key={exp.id || idx}
+                className="flex items-start justify-between p-3 bg-gray-50 rounded-lg"
+              >
                 <div>
                   <div className="font-medium text-gray-900">{exp.role}</div>
                   <div className="text-sm text-gray-600">{exp.organization}</div>
                   <div className="text-xs text-gray-500">
-                    {exp.start_date && new Date(exp.start_date).toLocaleDateString()} - 
+                    {exp.start_date && new Date(exp.start_date).toLocaleDateString()} -
                     {exp.end_date ? new Date(exp.end_date).toLocaleDateString() : 'Present'}
                     {exp.duration && ` (${exp.duration})`}
                   </div>
@@ -608,27 +676,40 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
       {/* Trainings */}
       {trainings.length > 0 && (
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <SectionHeader icon={<BookOpenIcon className="h-5 w-5" />} title="Trainings" count={trainings.length} />
+          <SectionHeader
+            icon={<BookOpenIcon className="h-5 w-5" />}
+            title="Trainings"
+            count={trainings.length}
+          />
           <div className="space-y-3">
             {trainings.map((training, idx) => (
-              <div key={training.id || idx} className="flex items-start justify-between p-3 bg-gray-50 rounded-lg">
+              <div
+                key={training.id || idx}
+                className="flex items-start justify-between p-3 bg-gray-50 rounded-lg"
+              >
                 <div className="flex-1">
                   <div className="font-medium text-gray-900">{training.title}</div>
                   <div className="text-sm text-gray-600">{training.organization}</div>
                   <div className="text-xs text-gray-500">
-                    {training.start_date && new Date(training.start_date).toLocaleDateString()} - 
-                    {training.end_date ? new Date(training.end_date).toLocaleDateString() : 'Ongoing'}
+                    {training.start_date && new Date(training.start_date).toLocaleDateString()} -
+                    {training.end_date
+                      ? new Date(training.end_date).toLocaleDateString()
+                      : 'Ongoing'}
                   </div>
                   {training.total_modules > 0 && (
                     <div className="mt-1">
                       <div className="flex items-center gap-2">
                         <div className="flex-1 bg-gray-200 rounded-full h-1.5">
-                          <div 
-                            className="bg-primary-600 h-1.5 rounded-full" 
-                            style={{ width: `${(training.completed_modules / training.total_modules) * 100}%` }}
+                          <div
+                            className="bg-primary-600 h-1.5 rounded-full"
+                            style={{
+                              width: `${(training.completed_modules / training.total_modules) * 100}%`,
+                            }}
                           ></div>
                         </div>
-                        <span className="text-xs text-gray-500">{training.completed_modules}/{training.total_modules}</span>
+                        <span className="text-xs text-gray-500">
+                          {training.completed_modules}/{training.total_modules}
+                        </span>
                       </div>
                     </div>
                   )}
@@ -643,10 +724,17 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
       {/* Events (College Students) */}
       {events.length > 0 && (
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <SectionHeader icon={<CalendarIcon className="h-5 w-5" />} title="Events" count={events.length} />
+          <SectionHeader
+            icon={<CalendarIcon className="h-5 w-5" />}
+            title="Events"
+            count={events.length}
+          />
           <div className="space-y-3">
             {events.map((evt, idx) => (
-              <div key={evt.id || idx} className="flex items-start justify-between p-3 bg-gray-50 rounded-lg">
+              <div
+                key={evt.id || idx}
+                className="flex items-start justify-between p-3 bg-gray-50 rounded-lg"
+              >
                 <div>
                   <div className="font-medium text-gray-900">{evt.event?.title || 'Event'}</div>
                   <div className="text-sm text-gray-600 capitalize">{evt.event?.event_type}</div>
@@ -663,9 +751,13 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
                 </div>
                 <div className="flex items-center gap-2">
                   {evt.attended ? (
-                    <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">Attended</span>
+                    <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
+                      Attended
+                    </span>
                   ) : (
-                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">Registered</span>
+                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                      Registered
+                    </span>
                   )}
                 </div>
               </div>
@@ -677,17 +769,32 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
       {/* Assignments */}
       {assignments.length > 0 && (
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <SectionHeader icon={<DocumentTextIcon className="h-5 w-5" />} title="Assignments" count={assignments.length} />
+          <SectionHeader
+            icon={<DocumentTextIcon className="h-5 w-5" />}
+            title="Assignments"
+            count={assignments.length}
+          />
           <div className="space-y-3">
             {assignments.slice(0, 5).map((assignment, idx) => (
-              <div key={assignment.id || idx} className="flex items-start justify-between p-3 bg-gray-50 rounded-lg">
+              <div
+                key={assignment.id || idx}
+                className="flex items-start justify-between p-3 bg-gray-50 rounded-lg"
+              >
                 <div>
-                  <div className="font-medium text-gray-900">{assignment.assignment?.title || 'Assignment'}</div>
+                  <div className="font-medium text-gray-900">
+                    {assignment.assignment?.title || 'Assignment'}
+                  </div>
                   <div className="text-sm text-gray-600">{assignment.assignment?.course_name}</div>
                   <div className="text-xs text-gray-500">
-                    Due: {assignment.assignment?.due_date ? new Date(assignment.assignment.due_date).toLocaleDateString() : 'N/A'}
+                    Due:{' '}
+                    {assignment.assignment?.due_date
+                      ? new Date(assignment.assignment.due_date).toLocaleDateString()
+                      : 'N/A'}
                     {assignment.grade_received !== null && (
-                      <span className="ml-2">| Grade: {assignment.grade_received}/{assignment.assignment?.total_points || 100}</span>
+                      <span className="ml-2">
+                        | Grade: {assignment.grade_received}/
+                        {assignment.assignment?.total_points || 100}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -704,10 +811,17 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
       {/* Applied Jobs */}
       {appliedJobs.length > 0 && (
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <SectionHeader icon={<BriefcaseIcon className="h-5 w-5" />} title="Applied Jobs" count={appliedJobs.length} />
+          <SectionHeader
+            icon={<BriefcaseIcon className="h-5 w-5" />}
+            title="Applied Jobs"
+            count={appliedJobs.length}
+          />
           <div className="space-y-3">
             {appliedJobs.slice(0, 5).map((job, idx) => (
-              <div key={job.id || idx} className="flex items-start justify-between p-3 bg-gray-50 rounded-lg">
+              <div
+                key={job.id || idx}
+                className="flex items-start justify-between p-3 bg-gray-50 rounded-lg"
+              >
                 <div>
                   <div className="font-medium text-gray-900">{job.opportunity?.title || 'Job'}</div>
                   <div className="text-sm text-gray-600">{job.opportunity?.company_name}</div>
@@ -732,13 +846,24 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
       {/* Saved Jobs */}
       {savedJobs.length > 0 && (
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <SectionHeader icon={<StarIcon className="h-5 w-5" />} title="Saved Jobs" count={savedJobs.length} />
+          <SectionHeader
+            icon={<StarIcon className="h-5 w-5" />}
+            title="Saved Jobs"
+            count={savedJobs.length}
+          />
           <div className="space-y-2">
             {savedJobs.slice(0, 5).map((job, idx) => (
-              <div key={job.id || idx} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+              <div
+                key={job.id || idx}
+                className="flex items-center justify-between p-2 bg-gray-50 rounded"
+              >
                 <div>
-                  <div className="font-medium text-gray-900 text-sm">{job.opportunity?.title || 'Job'}</div>
-                  <div className="text-xs text-gray-600">{job.opportunity?.company_name} • {job.opportunity?.location}</div>
+                  <div className="font-medium text-gray-900 text-sm">
+                    {job.opportunity?.title || 'Job'}
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    {job.opportunity?.company_name} • {job.opportunity?.location}
+                  </div>
                 </div>
                 <div className="text-xs text-gray-500">
                   {job.saved_at && new Date(job.saved_at).toLocaleDateString()}
@@ -752,10 +877,17 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
       {/* Internships */}
       {internships.length > 0 && (
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <SectionHeader icon={<BriefcaseIcon className="h-5 w-5" />} title="Internships" count={internships.length} />
+          <SectionHeader
+            icon={<BriefcaseIcon className="h-5 w-5" />}
+            title="Internships"
+            count={internships.length}
+          />
           <div className="space-y-3">
             {internships.map((intern, idx) => (
-              <div key={intern.id || idx} className="flex items-start justify-between p-3 bg-gray-50 rounded-lg">
+              <div
+                key={intern.id || idx}
+                className="flex items-start justify-between p-3 bg-gray-50 rounded-lg"
+              >
                 <div className="flex-1">
                   <div className="font-medium text-gray-900">{intern.role}</div>
                   <div className="text-sm text-gray-600">{intern.company_name}</div>
@@ -765,11 +897,13 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
                     <span className="ml-2">{intern.internship_type}</span>
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
-                    {intern.start_date && new Date(intern.start_date).toLocaleDateString()} - 
+                    {intern.start_date && new Date(intern.start_date).toLocaleDateString()} -
                     {intern.end_date ? new Date(intern.end_date).toLocaleDateString() : 'Present'}
                     {intern.duration && ` (${intern.duration})`}
                   </div>
-                  {intern.stipend && <div className="text-xs text-green-600 mt-1">Stipend: {intern.stipend}</div>}
+                  {intern.stipend && (
+                    <div className="text-xs text-green-600 mt-1">Stipend: {intern.stipend}</div>
+                  )}
                 </div>
                 <StatusBadge status={intern.approval_status || 'pending'} />
               </div>
@@ -781,18 +915,32 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
       {/* Placements */}
       {placements.length > 0 && (
         <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200 p-4">
-          <SectionHeader icon={<TrophyIcon className="h-5 w-5 text-green-600" />} title="Placements" count={placements.length} />
+          <SectionHeader
+            icon={<TrophyIcon className="h-5 w-5 text-green-600" />}
+            title="Placements"
+            count={placements.length}
+          />
           <div className="space-y-3">
             {placements.map((placement, idx) => (
-              <div key={placement.id || idx} className="flex items-start justify-between p-3 bg-white rounded-lg shadow-sm">
+              <div
+                key={placement.id || idx}
+                className="flex items-start justify-between p-3 bg-white rounded-lg shadow-sm"
+              >
                 <div>
                   <div className="font-medium text-gray-900">{placement.jobTitle}</div>
-                  <div className="text-sm text-gray-600">{placement.recruiter?.name || 'Company'}</div>
+                  <div className="text-sm text-gray-600">
+                    {placement.recruiter?.name || 'Company'}
+                  </div>
                   {placement.salaryOffered && (
-                    <div className="text-sm text-green-600 font-medium mt-1">₹{Number(placement.salaryOffered).toLocaleString()} LPA</div>
+                    <div className="text-sm text-green-600 font-medium mt-1">
+                      ₹{Number(placement.salaryOffered).toLocaleString()} LPA
+                    </div>
                   )}
                   <div className="text-xs text-gray-500 mt-1">
-                    Hired: {placement.hiredDate ? new Date(placement.hiredDate).toLocaleDateString() : 'N/A'}
+                    Hired:{' '}
+                    {placement.hiredDate
+                      ? new Date(placement.hiredDate).toLocaleDateString()
+                      : 'N/A'}
                   </div>
                 </div>
                 <StatusBadge status={placement.placementStatus || 'hired'} />
@@ -805,13 +953,24 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
       {/* Competition Results */}
       {competitionResults.length > 0 && (
         <div className="bg-gradient-to-r from-yellow-50 to-amber-50 rounded-lg border border-yellow-200 p-4">
-          <SectionHeader icon={<TrophyIcon className="h-5 w-5 text-yellow-600" />} title="Competition Results" count={competitionResults.length} />
+          <SectionHeader
+            icon={<TrophyIcon className="h-5 w-5 text-yellow-600" />}
+            title="Competition Results"
+            count={competitionResults.length}
+          />
           <div className="space-y-3">
             {competitionResults.map((result, idx) => (
-              <div key={result.result_id || idx} className="flex items-start justify-between p-3 bg-white rounded-lg shadow-sm">
+              <div
+                key={result.result_id || idx}
+                className="flex items-start justify-between p-3 bg-white rounded-lg shadow-sm"
+              >
                 <div>
-                  <div className="font-medium text-gray-900">{result.competition?.name || 'Competition'}</div>
-                  <div className="text-sm text-gray-600 capitalize">{result.competition?.level} • {result.competition?.category}</div>
+                  <div className="font-medium text-gray-900">
+                    {result.competition?.name || 'Competition'}
+                  </div>
+                  <div className="text-sm text-gray-600 capitalize">
+                    {result.competition?.level} • {result.competition?.category}
+                  </div>
                   <div className="flex items-center gap-2 mt-2">
                     {result.rank && (
                       <span className="inline-flex items-center px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">
@@ -833,7 +992,8 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
                     <CheckCircleIcon className="h-5 w-5 text-green-500" />
                   )}
                   <div className="text-xs text-gray-500 mt-1">
-                    {result.competition?.competition_date && new Date(result.competition.competition_date).toLocaleDateString()}
+                    {result.competition?.competition_date &&
+                      new Date(result.competition.competition_date).toLocaleDateString()}
                   </div>
                 </div>
               </div>
@@ -845,13 +1005,24 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
       {/* Skill Badges */}
       {skillBadges.length > 0 && (
         <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-200 p-4">
-          <SectionHeader icon={<StarIcon className="h-5 w-5 text-indigo-600" />} title="Skill Badges" count={skillBadges.length} />
+          <SectionHeader
+            icon={<StarIcon className="h-5 w-5 text-indigo-600" />}
+            title="Skill Badges"
+            count={skillBadges.length}
+          />
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {skillBadges.map((badge, idx) => (
-              <div key={badge.id || idx} className="flex flex-col items-center p-3 bg-white rounded-lg shadow-sm text-center">
+              <div
+                key={badge.id || idx}
+                className="flex flex-col items-center p-3 bg-white rounded-lg shadow-sm text-center"
+              >
                 <div className="text-2xl mb-1">{badge.badge?.icon || '🏅'}</div>
-                <div className="font-medium text-gray-900 text-sm">{badge.badge?.name || 'Badge'}</div>
-                <div className="text-xs text-gray-500 capitalize">{badge.badge?.level || 'bronze'}</div>
+                <div className="font-medium text-gray-900 text-sm">
+                  {badge.badge?.name || 'Badge'}
+                </div>
+                <div className="text-xs text-gray-500 capitalize">
+                  {badge.badge?.level || 'bronze'}
+                </div>
                 <div className="mt-2">
                   <StatusBadge status={badge.status || 'in_progress'} />
                 </div>
@@ -869,23 +1040,42 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
       {/* Club Certificates */}
       {clubCertificates.length > 0 && (
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <SectionHeader icon={<AcademicCapIcon className="h-5 w-5" />} title="Club Certificates" count={clubCertificates.length} />
+          <SectionHeader
+            icon={<AcademicCapIcon className="h-5 w-5" />}
+            title="Club Certificates"
+            count={clubCertificates.length}
+          />
           <div className="space-y-3">
             {clubCertificates.map((cert, idx) => (
-              <div key={cert.certificate_id || idx} className="flex items-start justify-between p-3 bg-gray-50 rounded-lg">
+              <div
+                key={cert.certificate_id || idx}
+                className="flex items-start justify-between p-3 bg-gray-50 rounded-lg"
+              >
                 <div>
                   <div className="font-medium text-gray-900">{cert.title}</div>
                   <div className="text-sm text-gray-600">{cert.issuer}</div>
                   <div className="text-xs text-gray-500 mt-1">
-                    Type: {cert.certificate_type?.replace('_', ' ')} • Issued: {cert.issued_date && new Date(cert.issued_date).toLocaleDateString()}
+                    Type: {cert.certificate_type?.replace('_', ' ')} • Issued:{' '}
+                    {cert.issued_date && new Date(cert.issued_date).toLocaleDateString()}
                   </div>
-                  {cert.club?.name && <div className="text-xs text-blue-600 mt-1">Club: {cert.club.name}</div>}
-                  {cert.competition?.name && <div className="text-xs text-purple-600 mt-1">Competition: {cert.competition.name}</div>}
+                  {cert.club?.name && (
+                    <div className="text-xs text-blue-600 mt-1">Club: {cert.club.name}</div>
+                  )}
+                  {cert.competition?.name && (
+                    <div className="text-xs text-purple-600 mt-1">
+                      Competition: {cert.competition.name}
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   {cert.is_verified && <CheckCircleIcon className="h-4 w-4 text-green-500" />}
                   {cert.certificate_pdf_url && (
-                    <a href={cert.certificate_pdf_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary-600 hover:underline">
+                    <a
+                      href={cert.certificate_pdf_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-primary-600 hover:underline"
+                    >
                       View
                     </a>
                   )}
@@ -899,32 +1089,50 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
       {/* Pipeline Status */}
       {pipelineStatus.length > 0 && (
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <SectionHeader icon={<ChartBarIcon className="h-5 w-5" />} title="Recruitment Pipeline" count={pipelineStatus.length} />
+          <SectionHeader
+            icon={<ChartBarIcon className="h-5 w-5" />}
+            title="Recruitment Pipeline"
+            count={pipelineStatus.length}
+          />
           <div className="space-y-3">
             {pipelineStatus.map((pipeline, idx) => (
-              <div key={pipeline.id || idx} className="flex items-start justify-between p-3 bg-gray-50 rounded-lg">
+              <div
+                key={pipeline.id || idx}
+                className="flex items-start justify-between p-3 bg-gray-50 rounded-lg"
+              >
                 <div>
-                  <div className="font-medium text-gray-900">{pipeline.opportunity?.title || pipeline.candidate_name}</div>
+                  <div className="font-medium text-gray-900">
+                    {pipeline.opportunity?.title || pipeline.candidate_name}
+                  </div>
                   <div className="text-sm text-gray-600">{pipeline.opportunity?.company_name}</div>
                   <div className="flex items-center gap-2 mt-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      pipeline.stage === 'hired' ? 'bg-green-100 text-green-800' :
-                      pipeline.stage === 'offer' ? 'bg-blue-100 text-blue-800' :
-                      pipeline.stage === 'interview' ? 'bg-purple-100 text-purple-800' :
-                      pipeline.stage === 'screening' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        pipeline.stage === 'hired'
+                          ? 'bg-green-100 text-green-800'
+                          : pipeline.stage === 'offer'
+                            ? 'bg-blue-100 text-blue-800'
+                            : pipeline.stage === 'interview'
+                              ? 'bg-purple-100 text-purple-800'
+                              : pipeline.stage === 'screening'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
                       Stage: {pipeline.stage}
                     </span>
                     {pipeline.recruiter_rating && (
-                      <span className="text-xs text-gray-500">Rating: {pipeline.recruiter_rating}/5</span>
+                      <span className="text-xs text-gray-500">
+                        Rating: {pipeline.recruiter_rating}/5
+                      </span>
                     )}
                   </div>
                 </div>
                 <div className="text-right">
                   <StatusBadge status={pipeline.status || 'active'} />
                   <div className="text-xs text-gray-500 mt-1">
-                    {pipeline.stage_changed_at && new Date(pipeline.stage_changed_at).toLocaleDateString()}
+                    {pipeline.stage_changed_at &&
+                      new Date(pipeline.stage_changed_at).toLocaleDateString()}
                   </div>
                 </div>
               </div>
@@ -936,10 +1144,17 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
       {/* Interviews */}
       {interviews.length > 0 && (
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <SectionHeader icon={<CalendarIcon className="h-5 w-5" />} title="Interview History" count={interviews.length} />
+          <SectionHeader
+            icon={<CalendarIcon className="h-5 w-5" />}
+            title="Interview History"
+            count={interviews.length}
+          />
           <div className="space-y-3">
             {interviews.map((interview, idx) => (
-              <div key={interview.id || idx} className="flex items-start justify-between p-3 bg-gray-50 rounded-lg">
+              <div
+                key={interview.id || idx}
+                className="flex items-start justify-between p-3 bg-gray-50 rounded-lg"
+              >
                 <div>
                   <div className="font-medium text-gray-900">{interview.job_title}</div>
                   <div className="text-sm text-gray-600">Interviewer: {interview.interviewer}</div>
@@ -947,14 +1162,20 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
                     <CalendarIcon className="h-3 w-3" />
                     {interview.date && new Date(interview.date).toLocaleString()}
                     <span className="ml-2 capitalize">{interview.type}</span>
-                    {interview.meeting_type && <span className="ml-2">({interview.meeting_type})</span>}
+                    {interview.meeting_type && (
+                      <span className="ml-2">({interview.meeting_type})</span>
+                    )}
                   </div>
-                  {interview.duration && <div className="text-xs text-gray-500">Duration: {interview.duration} mins</div>}
+                  {interview.duration && (
+                    <div className="text-xs text-gray-500">Duration: {interview.duration} mins</div>
+                  )}
                 </div>
                 <div className="text-right">
                   <StatusBadge status={interview.status || 'scheduled'} />
                   {interview.scorecard?.overall_rating && (
-                    <div className="text-xs text-yellow-600 mt-1">⭐ {interview.scorecard.overall_rating}/5</div>
+                    <div className="text-xs text-yellow-600 mt-1">
+                      ⭐ {interview.scorecard.overall_rating}/5
+                    </div>
                   )}
                 </div>
               </div>
@@ -966,22 +1187,32 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
       {/* Course Progress */}
       {courseProgress.length > 0 && (
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <SectionHeader icon={<BookOpenIcon className="h-5 w-5" />} title="Course Progress" count={courseProgress.length} />
+          <SectionHeader
+            icon={<BookOpenIcon className="h-5 w-5" />}
+            title="Course Progress"
+            count={courseProgress.length}
+          />
           <div className="space-y-3">
             {courseProgress.slice(0, 5).map((progress, idx) => (
               <div key={progress.id || idx} className="p-3 bg-gray-50 rounded-lg">
                 <div className="flex items-start justify-between">
                   <div>
-                    <div className="font-medium text-gray-900 text-sm">{progress.course?.title || 'Course'}</div>
-                    <div className="text-xs text-gray-600">{progress.lesson?.title || 'Lesson'}</div>
+                    <div className="font-medium text-gray-900 text-sm">
+                      {progress.course?.title || 'Course'}
+                    </div>
+                    <div className="text-xs text-gray-600">
+                      {progress.lesson?.title || 'Lesson'}
+                    </div>
                   </div>
                   <StatusBadge status={progress.status || 'not_started'} />
                 </div>
                 <div className="mt-2 flex items-center gap-2">
                   <div className="flex-1 bg-gray-200 rounded-full h-1.5">
-                    <div 
-                      className="bg-primary-600 h-1.5 rounded-full" 
-                      style={{ width: `${progress.video_completed ? 100 : (progress.scroll_position_percent || 0)}%` }}
+                    <div
+                      className="bg-primary-600 h-1.5 rounded-full"
+                      style={{
+                        width: `${progress.video_completed ? 100 : progress.scroll_position_percent || 0}%`,
+                      }}
                     ></div>
                   </div>
                   <span className="text-xs text-gray-500">
@@ -997,15 +1228,24 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
       {/* Quiz Progress */}
       {quizProgress.length > 0 && (
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <SectionHeader icon={<DocumentTextIcon className="h-5 w-5" />} title="Quiz Progress" count={quizProgress.length} />
+          <SectionHeader
+            icon={<DocumentTextIcon className="h-5 w-5" />}
+            title="Quiz Progress"
+            count={quizProgress.length}
+          />
           <div className="space-y-2">
             {quizProgress.map((quiz, idx) => (
-              <div key={quiz.id || idx} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+              <div
+                key={quiz.id || idx}
+                className="flex items-center justify-between p-2 bg-gray-50 rounded"
+              >
                 <div>
-                  <div className="font-medium text-gray-900 text-sm">{quiz.quiz?.title || 'Quiz'}</div>
+                  <div className="font-medium text-gray-900 text-sm">
+                    {quiz.quiz?.title || 'Quiz'}
+                  </div>
                   <div className="text-xs text-gray-500">
-                    Score: {quiz.correct_answers || 0}/{quiz.total_questions || 0} 
-                    ({quiz.score_percentage || 0}%)
+                    Score: {quiz.correct_answers || 0}/{quiz.total_questions || 0}(
+                    {quiz.score_percentage || 0}%)
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -1021,12 +1261,21 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
       {/* Career AI Conversations */}
       {careerConversations.length > 0 && (
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <SectionHeader icon={<ChatBubbleLeftRightIcon className="h-5 w-5" />} title="Career AI Conversations" count={careerConversations.length} />
+          <SectionHeader
+            icon={<ChatBubbleLeftRightIcon className="h-5 w-5" />}
+            title="Career AI Conversations"
+            count={careerConversations.length}
+          />
           <div className="space-y-2">
             {careerConversations.map((convo, idx) => (
-              <div key={convo.id || idx} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+              <div
+                key={convo.id || idx}
+                className="flex items-center justify-between p-2 bg-gray-50 rounded"
+              >
                 <div>
-                  <div className="font-medium text-gray-900 text-sm">{convo.title || 'Conversation'}</div>
+                  <div className="font-medium text-gray-900 text-sm">
+                    {convo.title || 'Conversation'}
+                  </div>
                   <div className="text-xs text-gray-500">
                     {convo.updated_at && new Date(convo.updated_at).toLocaleDateString()}
                   </div>
@@ -1040,13 +1289,24 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
       {/* Messages/Conversations */}
       {conversations.length > 0 && (
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <SectionHeader icon={<ChatBubbleLeftRightIcon className="h-5 w-5" />} title="Messages" count={conversations.length} />
+          <SectionHeader
+            icon={<ChatBubbleLeftRightIcon className="h-5 w-5" />}
+            title="Messages"
+            count={conversations.length}
+          />
           <div className="space-y-2">
             {conversations.slice(0, 5).map((convo, idx) => (
-              <div key={convo.id || idx} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+              <div
+                key={convo.id || idx}
+                className="flex items-center justify-between p-2 bg-gray-50 rounded"
+              >
                 <div className="flex-1">
-                  <div className="font-medium text-gray-900 text-sm">{convo.subject || 'Conversation'}</div>
-                  <div className="text-xs text-gray-500 truncate">{convo.last_message_preview || 'No messages'}</div>
+                  <div className="font-medium text-gray-900 text-sm">
+                    {convo.subject || 'Conversation'}
+                  </div>
+                  <div className="text-xs text-gray-500 truncate">
+                    {convo.last_message_preview || 'No messages'}
+                  </div>
                 </div>
                 <div className="text-right">
                   {convo.student_unread_count > 0 && (
@@ -1067,7 +1327,11 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
       {/* Profile Views */}
       {profileViews.length > 0 && (
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <SectionHeader icon={<EyeIcon className="h-5 w-5" />} title="Profile Views" count={profileViews.length} />
+          <SectionHeader
+            icon={<EyeIcon className="h-5 w-5" />}
+            title="Profile Views"
+            count={profileViews.length}
+          />
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
             <div className="text-center p-3 bg-blue-50 rounded-lg">
               <div className="text-xl font-bold text-blue-600">{profileViews.length}</div>
@@ -1075,7 +1339,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
             </div>
             <div className="text-center p-3 bg-purple-50 rounded-lg">
               <div className="text-xl font-bold text-purple-600">
-                {profileViews.filter(v => v.viewer_type === 'recruiter').length}
+                {profileViews.filter((v) => v.viewer_type === 'recruiter').length}
               </div>
               <div className="text-xs text-gray-500">By Recruiters</div>
             </div>
@@ -1084,7 +1348,9 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
             {profileViews.slice(0, 10).map((view, idx) => (
               <div key={view.id || idx} className="flex items-center justify-between text-xs p-1">
                 <span className="capitalize text-gray-600">{view.viewer_type}</span>
-                <span className="text-gray-500">{view.viewed_at && new Date(view.viewed_at).toLocaleDateString()}</span>
+                <span className="text-gray-500">
+                  {view.viewed_at && new Date(view.viewed_at).toLocaleDateString()}
+                </span>
               </div>
             ))}
           </div>
@@ -1094,10 +1360,17 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
       {/* Search History */}
       {searchHistory.length > 0 && (
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <SectionHeader icon={<MagnifyingGlassIcon className="h-5 w-5" />} title="Job Search History" count={searchHistory.length} />
+          <SectionHeader
+            icon={<MagnifyingGlassIcon className="h-5 w-5" />}
+            title="Job Search History"
+            count={searchHistory.length}
+          />
           <div className="flex flex-wrap gap-2">
             {searchHistory.map((search, idx) => (
-              <span key={search.id || idx} className="inline-flex items-center px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">
+              <span
+                key={search.id || idx}
+                className="inline-flex items-center px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
+              >
                 {search.search_term}
                 {search.search_count > 1 && (
                   <span className="ml-1 text-xs text-gray-500">({search.search_count})</span>
@@ -1111,13 +1384,22 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
       {/* Notifications */}
       {notifications.length > 0 && (
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <SectionHeader icon={<BellIcon className="h-5 w-5" />} title="Recent Notifications" count={notifications.filter(n => !n.read).length} />
+          <SectionHeader
+            icon={<BellIcon className="h-5 w-5" />}
+            title="Recent Notifications"
+            count={notifications.filter((n) => !n.read).length}
+          />
           <div className="space-y-2 max-h-48 overflow-y-auto">
             {notifications.slice(0, 10).map((notif, idx) => (
-              <div key={notif.id || idx} className={`p-2 rounded ${notif.read ? 'bg-gray-50' : 'bg-blue-50 border-l-2 border-blue-500'}`}>
+              <div
+                key={notif.id || idx}
+                className={`p-2 rounded ${notif.read ? 'bg-gray-50' : 'bg-blue-50 border-l-2 border-blue-500'}`}
+              >
                 <div className="font-medium text-gray-900 text-sm">{notif.title}</div>
                 <div className="text-xs text-gray-600 truncate">{notif.message}</div>
-                <div className="text-xs text-gray-400 mt-1">{notif.created_at && new Date(notif.created_at).toLocaleDateString()}</div>
+                <div className="text-xs text-gray-400 mt-1">
+                  {notif.created_at && new Date(notif.created_at).toLocaleDateString()}
+                </div>
               </div>
             ))}
           </div>
@@ -1127,7 +1409,11 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
       {/* Social Links */}
       {socialLinks.length > 0 && (
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <SectionHeader icon={<LinkIcon className="h-5 w-5" />} title="Social Links" count={socialLinks.length} />
+          <SectionHeader
+            icon={<LinkIcon className="h-5 w-5" />}
+            title="Social Links"
+            count={socialLinks.length}
+          />
           <div className="flex flex-wrap gap-2">
             {socialLinks.map((link, idx) => (
               <a
@@ -1155,7 +1441,10 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
                 <div className="text-xs text-gray-500 mb-2">Hobbies</div>
                 <div className="flex flex-wrap gap-2">
                   {student.hobbies.map((hobby: string, idx: number) => (
-                    <span key={idx} className="px-3 py-1 bg-pink-100 text-pink-800 rounded-full text-sm">
+                    <span
+                      key={idx}
+                      className="px-3 py-1 bg-pink-100 text-pink-800 rounded-full text-sm"
+                    >
                       {hobby}
                     </span>
                   ))}
@@ -1167,7 +1456,10 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
                 <div className="text-xs text-gray-500 mb-2">Interests</div>
                 <div className="flex flex-wrap gap-2">
                   {student.interests.map((interest: string, idx: number) => (
-                    <span key={idx} className="px-3 py-1 bg-cyan-100 text-cyan-800 rounded-full text-sm">
+                    <span
+                      key={idx}
+                      className="px-3 py-1 bg-cyan-100 text-cyan-800 rounded-full text-sm"
+                    >
                       {interest}
                     </span>
                   ))}
@@ -1181,10 +1473,17 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
       {/* Languages */}
       {student.languages?.length > 0 && (
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <SectionHeader icon={<UserGroupIcon className="h-5 w-5" />} title="Languages" count={student.languages.length} />
+          <SectionHeader
+            icon={<UserGroupIcon className="h-5 w-5" />}
+            title="Languages"
+            count={student.languages.length}
+          />
           <div className="flex flex-wrap gap-2">
             {student.languages.map((lang: any, idx: number) => (
-              <span key={idx} className="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm">
+              <span
+                key={idx}
+                className="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm"
+              >
                 {typeof lang === 'string' ? lang : `${lang.name} (${lang.proficiency || 'Basic'})`}
               </span>
             ))}
@@ -1195,7 +1494,10 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
       {/* Guardian Information */}
       {(student.guardianName || student.guardianPhone || student.guardianEmail) && (
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <SectionHeader icon={<UserGroupIcon className="h-5 w-5" />} title="Guardian Information" />
+          <SectionHeader
+            icon={<UserGroupIcon className="h-5 w-5" />}
+            title="Guardian Information"
+          />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             {student.guardianName && (
               <div className="flex flex-col">
@@ -1268,7 +1570,9 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
       {(student.bio || student.profile?.bio) && (
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <SectionHeader icon={<DocumentTextIcon className="h-5 w-5" />} title="Bio" />
-          <p className="text-sm text-gray-700 leading-relaxed">{student.bio || student.profile?.bio}</p>
+          <p className="text-sm text-gray-700 leading-relaxed">
+            {student.bio || student.profile?.bio}
+          </p>
         </div>
       )}
 
@@ -1284,17 +1588,25 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
             <div>
               <p className="text-sm font-medium text-gray-900">Application Submitted</p>
               <p className="text-xs text-gray-500">
-                {student.applied_date ? new Date(student.applied_date).toLocaleDateString() : 
-                 student.created_at ? new Date(student.created_at).toLocaleDateString() : 'N/A'}
+                {student.applied_date
+                  ? new Date(student.applied_date).toLocaleDateString()
+                  : student.created_at
+                    ? new Date(student.created_at).toLocaleDateString()
+                    : 'N/A'}
               </p>
             </div>
           </div>
           <div className="flex items-start">
             <div className="flex flex-col items-center mr-4">
-              <div className={`w-3 h-3 ${
-                student.approval_status === 'approved' || student.approval_status === 'verified' ? 'bg-green-600' : 
-                student.approval_status === 'rejected' ? 'bg-red-600' : 'bg-gray-300'
-              } rounded-full`}></div>
+              <div
+                className={`w-3 h-3 ${
+                  student.approval_status === 'approved' || student.approval_status === 'verified'
+                    ? 'bg-green-600'
+                    : student.approval_status === 'rejected'
+                      ? 'bg-red-600'
+                      : 'bg-gray-300'
+                } rounded-full`}
+              ></div>
             </div>
             <div>
               <p className="text-sm font-medium text-gray-900">Application Decision</p>
@@ -1308,7 +1620,10 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
 
       {/* Career & Employment Data Summary - Always show with empty states */}
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 p-4">
-        <SectionHeader icon={<BriefcaseIcon className="h-5 w-5 text-blue-600" />} title="Career & Employment Data" />
+        <SectionHeader
+          icon={<BriefcaseIcon className="h-5 w-5 text-blue-600" />}
+          title="Career & Employment Data"
+        />
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           <div className="bg-white rounded-lg p-3 text-center shadow-sm">
             <div className="text-2xl font-bold text-blue-600">{internships.length}</div>
@@ -1355,16 +1670,22 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
             <div className="text-xs text-gray-500">Profile Views</div>
           </div>
           <div className="bg-white rounded-lg p-3 text-center shadow-sm">
-            <div className="text-2xl font-bold text-amber-600">{notifications.filter(n => !n.read).length}</div>
+            <div className="text-2xl font-bold text-amber-600">
+              {notifications.filter((n) => !n.read).length}
+            </div>
             <div className="text-xs text-gray-500">Unread Notifications</div>
           </div>
         </div>
-        {internships.length === 0 && placements.length === 0 && competitionResults.length === 0 && 
-         skillBadges.length === 0 && pipelineStatus.length === 0 && interviews.length === 0 && (
-          <p className="text-sm text-gray-500 italic mt-3 text-center">
-            No career data available yet. Data will appear here as the student progresses.
-          </p>
-        )}
+        {internships.length === 0 &&
+          placements.length === 0 &&
+          competitionResults.length === 0 &&
+          skillBadges.length === 0 &&
+          pipelineStatus.length === 0 &&
+          interviews.length === 0 && (
+            <p className="text-sm text-gray-500 italic mt-3 text-center">
+              No career data available yet. Data will appear here as the student progresses.
+            </p>
+          )}
       </div>
     </div>
   );

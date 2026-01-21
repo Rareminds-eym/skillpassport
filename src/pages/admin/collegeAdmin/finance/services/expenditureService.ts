@@ -102,13 +102,15 @@ export interface ExpenditureFilters {
 class ExpenditureService {
   // Get current user's college ID
   private async getCurrentCollegeId(): Promise<string> {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
-    
+
     // Try to get college_id from user metadata
     const collegeId = user.user_metadata?.college_id;
     if (collegeId) return collegeId;
-    
+
     // Fallback: get from organizations table
     const { data: orgs } = await supabase
       .from('organizations')
@@ -116,11 +118,11 @@ class ExpenditureService {
       .eq('organization_type', 'college')
       .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
       .limit(1);
-    
+
     if (orgs && orgs.length > 0) {
       return orgs[0].id;
     }
-    
+
     throw new Error('No college found for user');
   }
 
@@ -128,7 +130,7 @@ class ExpenditureService {
   async getStudentFeeLedger(filters?: ExpenditureFilters & { page?: number; limit?: number }) {
     try {
       const collegeId = await this.getCurrentCollegeId();
-      
+
       let query = supabase
         .from('v_student_fee_ledger_detailed')
         .select('*', { count: 'exact' })
@@ -169,7 +171,9 @@ class ExpenditureService {
       }
 
       if (filters?.search) {
-        query = query.or(`student_name.ilike.%${filters.search}%,roll_number.ilike.%${filters.search}%,admission_number.ilike.%${filters.search}%,fee_head_name.ilike.%${filters.search}%`);
+        query = query.or(
+          `student_name.ilike.%${filters.search}%,roll_number.ilike.%${filters.search}%,admission_number.ilike.%${filters.search}%,fee_head_name.ilike.%${filters.search}%`
+        );
       }
 
       // Apply pagination
@@ -180,7 +184,7 @@ class ExpenditureService {
       }
 
       const { data, error, count } = await query;
-      
+
       if (error) throw error;
       return { data: data as StudentFeeLedgerDetailed[], count };
     } catch (error) {
@@ -210,10 +214,10 @@ class ExpenditureService {
           department_name: 'Computer Science',
           status_description: 'Partial',
           days_overdue: 0,
-          payment_percentage: 70.0
-        }
+          payment_percentage: 70.0,
+        },
       ];
-      
+
       return { data: mockData, count: mockData.length };
     }
   }
@@ -222,10 +226,11 @@ class ExpenditureService {
   async getExpenditureSummary(): Promise<ExpenditureSummary> {
     try {
       const collegeId = await this.getCurrentCollegeId();
-      
-      const { data, error } = await supabase
-        .rpc('get_expenditure_summary', { p_college_id: collegeId });
-      
+
+      const { data, error } = await supabase.rpc('get_expenditure_summary', {
+        p_college_id: collegeId,
+      });
+
       if (error) throw error;
       return data[0] as ExpenditureSummary;
     } catch (error) {
@@ -238,7 +243,7 @@ class ExpenditureService {
         overdue_students: 8,
         paid_students: 25,
         pending_students: 10,
-        collection_percentage: 66.0
+        collection_percentage: 66.0,
       };
     }
   }
@@ -247,8 +252,9 @@ class ExpenditureService {
   async getDepartmentExpenditure(): Promise<DepartmentExpenditure[]> {
     try {
       const collegeId = await this.getCurrentCollegeId();
-      const { data, error } = await supabase
-        .rpc('get_department_expenditure', { p_college_id: collegeId });
+      const { data, error } = await supabase.rpc('get_department_expenditure', {
+        p_college_id: collegeId,
+      });
       if (error) throw error;
       return data as DepartmentExpenditure[];
     } catch (error) {
@@ -262,7 +268,7 @@ class ExpenditureService {
           total_paid_amount: 650000,
           total_balance: 300000,
           student_count: 19,
-          collection_percentage: 68.4
+          collection_percentage: 68.4,
         },
         {
           department_id: 'dept-commerce',
@@ -272,7 +278,7 @@ class ExpenditureService {
           total_paid_amount: 480000,
           total_balance: 240000,
           student_count: 14,
-          collection_percentage: 66.7
+          collection_percentage: 66.7,
         },
         {
           department_id: 'dept-science',
@@ -282,18 +288,19 @@ class ExpenditureService {
           total_paid_amount: 290000,
           total_balance: 190000,
           student_count: 10,
-          collection_percentage: 60.4
-        }
+          collection_percentage: 60.4,
+        },
       ];
     }
   }
-  
+
   //Get Program wise Expenditure
   async getProgramExpenditure(): Promise<ProgramExpenditure[]> {
     try {
       const collegeID = await this.getCurrentCollegeId();
-      const { data, error } = await supabase
-        .rpc('get_program_expenditure', { p_college_id: collegeID });
+      const { data, error } = await supabase.rpc('get_program_expenditure', {
+        p_college_id: collegeID,
+      });
       if (error) throw error;
       return data as ProgramExpenditure[];
     } catch (error) {
@@ -308,7 +315,7 @@ class ExpenditureService {
           total_paid_amount: 420000,
           total_balance: 180000,
           student_count: 12,
-          collection_percentage: 70.0
+          collection_percentage: 70.0,
         },
         {
           program_id: 'prog-bca',
@@ -319,7 +326,7 @@ class ExpenditureService {
           total_paid_amount: 230000,
           total_balance: 120000,
           student_count: 7,
-          collection_percentage: 65.7
+          collection_percentage: 65.7,
         },
         {
           program_id: 'prog-bcom',
@@ -330,7 +337,7 @@ class ExpenditureService {
           total_paid_amount: 480000,
           total_balance: 240000,
           student_count: 14,
-          collection_percentage: 66.7
+          collection_percentage: 66.7,
         },
         {
           program_id: 'prog-bsc',
@@ -341,8 +348,8 @@ class ExpenditureService {
           total_paid_amount: 290000,
           total_balance: 190000,
           student_count: 10,
-          collection_percentage: 60.4
-        }
+          collection_percentage: 60.4,
+        },
       ];
     }
   }
@@ -350,7 +357,7 @@ class ExpenditureService {
   // Export data to CSV
   async exportToCSV(filters?: ExpenditureFilters): Promise<string> {
     const { data } = await this.getStudentFeeLedger({ ...filters, limit: 10000 });
-    
+
     if (!data || data.length === 0) {
       throw new Error('No data to export');
     }
@@ -374,11 +381,11 @@ class ExpenditureService {
       'Payment %',
       'Latest Payment Date',
       'Payment Method',
-      'Transaction ID'
+      'Transaction ID',
     ];
 
     // Create CSV rows
-    const rows = data.map(row => [
+    const rows = data.map((row) => [
       row.student_name,
       row.roll_number || '',
       row.admission_number || '',
@@ -396,12 +403,12 @@ class ExpenditureService {
       row.payment_percentage.toString(),
       row.payment_date || '',
       row.payment_method || '',
-      row.transaction_id || ''
+      row.transaction_id || '',
     ]);
 
     // Combine headers and rows
     const csvContent = [headers, ...rows]
-      .map(row => row.map(field => `"${field}"`).join(','))
+      .map((row) => row.map((field) => `"${field}"`).join(','))
       .join('\n');
 
     return csvContent;
@@ -411,26 +418,26 @@ class ExpenditureService {
   async getFilterOptions() {
     try {
       const collegeId = await this.getCurrentCollegeId();
-      
+
       const { data, error } = await supabase
         .from('v_student_fee_ledger_detailed')
         .select('academic_year, semester, payment_status, department_name, program_name_full')
         .eq('college_id', collegeId);
-      
+
       if (error) throw error;
-      
-      const academicYears = [...new Set(data.map(d => d.academic_year))].filter(Boolean).sort();
-      const semesters = [...new Set(data.map(d => d.semester))].filter(Boolean).sort();
-      const paymentStatuses = [...new Set(data.map(d => d.payment_status))].filter(Boolean);
-      const departments = [...new Set(data.map(d => d.department_name))].filter(Boolean).sort();
-      const programs = [...new Set(data.map(d => d.program_name_full))].filter(Boolean).sort();
-      
+
+      const academicYears = [...new Set(data.map((d) => d.academic_year))].filter(Boolean).sort();
+      const semesters = [...new Set(data.map((d) => d.semester))].filter(Boolean).sort();
+      const paymentStatuses = [...new Set(data.map((d) => d.payment_status))].filter(Boolean);
+      const departments = [...new Set(data.map((d) => d.department_name))].filter(Boolean).sort();
+      const programs = [...new Set(data.map((d) => d.program_name_full))].filter(Boolean).sort();
+
       return {
         academicYears,
         semesters,
         paymentStatuses,
         departments,
-        programs
+        programs,
       };
     } catch (error) {
       // Return mock filter options if view doesn't exist
@@ -439,7 +446,7 @@ class ExpenditureService {
         semesters: ['1', '2', '3', '4', '5', '6', '7', '8'],
         paymentStatuses: ['paid', 'partial', 'pending', 'overdue'],
         departments: ['Computer Science', 'Commerce', 'Science'],
-        programs: ['B.Tech Computer Science', 'BCA', 'B.Com', 'B.Sc']
+        programs: ['B.Tech Computer Science', 'BCA', 'B.Com', 'B.Sc'],
       };
     }
   }

@@ -1,9 +1,9 @@
 /**
  * AdaptiveQuestion Component
- * 
+ *
  * Renders an adaptive aptitude test question with per-question timer.
  * Difficulty level is hidden from the user for a better test experience.
- * 
+ *
  * @module features/assessment/career-test/components/questions/AdaptiveQuestion
  */
 
@@ -37,7 +37,7 @@ export const AdaptiveQuestion: React.FC<AdaptiveQuestionProps> = ({
   subtag,
   timer,
   loading = false,
-  disabled = false
+  disabled = false,
 }) => {
   // Format timer display
   const minutes = Math.floor(timer / 60);
@@ -70,7 +70,7 @@ export const AdaptiveQuestion: React.FC<AdaptiveQuestionProps> = ({
             <Target className="w-3 h-3" />
             Level {difficultyLevel}
           </span>
-          
+
           {/* Subtag/Category */}
           {subtag && (
             <span className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-full text-xs font-medium text-gray-600 capitalize">
@@ -80,16 +80,16 @@ export const AdaptiveQuestion: React.FC<AdaptiveQuestionProps> = ({
         </div>
 
         {/* Per-question Timer (90 seconds) */}
-        <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold ${getTimerColor()}`}>
+        <div
+          className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold ${getTimerColor()}`}
+        >
           <Clock className="w-4 h-4" />
           {timerDisplay}
         </div>
       </div>
 
       {/* Question Text */}
-      <h3 className="text-xl md:text-2xl font-medium text-gray-800 leading-snug">
-        {questionText}
-      </h3>
+      <h3 className="text-xl md:text-2xl font-medium text-gray-800 leading-snug">{questionText}</h3>
 
       {/* Options */}
       <div className="space-y-3 mt-6">
@@ -110,28 +110,30 @@ export const AdaptiveQuestion: React.FC<AdaptiveQuestionProps> = ({
               className={`
                 w-full border-2 rounded-xl p-4 transition-all text-left
                 ${disabled ? 'cursor-not-allowed opacity-70' : ''}
-                ${isSelected
-                  ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-500/30'
-                  : disabled 
-                    ? 'border-gray-200 bg-gray-50'
-                    : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                ${
+                  isSelected
+                    ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-500/30'
+                    : disabled
+                      ? 'border-gray-200 bg-gray-50'
+                      : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
                 }
               `}
             >
               <div className="flex items-start gap-3">
-                <div className={`
+                <div
+                  className={`
                   w-8 h-8 rounded-lg flex items-center justify-center shrink-0 font-bold transition-all
-                  ${isSelected
-                    ? 'bg-indigo-500 text-white'
-                    : 'bg-gray-100 text-gray-600'
-                  }
-                `}>
+                  ${isSelected ? 'bg-indigo-500 text-white' : 'bg-gray-100 text-gray-600'}
+                `}
+                >
                   {optionKey}
                 </div>
-                <p className={`
+                <p
+                  className={`
                   flex-1 font-medium text-lg
                   ${isSelected ? 'text-indigo-700' : 'text-gray-700'}
-                `}>
+                `}
+                >
                   {optionText}
                 </p>
               </div>

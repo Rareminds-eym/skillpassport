@@ -1,7 +1,18 @@
 import React, { useState } from 'react';
-import { XMarkIcon, PlusIcon, TrashIcon, ArrowUpIcon, ArrowDownIcon } from '@heroicons/react/24/outline';
+import {
+  XMarkIcon,
+  PlusIcon,
+  TrashIcon,
+  ArrowUpIcon,
+  ArrowDownIcon,
+} from '@heroicons/react/24/outline';
 import { BookOpen, Target, CheckSquare, FileText } from 'lucide-react';
-import type { Curriculum, Unit, LearningOutcome, AssessmentMapping } from '../../../../types/college';
+import type {
+  Curriculum,
+  Unit,
+  LearningOutcome,
+  AssessmentMapping,
+} from '../../../../types/college';
 
 interface CurriculumBuilderFormProps {
   isOpen: boolean;
@@ -37,7 +48,9 @@ const CurriculumBuilderForm: React.FC<CurriculumBuilderFormProps> = ({
 
   const [units, setUnits] = useState<Unit[]>(curriculum?.units || []);
   const [outcomes, setOutcomes] = useState<LearningOutcome[]>(curriculum?.outcomes || []);
-  const [assessmentMappings, setAssessmentMappings] = useState<AssessmentMapping[]>(curriculum?.assessment_mappings || []);
+  const [assessmentMappings, setAssessmentMappings] = useState<AssessmentMapping[]>(
+    curriculum?.assessment_mappings || []
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'basic' | 'units' | 'outcomes' | 'mappings'>('basic');
@@ -58,20 +71,20 @@ const CurriculumBuilderForm: React.FC<CurriculumBuilderFormProps> = ({
   };
 
   const updateUnit = (id: string, field: keyof Unit, value: any) => {
-    setUnits(units.map(u => u.id === id ? { ...u, [field]: value } : u));
+    setUnits(units.map((u) => (u.id === id ? { ...u, [field]: value } : u)));
   };
 
   const removeUnit = (id: string) => {
-    setUnits(units.filter(u => u.id !== id));
+    setUnits(units.filter((u) => u.id !== id));
   };
 
   const moveUnit = (index: number, direction: 'up' | 'down') => {
     const newUnits = [...units];
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
     if (targetIndex < 0 || targetIndex >= units.length) return;
-    
+
     [newUnits[index], newUnits[targetIndex]] = [newUnits[targetIndex], newUnits[index]];
-    newUnits.forEach((unit, idx) => unit.sequence = idx + 1);
+    newUnits.forEach((unit, idx) => (unit.sequence = idx + 1));
     setUnits(newUnits);
   };
 
@@ -87,24 +100,26 @@ const CurriculumBuilderForm: React.FC<CurriculumBuilderFormProps> = ({
   };
 
   const updateOutcome = (id: string, field: keyof LearningOutcome, value: any) => {
-    setOutcomes(outcomes.map(o => o.id === id ? { ...o, [field]: value } : o));
+    setOutcomes(outcomes.map((o) => (o.id === id ? { ...o, [field]: value } : o)));
   };
 
   const removeOutcome = (id: string) => {
-    setOutcomes(outcomes.filter(o => o.id !== id));
-    setAssessmentMappings(assessmentMappings.filter(m => m.outcome_id !== id));
+    setOutcomes(outcomes.filter((o) => o.id !== id));
+    setAssessmentMappings(assessmentMappings.filter((m) => m.outcome_id !== id));
   };
 
   const toggleUnitForOutcome = (outcomeId: string, unitId: string) => {
-    setOutcomes(outcomes.map(o => {
-      if (o.id === outcomeId) {
-        const unitIds = o.unit_ids.includes(unitId)
-          ? o.unit_ids.filter(id => id !== unitId)
-          : [...o.unit_ids, unitId];
-        return { ...o, unit_ids: unitIds };
-      }
-      return o;
-    }));
+    setOutcomes(
+      outcomes.map((o) => {
+        if (o.id === outcomeId) {
+          const unitIds = o.unit_ids.includes(unitId)
+            ? o.unit_ids.filter((id) => id !== unitId)
+            : [...o.unit_ids, unitId];
+          return { ...o, unit_ids: unitIds };
+        }
+        return o;
+      })
+    );
   };
 
   // Assessment Mapping Management
@@ -131,7 +146,7 @@ const CurriculumBuilderForm: React.FC<CurriculumBuilderFormProps> = ({
     const updated = [...assessmentMappings];
     const types = updated[index].assessment_types;
     updated[index].assessment_types = types.includes(type as any)
-      ? types.filter(t => t !== type)
+      ? types.filter((t) => t !== type)
       : [...types, type as any];
     setAssessmentMappings(updated);
   };
@@ -146,19 +161,26 @@ const CurriculumBuilderForm: React.FC<CurriculumBuilderFormProps> = ({
     setError(null);
 
     // Validation
-    if (!formData.academic_year || !formData.department_id || !formData.program_id || !formData.course_id) {
+    if (
+      !formData.academic_year ||
+      !formData.department_id ||
+      !formData.program_id ||
+      !formData.course_id
+    ) {
       setError('All basic fields are required');
       setLoading(false);
       return;
     }
 
     // Check if all outcomes have assessment mappings
-    const unmappedOutcomes = outcomes.filter(o => 
-      !assessmentMappings.some(m => m.outcome_id === o.id && m.assessment_types.length > 0)
+    const unmappedOutcomes = outcomes.filter(
+      (o) => !assessmentMappings.some((m) => m.outcome_id === o.id && m.assessment_types.length > 0)
     );
 
     if (unmappedOutcomes.length > 0) {
-      setError(`${unmappedOutcomes.length} learning outcome(s) are not mapped to any assessment type`);
+      setError(
+        `${unmappedOutcomes.length} learning outcome(s) are not mapped to any assessment type`
+      );
       setLoading(false);
       return;
     }
@@ -183,7 +205,7 @@ const CurriculumBuilderForm: React.FC<CurriculumBuilderFormProps> = ({
 
   if (!isOpen) return null;
 
-  const filteredPrograms = programs.filter(p => p.department_id === formData.department_id);
+  const filteredPrograms = programs.filter((p) => p.department_id === formData.department_id);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -211,7 +233,7 @@ const CurriculumBuilderForm: React.FC<CurriculumBuilderFormProps> = ({
               { id: 'units', label: 'Units/Modules', icon: BookOpen },
               { id: 'outcomes', label: 'Learning Outcomes', icon: Target },
               { id: 'mappings', label: 'Assessment Mapping', icon: CheckSquare },
-            ].map(tab => {
+            ].map((tab) => {
               const Icon = tab.icon;
               return (
                 <button
@@ -256,11 +278,15 @@ const CurriculumBuilderForm: React.FC<CurriculumBuilderFormProps> = ({
                   <select
                     required
                     value={formData.semester}
-                    onChange={(e) => setFormData({ ...formData, semester: parseInt(e.target.value) })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, semester: parseInt(e.target.value) })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   >
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map(sem => (
-                      <option key={sem} value={sem}>Semester {sem}</option>
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
+                      <option key={sem} value={sem}>
+                        Semester {sem}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -274,12 +300,16 @@ const CurriculumBuilderForm: React.FC<CurriculumBuilderFormProps> = ({
                   <select
                     required
                     value={formData.department_id}
-                    onChange={(e) => setFormData({ ...formData, department_id: e.target.value, program_id: '' })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, department_id: e.target.value, program_id: '' })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Select Department</option>
-                    {departments.map(dept => (
-                      <option key={dept.id} value={dept.id}>{dept.name}</option>
+                    {departments.map((dept) => (
+                      <option key={dept.id} value={dept.id}>
+                        {dept.name}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -296,8 +326,10 @@ const CurriculumBuilderForm: React.FC<CurriculumBuilderFormProps> = ({
                     disabled={!formData.department_id}
                   >
                     <option value="">Select Program</option>
-                    {filteredPrograms.map(prog => (
-                      <option key={prog.id} value={prog.id}>{prog.name}</option>
+                    {filteredPrograms.map((prog) => (
+                      <option key={prog.id} value={prog.id}>
+                        {prog.name}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -314,7 +346,7 @@ const CurriculumBuilderForm: React.FC<CurriculumBuilderFormProps> = ({
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select Course</option>
-                  {courses.map(course => (
+                  {courses.map((course) => (
                     <option key={course.id} value={course.id}>
                       {course.course_code} - {course.course_name}
                     </option>
@@ -369,7 +401,9 @@ const CurriculumBuilderForm: React.FC<CurriculumBuilderFormProps> = ({
 
                         <div className="flex-1 space-y-3">
                           <div className="flex items-center gap-3">
-                            <span className="text-sm font-medium text-gray-600">Unit {unit.sequence}</span>
+                            <span className="text-sm font-medium text-gray-600">
+                              Unit {unit.sequence}
+                            </span>
                             <input
                               type="text"
                               value={unit.title}
@@ -386,17 +420,27 @@ const CurriculumBuilderForm: React.FC<CurriculumBuilderFormProps> = ({
                                 type="number"
                                 min="0"
                                 value={unit.credits}
-                                onChange={(e) => updateUnit(unit.id, 'credits', parseInt(e.target.value) || 0)}
+                                onChange={(e) =>
+                                  updateUnit(unit.id, 'credits', parseInt(e.target.value) || 0)
+                                }
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                               />
                             </div>
                             <div>
-                              <label className="block text-xs text-gray-600 mb-1">Estimated Hours</label>
+                              <label className="block text-xs text-gray-600 mb-1">
+                                Estimated Hours
+                              </label>
                               <input
                                 type="number"
                                 min="0"
                                 value={unit.estimated_hours}
-                                onChange={(e) => updateUnit(unit.id, 'estimated_hours', parseInt(e.target.value) || 0)}
+                                onChange={(e) =>
+                                  updateUnit(
+                                    unit.id,
+                                    'estimated_hours',
+                                    parseInt(e.target.value) || 0
+                                  )
+                                }
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                               />
                             </div>
@@ -442,8 +486,10 @@ const CurriculumBuilderForm: React.FC<CurriculumBuilderFormProps> = ({
                   {outcomes.map((outcome, index) => (
                     <div key={outcome.id} className="border border-gray-200 rounded-lg p-4">
                       <div className="flex items-start gap-3">
-                        <span className="text-sm font-medium text-gray-600 mt-2">CO{index + 1}</span>
-                        
+                        <span className="text-sm font-medium text-gray-600 mt-2">
+                          CO{index + 1}
+                        </span>
+
                         <div className="flex-1 space-y-3">
                           <textarea
                             rows={2}
@@ -455,22 +501,30 @@ const CurriculumBuilderForm: React.FC<CurriculumBuilderFormProps> = ({
 
                           <div className="grid grid-cols-2 gap-3">
                             <div>
-                              <label className="block text-xs text-gray-600 mb-1">Bloom's Taxonomy Level</label>
+                              <label className="block text-xs text-gray-600 mb-1">
+                                Bloom's Taxonomy Level
+                              </label>
                               <select
                                 value={outcome.bloom_level}
-                                onChange={(e) => updateOutcome(outcome.id, 'bloom_level', e.target.value)}
+                                onChange={(e) =>
+                                  updateOutcome(outcome.id, 'bloom_level', e.target.value)
+                                }
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                               >
-                                {bloomLevels.map(level => (
-                                  <option key={level} value={level}>{level}</option>
+                                {bloomLevels.map((level) => (
+                                  <option key={level} value={level}>
+                                    {level}
+                                  </option>
                                 ))}
                               </select>
                             </div>
 
                             <div>
-                              <label className="block text-xs text-gray-600 mb-1">Related Units</label>
+                              <label className="block text-xs text-gray-600 mb-1">
+                                Related Units
+                              </label>
                               <div className="flex flex-wrap gap-2">
-                                {units.map(unit => (
+                                {units.map((unit) => (
                                   <label key={unit.id} className="flex items-center gap-1">
                                     <input
                                       type="checkbox"
@@ -506,12 +560,15 @@ const CurriculumBuilderForm: React.FC<CurriculumBuilderFormProps> = ({
             <div className="space-y-4">
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
                 <p className="text-sm text-yellow-800">
-                  <strong>Required:</strong> Every learning outcome must be mapped to at least one assessment type.
+                  <strong>Required:</strong> Every learning outcome must be mapped to at least one
+                  assessment type.
                 </p>
               </div>
 
               <div className="flex justify-between items-center">
-                <p className="text-sm text-gray-600">{assessmentMappings.length} mappings defined</p>
+                <p className="text-sm text-gray-600">
+                  {assessmentMappings.length} mappings defined
+                </p>
                 <button
                   type="button"
                   onClick={addAssessmentMapping}
@@ -534,7 +591,9 @@ const CurriculumBuilderForm: React.FC<CurriculumBuilderFormProps> = ({
                       <div className="flex items-start gap-3">
                         <div className="flex-1 space-y-3">
                           <div>
-                            <label className="block text-xs text-gray-600 mb-1">Learning Outcome</label>
+                            <label className="block text-xs text-gray-600 mb-1">
+                              Learning Outcome
+                            </label>
                             <select
                               value={mapping.outcome_id}
                               onChange={(e) => updateMapping(index, 'outcome_id', e.target.value)}
@@ -549,10 +608,15 @@ const CurriculumBuilderForm: React.FC<CurriculumBuilderFormProps> = ({
                           </div>
 
                           <div>
-                            <label className="block text-xs text-gray-600 mb-1">Assessment Types</label>
+                            <label className="block text-xs text-gray-600 mb-1">
+                              Assessment Types
+                            </label>
                             <div className="flex flex-wrap gap-2">
-                              {assessmentTypes.map(type => (
-                                <label key={type} className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                              {assessmentTypes.map((type) => (
+                                <label
+                                  key={type}
+                                  className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50"
+                                >
                                   <input
                                     type="checkbox"
                                     checked={mapping.assessment_types.includes(type as any)}
@@ -566,13 +630,17 @@ const CurriculumBuilderForm: React.FC<CurriculumBuilderFormProps> = ({
                           </div>
 
                           <div>
-                            <label className="block text-xs text-gray-600 mb-1">Weightage (%)</label>
+                            <label className="block text-xs text-gray-600 mb-1">
+                              Weightage (%)
+                            </label>
                             <input
                               type="number"
                               min="0"
                               max="100"
                               value={mapping.weightage}
-                              onChange={(e) => updateMapping(index, 'weightage', parseInt(e.target.value) || 0)}
+                              onChange={(e) =>
+                                updateMapping(index, 'weightage', parseInt(e.target.value) || 0)
+                              }
                               className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                             />
                           </div>

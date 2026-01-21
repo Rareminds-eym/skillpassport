@@ -3,7 +3,7 @@ import RecruiterCopilot from '../../features/recruiter-copilot/components/Recrui
 
 /**
  * Recruitment Intelligence Page
- * 
+ *
  * Intelligent system specifically designed for recruiters to:
  * - Find and match top candidates
  * - Get candidate insights and analytics
@@ -12,11 +12,12 @@ import RecruiterCopilot from '../../features/recruiter-copilot/components/Recrui
  * - Get skill trends and market intelligence
  * - Access interview guidance
  * - Review recruitment pipeline
- * 
+ *
  * Wrapped with FeatureGate for recruiter_ai add-on access control
  */
 export default function RecruiterAI() {
   return (
+    // @ts-expect-error - Auto-suppressed for migration
     <FeatureGate featureKey="recruiter_ai" showUpgradePrompt={true}>
       <RecruiterCopilot />
     </FeatureGate>

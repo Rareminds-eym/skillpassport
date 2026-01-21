@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AssessmentResult } from '../types';
-import { 
-  ChartBarIcon, 
+import {
+  ChartBarIcon,
   ClockIcon,
   CheckCircleIcon,
   InformationCircleIcon,
@@ -10,17 +10,17 @@ import {
   BriefcaseIcon,
   BookOpenIcon,
   StarIcon,
-  AcademicCapIcon
+  AcademicCapIcon,
 } from '@heroicons/react/24/outline';
-import { 
-  IconBrain, 
-  IconTarget, 
+import {
+  IconBrain,
+  IconTarget,
   IconTrendingUp,
   IconSchool,
   IconBuilding,
   IconMoodSmile,
   IconCalculator,
-  IconUsers
+  IconUsers,
 } from '@tabler/icons-react';
 
 interface AssessmentsTabProps {
@@ -30,11 +30,11 @@ interface AssessmentsTabProps {
   studentGrade?: string;
 }
 
-const AssessmentsTab: React.FC<AssessmentsTabProps> = ({ 
-  assessmentResults, 
-  loading, 
+const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
+  assessmentResults,
+  loading,
   studentType = 'school',
-  studentGrade 
+  studentGrade,
 }) => {
   const [expandedAssessment, setExpandedAssessment] = useState<string | null>(null);
 
@@ -45,7 +45,7 @@ const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
         title: 'Career & Skill Assessments',
         subtitle: 'Professional readiness and career guidance assessments',
         icon: IconBuilding,
-        color: 'blue'
+        color: 'blue',
       };
     } else {
       const grade = parseInt(studentGrade || '0');
@@ -54,14 +54,14 @@ const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
           title: 'Learning & Development Assessments',
           subtitle: 'Middle school aptitude and interest assessments',
           icon: IconSchool,
-          color: 'green'
+          color: 'green',
         };
       } else {
         return {
           title: 'Academic & Career Assessments',
           subtitle: 'High school academic and career readiness assessments',
           icon: IconBrain,
-          color: 'purple'
+          color: 'purple',
         };
       }
     }
@@ -94,27 +94,27 @@ const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
 
   const formatAssessmentData = (assessment: AssessmentResult) => {
     const sections = [];
-    
+
     // RIASEC Interest Profile
     if (assessment.riasec_scores) {
       const riasecData = assessment.riasec_scores as any;
       const riasecLabels = {
         R: 'Realistic (Hands-on)',
-        I: 'Investigative (Thinking)', 
+        I: 'Investigative (Thinking)',
         A: 'Artistic (Creative)',
         S: 'Social (Helping)',
         E: 'Enterprising (Leading)',
-        C: 'Conventional (Organizing)'
+        C: 'Conventional (Organizing)',
       };
-      
+
       sections.push({
         title: 'Interest Profile (RIASEC)',
         icon: IconTarget,
         data: Object.entries(riasecData).map(([key, value]) => ({
           label: riasecLabels[key as keyof typeof riasecLabels] || key,
           value: `${value}/20`,
-          percentage: ((value as number) / 20) * 100
-        }))
+          percentage: ((value as number) / 20) * 100,
+        })),
       });
     }
 
@@ -123,12 +123,12 @@ const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
       const bigFiveData = assessment.bigfive_scores as any;
       const bigFiveLabels = {
         O: 'Openness to Experience',
-        C: 'Conscientiousness', 
+        C: 'Conscientiousness',
         E: 'Extraversion',
         A: 'Agreeableness',
-        N: 'Neuroticism'
+        N: 'Neuroticism',
       };
-      
+
       sections.push({
         title: 'Personality Traits (Big Five)',
         icon: IconMoodSmile,
@@ -137,8 +137,8 @@ const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
           .map(([key, value]) => ({
             label: bigFiveLabels[key as keyof typeof bigFiveLabels] || key,
             value: `${value}/5`,
-            percentage: ((value as number) / 5) * 100
-          }))
+            percentage: ((value as number) / 5) * 100,
+          })),
       });
     }
 
@@ -152,14 +152,14 @@ const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
           {
             label: 'Overall Score',
             value: `${knowledgeData.score || assessment.knowledge_score}/100`,
-            percentage: parseFloat(knowledgeData.score || assessment.knowledge_score || '0')
+            percentage: parseFloat(knowledgeData.score || assessment.knowledge_score || '0'),
           },
           {
             label: 'Questions Correct',
             value: `${knowledgeData.correctCount}/${knowledgeData.totalQuestions}`,
-            percentage: (knowledgeData.correctCount / knowledgeData.totalQuestions) * 100
-          }
-        ]
+            percentage: (knowledgeData.correctCount / knowledgeData.totalQuestions) * 100,
+          },
+        ],
       });
     }
 
@@ -174,8 +174,8 @@ const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
             label: cluster.title,
             value: `${cluster.fit} Fit (${cluster.matchScore}%)`,
             description: cluster.description,
-            percentage: cluster.matchScore
-          }))
+            percentage: cluster.matchScore,
+          })),
         });
       }
     }
@@ -184,7 +184,7 @@ const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
     if (assessment.skill_gap) {
       const skillGapData = assessment.skill_gap as any;
       const skillsToImprove = [];
-      
+
       if (skillGapData.priorityA) {
         skillsToImprove.push(...skillGapData.priorityA.slice(0, 2));
       }
@@ -199,8 +199,8 @@ const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
           data: skillsToImprove.map((skill: any) => ({
             label: skill.skill,
             value: `${skill.currentLevel} → ${skill.targetLevel}`,
-            description: skill.reason
-          }))
+            description: skill.reason,
+          })),
         });
       }
     }
@@ -214,8 +214,8 @@ const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
         data: Object.entries(workValuesData).map(([key, value]) => ({
           label: key.replace(/([A-Z])/g, ' $1').trim(),
           value: `${value}/5`,
-          percentage: ((value as number) / 5) * 100
-        }))
+          percentage: ((value as number) / 5) * 100,
+        })),
       });
     }
 
@@ -228,8 +228,9 @@ const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
         data: Object.entries(aptitudeData).map(([key, value]) => ({
           label: key.replace(/([A-Z])/g, ' $1').trim(),
           value: typeof value === 'object' ? `${(value as any).percentage}%` : `${value}`,
-          percentage: typeof value === 'object' ? (value as any).percentage : parseFloat(value as string)
-        }))
+          percentage:
+            typeof value === 'object' ? (value as any).percentage : parseFloat(value as string),
+        })),
       });
     }
 
@@ -242,8 +243,8 @@ const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
         data: Object.entries(employabilityData).map(([key, value]) => ({
           label: key.replace(/([A-Z])/g, ' $1').trim(),
           value: typeof value === 'object' ? JSON.stringify(value) : `${value}`,
-          percentage: typeof value === 'number' ? value : undefined
-        }))
+          percentage: typeof value === 'number' ? value : undefined,
+        })),
       });
     }
 
@@ -251,13 +252,13 @@ const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
     if (assessment.profile_snapshot) {
       const profileData = assessment.profile_snapshot as any;
       const profileItems: any[] = [];
-      
+
       if (profileData.keyPatterns) {
         Object.entries(profileData.keyPatterns).forEach(([key, value]) => {
           profileItems.push({
             label: key.charAt(0).toUpperCase() + key.slice(1),
             value: value as string,
-            description: `Key pattern in ${key}`
+            description: `Key pattern in ${key}`,
           });
         });
       }
@@ -267,7 +268,7 @@ const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
           profileItems.push({
             label: `Strength: ${strength.name}`,
             value: strength.description,
-            description: 'Identified aptitude strength'
+            description: 'Identified aptitude strength',
           });
         });
       }
@@ -276,7 +277,7 @@ const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
         sections.push({
           title: 'Profile Snapshot',
           icon: UserCircleIcon,
-          data: profileItems
+          data: profileItems,
         });
       }
     }
@@ -285,20 +286,20 @@ const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
     if (assessment.final_note) {
       const finalNoteData = assessment.final_note as any;
       const finalNoteItems: any[] = [];
-      
+
       if (finalNoteData.advantage) {
         finalNoteItems.push({
           label: 'Key Advantage',
           value: finalNoteData.advantage,
-          description: 'Your main strength identified'
+          description: 'Your main strength identified',
         });
       }
-      
+
       if (finalNoteData.growthFocus) {
         finalNoteItems.push({
           label: 'Growth Focus',
           value: finalNoteData.growthFocus,
-          description: 'Recommended next steps'
+          description: 'Recommended next steps',
         });
       }
 
@@ -306,36 +307,38 @@ const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
         sections.push({
           title: 'Key Insights',
           icon: LightBulbIcon,
-          data: finalNoteItems
+          data: finalNoteItems,
         });
       }
     }
 
     // Basic Assessment Info
     const basicInfo = [];
-    
+
     if (assessment.riasec_code) {
       basicInfo.push({
         label: 'RIASEC Code',
         value: assessment.riasec_code,
-        description: 'Holland Career Interest Code'
+        description: 'Holland Career Interest Code',
       });
     }
-    
+
     if (assessment.grade_level) {
       basicInfo.push({
         label: 'Assessment Level',
         value: assessment.grade_level.charAt(0).toUpperCase() + assessment.grade_level.slice(1),
-        description: 'Target grade/education level'
+        description: 'Target grade/education level',
       });
     }
 
     if (assessment.stream_id) {
-      const streamName = assessment.stream_id.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+      const streamName = assessment.stream_id
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, (l: string) => l.toUpperCase());
       basicInfo.push({
         label: 'Assessment Stream',
         value: streamName,
-        description: 'Assessment category or stream'
+        description: 'Assessment category or stream',
       });
     }
 
@@ -343,7 +346,7 @@ const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
       basicInfo.push({
         label: 'Career Readiness',
         value: assessment.employability_readiness,
-        description: 'Readiness for professional environment'
+        description: 'Readiness for professional environment',
       });
     }
 
@@ -352,7 +355,7 @@ const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
         label: 'Overall Aptitude',
         value: `${assessment.aptitude_overall}/100`,
         description: 'General cognitive ability score',
-        percentage: parseFloat(assessment.aptitude_overall.toString())
+        percentage: parseFloat(assessment.aptitude_overall.toString()),
       });
     }
 
@@ -360,7 +363,7 @@ const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
       sections.push({
         title: 'Assessment Details',
         icon: InformationCircleIcon,
-        data: basicInfo
+        data: basicInfo,
       });
     }
 
@@ -376,7 +379,7 @@ const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
             <div className="h-6 bg-gray-200 rounded w-1/3"></div>
             <div className="h-4 bg-gray-200 rounded w-1/2"></div>
           </div>
-          
+
           {/* Assessment cards skeleton */}
           {[1, 2, 3].map((i) => (
             <div key={i} className="bg-gray-200 h-32 rounded-lg"></div>
@@ -393,10 +396,9 @@ const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
       </div>
       <h3 className="text-sm font-medium text-gray-900 mb-2">No assessments completed</h3>
       <p className="text-sm text-gray-500">
-        {studentType === 'college' 
+        {studentType === 'college'
           ? 'Complete career assessments to get personalized guidance'
-          : 'Take assessments to track your learning progress'
-        }
+          : 'Take assessments to track your learning progress'}
       </p>
     </div>
   );
@@ -426,22 +428,27 @@ const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
           <p className="text-sm text-gray-600">{context.subtitle}</p>
         </div>
       </div>
-      
+
       {/* Assessment Cards */}
       <div className="space-y-4">
         {assessmentResults.map((assessment) => {
           const assessmentSections = formatAssessmentData(assessment);
-          const overallScore = assessment.knowledge_score ? parseFloat(assessment.knowledge_score.toString()) : 
-                              assessment.aptitude_overall ? parseFloat(assessment.aptitude_overall.toString()) : 
-                              assessment.percentage || 0;
+          const overallScore = assessment.knowledge_score
+            ? parseFloat(assessment.knowledge_score.toString())
+            : assessment.aptitude_overall
+              ? parseFloat(assessment.aptitude_overall.toString())
+              : assessment.percentage || 0;
 
           return (
-            <div key={assessment.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-              <div 
+            <div
+              key={assessment.id}
+              className="bg-white border border-gray-200 rounded-lg overflow-hidden"
+            >
+              <div
                 className="p-4 cursor-pointer"
-                onClick={() => setExpandedAssessment(
-                  expandedAssessment === assessment.id ? null : assessment.id
-                )}
+                onClick={() =>
+                  setExpandedAssessment(expandedAssessment === assessment.id ? null : assessment.id)
+                }
               >
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
@@ -450,15 +457,19 @@ const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
                       <h4 className="text-sm font-semibold text-gray-900">
                         {assessment.assessment_type || 'Personal Assessment'}
                       </h4>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                        assessment.status === 'completed' ? 'bg-green-100 text-green-700' :
-                        assessment.status === 'in_progress' ? 'bg-yellow-100 text-yellow-700' :
-                        'bg-gray-100 text-gray-700'
-                      }`}>
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                          assessment.status === 'completed'
+                            ? 'bg-green-100 text-green-700'
+                            : assessment.status === 'in_progress'
+                              ? 'bg-yellow-100 text-yellow-700'
+                              : 'bg-gray-100 text-gray-700'
+                        }`}
+                      >
                         {assessment.status || 'Completed'}
                       </span>
                     </div>
-                    
+
                     <div className="flex items-center gap-4 text-xs text-gray-600">
                       <span className="flex items-center gap-1">
                         <ClockIcon className="h-3 w-3" />
@@ -467,43 +478,52 @@ const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
                       {assessment.grade_level && (
                         <span className="flex items-center gap-1">
                           <IconTarget className="h-3 w-3" />
-                          {assessment.grade_level.charAt(0).toUpperCase() + assessment.grade_level.slice(1)} Level
+                          {assessment.grade_level.charAt(0).toUpperCase() +
+                            assessment.grade_level.slice(1)}{' '}
+                          Level
                         </span>
                       )}
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-3">
                     {overallScore > 0 && (
                       <div className="flex items-center gap-2">
                         <div className="w-16 bg-gray-200 rounded-full h-2">
-                          <div 
+                          <div
                             className={`h-2 rounded-full transition-all duration-300 ${getProgressBarColor(overallScore)}`}
                             style={{ width: `${Math.min(overallScore, 100)}%` }}
                           ></div>
                         </div>
-                        <span className={`text-xs font-medium px-2 py-1 rounded ${getScoreColor(overallScore)}`}>
+                        <span
+                          className={`text-xs font-medium px-2 py-1 rounded ${getScoreColor(overallScore)}`}
+                        >
                           {Math.round(overallScore)}%
                         </span>
                       </div>
                     )}
-                    
+
                     <div className="w-6 h-6 bg-gray-100 rounded-lg flex items-center justify-center">
-                      <svg 
+                      <svg
                         className={`w-3 h-3 text-gray-500 transition-transform duration-200 ${
                           expandedAssessment === assessment.id ? 'rotate-180' : ''
-                        }`} 
-                        fill="none" 
-                        stroke="currentColor" 
+                        }`}
+                        fill="none"
+                        stroke="currentColor"
                         viewBox="0 0 24 24"
                       >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 9l-7 7-7-7"
+                        />
                       </svg>
                     </div>
                   </div>
                 </div>
               </div>
-              
+
               {expandedAssessment === assessment.id && (
                 <div className="border-t border-gray-200 p-4 bg-gray-50">
                   {/* Overall Summary */}
@@ -513,22 +533,30 @@ const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
                         <IconBrain className="h-4 w-4" />
                         Assessment Summary
                       </h5>
-                      <p className="text-sm text-blue-800 leading-relaxed">{assessment.overall_summary}</p>
+                      <p className="text-sm text-blue-800 leading-relaxed">
+                        {assessment.overall_summary}
+                      </p>
                     </div>
                   )}
 
                   {/* Assessment Sections */}
                   <div className="space-y-6">
                     {assessmentSections.map((section, sectionIndex) => (
-                      <div key={sectionIndex} className="bg-white rounded-lg border border-gray-200 p-4">
+                      <div
+                        key={sectionIndex}
+                        className="bg-white rounded-lg border border-gray-200 p-4"
+                      >
                         <h5 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
                           <section.icon className="h-4 w-4 text-gray-600" />
                           {section.title}
                         </h5>
-                        
+
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           {section.data.map((item: any, itemIndex: number) => (
-                            <div key={itemIndex} className="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                            <div
+                              key={itemIndex}
+                              className="bg-gray-50 p-3 rounded-lg border border-gray-100"
+                            >
                               <div className="flex items-start justify-between">
                                 <div className="flex-1">
                                   <span className="text-xs text-gray-600 font-medium block mb-1">
@@ -549,7 +577,7 @@ const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
                                       {Math.round(item.percentage)}%
                                     </span>
                                     <div className="w-12 bg-gray-200 rounded-full h-1.5">
-                                      <div 
+                                      <div
                                         className={`h-1.5 rounded-full ${getProgressBarColor(item.percentage)}`}
                                         style={{ width: `${Math.min(item.percentage, 100)}%` }}
                                       ></div>
@@ -565,17 +593,18 @@ const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
                   </div>
 
                   {/* Work Style Summary (if available) */}
-                  {assessment.bigfive_scores && (assessment.bigfive_scores as any).workStyleSummary && (
-                    <div className="mt-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
-                      <h5 className="text-sm font-medium text-purple-900 mb-2 flex items-center gap-2">
-                        <IconTrendingUp className="h-4 w-4" />
-                        Work Style Summary
-                      </h5>
-                      <p className="text-sm text-purple-800 leading-relaxed">
-                        {(assessment.bigfive_scores as any).workStyleSummary}
-                      </p>
-                    </div>
-                  )}
+                  {assessment.bigfive_scores &&
+                    (assessment.bigfive_scores as any).workStyleSummary && (
+                      <div className="mt-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                        <h5 className="text-sm font-medium text-purple-900 mb-2 flex items-center gap-2">
+                          <IconTrendingUp className="h-4 w-4" />
+                          Work Style Summary
+                        </h5>
+                        <p className="text-sm text-purple-800 leading-relaxed">
+                          {(assessment.bigfive_scores as any).workStyleSummary}
+                        </p>
+                      </div>
+                    )}
                 </div>
               )}
             </div>

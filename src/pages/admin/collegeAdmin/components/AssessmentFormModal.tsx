@@ -47,7 +47,7 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
 
   useEffect(() => {
     if (formData.department_id) {
-      setFilteredPrograms(programs.filter(p => p.department_id === formData.department_id));
+      setFilteredPrograms(programs.filter((p) => p.department_id === formData.department_id));
     } else {
       setFilteredPrograms(programs);
     }
@@ -86,10 +86,7 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
           <h2 className="text-xl font-bold text-gray-900">
             {assessment ? 'Edit Assessment' : 'Create New Assessment'}
           </h2>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition"
-          >
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition">
             <XMarkIcon className="h-5 w-5 text-gray-500" />
           </button>
         </div>
@@ -143,15 +140,18 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
               <select
                 required
                 value={formData.department_id}
-                onChange={(e) => setFormData({ ...formData, department_id: e.target.value, program_id: '' })}
+                onChange={(e) =>
+                  setFormData({ ...formData, department_id: e.target.value, program_id: '' })
+                }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="">Select Department</option>
-                {Array.isArray(departments) && departments.map((dept) => (
-                  <option key={dept.id} value={dept.id}>
-                    {dept.name}
-                  </option>
-                ))}
+                {Array.isArray(departments) &&
+                  departments.map((dept) => (
+                    <option key={dept.id} value={dept.id}>
+                      {dept.name}
+                    </option>
+                  ))}
               </select>
             </div>
 
@@ -167,11 +167,12 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
                 disabled={!formData.department_id}
               >
                 <option value="">Select Program</option>
-                {Array.isArray(filteredPrograms) && filteredPrograms.map((prog) => (
-                  <option key={prog.id} value={prog.id}>
-                    {prog.name}
-                  </option>
-                ))}
+                {Array.isArray(filteredPrograms) &&
+                  filteredPrograms.map((prog) => (
+                    <option key={prog.id} value={prog.id}>
+                      {prog.name}
+                    </option>
+                  ))}
               </select>
             </div>
           </div>
@@ -206,11 +207,12 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="">Select Course</option>
-                {Array.isArray(courses) && courses.map((course) => (
-                  <option key={course.id} value={course.id}>
-                    {course.course_code} - {course.course_name}
-                  </option>
-                ))}
+                {Array.isArray(courses) &&
+                  courses.map((course) => (
+                    <option key={course.id} value={course.id}>
+                      {course.course_code} - {course.course_name}
+                    </option>
+                  ))}
               </select>
             </div>
           </div>
@@ -226,7 +228,9 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
                 min="30"
                 max="300"
                 value={formData.duration_minutes}
-                onChange={(e) => setFormData({ ...formData, duration_minutes: parseInt(e.target.value) })}
+                onChange={(e) =>
+                  setFormData({ ...formData, duration_minutes: parseInt(e.target.value) })
+                }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
@@ -240,7 +244,9 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
                 required
                 min="1"
                 value={formData.total_marks}
-                onChange={(e) => setFormData({ ...formData, total_marks: parseInt(e.target.value) })}
+                onChange={(e) =>
+                  setFormData({ ...formData, total_marks: parseInt(e.target.value) })
+                }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
@@ -261,9 +267,7 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Instructions
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Instructions</label>
             <textarea
               rows={3}
               value={formData.instructions}

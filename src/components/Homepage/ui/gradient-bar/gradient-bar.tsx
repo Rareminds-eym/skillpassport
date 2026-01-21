@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Github, Instagram, Linkedin, Menu, X } from 'lucide-react';
 
@@ -9,15 +8,11 @@ type AvatarProps = {
 
 const Avatar: React.FC<AvatarProps> = ({ imageSrc, delay }) => {
   return (
-    <div 
+    <div
       className="relative h-6 w-6 sm:h-8 sm:w-8 md:h-10 md:w-10 rounded-full overflow-hidden border-2 border-gray-700 shadow-lg animate-fadeIn"
       style={{ animationDelay: `${delay}ms` }}
     >
-      <img 
-        src={imageSrc} 
-        alt="User avatar" 
-        className="h-full w-full object-cover"
-      />
+      <img src={imageSrc} alt="User avatar" className="h-full w-full object-cover" />
       <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
     </div>
   );
@@ -25,10 +20,10 @@ const Avatar: React.FC<AvatarProps> = ({ imageSrc, delay }) => {
 
 const TrustElements: React.FC = () => {
   const avatars = [
-    "https://images.pexels.com/photos/2726111/pexels-photo-2726111.jpeg?auto=compress&cs=tinysrgb&w=100",
-    "https://images.pexels.com/photos/1036623/pexels-photo-1036623.jpeg?auto=compress&cs=tinysrgb&w=100",
-    "https://images.pexels.com/photos/1681010/pexels-photo-1681010.jpeg?auto=compress&cs=tinysrgb&w=100",
-    "https://images.pexels.com/photos/733872/pexels-photo-733872.jpeg?auto=compress&cs=tinysrgb&w=100",
+    'https://images.pexels.com/photos/2726111/pexels-photo-2726111.jpeg?auto=compress&cs=tinysrgb&w=100',
+    'https://images.pexels.com/photos/1036623/pexels-photo-1036623.jpeg?auto=compress&cs=tinysrgb&w=100',
+    'https://images.pexels.com/photos/1681010/pexels-photo-1681010.jpeg?auto=compress&cs=tinysrgb&w=100',
+    'https://images.pexels.com/photos/733872/pexels-photo-733872.jpeg?auto=compress&cs=tinysrgb&w=100',
   ];
 
   return (
@@ -38,7 +33,10 @@ const TrustElements: React.FC = () => {
           <Avatar key={index} imageSrc={avatar} delay={index * 200} />
         ))}
       </div>
-      <p className="text-white animate-fadeIn whitespace-nowrap font-space" style={{ animationDelay: '800ms' }}>
+      <p
+        className="text-white animate-fadeIn whitespace-nowrap font-space"
+        style={{ animationDelay: '800ms' }}
+      >
         <span className="text-white font-semibold">2.4K</span> currently on the waitlist
       </p>
     </div>
@@ -55,12 +53,12 @@ const WaitlistForm: React.FC = () => {
     if (!email || !email.includes('@')) return;
 
     setIsSubmitting(true);
-    
+
     setTimeout(() => {
       setIsSubmitting(false);
       setIsSubmitted(true);
       setEmail('');
-      
+
       setTimeout(() => {
         setIsSubmitted(false);
       }, 3000);
@@ -83,8 +81,8 @@ const WaitlistForm: React.FC = () => {
             type="submit"
             disabled={isSubmitting}
             className={`px-6 sm:px-8 py-3 sm:py-4 rounded-full transition-all duration-300 transform hover:scale-105 whitespace-nowrap text-sm sm:text-base font-space ${
-              isSubmitting 
-                ? 'bg-gray-600 text-gray-300 cursor-not-allowed' 
+              isSubmitting
+                ? 'bg-gray-600 text-gray-300 cursor-not-allowed'
                 : 'bg-white hover:bg-gray-100 text-black'
             }`}
           >
@@ -111,17 +109,17 @@ const GradientBars: React.FC = () => {
     const position = index / (total - 1);
     const maxHeight = 100;
     const minHeight = 30;
-    
+
     const center = 0.5;
     const distanceFromCenter = Math.abs(position - center);
     const heightPercentage = Math.pow(distanceFromCenter * 2, 1.2);
-    
+
     return minHeight + (maxHeight - minHeight) * heightPercentage;
   };
 
   return (
     <div className="absolute inset-0 z-0 overflow-hidden">
-      <div 
+      <div
         className="flex h-full"
         style={{
           width: '100%',
@@ -170,16 +168,28 @@ const Navbar: React.FC = () => {
           </div>
 
           <div className="hidden md:flex items-center space-x-8">
-            <a href="#features" className="text-gray-300 hover:text-white transition-colors duration-300 font-space">
+            <a
+              href="#features"
+              className="text-gray-300 hover:text-white transition-colors duration-300 font-space"
+            >
               Features
             </a>
-            <a href="#vision" className="text-gray-300 hover:text-white transition-colors duration-300 font-space">
+            <a
+              href="#vision"
+              className="text-gray-300 hover:text-white transition-colors duration-300 font-space"
+            >
               Vision
             </a>
-            <a href="#press" className="text-gray-300 hover:text-white transition-colors duration-300 font-space">
+            <a
+              href="#press"
+              className="text-gray-300 hover:text-white transition-colors duration-300 font-space"
+            >
               Press
             </a>
-            <a href="#contact" className="text-gray-300 hover:text-white transition-colors duration-300 font-space">
+            <a
+              href="#contact"
+              className="text-gray-300 hover:text-white transition-colors duration-300 font-space"
+            >
               Contact
             </a>
             <button className="bg-white hover:bg-gray-100 text-black px-5 py-2 rounded-full transition-all duration-300 transform hover:scale-105 font-space">
@@ -197,16 +207,28 @@ const Navbar: React.FC = () => {
         {isMenuOpen && (
           <div className="md:hidden mt-4 bg-gray-900 bg-opacity-95 backdrop-blur-sm rounded-lg p-4 animate-fadeIn">
             <div className="flex flex-col space-y-4">
-              <a href="#features" className="text-gray-300 hover:text-white transition-colors duration-300 py-2 font-space">
+              <a
+                href="#features"
+                className="text-gray-300 hover:text-white transition-colors duration-300 py-2 font-space"
+              >
                 Features
               </a>
-              <a href="#vision" className="text-gray-300 hover:text-white transition-colors duration-300 py-2 font-space">
+              <a
+                href="#vision"
+                className="text-gray-300 hover:text-white transition-colors duration-300 py-2 font-space"
+              >
                 Vision
               </a>
-              <a href="#press" className="text-gray-300 hover:text-white transition-colors duration-300 py-2 font-space">
+              <a
+                href="#press"
+                className="text-gray-300 hover:text-white transition-colors duration-300 py-2 font-space"
+              >
                 Press
               </a>
-              <a href="#contact" className="text-gray-300 hover:text-white transition-colors duration-300 py-2 font-space">
+              <a
+                href="#contact"
+                className="text-gray-300 hover:text-white transition-colors duration-300 py-2 font-space"
+              >
                 Contact
               </a>
               <button className="bg-white hover:bg-gray-100 text-black px-5 py-2 rounded-full transition-all duration-300 w-full font-space">
@@ -226,12 +248,12 @@ export const Component: React.FC = () => {
       <div className="absolute inset-0 bg-gray-950"></div>
       <GradientBars />
       <Navbar />
-      
+
       <div className="relative z-10 text-center w-full max-w-4xl mx-auto flex flex-col items-center justify-center min-h-screen py-8 sm:py-16">
         <div className="mb-6 sm:mb-8">
           <TrustElements />
         </div>
-        
+
         <h1 className="w-full text-white leading-tight tracking-tight mb-6 sm:mb-8 animate-fadeIn px-4">
           <span className="block font-inter font-medium text-[clamp(1.5rem,6vw,3.75rem)] whitespace-nowrap">
             Redefining What's Possible,
@@ -240,7 +262,7 @@ export const Component: React.FC = () => {
             One Experience at a Time.
           </span>
         </h1>
-        
+
         <div className="mb-6 sm:mb-10 px-4">
           <p className="text-[clamp(1rem,3vw,1.5rem)] text-gray-400 leading-relaxed animate-fadeIn animation-delay-200 font-space">
             Be the first to know when we launch.
@@ -249,11 +271,11 @@ export const Component: React.FC = () => {
             Join the waitlist and get exclusive early access.
           </p>
         </div>
-        
+
         <div className="w-full max-w-2xl mb-6 sm:mb-8 px-4">
           <WaitlistForm />
         </div>
-        
+
         <div className="flex justify-center space-x-6">
           <a href="#" className="text-gray-500 hover:text-gray-300 transition-colors duration-300">
             <Instagram size={20} className="w-5 h-5 sm:w-[22px] sm:h-[22px]" />

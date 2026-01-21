@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '../../../components/Students/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '../../../components/Students/components/ui/card';
 import { Button } from '../../../components/Students/components/ui/button';
 import { Badge } from '../../../components/Students/components/ui/badge';
 import {
@@ -12,7 +17,7 @@ import {
   List,
   ChevronLeft,
   ChevronRight,
-  ArrowDownAZ
+  ArrowDownAZ,
 } from 'lucide-react';
 import { supabase } from '../../../lib/supabaseClient';
 import { motion } from 'framer-motion';
@@ -58,7 +63,7 @@ const BrowseCourses = () => {
 
       // Fetch courses with status Active or Upcoming (students shouldn't see Drafts)
       // Also exclude deleted courses
-      let query = supabase
+      const query = supabase
         .from('courses')
         .select('*')
         .in('status', ['Active', 'Upcoming'])
@@ -77,7 +82,7 @@ const BrowseCourses = () => {
       const remainingTime = Math.max(0, 1000 - elapsedTime);
 
       if (remainingTime > 0) {
-        await new Promise(resolve => setTimeout(resolve, remainingTime));
+        await new Promise((resolve) => setTimeout(resolve, remainingTime));
       }
     } catch (error) {
       console.error('Error fetching courses:', error);
@@ -85,7 +90,7 @@ const BrowseCourses = () => {
       const elapsedTime = Date.now() - startTime;
       const remainingTime = Math.max(0, 1000 - elapsedTime);
       if (remainingTime > 0) {
-        await new Promise(resolve => setTimeout(resolve, remainingTime));
+        await new Promise((resolve) => setTimeout(resolve, remainingTime));
       }
     } finally {
       setLoading(false);
@@ -108,10 +113,11 @@ const BrowseCourses = () => {
 
   // Filter and search courses
   const filteredCourses = React.useMemo(() => {
-    let filtered = courses.filter(course => {
-      const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           course.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           course.code.toLowerCase().includes(searchTerm.toLowerCase());
+    const filtered = courses.filter((course) => {
+      const matchesSearch =
+        course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        course.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        course.code.toLowerCase().includes(searchTerm.toLowerCase());
 
       const matchesStatus = filterStatus === 'all' || course.status === filterStatus;
 
@@ -248,9 +254,7 @@ const BrowseCourses = () => {
                     <BookOpen className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1">
-                    <h1 className="font-bold text-2xl text-indigo-600">
-                      Browse Courses
-                    </h1>
+                    <h1 className="font-bold text-2xl text-indigo-600">Browse Courses</h1>
                     <p className="text-sm text-gray-600 mt-1">
                       Explore our course library and access courses for your college
                     </p>
@@ -260,326 +264,334 @@ const BrowseCourses = () => {
             </div>
           )}
 
-        {/* Courses Tab Content */}
-        {/* Search and Filters */}
-        {!loading && (
-          <div className="mb-6 flex flex-col lg:flex-row items-center gap-4">
-            {/* Search Bar */}
-            <div className="flex-1 w-full relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Search courses by title, code, or description..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full h-12 pl-10 pr-4 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
-              />
-            </div>
+          {/* Courses Tab Content */}
+          {/* Search and Filters */}
+          {!loading && (
+            <div className="mb-6 flex flex-col lg:flex-row items-center gap-4">
+              {/* Search Bar */}
+              <div className="flex-1 w-full relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search courses by title, code, or description..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full h-12 pl-10 pr-4 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
+                />
+              </div>
 
-            {/* Filters */}
-            <div className="flex gap-2 items-center w-full lg:w-auto flex-wrap">
-              {/* Status Filter */}
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="h-12 px-4 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm flex-1 lg:flex-none lg:min-w-[150px]"
-              >
-                <option value="all">All Status</option>
-                <option value="Active">Active</option>
-                <option value="Upcoming">Upcoming</option>
-              </select>
-
-              {/* Sort By Filter */}
-              <div className="relative flex-1 lg:flex-none lg:min-w-[150px]">
-                <ArrowDownAZ className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
+              {/* Filters */}
+              <div className="flex gap-2 items-center w-full lg:w-auto flex-wrap">
+                {/* Status Filter */}
                 <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="h-12 pl-10 pr-4 w-full bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="h-12 px-4 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm flex-1 lg:flex-none lg:min-w-[150px]"
                 >
-                  <option value="created_at">Newest First</option>
-                  <option value="title">Name (A-Z)</option>
-                  <option value="enrollment_count">Most Popular</option>
+                  <option value="all">All Status</option>
+                  <option value="Active">Active</option>
+                  <option value="Upcoming">Upcoming</option>
                 </select>
-              </div>
 
-              {/* View Mode Toggle */}
-              <div className="flex border border-gray-300 rounded-lg overflow-hidden h-12 bg-white shadow-sm">
-                <button
-                  onClick={() => setViewMode('grid')}
-                  className={`px-4 flex items-center justify-center ${viewMode === 'grid' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-                >
-                  <Grid3x3 className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={`px-4 flex items-center justify-center ${viewMode === 'list' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-                >
-                  <List className="w-5 h-5" />
-                </button>
-              </div>
+                {/* Sort By Filter */}
+                <div className="relative flex-1 lg:flex-none lg:min-w-[150px]">
+                  <ArrowDownAZ className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="h-12 pl-10 pr-4 w-full bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                  >
+                    <option value="created_at">Newest First</option>
+                    <option value="title">Name (A-Z)</option>
+                    <option value="enrollment_count">Most Popular</option>
+                  </select>
+                </div>
 
-              {/* Clear Filters Button */}
-              {(filterStatus !== 'all' || searchTerm !== '' || sortBy !== 'created_at') && (
-                <button
-                  onClick={() => {
-                    setFilterStatus('all');
-                    setSearchTerm('');
-                    setSortBy('created_at');
-                  }}
-                  className="h-12 px-4 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors whitespace-nowrap"
-                >
-                  Clear Filters
-                </button>
-              )}
+                {/* View Mode Toggle */}
+                <div className="flex border border-gray-300 rounded-lg overflow-hidden h-12 bg-white shadow-sm">
+                  <button
+                    onClick={() => setViewMode('grid')}
+                    className={`px-4 flex items-center justify-center ${viewMode === 'grid' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                  >
+                    <Grid3x3 className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => setViewMode('list')}
+                    className={`px-4 flex items-center justify-center ${viewMode === 'list' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                  >
+                    <List className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Clear Filters Button */}
+                {(filterStatus !== 'all' || searchTerm !== '' || sortBy !== 'created_at') && (
+                  <button
+                    onClick={() => {
+                      setFilterStatus('all');
+                      setSearchTerm('');
+                      setSortBy('created_at');
+                    }}
+                    className="h-12 px-4 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors whitespace-nowrap"
+                  >
+                    Clear Filters
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Empty State */}
-        {!loading && filteredCourses.length === 0 && (
-          <Card className="text-center py-12 shadow-sm border border-gray-200">
-            <CardContent>
-              <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">No courses found</h3>
-              <p className="text-gray-600">
-                {searchTerm ? 'Try adjusting your search terms' : 'No courses available at the moment'}
-              </p>
-            </CardContent>
-          </Card>
-        )}
+          {/* Empty State */}
+          {!loading && filteredCourses.length === 0 && (
+            <Card className="text-center py-12 shadow-sm border border-gray-200">
+              <CardContent>
+                <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">No courses found</h3>
+                <p className="text-gray-600">
+                  {searchTerm
+                    ? 'Try adjusting your search terms'
+                    : 'No courses available at the moment'}
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
-        {/* Courses Grid View */}
-        {!loading && viewMode === 'grid' && currentCourses.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {currentCourses.map((course) => (
-              <motion.div
-                key={course.course_id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-                whileHover={{ y: -8, transition: { duration: 0.2 } }}
-                onClick={() => handleCourseClick(course)}
-                className="cursor-pointer"
-              >
-                <Card className="h-full hover:shadow-lg transition-all duration-200 border border-gray-200 overflow-hidden group flex flex-col">
-                  {/* Course Thumbnail - Always show with default placeholder */}
-                  <div className="h-40 overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 relative flex-shrink-0">
-                    {course.thumbnail && (course.thumbnail.startsWith('http') || course.thumbnail.startsWith('data:')) ? (
-                      <motion.img
-                        src={course.thumbnail}
-                        alt={course.title}
-                        className="w-full h-full object-cover"
-                        whileHover={{ scale: 1.05 }}
-                        transition={{ duration: 0.3 }}
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-400 to-purple-500">
-                        <BookOpen className="h-16 w-16 text-white opacity-90" />
-                      </div>
-                    )}
-                    {/* NEW Badge */}
-                    {isNewCourse(course.created_at) && (
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="absolute top-2 left-2"
-                      >
-                        <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
-                          NEW
-                        </Badge>
-                      </motion.div>
-                    )}
-                  </div>
-
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex gap-2 flex-wrap">
-                        <Badge className={`${getStatusColor(course.status)} border`}>
-                          {course.status}
-                        </Badge>
-                      </div>
-                      <span className="text-xs font-medium text-gray-500">{course.code}</span>
-                    </div>
-                    <CardTitle className="text-lg line-clamp-2">{course.title}</CardTitle>
-                  </CardHeader>
-
-                  <CardContent className="space-y-4 flex-grow flex flex-col">
-                    <p className="text-sm text-gray-600 line-clamp-3">{course.description}</p>
-
-                    <div className="flex items-center gap-4 text-sm text-gray-600">
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-4 h-4" />
-                        <span>{course.duration}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Users className="w-4 h-4" />
-                        <span>{course.enrollment_count || 0}</span>
-                      </div>
+          {/* Courses Grid View */}
+          {!loading && viewMode === 'grid' && currentCourses.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {currentCourses.map((course) => (
+                <motion.div
+                  key={course.course_id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  whileHover={{ y: -8, transition: { duration: 0.2 } }}
+                  onClick={() => handleCourseClick(course)}
+                  className="cursor-pointer"
+                >
+                  <Card className="h-full hover:shadow-lg transition-all duration-200 border border-gray-200 overflow-hidden group flex flex-col">
+                    {/* Course Thumbnail - Always show with default placeholder */}
+                    <div className="h-40 overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 relative flex-shrink-0">
+                      {course.thumbnail &&
+                      (course.thumbnail.startsWith('http') ||
+                        course.thumbnail.startsWith('data:')) ? (
+                        <motion.img
+                          src={course.thumbnail}
+                          alt={course.title}
+                          className="w-full h-full object-cover"
+                          whileHover={{ scale: 1.05 }}
+                          transition={{ duration: 0.3 }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-400 to-purple-500">
+                          <BookOpen className="h-16 w-16 text-white opacity-90" />
+                        </div>
+                      )}
+                      {/* NEW Badge */}
+                      {isNewCourse(course.created_at) && (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          className="absolute top-2 left-2"
+                        >
+                          <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
+                            NEW
+                          </Badge>
+                        </motion.div>
+                      )}
                     </div>
 
-                    {/* Educator Info */}
-                    {course.educator_name && (
-                      <div className="flex items-center gap-2 pt-2 border-t border-gray-100 mt-auto">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center text-white font-semibold text-sm">
-                          {course.educator_name.charAt(0).toUpperCase()}
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex gap-2 flex-wrap">
+                          <Badge className={`${getStatusColor(course.status)} border`}>
+                            {course.status}
+                          </Badge>
                         </div>
-                        <div>
-                          <p className="text-xs text-gray-500">Instructor</p>
-                          <p className="text-sm font-medium text-gray-900">{course.educator_name}</p>
+                        <span className="text-xs font-medium text-gray-500">{course.code}</span>
+                      </div>
+                      <CardTitle className="text-lg line-clamp-2">{course.title}</CardTitle>
+                    </CardHeader>
+
+                    <CardContent className="space-y-4 flex-grow flex flex-col">
+                      <p className="text-sm text-gray-600 line-clamp-3">{course.description}</p>
+
+                      <div className="flex items-center gap-4 text-sm text-gray-600">
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-4 h-4" />
+                          <span>{course.duration}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Users className="w-4 h-4" />
+                          <span>{course.enrollment_count || 0}</span>
                         </div>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        )}
 
-        {/* Courses List View */}
-        {!loading && viewMode === 'list' && currentCourses.length > 0 && (
-          <div className="space-y-4">
-            {currentCourses.map((course) => (
-              <motion.div
-                key={course.course_id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.3 }}
-                onClick={() => handleCourseClick(course)}
-                className="cursor-pointer"
-              >
-                <Card className="hover:shadow-lg transition-all duration-200 border-0">
-                  <CardContent className="p-6">
-                    <div className="flex flex-col lg:flex-row gap-6">
-                      {/* Thumbnail - Always show with default placeholder */}
-                      <div className="w-full lg:w-48 h-32 flex-shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 relative">
-                        {course.thumbnail && (course.thumbnail.startsWith('http') || course.thumbnail.startsWith('data:')) ? (
-                          <img
-                            src={course.thumbnail}
-                            alt={course.title}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-400 to-purple-500">
-                            <BookOpen className="h-12 w-12 text-white opacity-90" />
+                      {/* Educator Info */}
+                      {course.educator_name && (
+                        <div className="flex items-center gap-2 pt-2 border-t border-gray-100 mt-auto">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center text-white font-semibold text-sm">
+                            {course.educator_name.charAt(0).toUpperCase()}
                           </div>
-                        )}
-                        {/* NEW Badge */}
-                        {isNewCourse(course.created_at) && (
-                          <div className="absolute top-2 left-2">
-                            <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
-                              NEW
-                            </Badge>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Course Info */}
-                      <div className="flex-1">
-                        <div className="flex items-start justify-between mb-2">
                           <div>
-                            <div className="flex items-center gap-3 mb-2 flex-wrap">
-                              <h3 className="text-xl font-bold text-gray-900">{course.title}</h3>
-                              <Badge className={`${getStatusColor(course.status)} border`}>
-                                {course.status}
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-gray-500">Course Code: {course.code}</p>
+                            <p className="text-xs text-gray-500">Instructor</p>
+                            <p className="text-sm font-medium text-gray-900">
+                              {course.educator_name}
+                            </p>
                           </div>
                         </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+          )}
 
-                        <p className="text-gray-600 mb-4 line-clamp-2">{course.description}</p>
-
-                        <div className="flex items-center gap-6 text-sm text-gray-600">
-                          <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4" />
-                            <span>{course.duration}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Users className="w-4 h-4" />
-                            <span>{course.enrollment_count || 0} students</span>
-                          </div>
-                          {course.educator_name && (
-                            <div className="flex items-center gap-2">
-                              <div className="w-6 h-6 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs font-semibold">
-                                {course.educator_name.charAt(0).toUpperCase()}
-                              </div>
-                              <span>{course.educator_name}</span>
+          {/* Courses List View */}
+          {!loading && viewMode === 'list' && currentCourses.length > 0 && (
+            <div className="space-y-4">
+              {currentCourses.map((course) => (
+                <motion.div
+                  key={course.course_id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3 }}
+                  onClick={() => handleCourseClick(course)}
+                  className="cursor-pointer"
+                >
+                  <Card className="hover:shadow-lg transition-all duration-200 border-0">
+                    <CardContent className="p-6">
+                      <div className="flex flex-col lg:flex-row gap-6">
+                        {/* Thumbnail - Always show with default placeholder */}
+                        <div className="w-full lg:w-48 h-32 flex-shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 relative">
+                          {course.thumbnail &&
+                          (course.thumbnail.startsWith('http') ||
+                            course.thumbnail.startsWith('data:')) ? (
+                            <img
+                              src={course.thumbnail}
+                              alt={course.title}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-400 to-purple-500">
+                              <BookOpen className="h-12 w-12 text-white opacity-90" />
+                            </div>
+                          )}
+                          {/* NEW Badge */}
+                          {isNewCourse(course.created_at) && (
+                            <div className="absolute top-2 left-2">
+                              <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
+                                NEW
+                              </Badge>
                             </div>
                           )}
                         </div>
+
+                        {/* Course Info */}
+                        <div className="flex-1">
+                          <div className="flex items-start justify-between mb-2">
+                            <div>
+                              <div className="flex items-center gap-3 mb-2 flex-wrap">
+                                <h3 className="text-xl font-bold text-gray-900">{course.title}</h3>
+                                <Badge className={`${getStatusColor(course.status)} border`}>
+                                  {course.status}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-gray-500">Course Code: {course.code}</p>
+                            </div>
+                          </div>
+
+                          <p className="text-gray-600 mb-4 line-clamp-2">{course.description}</p>
+
+                          <div className="flex items-center gap-6 text-sm text-gray-600">
+                            <div className="flex items-center gap-2">
+                              <Clock className="w-4 h-4" />
+                              <span>{course.duration}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Users className="w-4 h-4" />
+                              <span>{course.enrollment_count || 0} students</span>
+                            </div>
+                            {course.educator_name && (
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs font-semibold">
+                                  {course.educator_name.charAt(0).toUpperCase()}
+                                </div>
+                                <span>{course.educator_name}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        )}
-
-        {/* Pagination */}
-        {!loading && filteredCourses.length > 0 && totalPages > 1 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="mt-8 flex justify-center items-center gap-2"
-          >
-            {/* Previous Button */}
-            <Button
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className={`px-3 py-2 ${
-                currentPage === 1
-                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'bg-white text-indigo-600 hover:bg-indigo-50 border border-indigo-200'
-              }`}
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </Button>
-
-            {/* Page Numbers */}
-            <div className="flex gap-2">
-              {getPageNumbers().map((pageNum, index) => (
-                <React.Fragment key={index}>
-                  {pageNum === '...' ? (
-                    <span className="px-3 py-2 text-gray-500">...</span>
-                  ) : (
-                    <Button
-                      onClick={() => setCurrentPage(pageNum)}
-                      className={`px-4 py-2 min-w-[40px] ${
-                        currentPage === pageNum
-                          ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                          : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
-                      }`}
-                    >
-                      {pageNum}
-                    </Button>
-                  )}
-                </React.Fragment>
+                    </CardContent>
+                  </Card>
+                </motion.div>
               ))}
             </div>
+          )}
 
-            {/* Next Button */}
-            <Button
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-              disabled={currentPage === totalPages}
-              className={`px-3 py-2 ${
-                currentPage === totalPages
-                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'bg-white text-indigo-600 hover:bg-indigo-50 border border-indigo-200'
-              }`}
+          {/* Pagination */}
+          {!loading && filteredCourses.length > 0 && totalPages > 1 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="mt-8 flex justify-center items-center gap-2"
             >
-              <ChevronRight className="w-5 h-5" />
-            </Button>
+              {/* Previous Button */}
+              <Button
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className={`px-3 py-2 ${
+                  currentPage === 1
+                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    : 'bg-white text-indigo-600 hover:bg-indigo-50 border border-indigo-200'
+                }`}
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </Button>
 
-            {/* Page Info */}
-            <span className="ml-4 text-sm text-gray-600">
-              Page {currentPage} of {totalPages}
-            </span>
-          </motion.div>
-        )}
+              {/* Page Numbers */}
+              <div className="flex gap-2">
+                {getPageNumbers().map((pageNum, index) => (
+                  <React.Fragment key={index}>
+                    {pageNum === '...' ? (
+                      <span className="px-3 py-2 text-gray-500">...</span>
+                    ) : (
+                      <Button
+                        onClick={() => setCurrentPage(pageNum)}
+                        className={`px-4 py-2 min-w-[40px] ${
+                          currentPage === pageNum
+                            ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                            : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
+                        }`}
+                      >
+                        {pageNum}
+                      </Button>
+                    )}
+                  </React.Fragment>
+                ))}
+              </div>
+
+              {/* Next Button */}
+              <Button
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className={`px-3 py-2 ${
+                  currentPage === totalPages
+                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    : 'bg-white text-indigo-600 hover:bg-indigo-50 border border-indigo-200'
+                }`}
+              >
+                <ChevronRight className="w-5 h-5" />
+              </Button>
+
+              {/* Page Info */}
+              <span className="ml-4 text-sm text-gray-600">
+                Page {currentPage} of {totalPages}
+              </span>
+            </motion.div>
+          )}
         </div>
       </div>
     </>

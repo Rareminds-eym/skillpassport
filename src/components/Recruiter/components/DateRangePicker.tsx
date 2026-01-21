@@ -5,14 +5,18 @@ interface DateRangePickerProps {
   startDate: string;
   endDate: string;
   preset: '7d' | '30d' | '90d' | 'ytd' | 'custom';
-  onRangeChange: (preset: '7d' | '30d' | '90d' | 'ytd' | 'custom', startDate?: string, endDate?: string) => void;
+  onRangeChange: (
+    preset: '7d' | '30d' | '90d' | 'ytd' | 'custom',
+    startDate?: string,
+    endDate?: string
+  ) => void;
 }
 
 const DateRangePicker: React.FC<DateRangePickerProps> = ({
   startDate,
   endDate,
   preset,
-  onRangeChange
+  onRangeChange,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [customStart, setCustomStart] = useState(startDate);
@@ -23,14 +27,14 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
     { value: '30d', label: 'Last 30 days', days: 30 },
     { value: '90d', label: 'Last 90 days', days: 90 },
     { value: 'ytd', label: 'Year to date', days: null },
-    { value: 'custom', label: 'Custom range', days: null }
+    { value: 'custom', label: 'Custom range', days: null },
   ];
 
   const getDateRangeText = () => {
     if (preset === 'custom' && startDate && endDate) {
       return `${formatDate(startDate)} - ${formatDate(endDate)}`;
     }
-    return presetOptions.find(opt => opt.value === preset)?.label || 'Select range';
+    return presetOptions.find((opt) => opt.value === preset)?.label || 'Select range';
   };
 
   const formatDate = (dateString: string) => {
@@ -62,12 +66,12 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
     }
 
     let start = '';
-    let end = getTodayString();
+    const end = getTodayString();
 
     if (value === 'ytd') {
       start = getYearToDateStart();
     } else {
-      const days = presetOptions.find(opt => opt.value === value)?.days || 30;
+      const days = presetOptions.find((opt) => opt.value === value)?.days || 30;
       start = getDateNDaysAgo(days);
     }
 
@@ -95,11 +99,9 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
         className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md bg-white hover:bg-gray-50 transition-colors"
       >
         <CalendarIcon className="h-5 w-5 text-gray-500" />
-        <span className="text-sm font-medium text-gray-700">
-          {getDateRangeText()}
-        </span>
-        <ChevronDownIcon 
-          className={`h-4 w-4 text-gray-500 transition-transform ${isOpen ? 'transform rotate-180' : ''}`} 
+        <span className="text-sm font-medium text-gray-700">{getDateRangeText()}</span>
+        <ChevronDownIcon
+          className={`h-4 w-4 text-gray-500 transition-transform ${isOpen ? 'transform rotate-180' : ''}`}
         />
       </button>
 
@@ -107,10 +109,7 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
       {isOpen && (
         <>
           {/* Backdrop */}
-          <div 
-            className="fixed inset-0 z-40"
-            onClick={() => setIsOpen(false)}
-          />
+          <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
 
           {/* Dropdown Content */}
           <div className="absolute top-full left-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-xl z-50">
@@ -137,7 +136,7 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
             {/* Custom Date Range */}
             <div className="p-4">
               <h4 className="text-xs font-semibold text-gray-700 uppercase mb-3">Custom Range</h4>
-              
+
               <div className="space-y-3">
                 {/* Start Date */}
                 <div>
@@ -168,9 +167,13 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
                 {customStart && customEnd && (
                   <div className="p-2 bg-blue-50 rounded text-xs text-blue-700">
                     <span className="font-medium">
-                      {Math.ceil((new Date(customEnd).getTime() - new Date(customStart).getTime()) / (1000 * 60 * 60 * 24)) + 1} days
-                    </span>
-                    {' '}selected
+                      {Math.ceil(
+                        (new Date(customEnd).getTime() - new Date(customStart).getTime()) /
+                          (1000 * 60 * 60 * 24)
+                      ) + 1}{' '}
+                      days
+                    </span>{' '}
+                    selected
                   </div>
                 )}
 

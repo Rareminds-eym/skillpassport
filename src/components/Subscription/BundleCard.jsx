@@ -1,13 +1,13 @@
 /**
  * BundleCard Component
- * 
+ *
  * Displays a bundle of add-ons with pricing and savings information.
- * 
+ *
  * Features:
  * - Display bundle name, included add-ons
  * - Show savings compared to individual purchase
  * - Expandable list of included features
- * 
+ *
  * @requirement REQ-5.4 - Bundle Card Component
  */
 
@@ -17,7 +17,7 @@ import addOnCatalogService from '../../services/addOnCatalogService';
 
 /**
  * BundleCard - Displays a bundle with included add-ons
- * 
+ *
  * @param {Object} props
  * @param {Object} props.bundle - Bundle data object
  * @param {boolean} props.isOwned - Whether user owns all features in bundle
@@ -36,27 +36,29 @@ export function BundleCard({
   billingPeriod = 'monthly',
   onPurchase,
   isPurchasing = false,
-  className = ''
+  className = '',
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [savings, setSavings] = useState(null);
   const [isLoadingSavings, setIsLoadingSavings] = useState(true);
 
-  if (!bundle) return null;
-
-  const monthlyPrice = bundle.monthly_price || 0;
-  const annualPrice = bundle.annual_price || 0;
+  // Safely access bundle properties
+  const monthlyPrice = bundle?.monthly_price || 0;
+  const annualPrice = bundle?.annual_price || 0;
   const currentPrice = billingPeriod === 'monthly' ? monthlyPrice : annualPrice;
-  const featureKeys = bundle.bundle_features?.map(bf => bf.feature_key) || [];
+  const featureKeys = bundle?.bundle_features?.map((bf) => bf.feature_key) || [];
   const totalFeatures = featureKeys.length;
 
   // Calculate annual savings percentage
-  const annualSavingsPercent = monthlyPrice > 0 
-    ? Math.round(((monthlyPrice * 12 - annualPrice) / (monthlyPrice * 12)) * 100)
-    : 0;
+  const annualSavingsPercent =
+    monthlyPrice > 0
+      ? Math.round(((monthlyPrice * 12 - annualPrice) / (monthlyPrice * 12)) * 100)
+      : 0;
 
   // Fetch bundle savings
   useEffect(() => {
+    if (!bundle?.id) return;
+
     const fetchSavings = async () => {
       setIsLoadingSavings(true);
       try {
@@ -72,17 +74,22 @@ export function BundleCard({
     };
 
     fetchSavings();
-  }, [bundle.id]);
+  }, [bundle?.id]);
+
+  if (!bundle) return null;
 
   return (
-    <div className={`
+    <div
+      className={`
       relative bg-white rounded-xl border-2 overflow-hidden transition-all duration-300
-      ${isOwned 
-        ? 'border-green-300 bg-green-50/30' 
-        : 'border-indigo-200 hover:border-indigo-400 hover:shadow-xl'
+      ${
+        isOwned
+          ? 'border-green-300 bg-green-50/30'
+          : 'border-indigo-200 hover:border-indigo-400 hover:shadow-xl'
       }
       ${className}
-    `}>
+    `}
+    >
       {/* Popular/Recommended Badge */}
       {bundle.is_recommended && !isOwned && (
         <div className="absolute top-0 right-0 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold px-4 py-1 rounded-bl-lg flex items-center gap-1">
@@ -102,13 +109,16 @@ export function BundleCard({
       <div className="p-6">
         {/* Header */}
         <div className="flex items-start gap-4 mb-4">
-          <div className={`
+          <div
+            className={`
             w-14 h-14 rounded-xl flex items-center justify-center
-            ${isOwned 
-              ? 'bg-green-100 text-green-600' 
-              : 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white'
+            ${
+              isOwned
+                ? 'bg-green-100 text-green-600'
+                : 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white'
             }
-          `}>
+          `}
+          >
             <Package className="w-7 h-7" />
           </div>
 
@@ -136,12 +146,8 @@ export function BundleCard({
         {/* Pricing */}
         <div className="mb-4">
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-gray-900">
-              ₹{currentPrice}
-            </span>
-            <span className="text-gray-500">
-              /{billingPeriod === 'monthly' ? 'month' : 'year'}
-            </span>
+            <span className="text-3xl font-bold text-gray-900">₹{currentPrice}</span>
+            <span className="text-gray-500">/{billingPeriod === 'monthly' ? 'month' : 'year'}</span>
             {billingPeriod === 'annual' && annualSavingsPercent > 0 && (
               <span className="text-sm text-green-600 font-medium">
                 ({annualSavingsPercent}% off)
@@ -175,14 +181,9 @@ export function BundleCard({
         {isExpanded && (
           <div className="mb-4 space-y-2">
             {featureKeys.map((featureKey, index) => (
-              <div
-                key={featureKey}
-                className="flex items-center gap-2 text-sm text-gray-600"
-              >
+              <div key={featureKey} className="flex items-center gap-2 text-sm text-gray-600">
                 <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
-                <span className="capitalize">
-                  {featureKey.replace(/_/g, ' ')}
-                </span>
+                <span className="capitalize">{featureKey.replace(/_/g, ' ')}</span>
               </div>
             ))}
           </div>
@@ -220,8 +221,8 @@ export function BundleCard({
         {/* Partial Ownership Note */}
         {isPartiallyOwned && !isOwned && (
           <p className="text-xs text-amber-600 text-center mt-3">
-            You already own {ownedCount} of {totalFeatures} features. 
-            Bundle price includes all features.
+            You already own {ownedCount} of {totalFeatures} features. Bundle price includes all
+            features.
           </p>
         )}
       </div>
@@ -237,26 +238,28 @@ export function BundleCardCompact({
   isOwned = false,
   billingPeriod = 'monthly',
   onPurchase,
-  className = ''
+  className = '',
 }) {
   if (!bundle) return null;
 
-  const currentPrice = billingPeriod === 'monthly' 
-    ? bundle.monthly_price 
-    : bundle.annual_price;
+  const currentPrice = billingPeriod === 'monthly' ? bundle.monthly_price : bundle.annual_price;
   const featureCount = bundle.bundle_features?.length || 0;
 
   return (
-    <div className={`
+    <div
+      className={`
       p-4 bg-white rounded-lg border
       ${isOwned ? 'border-green-200 bg-green-50/30' : 'border-gray-200'}
       ${className}
-    `}>
+    `}
+    >
       <div className="flex items-center gap-3 mb-3">
-        <div className={`
+        <div
+          className={`
           w-10 h-10 rounded-lg flex items-center justify-center
           ${isOwned ? 'bg-green-100 text-green-600' : 'bg-indigo-100 text-indigo-600'}
-        `}>
+        `}
+        >
           <Package className="w-5 h-5" />
         </div>
         <div>
@@ -269,7 +272,7 @@ export function BundleCardCompact({
         <span className="font-bold text-gray-900">
           ₹{currentPrice}/{billingPeriod === 'monthly' ? 'mo' : 'yr'}
         </span>
-        
+
         {isOwned ? (
           <span className="text-sm text-green-600 font-medium flex items-center gap-1">
             <Check className="w-4 h-4" />

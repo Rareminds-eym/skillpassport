@@ -46,7 +46,7 @@ export const getUserRole = async (userId: string, email: string): Promise<RoleLo
         school_id: studentData.school_id,
         university_college_id: studentData.university_college_id,
         role: 'student',
-        ...studentData
+        ...studentData,
       });
     }
 
@@ -64,7 +64,7 @@ export const getUserRole = async (userId: string, email: string): Promise<RoleLo
         email: recruiterData.email,
         name: recruiterData.name,
         role: 'recruiter',
-        ...recruiterData
+        ...recruiterData,
       });
     }
 
@@ -80,12 +80,13 @@ export const getUserRole = async (userId: string, email: string): Promise<RoleLo
       foundUserData.push({
         id: educatorData.id,
         email: educatorData.email,
-        name: educatorData.first_name && educatorData.last_name 
-          ? `${educatorData.first_name} ${educatorData.last_name}`
-          : educatorData.first_name || educatorData.last_name || undefined,
+        name:
+          educatorData.first_name && educatorData.last_name
+            ? `${educatorData.first_name} ${educatorData.last_name}`
+            : educatorData.first_name || educatorData.last_name || undefined,
         school_id: educatorData.school_id,
         role: 'educator',
-        ...educatorData
+        ...educatorData,
       });
     }
 
@@ -95,19 +96,19 @@ export const getUserRole = async (userId: string, email: string): Promise<RoleLo
     // 5. Check users table for admin roles
     // Note: users table uses 'id' column that references auth.users(id) directly
     console.log('🔍 Checking users table for admin roles, userId:', userId, 'email:', email);
-    
+
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('*')
       .eq('id', userId)
       .maybeSingle();
-    
+
     console.log('👤 Users table result:', { userData, userError });
 
     if (!userError && userData && userData.role) {
       const userRole = userData.role as string;
       console.log('🎭 Found role in users table:', userRole);
-      
+
       // Handle admin roles
       if (['school_admin', 'college_admin', 'university_admin'].includes(userRole)) {
         const adminRole = userRole as UserRole;
@@ -115,11 +116,12 @@ export const getUserRole = async (userId: string, email: string): Promise<RoleLo
         foundUserData.push({
           id: userData.id,
           email: userData.email || email,
-          name: userData.firstName && userData.lastName 
-            ? `${userData.firstName} ${userData.lastName}`
-            : userData.firstName || userData.lastName || undefined,
+          name:
+            userData.firstName && userData.lastName
+              ? `${userData.firstName} ${userData.lastName}`
+              : userData.firstName || userData.lastName || undefined,
           role: adminRole,
-          ...userData
+          ...userData,
         });
       }
       // Handle educator roles (college_educator, school_educator)
@@ -129,13 +131,15 @@ export const getUserRole = async (userId: string, email: string): Promise<RoleLo
         foundUserData.push({
           id: userData.id,
           email: userData.email || email,
-          name: userData.firstName && userData.lastName 
-            ? `${userData.firstName} ${userData.lastName}`
-            : userData.firstName || userData.lastName || undefined,
+          name:
+            userData.firstName && userData.lastName
+              ? `${userData.firstName} ${userData.lastName}`
+              : userData.firstName || userData.lastName || undefined,
           role: 'educator',
           school_id: userRole === 'school_educator' ? userData.organizationId : undefined,
-          university_college_id: userRole === 'college_educator' ? userData.organizationId : undefined,
-          ...userData
+          university_college_id:
+            userRole === 'college_educator' ? userData.organizationId : undefined,
+          ...userData,
         });
       }
       // Handle student roles (college_student, school_student)
@@ -145,13 +149,15 @@ export const getUserRole = async (userId: string, email: string): Promise<RoleLo
         foundUserData.push({
           id: userData.id,
           email: userData.email || email,
-          name: userData.firstName && userData.lastName 
-            ? `${userData.firstName} ${userData.lastName}`
-            : userData.firstName || userData.lastName || undefined,
+          name:
+            userData.firstName && userData.lastName
+              ? `${userData.firstName} ${userData.lastName}`
+              : userData.firstName || userData.lastName || undefined,
           role: 'student',
           school_id: userRole === 'school_student' ? userData.organizationId : undefined,
-          university_college_id: userRole === 'college_student' ? userData.organizationId : undefined,
-          ...userData
+          university_college_id:
+            userRole === 'college_student' ? userData.organizationId : undefined,
+          ...userData,
         });
       }
       // Handle recruiter role
@@ -161,11 +167,12 @@ export const getUserRole = async (userId: string, email: string): Promise<RoleLo
         foundUserData.push({
           id: userData.id,
           email: userData.email || email,
-          name: userData.firstName && userData.lastName 
-            ? `${userData.firstName} ${userData.lastName}`
-            : userData.firstName || userData.lastName || undefined,
+          name:
+            userData.firstName && userData.lastName
+              ? `${userData.firstName} ${userData.lastName}`
+              : userData.firstName || userData.lastName || undefined,
           role: 'recruiter',
-          ...userData
+          ...userData,
         });
       }
       // Handle special admin roles (super_admin, company_admin) - treat as school_admin for now
@@ -175,14 +182,14 @@ export const getUserRole = async (userId: string, email: string): Promise<RoleLo
         foundUserData.push({
           id: userData.id,
           email: userData.email || email,
-          name: userData.firstName && userData.lastName 
-            ? `${userData.firstName} ${userData.lastName}`
-            : userData.firstName || userData.lastName || undefined,
+          name:
+            userData.firstName && userData.lastName
+              ? `${userData.firstName} ${userData.lastName}`
+              : userData.firstName || userData.lastName || undefined,
           role: 'school_admin',
-          ...userData
+          ...userData,
         });
-      }
-      else {
+      } else {
         console.log('⚠️ User has unrecognized role:', userRole);
       }
     } else {
@@ -198,7 +205,7 @@ export const getUserRole = async (userId: string, email: string): Promise<RoleLo
       return {
         role: null,
         userData: null,
-        error: 'Account not properly configured. Contact support'
+        error: 'Account not properly configured. Contact support',
       };
     }
 
@@ -206,7 +213,7 @@ export const getUserRole = async (userId: string, email: string): Promise<RoleLo
     if (foundRoles.length === 1) {
       return {
         role: foundRoles[0],
-        userData: foundUserData[0]
+        userData: foundUserData[0],
       };
     }
 
@@ -215,15 +222,14 @@ export const getUserRole = async (userId: string, email: string): Promise<RoleLo
       role: null, // User needs to select
       roles: foundRoles,
       userData: null,
-      allUserData: foundUserData
+      allUserData: foundUserData,
     };
-
   } catch (error) {
     console.error('Role lookup error:', error);
     return {
       role: null,
       userData: null,
-      error: 'System error. Please try again'
+      error: 'System error. Please try again',
     };
   }
 };

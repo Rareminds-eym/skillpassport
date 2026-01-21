@@ -245,7 +245,8 @@ export const educatorApi = {
       const pendingActivities = mockActivities.filter((a) => a.status === 'pending').length;
       const verifiedActivities = mockActivities.filter((a) => a.status === 'verified').length;
       const totalActivities = mockActivities.length;
-      const verificationRate = totalActivities > 0 ? (verifiedActivities / totalActivities) * 100 : 0;
+      const verificationRate =
+        totalActivities > 0 ? (verifiedActivities / totalActivities) * 100 : 0;
 
       return mockApiCall({
         totalStudents,
@@ -255,9 +256,7 @@ export const educatorApi = {
         totalActivities,
         verificationRate: Math.round(verificationRate),
         recentActivitiesCount: mockActivities.filter(
-          (a) =>
-            new Date(a.submittedDate) >
-            new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+          (a) => new Date(a.submittedDate) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
         ).length,
       });
     },
@@ -265,15 +264,15 @@ export const educatorApi = {
     getSkillAnalytics: async () => {
       // Count skill participation (activities per skill)
       const skillCounts: { [key: string]: number } = {};
-      mockActivities.forEach(activity => {
-        activity.skills.forEach(skill => {
+      mockActivities.forEach((activity) => {
+        activity.skills.forEach((skill) => {
           skillCounts[skill] = (skillCounts[skill] || 0) + 1;
         });
       });
 
       // Count skill distribution by category
       const categoryCounts: { [key: string]: number } = {};
-      mockActivities.forEach(activity => {
+      mockActivities.forEach((activity) => {
         categoryCounts[activity.category] = (categoryCounts[activity.category] || 0) + 1;
       });
 

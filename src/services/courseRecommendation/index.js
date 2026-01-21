@@ -1,12 +1,12 @@
 /**
  * Course Recommendation Service
- * 
+ *
  * Provides RAG-based course recommendations using vector similarity search
  * to match student assessment profiles with platform courses.
- * 
+ *
  * Feature: rag-course-recommendations
  * Requirements: 2.1, 2.2, 2.3, 3.1, 3.2, 3.3, 3.4, 5.1, 5.2, 5.4
- * 
+ *
  * Architecture:
  * - config.js: Configuration constants
  * - utils.js: Helper functions (parsing, scoring, matching)
@@ -23,34 +23,23 @@
 export { buildProfileText } from './profileBuilder';
 
 // Course fetching
-export { 
-  fetchCoursesWithEmbeddings,
-  fetchCoursesBySkillType 
-} from './courseRepository';
+export { fetchCoursesWithEmbeddings, fetchCoursesBySkillType } from './courseRepository';
 
 // Main recommendation functions
-export { 
-  getRecommendedCourses,
-  getRecommendedCoursesByType 
-} from './recommendationService';
+export { getRecommendedCourses, getRecommendedCoursesByType } from './recommendationService';
 
 // Skill gap matching
-export { 
-  getCoursesForSkillGap,
-  getCoursesForMultipleSkillGaps 
-} from './skillGapMatcher';
+export { getCoursesForSkillGap, getCoursesForMultipleSkillGaps } from './skillGapMatcher';
 
 // Role-based matching (for CareerTrackModal)
-export { 
-  matchCoursesForRole 
-} from './roleBasedMatcher';
+export { matchCoursesForRole } from './roleBasedMatcher';
 
 // Storage operations
-export { 
+export {
   saveRecommendations,
   getSavedRecommendations,
   updateRecommendationStatus,
-  getAndSaveRecommendations 
+  getAndSaveRecommendations,
 } from './recommendationStorage';
 
 // Import for default export
@@ -59,11 +48,11 @@ import { fetchCoursesWithEmbeddings, fetchCoursesBySkillType } from './courseRep
 import { getRecommendedCourses, getRecommendedCoursesByType } from './recommendationService';
 import { getCoursesForSkillGap, getCoursesForMultipleSkillGaps } from './skillGapMatcher';
 import { matchCoursesForRole } from './roleBasedMatcher';
-import { 
-  saveRecommendations, 
-  getSavedRecommendations, 
-  updateRecommendationStatus, 
-  getAndSaveRecommendations 
+import {
+  saveRecommendations,
+  getSavedRecommendations,
+  updateRecommendationStatus,
+  getAndSaveRecommendations,
 } from './recommendationStorage';
 
 // Default export for convenience
@@ -79,5 +68,5 @@ export default {
   saveRecommendations,
   getSavedRecommendations,
   updateRecommendationStatus,
-  getAndSaveRecommendations
+  getAndSaveRecommendations,
 };

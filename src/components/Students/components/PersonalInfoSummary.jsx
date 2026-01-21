@@ -17,12 +17,10 @@ import {
   Twitter,
   Instagram,
   Facebook,
-  Link as LinkIcon
+  Link as LinkIcon,
 } from 'lucide-react';
 
 const PersonalInfoSummary = ({ data, studentData, isOwnProfile = true }) => {
-  if (!data) return null;
-
   // Determine institution from studentData
   const institution = React.useMemo(() => {
     // Priority: school_id takes precedence if both exist
@@ -50,67 +48,71 @@ const PersonalInfoSummary = ({ data, studentData, isOwnProfile = true }) => {
     return null;
   }, [studentData]);
 
+  if (!data) return null;
+
   const infoItems = [
     {
       icon: User,
       label: 'Name',
       value: data.name,
-      primary: true
+      primary: true,
     },
     {
       icon: Calendar,
       label: 'Age',
-      value: data.age ? `${data.age} years` : null
+      value: data.age ? `${data.age} years` : null,
     },
     {
       icon: Mail,
       label: 'Email',
       value: data.email,
-      primary: true
+      primary: true,
     },
     {
       icon: Phone,
       label: 'Contact',
-      value: data.contact_number || data.phone ? 
-        `${data.contact_number || data.phone}` : null
+      value: data.contact_number || data.phone ? `${data.contact_number || data.phone}` : null,
     },
     {
       icon: Phone,
       label: 'Alternate Contact',
-      value: data.alternate_number || data.alternatePhone ? 
-        `${data.alternate_number || data.alternatePhone}` : null
+      value:
+        data.alternate_number || data.alternatePhone
+          ? `${data.alternate_number || data.alternatePhone}`
+          : null,
     },
     {
       icon: Calendar,
       label: 'Date of Birth',
-      value: (data.date_of_birth || data.dateOfBirth) && 
-             (data.date_of_birth || data.dateOfBirth) !== '-' ? 
-             (data.date_of_birth || data.dateOfBirth) : null
+      value:
+        (data.date_of_birth || data.dateOfBirth) && (data.date_of_birth || data.dateOfBirth) !== '-'
+          ? data.date_of_birth || data.dateOfBirth
+          : null,
     },
     {
       icon: MapPin,
       label: 'District',
-      value: data.district_name || data.district
+      value: data.district_name || data.district,
     },
     {
       icon: GraduationCap,
       label: 'University',
-      value: data.university
+      value: data.university,
     },
     {
       icon: Building,
       label: 'College/School',
-      value: data.college_school_name || data.college
+      value: data.college_school_name || data.college,
     },
     {
       icon: GraduationCap,
       label: 'Branch/Field',
-      value: data.branch_field || data.department
+      value: data.branch_field || data.department,
     },
     {
       icon: Hash,
       label: 'Registration Number',
-      value: data.registration_number || data.registrationNumber
+      value: data.registration_number || data.registrationNumber,
     },
     // COMMENTED OUT FOR NOW - RM ID not required
     // {
@@ -121,43 +123,47 @@ const PersonalInfoSummary = ({ data, studentData, isOwnProfile = true }) => {
   ];
 
   // Filter out items with no value
-  const displayItems = infoItems.filter(item => item.value && item.value.toString().trim() !== '');
+  const displayItems = infoItems.filter(
+    (item) => item.value && item.value.toString().trim() !== ''
+  );
 
   // Social media links
   const socialLinks = [
     {
       icon: Github,
       label: 'GitHub',
-      value: data.github_link || data.githubLink
+      value: data.github_link || data.githubLink,
     },
     {
       icon: Globe,
       label: 'Portfolio',
-      value: data.portfolio_link || data.portfolioLink
+      value: data.portfolio_link || data.portfolioLink,
     },
     {
       icon: Linkedin,
       label: 'LinkedIn',
-      value: data.linkedin_link || data.linkedinLink
+      value: data.linkedin_link || data.linkedinLink,
     },
     {
       icon: Twitter,
       label: 'Twitter/X',
-      value: data.twitter_link || data.twitterLink
+      value: data.twitter_link || data.twitterLink,
     },
     {
       icon: Instagram,
       label: 'Instagram',
-      value: data.instagram_link || data.instagramLink
+      value: data.instagram_link || data.instagramLink,
     },
     {
       icon: Facebook,
       label: 'Facebook',
-      value: data.facebook_link || data.facebookLink
-    }
+      value: data.facebook_link || data.facebookLink,
+    },
   ];
 
-  const displaySocialLinks = socialLinks.filter(link => link.value && link.value.toString().trim() !== '');
+  const displaySocialLinks = socialLinks.filter(
+    (link) => link.value && link.value.toString().trim() !== ''
+  );
 
   if (displayItems.length === 0 && displaySocialLinks.length === 0) {
     return (
@@ -167,8 +173,7 @@ const PersonalInfoSummary = ({ data, studentData, isOwnProfile = true }) => {
           <p className="text-blue-500">
             {isOwnProfile
               ? 'No personal information available. Click "Edit Details" to add your information.'
-              : 'No personal information available.'
-            }
+              : 'No personal information available.'}
           </p>
         </CardContent>
       </Card>
@@ -190,13 +195,9 @@ const PersonalInfoSummary = ({ data, studentData, isOwnProfile = true }) => {
                   <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-1">
                     {institution.type}
                   </p>
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">
-                    {institution.name}
-                  </h3>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">{institution.name}</h3>
                   {institution.universityName && (
-                    <p className="text-sm text-gray-600 mb-2">
-                      {institution.universityName}
-                    </p>
+                    <p className="text-sm text-gray-600 mb-2">{institution.universityName}</p>
                   )}
                   <div className="flex flex-wrap gap-3 text-sm text-gray-600">
                     {institution.code && (
@@ -209,9 +210,7 @@ const PersonalInfoSummary = ({ data, studentData, isOwnProfile = true }) => {
                       <div className="flex items-center gap-1">
                         <MapPin className="w-4 h-4" />
                         <span>
-                          {[institution.city, institution.state]
-                            .filter(Boolean)
-                            .join(', ')}
+                          {[institution.city, institution.state].filter(Boolean).join(', ')}
                         </span>
                       </div>
                     )}
@@ -239,9 +238,7 @@ const PersonalInfoSummary = ({ data, studentData, isOwnProfile = true }) => {
                 <p className="text-xs font-medium text-blue-600 uppercase tracking-wider">
                   {item.label}
                 </p>
-                <p className="text-sm font-semibold text-gray-900 truncate">
-                  {item.value}
-                </p>
+                <p className="text-sm font-semibold text-gray-900 truncate">{item.value}</p>
               </div>
             </div>
           );
@@ -256,13 +253,11 @@ const PersonalInfoSummary = ({ data, studentData, isOwnProfile = true }) => {
               <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
                 <LinkIcon className="w-4 h-4 text-white" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900">
-                Social & Professional Links
-              </h3>
+              <h3 className="text-lg font-semibold text-gray-900">Social & Professional Links</h3>
             </div>
             <p className="text-sm text-gray-600 ml-11">Connect and explore professional profiles</p>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {displaySocialLinks.map((link, index) => {
               const IconComponent = link.icon;
@@ -284,8 +279,18 @@ const PersonalInfoSummary = ({ data, studentData, isOwnProfile = true }) => {
                       </p>
                       <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">
                         View Profile
-                        <svg className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        <svg
+                          className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                          />
                         </svg>
                       </p>
                     </div>

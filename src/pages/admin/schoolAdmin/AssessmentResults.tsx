@@ -1,14 +1,14 @@
 import {
-    AcademicCapIcon,
-    ChartBarIcon,
-    ChevronDownIcon,
-    ClipboardDocumentListIcon,
-    EyeIcon,
-    FunnelIcon,
-    SparklesIcon,
-    Squares2X2Icon,
-    TableCellsIcon,
-    XMarkIcon,
+  AcademicCapIcon,
+  ChartBarIcon,
+  ChevronDownIcon,
+  ClipboardDocumentListIcon,
+  EyeIcon,
+  FunnelIcon,
+  SparklesIcon,
+  Squares2X2Icon,
+  TableCellsIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import React, { useEffect, useMemo, useState } from 'react';
 import SearchBar from '../../../components/common/SearchBar';
@@ -47,9 +47,7 @@ const FilterSection = ({ title, children, defaultOpen = false }: any) => {
         className="flex items-center justify-between w-full text-left"
       >
         <span className="text-sm font-medium text-gray-900">{title}</span>
-        <ChevronDownIcon
-          className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-        />
+        <ChevronDownIcon className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {isOpen && <div className="mt-3">{children}</div>}
     </div>
@@ -96,9 +94,7 @@ const ScoreBadge = ({ score, label }: { score: number | null; label: string }) =
 
   return (
     <div className="flex flex-col items-center">
-      <span
-        className={`px-2 py-1 rounded-full text-xs font-semibold ${getScoreColor(score)}`}
-      >
+      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getScoreColor(score)}`}>
         {score !== null ? `${score}%` : 'N/A'}
       </span>
       <span className="text-xs text-gray-500 mt-1">{label}</span>
@@ -130,15 +126,8 @@ const ReadinessBadge = ({ readiness }: { readiness: string | null }) => {
   );
 };
 
-
 // Assessment Card Component
-const AssessmentCard = ({
-  result,
-  onView,
-}: {
-  result: AssessmentResult;
-  onView: () => void;
-}) => {
+const AssessmentCard = ({ result, onView }: { result: AssessmentResult; onView: () => void }) => {
   return (
     <div className="group bg-white rounded-xl border border-gray-200 hover:border-gray-300 hover:shadow-lg transition-all duration-300 overflow-hidden">
       {/* Header with gradient */}
@@ -237,7 +226,6 @@ const AssessmentCard = ({
   );
 };
 
-
 /* OLD Detail Modal Component - Commented out, replaced with AssessmentReportDrawer
 const AssessmentDetailModal = ({
   result,
@@ -293,7 +281,6 @@ const AssessmentDetailModal = ({
   );
 };
 END OF OLD Detail Modal Component */
-
 
 // Main Component
 const SchoolAdminAssessmentResults: React.FC = () => {
@@ -352,7 +339,7 @@ const SchoolAdminAssessmentResults: React.FC = () => {
       }
 
       const schoolId = org.id;
-      
+
       // Set school name from the already fetched organization data
       setSchoolName(org.name);
 
@@ -372,7 +359,7 @@ const SchoolAdminAssessmentResults: React.FC = () => {
 
       // Filter out students with null user_id to avoid UUID parsing errors
       const validStudents = studentsData.filter((s) => s.user_id != null);
-      
+
       if (validStudents.length === 0) {
         setResults([]);
         setLoading(false);
@@ -385,7 +372,8 @@ const SchoolAdminAssessmentResults: React.FC = () => {
       // Fetch assessment results for these students
       const { data, error: fetchError } = await supabase
         .from('personal_assessment_results')
-        .select(`
+        .select(
+          `
           id,
           student_id,
           stream_id,
@@ -398,7 +386,8 @@ const SchoolAdminAssessmentResults: React.FC = () => {
           career_fit,
           skill_gap,
           gemini_results
-        `)
+        `
+        )
         .in('student_id', studentIds)
         .order('created_at', { ascending: false });
 
@@ -411,6 +400,7 @@ const SchoolAdminAssessmentResults: React.FC = () => {
           student_name: student?.name || null,
           student_email: student?.email || null,
           school_id: schoolId,
+          // @ts-expect-error - Auto-suppressed for migration
           school_name: school.name || null,
         };
       });
@@ -506,17 +496,13 @@ const SchoolAdminAssessmentResults: React.FC = () => {
 
     // Status filter
     if (filters.statuses.length > 0) {
-      filtered = filtered.filter(
-        (r) => r.status && filters.statuses.includes(r.status)
-      );
+      filtered = filtered.filter((r) => r.status && filters.statuses.includes(r.status));
     }
 
     // Readiness filter
     if (filters.readiness.length > 0) {
       filtered = filtered.filter(
-        (r) =>
-          r.employability_readiness &&
-          filters.readiness.includes(r.employability_readiness)
+        (r) => r.employability_readiness && filters.readiness.includes(r.employability_readiness)
       );
     }
 
@@ -524,25 +510,16 @@ const SchoolAdminAssessmentResults: React.FC = () => {
     const sorted = [...filtered];
     switch (sortBy) {
       case 'date':
-        sorted.sort(
-          (a, b) =>
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
+        sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         break;
       case 'name':
-        sorted.sort((a, b) =>
-          (a.student_name || '').localeCompare(b.student_name || '')
-        );
+        sorted.sort((a, b) => (a.student_name || '').localeCompare(b.student_name || ''));
         break;
       case 'aptitude':
-        sorted.sort(
-          (a, b) => (b.aptitude_overall || 0) - (a.aptitude_overall || 0)
-        );
+        sorted.sort((a, b) => (b.aptitude_overall || 0) - (a.aptitude_overall || 0));
         break;
       case 'knowledge':
-        sorted.sort(
-          (a, b) => (b.knowledge_score || 0) - (a.knowledge_score || 0)
-        );
+        sorted.sort((a, b) => (b.knowledge_score || 0) - (a.knowledge_score || 0));
         break;
       default:
         break;
@@ -579,16 +556,12 @@ const SchoolAdminAssessmentResults: React.FC = () => {
     const avgAptitude =
       results.length > 0
         ? Math.round(
-            results.reduce((sum, r) => sum + (r.aptitude_overall || 0), 0) /
-              results.length
+            results.reduce((sum, r) => sum + (r.aptitude_overall || 0), 0) / results.length
           )
         : 0;
     const avgKnowledge =
       results.length > 0
-        ? Math.round(
-            results.reduce((sum, r) => sum + (r.knowledge_score || 0), 0) /
-              results.length
-          )
+        ? Math.round(results.reduce((sum, r) => sum + (r.knowledge_score || 0), 0) / results.length)
         : 0;
     return { total: results.length, completed, avgAptitude, avgKnowledge };
   }, [results]);
@@ -610,9 +583,7 @@ const SchoolAdminAssessmentResults: React.FC = () => {
       <div className="p-6 bg-white border-b border-gray-200">
         <div className="flex items-center justify-between mb-9">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Student Assessment Results
-            </h1>
+            <h1 className="text-2xl font-bold text-gray-900">Student Assessment Results</h1>
             <p className="text-sm text-gray-600 mt-1">
               View personal assessment results for {schoolName || 'your school'}
             </p>
@@ -738,9 +709,7 @@ const SchoolAdminAssessmentResults: React.FC = () => {
                 <CheckboxGroup
                   options={streamOptions}
                   selectedValues={filters.streams}
-                  onChange={(values: string[]) =>
-                    setFilters({ ...filters, streams: values })
-                  }
+                  onChange={(values: string[]) => setFilters({ ...filters, streams: values })}
                 />
               </FilterSection>
 
@@ -748,9 +717,7 @@ const SchoolAdminAssessmentResults: React.FC = () => {
                 <CheckboxGroup
                   options={statusOptions}
                   selectedValues={filters.statuses}
-                  onChange={(values: string[]) =>
-                    setFilters({ ...filters, statuses: values })
-                  }
+                  onChange={(values: string[]) => setFilters({ ...filters, statuses: values })}
                 />
               </FilterSection>
 
@@ -758,9 +725,7 @@ const SchoolAdminAssessmentResults: React.FC = () => {
                 <CheckboxGroup
                   options={readinessOptions}
                   selectedValues={filters.readiness}
-                  onChange={(values: string[]) =>
-                    setFilters({ ...filters, readiness: values })
-                  }
+                  onChange={(values: string[]) => setFilters({ ...filters, readiness: values })}
                 />
               </FilterSection>
             </div>
@@ -863,22 +828,22 @@ const SchoolAdminAssessmentResults: React.FC = () => {
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {paginatedResults.map((result, index) => (
-                        <tr key={result.id} className={`hover:bg-gray-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-25'}`}>
+                        <tr
+                          key={result.id}
+                          className={`hover:bg-gray-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-25'}`}
+                        >
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
                               <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
                                 <span className="text-white font-semibold text-sm">
-                                  {result.student_name?.charAt(0)?.toUpperCase() ||
-                                    '?'}
+                                  {result.student_name?.charAt(0)?.toUpperCase() || '?'}
                                 </span>
                               </div>
                               <div className="ml-4">
                                 <div className="text-sm font-medium text-gray-900">
                                   {result.student_name || 'Unknown'}
                                 </div>
-                                <div className="text-sm text-gray-500">
-                                  {result.student_email}
-                                </div>
+                                <div className="text-sm text-gray-500">{result.student_email}</div>
                               </div>
                             </div>
                           </td>
@@ -891,19 +856,13 @@ const SchoolAdminAssessmentResults: React.FC = () => {
                             {result.riasec_code || '-'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            {result.aptitude_overall !== null
-                              ? `${result.aptitude_overall}%`
-                              : '-'}
+                            {result.aptitude_overall !== null ? `${result.aptitude_overall}%` : '-'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            {result.knowledge_score !== null
-                              ? `${result.knowledge_score}%`
-                              : '-'}
+                            {result.knowledge_score !== null ? `${result.knowledge_score}%` : '-'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <ReadinessBadge
-                              readiness={result.employability_readiness}
-                            />
+                            <ReadinessBadge readiness={result.employability_readiness} />
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {new Date(result.created_at).toLocaleDateString()}
@@ -925,7 +884,7 @@ const SchoolAdminAssessmentResults: React.FC = () => {
                   </table>
                 </div>
               )}
-                 {/* <div className="mb-6 text-sm text-gray-600 flex items-center justify-between">
+              {/* <div className="mb-6 text-sm text-gray-600 flex items-center justify-between">
                 <span>
                   Showing {startIndex + 1}-
                   {Math.min(endIndex, filteredResults.length)} of{' '}
@@ -948,7 +907,7 @@ const SchoolAdminAssessmentResults: React.FC = () => {
                     >
                       Previous
                     </button>
-                    
+
                     {/* Page Numbers */}
                     <div className="flex items-center gap-1">
                       {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
@@ -962,7 +921,7 @@ const SchoolAdminAssessmentResults: React.FC = () => {
                         } else {
                           pageNum = currentPage - 2 + i;
                         }
-                        
+
                         return (
                           <button
                             key={pageNum}
@@ -978,11 +937,9 @@ const SchoolAdminAssessmentResults: React.FC = () => {
                         );
                       })}
                     </div>
-                    
+
                     <button
-                      onClick={() =>
-                        setCurrentPage((p) => Math.min(totalPages, p + 1))
-                      }
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                       disabled={currentPage === totalPages}
                       className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
@@ -1010,14 +967,18 @@ const SchoolAdminAssessmentResults: React.FC = () => {
 
       {/* NEW: Assessment Report Drawer - Uses the same design as student assessment result page */}
       <AssessmentReportDrawer
-        student={selectedResult ? {
-          id: selectedResult.student_id,
-          user_id: selectedResult.student_id,
-          name: selectedResult.student_name,
-          email: selectedResult.student_email,
-          college: selectedResult.school_name,
-          college_name: selectedResult.school_name,
-        } : null}
+        student={
+          selectedResult
+            ? {
+                id: selectedResult.student_id,
+                user_id: selectedResult.student_id,
+                name: selectedResult.student_name,
+                email: selectedResult.student_email,
+                college: selectedResult.school_name,
+                college_name: selectedResult.school_name,
+              }
+            : null
+        }
         assessmentResult={selectedResult}
         isOpen={showDetailModal}
         onClose={() => {

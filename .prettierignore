@@ -1,0 +1,32 @@
+# Dependencies
+node_modules
+
+# Build outputs
+dist
+build
+.vite
+coverage
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+
+# IDE
+.vscode
+.idea
+
+# Cloudflare workers build
+cloudflare-workers/**/dist
+
+# Package manager
+package-lock.json
+pnpm-lock.yaml
+yarn.lock

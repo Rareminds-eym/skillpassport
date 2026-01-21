@@ -1,20 +1,20 @@
 import {
-    Bell,
-    CheckCircle,
-    CheckCircle2,
-    Database,
-    Globe,
-    KeyRound,
-    Lock,
-    Mail,
-    Phone,
-    RefreshCw,
-    User
-} from "lucide-react"
-import React, { useEffect, useId, useState } from "react"
-import { SubscriptionSettingsSection } from "../../components/Subscription/SubscriptionSettingsSection"
-import { useAuth } from "../../context/AuthContext"
-import { supabase } from "../../lib/supabaseClient"
+  Bell,
+  CheckCircle,
+  CheckCircle2,
+  Database,
+  Globe,
+  KeyRound,
+  Lock,
+  Mail,
+  Phone,
+  RefreshCw,
+  User,
+} from 'lucide-react';
+import React, { useEffect, useId, useState } from 'react';
+import { SubscriptionSettingsSection } from '../../components/Subscription/SubscriptionSettingsSection';
+import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../lib/supabaseClient';
 
 /* ---------- UI Primitives ---------- */
 
@@ -25,11 +25,11 @@ function SectionCard({
   children,
   actions,
 }: {
-  icon?: React.ElementType
-  title: string
-  subtitle?: string
-  children: React.ReactNode
-  actions?: React.ReactNode
+  icon?: React.ElementType;
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+  actions?: React.ReactNode;
 }) {
   return (
     <section className="bg-white border rounded-2xl shadow-sm overflow-hidden">
@@ -45,7 +45,7 @@ function SectionCard({
       </header>
       <div className="p-6">{children}</div>
     </section>
-  )
+  );
 }
 
 /** Accessible, controlled toggle button */
@@ -54,11 +54,11 @@ function ToggleSwitch({
   onChange,
   label,
 }: {
-  enabled: boolean
-  onChange: (next: boolean) => void
-  label: string
+  enabled: boolean;
+  onChange: (next: boolean) => void;
+  label: string;
 }) {
-  const id = useId()
+  const id = useId();
   return (
     <button
       id={id}
@@ -68,16 +68,16 @@ function ToggleSwitch({
       aria-label={label}
       onClick={() => onChange(!enabled)}
       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-        enabled ? "bg-blue-600" : "bg-gray-300"
+        enabled ? 'bg-blue-600' : 'bg-gray-300'
       }`}
     >
       <span
         className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
-          enabled ? "translate-x-5" : "translate-x-1"
+          enabled ? 'translate-x-5' : 'translate-x-1'
         }`}
       />
     </button>
-  )
+  );
 }
 
 function ToggleRow({
@@ -86,12 +86,12 @@ function ToggleRow({
   desc,
   defaultChecked = false,
 }: {
-  icon?: React.ElementType
-  title: string
-  desc?: string
-  defaultChecked?: boolean
+  icon?: React.ElementType;
+  title: string;
+  desc?: string;
+  defaultChecked?: boolean;
 }) {
-  const [enabled, setEnabled] = useState(defaultChecked)
+  const [enabled, setEnabled] = useState(defaultChecked);
 
   return (
     <div className="flex items-center justify-between gap-6 p-4 border rounded-xl hover:bg-gray-50 transition">
@@ -104,43 +104,43 @@ function ToggleRow({
       </div>
       <ToggleSwitch enabled={enabled} onChange={setEnabled} label={title} />
     </div>
-  )
+  );
 }
 
 /* ---------- Page ---------- */
 
 export default function SettingsPage() {
-  const { user } = useAuth()
-  const [recruiter, setRecruiter] = useState<any>(null)
-  const [loading, setLoading] = useState(false)
+  const { user } = useAuth();
+  const [recruiter, setRecruiter] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const fetchRecruiter = async () => {
-      if (!user?.email) return
-      setLoading(true)
+      if (!user?.email) return;
+      setLoading(true);
       const { data, error } = await supabase
-        .from("recruiters")
-        .select("*")
-        .eq("email", user.email)
-        .maybeSingle()
+        .from('recruiters')
+        .select('*')
+        .eq('email', user.email)
+        .maybeSingle();
 
       if (error) {
-        console.error("❌ Error fetching recruiter:", error.message)
+        console.error('❌ Error fetching recruiter:', error.message);
       } else {
-        setRecruiter(data)
+        setRecruiter(data);
       }
-      setLoading(false)
-    }
+      setLoading(false);
+    };
 
-    fetchRecruiter()
-  }, [user])
+    fetchRecruiter();
+  }, [user]);
 
   if (loading) {
     return (
       <main className="bg-gray-50 min-h-screen flex items-center justify-center">
         <p className="text-gray-600">Loading recruiter info...</p>
       </main>
-    )
+    );
   }
 
   return (
@@ -160,7 +160,7 @@ export default function SettingsPage() {
           title="Recruiter Profile"
           subtitle="View your recruiter details stored in the system."
           actions={
-            recruiter?.verificationstatus === "approved" && (
+            recruiter?.verificationstatus === 'approved' && (
               <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-700 border border-green-200">
                 <CheckCircle className="w-4 h-4" />
                 Verified
@@ -179,7 +179,7 @@ export default function SettingsPage() {
                 </label>
                 <input
                   type="text"
-                  value={recruiter.name || ""}
+                  value={recruiter.name || ''}
                   disabled
                   className="w-full rounded-lg border px-4 py-2.5 bg-gray-50 text-gray-800"
                 />
@@ -190,7 +190,7 @@ export default function SettingsPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
                 <input
                   type="email"
-                  value={recruiter.email || ""}
+                  value={recruiter.email || ''}
                   disabled
                   className="w-full rounded-lg border px-4 py-2.5 bg-gray-50 text-gray-800"
                 />
@@ -202,7 +202,7 @@ export default function SettingsPage() {
                 <div className="relative">
                   <input
                     type="text"
-                    value={recruiter.phone || ""}
+                    value={recruiter.phone || ''}
                     disabled
                     className="w-full rounded-lg border pl-10 pr-4 py-2.5 bg-gray-50 text-gray-800"
                   />
@@ -215,7 +215,7 @@ export default function SettingsPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
                 <input
                   type="text"
-                  value={recruiter.state || "Not specified"}
+                  value={recruiter.state || 'Not specified'}
                   disabled
                   className="w-full rounded-lg border px-4 py-2.5 bg-gray-50 text-gray-800"
                 />
@@ -227,7 +227,7 @@ export default function SettingsPage() {
                 <div className="relative">
                   <input
                     type="text"
-                    value={recruiter.website || ""}
+                    value={recruiter.website || ''}
                     disabled
                     className="w-full rounded-lg border pl-10 pr-4 py-2.5 bg-gray-50 text-gray-800"
                   />
@@ -301,7 +301,7 @@ export default function SettingsPage() {
         <SubscriptionSettingsSection />
 
         {/* System Management (super admin only) */}
-        {user?.role === "super_admin" && (
+        {user?.role === 'super_admin' && (
           <SectionCard
             icon={Database}
             title="System Management"
@@ -313,8 +313,9 @@ export default function SettingsPage() {
                 <div>
                   <p className="font-medium text-gray-900">Update Metrics Snapshot</p>
                   <p className="text-sm text-gray-600">
-                    Calculate and save a snapshot in{" "}
-                    <code className="px-1 py-0.5 rounded bg-gray-100">metrics_snapshots</code> for trend analysis.
+                    Calculate and save a snapshot in{' '}
+                    <code className="px-1 py-0.5 rounded bg-gray-100">metrics_snapshots</code> for
+                    trend analysis.
                   </p>
                 </div>
               </div>
@@ -327,5 +328,5 @@ export default function SettingsPage() {
         )}
       </div>
     </main>
-  )
+  );
 }

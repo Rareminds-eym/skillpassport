@@ -1,6 +1,6 @@
 /**
  * Security Tests: Authorization Checks
- * 
+ *
  * Tests admin-only operations and role-based access control.
  * Requirements: Security, Access Control
  */
@@ -18,17 +18,17 @@ describe('Security Tests: Authorization', () => {
       ['admin-2', { id: 'admin-2', role: 'college_admin', organization_id: 'org-2' }],
       ['educator-1', { id: 'educator-1', role: 'educator', organization_id: 'org-1' }],
       ['student-1', { id: 'student-1', role: 'student', organization_id: 'org-1' }],
-      ['super-admin', { id: 'super-admin', role: 'super_admin', organization_id: null }]
+      ['super-admin', { id: 'super-admin', role: 'super_admin', organization_id: null }],
     ]);
 
     subscriptions = new Map([
       ['sub-1', { id: 'sub-1', organization_id: 'org-1', purchased_by: 'admin-1' }],
-      ['sub-2', { id: 'sub-2', organization_id: 'org-2', purchased_by: 'admin-2' }]
+      ['sub-2', { id: 'sub-2', organization_id: 'org-2', purchased_by: 'admin-2' }],
     ]);
 
     licensePools = new Map([
       ['pool-1', { id: 'pool-1', organization_id: 'org-1', organization_subscription_id: 'sub-1' }],
-      ['pool-2', { id: 'pool-2', organization_id: 'org-2', organization_subscription_id: 'sub-2' }]
+      ['pool-2', { id: 'pool-2', organization_id: 'org-2', organization_subscription_id: 'sub-2' }],
     ]);
 
     vi.clearAllMocks();
@@ -83,11 +83,11 @@ describe('Security Tests: Authorization', () => {
       const assignLicense = async (adminId: string, poolId: string, userId: string) => {
         const pool = licensePools.get(poolId);
         if (!pool) throw new Error('Pool not found');
-        
+
         if (!isOrgAdmin(adminId, pool.organization_id)) {
           throw new Error('Unauthorized: Admin access required');
         }
-        
+
         return { success: true, assignment_id: 'new-assign' };
       };
 
@@ -99,11 +99,11 @@ describe('Security Tests: Authorization', () => {
       const assignLicense = async (adminId: string, poolId: string, userId: string) => {
         const pool = licensePools.get(poolId);
         if (!pool) throw new Error('Pool not found');
-        
+
         if (!isOrgAdmin(adminId, pool.organization_id)) {
           throw new Error('Unauthorized: Admin access required');
         }
-        
+
         return { success: true };
       };
 
@@ -116,11 +116,11 @@ describe('Security Tests: Authorization', () => {
       const cancelSubscription = async (userId: string, subscriptionId: string) => {
         const subscription = subscriptions.get(subscriptionId);
         if (!subscription) throw new Error('Subscription not found');
-        
+
         if (!isOrgAdmin(userId, subscription.organization_id)) {
           throw new Error('Unauthorized: Admin access required');
         }
-        
+
         return { success: true, cancelled: true };
       };
 
@@ -159,15 +159,15 @@ describe('Security Tests: Authorization', () => {
       const accessResource = async (userId: string, orgId: string) => {
         const user = users.get(userId);
         if (!user) throw new Error('User not found');
-        
+
         if (user.role === 'super_admin') {
           return { access: 'full', organization: orgId };
         }
-        
+
         if (user.organization_id !== orgId) {
           throw new Error('Unauthorized: Cross-organization access denied');
         }
-        
+
         return { access: 'limited', organization: orgId };
       };
 
@@ -183,15 +183,15 @@ describe('Security Tests: Authorization', () => {
       const accessResource = async (userId: string, orgId: string) => {
         const user = users.get(userId);
         if (!user) throw new Error('User not found');
-        
+
         if (user.role === 'super_admin') {
           return { access: 'full' };
         }
-        
+
         if (user.organization_id !== orgId) {
           throw new Error('Unauthorized: Cross-organization access denied');
         }
-        
+
         return { access: 'limited' };
       };
 
@@ -209,19 +209,21 @@ describe('Security Tests: Authorization', () => {
       const viewEntitlements = async (requesterId: string, targetUserId: string) => {
         const requester = users.get(requesterId);
         if (!requester) throw new Error('User not found');
-        
+
         // Users can view their own entitlements
         if (requesterId === targetUserId) {
           return { entitlements: ['feature-a', 'feature-b'] };
         }
-        
+
         // Admins can view entitlements of users in their org
         const targetUser = users.get(targetUserId);
-        if (requester.role?.includes('admin') && 
-            requester.organization_id === targetUser?.organization_id) {
+        if (
+          requester.role?.includes('admin') &&
+          requester.organization_id === targetUser?.organization_id
+        ) {
           return { entitlements: ['feature-a', 'feature-b'] };
         }
-        
+
         throw new Error('Unauthorized: Cannot view other user entitlements');
       };
 
@@ -245,17 +247,17 @@ describe('Security Tests: Authorization', () => {
       const updateUserRole = async (requesterId: string, targetUserId: string, newRole: string) => {
         const requester = users.get(requesterId);
         if (!requester) throw new Error('User not found');
-        
+
         // Only super admin can change roles
         if (requester.role !== 'super_admin') {
           throw new Error('Unauthorized: Only super admin can modify roles');
         }
-        
+
         // Cannot elevate to super_admin
         if (newRole === 'super_admin') {
           throw new Error('Unauthorized: Cannot create super admin');
         }
-        
+
         return { success: true, newRole };
       };
 
@@ -274,16 +276,16 @@ describe('Security Tests: Authorization', () => {
       const modifySubscription = async (userId: string, subscriptionId: string, changes: any) => {
         const user = users.get(userId);
         const subscription = subscriptions.get(subscriptionId);
-        
+
         if (!user || !subscription) {
           throw new Error('Not found');
         }
-        
+
         // Only the purchasing admin or super admin can modify
         if (user.role !== 'super_admin' && subscription.purchased_by !== userId) {
           throw new Error('Unauthorized: Only subscription owner can modify');
         }
-        
+
         return { success: true, changes };
       };
 
@@ -303,13 +305,13 @@ describe('Security Tests: Authorization', () => {
       const validateToken = (token: string) => {
         const tokenData = {
           'valid-token': { userId: 'admin-1', expiresAt: Date.now() + 3600000 },
-          'expired-token': { userId: 'admin-1', expiresAt: Date.now() - 3600000 }
+          'expired-token': { userId: 'admin-1', expiresAt: Date.now() - 3600000 },
         };
-        
+
         const data = tokenData[token as keyof typeof tokenData];
         if (!data) throw new Error('Invalid token');
         if (data.expiresAt < Date.now()) throw new Error('Token expired');
-        
+
         return data;
       };
 
@@ -320,21 +322,30 @@ describe('Security Tests: Authorization', () => {
 
     it('should validate invitation tokens', async () => {
       const invitations = new Map([
-        ['valid-inv-token', { 
-          id: 'inv-1', 
-          status: 'pending', 
-          expires_at: new Date(Date.now() + 86400000).toISOString() 
-        }],
-        ['expired-inv-token', { 
-          id: 'inv-2', 
-          status: 'pending', 
-          expires_at: new Date(Date.now() - 86400000).toISOString() 
-        }],
-        ['used-inv-token', { 
-          id: 'inv-3', 
-          status: 'accepted', 
-          expires_at: new Date(Date.now() + 86400000).toISOString() 
-        }]
+        [
+          'valid-inv-token',
+          {
+            id: 'inv-1',
+            status: 'pending',
+            expires_at: new Date(Date.now() + 86400000).toISOString(),
+          },
+        ],
+        [
+          'expired-inv-token',
+          {
+            id: 'inv-2',
+            status: 'pending',
+            expires_at: new Date(Date.now() - 86400000).toISOString(),
+          },
+        ],
+        [
+          'used-inv-token',
+          {
+            id: 'inv-3',
+            status: 'accepted',
+            expires_at: new Date(Date.now() + 86400000).toISOString(),
+          },
+        ],
       ]);
 
       const validateInvitation = (token: string) => {

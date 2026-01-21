@@ -1,12 +1,7 @@
-import React, { useRef } from "react";
-import { Award } from "lucide-react";
+import React, { useRef } from 'react';
+import { Award } from 'lucide-react';
 
-const DigitalBadges = ({
-  earnedBadges = [],
-  onBadgeHover,
-  onBadgeLeave,
-  onBadgeClick,
-}) => {
+const DigitalBadges = ({ earnedBadges = [], onBadgeHover, onBadgeLeave, onBadgeClick }) => {
   const badgeRefs = useRef([]);
 
   const handleMouseEnter = (i) => {
@@ -25,9 +20,7 @@ const DigitalBadges = ({
             <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-white/10 border border-white/20">
               <Award className="w-4 h-4 text-blue-500" />
             </div>
-            <span className="text-black text-sm font-semibold tracking-wide">
-              Achievements
-            </span>
+            <span className="text-black text-sm font-semibold tracking-wide">Achievements</span>
           </div>
 
           {/* Redesigned badges grid (matches social icon style) */}

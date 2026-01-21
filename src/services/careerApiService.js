@@ -37,10 +37,13 @@ export async function sendCareerChatMessage(
     console.log('🔍 DEBUG - Sending to worker:');
     console.log('  Worker URL:', getBaseUrl());
     console.log('  VITE_SUPABASE_URL:', import.meta.env.VITE_SUPABASE_URL);
-    console.log('  VITE_SUPABASE_ANON_KEY:', import.meta.env.VITE_SUPABASE_ANON_KEY?.substring(0, 20) + '...');
+    console.log(
+      '  VITE_SUPABASE_ANON_KEY:',
+      import.meta.env.VITE_SUPABASE_ANON_KEY?.substring(0, 20) + '...'
+    );
     console.log('  JWT Token (FULL):', token);
     console.log('  Message:', message);
-    
+
     const response = await fetch(`${getBaseUrl()}/chat`, {
       method: 'POST',
       headers: getAuthHeaders(token),
@@ -73,16 +76,16 @@ export async function sendCareerChatMessage(
 
       for (const line of lines) {
         if (line.trim() === '') continue; // Skip empty lines
-        
+
         if (line.startsWith('event: ')) {
           const eventType = line.slice(7).trim();
           continue; // Process next line for data
         }
-        
+
         if (line.startsWith('data: ')) {
           try {
             const data = JSON.parse(line.slice(6));
-            
+
             // Handle different event types based on data structure
             if (data.content) {
               onToken?.(data.content);
@@ -101,7 +104,6 @@ export async function sendCareerChatMessage(
     onError?.(error);
   }
 }
-
 
 /**
  * Get job recommendations for a student

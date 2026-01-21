@@ -1,10 +1,10 @@
 /**
  * TestModeControls Component
- * 
+ *
  * Development mode controls for quick testing of the assessment.
  * Allows auto-filling answers and skipping to specific sections.
  * Enhanced with debugging info for higher_secondary testing.
- * 
+ *
  * @module features/assessment/career-test/components/layout/TestModeControls
  */
 
@@ -42,18 +42,20 @@ export const TestModeControls: React.FC<TestModeControlsProps> = ({
   totalSections = 0,
   aiQuestionsLoading = false,
   aiQuestionsLoaded,
-  sections = []
+  sections = [],
 }) => {
   const [showDebugInfo, setShowDebugInfo] = useState(false);
 
   // Check if this is higher_secondary or after12
   const isHigherSecondary = gradeLevel === 'higher_secondary';
   const isAfter12 = gradeLevel === 'after12';
-  const usesAIQuestions = ['after10', 'higher_secondary', 'after12', 'college'].includes(gradeLevel || '');
+  const usesAIQuestions = ['after10', 'higher_secondary', 'after12', 'college'].includes(
+    gradeLevel || ''
+  );
 
   // Get current section info
   const currentSection = sections[currentSectionIndex];
-  const isComprehensiveAssessment = sections.some(s => s.id === 'riasec');
+  const isComprehensiveAssessment = sections.some((s) => s.id === 'riasec');
 
   return (
     <div className="mb-4 space-y-2">
@@ -85,7 +87,11 @@ export const TestModeControls: React.FC<TestModeControlsProps> = ({
           >
             <Info className="w-3 h-3" />
             Debug Info
-            {showDebugInfo ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            {showDebugInfo ? (
+              <ChevronUp className="w-3 h-3" />
+            ) : (
+              <ChevronDown className="w-3 h-3" />
+            )}
           </button>
         </div>
 
@@ -132,12 +138,14 @@ export const TestModeControls: React.FC<TestModeControlsProps> = ({
       {showDebugInfo && (
         <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 text-xs space-y-3">
           <div className="font-semibold text-gray-700 text-sm mb-2">Debug Information</div>
-          
+
           {/* Grade Level Info */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <div className="text-gray-500 mb-1">Grade Level:</div>
-              <div className={`font-mono font-semibold ${isHigherSecondary ? 'text-purple-600' : 'text-gray-800'}`}>
+              <div
+                className={`font-mono font-semibold ${isHigherSecondary ? 'text-purple-600' : 'text-gray-800'}`}
+              >
                 {gradeLevel || 'Not set'}
               </div>
             </div>
@@ -161,7 +169,9 @@ export const TestModeControls: React.FC<TestModeControlsProps> = ({
           {/* Assessment Type */}
           <div>
             <div className="text-gray-500 mb-1">Assessment Type:</div>
-            <div className={`font-mono font-semibold ${isComprehensiveAssessment ? 'text-green-600' : 'text-orange-600'}`}>
+            <div
+              className={`font-mono font-semibold ${isComprehensiveAssessment ? 'text-green-600' : 'text-orange-600'}`}
+            >
               {isComprehensiveAssessment ? '✅ Comprehensive (6 sections)' : '⚠️ Simplified'}
             </div>
           </div>
@@ -176,12 +186,11 @@ export const TestModeControls: React.FC<TestModeControlsProps> = ({
                 </div>
               ) : aiQuestionsLoaded ? (
                 <div className="font-mono font-semibold text-green-600">
-                  ✅ Loaded: {aiQuestionsLoaded.aptitude} aptitude + {aiQuestionsLoaded.knowledge} knowledge
+                  ✅ Loaded: {aiQuestionsLoaded.aptitude} aptitude + {aiQuestionsLoaded.knowledge}{' '}
+                  knowledge
                 </div>
               ) : (
-                <div className="font-mono font-semibold text-orange-600">
-                  ⚠️ Not loaded yet
-                </div>
+                <div className="font-mono font-semibold text-orange-600">⚠️ Not loaded yet</div>
               )}
             </div>
           )}
@@ -191,30 +200,36 @@ export const TestModeControls: React.FC<TestModeControlsProps> = ({
             <div className="text-gray-500 mb-2">Sections ({sections.length}):</div>
             <div className="space-y-1 max-h-40 overflow-y-auto">
               {sections.map((section, idx) => (
-                <div 
+                <div
                   key={section.id}
                   className={`flex items-center justify-between p-2 rounded ${
-                    idx === currentSectionIndex 
-                      ? 'bg-blue-100 border border-blue-300' 
+                    idx === currentSectionIndex
+                      ? 'bg-blue-100 border border-blue-300'
                       : 'bg-white border border-gray-200'
                   }`}
                 >
                   <div className="flex items-center gap-2">
-                    <span className={`font-semibold ${idx === currentSectionIndex ? 'text-blue-700' : 'text-gray-600'}`}>
+                    <span
+                      className={`font-semibold ${idx === currentSectionIndex ? 'text-blue-700' : 'text-gray-600'}`}
+                    >
                       {idx + 1}.
                     </span>
-                    <span className={`font-mono text-xs ${idx === currentSectionIndex ? 'text-blue-800' : 'text-gray-700'}`}>
+                    <span
+                      className={`font-mono text-xs ${idx === currentSectionIndex ? 'text-blue-800' : 'text-gray-700'}`}
+                    >
                       {section.id}
                     </span>
-                    <span className={`text-xs ${idx === currentSectionIndex ? 'text-blue-700' : 'text-gray-600'}`}>
+                    <span
+                      className={`text-xs ${idx === currentSectionIndex ? 'text-blue-700' : 'text-gray-600'}`}
+                    >
                       - {section.title}
                     </span>
                   </div>
-                  <span className={`text-xs font-semibold ${
-                    section.questions?.length > 0 
-                      ? 'text-green-600' 
-                      : 'text-orange-600'
-                  }`}>
+                  <span
+                    className={`text-xs font-semibold ${
+                      section.questions?.length > 0 ? 'text-green-600' : 'text-orange-600'
+                    }`}
+                  >
                     {section.questions?.length || 0} Q
                   </span>
                 </div>
@@ -227,40 +242,55 @@ export const TestModeControls: React.FC<TestModeControlsProps> = ({
             <div className="pt-3 border-t border-gray-300">
               <div className="text-gray-500 mb-2 font-semibold">Higher Secondary Checks:</div>
               <div className="space-y-1">
-                <div className={`flex items-center gap-2 ${isComprehensiveAssessment ? 'text-green-600' : 'text-red-600'}`}>
+                <div
+                  className={`flex items-center gap-2 ${isComprehensiveAssessment ? 'text-green-600' : 'text-red-600'}`}
+                >
                   {isComprehensiveAssessment ? '✅' : '❌'} Using comprehensive assessment
                 </div>
-                <div className={`flex items-center gap-2 ${sections.length === 6 ? 'text-green-600' : 'text-red-600'}`}>
+                <div
+                  className={`flex items-center gap-2 ${sections.length === 6 ? 'text-green-600' : 'text-red-600'}`}
+                >
                   {sections.length === 6 ? '✅' : '❌'} Has 6 sections (expected)
                 </div>
-                <div className={`flex items-center gap-2 ${sections.some(s => s.id === 'aptitude') ? 'text-green-600' : 'text-red-600'}`}>
-                  {sections.some(s => s.id === 'aptitude') ? '✅' : '❌'} Has aptitude section
+                <div
+                  className={`flex items-center gap-2 ${sections.some((s) => s.id === 'aptitude') ? 'text-green-600' : 'text-red-600'}`}
+                >
+                  {sections.some((s) => s.id === 'aptitude') ? '✅' : '❌'} Has aptitude section
                 </div>
-                <div className={`flex items-center gap-2 ${sections.some(s => s.id === 'knowledge') ? 'text-green-600' : 'text-red-600'}`}>
-                  {sections.some(s => s.id === 'knowledge') ? '✅' : '❌'} Has knowledge section
+                <div
+                  className={`flex items-center gap-2 ${sections.some((s) => s.id === 'knowledge') ? 'text-green-600' : 'text-red-600'}`}
+                >
+                  {sections.some((s) => s.id === 'knowledge') ? '✅' : '❌'} Has knowledge section
                 </div>
                 {aiQuestionsLoaded && (
                   <>
-                    <div className={`flex items-center gap-2 ${aiQuestionsLoaded.aptitude === 50 ? 'text-green-600' : 'text-orange-600'}`}>
-                      {aiQuestionsLoaded.aptitude === 50 ? '✅' : '⚠️'} Aptitude: {aiQuestionsLoaded.aptitude}/50 questions
+                    <div
+                      className={`flex items-center gap-2 ${aiQuestionsLoaded.aptitude === 50 ? 'text-green-600' : 'text-orange-600'}`}
+                    >
+                      {aiQuestionsLoaded.aptitude === 50 ? '✅' : '⚠️'} Aptitude:{' '}
+                      {aiQuestionsLoaded.aptitude}/50 questions
                     </div>
-                    <div className={`flex items-center gap-2 ${aiQuestionsLoaded.knowledge === 20 ? 'text-green-600' : 'text-orange-600'}`}>
-                      {aiQuestionsLoaded.knowledge === 20 ? '✅' : '⚠️'} Knowledge: {aiQuestionsLoaded.knowledge}/20 questions
+                    <div
+                      className={`flex items-center gap-2 ${aiQuestionsLoaded.knowledge === 20 ? 'text-green-600' : 'text-orange-600'}`}
+                    >
+                      {aiQuestionsLoaded.knowledge === 20 ? '✅' : '⚠️'} Knowledge:{' '}
+                      {aiQuestionsLoaded.knowledge}/20 questions
                     </div>
                   </>
                 )}
-                
+
                 {/* Stream Format Validation */}
                 <div className="mt-2 pt-2 border-t border-gray-200">
-                  <div className={`flex items-center gap-2 ${
-                    studentStream && studentStream.includes('_') 
-                      ? 'text-green-600' 
-                      : 'text-red-600'
-                  }`}>
-                    {studentStream && studentStream.includes('_') ? '✅' : '❌'} 
-                    Stream: {studentStream && studentStream.includes('_') 
-                      ? 'Specific ✓' 
-                      : 'Generic ✗'}
+                  <div
+                    className={`flex items-center gap-2 ${
+                      studentStream && studentStream.includes('_')
+                        ? 'text-green-600'
+                        : 'text-red-600'
+                    }`}
+                  >
+                    {studentStream && studentStream.includes('_') ? '✅' : '❌'}
+                    Stream:{' '}
+                    {studentStream && studentStream.includes('_') ? 'Specific ✓' : 'Generic ✗'}
                   </div>
                   {studentStream && !studentStream.includes('_') && (
                     <div className="mt-2 p-2 bg-red-50 rounded text-red-700 text-xs">
@@ -281,49 +311,83 @@ export const TestModeControls: React.FC<TestModeControlsProps> = ({
             <div className="pt-3 border-t border-gray-300">
               <div className="text-gray-500 mb-2 font-semibold">After 12th Checks:</div>
               <div className="space-y-1">
-                <div className={`flex items-center gap-2 ${isComprehensiveAssessment ? 'text-green-600' : 'text-red-600'}`}>
+                <div
+                  className={`flex items-center gap-2 ${isComprehensiveAssessment ? 'text-green-600' : 'text-red-600'}`}
+                >
                   {isComprehensiveAssessment ? '✅' : '❌'} Using comprehensive assessment
                 </div>
-                <div className={`flex items-center gap-2 ${sections.length === 6 ? 'text-green-600' : 'text-red-600'}`}>
+                <div
+                  className={`flex items-center gap-2 ${sections.length === 6 ? 'text-green-600' : 'text-red-600'}`}
+                >
                   {sections.length === 6 ? '✅' : '❌'} Has 6 sections (expected)
                 </div>
-                <div className={`flex items-center gap-2 ${sections.some(s => s.id === 'riasec') ? 'text-green-600' : 'text-red-600'}`}>
-                  {sections.some(s => s.id === 'riasec') ? '✅' : '❌'} Has RIASEC section (48 questions)
+                <div
+                  className={`flex items-center gap-2 ${sections.some((s) => s.id === 'riasec') ? 'text-green-600' : 'text-red-600'}`}
+                >
+                  {sections.some((s) => s.id === 'riasec') ? '✅' : '❌'} Has RIASEC section (48
+                  questions)
                 </div>
-                <div className={`flex items-center gap-2 ${sections.some(s => s.id === 'bigfive') ? 'text-green-600' : 'text-red-600'}`}>
-                  {sections.some(s => s.id === 'bigfive') ? '✅' : '❌'} Has Big Five section (50 questions)
+                <div
+                  className={`flex items-center gap-2 ${sections.some((s) => s.id === 'bigfive') ? 'text-green-600' : 'text-red-600'}`}
+                >
+                  {sections.some((s) => s.id === 'bigfive') ? '✅' : '❌'} Has Big Five section (50
+                  questions)
                 </div>
-                <div className={`flex items-center gap-2 ${sections.some(s => s.id === 'work_values') ? 'text-green-600' : 'text-red-600'}`}>
-                  {sections.some(s => s.id === 'work_values') ? '✅' : '❌'} Has Work Values section (20 questions)
+                <div
+                  className={`flex items-center gap-2 ${sections.some((s) => s.id === 'work_values') ? 'text-green-600' : 'text-red-600'}`}
+                >
+                  {sections.some((s) => s.id === 'work_values') ? '✅' : '❌'} Has Work Values
+                  section (20 questions)
                 </div>
-                <div className={`flex items-center gap-2 ${sections.some(s => s.id === 'employability') ? 'text-green-600' : 'text-red-600'}`}>
-                  {sections.some(s => s.id === 'employability') ? '✅' : '❌'} Has Employability section (30 questions)
+                <div
+                  className={`flex items-center gap-2 ${sections.some((s) => s.id === 'employability') ? 'text-green-600' : 'text-red-600'}`}
+                >
+                  {sections.some((s) => s.id === 'employability') ? '✅' : '❌'} Has Employability
+                  section (30 questions)
                 </div>
-                <div className={`flex items-center gap-2 ${sections.some(s => s.id === 'aptitude') ? 'text-green-600' : 'text-red-600'}`}>
-                  {sections.some(s => s.id === 'aptitude') ? '✅' : '❌'} Has Aptitude section (AI)
+                <div
+                  className={`flex items-center gap-2 ${sections.some((s) => s.id === 'aptitude') ? 'text-green-600' : 'text-red-600'}`}
+                >
+                  {sections.some((s) => s.id === 'aptitude') ? '✅' : '❌'} Has Aptitude section
+                  (AI)
                 </div>
-                <div className={`flex items-center gap-2 ${sections.some(s => s.id === 'knowledge') ? 'text-green-600' : 'text-red-600'}`}>
-                  {sections.some(s => s.id === 'knowledge') ? '✅' : '❌'} Has Knowledge section (AI)
+                <div
+                  className={`flex items-center gap-2 ${sections.some((s) => s.id === 'knowledge') ? 'text-green-600' : 'text-red-600'}`}
+                >
+                  {sections.some((s) => s.id === 'knowledge') ? '✅' : '❌'} Has Knowledge section
+                  (AI)
                 </div>
                 {aiQuestionsLoaded && (
                   <>
-                    <div className={`flex items-center gap-2 ${aiQuestionsLoaded.aptitude === 50 ? 'text-green-600' : 'text-orange-600'}`}>
-                      {aiQuestionsLoaded.aptitude === 50 ? '✅' : '⚠️'} Aptitude: {aiQuestionsLoaded.aptitude}/50 questions
+                    <div
+                      className={`flex items-center gap-2 ${aiQuestionsLoaded.aptitude === 50 ? 'text-green-600' : 'text-orange-600'}`}
+                    >
+                      {aiQuestionsLoaded.aptitude === 50 ? '✅' : '⚠️'} Aptitude:{' '}
+                      {aiQuestionsLoaded.aptitude}/50 questions
                     </div>
-                    <div className={`flex items-center gap-2 ${aiQuestionsLoaded.knowledge === 20 ? 'text-green-600' : 'text-orange-600'}`}>
-                      {aiQuestionsLoaded.knowledge === 20 ? '✅' : '⚠️'} Knowledge: {aiQuestionsLoaded.knowledge}/20 questions
+                    <div
+                      className={`flex items-center gap-2 ${aiQuestionsLoaded.knowledge === 20 ? 'text-green-600' : 'text-orange-600'}`}
+                    >
+                      {aiQuestionsLoaded.knowledge === 20 ? '✅' : '⚠️'} Knowledge:{' '}
+                      {aiQuestionsLoaded.knowledge}/20 questions
                     </div>
                   </>
                 )}
-                
+
                 {/* Stream Validation for After 12th */}
                 <div className="mt-2 pt-2 border-t border-gray-200">
-                  <div className={`flex items-center gap-2 ${
-                    studentStream && ['science', 'commerce', 'arts'].includes(studentStream.toLowerCase())
-                      ? 'text-green-600' 
-                      : 'text-orange-600'
-                  }`}>
-                    {studentStream && ['science', 'commerce', 'arts'].includes(studentStream.toLowerCase()) ? '✅' : '⚠️'} 
+                  <div
+                    className={`flex items-center gap-2 ${
+                      studentStream &&
+                      ['science', 'commerce', 'arts'].includes(studentStream.toLowerCase())
+                        ? 'text-green-600'
+                        : 'text-orange-600'
+                    }`}
+                  >
+                    {studentStream &&
+                    ['science', 'commerce', 'arts'].includes(studentStream.toLowerCase())
+                      ? '✅'
+                      : '⚠️'}
                     Stream: {studentStream || 'Not set'}
                   </div>
                   <div className="mt-1 p-2 bg-blue-50 rounded text-blue-700 text-xs">
@@ -341,7 +405,9 @@ export const TestModeControls: React.FC<TestModeControlsProps> = ({
                     <div>Employability: 30</div>
                     <div>Aptitude (AI): 50</div>
                     <div>Knowledge (AI): 20</div>
-                    <div className="font-semibold text-green-600 pt-1 border-t border-gray-300">Total: 218 questions</div>
+                    <div className="font-semibold text-green-600 pt-1 border-t border-gray-300">
+                      Total: 218 questions
+                    </div>
                   </div>
                 </div>
               </div>
@@ -358,11 +424,14 @@ export const TestModeControls: React.FC<TestModeControlsProps> = ({
                 console.log('Current Section:', currentSectionIndex, '/', totalSections);
                 console.log('AI Questions Loading:', aiQuestionsLoading);
                 console.log('AI Questions Loaded:', aiQuestionsLoaded);
-                console.log('Sections:', sections.map(s => ({
-                  id: s.id,
-                  title: s.title,
-                  questions: s.questions?.length || 0
-                })));
+                console.log(
+                  'Sections:',
+                  sections.map((s) => ({
+                    id: s.id,
+                    title: s.title,
+                    questions: s.questions?.length || 0,
+                  }))
+                );
                 console.log('Is Comprehensive:', isComprehensiveAssessment);
                 console.log('Is Higher Secondary:', isHigherSecondary);
                 console.log('Is After 12th:', isAfter12);

@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getStudentRecentUpdatesByEmail, formatRecentUpdate } from '../services/studentRecentUpdatesService';
+import {
+  getStudentRecentUpdatesByEmail,
+  formatRecentUpdate,
+} from '../services/studentRecentUpdatesService';
 
 /**
  * Custom hook for fetching and managing student recent updates
@@ -23,13 +26,12 @@ export const useStudentRecentUpdates = (email, limit = 10, since = null) => {
       setLoading(true);
       setError(null);
 
-
       const result = await getStudentRecentUpdatesByEmail(email, since, limit);
 
       if (result.success) {
         // Format the updates for display
-        const formattedUpdates = result.data.map(update => formatRecentUpdate(update));
-        
+        const formattedUpdates = result.data.map((update) => formatRecentUpdate(update));
+
         setRecentUpdates(formattedUpdates);
         setError(null);
       } else {
@@ -57,7 +59,7 @@ export const useStudentRecentUpdates = (email, limit = 10, since = null) => {
     recentUpdates,
     loading,
     error,
-    refresh
+    refresh,
   };
 };
 
@@ -67,7 +69,11 @@ export const useStudentRecentUpdates = (email, limit = 10, since = null) => {
  * @returns {Object} - { hasNewUpdates, updateCount, latestUpdate, loading }
  */
 export const useRecentUpdatesSummary = (email) => {
-  const { recentUpdates, loading, error } = useStudentRecentUpdates(email, 5, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)); // Last 7 days
+  const { recentUpdates, loading, error } = useStudentRecentUpdates(
+    email,
+    5,
+    new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+  ); // Last 7 days
 
   const hasNewUpdates = recentUpdates.length > 0;
   const updateCount = recentUpdates.length;
@@ -78,7 +84,7 @@ export const useRecentUpdatesSummary = (email) => {
     updateCount,
     latestUpdate,
     loading,
-    error
+    error,
   };
 };
 

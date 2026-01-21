@@ -1,6 +1,6 @@
-import { AlertCircle, CheckCircle, Plus, Save, Send, X } from "lucide-react";
-import React, { useState } from "react";
-import { supabase } from "../../lib/supabaseClient";
+import { AlertCircle, CheckCircle, Plus, Save, Send, X } from 'lucide-react';
+import React, { useState } from 'react';
+import { supabase } from '../../lib/supabaseClient';
 
 interface Activity {
   description: string;
@@ -16,38 +16,38 @@ interface Resource {
 
 const LessonPlanCreate: React.FC = () => {
   const [formData, setFormData] = useState({
-    title: "",
-    subject: "",
-    class_name: "",
-    date: "",
+    title: '',
+    subject: '',
+    class_name: '',
+    date: '',
     duration: 45,
-    learning_objectives: "",
-    assessment_methods: "",
-    homework: "",
-    notes: "",
+    learning_objectives: '',
+    assessment_methods: '',
+    homework: '',
+    notes: '',
   });
 
   const [activities, setActivities] = useState<Activity[]>([]);
   const [currentActivity, setCurrentActivity] = useState<Activity>({
-    description: "",
+    description: '',
     duration: 15,
-    type: "lecture",
+    type: 'lecture',
   });
 
   const [resources, setResources] = useState<Resource[]>([]);
   const [currentResource, setCurrentResource] = useState<Resource>({
-    name: "",
-    type: "textbook",
-    url: "",
+    name: '',
+    type: 'textbook',
+    url: '',
   });
 
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const addActivity = () => {
     if (!currentActivity.description.trim()) return;
     setActivities([...activities, currentActivity]);
-    setCurrentActivity({ description: "", duration: 15, type: "lecture" });
+    setCurrentActivity({ description: '', duration: 15, type: 'lecture' });
   };
 
   const removeActivity = (index: number) => {
@@ -57,48 +57,56 @@ const LessonPlanCreate: React.FC = () => {
   const addResource = () => {
     if (!currentResource.name.trim()) return;
     setResources([...resources, currentResource]);
-    setCurrentResource({ name: "", type: "textbook", url: "" });
+    setCurrentResource({ name: '', type: 'textbook', url: '' });
   };
 
   const removeResource = (index: number) => {
     setResources(resources.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = async (action: "draft" | "submit") => {
+  const handleSubmit = async (action: 'draft' | 'submit') => {
     setLoading(true);
     setMessage(null);
 
     try {
       // Validation
-      if (!formData.title || !formData.subject || !formData.class_name || !formData.date || !formData.learning_objectives) {
-        throw new Error("Please fill all required fields (Title, Subject, Class, Date, Learning Objectives)");
+      if (
+        !formData.title ||
+        !formData.subject ||
+        !formData.class_name ||
+        !formData.date ||
+        !formData.learning_objectives
+      ) {
+        throw new Error(
+          'Please fill all required fields (Title, Subject, Class, Date, Learning Objectives)'
+        );
       }
 
       if (activities.length === 0) {
-        throw new Error("Please add at least one activity");
+        throw new Error('Please add at least one activity');
       }
 
       if (resources.length === 0) {
-        throw new Error("Please add at least one resource");
+        throw new Error('Please add at least one resource');
       }
 
       // Get current teacher
       const { data: userData } = await supabase.auth.getUser();
       const { data: teacherData } = await supabase
-        .from("school_educators")
-        .select("id")
-        .eq("email", userData?.user?.email)
+        .from('school_educators')
+        .select('id')
+        .eq('email', userData?.user?.email)
         .maybeSingle();
 
       if (!teacherData) {
-        throw new Error("Teacher not found");
+        throw new Error('Teacher not found');
       }
 
-      const status = action === "draft" ? "draft" : "submitted";
-      const submitted_at = action === "submit" ? new Date().toISOString() : null;
+      const status = action === 'draft' ? 'draft' : 'submitted';
+      const submitted_at = action === 'submit' ? new Date().toISOString() : null;
 
       const { data, error } = await supabase
-        .from("lesson_plans")
+        .from('lesson_plans')
         .insert({
           teacher_id: teacherData.id,
           ...formData,
@@ -113,26 +121,26 @@ const LessonPlanCreate: React.FC = () => {
       if (error) throw error;
 
       setMessage({
-        type: "success",
-        text: `Lesson plan ${action === "draft" ? "saved as draft" : "submitted for approval"} successfully!`,
+        type: 'success',
+        text: `Lesson plan ${action === 'draft' ? 'saved as draft' : 'submitted for approval'} successfully!`,
       });
 
       // Reset form
       setFormData({
-        title: "",
-        subject: "",
-        class_name: "",
-        date: "",
+        title: '',
+        subject: '',
+        class_name: '',
+        date: '',
         duration: 45,
-        learning_objectives: "",
-        assessment_methods: "",
-        homework: "",
-        notes: "",
+        learning_objectives: '',
+        assessment_methods: '',
+        homework: '',
+        notes: '',
       });
       setActivities([]);
       setResources([]);
     } catch (error: any) {
-      setMessage({ type: "error", text: error.message });
+      setMessage({ type: 'error', text: error.message });
     } finally {
       setLoading(false);
     }
@@ -142,9 +150,7 @@ const LessonPlanCreate: React.FC = () => {
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 border border-blue-100">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
-          Create Lesson Plan
-        </h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Create Lesson Plan</h1>
         <p className="text-gray-600 text-sm sm:text-base">
           Plan your lesson with learning objectives, activities, and resources
         </p>
@@ -154,12 +160,12 @@ const LessonPlanCreate: React.FC = () => {
       {message && (
         <div
           className={`p-4 rounded-lg flex items-center gap-3 ${
-            message.type === "success"
-              ? "bg-green-50 text-green-800 border border-green-200"
-              : "bg-red-50 text-red-800 border border-red-200"
+            message.type === 'success'
+              ? 'bg-green-50 text-green-800 border border-green-200'
+              : 'bg-red-50 text-red-800 border border-red-200'
           }`}
         >
-          {message.type === "success" ? (
+          {message.type === 'success' ? (
             <CheckCircle className="h-5 w-5" />
           ) : (
             <AlertCircle className="h-5 w-5" />
@@ -174,9 +180,7 @@ const LessonPlanCreate: React.FC = () => {
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Lesson Title *
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Lesson Title *</label>
               <input
                 type="text"
                 required
@@ -250,7 +254,7 @@ const LessonPlanCreate: React.FC = () => {
         {/* Activities */}
         <div className="mb-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Activities *</h2>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
             <input
               type="text"
@@ -321,7 +325,7 @@ const LessonPlanCreate: React.FC = () => {
         {/* Resources */}
         <div className="mb-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Resources *</h2>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
             <input
               type="text"
@@ -433,7 +437,7 @@ const LessonPlanCreate: React.FC = () => {
         {/* Action Buttons */}
         <div className="flex gap-3 justify-end">
           <button
-            onClick={() => handleSubmit("draft")}
+            onClick={() => handleSubmit('draft')}
             disabled={loading}
             className="flex items-center gap-2 px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:bg-gray-400 transition font-medium"
           >
@@ -441,7 +445,7 @@ const LessonPlanCreate: React.FC = () => {
             Save as Draft
           </button>
           <button
-            onClick={() => handleSubmit("submit")}
+            onClick={() => handleSubmit('submit')}
             disabled={loading}
             className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 transition font-medium"
           >

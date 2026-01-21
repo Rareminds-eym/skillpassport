@@ -9,17 +9,15 @@ export const testRecentUpdates = {
    */
   async testConnection() {
     try {
-      
       const { data, error, count } = await supabase
         .from('recent_updates')
         .select('*', { count: 'exact' });
-        
-      
+
       if (error) {
         console.error('❌ Connection test failed:', error);
         return false;
       }
-      
+
       return true;
     } catch (err) {
       console.error('❌ Connection test error:', err);
@@ -32,7 +30,6 @@ export const testRecentUpdates = {
    */
   async createSampleData(studentEmail = 'student@test.com') {
     try {
-      
       // First check if student exists
       const { data: studentData, error: studentError } = await supabase
         .from('students')
@@ -48,40 +45,41 @@ export const testRecentUpdates = {
       const sampleUpdates = {
         updates: [
           {
-            id: "test-1",
-            message: "Your profile has been viewed 15 times this week",
-            timestamp: "2 hours ago",
-            type: "profile_view"
+            id: 'test-1',
+            message: 'Your profile has been viewed 15 times this week',
+            timestamp: '2 hours ago',
+            type: 'profile_view',
           },
           {
-            id: "test-2", 
-            message: "New software engineering internship matches your skills",
-            timestamp: "1 day ago",
-            type: "opportunity_match"
+            id: 'test-2',
+            message: 'New software engineering internship matches your skills',
+            timestamp: '1 day ago',
+            type: 'opportunity_match',
           },
           {
-            id: "test-3",
-            message: "You completed React Advanced Concepts course",
-            timestamp: "3 days ago", 
-            type: "course_completion"
+            id: 'test-3',
+            message: 'You completed React Advanced Concepts course',
+            timestamp: '3 days ago',
+            type: 'course_completion',
           },
           {
-            id: "test-4",
-            message: "Your technical skills assessment score improved by 15%",
-            timestamp: "1 week ago",
-            type: "assessment_improvement"
-          }
-        ]
+            id: 'test-4',
+            message: 'Your technical skills assessment score improved by 15%',
+            timestamp: '1 week ago',
+            type: 'assessment_improvement',
+          },
+        ],
       };
 
-      const { data, error } = await supabase
-        .from('recent_updates')
-        .upsert({
+      const { data, error } = await supabase.from('recent_updates').upsert(
+        {
           student_id: studentData.id,
-          updates: sampleUpdates
-        }, {
-          onConflict: 'student_id'
-        });
+          updates: sampleUpdates,
+        },
+        {
+          onConflict: 'student_id',
+        }
+      );
 
       if (error) {
         console.error('❌ Failed to create sample data:', error);
@@ -99,7 +97,6 @@ export const testRecentUpdates = {
    * Run all tests
    */
   async runAllTests(studentEmail) {
-    
     const connectionTest = await this.testConnection();
     if (!connectionTest) {
       return false;
@@ -111,7 +108,7 @@ export const testRecentUpdates = {
     }
 
     return true;
-  }
+  },
 };
 
 // Export for use in browser console or other components

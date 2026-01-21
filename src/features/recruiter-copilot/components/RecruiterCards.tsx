@@ -56,7 +56,7 @@ export const CandidateInsightCard: React.FC<CandidateInsightCardProps> = ({ card
     const colors = {
       high: 'bg-red-100 text-red-700 border-red-300',
       medium: 'bg-yellow-100 text-yellow-700 border-yellow-300',
-      low: 'bg-gray-100 text-gray-700 border-gray-300'
+      low: 'bg-gray-100 text-gray-700 border-gray-300',
     };
     return (
       <span className={`text-xs px-2 py-1 rounded-full border ${colors[card.priority]}`}>
@@ -96,8 +96,8 @@ export const CandidateInsightCard: React.FC<CandidateInsightCardProps> = ({ card
                 card.matchScore >= 80
                   ? 'bg-green-500'
                   : card.matchScore >= 60
-                  ? 'bg-blue-500'
-                  : 'bg-yellow-500'
+                    ? 'bg-blue-500'
+                    : 'bg-yellow-500'
               }`}
               style={{ width: `${card.matchScore}%` }}
             />
@@ -106,9 +106,7 @@ export const CandidateInsightCard: React.FC<CandidateInsightCardProps> = ({ card
       )}
 
       {/* Description */}
-      <p className="text-sm text-gray-700 mb-3 whitespace-pre-line">
-        {card.description}
-      </p>
+      <p className="text-sm text-gray-700 mb-3 whitespace-pre-line">{card.description}</p>
 
       {/* Matched Skills */}
       {card.matchedSkills && card.matchedSkills.length > 0 && (
@@ -133,10 +131,7 @@ export const CandidateInsightCard: React.FC<CandidateInsightCardProps> = ({ card
           <p className="text-xs font-semibold text-gray-600 mb-1">Skills to Develop:</p>
           <div className="flex flex-wrap gap-1">
             {card.missingSkills.map((skill, idx) => (
-              <span
-                key={idx}
-                className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded-full"
-              >
+              <span key={idx} className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded-full">
                 {skill}
               </span>
             ))}

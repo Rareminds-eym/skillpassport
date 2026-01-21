@@ -38,11 +38,11 @@ const LayoutSettings: React.FC = () => {
   };
 
   const roleBasedDefault = getRoleBasedDefault(viewerRole);
-  
+
   console.log('🎨 Layout Settings - Role-based defaults:', {
     viewerRole,
     roleBasedDefault,
-    currentLayout: selectedLayout
+    currentLayout: selectedLayout,
   });
 
   // const handleResetToDefaults = () => {
@@ -59,63 +59,63 @@ const LayoutSettings: React.FC = () => {
   // };
 
   const layouts = [
-    { 
-      id: 'modern', 
-      name: 'Modern', 
+    {
+      id: 'modern',
+      name: 'Modern',
       desc: 'Clean and contemporary design',
       icon: Sparkles,
-      color: 'from-blue-500 to-cyan-500'
+      color: 'from-blue-500 to-cyan-500',
     },
-    { 
-      id: 'creative', 
-      name: 'Creative', 
+    {
+      id: 'creative',
+      name: 'Creative',
       desc: 'Bold and artistic expression',
       icon: Palette,
-      color: 'from-purple-500 to-pink-500'
+      color: 'from-purple-500 to-pink-500',
     },
-    { 
-      id: 'splitscreen', 
-      name: 'Split Screen', 
+    {
+      id: 'splitscreen',
+      name: 'Split Screen',
       desc: 'Interactive dual-pane layout',
       icon: Zap,
-      color: 'from-orange-500 to-red-500'
+      color: 'from-orange-500 to-red-500',
     },
-    { 
-      id: 'aipersona', 
-      name: 'AI Persona', 
+    {
+      id: 'aipersona',
+      name: 'AI Persona',
       desc: 'Futuristic digital twin',
       icon: Bot,
-      color: 'from-indigo-500 to-blue-500'
+      color: 'from-indigo-500 to-blue-500',
     },
-    { 
-      id: 'infographic', 
-      name: 'Infographic', 
+    {
+      id: 'infographic',
+      name: 'Infographic',
       desc: 'Data visualization dashboard',
       icon: BarChart3,
-      color: 'from-green-500 to-teal-500'
+      color: 'from-green-500 to-teal-500',
     },
-    { 
-      id: 'resume', 
-      name: 'Resume Dashboard', 
+    {
+      id: 'resume',
+      name: 'Resume Dashboard',
       desc: 'Professional recruiter view',
       icon: FileText,
-      color: 'from-slate-600 to-gray-700'
+      color: 'from-slate-600 to-gray-700',
     },
-    { 
-      id: 'journey', 
-      name: 'Journey Map', 
+    {
+      id: 'journey',
+      name: 'Journey Map',
       desc: 'Interactive milestone timeline',
       icon: Map,
-      color: 'from-amber-500 to-orange-600'
-    }
+      color: 'from-amber-500 to-orange-600',
+    },
   ];
 
   const handleSaveSettings = () => {
     updateSettings({
       layout: selectedLayout,
-      displayPreferences: displayPreferences
+      displayPreferences: displayPreferences,
     });
-    
+
     setShowSaveConfirmation(true);
     setTimeout(() => {
       setShowSaveConfirmation(false);
@@ -146,8 +146,12 @@ const LayoutSettings: React.FC = () => {
               <Layout className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Choose Your Layout Style</h2>
-              <p className="text-gray-600 dark:text-gray-400">Select how you want to showcase your portfolio</p>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                Choose Your Layout Style
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400">
+                Select how you want to showcase your portfolio
+              </p>
             </div>
           </div>
 
@@ -164,12 +168,16 @@ const LayoutSettings: React.FC = () => {
                 }`}
               >
                 {/* Gradient Background */}
-                <div className={`absolute inset-0 bg-gradient-to-br ${layout.color} opacity-0 group-hover:opacity-10 transition-opacity rounded-2xl`}></div>
-                
+                <div
+                  className={`absolute inset-0 bg-gradient-to-br ${layout.color} opacity-0 group-hover:opacity-10 transition-opacity rounded-2xl`}
+                ></div>
+
                 {/* Content */}
                 <div className="relative">
                   <div className="flex items-center justify-between mb-4">
-                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${layout.color} flex items-center justify-center`}>
+                    <div
+                      className={`w-12 h-12 rounded-xl bg-gradient-to-br ${layout.color} flex items-center justify-center`}
+                    >
                       <layout.icon className="w-6 h-6 text-white" />
                     </div>
                     {selectedLayout === layout.id && (
@@ -178,7 +186,9 @@ const LayoutSettings: React.FC = () => {
                       </div>
                     )}
                   </div>
-                  <h3 className="font-bold text-lg mb-2 text-gray-900 dark:text-white">{layout.name}</h3>
+                  <h3 className="font-bold text-lg mb-2 text-gray-900 dark:text-white">
+                    {layout.name}
+                  </h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400">{layout.desc}</p>
                 </div>
               </button>
@@ -187,23 +197,37 @@ const LayoutSettings: React.FC = () => {
 
           {/* Display Options */}
           <div className="border-t border-gray-200 dark:border-gray-700 pt-8">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Display Preferences</h3>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6">
+              Display Preferences
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <label className="flex items-center justify-between p-4 rounded-xl border border-gray-200 dark:border-gray-600 hover:border-orange-300 dark:hover:border-orange-500 cursor-pointer transition-all">
                 <span className="text-gray-700 dark:text-gray-300">Show social media links</span>
                 <input
                   type="checkbox"
                   checked={displayPreferences.showSocialLinks}
-                  onChange={(e) => setDisplayPreferences({ ...displayPreferences, showSocialLinks: e.target.checked })}
+                  onChange={(e) =>
+                    setDisplayPreferences({
+                      ...displayPreferences,
+                      showSocialLinks: e.target.checked,
+                    })
+                  }
                   className="w-5 h-5 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
                 />
               </label>
               <label className="flex items-center justify-between p-4 rounded-xl border border-gray-200 dark:border-gray-600 hover:border-orange-300 dark:hover:border-orange-500 cursor-pointer transition-all">
-                <span className="text-gray-700 dark:text-gray-300">Display skill progress bars</span>
+                <span className="text-gray-700 dark:text-gray-300">
+                  Display skill progress bars
+                </span>
                 <input
                   type="checkbox"
                   checked={displayPreferences.showSkillBars}
-                  onChange={(e) => setDisplayPreferences({ ...displayPreferences, showSkillBars: e.target.checked })}
+                  onChange={(e) =>
+                    setDisplayPreferences({
+                      ...displayPreferences,
+                      showSkillBars: e.target.checked,
+                    })
+                  }
                   className="w-5 h-5 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
                 />
               </label>
@@ -212,7 +236,12 @@ const LayoutSettings: React.FC = () => {
                 <input
                   type="checkbox"
                   checked={displayPreferences.showProjectImages}
-                  onChange={(e) => setDisplayPreferences({ ...displayPreferences, showProjectImages: e.target.checked })}
+                  onChange={(e) =>
+                    setDisplayPreferences({
+                      ...displayPreferences,
+                      showProjectImages: e.target.checked,
+                    })
+                  }
                   className="w-5 h-5 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
                 />
               </label>
@@ -221,7 +250,12 @@ const LayoutSettings: React.FC = () => {
                 <input
                   type="checkbox"
                   checked={displayPreferences.enableAnimations}
-                  onChange={(e) => setDisplayPreferences({ ...displayPreferences, enableAnimations: e.target.checked })}
+                  onChange={(e) =>
+                    setDisplayPreferences({
+                      ...displayPreferences,
+                      enableAnimations: e.target.checked,
+                    })
+                  }
                   className="w-5 h-5 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
                 />
               </label>
@@ -230,16 +264,28 @@ const LayoutSettings: React.FC = () => {
                 <input
                   type="checkbox"
                   checked={displayPreferences.showContactForm}
-                  onChange={(e) => setDisplayPreferences({ ...displayPreferences, showContactForm: e.target.checked })}
+                  onChange={(e) =>
+                    setDisplayPreferences({
+                      ...displayPreferences,
+                      showContactForm: e.target.checked,
+                    })
+                  }
                   className="w-5 h-5 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
                 />
               </label>
               <label className="flex items-center justify-between p-4 rounded-xl border border-gray-200 dark:border-gray-600 hover:border-orange-300 dark:hover:border-orange-500 cursor-pointer transition-all">
-                <span className="text-gray-700 dark:text-gray-300">Show download resume button</span>
+                <span className="text-gray-700 dark:text-gray-300">
+                  Show download resume button
+                </span>
                 <input
                   type="checkbox"
                   checked={displayPreferences.showDownloadResume}
-                  onChange={(e) => setDisplayPreferences({ ...displayPreferences, showDownloadResume: e.target.checked })}
+                  onChange={(e) =>
+                    setDisplayPreferences({
+                      ...displayPreferences,
+                      showDownloadResume: e.target.checked,
+                    })
+                  }
                   className="w-5 h-5 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
                 />
               </label>

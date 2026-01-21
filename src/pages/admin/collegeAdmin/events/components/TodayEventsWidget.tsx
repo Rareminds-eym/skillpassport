@@ -1,7 +1,7 @@
-import React from "react";
-import { CalendarDaysIcon } from "@heroicons/react/24/outline";
-import { CollegeEvent } from "../types";
-import { formatTime, getEventTypeColor, getEventTypeIcon } from "../helpers";
+import React from 'react';
+import { CalendarDaysIcon } from '@heroicons/react/24/outline';
+import { CollegeEvent } from '../types';
+import { formatTime, getEventTypeColor, getEventTypeIcon } from '../helpers';
 
 interface Props {
   events: CollegeEvent[];

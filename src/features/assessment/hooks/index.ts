@@ -1,8 +1,8 @@
 /**
  * Assessment Hooks - Main Export
- * 
+ *
  * Centralized exports for all assessment-related hooks.
- * 
+ *
  * @module features/assessment/hooks
  */
 
@@ -16,11 +16,11 @@ export type { UseAssessmentTimerOptions, UseAssessmentTimerReturn } from './useA
 
 // Question navigation
 export { useQuestionNavigation } from './useQuestionNavigation';
-export type { 
-  UseQuestionNavigationOptions, 
+export type {
+  UseQuestionNavigationOptions,
   UseQuestionNavigationReturn,
   Question as NavigationQuestion,
-  Section as NavigationSection 
+  Section as NavigationSection,
 } from './useQuestionNavigation';
 
 // Auto-save functionality

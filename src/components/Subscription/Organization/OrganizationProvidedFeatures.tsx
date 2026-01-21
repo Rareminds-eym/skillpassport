@@ -1,20 +1,20 @@
 /**
  * OrganizationProvidedFeatures Component
- * 
+ *
  * Displays features provided to a member by their organization.
  * Shows organization name, admin contact, expiration date, and "Managed by" badge.
- * 
+ *
  * Requirements: 5.1, 5.2, 5.3, 5.4
  */
 
 import {
-    AlertTriangle,
-    Building2,
-    Calendar,
-    CheckCircle2,
-    Clock,
-    Mail,
-    Shield,
+  AlertTriangle,
+  Building2,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  Mail,
+  Shield,
 } from 'lucide-react';
 import { memo, useMemo } from 'react';
 
@@ -147,9 +147,7 @@ function OrganizationProvidedFeatures({
               {statusConfig.label}
             </span>
           </div>
-          <span className="text-sm text-gray-600">
-            {subscription.planName}
-          </span>
+          <span className="text-sm text-gray-600">{subscription.planName}</span>
         </div>
       </div>
 
@@ -157,24 +155,32 @@ function OrganizationProvidedFeatures({
       <div className="p-6 space-y-6">
         {/* Expiration Warning */}
         {(subscription.status === 'expiring_soon' || subscription.status === 'grace_period') && (
-          <div className={`p-4 rounded-xl ${
-            subscription.status === 'grace_period' ? 'bg-orange-50' : 'bg-amber-50'
-          }`}>
+          <div
+            className={`p-4 rounded-xl ${
+              subscription.status === 'grace_period' ? 'bg-orange-50' : 'bg-amber-50'
+            }`}
+          >
             <div className="flex items-start gap-3">
-              <AlertTriangle className={`w-5 h-5 flex-shrink-0 ${
-                subscription.status === 'grace_period' ? 'text-orange-500' : 'text-amber-500'
-              }`} />
+              <AlertTriangle
+                className={`w-5 h-5 flex-shrink-0 ${
+                  subscription.status === 'grace_period' ? 'text-orange-500' : 'text-amber-500'
+                }`}
+              />
               <div>
-                <p className={`font-medium ${
-                  subscription.status === 'grace_period' ? 'text-orange-800' : 'text-amber-800'
-                }`}>
+                <p
+                  className={`font-medium ${
+                    subscription.status === 'grace_period' ? 'text-orange-800' : 'text-amber-800'
+                  }`}
+                >
                   {subscription.status === 'grace_period'
                     ? 'Your subscription is in grace period'
                     : 'Your subscription is expiring soon'}
                 </p>
-                <p className={`text-sm mt-1 ${
-                  subscription.status === 'grace_period' ? 'text-orange-600' : 'text-amber-600'
-                }`}>
+                <p
+                  className={`text-sm mt-1 ${
+                    subscription.status === 'grace_period' ? 'text-orange-600' : 'text-amber-600'
+                  }`}
+                >
                   {subscription.status === 'grace_period'
                     ? 'Contact your organization admin to renew the subscription.'
                     : `Your access will expire on ${new Date(subscription.endDate).toLocaleDateString()}.`}
@@ -221,19 +227,12 @@ function OrganizationProvidedFeatures({
           </h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {activeFeatures.map((feature) => (
-              <div
-                key={feature.id}
-                className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg"
-              >
+              <div key={feature.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
                 <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
-                    {feature.name}
-                  </p>
+                  <p className="text-sm font-medium text-gray-900 truncate">{feature.name}</p>
                   {feature.description && (
-                    <p className="text-xs text-gray-500 truncate">
-                      {feature.description}
-                    </p>
+                    <p className="text-xs text-gray-500 truncate">{feature.description}</p>
                   )}
                 </div>
               </div>
@@ -244,9 +243,7 @@ function OrganizationProvidedFeatures({
         {/* Admin Contact */}
         {(organization.adminName || organization.adminEmail) && (
           <div className="pt-4 border-t border-gray-200">
-            <h4 className="text-sm font-medium text-gray-700 mb-3">
-              Organization Admin
-            </h4>
+            <h4 className="text-sm font-medium text-gray-700 mb-3">Organization Admin</h4>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
                 <span className="text-blue-600 font-medium">
@@ -255,9 +252,7 @@ function OrganizationProvidedFeatures({
               </div>
               <div className="flex-1 min-w-0">
                 {organization.adminName && (
-                  <p className="text-sm font-medium text-gray-900">
-                    {organization.adminName}
-                  </p>
+                  <p className="text-sm font-medium text-gray-900">{organization.adminName}</p>
                 )}
                 {organization.adminEmail && (
                   <a

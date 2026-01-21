@@ -38,26 +38,38 @@ const ExamWorkflowManager: React.FC<ExamWorkflowManagerProps> = (props) => {
   // Determine the appropriate initial step based on exam state
   const getInitialStep = useCallback((): WorkflowStage => {
     // Helper function to check if all sessions have invigilators
-    const allSessionsCovered = exam.timetable.length > 0 && exam.timetable.every(timetableEntry => 
-      exam.invigilation.some(duty => duty.timetableEntryId === timetableEntry.id)
-    );
+    const allSessionsCovered =
+      exam.timetable.length > 0 &&
+      exam.timetable.every((timetableEntry) =>
+        exam.invigilation.some((duty) => duty.timetableEntryId === timetableEntry.id)
+      );
 
-    if (exam.status === "published") return "results";
-    if (exam.marks.length === exam.subjects.length) return "publishing";
-    
+    if (exam.status === 'published') return 'results';
+    if (exam.marks.length === exam.subjects.length) return 'publishing';
+
     // Check if timetable exists and all sessions have invigilators before allowing marks entry
-    if (exam.timetable.length > 0 && allSessionsCovered && exam.marks.length < exam.subjects.length) {
-      return "marks";
+    if (
+      exam.timetable.length > 0 &&
+      allSessionsCovered &&
+      exam.marks.length < exam.subjects.length
+    ) {
+      return 'marks';
     }
-    
+
     // If timetable exists but not all sessions have invigilators
     if (exam.timetable.length > 0 && !allSessionsCovered) {
-      return "invigilation";
+      return 'invigilation';
     }
-    
-    if (exam.timetable.length === 0) return "timetable";
-    return "timetable"; // fallback
-  }, [exam.status, exam.timetable.length, exam.invigilation.length, exam.marks.length, exam.subjects.length]);
+
+    if (exam.timetable.length === 0) return 'timetable';
+    return 'timetable'; // fallback
+  }, [
+    exam.status,
+    exam.timetable.length,
+    exam.invigilation.length,
+    exam.marks.length,
+    exam.subjects.length,
+  ]);
 
   const [activeStep, setActiveStep] = useState<WorkflowStage>(() => getInitialStep());
   const [localExam, setLocalExam] = useState(exam);
@@ -65,39 +77,47 @@ const ExamWorkflowManager: React.FC<ExamWorkflowManagerProps> = (props) => {
   // Keep localExam in sync with the exam prop (which comes from global state)
   React.useEffect(() => {
     console.log('🔄 Exam prop updated:', exam.name, 'marks:', exam.marks.length);
-    exam.marks.forEach(mark => {
-      console.log(`  📊 Subject ${mark.subjectName} (${mark.subjectId}): ${mark.studentMarks.length} students`);
+    exam.marks.forEach((mark) => {
+      console.log(
+        `  📊 Subject ${mark.subjectName} (${mark.subjectId}): ${mark.studentMarks.length} students`
+      );
     });
     setLocalExam(exam);
   }, [exam]);
 
-  const updateExam = useCallback((updates: Partial<UIExam>) => {
-    const updated = { ...localExam, ...updates };
-    setLocalExam(updated);
-    onUpdate(updated);
-  }, [localExam, onUpdate]);
+  const updateExam = useCallback(
+    (updates: Partial<UIExam>) => {
+      const updated = { ...localExam, ...updates };
+      setLocalExam(updated);
+      onUpdate(updated);
+    },
+    [localExam, onUpdate]
+  );
 
   // Memoized common props to prevent unnecessary re-renders
-  const commonProps = useMemo(() => ({
-    exam: localExam,
-    updateExam,
-    setActiveStep,
-    ...props
-  }), [localExam, updateExam, props]);
+  const commonProps = useMemo(
+    () => ({
+      exam: localExam,
+      updateExam,
+      setActiveStep,
+      ...props,
+    }),
+    [localExam, updateExam, props]
+  );
 
   const renderStepContent = useCallback(() => {
     switch (activeStep) {
-      case "creation":
+      case 'creation':
         return <ExamCreationStep {...commonProps} />;
-      case "timetable":
+      case 'timetable':
         return <TimetableStep {...commonProps} />;
-      case "invigilation":
+      case 'invigilation':
         return <InvigilationStep {...commonProps} />;
-      case "marks":
+      case 'marks':
         return <MarksEntryStep {...commonProps} />;
-      case "moderation":
+      case 'moderation':
         return (
-          <ModerationStep 
+          <ModerationStep
             exam={localExam}
             setActiveStep={setActiveStep}
             moderateMarks={props.moderateMarks}
@@ -106,21 +126,12 @@ const ExamWorkflowManager: React.FC<ExamWorkflowManagerProps> = (props) => {
             currentUserId={props.currentUserId}
           />
         );
-      case "publishing":
+      case 'publishing':
         return (
-          <PublishingStep 
-            exam={localExam}
-            setActiveStep={setActiveStep}
-            updateExam={updateExam}
-          />
+          <PublishingStep exam={localExam} setActiveStep={setActiveStep} updateExam={updateExam} />
         );
-      case "results":
-        return (
-          <ResultsStep 
-            exam={localExam}
-            setActiveStep={setActiveStep}
-          />
-        );
+      case 'results':
+        return <ResultsStep exam={localExam} setActiveStep={setActiveStep} />;
       default:
         return <ExamCreationStep {...commonProps} />;
     }
@@ -142,9 +153,7 @@ const ExamWorkflowManager: React.FC<ExamWorkflowManagerProps> = (props) => {
 
         {/* Content Area */}
         <div className="flex-1 bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <div className="h-full overflow-y-auto p-6">
-            {renderStepContent()}
-          </div>
+          <div className="h-full overflow-y-auto p-6">{renderStepContent()}</div>
         </div>
       </div>
     </ModalWrapper>

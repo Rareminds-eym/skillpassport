@@ -27,37 +27,40 @@ interface StatCardProps {
   subtitle?: string;
 }
 
-const StatCard = React.memo(({ title, value, icon: Icon, color, trend, subtitle }: StatCardProps) => {
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
-          <p className="text-3xl font-bold text-gray-900">{value}</p>
-          {subtitle && (
-            <p className="text-xs text-gray-500 mt-1">{subtitle}</p>
-          )}
-          {trend && (
-            <p className="text-xs text-gray-500 mt-2">
-              <span className={trend.value > 0 ? 'text-green-600' : 'text-red-600'}>
-                {trend.value > 0 ? '+' : ''}{trend.value}%
-              </span>
-              {' '}{trend.label}
-            </p>
-          )}
-        </div>
-        <div className={`p-3 rounded-lg ${color}`}>
-          <Icon className="h-6 w-6 text-white" />
+const StatCard = React.memo(
+  ({ title, value, icon: Icon, color, trend, subtitle }: StatCardProps) => {
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
+            <p className="text-3xl font-bold text-gray-900">{value}</p>
+            {subtitle && <p className="text-xs text-gray-500 mt-1">{subtitle}</p>}
+            {trend && (
+              <p className="text-xs text-gray-500 mt-2">
+                <span className={trend.value > 0 ? 'text-green-600' : 'text-red-600'}>
+                  {trend.value > 0 ? '+' : ''}
+                  {trend.value}%
+                </span>{' '}
+                {trend.label}
+              </p>
+            )}
+          </div>
+          <div className={`p-3 rounded-lg ${color}`}>
+            <Icon className="h-6 w-6 text-white" />
+          </div>
         </div>
       </div>
-    </div>
-  );
-});
+    );
+  }
+);
 
 StatCard.displayName = 'StatCard';
 
 const Analytics = () => {
-  const [selectedReport, setSelectedReport] = useState<'summary' | 'attendance' | 'growth'>('summary');
+  const [selectedReport, setSelectedReport] = useState<'summary' | 'attendance' | 'growth'>(
+    'summary'
+  );
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -65,7 +68,14 @@ const Analytics = () => {
   const [totalPages, setTotalPages] = useState(1);
 
   // Get educator's school information with class assignments
-  const { school: educatorSchool, college: educatorCollege, educatorType, educatorRole, assignedClassIds, loading: schoolLoading } = useEducatorSchool();
+  const {
+    school: educatorSchool,
+    college: educatorCollege,
+    educatorType,
+    educatorRole,
+    assignedClassIds,
+    loading: schoolLoading,
+  } = useEducatorSchool();
 
   // Get analytics data from hook - filtered by school and class assignments
   const {
@@ -84,12 +94,12 @@ const Analytics = () => {
     fetchAnalyticsData,
     exportAsCSV,
     exportAsPDF,
-  } = useAnalytics({ 
+  } = useAnalytics({
     schoolId: educatorSchool?.id,
     collegeId: educatorCollege?.id,
     educatorType,
     educatorRole,
-    assignedClassIds
+    assignedClassIds,
   });
 
   useEffect(() => {
@@ -97,50 +107,53 @@ const Analytics = () => {
     setCurrentPage(1);
   }, [leaderboard.length, itemsPerPage]);
 
-  const kpiCards = useMemo(() => [
-    {
-      title: 'Active Students',
-      value: kpiData.activeStudents,
-      icon: UserGroupIcon,
-      color: 'bg-blue-500',
-      subtitle: 'Students with activities',
-    },
-    {
-      title: 'Verified Activities',
-      value: kpiData.totalVerifiedActivities,
-      icon: CheckCircleIcon,
-      color: 'bg-green-500',
-      subtitle: 'Completed verifications',
-    },
-    {
-      title: 'Pending Verifications',
-      value: kpiData.pendingVerifications,
-      icon: ClockIcon,
-      color: 'bg-yellow-500',
-      subtitle: 'Awaiting review',
-    },
-    {
-      title: 'Avg Skills/Student',
-      value: kpiData.avgSkillsPerStudent.toFixed(1),
-      icon: BookOpenIcon,
-      color: 'bg-purple-500',
-      subtitle: 'Average per student',
-    },
-    {
-      title: 'Attendance Rate',
-      value: `${kpiData.attendanceRate}%`,
-      icon: CalendarIcon,
-      color: 'bg-indigo-500',
-      subtitle: 'Last 7 days (demo)',
-    },
-    {
-      title: 'Engagement Rate',
-      value: `${kpiData.engagementRate}%`,
-      icon: ChartBarIcon,
-      color: 'bg-pink-500',
-      subtitle: 'Overall engagement',
-    },
-  ], [kpiData]);
+  const kpiCards = useMemo(
+    () => [
+      {
+        title: 'Active Students',
+        value: kpiData.activeStudents,
+        icon: UserGroupIcon,
+        color: 'bg-blue-500',
+        subtitle: 'Students with activities',
+      },
+      {
+        title: 'Verified Activities',
+        value: kpiData.totalVerifiedActivities,
+        icon: CheckCircleIcon,
+        color: 'bg-green-500',
+        subtitle: 'Completed verifications',
+      },
+      {
+        title: 'Pending Verifications',
+        value: kpiData.pendingVerifications,
+        icon: ClockIcon,
+        color: 'bg-yellow-500',
+        subtitle: 'Awaiting review',
+      },
+      {
+        title: 'Avg Skills/Student',
+        value: kpiData.avgSkillsPerStudent.toFixed(1),
+        icon: BookOpenIcon,
+        color: 'bg-purple-500',
+        subtitle: 'Average per student',
+      },
+      {
+        title: 'Attendance Rate',
+        value: `${kpiData.attendanceRate}%`,
+        icon: CalendarIcon,
+        color: 'bg-indigo-500',
+        subtitle: 'Last 7 days (demo)',
+      },
+      {
+        title: 'Engagement Rate',
+        value: `${kpiData.engagementRate}%`,
+        icon: ChartBarIcon,
+        color: 'bg-pink-500',
+        subtitle: 'Overall engagement',
+      },
+    ],
+    [kpiData]
+  );
 
   // Chart Options
   const skillDistributionOptions: ApexOptions = {
@@ -641,7 +654,10 @@ const Analytics = () => {
   const handlePageChange = (pageNumber: number) => {
     setCurrentPage(pageNumber);
     // Scroll to top of leaderboard table
-    window.scrollTo({ top: document.getElementById('leaderboard-table')?.offsetTop || 0, behavior: 'smooth' });
+    window.scrollTo({
+      top: document.getElementById('leaderboard-table')?.offsetTop || 0,
+      behavior: 'smooth',
+    });
   };
 
   // Generate page numbers to display
@@ -685,7 +701,9 @@ const Analytics = () => {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Analytics Dashboard</h1>
-        <p className="text-gray-600 mt-2">Track student performance, engagement, and skill development</p>
+        <p className="text-gray-600 mt-2">
+          Track student performance, engagement, and skill development
+        </p>
       </div>
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
@@ -706,28 +724,31 @@ const Analytics = () => {
         <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-2">
           <button
             onClick={() => setSelectedReport('summary')}
-            className={`px-4 sm:px-6 py-2.5 rounded-lg font-medium transition-all text-sm sm:text-base ${selectedReport === 'summary'
+            className={`px-4 sm:px-6 py-2.5 rounded-lg font-medium transition-all text-sm sm:text-base ${
+              selectedReport === 'summary'
                 ? 'bg-blue-500 text-white shadow-md'
                 : 'bg-transparent text-gray-600 hover:bg-gray-100'
-              }`}
+            }`}
           >
             Skill Summary Report
           </button>
           <button
             onClick={() => setSelectedReport('attendance')}
-            className={`px-4 sm:px-6 py-2.5 rounded-lg font-medium transition-all text-sm sm:text-base ${selectedReport === 'attendance'
+            className={`px-4 sm:px-6 py-2.5 rounded-lg font-medium transition-all text-sm sm:text-base ${
+              selectedReport === 'attendance'
                 ? 'bg-blue-500 text-white shadow-md'
                 : 'bg-transparent text-gray-600 hover:bg-gray-100'
-              }`}
+            }`}
           >
             Attendance & Engagement
           </button>
           <button
             onClick={() => setSelectedReport('growth')}
-            className={`px-4 sm:px-6 py-2.5 rounded-lg font-medium transition-all text-sm sm:text-base ${selectedReport === 'growth'
+            className={`px-4 sm:px-6 py-2.5 rounded-lg font-medium transition-all text-sm sm:text-base ${
+              selectedReport === 'growth'
                 ? 'bg-blue-500 text-white shadow-md'
                 : 'bg-transparent text-gray-600 hover:bg-gray-100'
-              }`}
+            }`}
           >
             Skill Growth Charts
           </button>
@@ -772,23 +793,39 @@ const Analytics = () => {
         <div className="space-y-6">
           {/* Skill Summary Table */}
           <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 sm:p-6">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">Skill Category Summary</h2>
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">
+              Skill Category Summary
+            </h2>
             <div className="overflow-x-auto">
               <table className="w-full text-sm sm:text-base">
                 <thead>
                   <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-2 sm:px-4 font-semibold text-gray-700">Category</th>
-                    <th className="text-center py-3 px-2 sm:px-4 font-semibold text-gray-700">Total</th>
-                    <th className="text-center py-3 px-2 sm:px-4 font-semibold text-gray-700">Verified</th>
-                    <th className="text-center py-3 px-2 sm:px-4 font-semibold text-gray-700 hidden sm:table-cell">Rate</th>
-                    <th className="text-center py-3 px-2 sm:px-4 font-semibold text-gray-700">Avg Score</th>
+                    <th className="text-left py-3 px-2 sm:px-4 font-semibold text-gray-700">
+                      Category
+                    </th>
+                    <th className="text-center py-3 px-2 sm:px-4 font-semibold text-gray-700">
+                      Total
+                    </th>
+                    <th className="text-center py-3 px-2 sm:px-4 font-semibold text-gray-700">
+                      Verified
+                    </th>
+                    <th className="text-center py-3 px-2 sm:px-4 font-semibold text-gray-700 hidden sm:table-cell">
+                      Rate
+                    </th>
+                    <th className="text-center py-3 px-2 sm:px-4 font-semibold text-gray-700">
+                      Avg Score
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {skillSummary.map((skill, idx) => (
                     <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-3 px-2 sm:px-4 font-medium text-gray-900 text-xs sm:text-sm">{skill.category}</td>
-                      <td className="py-3 px-2 sm:px-4 text-center text-gray-700">{skill.totalActivities}</td>
+                      <td className="py-3 px-2 sm:px-4 font-medium text-gray-900 text-xs sm:text-sm">
+                        {skill.category}
+                      </td>
+                      <td className="py-3 px-2 sm:px-4 text-center text-gray-700">
+                        {skill.totalActivities}
+                      </td>
                       <td className="py-3 px-2 sm:px-4 text-center">
                         <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                           {skill.verifiedActivities}
@@ -802,7 +839,9 @@ const Analytics = () => {
                               style={{ width: `${skill.participationRate}%` }}
                             />
                           </div>
-                          <span className="text-xs font-medium text-gray-700 min-w-[35px]">{skill.participationRate}%</span>
+                          <span className="text-xs font-medium text-gray-700 min-w-[35px]">
+                            {skill.participationRate}%
+                          </span>
                         </div>
                       </td>
                       <td className="py-3 px-2 sm:px-4 text-center">
@@ -819,8 +858,15 @@ const Analytics = () => {
 
           {/* Skill Summary Bar Chart */}
           <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 sm:p-6">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">Activity Distribution by Category</h2>
-            <Chart options={skillSummaryOptions} series={skillSummarySeries} type="bar" height={350} />
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">
+              Activity Distribution by Category
+            </h2>
+            <Chart
+              options={skillSummaryOptions}
+              series={skillSummarySeries}
+              type="bar"
+              height={350}
+            />
           </div>
         </div>
       )}
@@ -830,8 +876,15 @@ const Analytics = () => {
           {/* Attendance Chart */}
           {attendanceData.length > 0 && (
             <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 sm:p-6">
-              <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">Monthly Attendance & Engagement</h2>
-              <Chart options={attendanceOptions} series={attendanceSeries} type="bar" height={350} />
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">
+                Monthly Attendance & Engagement
+              </h2>
+              <Chart
+                options={attendanceOptions}
+                series={attendanceSeries}
+                type="bar"
+                height={350}
+              />
             </div>
           )}
 
@@ -839,16 +892,30 @@ const Analytics = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {certificateStats.length > 0 && (
               <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 sm:p-6">
-                <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">Certificates Status (Monthly)</h2>
-                <Chart options={certificateOptions} series={certificateSeries} type="bar" height={350} />
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">
+                  Certificates Status (Monthly)
+                </h2>
+                <Chart
+                  options={certificateOptions}
+                  series={certificateSeries}
+                  type="bar"
+                  height={350}
+                />
               </div>
             )}
 
             {/* Assignment Completion Status */}
             {assignmentStats.length > 0 && (
               <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 sm:p-6">
-                <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">Assignment Completion Status</h2>
-                <Chart options={assignmentOptions} series={assignmentSeries} type="bar" height={350} />
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">
+                  Assignment Completion Status
+                </h2>
+                <Chart
+                  options={assignmentOptions}
+                  series={assignmentSeries}
+                  type="bar"
+                  height={350}
+                />
               </div>
             )}
           </div>
@@ -856,35 +923,69 @@ const Analytics = () => {
           {/* Assignment Details Table */}
           {assignmentDetails.length > 0 && (
             <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 sm:p-6">
-              <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">Assignment Details</h2>
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">
+                Assignment Details
+              </h2>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm sm:text-base">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="text-left py-3 px-2 sm:px-4 font-semibold text-gray-700">Assignment</th>
-                      <th className="text-center py-3 px-2 sm:px-4 font-semibold text-gray-700 hidden sm:table-cell">Total</th>
-                      <th className="text-center py-3 px-2 sm:px-4 font-semibold text-gray-700">Submitted</th>
-                      <th className="text-center py-3 px-2 sm:px-4 font-semibold text-gray-700 hidden md:table-cell">Graded</th>
-                      <th className="text-center py-3 px-2 sm:px-4 font-semibold text-gray-700 hidden lg:table-cell">Pending</th>
-                      <th className="text-center py-3 px-2 sm:px-4 font-semibold text-gray-700">Avg Grade</th>
-                      <th className="text-center py-3 px-2 sm:px-4 font-semibold text-gray-700">Completion</th>
+                      <th className="text-left py-3 px-2 sm:px-4 font-semibold text-gray-700">
+                        Assignment
+                      </th>
+                      <th className="text-center py-3 px-2 sm:px-4 font-semibold text-gray-700 hidden sm:table-cell">
+                        Total
+                      </th>
+                      <th className="text-center py-3 px-2 sm:px-4 font-semibold text-gray-700">
+                        Submitted
+                      </th>
+                      <th className="text-center py-3 px-2 sm:px-4 font-semibold text-gray-700 hidden md:table-cell">
+                        Graded
+                      </th>
+                      <th className="text-center py-3 px-2 sm:px-4 font-semibold text-gray-700 hidden lg:table-cell">
+                        Pending
+                      </th>
+                      <th className="text-center py-3 px-2 sm:px-4 font-semibold text-gray-700">
+                        Avg Grade
+                      </th>
+                      <th className="text-center py-3 px-2 sm:px-4 font-semibold text-gray-700">
+                        Completion
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {assignmentDetails.map((assignment) => {
-                      const completionPercentage = assignment.total > 0
-                        ? Math.round(((assignment.submitted + assignment.graded) / assignment.total) * 100)
-                        : 0;
+                      const completionPercentage =
+                        assignment.total > 0
+                          ? Math.round(
+                              ((assignment.submitted + assignment.graded) / assignment.total) * 100
+                            )
+                          : 0;
                       return (
-                        <tr key={assignment.assignmentId} className="border-b border-gray-100 hover:bg-gray-50">
-                          <td className="py-3 px-2 sm:px-4 font-medium text-gray-900 text-xs sm:text-sm truncate">{assignment.title}</td>
-                          <td className="py-3 px-2 sm:px-4 text-center text-gray-700 hidden sm:table-cell">{assignment.total}</td>
-                          <td className="py-3 px-2 sm:px-4 text-center text-gray-700">{assignment.submitted}</td>
-                          <td className="py-3 px-2 sm:px-4 text-center text-gray-700 hidden md:table-cell">{assignment.graded}</td>
-                          <td className="py-3 px-2 sm:px-4 text-center text-gray-700 hidden lg:table-cell">{assignment.pending}</td>
+                        <tr
+                          key={assignment.assignmentId}
+                          className="border-b border-gray-100 hover:bg-gray-50"
+                        >
+                          <td className="py-3 px-2 sm:px-4 font-medium text-gray-900 text-xs sm:text-sm truncate">
+                            {assignment.title}
+                          </td>
+                          <td className="py-3 px-2 sm:px-4 text-center text-gray-700 hidden sm:table-cell">
+                            {assignment.total}
+                          </td>
+                          <td className="py-3 px-2 sm:px-4 text-center text-gray-700">
+                            {assignment.submitted}
+                          </td>
+                          <td className="py-3 px-2 sm:px-4 text-center text-gray-700 hidden md:table-cell">
+                            {assignment.graded}
+                          </td>
+                          <td className="py-3 px-2 sm:px-4 text-center text-gray-700 hidden lg:table-cell">
+                            {assignment.pending}
+                          </td>
                           <td className="py-3 px-2 sm:px-4 text-center">
                             {assignment.averageGrade > 0 ? (
-                              <span className={`inline-block px-2 sm:px-3 py-1 rounded-full text-xs font-medium ${getGradeBadgeClass(assignment.averageGrade)}`}>
+                              <span
+                                className={`inline-block px-2 sm:px-3 py-1 rounded-full text-xs font-medium ${getGradeBadgeClass(assignment.averageGrade)}`}
+                              >
                                 {assignment.averageGrade}%
                               </span>
                             ) : (
@@ -899,7 +1000,9 @@ const Analytics = () => {
                                   style={{ width: `${completionPercentage}%` }}
                                 />
                               </div>
-                              <span className="text-xs font-medium text-gray-700 min-w-[28px]">{completionPercentage}%</span>
+                              <span className="text-xs font-medium text-gray-700 min-w-[28px]">
+                                {completionPercentage}%
+                              </span>
                             </div>
                           </td>
                         </tr>
@@ -919,18 +1022,30 @@ const Analytics = () => {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Skill Category</th>
-                      <th className="text-center py-3 px-4 font-semibold text-gray-700">Total Activities</th>
-                      <th className="text-center py-3 px-4 font-semibold text-gray-700">Verified</th>
-                      <th className="text-center py-3 px-4 font-semibold text-gray-700">Participation Rate</th>
-                      <th className="text-center py-3 px-4 font-semibold text-gray-700">Avg Score</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-700">
+                        Skill Category
+                      </th>
+                      <th className="text-center py-3 px-4 font-semibold text-gray-700">
+                        Total Activities
+                      </th>
+                      <th className="text-center py-3 px-4 font-semibold text-gray-700">
+                        Verified
+                      </th>
+                      <th className="text-center py-3 px-4 font-semibold text-gray-700">
+                        Participation Rate
+                      </th>
+                      <th className="text-center py-3 px-4 font-semibold text-gray-700">
+                        Avg Score
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {skillSummary.map((skill, idx) => (
                       <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50">
                         <td className="py-4 px-4 font-medium text-gray-900">{skill.category}</td>
-                        <td className="py-4 px-4 text-center text-gray-700">{skill.totalActivities}</td>
+                        <td className="py-4 px-4 text-center text-gray-700">
+                          {skill.totalActivities}
+                        </td>
                         <td className="py-4 px-4 text-center">
                           <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                             {skill.verifiedActivities}
@@ -944,7 +1059,9 @@ const Analytics = () => {
                                 style={{ width: `${skill.participationRate}%` }}
                               />
                             </div>
-                            <span className="text-sm font-medium text-gray-700 min-w-[45px]">{skill.participationRate}%</span>
+                            <span className="text-sm font-medium text-gray-700 min-w-[45px]">
+                              {skill.participationRate}%
+                            </span>
                           </div>
                         </td>
                         <td className="py-4 px-4 text-center">
@@ -968,11 +1085,20 @@ const Analytics = () => {
           {skillGrowthData.length > 0 && (
             <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
               <div className="p-4 sm:p-6 border-b border-gray-200">
-                <h2 className="text-lg sm:text-xl font-bold text-gray-900">Skill Growth Over Time</h2>
-                <p className="text-xs sm:text-sm text-gray-500 mt-1">Monthly progression of skill levels across different categories</p>
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900">
+                  Skill Growth Over Time
+                </h2>
+                <p className="text-xs sm:text-sm text-gray-500 mt-1">
+                  Monthly progression of skill levels across different categories
+                </p>
               </div>
               <div className="p-4 sm:p-6">
-                <Chart options={skillGrowthOptions} series={skillGrowthSeries} type="line" height={380} />
+                <Chart
+                  options={skillGrowthOptions}
+                  series={skillGrowthSeries}
+                  type="line"
+                  height={380}
+                />
               </div>
             </div>
           )}
@@ -981,8 +1107,15 @@ const Analytics = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {topSkills.length > 0 && (
               <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 sm:p-6">
-                <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">Top Skills Assessment</h2>
-                <Chart options={topSkillsOptions} series={topSkillsSeries} type="radar" height={380} />
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">
+                  Top Skills Assessment
+                </h2>
+                <Chart
+                  options={topSkillsOptions}
+                  series={topSkillsSeries}
+                  type="radar"
+                  height={380}
+                />
               </div>
             )}
 
@@ -991,7 +1124,9 @@ const Analytics = () => {
               <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-8 text-center">
                 <div className="text-gray-500 mb-2">No leaderboard data available</div>
                 <div className="text-sm text-gray-400">
-                  {educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0
+                  {educatorType === 'school' &&
+                  educatorRole !== 'admin' &&
+                  assignedClassIds.length === 0
                     ? 'You have not been assigned to any classes yet.'
                     : 'No student performance data found for your assigned classes.'}
                 </div>
@@ -1012,23 +1147,30 @@ const Analytics = () => {
                       className="flex items-center gap-3 sm:gap-4 p-2.5 sm:p-3 bg-gradient-to-r from-gray-50 to-transparent rounded-lg hover:from-blue-50 transition-all"
                     >
                       <div
-                        className={`flex items-center justify-center h-8 w-8 sm:h-10 sm:w-10 rounded-full font-bold text-white text-sm sm:text-base flex-shrink-0 ${student.rank === 1
+                        className={`flex items-center justify-center h-8 w-8 sm:h-10 sm:w-10 rounded-full font-bold text-white text-sm sm:text-base flex-shrink-0 ${
+                          student.rank === 1
                             ? 'bg-yellow-500'
                             : student.rank === 2
                               ? 'bg-gray-400'
                               : student.rank === 3
                                 ? 'bg-amber-600'
                                 : 'bg-blue-500'
-                          }`}
+                        }`}
                       >
                         {student.rank}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-gray-900 text-xs sm:text-sm truncate">{student.studentName}</p>
-                        <p className="text-xs text-gray-500">{student.verifiedActivities} verified</p>
+                        <p className="font-semibold text-gray-900 text-xs sm:text-sm truncate">
+                          {student.studentName}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {student.verifiedActivities} verified
+                        </p>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <p className="text-xs sm:text-sm font-medium text-gray-700">{student.awards} 🏆</p>
+                        <p className="text-xs sm:text-sm font-medium text-gray-700">
+                          {student.awards} 🏆
+                        </p>
                         <div className="flex items-center gap-1 mt-1">
                           <div className="w-12 sm:w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
                             <div
@@ -1036,7 +1178,9 @@ const Analytics = () => {
                               style={{ width: `${student.progress}%` }}
                             />
                           </div>
-                          <span className="text-xs text-gray-600 min-w-[25px]">{student.progress}%</span>
+                          <span className="text-xs text-gray-600 min-w-[25px]">
+                            {student.progress}%
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -1060,7 +1204,10 @@ const Analytics = () => {
         </div>
       )}
       {leaderboard.length > 0 && (
-        <div id="leaderboard-table" className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 sm:p-6 mt-6">
+        <div
+          id="leaderboard-table"
+          className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 sm:p-6 mt-6"
+        >
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
             <h2 className="text-lg sm:text-xl font-bold text-gray-900">Complete Leaderboard</h2>
 
@@ -1087,11 +1234,21 @@ const Analytics = () => {
               <thead>
                 <tr className="border-b border-gray-200">
                   <th className="text-left py-3 px-2 sm:px-4 font-semibold text-gray-700">Rank</th>
-                  <th className="text-left py-3 px-2 sm:px-4 font-semibold text-gray-700">Student</th>
-                  <th className="text-center py-3 px-2 sm:px-4 font-semibold text-gray-700 hidden sm:table-cell">Total</th>
-                  <th className="text-center py-3 px-2 sm:px-4 font-semibold text-gray-700">Verified</th>
-                  <th className="text-center py-3 px-2 sm:px-4 font-semibold text-gray-700 hidden md:table-cell">Awards</th>
-                  <th className="text-center py-3 px-2 sm:px-4 font-semibold text-gray-700">Progress</th>
+                  <th className="text-left py-3 px-2 sm:px-4 font-semibold text-gray-700">
+                    Student
+                  </th>
+                  <th className="text-center py-3 px-2 sm:px-4 font-semibold text-gray-700 hidden sm:table-cell">
+                    Total
+                  </th>
+                  <th className="text-center py-3 px-2 sm:px-4 font-semibold text-gray-700">
+                    Verified
+                  </th>
+                  <th className="text-center py-3 px-2 sm:px-4 font-semibold text-gray-700 hidden md:table-cell">
+                    Awards
+                  </th>
+                  <th className="text-center py-3 px-2 sm:px-4 font-semibold text-gray-700">
+                    Progress
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -1099,31 +1256,38 @@ const Analytics = () => {
                   <tr key={student.rank} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="py-3 px-2 sm:px-4">
                       <span
-                        className={`inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-full font-bold text-white text-xs sm:text-sm ${student.rank === 1
+                        className={`inline-flex items-center justify-center h-7 w-7 sm:h-8 sm:w-8 rounded-full font-bold text-white text-xs sm:text-sm ${
+                          student.rank === 1
                             ? 'bg-yellow-500'
                             : student.rank === 2
                               ? 'bg-gray-400'
                               : student.rank === 3
                                 ? 'bg-amber-600'
                                 : 'bg-blue-500'
-                          }`}
+                        }`}
                       >
                         {student.rank}
                       </span>
                     </td>
                     <td className="py-3 px-2 sm:px-4">
                       <div>
-                        <p className="font-semibold text-gray-900 text-xs sm:text-sm truncate">{student.studentName}</p>
+                        <p className="font-semibold text-gray-900 text-xs sm:text-sm truncate">
+                          {student.studentName}
+                        </p>
                         <p className="text-xs text-gray-500 truncate">{student.studentId}</p>
                       </div>
                     </td>
-                    <td className="py-3 px-2 sm:px-4 text-center text-gray-700 font-medium hidden sm:table-cell">{student.totalActivities}</td>
+                    <td className="py-3 px-2 sm:px-4 text-center text-gray-700 font-medium hidden sm:table-cell">
+                      {student.totalActivities}
+                    </td>
                     <td className="py-3 px-2 sm:px-4 text-center">
                       <span className="inline-flex items-center px-2 sm:px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                         {student.verifiedActivities}
                       </span>
                     </td>
-                    <td className="py-3 px-2 sm:px-4 text-center text-gray-700 font-medium hidden md:table-cell">{student.awards} 🏆</td>
+                    <td className="py-3 px-2 sm:px-4 text-center text-gray-700 font-medium hidden md:table-cell">
+                      {student.awards} 🏆
+                    </td>
                     <td className="py-3 px-2 sm:px-4">
                       <div className="flex items-center justify-center gap-1 sm:gap-2">
                         <div className="w-12 sm:w-20 h-1.5 bg-gray-200 rounded-full overflow-hidden">
@@ -1132,7 +1296,9 @@ const Analytics = () => {
                             style={{ width: `${student.progress}%` }}
                           />
                         </div>
-                        <span className="text-xs sm:text-sm font-medium text-gray-700 min-w-[28px]">{student.progress}%</span>
+                        <span className="text-xs sm:text-sm font-medium text-gray-700 min-w-[28px]">
+                          {student.progress}%
+                        </span>
                       </div>
                     </td>
                   </tr>
@@ -1147,8 +1313,8 @@ const Analytics = () => {
               {/* Results info */}
               <div className="text-xs sm:text-sm text-gray-600">
                 Showing <span className="font-medium">{indexOfFirstItem + 1}</span> to{' '}
-                <span className="font-medium">{Math.min(indexOfLastItem, leaderboard.length)}</span> of{' '}
-                <span className="font-medium">{leaderboard.length}</span> students
+                <span className="font-medium">{Math.min(indexOfLastItem, leaderboard.length)}</span>{' '}
+                of <span className="font-medium">{leaderboard.length}</span> students
               </div>
 
               {/* Pagination buttons */}
@@ -1165,24 +1331,28 @@ const Analytics = () => {
 
                 {/* Page numbers */}
                 <div className="flex items-center gap-0.5 sm:gap-1">
-                  {getPageNumbers().map((page, index) => (
+                  {getPageNumbers().map((page, index) =>
                     page === '...' ? (
-                      <span key={`ellipsis-${index}`} className="px-2 py-1 text-gray-400 text-xs sm:text-base">
+                      <span
+                        key={`ellipsis-${index}`}
+                        className="px-2 py-1 text-gray-400 text-xs sm:text-base"
+                      >
                         ...
                       </span>
                     ) : (
                       <button
                         key={page}
                         onClick={() => handlePageChange(page as number)}
-                        className={`px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg font-medium transition-colors text-xs sm:text-base ${currentPage === page
+                        className={`px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg font-medium transition-colors text-xs sm:text-base ${
+                          currentPage === page
                             ? 'bg-blue-500 text-white shadow-md'
                             : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
-                          }`}
+                        }`}
                       >
                         {page}
                       </button>
                     )
-                  ))}
+                  )}
                 </div>
 
                 {/* Next button */}

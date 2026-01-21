@@ -1,6 +1,6 @@
 /**
  * Security Tests: Cross-Organization Access Prevention
- * 
+ *
  * Tests isolation between organizations to prevent data leakage.
  * Requirements: Security, Data Isolation
  */
@@ -19,34 +19,34 @@ describe('Security Tests: Cross-Organization Access Prevention', () => {
     organizations = new Map([
       ['org-1', { id: 'org-1', name: 'School A', type: 'school' }],
       ['org-2', { id: 'org-2', name: 'College B', type: 'college' }],
-      ['org-3', { id: 'org-3', name: 'University C', type: 'university' }]
+      ['org-3', { id: 'org-3', name: 'University C', type: 'university' }],
     ]);
 
     users = new Map([
       ['admin-1', { id: 'admin-1', role: 'school_admin', organization_id: 'org-1' }],
       ['admin-2', { id: 'admin-2', role: 'college_admin', organization_id: 'org-2' }],
       ['student-1', { id: 'student-1', role: 'student', organization_id: 'org-1' }],
-      ['student-2', { id: 'student-2', role: 'student', organization_id: 'org-2' }]
+      ['student-2', { id: 'student-2', role: 'student', organization_id: 'org-2' }],
     ]);
 
     subscriptions = new Map([
       ['sub-1', { id: 'sub-1', organization_id: 'org-1', total_seats: 100 }],
-      ['sub-2', { id: 'sub-2', organization_id: 'org-2', total_seats: 200 }]
+      ['sub-2', { id: 'sub-2', organization_id: 'org-2', total_seats: 200 }],
     ]);
 
     licensePools = new Map([
       ['pool-1', { id: 'pool-1', organization_id: 'org-1', organization_subscription_id: 'sub-1' }],
-      ['pool-2', { id: 'pool-2', organization_id: 'org-2', organization_subscription_id: 'sub-2' }]
+      ['pool-2', { id: 'pool-2', organization_id: 'org-2', organization_subscription_id: 'sub-2' }],
     ]);
 
     assignments = new Map([
       ['assign-1', { id: 'assign-1', user_id: 'student-1', organization_subscription_id: 'sub-1' }],
-      ['assign-2', { id: 'assign-2', user_id: 'student-2', organization_subscription_id: 'sub-2' }]
+      ['assign-2', { id: 'assign-2', user_id: 'student-2', organization_subscription_id: 'sub-2' }],
     ]);
 
     invitations = new Map([
       ['inv-1', { id: 'inv-1', organization_id: 'org-1', email: 'new1@example.com' }],
-      ['inv-2', { id: 'inv-2', organization_id: 'org-2', email: 'new2@example.com' }]
+      ['inv-2', { id: 'inv-2', organization_id: 'org-2', email: 'new2@example.com' }],
     ]);
 
     vi.clearAllMocks();
@@ -57,13 +57,12 @@ describe('Security Tests: Cross-Organization Access Prevention', () => {
       const getSubscriptions = async (userId: string, targetOrgId: string) => {
         const user = users.get(userId);
         if (!user) throw new Error('User not found');
-        
+
         if (user.organization_id !== targetOrgId) {
           throw new Error('Unauthorized: Cannot access other organization data');
         }
-        
-        return Array.from(subscriptions.values())
-          .filter(s => s.organization_id === targetOrgId);
+
+        return Array.from(subscriptions.values()).filter((s) => s.organization_id === targetOrgId);
       };
 
       // Admin-1 can view org-1 subscriptions
@@ -81,13 +80,13 @@ describe('Security Tests: Cross-Organization Access Prevention', () => {
       const updateSubscription = async (userId: string, subscriptionId: string, updates: any) => {
         const user = users.get(userId);
         const subscription = subscriptions.get(subscriptionId);
-        
+
         if (!user || !subscription) throw new Error('Not found');
-        
+
         if (user.organization_id !== subscription.organization_id) {
           throw new Error('Unauthorized: Cannot modify other organization subscription');
         }
-        
+
         Object.assign(subscription, updates);
         return subscription;
       };
@@ -108,13 +107,13 @@ describe('Security Tests: Cross-Organization Access Prevention', () => {
       const getLicensePool = async (userId: string, poolId: string) => {
         const user = users.get(userId);
         const pool = licensePools.get(poolId);
-        
+
         if (!user || !pool) throw new Error('Not found');
-        
+
         if (user.organization_id !== pool.organization_id) {
           throw new Error('Unauthorized: Cannot access other organization license pool');
         }
-        
+
         return pool;
       };
 
@@ -133,19 +132,21 @@ describe('Security Tests: Cross-Organization Access Prevention', () => {
         const admin = users.get(adminId);
         const pool = licensePools.get(poolId);
         const targetUser = users.get(targetUserId);
-        
+
         if (!admin || !pool || !targetUser) throw new Error('Not found');
-        
+
         // Admin must belong to pool's organization
         if (admin.organization_id !== pool.organization_id) {
           throw new Error('Unauthorized: Cannot access this license pool');
         }
-        
+
         // Target user must belong to same organization
         if (targetUser.organization_id !== pool.organization_id) {
-          throw new Error('Unauthorized: Cannot assign license to user from different organization');
+          throw new Error(
+            'Unauthorized: Cannot assign license to user from different organization'
+          );
         }
-        
+
         return { success: true, assignment_id: 'new-assign' };
       };
 
@@ -165,19 +166,18 @@ describe('Security Tests: Cross-Organization Access Prevention', () => {
       const getOrganizationMembers = async (userId: string, targetOrgId: string) => {
         const user = users.get(userId);
         if (!user) throw new Error('User not found');
-        
+
         if (user.organization_id !== targetOrgId) {
           throw new Error('Unauthorized: Cannot view members from other organization');
         }
-        
-        return Array.from(users.values())
-          .filter(u => u.organization_id === targetOrgId);
+
+        return Array.from(users.values()).filter((u) => u.organization_id === targetOrgId);
       };
 
       // Admin-1 can view org-1 members
       const result = await getOrganizationMembers('admin-1', 'org-1');
       expect(result.length).toBeGreaterThan(0);
-      expect(result.every(u => u.organization_id === 'org-1')).toBe(true);
+      expect(result.every((u) => u.organization_id === 'org-1')).toBe(true);
 
       // Admin-1 cannot view org-2 members
       await expect(getOrganizationMembers('admin-1', 'org-2')).rejects.toThrow(
@@ -189,14 +189,14 @@ describe('Security Tests: Cross-Organization Access Prevention', () => {
       const getAssignment = async (userId: string, assignmentId: string) => {
         const user = users.get(userId);
         const assignment = assignments.get(assignmentId);
-        
+
         if (!user || !assignment) throw new Error('Not found');
-        
+
         const subscription = subscriptions.get(assignment.organization_subscription_id);
         if (!subscription || user.organization_id !== subscription.organization_id) {
           throw new Error('Unauthorized: Cannot access assignment from other organization');
         }
-        
+
         return assignment;
       };
 
@@ -216,13 +216,12 @@ describe('Security Tests: Cross-Organization Access Prevention', () => {
       const getInvitations = async (userId: string, targetOrgId: string) => {
         const user = users.get(userId);
         if (!user) throw new Error('User not found');
-        
+
         if (user.organization_id !== targetOrgId) {
           throw new Error('Unauthorized: Cannot view invitations from other organization');
         }
-        
-        return Array.from(invitations.values())
-          .filter(i => i.organization_id === targetOrgId);
+
+        return Array.from(invitations.values()).filter((i) => i.organization_id === targetOrgId);
       };
 
       // Admin-1 can view org-1 invitations
@@ -239,13 +238,13 @@ describe('Security Tests: Cross-Organization Access Prevention', () => {
       const cancelInvitation = async (userId: string, invitationId: string) => {
         const user = users.get(userId);
         const invitation = invitations.get(invitationId);
-        
+
         if (!user || !invitation) throw new Error('Not found');
-        
+
         if (user.organization_id !== invitation.organization_id) {
           throw new Error('Unauthorized: Cannot cancel invitation from other organization');
         }
-        
+
         invitation.status = 'cancelled';
         return invitation;
       };
@@ -266,15 +265,15 @@ describe('Security Tests: Cross-Organization Access Prevention', () => {
       const getBillingData = async (userId: string, targetOrgId: string) => {
         const user = users.get(userId);
         if (!user) throw new Error('User not found');
-        
+
         if (user.organization_id !== targetOrgId) {
           throw new Error('Unauthorized: Cannot view billing data from other organization');
         }
-        
+
         return {
           organization_id: targetOrgId,
           total_cost: 100000,
-          subscriptions: 2
+          subscriptions: 2,
         };
       };
 
@@ -291,19 +290,19 @@ describe('Security Tests: Cross-Organization Access Prevention', () => {
     it('should prevent downloading invoices from other organizations', async () => {
       const invoices = new Map([
         ['invoice-1', { id: 'invoice-1', organization_id: 'org-1' }],
-        ['invoice-2', { id: 'invoice-2', organization_id: 'org-2' }]
+        ['invoice-2', { id: 'invoice-2', organization_id: 'org-2' }],
       ]);
 
       const downloadInvoice = async (userId: string, invoiceId: string) => {
         const user = users.get(userId);
         const invoice = invoices.get(invoiceId);
-        
+
         if (!user || !invoice) throw new Error('Not found');
-        
+
         if (user.organization_id !== invoice.organization_id) {
           throw new Error('Unauthorized: Cannot download invoice from other organization');
         }
-        
+
         return { pdf: 'base64-content' };
       };
 
@@ -323,17 +322,17 @@ describe('Security Tests: Cross-Organization Access Prevention', () => {
       const getDataWithOrgFilter = async (userId: string, requestedOrgId: string) => {
         const user = users.get(userId);
         if (!user) throw new Error('User not found');
-        
+
         // Always use user's organization, ignore requested org
         const effectiveOrgId = user.organization_id;
-        
+
         if (requestedOrgId !== effectiveOrgId) {
           console.warn(`Attempted cross-org access: user ${userId} requested ${requestedOrgId}`);
         }
-        
+
         return {
           organization_id: effectiveOrgId,
-          data: 'safe-data'
+          data: 'safe-data',
         };
       };
 
@@ -346,21 +345,23 @@ describe('Security Tests: Cross-Organization Access Prevention', () => {
       const validateSubscriptionAccess = (userId: string, subscriptionId: string) => {
         const user = users.get(userId);
         const subscription = subscriptions.get(subscriptionId);
-        
+
         if (!user || !subscription) {
           return { valid: false, reason: 'Not found' };
         }
-        
+
         if (user.organization_id !== subscription.organization_id) {
           return { valid: false, reason: 'Cross-organization access denied' };
         }
-        
+
         return { valid: true };
       };
 
       expect(validateSubscriptionAccess('admin-1', 'sub-1').valid).toBe(true);
       expect(validateSubscriptionAccess('admin-1', 'sub-2').valid).toBe(false);
-      expect(validateSubscriptionAccess('admin-1', 'sub-2').reason).toBe('Cross-organization access denied');
+      expect(validateSubscriptionAccess('admin-1', 'sub-2').reason).toBe(
+        'Cross-organization access denied'
+      );
     });
   });
 });

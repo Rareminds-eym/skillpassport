@@ -28,8 +28,10 @@ export const DebugSchoolInfo = () => {
       // If not found, check Supabase Auth
       let supabaseUserId: string | null = null;
       if (!finalSchoolId) {
-        const { data: { user } } = await supabase.auth.getUser();
-        
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
         if (user) {
           supabaseUserId = user.id;
           userEmail = user.email;
@@ -84,7 +86,7 @@ export const DebugSchoolInfo = () => {
         supabaseUserId,
         schoolName: org?.name,
         finalSchoolId,
-        studentCount: count || 0
+        studentCount: count || 0,
       });
     };
 
@@ -94,36 +96,48 @@ export const DebugSchoolInfo = () => {
   if (!info) return null;
 
   return (
-    <div style={{
-      position: 'fixed',
-      bottom: 10,
-      right: 10,
-      background: '#1f2937',
-      color: 'white',
-      padding: '12px',
-      borderRadius: '8px',
-      fontSize: '12px',
-      zIndex: 9999,
-      maxWidth: '400px',
-      boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
-    }}>
-      <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#60a5fa' }}>
-        🔍 Debug Info
-      </div>
+    <div
+      style={{
+        position: 'fixed',
+        bottom: 10,
+        right: 10,
+        background: '#1f2937',
+        color: 'white',
+        padding: '12px',
+        borderRadius: '8px',
+        fontSize: '12px',
+        zIndex: 9999,
+        maxWidth: '400px',
+        boxShadow: '0 4px 6px rgba(0,0,0,0.3)',
+      }}
+    >
+      <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#60a5fa' }}>🔍 Debug Info</div>
       {info.error ? (
         <>
           <div style={{ color: '#ef4444' }}>{info.error}</div>
-          <div><strong>Auth Method:</strong> {info.authMethod}</div>
-          <div><strong>Email:</strong> {info.userEmail || 'N/A'}</div>
+          <div>
+            <strong>Auth Method:</strong> {info.authMethod}
+          </div>
+          <div>
+            <strong>Email:</strong> {info.userEmail || 'N/A'}
+          </div>
         </>
       ) : (
         <>
-          <div><strong>Email:</strong> {info.userEmail}</div>
-          <div><strong>Auth Method:</strong> {info.authMethod}</div>
+          <div>
+            <strong>Email:</strong> {info.userEmail}
+          </div>
+          <div>
+            <strong>Auth Method:</strong> {info.authMethod}
+          </div>
           {info.supabaseUserId && (
-            <div><strong>Supabase User ID:</strong> {info.supabaseUserId.substring(0, 8)}...</div>
+            <div>
+              <strong>Supabase User ID:</strong> {info.supabaseUserId.substring(0, 8)}...
+            </div>
           )}
-          <div><strong>School Name:</strong> {info.schoolName || 'N/A'}</div>
+          <div>
+            <strong>School Name:</strong> {info.schoolName || 'N/A'}
+          </div>
           <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #374151' }}>
             <strong style={{ color: '#10b981' }}>School ID:</strong> {info.finalSchoolId || 'NONE'}
           </div>

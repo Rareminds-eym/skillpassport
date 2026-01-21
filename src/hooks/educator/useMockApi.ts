@@ -25,10 +25,7 @@ export const useMockApi = <T = any>() => {
   const [data, setData] = useState<T | null>(null);
 
   const execute = useCallback(
-    async (
-      apiFunction: () => T | Promise<T>,
-      options: MockApiOptions = {}
-    ): Promise<T> => {
+    async (apiFunction: () => T | Promise<T>, options: MockApiOptions = {}): Promise<T> => {
       const { latency = MOCK_LATENCY_MS, shouldError = false } = options;
 
       setLoading(true);
@@ -70,10 +67,7 @@ export const useMockApi = <T = any>() => {
 /**
  * Utility function to create a mock API call
  */
-export const mockApiCall = async <T>(
-  data: T,
-  options: MockApiOptions = {}
-): Promise<T> => {
+export const mockApiCall = async <T>(data: T, options: MockApiOptions = {}): Promise<T> => {
   const { latency = MOCK_LATENCY_MS, shouldError = false } = options;
 
   await new Promise((resolve) => setTimeout(resolve, latency));

@@ -39,7 +39,7 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
         >
           {/* Header with Thumbnail */}
           <div className="relative h-64 bg-gradient-to-br from-indigo-500 to-purple-600 overflow-hidden">
-            {(course.thumbnail?.startsWith('http') || course.thumbnail?.startsWith('data:')) ? (
+            {course.thumbnail?.startsWith('http') || course.thumbnail?.startsWith('data:') ? (
               <img
                 src={course.thumbnail}
                 alt={course.title}
@@ -61,11 +61,13 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
 
             {/* Status Badge */}
             <div className="absolute top-4 left-4 flex gap-2">
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                course.status === 'Active'
-                  ? 'bg-emerald-500 text-white'
-                  : 'bg-blue-500 text-white'
-              }`}>
+              <span
+                className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  course.status === 'Active'
+                    ? 'bg-emerald-500 text-white'
+                    : 'bg-blue-500 text-white'
+                }`}
+              >
                 {course.status}
               </span>
               {isCompleted && (
@@ -87,7 +89,9 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
             <div className="px-6 pt-4">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-sm font-medium text-gray-600">Your Progress</span>
-                <span className={`text-sm font-semibold ${isCompleted ? 'text-emerald-600' : 'text-indigo-600'}`}>
+                <span
+                  className={`text-sm font-semibold ${isCompleted ? 'text-emerald-600' : 'text-indigo-600'}`}
+                >
                   {progress.progress}%
                 </span>
               </div>
@@ -95,8 +99,8 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
                 <div
                   style={{ width: `${progress.progress}%` }}
                   className={`h-full rounded-full transition-all duration-500 ${
-                    isCompleted 
-                      ? 'bg-gradient-to-r from-emerald-500 to-green-500' 
+                    isCompleted
+                      ? 'bg-gradient-to-r from-emerald-500 to-green-500'
                       : 'bg-gradient-to-r from-indigo-500 to-purple-500'
                   }`}
                 />
@@ -189,7 +193,10 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Course Content</h3>
                 <div className="space-y-3">
                   {course.modules.map((module, index) => (
-                    <div key={index} className="border border-gray-200 rounded-lg p-4 hover:border-indigo-300 transition-colors">
+                    <div
+                      key={index}
+                      className="border border-gray-200 rounded-lg p-4 hover:border-indigo-300 transition-colors"
+                    >
                       <div className="flex items-start justify-between mb-2">
                         <h4 className="font-medium text-gray-900">
                           Module {index + 1}: {module.title}
@@ -201,7 +208,10 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
                       {module.lessons && module.lessons.length > 0 && (
                         <ul className="space-y-1 ml-4">
                           {module.lessons.map((lesson, lessonIndex) => (
-                            <li key={lessonIndex} className="flex items-center gap-2 text-sm text-gray-600">
+                            <li
+                              key={lessonIndex}
+                              className="flex items-center gap-2 text-sm text-gray-600"
+                            >
                               <CheckCircle className="w-4 h-4 text-gray-400" />
                               {lesson.title || lesson}
                             </li>
@@ -238,10 +248,10 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
                   {isCompleted
                     ? 'You have completed this course'
                     : isInProgress
-                    ? 'Continue where you left off'
-                    : course.status === 'Active'
-                    ? 'Start learning now'
-                    : 'Available soon'}
+                      ? 'Continue where you left off'
+                      : course.status === 'Active'
+                        ? 'Start learning now'
+                        : 'Available soon'}
                 </p>
               </div>
               <div className="flex gap-3">
@@ -258,10 +268,10 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
                     buttonContent.disabled
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       : isCompleted
-                      ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                      : isInProgress
-                      ? 'bg-amber-500 text-white hover:bg-amber-600'
-                      : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                        ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                        : isInProgress
+                          ? 'bg-amber-500 text-white hover:bg-amber-600'
+                          : 'bg-indigo-600 text-white hover:bg-indigo-700'
                   }`}
                 >
                   <ButtonIcon className="w-5 h-5" />

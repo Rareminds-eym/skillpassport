@@ -11,18 +11,15 @@ interface OrganizationGuardProps {
 /**
  * OrganizationGuard - A wrapper component that ensures an admin has created their organization
  * before allowing access to the dashboard.
- * 
+ *
  * Flow:
  * 1. Check if user has an organization linked to their account
  * 2. If no organization exists, show the OrganizationSetup form
  * 3. Once organization is created, show the dashboard (children)
- * 
+ *
  * This provides an industrial-grade onboarding experience for new admins.
  */
-const OrganizationGuard: React.FC<OrganizationGuardProps> = ({ 
-  organizationType, 
-  children 
-}) => {
+const OrganizationGuard: React.FC<OrganizationGuardProps> = ({ organizationType, children }) => {
   const { loading, hasOrganization, refetch, error } = useOrganizationCheck(organizationType);
   const [setupComplete, setSetupComplete] = useState(false);
 
@@ -58,10 +55,7 @@ const OrganizationGuard: React.FC<OrganizationGuardProps> = ({
   // If no organization exists and setup is not complete, show the setup form
   if (!hasOrganization && !setupComplete) {
     return (
-      <OrganizationSetup 
-        organizationType={organizationType} 
-        onComplete={handleSetupComplete}
-      />
+      <OrganizationSetup organizationType={organizationType} onComplete={handleSetupComplete} />
     );
   }
 

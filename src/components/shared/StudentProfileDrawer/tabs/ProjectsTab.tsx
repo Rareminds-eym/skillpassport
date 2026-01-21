@@ -38,7 +38,9 @@ const ProjectsTab: React.FC<ProjectsTabProps> = ({ projects, loading = false }) 
         <div className="text-center py-12">
           <BriefcaseIcon className="mx-auto h-12 w-12 text-gray-400" />
           <p className="text-gray-500 mt-2">No projects yet</p>
-          <p className="text-gray-400 text-sm mt-1">Student hasn't added any projects to their portfolio</p>
+          <p className="text-gray-400 text-sm mt-1">
+            Student hasn't added any projects to their portfolio
+          </p>
         </div>
       )}
     </div>

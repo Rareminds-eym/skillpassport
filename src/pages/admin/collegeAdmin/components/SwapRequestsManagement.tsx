@@ -1,17 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  RefreshCw, Filter, Calendar, CheckCircle, 
-  XCircle, Clock, TrendingUp, AlertCircle 
+import {
+  RefreshCw,
+  Filter,
+  Calendar,
+  CheckCircle,
+  XCircle,
+  Clock,
+  TrendingUp,
+  AlertCircle,
 } from 'lucide-react';
 import {
   getCollegeSwapRequestsWithDetails,
   getCollegeSwapStatistics,
   adminApproveSwapRequest,
 } from '../../../../services/classSwapService';
-import type { 
-  ClassSwapRequestWithDetails, 
+import type {
+  ClassSwapRequestWithDetails,
   SwapStatistics,
-  SwapRequestStatus 
+  SwapRequestStatus,
 } from '../../../../types/classSwap';
 import { useAuth } from '../../../../context/AuthContext';
 
@@ -44,7 +50,7 @@ const SwapRequestsManagement: React.FC<SwapRequestsManagementProps> = ({ college
 
   const loadData = async () => {
     if (!collegeId) return;
-    
+
     setLoading(true);
     try {
       const [requestsResult, statsResult] = await Promise.all([
@@ -55,7 +61,7 @@ const SwapRequestsManagement: React.FC<SwapRequestsManagementProps> = ({ college
       if (requestsResult.data) {
         setRequests(requestsResult.data);
       }
-      
+
       setStats(statsResult);
     } catch (error) {
       console.error('Error loading swap requests:', error);
@@ -68,11 +74,14 @@ const SwapRequestsManagement: React.FC<SwapRequestsManagementProps> = ({ college
     if (selectedStatus === 'all') {
       setFilteredRequests(requests);
     } else {
-      setFilteredRequests(requests.filter(r => r.status === selectedStatus));
+      setFilteredRequests(requests.filter((r) => r.status === selectedStatus));
     }
   };
 
-  const handleApprovalClick = (request: ClassSwapRequestWithDetails, action: 'approved' | 'rejected') => {
+  const handleApprovalClick = (
+    request: ClassSwapRequestWithDetails,
+    action: 'approved' | 'rejected'
+  ) => {
     setSelectedRequest(request);
     setApprovalAction(action);
     setApprovalMessage('');
@@ -81,7 +90,7 @@ const SwapRequestsManagement: React.FC<SwapRequestsManagementProps> = ({ college
 
   const handleSubmitApproval = async () => {
     if (!selectedRequest || !user?.id) return;
-    
+
     setSubmitting(true);
     try {
       const { error } = await adminApproveSwapRequest(
@@ -110,12 +119,18 @@ const SwapRequestsManagement: React.FC<SwapRequestsManagementProps> = ({ college
 
   const getStatusColor = (status: SwapRequestStatus) => {
     switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
-      case 'accepted': return 'bg-blue-100 text-blue-800 border-blue-300';
-      case 'rejected': return 'bg-red-100 text-red-800 border-red-300';
-      case 'cancelled': return 'bg-gray-100 text-gray-800 border-gray-300';
-      case 'completed': return 'bg-green-100 text-green-800 border-green-300';
-      default: return 'bg-gray-100 text-gray-800 border-gray-300';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+      case 'accepted':
+        return 'bg-blue-100 text-blue-800 border-blue-300';
+      case 'rejected':
+        return 'bg-red-100 text-red-800 border-red-300';
+      case 'cancelled':
+        return 'bg-gray-100 text-gray-800 border-gray-300';
+      case 'completed':
+        return 'bg-green-100 text-green-800 border-green-300';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-300';
     }
   };
 
@@ -232,8 +247,8 @@ const SwapRequestsManagement: React.FC<SwapRequestsManagementProps> = ({ college
             <RefreshCw className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-600 text-lg">No swap requests found</p>
             <p className="text-gray-500 text-sm mt-2">
-              {selectedStatus === 'all' 
-                ? 'There are no swap requests yet' 
+              {selectedStatus === 'all'
+                ? 'There are no swap requests yet'
                 : `No ${selectedStatus} requests`}
             </p>
           </div>
@@ -246,7 +261,9 @@ const SwapRequestsManagement: React.FC<SwapRequestsManagementProps> = ({ college
               {/* Header */}
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(request.status)}`}>
+                  <div
+                    className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(request.status)}`}
+                  >
                     {request.status.toUpperCase()}
                   </div>
                   <div className="px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800 border border-purple-300">
@@ -272,15 +289,21 @@ const SwapRequestsManagement: React.FC<SwapRequestsManagementProps> = ({ college
                   </p>
                   {request.requester_slot && (
                     <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-                      <p className="font-semibold text-blue-900">{request.requester_slot.subject_name}</p>
+                      <p className="font-semibold text-blue-900">
+                        {request.requester_slot.subject_name}
+                      </p>
                       <p className="text-sm text-blue-700">{request.requester_slot.class_name}</p>
                       <p className="text-sm text-blue-600">
-                        {getDayName(request.requester_slot.day_of_week)} • Period {request.requester_slot.period_number}
+                        {getDayName(request.requester_slot.day_of_week)} • Period{' '}
+                        {request.requester_slot.period_number}
                       </p>
                       <p className="text-sm text-blue-600">
-                        {formatTime(request.requester_slot.start_time)} - {formatTime(request.requester_slot.end_time)}
+                        {formatTime(request.requester_slot.start_time)} -{' '}
+                        {formatTime(request.requester_slot.end_time)}
                       </p>
-                      <p className="text-sm text-blue-600">Room: {request.requester_slot.room_number}</p>
+                      <p className="text-sm text-blue-600">
+                        Room: {request.requester_slot.room_number}
+                      </p>
                     </div>
                   )}
                 </div>
@@ -293,15 +316,21 @@ const SwapRequestsManagement: React.FC<SwapRequestsManagementProps> = ({ college
                   </p>
                   {request.target_slot && (
                     <div className="bg-green-50 rounded-lg p-3 border border-green-200">
-                      <p className="font-semibold text-green-900">{request.target_slot.subject_name}</p>
+                      <p className="font-semibold text-green-900">
+                        {request.target_slot.subject_name}
+                      </p>
                       <p className="text-sm text-green-700">{request.target_slot.class_name}</p>
                       <p className="text-sm text-green-600">
-                        {getDayName(request.target_slot.day_of_week)} • Period {request.target_slot.period_number}
+                        {getDayName(request.target_slot.day_of_week)} • Period{' '}
+                        {request.target_slot.period_number}
                       </p>
                       <p className="text-sm text-green-600">
-                        {formatTime(request.target_slot.start_time)} - {formatTime(request.target_slot.end_time)}
+                        {formatTime(request.target_slot.start_time)} -{' '}
+                        {formatTime(request.target_slot.end_time)}
                       </p>
-                      <p className="text-sm text-green-600">Room: {request.target_slot.room_number}</p>
+                      <p className="text-sm text-green-600">
+                        Room: {request.target_slot.room_number}
+                      </p>
                     </div>
                   )}
                 </div>
@@ -329,7 +358,9 @@ const SwapRequestsManagement: React.FC<SwapRequestsManagementProps> = ({ college
               {/* Target Response */}
               {request.target_response && (
                 <div className="mb-4">
-                  <p className="text-sm font-semibold text-gray-700 mb-1">Target Faculty Response</p>
+                  <p className="text-sm font-semibold text-gray-700 mb-1">
+                    Target Faculty Response
+                  </p>
                   <p className="text-gray-600 bg-gray-50 rounded-lg p-3 border border-gray-200">
                     {request.target_response}
                   </p>
@@ -364,7 +395,8 @@ const SwapRequestsManagement: React.FC<SwapRequestsManagementProps> = ({ college
                     {request.admin_response}
                   </p>
                   <p className="text-xs text-gray-500 mt-2">
-                    {request.admin_responded_at && `Responded on ${formatDate(request.admin_responded_at)}`}
+                    {request.admin_responded_at &&
+                      `Responded on ${formatDate(request.admin_responded_at)}`}
                   </p>
                 </div>
               )}
@@ -380,16 +412,20 @@ const SwapRequestsManagement: React.FC<SwapRequestsManagementProps> = ({ college
             <h3 className="text-xl font-bold text-gray-900 mb-4">
               {approvalAction === 'approved' ? 'Approve' : 'Reject'} Swap Request
             </h3>
-            
+
             <p className="text-gray-600 mb-4">
-              Are you sure you want to {approvalAction === 'approved' ? 'approve' : 'reject'} this swap request between{' '}
+              Are you sure you want to {approvalAction === 'approved' ? 'approve' : 'reject'} this
+              swap request between{' '}
               <span className="font-semibold">
-                {selectedRequest.requester_faculty?.first_name} {selectedRequest.requester_faculty?.last_name}
+                {selectedRequest.requester_faculty?.first_name}{' '}
+                {selectedRequest.requester_faculty?.last_name}
               </span>{' '}
               and{' '}
               <span className="font-semibold">
-                {selectedRequest.target_faculty?.first_name} {selectedRequest.target_faculty?.last_name}
-              </span>?
+                {selectedRequest.target_faculty?.first_name}{' '}
+                {selectedRequest.target_faculty?.last_name}
+              </span>
+              ?
             </p>
 
             <div className="mb-4">
@@ -422,7 +458,9 @@ const SwapRequestsManagement: React.FC<SwapRequestsManagementProps> = ({ college
                     : 'bg-red-600 hover:bg-red-700'
                 } disabled:opacity-50`}
               >
-                {submitting ? 'Processing...' : `Confirm ${approvalAction === 'approved' ? 'Approval' : 'Rejection'}`}
+                {submitting
+                  ? 'Processing...'
+                  : `Confirm ${approvalAction === 'approved' ? 'Approval' : 'Rejection'}`}
               </button>
             </div>
           </div>

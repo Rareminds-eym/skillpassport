@@ -12,7 +12,7 @@ const NotificationBell = ({ schoolId, onNotificationClick }) => {
   // Fetch unread count
   const fetchUnreadCount = async () => {
     if (!schoolId) return;
-    
+
     try {
       const count = await SchoolAdminNotificationService.getUnreadCount(schoolId);
       setUnreadCount(count);
@@ -24,7 +24,7 @@ const NotificationBell = ({ schoolId, onNotificationClick }) => {
   // Fetch notifications
   const fetchNotifications = async () => {
     if (!schoolId) return;
-    
+
     setLoading(true);
     try {
       const data = await SchoolAdminNotificationService.getSchoolAdminNotifications(schoolId);
@@ -59,7 +59,7 @@ const NotificationBell = ({ schoolId, onNotificationClick }) => {
     if (!schoolId) return;
 
     fetchUnreadCount();
-    
+
     const subscription = SchoolAdminNotificationService.subscribeToNotifications(
       schoolId,
       (newNotification) => {
@@ -87,7 +87,7 @@ const NotificationBell = ({ schoolId, onNotificationClick }) => {
     const date = new Date(dateString);
     const now = new Date();
     const diffInHours = Math.floor((now - date) / (1000 * 60 * 60));
-    
+
     if (diffInHours < 1) return 'Just now';
     if (diffInHours < 24) return `${diffInHours}h ago`;
     const diffInDays = Math.floor(diffInHours / 24);
@@ -128,9 +128,7 @@ const NotificationBell = ({ schoolId, onNotificationClick }) => {
             {loading ? (
               <div className="p-4 text-center text-gray-500">Loading...</div>
             ) : notifications.length === 0 ? (
-              <div className="p-4 text-center text-gray-500">
-                No notifications yet
-              </div>
+              <div className="p-4 text-center text-gray-500">No notifications yet</div>
             ) : (
               notifications.map((notification) => (
                 <div
@@ -142,9 +140,7 @@ const NotificationBell = ({ schoolId, onNotificationClick }) => {
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <p className="text-sm text-gray-900 font-medium">
-                        New Training Submission
-                      </p>
+                      <p className="text-sm text-gray-900 font-medium">New Training Submission</p>
                       <p className="text-sm text-gray-600 mt-1">
                         {notification.student_name} submitted "{notification.training_title}"
                       </p>

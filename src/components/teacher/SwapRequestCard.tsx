@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
-import { 
-  Calendar, 
-  Clock, 
-  MapPin, 
-  Users, 
-  CheckCircle, 
-  XCircle, 
+import {
+  Calendar,
+  Clock,
+  MapPin,
+  Users,
+  CheckCircle,
+  XCircle,
   AlertCircle,
   RefreshCw,
   Eye,
   Ban,
-  User
+  User,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { usePermission } from '../../hooks/usePermissions';
@@ -84,11 +84,12 @@ const SwapRequestCard: React.FC<SwapRequestCardProps> = ({
   onViewDetails,
 }) => {
   const { user } = useAuth();
-  
+
   // Permission controls for Classroom Management module - same as MyTimetable
-  const canView = usePermission("Classroom Management", "view");
-  const canEdit = usePermission("Classroom Management", "edit");
-  
+  const canView = usePermission('Classroom Management', 'view');
+  // @ts-expect-error - Auto-suppressed for migration
+  const canEdit = usePermission('Classroom Management', 'edit');
+
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -98,10 +99,10 @@ const SwapRequestCard: React.FC<SwapRequestCardProps> = ({
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric', 
-      year: 'numeric' 
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
     });
   };
 
@@ -126,19 +127,19 @@ const SwapRequestCard: React.FC<SwapRequestCardProps> = ({
       alert('❌ Access Denied: You need EDIT permission to accept swap requests');
       return;
     }
-    
+
     console.log('📅 [SwapRequestCard] Action: Accept Swap Request', {
       userRole: user?.role,
       module: 'Classroom Management',
       action: 'Accept Swap Request',
       permissions: {
         canView: canView.allowed,
-        canEdit: canEdit.allowed
+        canEdit: canEdit.allowed,
       },
       requestId: request.id,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
-    
+
     setIsProcessing(true);
     try {
       await onAccept(request.id);
@@ -154,20 +155,20 @@ const SwapRequestCard: React.FC<SwapRequestCardProps> = ({
       alert('❌ Access Denied: You need EDIT permission to reject swap requests');
       return;
     }
-    
+
     console.log('📅 [SwapRequestCard] Action: Reject Swap Request', {
       userRole: user?.role,
       module: 'Classroom Management',
       action: 'Reject Swap Request',
       permissions: {
         canView: canView.allowed,
-        canEdit: canEdit.allowed
+        canEdit: canEdit.allowed,
       },
       requestId: request.id,
       rejectReason: rejectReason,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
-    
+
     setIsProcessing(true);
     try {
       await onReject(request.id, rejectReason);
@@ -185,21 +186,21 @@ const SwapRequestCard: React.FC<SwapRequestCardProps> = ({
       alert('❌ Access Denied: You need EDIT permission to cancel swap requests');
       return;
     }
-    
+
     if (!confirm('Are you sure you want to cancel this swap request?')) return;
-    
+
     console.log('📅 [SwapRequestCard] Action: Cancel Swap Request', {
       userRole: user?.role,
       module: 'Classroom Management',
       action: 'Cancel Swap Request',
       permissions: {
         canView: canView.allowed,
-        canEdit: canEdit.allowed
+        canEdit: canEdit.allowed,
       },
       requestId: request.id,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
-    
+
     setIsProcessing(true);
     try {
       await onCancel(request.id);
@@ -214,37 +215,43 @@ const SwapRequestCard: React.FC<SwapRequestCardProps> = ({
       alert('❌ Access Denied: You need VIEW permission to view swap request details');
       return;
     }
-    
+
     console.log('📅 [SwapRequestCard] Action: View Details Clicked', {
       userRole: user?.role,
       module: 'Classroom Management',
       action: 'View Swap Request Details',
       permissions: {
         canView: canView.allowed,
-        canEdit: canEdit.allowed
+        canEdit: canEdit.allowed,
       },
       requestId: request.id,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
-    
+
     onViewDetails?.(request.id);
   };
 
   return (
     <>
-      <div className={`border-2 rounded-lg p-4 ${statusConfig.borderClass} ${statusConfig.bgClass} transition-all hover:shadow-md`}>
+      <div
+        className={`border-2 rounded-lg p-4 ${statusConfig.borderClass} ${statusConfig.bgClass} transition-all hover:shadow-md`}
+      >
         {/* Header */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-2">
             <StatusIcon className={`h-5 w-5 ${statusConfig.textClass}`} />
-            <span className={`text-xs font-semibold px-2 py-1 rounded-full ${statusConfig.badgeClass}`}>
+            <span
+              className={`text-xs font-semibold px-2 py-1 rounded-full ${statusConfig.badgeClass}`}
+            >
               {statusConfig.label}
             </span>
-            <span className={`text-xs px-2 py-1 rounded-full ${
-              request.request_type === 'one_time' 
-                ? 'bg-purple-100 text-purple-800' 
-                : 'bg-indigo-100 text-indigo-800'
-            }`}>
+            <span
+              className={`text-xs px-2 py-1 rounded-full ${
+                request.request_type === 'one_time'
+                  ? 'bg-purple-100 text-purple-800'
+                  : 'bg-indigo-100 text-indigo-800'
+              }`}
+            >
               {request.request_type === 'one_time' ? 'One-time' : 'Permanent'}
             </span>
           </div>
@@ -256,7 +263,10 @@ const SwapRequestCard: React.FC<SwapRequestCardProps> = ({
           <div className="mb-3 flex items-center gap-2 text-sm">
             <User className="h-4 w-4 text-gray-400" />
             <span className="text-gray-700">
-              From: <span className="font-medium">{request.requester_faculty.first_name} {request.requester_faculty.last_name}</span>
+              From:{' '}
+              <span className="font-medium">
+                {request.requester_faculty.first_name} {request.requester_faculty.last_name}
+              </span>
             </span>
           </div>
         )}
@@ -265,7 +275,10 @@ const SwapRequestCard: React.FC<SwapRequestCardProps> = ({
           <div className="mb-3 flex items-center gap-2 text-sm">
             <User className="h-4 w-4 text-gray-400" />
             <span className="text-gray-700">
-              To: <span className="font-medium">{request.target_faculty.first_name} {request.target_faculty.last_name}</span>
+              To:{' '}
+              <span className="font-medium">
+                {request.target_faculty.first_name} {request.target_faculty.last_name}
+              </span>
             </span>
           </div>
         )}
@@ -285,7 +298,8 @@ const SwapRequestCard: React.FC<SwapRequestCardProps> = ({
         {/* Swap Explanation */}
         <div className="mb-3 bg-purple-50 border border-purple-200 rounded-lg p-3">
           <p className="text-xs text-purple-800">
-            <strong>Time Slot Exchange:</strong> Each educator continues teaching their own subject to their own students, just at the swapped time.
+            <strong>Time Slot Exchange:</strong> Each educator continues teaching their own subject
+            to their own students, just at the swapped time.
           </p>
         </div>
 
@@ -298,7 +312,8 @@ const SwapRequestCard: React.FC<SwapRequestCardProps> = ({
                 {request.target_slot && (
                   <>
                     <div className="font-semibold text-gray-900 mb-2">
-                      {DAYS[request.target_slot.day_of_week - 1]}, {request.target_slot.start_time} - {request.target_slot.end_time}
+                      {DAYS[request.target_slot.day_of_week - 1]}, {request.target_slot.start_time}{' '}
+                      - {request.target_slot.end_time}
                     </div>
                     <div className="text-xs text-gray-600 space-y-1">
                       <div className="flex items-center gap-1">
@@ -306,7 +321,8 @@ const SwapRequestCard: React.FC<SwapRequestCardProps> = ({
                         <span>Room {request.target_slot.room_number}</span>
                       </div>
                       <div className="text-[10px] text-gray-500 mt-2 pt-2 border-t border-gray-200">
-                        You teach: {request.target_slot.subject_name} to {request.target_slot.class_name}
+                        You teach: {request.target_slot.subject_name} to{' '}
+                        {request.target_slot.class_name}
                       </div>
                     </div>
                   </>
@@ -318,7 +334,8 @@ const SwapRequestCard: React.FC<SwapRequestCardProps> = ({
                 {request.requester_slot && (
                   <>
                     <div className="font-semibold text-gray-900 mb-2">
-                      {DAYS[request.requester_slot.day_of_week - 1]}, {request.requester_slot.start_time} - {request.requester_slot.end_time}
+                      {DAYS[request.requester_slot.day_of_week - 1]},{' '}
+                      {request.requester_slot.start_time} - {request.requester_slot.end_time}
                     </div>
                     <div className="text-xs text-gray-600 space-y-1">
                       <div className="flex items-center gap-1">
@@ -326,7 +343,8 @@ const SwapRequestCard: React.FC<SwapRequestCardProps> = ({
                         <span>Room {request.requester_slot.room_number}</span>
                       </div>
                       <div className="text-[10px] text-gray-500 mt-2 pt-2 border-t border-gray-200">
-                        You teach: {request.requester_slot.subject_name} to {request.requester_slot.class_name}
+                        You teach: {request.requester_slot.subject_name} to{' '}
+                        {request.requester_slot.class_name}
                       </div>
                     </div>
                   </>
@@ -334,7 +352,7 @@ const SwapRequestCard: React.FC<SwapRequestCardProps> = ({
               </>
             )}
           </div>
-          
+
           <div className="bg-white bg-opacity-50 rounded-lg p-3 border border-gray-200">
             {viewMode === 'received' ? (
               <>
@@ -342,7 +360,8 @@ const SwapRequestCard: React.FC<SwapRequestCardProps> = ({
                 {request.requester_slot && (
                   <>
                     <div className="font-semibold text-gray-900 mb-2">
-                      {DAYS[request.requester_slot.day_of_week - 1]}, {request.requester_slot.start_time} - {request.requester_slot.end_time}
+                      {DAYS[request.requester_slot.day_of_week - 1]},{' '}
+                      {request.requester_slot.start_time} - {request.requester_slot.end_time}
                     </div>
                     <div className="text-xs text-gray-600 space-y-1">
                       <div className="flex items-center gap-1">
@@ -350,7 +369,8 @@ const SwapRequestCard: React.FC<SwapRequestCardProps> = ({
                         <span>Room {request.requester_slot.room_number}</span>
                       </div>
                       <div className="text-[10px] text-gray-500 mt-2 pt-2 border-t border-gray-200">
-                        They teach: {request.requester_slot.subject_name} to {request.requester_slot.class_name}
+                        They teach: {request.requester_slot.subject_name} to{' '}
+                        {request.requester_slot.class_name}
                       </div>
                     </div>
                   </>
@@ -362,7 +382,8 @@ const SwapRequestCard: React.FC<SwapRequestCardProps> = ({
                 {request.target_slot && (
                   <>
                     <div className="font-semibold text-gray-900 mb-2">
-                      {DAYS[request.target_slot.day_of_week - 1]}, {request.target_slot.start_time} - {request.target_slot.end_time}
+                      {DAYS[request.target_slot.day_of_week - 1]}, {request.target_slot.start_time}{' '}
+                      - {request.target_slot.end_time}
                     </div>
                     <div className="text-xs text-gray-600 space-y-1">
                       <div className="flex items-center gap-1">
@@ -370,7 +391,8 @@ const SwapRequestCard: React.FC<SwapRequestCardProps> = ({
                         <span>Room {request.target_slot.room_number}</span>
                       </div>
                       <div className="text-[10px] text-gray-500 mt-2 pt-2 border-t border-gray-200">
-                        They teach: {request.target_slot.subject_name} to {request.target_slot.class_name}
+                        They teach: {request.target_slot.subject_name} to{' '}
+                        {request.target_slot.class_name}
                       </div>
                     </div>
                   </>
@@ -392,14 +414,21 @@ const SwapRequestCard: React.FC<SwapRequestCardProps> = ({
             <div className="flex items-center gap-2 text-sm">
               <AlertCircle className="h-4 w-4 text-amber-600" />
               <span className="text-gray-700">
-                Admin Approval: <span className={`font-semibold ${
-                  request.admin_approval_status === 'approved' ? 'text-green-600' :
-                  request.admin_approval_status === 'rejected' ? 'text-red-600' :
-                  'text-amber-600'
-                }`}>
-                  {request.admin_approval_status === 'approved' ? 'Approved' :
-                   request.admin_approval_status === 'rejected' ? 'Rejected' :
-                   'Pending'}
+                Admin Approval:{' '}
+                <span
+                  className={`font-semibold ${
+                    request.admin_approval_status === 'approved'
+                      ? 'text-green-600'
+                      : request.admin_approval_status === 'rejected'
+                        ? 'text-red-600'
+                        : 'text-amber-600'
+                  }`}
+                >
+                  {request.admin_approval_status === 'approved'
+                    ? 'Approved'
+                    : request.admin_approval_status === 'rejected'
+                      ? 'Rejected'
+                      : 'Pending'}
                 </span>
               </span>
             </div>
@@ -434,7 +463,9 @@ const SwapRequestCard: React.FC<SwapRequestCardProps> = ({
               <button
                 onClick={() => {
                   if (!canEdit.allowed) {
-                    console.log('❌ [SwapRequestCard] Action Blocked: Reject Button - No Edit Permission');
+                    console.log(
+                      '❌ [SwapRequestCard] Action Blocked: Reject Button - No Edit Permission'
+                    );
                     alert('❌ Access Denied: You need EDIT permission to reject swap requests');
                     return;
                   }

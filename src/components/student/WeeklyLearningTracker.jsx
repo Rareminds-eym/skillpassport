@@ -1,5 +1,17 @@
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import { ArrowRight, BookOpen, Clock, Download, Eye, Filter, Flame, GraduationCap, Play, TrendingUp, Trophy } from 'lucide-react';
+import {
+  ArrowRight,
+  BookOpen,
+  Clock,
+  Download,
+  Eye,
+  Filter,
+  Flame,
+  GraduationCap,
+  Play,
+  TrendingUp,
+  Trophy,
+} from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -22,24 +34,24 @@ const CustomTooltip = ({ active, payload, label }) => {
 // Continue Learning Hero Card (Full Width) - Always visible with floating animation
 const ContinueLearningHero = ({ course, onContinue }) => {
   const hasCourse = course && course.completionRate < 100;
-  
+
   return (
     <div className="relative mt-20">
       {/* Floating Book Animation - Top Center Overlap */}
-      <div 
+      <div
         className="absolute left-6 -top-20 z-20"
         style={{
           animation: 'float 3s ease-in-out infinite',
         }}
       >
         <div className="drop-shadow-xl" style={{ width: 128, height: 128 }}>
-          <DotLottieReact 
-            src="https://lottie.host/45abe60c-5bde-4cc9-b112-d35f11a7ffd0/DwMCYzvoQM.lottie" 
-            loop 
+          <DotLottieReact
+            src="https://lottie.host/45abe60c-5bde-4cc9-b112-d35f11a7ffd0/DwMCYzvoQM.lottie"
+            loop
             autoplay
             renderConfig={{
               autoResize: true,
-              devicePixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1
+              devicePixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1,
             }}
             style={{ width: '100%', height: '100%' }}
             dotLottieRefCallback={(dotLottie) => {
@@ -52,7 +64,7 @@ const ContinueLearningHero = ({ course, onContinue }) => {
           />
         </div>
       </div>
-      
+
       {/* Card */}
       <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 rounded-2xl p-5 text-white shadow-lg">
         {/* Row 1: Title + Button */}
@@ -65,32 +77,37 @@ const ContinueLearningHero = ({ course, onContinue }) => {
               {hasCourse ? 'Continue Learning' : 'Ready to Learn?'}
             </p>
           </div>
-          <button 
-            onClick={() => hasCourse ? onContinue?.(course.courseId) : onContinue?.()}
+          <button
+            onClick={() => (hasCourse ? onContinue?.(course.courseId) : onContinue?.())}
             className="px-4 py-2 bg-white text-blue-600 text-sm font-bold rounded-xl hover:bg-blue-50 transition-all flex items-center gap-2 shadow-md"
           >
             {hasCourse ? 'Continue' : 'Browse Courses'} <ArrowRight className="w-4 h-4" />
           </button>
         </div>
-        
+
         {/* Row 2: Course Name */}
         <h3 className="text-xl font-bold truncate mb-3">
           {hasCourse ? course.courseName : 'Start Your Learning Journey'}
         </h3>
-        
+
         {/* Row 3: Progress Bar */}
         {hasCourse ? (
           <div className="flex items-center gap-4">
             <div className="flex-1 h-2.5 bg-white/20 rounded-full">
-              <div className="h-full bg-white rounded-full transition-all" style={{ width: `${course.completionRate}%` }} />
+              <div
+                className="h-full bg-white rounded-full transition-all"
+                style={{ width: `${course.completionRate}%` }}
+              />
             </div>
             <span className="text-sm font-bold min-w-[40px]">{course.completionRate}%</span>
           </div>
         ) : (
-          <p className="text-blue-200 text-sm">Explore courses and begin building new skills today!</p>
+          <p className="text-blue-200 text-sm">
+            Explore courses and begin building new skills today!
+          </p>
         )}
       </div>
-      
+
       {/* CSS Keyframes for floating animation */}
       <style>{`
         @keyframes float {
@@ -105,9 +122,27 @@ const ContinueLearningHero = ({ course, onContinue }) => {
 // Weekly Overview Card (Stats + Streak Combined)
 const WeeklyOverviewCard = ({ stats, activeDays }) => {
   const statItems = [
-    { icon: Clock, value: stats.totalMinutes, label: 'min', color: 'text-blue-500', bg: 'bg-blue-50' },
-    { icon: BookOpen, value: stats.completedLessons, label: 'lessons', color: 'text-emerald-500', bg: 'bg-emerald-50' },
-    { icon: GraduationCap, value: stats.completedCourses, label: 'courses', color: 'text-purple-500', bg: 'bg-purple-50' },
+    {
+      icon: Clock,
+      value: stats.totalMinutes,
+      label: 'min',
+      color: 'text-blue-500',
+      bg: 'bg-blue-50',
+    },
+    {
+      icon: BookOpen,
+      value: stats.completedLessons,
+      label: 'lessons',
+      color: 'text-emerald-500',
+      bg: 'bg-emerald-50',
+    },
+    {
+      icon: GraduationCap,
+      value: stats.completedCourses,
+      label: 'courses',
+      color: 'text-purple-500',
+      bg: 'bg-purple-50',
+    },
   ];
 
   return (
@@ -116,13 +151,13 @@ const WeeklyOverviewCard = ({ stats, activeDays }) => {
       <div className="flex items-center justify-between mb-auto">
         <div className="flex items-center gap-3">
           <div style={{ width: 64, height: 64, flexShrink: 0 }}>
-            <DotLottieReact 
-              src="https://lottie.host/c64de14f-ce23-41a2-90a6-b64b2d11ea54/nqY24O7vea.lottie" 
-              loop 
+            <DotLottieReact
+              src="https://lottie.host/c64de14f-ce23-41a2-90a6-b64b2d11ea54/nqY24O7vea.lottie"
+              loop
               autoplay
               renderConfig={{
                 autoResize: true,
-                devicePixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1
+                devicePixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1,
               }}
               style={{ width: '100%', height: '100%' }}
               dotLottieRefCallback={(dotLottie) => {
@@ -142,11 +177,11 @@ const WeeklyOverviewCard = ({ stats, activeDays }) => {
         {/* Week dots */}
         <div className="flex gap-1.5">
           {[...Array(7)].map((_, i) => (
-            <div 
-              key={i} 
+            <div
+              key={i}
               className={`w-3 h-3 rounded-full transition-all ${
                 i < activeDays ? 'bg-amber-400' : 'bg-gray-200'
-              }`} 
+              }`}
             />
           ))}
         </div>
@@ -173,23 +208,28 @@ const WeeklyOverviewCard = ({ stats, activeDays }) => {
 // Suppress Recharts warnings in development
 const SuppressedResponsiveContainer = ({ children, ...props }) => {
   const originalWarn = console.warn;
-  
+
   useEffect(() => {
     // Temporarily suppress Recharts dimension warnings
     console.warn = (...args) => {
       const message = args[0];
-      if (typeof message === 'string' && message.includes('width') && message.includes('height') && message.includes('chart should be greater than 0')) {
+      if (
+        typeof message === 'string' &&
+        message.includes('width') &&
+        message.includes('height') &&
+        message.includes('chart should be greater than 0')
+      ) {
         // Suppress this specific warning
         return;
       }
       originalWarn.apply(console, args);
     };
-    
+
     return () => {
       console.warn = originalWarn;
     };
   }, []);
-  
+
   return <ResponsiveContainer {...props}>{children}</ResponsiveContainer>;
 };
 
@@ -199,14 +239,14 @@ const DailyChartCard = ({ weekData, derivedStats }) => {
   const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 });
   const containerRef = useRef(null);
   const mountedRef = useRef(true);
-  
+
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
     };
   }, []);
-  
+
   useEffect(() => {
     // Comprehensive visibility and dimension check
     const checkContainerReadiness = () => {
@@ -217,13 +257,13 @@ const DailyChartCard = ({ weekData, derivedStats }) => {
       const element = containerRef.current;
       const rect = element.getBoundingClientRect();
       const computedStyle = window.getComputedStyle(element);
-      
+
       // Multiple checks for element readiness
       const isVisible = element.offsetParent !== null;
       const hasValidDimensions = rect.width > 0 && rect.height > 0;
       const isNotHidden = computedStyle.display !== 'none' && computedStyle.visibility !== 'hidden';
       const hasMinimumSize = rect.width >= 200 && rect.height >= 120;
-      
+
       console.log('📊 Chart readiness check:', {
         isVisible,
         hasValidDimensions,
@@ -233,9 +273,9 @@ const DailyChartCard = ({ weekData, derivedStats }) => {
         height: rect.height,
         hasData: weekData && weekData.length > 0,
         display: computedStyle.display,
-        visibility: computedStyle.visibility
+        visibility: computedStyle.visibility,
       });
-      
+
       if (isVisible && hasValidDimensions && isNotHidden && hasMinimumSize && mountedRef.current) {
         setContainerDimensions({ width: rect.width, height: rect.height });
         // Additional delay to ensure React has finished rendering
@@ -255,9 +295,9 @@ const DailyChartCard = ({ weekData, derivedStats }) => {
       setTimeout(checkContainerReadiness, 100),
       setTimeout(checkContainerReadiness, 300),
       setTimeout(checkContainerReadiness, 500),
-      setTimeout(checkContainerReadiness, 1000)
+      setTimeout(checkContainerReadiness, 1000),
     ];
-    
+
     // ResizeObserver with error handling
     let resizeObserver;
     if (containerRef.current && typeof window !== 'undefined' && window.ResizeObserver) {
@@ -272,9 +312,9 @@ const DailyChartCard = ({ weekData, derivedStats }) => {
         console.warn('ResizeObserver error:', error);
       }
     }
-    
+
     return () => {
-      timers.forEach(timer => clearTimeout(timer));
+      timers.forEach((timer) => clearTimeout(timer));
       if (resizeObserver) {
         try {
           resizeObserver.disconnect();
@@ -303,30 +343,38 @@ const DailyChartCard = ({ weekData, derivedStats }) => {
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-bold text-gray-900">Daily Learning</h3>
         <div className="flex items-center gap-4 text-xs">
-          <span className="text-gray-500">Avg: <span className="font-semibold text-gray-700">{derivedStats?.avgMinutes || 0}m</span></span>
-          <span className="text-gray-500">Best: <span className="font-semibold text-blue-600">{derivedStats?.mostProductiveDay || 'N/A'}</span></span>
+          <span className="text-gray-500">
+            Avg:{' '}
+            <span className="font-semibold text-gray-700">{derivedStats?.avgMinutes || 0}m</span>
+          </span>
+          <span className="text-gray-500">
+            Best:{' '}
+            <span className="font-semibold text-blue-600">
+              {derivedStats?.mostProductiveDay || 'N/A'}
+            </span>
+          </span>
         </div>
       </div>
-      <div 
+      <div
         ref={containerRef}
         className="h-[120px] w-full"
-        style={{ 
-          minHeight: '120px', 
+        style={{
+          minHeight: '120px',
           minWidth: '200px',
           width: '100%',
-          height: '120px'
+          height: '120px',
         }}
       >
         {shouldRenderChart ? (
-          <SuppressedResponsiveContainer 
-            width="100%" 
-            height="100%" 
-            minWidth={200} 
+          <SuppressedResponsiveContainer
+            width="100%"
+            height="100%"
+            minWidth={200}
             minHeight={120}
             aspect={undefined}
           >
-            <BarChart 
-              data={weekData} 
+            <BarChart
+              data={weekData}
               margin={{ top: 5, right: 5, left: -25, bottom: 0 }}
               width={containerDimensions.width}
               height={containerDimensions.height}
@@ -337,8 +385,18 @@ const DailyChartCard = ({ weekData, derivedStats }) => {
                   <stop offset="100%" stopColor="#93C5FD" />
                 </linearGradient>
               </defs>
-              <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 10 }} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 9 }} tickFormatter={(v) => `${v}m`} />
+              <XAxis
+                dataKey="day"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: '#6B7280', fontSize: 10 }}
+              />
+              <YAxis
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: '#9CA3AF', fontSize: 9 }}
+                tickFormatter={(v) => `${v}m`}
+              />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: '#F3F4F6', radius: 4 }} />
               <Bar dataKey="minutes" fill="url(#barGrad)" radius={[6, 6, 0, 0]} maxBarSize={32} />
             </BarChart>
@@ -358,12 +416,12 @@ const DailyChartCard = ({ weekData, derivedStats }) => {
 // Compact Achievement Badge
 const AchievementBadge = ({ achievement, isUnlocked }) => {
   const progress = Math.min((achievement.current / achievement.target) * 100, 100);
-  
+
   return (
-    <div 
+    <div
       className={`relative flex items-center gap-2 px-3 py-2 rounded-xl border transition-all flex-shrink-0 ${
-        isUnlocked 
-          ? `${achievement.bgColor} ${achievement.borderColor}` 
+        isUnlocked
+          ? `${achievement.bgColor} ${achievement.borderColor}`
           : 'bg-gray-50 border-gray-200'
       }`}
     >
@@ -374,9 +432,12 @@ const AchievementBadge = ({ achievement, isUnlocked }) => {
           <svg className="absolute inset-0 w-9 h-9 -rotate-90" viewBox="0 0 36 36">
             <circle cx="18" cy="18" r="15" fill="none" stroke="#E5E7EB" strokeWidth="3" />
             {progress > 0 && (
-              <circle 
-                cx="18" cy="18" r="15" fill="none" 
-                stroke={progress >= 75 ? '#F59E0B' : '#3B82F6'} 
+              <circle
+                cx="18"
+                cy="18"
+                r="15"
+                fill="none"
+                stroke={progress >= 75 ? '#F59E0B' : '#3B82F6'}
                 strokeWidth="3"
                 strokeLinecap="round"
                 strokeDasharray={`${(progress / 100) * 94.25} 94.25`}
@@ -385,40 +446,47 @@ const AchievementBadge = ({ achievement, isUnlocked }) => {
           </svg>
         )}
         {/* Icon circle - smaller to show ring */}
-        <div className={`absolute inset-1.5 rounded-full flex items-center justify-center ${
-          isUnlocked ? achievement.iconBg : 'bg-gray-100'
-        }`}>
-          <achievement.icon className={`w-3.5 h-3.5 ${isUnlocked ? achievement.iconColor : 'text-gray-400'}`} />
+        <div
+          className={`absolute inset-1.5 rounded-full flex items-center justify-center ${
+            isUnlocked ? achievement.iconBg : 'bg-gray-100'
+          }`}
+        >
+          <achievement.icon
+            className={`w-3.5 h-3.5 ${isUnlocked ? achievement.iconColor : 'text-gray-400'}`}
+          />
         </div>
       </div>
-      
+
       <div className="min-w-0">
-        <p className={`text-xs font-semibold truncate ${isUnlocked ? 'text-gray-800' : 'text-gray-500'}`}>
+        <p
+          className={`text-xs font-semibold truncate ${isUnlocked ? 'text-gray-800' : 'text-gray-500'}`}
+        >
           {achievement.label}
         </p>
         {isUnlocked ? (
           <p className={`text-[10px] ${achievement.iconColor}`}>✓ Unlocked</p>
         ) : (
-          <p className="text-[10px] text-gray-400">{achievement.current}/{achievement.target}</p>
+          <p className="text-[10px] text-gray-400">
+            {achievement.current}/{achievement.target}
+          </p>
         )}
       </div>
     </div>
   );
 };
 
-
 // Compact Achievements Row
 const CompactAchievementsRow = ({ stats, courseData }) => {
   const [achievementData, setAchievementData] = useState(null);
   const [loading, setLoading] = useState(true);
   const hasFetchedRef = useRef(false);
-  
+
   // Extract primitive values to use as stable dependencies
   const statsCurrentStreak = stats?.currentStreak || 0;
   const statsTotalMinutes = stats?.totalMinutes || 0;
   const statsCompletedLessons = stats?.completedLessons || 0;
-  const completedCoursesCount = useMemo(() => 
-    courseData?.filter(c => c.completionRate === 100).length || 0, 
+  const completedCoursesCount = useMemo(
+    () => courseData?.filter((c) => c.completionRate === 100).length || 0,
     [courseData]
   );
 
@@ -426,10 +494,12 @@ const CompactAchievementsRow = ({ stats, courseData }) => {
     // Only fetch once on mount
     if (hasFetchedRef.current) return;
     hasFetchedRef.current = true;
-    
+
     const fetchAchievementData = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) return;
 
         const { data: streakData } = await supabase
@@ -450,15 +520,21 @@ const CompactAchievementsRow = ({ stats, courseData }) => {
           .not('completed_at', 'is', null);
 
         const MAX_SECONDS_PER_LESSON = 3600;
-        const totalTimeMinutes = (progressData || []).reduce((sum, p) => sum + Math.min(p.time_spent_seconds || 0, MAX_SECONDS_PER_LESSON), 0) / 60;
-        const completedLessons = (progressData || []).filter(p => p.status === 'completed').length;
+        const totalTimeMinutes =
+          (progressData || []).reduce(
+            (sum, p) => sum + Math.min(p.time_spent_seconds || 0, MAX_SECONDS_PER_LESSON),
+            0
+          ) / 60;
+        const completedLessons = (progressData || []).filter(
+          (p) => p.status === 'completed'
+        ).length;
         const completedCourses = (enrollmentData || []).length;
 
         setAchievementData({
           currentStreak: streakData?.current_streak || statsCurrentStreak,
           totalTimeMinutes: Math.round(totalTimeMinutes),
           completedLessons,
-          completedCourses
+          completedCourses,
         });
       } catch (error) {
         console.error('Error fetching achievement data:', error);
@@ -466,7 +542,7 @@ const CompactAchievementsRow = ({ stats, courseData }) => {
           currentStreak: statsCurrentStreak,
           totalTimeMinutes: statsTotalMinutes,
           completedLessons: statsCompletedLessons,
-          completedCourses: completedCoursesCount
+          completedCourses: completedCoursesCount,
         });
       } finally {
         setLoading(false);
@@ -479,28 +555,110 @@ const CompactAchievementsRow = ({ stats, courseData }) => {
     currentStreak: stats.currentStreak || 0,
     totalTimeMinutes: stats.totalMinutes || 0,
     completedLessons: stats.completedLessons || 0,
-    completedCourses: courseData.filter(c => c.completionRate === 100).length
+    completedCourses: courseData.filter((c) => c.completionRate === 100).length,
   };
 
   const achievements = [
-    { id: 'time60', icon: Clock, label: '1 Hour', current: data.totalTimeMinutes, target: 60, bgColor: 'bg-blue-50', borderColor: 'border-blue-200', iconBg: 'bg-blue-100', iconColor: 'text-blue-500' },
-    { id: 'course1', icon: GraduationCap, label: 'First Course', current: data.completedCourses, target: 1, bgColor: 'bg-purple-50', borderColor: 'border-purple-200', iconBg: 'bg-purple-100', iconColor: 'text-purple-500' },
-    { id: 'streak3', icon: Flame, label: '3-Day Streak', current: data.currentStreak, target: 3, bgColor: 'bg-orange-50', borderColor: 'border-orange-200', iconBg: 'bg-orange-100', iconColor: 'text-orange-500' },
-    { id: 'streak7', icon: Flame, label: '7-Day Streak', current: data.currentStreak, target: 7, bgColor: 'bg-amber-50', borderColor: 'border-amber-200', iconBg: 'bg-amber-100', iconColor: 'text-amber-500' },
-    { id: 'lessons10', icon: BookOpen, label: '10 Lessons', current: data.completedLessons, target: 10, bgColor: 'bg-emerald-50', borderColor: 'border-emerald-200', iconBg: 'bg-emerald-100', iconColor: 'text-emerald-500' },
-    { id: 'time300', icon: Clock, label: '5 Hours', current: data.totalTimeMinutes, target: 300, bgColor: 'bg-indigo-50', borderColor: 'border-indigo-200', iconBg: 'bg-indigo-100', iconColor: 'text-indigo-500' },
-    { id: 'lessons25', icon: BookOpen, label: '25 Lessons', current: data.completedLessons, target: 25, bgColor: 'bg-teal-50', borderColor: 'border-teal-200', iconBg: 'bg-teal-100', iconColor: 'text-teal-500' },
-    { id: 'course3', icon: Trophy, label: '3 Courses', current: data.completedCourses, target: 3, bgColor: 'bg-yellow-50', borderColor: 'border-yellow-200', iconBg: 'bg-yellow-100', iconColor: 'text-yellow-600' },
+    {
+      id: 'time60',
+      icon: Clock,
+      label: '1 Hour',
+      current: data.totalTimeMinutes,
+      target: 60,
+      bgColor: 'bg-blue-50',
+      borderColor: 'border-blue-200',
+      iconBg: 'bg-blue-100',
+      iconColor: 'text-blue-500',
+    },
+    {
+      id: 'course1',
+      icon: GraduationCap,
+      label: 'First Course',
+      current: data.completedCourses,
+      target: 1,
+      bgColor: 'bg-purple-50',
+      borderColor: 'border-purple-200',
+      iconBg: 'bg-purple-100',
+      iconColor: 'text-purple-500',
+    },
+    {
+      id: 'streak3',
+      icon: Flame,
+      label: '3-Day Streak',
+      current: data.currentStreak,
+      target: 3,
+      bgColor: 'bg-orange-50',
+      borderColor: 'border-orange-200',
+      iconBg: 'bg-orange-100',
+      iconColor: 'text-orange-500',
+    },
+    {
+      id: 'streak7',
+      icon: Flame,
+      label: '7-Day Streak',
+      current: data.currentStreak,
+      target: 7,
+      bgColor: 'bg-amber-50',
+      borderColor: 'border-amber-200',
+      iconBg: 'bg-amber-100',
+      iconColor: 'text-amber-500',
+    },
+    {
+      id: 'lessons10',
+      icon: BookOpen,
+      label: '10 Lessons',
+      current: data.completedLessons,
+      target: 10,
+      bgColor: 'bg-emerald-50',
+      borderColor: 'border-emerald-200',
+      iconBg: 'bg-emerald-100',
+      iconColor: 'text-emerald-500',
+    },
+    {
+      id: 'time300',
+      icon: Clock,
+      label: '5 Hours',
+      current: data.totalTimeMinutes,
+      target: 300,
+      bgColor: 'bg-indigo-50',
+      borderColor: 'border-indigo-200',
+      iconBg: 'bg-indigo-100',
+      iconColor: 'text-indigo-500',
+    },
+    {
+      id: 'lessons25',
+      icon: BookOpen,
+      label: '25 Lessons',
+      current: data.completedLessons,
+      target: 25,
+      bgColor: 'bg-teal-50',
+      borderColor: 'border-teal-200',
+      iconBg: 'bg-teal-100',
+      iconColor: 'text-teal-500',
+    },
+    {
+      id: 'course3',
+      icon: Trophy,
+      label: '3 Courses',
+      current: data.completedCourses,
+      target: 3,
+      bgColor: 'bg-yellow-50',
+      borderColor: 'border-yellow-200',
+      iconBg: 'bg-yellow-100',
+      iconColor: 'text-yellow-600',
+    },
   ];
 
-  const unlockedCount = achievements.filter(a => a.current >= a.target).length;
+  const unlockedCount = achievements.filter((a) => a.current >= a.target).length;
 
   if (loading) {
     return (
       <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm animate-pulse">
         <div className="h-4 bg-gray-200 rounded w-32 mb-3"></div>
         <div className="flex gap-2 overflow-x-auto">
-          {[1,2,3,4].map(i => <div key={i} className="h-12 bg-gray-100 rounded-xl w-28 flex-shrink-0"></div>)}
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-12 bg-gray-100 rounded-xl w-28 flex-shrink-0"></div>
+          ))}
         </div>
       </div>
     );
@@ -513,25 +671,27 @@ const CompactAchievementsRow = ({ stats, courseData }) => {
           <Trophy className="w-4 h-4 text-amber-500" />
           <h3 className="text-sm font-bold text-gray-900">Achievements</h3>
           <span className="text-xs text-gray-400">•</span>
-          <span className="text-xs text-gray-500">{unlockedCount}/{achievements.length} unlocked</span>
+          <span className="text-xs text-gray-500">
+            {unlockedCount}/{achievements.length} unlocked
+          </span>
         </div>
         {/* Progress dots */}
         <div className="flex gap-1">
           {achievements.map((a, i) => (
-            <div 
-              key={i} 
-              className={`w-2 h-2 rounded-full ${a.current >= a.target ? 'bg-amber-400' : 'bg-gray-200'}`} 
+            <div
+              key={i}
+              className={`w-2 h-2 rounded-full ${a.current >= a.target ? 'bg-amber-400' : 'bg-gray-200'}`}
             />
           ))}
         </div>
       </div>
-      
+
       {/* Horizontal scrollable badges */}
       <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
         {achievements.map((achievement) => (
-          <AchievementBadge 
-            key={achievement.id} 
-            achievement={achievement} 
+          <AchievementBadge
+            key={achievement.id}
+            achievement={achievement}
             isUnlocked={achievement.current >= achievement.target}
           />
         ))}
@@ -545,10 +705,10 @@ const MiniDonutChart = ({ completed, inProgress, notStarted, total }) => {
   const radius = 32;
   const strokeWidth = 8;
   const circumference = 2 * Math.PI * radius;
-  
+
   const completedPct = total > 0 ? (completed / total) * 100 : 0;
   const inProgressPct = total > 0 ? (inProgress / total) * 100 : 0;
-  
+
   const completedDash = (completedPct / 100) * circumference;
   const inProgressDash = (inProgressPct / 100) * circumference;
 
@@ -556,10 +716,26 @@ const MiniDonutChart = ({ completed, inProgress, notStarted, total }) => {
     <div className="relative w-20 h-20">
       <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
         <circle cx="40" cy="40" r={radius} fill="none" stroke="#E5E7EB" strokeWidth={strokeWidth} />
-        <circle cx="40" cy="40" r={radius} fill="none" stroke="#3B82F6" strokeWidth={strokeWidth}
-          strokeDasharray={`${inProgressDash} ${circumference}`} strokeDashoffset={-completedDash} />
-        <circle cx="40" cy="40" r={radius} fill="none" stroke="#10B981" strokeWidth={strokeWidth}
-          strokeDasharray={`${completedDash} ${circumference}`} strokeDashoffset={0} />
+        <circle
+          cx="40"
+          cy="40"
+          r={radius}
+          fill="none"
+          stroke="#3B82F6"
+          strokeWidth={strokeWidth}
+          strokeDasharray={`${inProgressDash} ${circumference}`}
+          strokeDashoffset={-completedDash}
+        />
+        <circle
+          cx="40"
+          cy="40"
+          r={radius}
+          fill="none"
+          stroke="#10B981"
+          strokeWidth={strokeWidth}
+          strokeDasharray={`${completedDash} ${circumference}`}
+          strokeDashoffset={0}
+        />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="text-lg font-bold text-gray-900">{total}</span>
@@ -568,7 +744,6 @@ const MiniDonutChart = ({ completed, inProgress, notStarted, total }) => {
     </div>
   );
 };
-
 
 // Compact Course Card
 const CompactCourseCard = ({ course, onClick }) => {
@@ -581,9 +756,11 @@ const CompactCourseCard = ({ course, onClick }) => {
   useEffect(() => {
     const fetchCertificateUrl = async () => {
       if (!isCompleted || !course.courseId) return;
-      
+
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) return;
 
         const { data: enrollment } = await supabase
@@ -623,7 +800,7 @@ const CompactCourseCard = ({ course, onClick }) => {
   const handleDownloadCertificate = async (e) => {
     e.stopPropagation();
     if (!certificateUrl) return;
-    
+
     setIsDownloading(true);
     try {
       await downloadCertificate(certificateUrl, course.courseName);
@@ -635,29 +812,32 @@ const CompactCourseCard = ({ course, onClick }) => {
   };
 
   return (
-    <div 
-      onClick={handleClick} 
+    <div
+      onClick={handleClick}
       className={`flex items-center gap-4 p-3 rounded-xl border border-gray-100 transition-all group ${
-        isCompleted 
-          ? 'cursor-default' 
-          : 'hover:border-gray-200 hover:bg-gray-50 cursor-pointer'
+        isCompleted ? 'cursor-default' : 'hover:border-gray-200 hover:bg-gray-50 cursor-pointer'
       }`}
     >
       {/* Progress Circle */}
       <div className="relative w-10 h-10 flex-shrink-0">
         <svg className="w-10 h-10 -rotate-90" viewBox="0 0 40 40">
           <circle cx="20" cy="20" r="16" fill="none" stroke="#E5E7EB" strokeWidth="3" />
-          <circle 
-            cx="20" cy="20" r="16" fill="none" 
-            stroke={isCompleted ? '#10B981' : isNotStarted ? '#E5E7EB' : '#3B82F6'} 
+          <circle
+            cx="20"
+            cy="20"
+            r="16"
+            fill="none"
+            stroke={isCompleted ? '#10B981' : isNotStarted ? '#E5E7EB' : '#3B82F6'}
             strokeWidth="3"
             strokeDasharray={`${(course.completionRate / 100) * 100.5} 100.5`}
             strokeLinecap="round"
           />
         </svg>
-        <span className={`absolute inset-0 flex items-center justify-center text-[10px] font-bold ${
-          isCompleted ? 'text-emerald-600' : isNotStarted ? 'text-gray-400' : 'text-blue-600'
-        }`}>
+        <span
+          className={`absolute inset-0 flex items-center justify-center text-[10px] font-bold ${
+            isCompleted ? 'text-emerald-600' : isNotStarted ? 'text-gray-400' : 'text-blue-600'
+          }`}
+        >
           {course.completionRate}%
         </span>
       </div>
@@ -667,7 +847,9 @@ const CompactCourseCard = ({ course, onClick }) => {
         <h4 className="text-sm font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors">
           {course.courseName}
         </h4>
-        <p className="text-xs text-gray-400">{course.completedLessons}/{course.totalLessons} lessons</p>
+        <p className="text-xs text-gray-400">
+          {course.completedLessons}/{course.totalLessons} lessons
+        </p>
       </div>
 
       {/* Action */}
@@ -708,11 +890,13 @@ const CompactCourseCard = ({ course, onClick }) => {
           </button>
         </div>
       ) : (
-        <button className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-          isNotStarted
-            ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
-        }`}>
+        <button
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            isNotStarted
+              ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+          }`}
+        >
           {isNotStarted ? 'Start' : 'Continue'}
         </button>
       )}
@@ -721,16 +905,26 @@ const CompactCourseCard = ({ course, onClick }) => {
 };
 
 // Courses Section with Tabs
-const CoursesSection = ({ courseData, onCourseClick, completedCount, inProgressCount, notStartedCount }) => {
+const CoursesSection = ({
+  courseData,
+  onCourseClick,
+  completedCount,
+  inProgressCount,
+  notStartedCount,
+}) => {
   const [activeTab, setActiveTab] = useState('inProgress');
   const totalCourses = courseData.length;
-  
+
   const filteredCourses = useMemo(() => {
     switch (activeTab) {
-      case 'inProgress': return courseData.filter(c => c.completionRate > 0 && c.completionRate < 100);
-      case 'notStarted': return courseData.filter(c => c.completionRate === 0);
-      case 'completed': return courseData.filter(c => c.completionRate === 100);
-      default: return courseData;
+      case 'inProgress':
+        return courseData.filter((c) => c.completionRate > 0 && c.completionRate < 100);
+      case 'notStarted':
+        return courseData.filter((c) => c.completionRate === 0);
+      case 'completed':
+        return courseData.filter((c) => c.completionRate === 100);
+      default:
+        return courseData;
     }
   }, [courseData, activeTab]);
 
@@ -751,12 +945,12 @@ const CoursesSection = ({ courseData, onCourseClick, completedCount, inProgressC
             <h3 className="text-base font-bold text-gray-900">Your Courses</h3>
             <p className="text-xs text-gray-400">Track your learning journey</p>
           </div>
-          
+
           {/* Donut + Legend */}
           <div className="flex items-center gap-4">
-            <MiniDonutChart 
-              completed={completedCount} 
-              inProgress={inProgressCount} 
+            <MiniDonutChart
+              completed={completedCount}
+              inProgress={inProgressCount}
               notStarted={notStartedCount}
               total={totalCourses}
             />
@@ -776,7 +970,7 @@ const CoursesSection = ({ courseData, onCourseClick, completedCount, inProgressC
             </div>
           </div>
         </div>
-        
+
         {/* Tabs */}
         <div className="flex gap-2">
           {tabs.map((tab) => {
@@ -786,19 +980,23 @@ const CoursesSection = ({ courseData, onCourseClick, completedCount, inProgressC
               gray: isActive ? 'bg-gray-200 text-gray-700 border-gray-300' : '',
               green: isActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : '',
             };
-            
+
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
-                  isActive ? colorMap[tab.color] : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
+                  isActive
+                    ? colorMap[tab.color]
+                    : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
                 }`}
               >
                 {tab.label}
-                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                  isActive ? 'bg-white/50' : 'bg-gray-200 text-gray-500'
-                }`}>
+                <span
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                    isActive ? 'bg-white/50' : 'bg-gray-200 text-gray-500'
+                  }`}
+                >
                   {tab.count}
                 </span>
               </button>
@@ -812,10 +1010,10 @@ const CoursesSection = ({ courseData, onCourseClick, completedCount, inProgressC
         {filteredCourses.length > 0 ? (
           <div className="space-y-2">
             {filteredCourses.map((course) => (
-              <CompactCourseCard 
-                key={course.courseId} 
-                course={course} 
-                onClick={() => onCourseClick(course.courseId)} 
+              <CompactCourseCard
+                key={course.courseId}
+                course={course}
+                onClick={() => onCourseClick(course.courseId)}
               />
             ))}
           </div>
@@ -834,25 +1032,33 @@ const CoursesSection = ({ courseData, onCourseClick, completedCount, inProgressC
   );
 };
 
-
 // Main Component - Bento Grid Layout
 const WeeklyLearningTracker = () => {
   const navigate = useNavigate();
   const [weekData, setWeekData] = useState([]);
   const [courseData, setCourseData] = useState([]);
-  const [stats, setStats] = useState({ totalMinutes: 0, completedLessons: 0, completedModules: 0, completedCourses: 0, currentStreak: 0 });
+  const [stats, setStats] = useState({
+    totalMinutes: 0,
+    completedLessons: 0,
+    completedModules: 0,
+    completedCourses: 0,
+    currentStreak: 0,
+  });
   const [loading, setLoading] = useState(true);
-  
+
   // Course filter state
   const [selectedCourseId, setSelectedCourseId] = useState(null); // null = "All Courses"
   const [rawProgressData, setRawProgressData] = useState([]); // Store raw data for filtering
   const [rawEnrollments, setRawEnrollments] = useState([]); // Store enrollments for filtering
-  
+
   // Refs to prevent duplicate fetches and track component mount
   const isFetchingRef = useRef(false);
   const isMountedRef = useRef(true);
 
-  const handleCourseClick = useCallback((courseId) => navigate(`/student/courses/${courseId}/learn`), [navigate]);
+  const handleCourseClick = useCallback(
+    (courseId) => navigate(`/student/courses/${courseId}/learn`),
+    [navigate]
+  );
   const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   const getCurrentWeek = useCallback(() => {
@@ -871,14 +1077,14 @@ const WeeklyLearningTracker = () => {
     isMountedRef.current = true;
     // Initial load - show loading spinner
     fetchWeeklyProgress(true);
-    
+
     // Background refresh every 2 minutes (increased from 60s) - no loading spinner
     const interval = setInterval(() => {
       if (!isFetchingRef.current && isMountedRef.current) {
         fetchWeeklyProgress(false); // Background refresh - no loading spinner
       }
     }, 120000); // 2 minutes
-    
+
     return () => {
       isMountedRef.current = false;
       clearInterval(interval);
@@ -891,29 +1097,31 @@ const WeeklyLearningTracker = () => {
       console.log('📊 Weekly progress fetch already in progress, skipping...');
       return;
     }
-    
+
     isFetchingRef.current = true;
-    
+
     try {
       // Only show loading spinner on initial load, not on background refreshes
       if (isInitialLoad) {
         setLoading(true);
       }
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
         isFetchingRef.current = false;
         return;
       }
 
       const weekDates = getCurrentWeek();
-      
+
       // Fetch all data in parallel with single queries (no N+1)
       const [
         { data: progressData, error: progressError },
-        { data: enrollments, error: enrollmentsError }
+        { data: enrollments, error: enrollmentsError },
       ] = await Promise.all([
         supabase.from('student_course_progress').select('*').eq('student_id', user.id),
-        supabase.from('course_enrollments').select('*').eq('student_id', user.id)
+        supabase.from('course_enrollments').select('*').eq('student_id', user.id),
       ]);
 
       // Debug logging
@@ -922,27 +1130,27 @@ const WeeklyLearningTracker = () => {
         progressCount: progressData?.length || 0,
         enrollmentsCount: enrollments?.length || 0,
         progressError,
-        enrollmentsError
+        enrollmentsError,
       });
 
       // Get all course IDs from enrollments and fetch course titles separately
-      const courseIds = (enrollments || []).map(e => e.course_id).filter(Boolean);
-      
+      const courseIds = (enrollments || []).map((e) => e.course_id).filter(Boolean);
+
       // Fetch course titles
-      let courseTitles = {};
+      const courseTitles = {};
       if (courseIds.length > 0) {
         const { data: coursesData } = await supabase
           .from('courses')
           .select('course_id, title')
           .in('course_id', courseIds);
-        
-        (coursesData || []).forEach(course => {
+
+        (coursesData || []).forEach((course) => {
           courseTitles[course.course_id] = course.title;
         });
       }
-      
+
       console.log('📊 WeeklyLearningTracker - Course titles:', courseTitles);
-      
+
       // Batch fetch all modules for all courses in one query
       let allModules = [];
       if (courseIds.length > 0) {
@@ -954,37 +1162,41 @@ const WeeklyLearningTracker = () => {
       }
 
       // Get all module IDs
-      const moduleIds = allModules.map(m => m.module_id);
-      
+      const moduleIds = allModules.map((m) => m.module_id);
+
       // Batch fetch lesson counts per module in one query
-      let lessonCounts = {};
+      const lessonCounts = {};
       if (moduleIds.length > 0) {
         const { data: lessonsData } = await supabase
           .from('lessons')
           .select('module_id')
           .in('module_id', moduleIds);
-        
+
         // Count lessons per module
-        (lessonsData || []).forEach(lesson => {
+        (lessonsData || []).forEach((lesson) => {
           lessonCounts[lesson.module_id] = (lessonCounts[lesson.module_id] || 0) + 1;
         });
       }
 
       // Calculate course progress using the batched data
-      const courseProgress = (enrollments || []).map(enrollment => {
-        const courseTitle = courseTitles[enrollment.course_id] || enrollment.course_title || 'Untitled Course';
-        
+      const courseProgress = (enrollments || []).map((enrollment) => {
+        const courseTitle =
+          courseTitles[enrollment.course_id] || enrollment.course_title || 'Untitled Course';
+
         // Get modules for this course
-        const courseModules = allModules.filter(m => m.course_id === enrollment.course_id);
-        
+        const courseModules = allModules.filter((m) => m.course_id === enrollment.course_id);
+
         // Calculate total lessons for this course
-        const totalCount = courseModules.reduce((sum, m) => sum + (lessonCounts[m.module_id] || 0), 0);
-        
+        const totalCount = courseModules.reduce(
+          (sum, m) => sum + (lessonCounts[m.module_id] || 0),
+          0
+        );
+
         // Count completed lessons for this course from progressData
         const completedCount = (progressData || []).filter(
-          p => p.course_id === enrollment.course_id && p.status === 'completed'
+          (p) => p.course_id === enrollment.course_id && p.status === 'completed'
         ).length;
-        
+
         const completionRate = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
         return {
@@ -1002,29 +1214,38 @@ const WeeklyLearningTracker = () => {
         isFetchingRef.current = false;
         return;
       }
-      
+
       // Store raw data for course filtering
       setRawProgressData(progressData || []);
       setRawEnrollments(enrollments || []);
-      
+
       console.log('📊 WeeklyLearningTracker - Setting courseData:', {
         courseProgressCount: courseProgress.length,
-        courses: courseProgress.map(c => ({ id: c.courseId, name: c.courseName, rate: c.completionRate }))
+        courses: courseProgress.map((c) => ({
+          id: c.courseId,
+          name: c.courseName,
+          rate: c.completionRate,
+        })),
       });
-      
+
       setCourseData(courseProgress.sort((a, b) => b.completionRate - a.completionRate));
 
       const weeklyData = dayNames.map((day, index) => {
         const currentDate = weekDates[index];
-        const dayStart = new Date(currentDate); dayStart.setHours(0, 0, 0, 0);
-        const dayEnd = new Date(currentDate); dayEnd.setHours(23, 59, 59, 999);
+        const dayStart = new Date(currentDate);
+        dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(currentDate);
+        dayEnd.setHours(23, 59, 59, 999);
 
-        const dayLessons = (progressData || []).filter(p => {
+        const dayLessons = (progressData || []).filter((p) => {
           const accessDate = new Date(p.last_accessed);
           return accessDate >= dayStart && accessDate <= dayEnd;
         });
 
-        const totalSeconds = dayLessons.reduce((sum, p) => sum + Math.min(p.time_spent_seconds || 0, 3600), 0);
+        const totalSeconds = dayLessons.reduce(
+          (sum, p) => sum + Math.min(p.time_spent_seconds || 0, 3600),
+          0
+        );
         const minutes = Math.min(Math.round(totalSeconds / 60), 480);
 
         return { day, minutes };
@@ -1041,15 +1262,15 @@ const WeeklyLearningTracker = () => {
 
       setStats({
         totalMinutes: weeklyData.reduce((sum, d) => sum + d.minutes, 0),
-        completedLessons: (progressData || []).filter(p => p.status === 'completed').length,
-        completedModules: new Set((progressData || []).map(p => p.module_id)).size,
-        completedCourses: (enrollments || []).filter(e => e.completed_at !== null).length,
-        currentStreak: streak
+        completedLessons: (progressData || []).filter((p) => p.status === 'completed').length,
+        completedModules: new Set((progressData || []).map((p) => p.module_id)).size,
+        completedCourses: (enrollments || []).filter((e) => e.completed_at !== null).length,
+        currentStreak: streak,
       });
     } catch (error) {
       console.error('Error:', error);
       if (isMountedRef.current) {
-        setWeekData(dayNames.map(day => ({ day, minutes: 0 })));
+        setWeekData(dayNames.map((day) => ({ day, minutes: 0 })));
       }
     } finally {
       if (isMountedRef.current && isInitialLoad) {
@@ -1062,13 +1283,13 @@ const WeeklyLearningTracker = () => {
   // Filter progress data based on selected course
   const filteredProgressData = useMemo(() => {
     if (!selectedCourseId) return rawProgressData;
-    return rawProgressData.filter(p => p.course_id === selectedCourseId);
+    return rawProgressData.filter((p) => p.course_id === selectedCourseId);
   }, [rawProgressData, selectedCourseId]);
 
   // Calculate filtered week data based on selected course
   const filteredWeekData = useMemo(() => {
     if (!selectedCourseId) return weekData;
-    
+
     const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const curr = new Date();
     const weekDates = [];
@@ -1081,15 +1302,20 @@ const WeeklyLearningTracker = () => {
 
     return dayNames.map((day, index) => {
       const currentDate = weekDates[index];
-      const dayStart = new Date(currentDate); dayStart.setHours(0, 0, 0, 0);
-      const dayEnd = new Date(currentDate); dayEnd.setHours(23, 59, 59, 999);
+      const dayStart = new Date(currentDate);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(currentDate);
+      dayEnd.setHours(23, 59, 59, 999);
 
-      const dayLessons = filteredProgressData.filter(p => {
+      const dayLessons = filteredProgressData.filter((p) => {
         const accessDate = new Date(p.last_accessed);
         return accessDate >= dayStart && accessDate <= dayEnd;
       });
 
-      const totalSeconds = dayLessons.reduce((sum, p) => sum + Math.min(p.time_spent_seconds || 0, 3600), 0);
+      const totalSeconds = dayLessons.reduce(
+        (sum, p) => sum + Math.min(p.time_spent_seconds || 0, 3600),
+        0
+      );
       const minutes = Math.min(Math.round(totalSeconds / 60), 480);
 
       return { day, minutes };
@@ -1101,10 +1327,10 @@ const WeeklyLearningTracker = () => {
     if (!selectedCourseId) return stats;
 
     const totalMinutes = filteredWeekData.reduce((sum, d) => sum + d.minutes, 0);
-    const completedLessons = filteredProgressData.filter(p => p.status === 'completed').length;
-    const completedModules = new Set(filteredProgressData.map(p => p.module_id)).size;
-    const filteredEnrollments = rawEnrollments.filter(e => e.course_id === selectedCourseId);
-    const completedCourses = filteredEnrollments.filter(e => e.completed_at !== null).length;
+    const completedLessons = filteredProgressData.filter((p) => p.status === 'completed').length;
+    const completedModules = new Set(filteredProgressData.map((p) => p.module_id)).size;
+    const filteredEnrollments = rawEnrollments.filter((e) => e.course_id === selectedCourseId);
+    const completedCourses = filteredEnrollments.filter((e) => e.completed_at !== null).length;
 
     // Calculate streak for filtered data
     let streak = 0;
@@ -1119,29 +1345,39 @@ const WeeklyLearningTracker = () => {
       completedLessons,
       completedModules,
       completedCourses,
-      currentStreak: streak
+      currentStreak: streak,
     };
   }, [stats, filteredWeekData, filteredProgressData, rawEnrollments, selectedCourseId]);
 
   const derivedStats = useMemo(() => {
     const dataToUse = selectedCourseId ? filteredWeekData : weekData;
     const statsToUse = selectedCourseId ? filteredStats : stats;
-    
-    const activeDays = dataToUse.filter(d => d.minutes > 0).length;
+
+    const activeDays = dataToUse.filter((d) => d.minutes > 0).length;
     const avgMinutes = activeDays > 0 ? Math.round(statsToUse.totalMinutes / activeDays) : 0;
-    const mostProductiveDay = dataToUse.reduce((max, d) => d.minutes > max.minutes ? d : max, { day: '-', minutes: 0 });
+    const mostProductiveDay = dataToUse.reduce((max, d) => (d.minutes > max.minutes ? d : max), {
+      day: '-',
+      minutes: 0,
+    });
     return { avgMinutes, mostProductiveDay: mostProductiveDay.day, activeDays };
   }, [weekData, filteredWeekData, stats, filteredStats, selectedCourseId]);
 
-  const lastInProgressCourse = useMemo(() => courseData.find(c => c.completionRate > 0 && c.completionRate < 100) || courseData.find(c => c.completionRate === 0), [courseData]);
-  const completedCount = courseData.filter(c => c.completionRate === 100).length;
-  const inProgressCount = courseData.filter(c => c.completionRate > 0 && c.completionRate < 100).length;
-  const notStartedCount = courseData.filter(c => c.completionRate === 0).length;
+  const lastInProgressCourse = useMemo(
+    () =>
+      courseData.find((c) => c.completionRate > 0 && c.completionRate < 100) ||
+      courseData.find((c) => c.completionRate === 0),
+    [courseData]
+  );
+  const completedCount = courseData.filter((c) => c.completionRate === 100).length;
+  const inProgressCount = courseData.filter(
+    (c) => c.completionRate > 0 && c.completionRate < 100
+  ).length;
+  const notStartedCount = courseData.filter((c) => c.completionRate === 0).length;
 
   // Get selected course name for display
   const selectedCourseName = useMemo(() => {
     if (!selectedCourseId) return 'All Courses';
-    const course = courseData.find(c => c.courseId === selectedCourseId);
+    const course = courseData.find((c) => c.courseId === selectedCourseId);
     return course?.courseName || 'All Courses';
   }, [selectedCourseId, courseData]);
 
@@ -1203,7 +1439,8 @@ const WeeklyLearningTracker = () => {
         {selectedCourseId && (
           <div className="mt-3 pt-3 border-t border-gray-100">
             <p className="text-xs text-gray-500">
-              Showing stats for: <span className="font-semibold text-blue-600">{selectedCourseName}</span>
+              Showing stats for:{' '}
+              <span className="font-semibold text-blue-600">{selectedCourseName}</span>
             </p>
           </div>
         )}
@@ -1223,8 +1460,8 @@ const WeeklyLearningTracker = () => {
       <CompactAchievementsRow stats={displayStats} courseData={courseData} />
 
       {/* Row 4: Courses Section (Full Width) */}
-      <CoursesSection 
-        courseData={courseData} 
+      <CoursesSection
+        courseData={courseData}
         onCourseClick={handleCourseClick}
         completedCount={completedCount}
         inProgressCount={inProgressCount}

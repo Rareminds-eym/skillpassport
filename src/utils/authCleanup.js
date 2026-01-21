@@ -23,8 +23,11 @@ export const clearStaleAuthData = () => {
  */
 export const validateLocalStorageUser = async () => {
   try {
-    const { data: { session }, error } = await supabase.auth.getSession();
-    
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.getSession();
+
     if (error || !session?.user) {
       // No valid session - clear any stale localStorage data
       const storedUser = localStorage.getItem('user');
@@ -49,11 +52,11 @@ export const validateLocalStorageUser = async () => {
     if (storedUser) {
       try {
         const parsedUser = JSON.parse(storedUser);
-        const userMatches = 
+        const userMatches =
           parsedUser.id === session.user.id ||
           parsedUser.user_id === session.user.id ||
           parsedUser.email === session.user.email;
-        
+
         if (!userMatches) {
           console.warn('⚠️ localStorage user does not match session user');
           clearStaleAuthData();
@@ -84,7 +87,7 @@ export const userExistsInDatabase = async (userId) => {
       .select('id')
       .eq('id', userId)
       .maybeSingle();
-    
+
     return !error && !!data;
   } catch (error) {
     console.error('Error checking user in database:', error);

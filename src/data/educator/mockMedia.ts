@@ -24,7 +24,7 @@ export const mockMediaAssets: MediaAsset[] = [
     uploadedDate: '2025-01-15T10:30:00Z',
     category: 'Projects',
     tags: ['science', 'renewable-energy', 'innovation'],
-    usedIn: ['act-001']
+    usedIn: ['act-001'],
   },
   {
     id: 'med-002',
@@ -37,7 +37,7 @@ export const mockMediaAssets: MediaAsset[] = [
     uploadedDate: '2025-01-10T14:20:00Z',
     category: 'Certificates',
     tags: ['programming', 'javascript', 'certification'],
-    usedIn: ['act-002']
+    usedIn: ['act-002'],
   },
   {
     id: 'med-003',
@@ -50,7 +50,7 @@ export const mockMediaAssets: MediaAsset[] = [
     uploadedDate: '2025-01-08T11:45:00Z',
     category: 'Art',
     tags: ['art', 'community-service', 'teamwork'],
-    usedIn: ['act-003']
+    usedIn: ['act-003'],
   },
   {
     id: 'med-004',
@@ -63,7 +63,7 @@ export const mockMediaAssets: MediaAsset[] = [
     uploadedDate: '2025-01-08T11:50:00Z',
     category: 'Art',
     tags: ['teamwork', 'community-service'],
-    usedIn: ['act-003']
+    usedIn: ['act-003'],
   },
   {
     id: 'med-005',
@@ -76,7 +76,7 @@ export const mockMediaAssets: MediaAsset[] = [
     uploadedDate: '2025-01-14T09:00:00Z',
     category: 'Sports',
     tags: ['basketball', 'achievement', 'sports'],
-    usedIn: ['act-004']
+    usedIn: ['act-004'],
   },
   {
     id: 'med-006',
@@ -89,6 +89,6 @@ export const mockMediaAssets: MediaAsset[] = [
     uploadedDate: '2025-01-05T13:30:00Z',
     category: 'Research',
     tags: ['research', 'climate-change', 'science'],
-    usedIn: ['act-005']
-  }
+    usedIn: ['act-005'],
+  },
 ];

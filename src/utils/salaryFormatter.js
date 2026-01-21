@@ -1,7 +1,7 @@
 /**
  * Salary Formatting Utility
  * Formats salary ranges for display in Indian Rupees (Lakhs notation)
- * 
+ *
  * Feature: career-fit-salary-display
  * Requirements: 2.3, 3.3
  */

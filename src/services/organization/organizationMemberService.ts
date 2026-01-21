@@ -1,6 +1,6 @@
 /**
  * Organization Member Service
- * 
+ *
  * Fetches and manages organization members (students and educators).
  * Integrates with license assignments to show member subscription status.
  */
@@ -54,9 +54,7 @@ export class OrganizationMemberService {
   /**
    * Fetch all members (students and educators) for an organization
    */
-  async fetchOrganizationMembers(
-    options: FetchMembersOptions
-  ): Promise<FetchMembersResult> {
+  async fetchOrganizationMembers(options: FetchMembersOptions): Promise<FetchMembersResult> {
     const {
       organizationId,
       organizationType,
@@ -69,7 +67,9 @@ export class OrganizationMemberService {
 
     // Early return if no organizationId
     if (!organizationId) {
-      console.warn('[organizationMemberService] No organizationId provided, returning empty result');
+      console.warn(
+        '[organizationMemberService] No organizationId provided, returning empty result'
+      );
       return { members: [], total: 0, hasMore: false };
     }
 
@@ -130,12 +130,13 @@ export class OrganizationMemberService {
     offset: number = 0
   ): Promise<{ members: OrganizationMember[]; total: number }> {
     try {
-      console.log('[organizationMemberService] fetchStudents called:', { organizationId, organizationType });
-      
+      console.log('[organizationMemberService] fetchStudents called:', {
+        organizationId,
+        organizationType,
+      });
+
       // Build query based on organization type
-      let query = supabase
-        .from('students')
-        .select('*', { count: 'exact' });
+      let query = supabase.from('students').select('*', { count: 'exact' });
 
       // Filter by organization
       if (organizationType === 'school') {
@@ -162,7 +163,11 @@ export class OrganizationMemberService {
 
       const { data, error, count } = await query;
 
-      console.log('[organizationMemberService] Students query result:', { dataLength: data?.length, count, error });
+      console.log('[organizationMemberService] Students query result:', {
+        dataLength: data?.length,
+        count,
+        error,
+      });
 
       if (error) throw error;
 
@@ -199,14 +204,20 @@ export class OrganizationMemberService {
     offset: number = 0
   ): Promise<{ members: OrganizationMember[]; total: number }> {
     try {
-      console.log('[organizationMemberService] fetchEducators called:', { organizationId, organizationType });
-      
+      console.log('[organizationMemberService] fetchEducators called:', {
+        organizationId,
+        organizationType,
+      });
+
       let members: OrganizationMember[] = [];
       let total = 0;
 
       if (organizationType === 'school') {
         // Fetch from school_educators table
-        console.log('[organizationMemberService] Fetching from school_educators, school_id:', organizationId);
+        console.log(
+          '[organizationMemberService] Fetching from school_educators, school_id:',
+          organizationId
+        );
         let query = supabase
           .from('school_educators')
           .select('*', { count: 'exact' })
@@ -222,14 +233,19 @@ export class OrganizationMemberService {
 
         const { data, error, count } = await query;
 
-        console.log('[organizationMemberService] school_educators query result:', { dataLength: data?.length, count, error });
+        console.log('[organizationMemberService] school_educators query result:', {
+          dataLength: data?.length,
+          count,
+          error,
+        });
 
         if (error) throw error;
 
         members = (data || []).map((educator) => ({
           id: educator.id,
           userId: educator.user_id || educator.id,
-          name: `${educator.first_name || ''} ${educator.last_name || ''}`.trim() || 'Unknown Educator',
+          name:
+            `${educator.first_name || ''} ${educator.last_name || ''}`.trim() || 'Unknown Educator',
           email: educator.email || '',
           memberType: 'educator' as const,
           department: educator.department,
@@ -243,7 +259,10 @@ export class OrganizationMemberService {
         total = count || 0;
       } else if (organizationType === 'college') {
         // Fetch from college_lecturers table
-        console.log('[organizationMemberService] Fetching from college_lecturers, collegeId:', organizationId);
+        console.log(
+          '[organizationMemberService] Fetching from college_lecturers, collegeId:',
+          organizationId
+        );
         let query = supabase
           .from('college_lecturers')
           .select('*', { count: 'exact' })
@@ -259,14 +278,19 @@ export class OrganizationMemberService {
 
         const { data, error, count } = await query;
 
-        console.log('[organizationMemberService] college_lecturers query result:', { dataLength: data?.length, count, error });
+        console.log('[organizationMemberService] college_lecturers query result:', {
+          dataLength: data?.length,
+          count,
+          error,
+        });
 
         if (error) throw error;
 
         members = (data || []).map((lecturer) => ({
           id: lecturer.id,
           userId: lecturer.user_id || lecturer.id,
-          name: `${lecturer.first_name || ''} ${lecturer.last_name || ''}`.trim() || 'Unknown Lecturer',
+          name:
+            `${lecturer.first_name || ''} ${lecturer.last_name || ''}`.trim() || 'Unknown Lecturer',
           email: lecturer.email || '',
           memberType: 'educator' as const,
           department: lecturer.department,
@@ -304,12 +328,14 @@ export class OrganizationMemberService {
       // Fetch active license assignments for these users
       const { data: assignments, error } = await supabase
         .from('license_assignments')
-        .select(`
+        .select(
+          `
           id,
           user_id,
           assigned_at,
           license_pool_id
-        `)
+        `
+        )
         .in('user_id', userIds)
         .eq('status', 'active');
 
@@ -319,17 +345,17 @@ export class OrganizationMemberService {
       }
 
       // Get pool names separately
-      const poolIds = [...new Set((assignments || []).map(a => a.license_pool_id))];
-      let poolMap = new Map<string, string>();
-      
+      const poolIds = [...new Set((assignments || []).map((a) => a.license_pool_id))];
+      const poolMap = new Map<string, string>();
+
       if (poolIds.length > 0) {
         const { data: pools } = await supabase
           .from('license_pools')
           .select('id, pool_name')
           .in('id', poolIds)
           .eq('organization_id', organizationId);
-        
-        (pools || []).forEach(pool => {
+
+        (pools || []).forEach((pool) => {
           poolMap.set(pool.id, pool.pool_name);
         });
       }
@@ -341,7 +367,7 @@ export class OrganizationMemberService {
         if (poolMap.has(assignment.license_pool_id)) {
           assignmentMap.set(assignment.user_id, {
             ...assignment,
-            pool_name: poolMap.get(assignment.license_pool_id)
+            pool_name: poolMap.get(assignment.license_pool_id),
           });
         }
       });
@@ -396,11 +422,7 @@ export class OrganizationMemberService {
       } else {
         // Educator
         const table = organizationType === 'school' ? 'school_educators' : 'college_lecturers';
-        const { data, error } = await supabase
-          .from(table)
-          .select('*')
-          .eq('id', memberId)
-          .single();
+        const { data, error } = await supabase.from(table).select('*').eq('id', memberId).single();
 
         if (error || !data) return null;
 
@@ -436,9 +458,7 @@ export class OrganizationMemberService {
       let educatorCount = 0;
 
       // Count students
-      let studentQuery = supabase
-        .from('students')
-        .select('id', { count: 'exact', head: true });
+      let studentQuery = supabase.from('students').select('id', { count: 'exact', head: true });
 
       if (organizationType === 'school') {
         studentQuery = studentQuery.eq('school_id', organizationId);
@@ -482,7 +502,7 @@ export class OrganizationMemberService {
   /**
    * Remove a member from the organization
    * This removes the organization association but does NOT delete the user account
-   * 
+   *
    * @param memberId - The member's ID (student or educator record ID)
    * @param memberType - Type of member ('student' or 'educator')
    * @param organizationType - Type of organization ('school', 'college', 'university')
@@ -502,13 +522,13 @@ export class OrganizationMemberService {
         memberId,
         memberType,
         organizationType,
-        organizationId
+        organizationId,
       });
 
       if (memberType === 'student') {
         // For students, clear the school_id or college_id
         const updateData: Record<string, any> = {};
-        
+
         if (organizationType === 'school') {
           updateData.school_id = null;
         } else if (organizationType === 'college' || organizationType === 'university') {
@@ -527,9 +547,10 @@ export class OrganizationMemberService {
         }
 
         // Verify organization ownership
-        const belongsToOrg = 
+        const belongsToOrg =
           (organizationType === 'school' && student.school_id === organizationId) ||
-          ((organizationType === 'college' || organizationType === 'university') && student.college_id === organizationId);
+          ((organizationType === 'college' || organizationType === 'university') &&
+            student.college_id === organizationId);
 
         if (!belongsToOrg) {
           return { success: false, message: 'Student does not belong to this organization' };
@@ -549,11 +570,18 @@ export class OrganizationMemberService {
         // Also revoke any license assignments for this user
         // Use user_id if available, otherwise fall back to student.id
         const userIdForLicense = student.user_id || student.id;
-        await this.revokeMemberLicenses(userIdForLicense, organizationId, revokedBy, 'Member removed from organization');
+        await this.revokeMemberLicenses(
+          userIdForLicense,
+          organizationId,
+          revokedBy,
+          'Member removed from organization'
+        );
 
         console.log('✅ Student removed from organization:', student.email);
-        return { success: true, message: `${student.name || 'Student'} has been removed from the organization` };
-
+        return {
+          success: true,
+          message: `${student.name || 'Student'} has been removed from the organization`,
+        };
       } else {
         // For educators
         if (organizationType === 'school') {
@@ -585,13 +613,21 @@ export class OrganizationMemberService {
 
           // Revoke licenses
           if (educator.user_id) {
-            await this.revokeMemberLicenses(educator.user_id, organizationId, revokedBy, 'Educator removed from organization');
+            await this.revokeMemberLicenses(
+              educator.user_id,
+              organizationId,
+              revokedBy,
+              'Educator removed from organization'
+            );
           }
 
-          const educatorName = `${educator.first_name || ''} ${educator.last_name || ''}`.trim() || 'Educator';
+          const educatorName =
+            `${educator.first_name || ''} ${educator.last_name || ''}`.trim() || 'Educator';
           console.log('✅ Educator removed from organization:', educator.email);
-          return { success: true, message: `${educatorName} has been removed from the organization` };
-
+          return {
+            success: true,
+            message: `${educatorName} has been removed from the organization`,
+          };
         } else if (organizationType === 'college') {
           // Verify the lecturer belongs to this college
           const { data: lecturer, error: fetchError } = await supabase
@@ -621,21 +657,30 @@ export class OrganizationMemberService {
 
           // Revoke licenses
           if (lecturer.user_id) {
-            await this.revokeMemberLicenses(lecturer.user_id, organizationId, revokedBy, 'Lecturer removed from organization');
+            await this.revokeMemberLicenses(
+              lecturer.user_id,
+              organizationId,
+              revokedBy,
+              'Lecturer removed from organization'
+            );
           }
 
-          const lecturerName = `${lecturer.first_name || ''} ${lecturer.last_name || ''}`.trim() || 'Lecturer';
+          const lecturerName =
+            `${lecturer.first_name || ''} ${lecturer.last_name || ''}`.trim() || 'Lecturer';
           console.log('✅ Lecturer removed from organization:', lecturer.email);
-          return { success: true, message: `${lecturerName} has been removed from the organization` };
+          return {
+            success: true,
+            message: `${lecturerName} has been removed from the organization`,
+          };
         }
 
         return { success: false, message: 'Unsupported organization type for educator removal' };
       }
     } catch (error) {
       console.error('Error removing member:', error);
-      return { 
-        success: false, 
-        message: error instanceof Error ? error.message : 'Failed to remove member' 
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to remove member',
       };
     }
   }
@@ -658,16 +703,16 @@ export class OrganizationMemberService {
 
       if (!pools || pools.length === 0) return;
 
-      const poolIds = pools.map(p => p.id);
+      const poolIds = pools.map((p) => p.id);
 
       // Revoke all active assignments for this user from these pools
       const { error } = await supabase
         .from('license_assignments')
-        .update({ 
+        .update({
           status: 'revoked',
           revoked_at: new Date().toISOString(),
           revoked_by: revokedBy || null,
-          revocation_reason: reason
+          revocation_reason: reason,
         })
         .eq('user_id', userId)
         .in('license_pool_id', poolIds)

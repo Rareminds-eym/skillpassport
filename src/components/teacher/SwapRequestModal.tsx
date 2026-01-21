@@ -32,13 +32,14 @@ const SwapRequestModal: React.FC<SwapRequestModalProps> = ({
   // Filter available slots based on search
   const filteredSlots = useMemo(() => {
     if (!searchQuery.trim()) return availableSlots;
-    
+
     const query = searchQuery.toLowerCase();
-    return availableSlots.filter(slot =>
-      slot.subject_name.toLowerCase().includes(query) ||
-      slot.class_name.toLowerCase().includes(query) ||
-      slot.room_number.toLowerCase().includes(query) ||
-      DAYS[slot.day_of_week - 1]?.toLowerCase().includes(query)
+    return availableSlots.filter(
+      (slot) =>
+        slot.subject_name.toLowerCase().includes(query) ||
+        slot.class_name.toLowerCase().includes(query) ||
+        slot.room_number.toLowerCase().includes(query) ||
+        DAYS[slot.day_of_week - 1]?.toLowerCase().includes(query)
     );
   }, [availableSlots, searchQuery]);
 
@@ -69,7 +70,7 @@ const SwapRequestModal: React.FC<SwapRequestModalProps> = ({
       const selectedDate = new Date(swapDate);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       if (selectedDate < today) {
         setError('Swap date cannot be in the past');
         return;
@@ -81,7 +82,7 @@ const SwapRequestModal: React.FC<SwapRequestModalProps> = ({
 
     try {
       const targetFacultyId = (selectedSlot as any).educator_id;
-      
+
       if (!targetFacultyId) {
         setError('Target faculty ID is missing. Please try selecting a different slot.');
         return;
@@ -99,7 +100,7 @@ const SwapRequestModal: React.FC<SwapRequestModalProps> = ({
       };
 
       await onSubmit(payload);
-      
+
       // Reset form and close
       handleClose();
     } catch (err) {
@@ -162,7 +163,9 @@ const SwapRequestModal: React.FC<SwapRequestModalProps> = ({
                     </div>
                     <div className="flex items-center gap-1">
                       <Clock className="h-4 w-4" />
-                      <span>{currentSlot.start_time} - {currentSlot.end_time}</span>
+                      <span>
+                        {currentSlot.start_time} - {currentSlot.end_time}
+                      </span>
                     </div>
                     <div className="flex items-center gap-1">
                       <MapPin className="h-4 w-4" />
@@ -176,21 +179,21 @@ const SwapRequestModal: React.FC<SwapRequestModalProps> = ({
                 </div>
               </div>
             </div>
-            
+
             {/* Explanation */}
             <div className="mt-2 bg-blue-50 border border-blue-200 rounded-lg p-3">
               <p className="text-xs text-blue-800">
-                <strong>Note:</strong> You will continue teaching <strong>{currentSlot.subject_name}</strong> to <strong>{currentSlot.class_name}</strong>. 
-                Only the <strong>time slot</strong> will be exchanged with another educator.
+                <strong>Note:</strong> You will continue teaching{' '}
+                <strong>{currentSlot.subject_name}</strong> to{' '}
+                <strong>{currentSlot.class_name}</strong>. Only the <strong>time slot</strong> will
+                be exchanged with another educator.
               </p>
             </div>
           </div>
 
           {/* Swap Type Selection */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Swap Type: *
-            </label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Swap Type: *</label>
             <div className="flex gap-4">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -222,9 +225,7 @@ const SwapRequestModal: React.FC<SwapRequestModalProps> = ({
           {/* Date Picker (for one-time swaps) */}
           {swapType === 'one_time' && (
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Swap Date: *
-              </label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Swap Date: *</label>
               <input
                 type="date"
                 value={swapDate}
@@ -241,27 +242,36 @@ const SwapRequestModal: React.FC<SwapRequestModalProps> = ({
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Select Target Educator's Time Slot: *
             </label>
-            
+
             {/* Explanation */}
             <div className="mb-3 bg-amber-50 border border-amber-200 rounded-lg p-3">
               <p className="text-xs text-amber-800">
-                <strong>How it works:</strong> You exchange <strong>time slots</strong> with another educator teaching the <strong>same class</strong>. 
-                Each of you will continue teaching your own subject to the same students, just at the swapped time.
+                <strong>How it works:</strong> You exchange <strong>time slots</strong> with another
+                educator teaching the <strong>same class</strong>. Each of you will continue
+                teaching your own subject to the same students, just at the swapped time.
               </p>
               <div className="mt-2 text-xs text-amber-700">
-                <strong>Example:</strong> If you swap your Thursday 11:45 slot with their Monday 9:00 slot:
+                <strong>Example:</strong> If you swap your Thursday 11:45 slot with their Monday
+                9:00 slot:
                 <ul className="list-disc ml-4 mt-1">
-                  <li>You teach <strong>your subject</strong> to <strong>{currentSlot.class_name}</strong> on Monday 9:00</li>
-                  <li>They teach <strong>their subject</strong> to <strong>{currentSlot.class_name}</strong> on Thursday 11:45</li>
+                  <li>
+                    You teach <strong>your subject</strong> to{' '}
+                    <strong>{currentSlot.class_name}</strong> on Monday 9:00
+                  </li>
+                  <li>
+                    They teach <strong>their subject</strong> to{' '}
+                    <strong>{currentSlot.class_name}</strong> on Thursday 11:45
+                  </li>
                 </ul>
               </div>
               <div className="mt-2 pt-2 border-t border-amber-300">
                 <p className="text-xs text-amber-900 font-medium">
-                  ⚠️ Only educators teaching <strong>{currentSlot.class_name}</strong> are shown to avoid student schedule conflicts.
+                  ⚠️ Only educators teaching <strong>{currentSlot.class_name}</strong> are shown to
+                  avoid student schedule conflicts.
                 </p>
               </div>
             </div>
-            
+
             {/* Search Bar */}
             <div className="relative mb-3">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -281,16 +291,16 @@ const SwapRequestModal: React.FC<SwapRequestModalProps> = ({
                 <div className="p-8 text-center text-gray-500">
                   <AlertCircle className="h-8 w-8 mx-auto mb-2 text-gray-400" />
                   <p className="text-sm">No available time slots found</p>
-                  {searchQuery && (
-                    <p className="text-xs mt-1">Try adjusting your search</p>
-                  )}
+                  {searchQuery && <p className="text-xs mt-1">Try adjusting your search</p>}
                 </div>
               ) : (
                 filteredSlots.map((slot) => (
                   <label
                     key={slot.id}
                     className={`flex items-start gap-3 p-4 border-b border-gray-100 last:border-b-0 cursor-pointer hover:bg-gray-50 transition ${
-                      selectedSlot?.id === slot.id ? 'bg-indigo-50 border-l-4 border-l-indigo-500' : ''
+                      selectedSlot?.id === slot.id
+                        ? 'bg-indigo-50 border-l-4 border-l-indigo-500'
+                        : ''
                     }`}
                   >
                     <input
@@ -302,9 +312,7 @@ const SwapRequestModal: React.FC<SwapRequestModalProps> = ({
                       disabled={isSubmitting}
                     />
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium text-gray-900">
-                        Educator's Time Slot
-                      </div>
+                      <div className="font-medium text-gray-900">Educator's Time Slot</div>
                       <div className="text-xs text-gray-500 mt-0.5">
                         (They teach: {slot.subject_name} to {slot.class_name})
                       </div>
@@ -342,9 +350,7 @@ const SwapRequestModal: React.FC<SwapRequestModalProps> = ({
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
               disabled={isSubmitting}
             />
-            <p className="text-xs text-gray-500 mt-1">
-              {reason.length}/500 characters
-            </p>
+            <p className="text-xs text-gray-500 mt-1">{reason.length}/500 characters</p>
           </div>
 
           {/* Admin Approval Notice */}
@@ -352,7 +358,10 @@ const SwapRequestModal: React.FC<SwapRequestModalProps> = ({
             <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
             <div className="text-sm text-amber-800">
               <p className="font-medium">Admin Approval Required</p>
-              <p className="mt-1">This swap request will require approval from your administrator before it can be executed.</p>
+              <p className="mt-1">
+                This swap request will require approval from your administrator before it can be
+                executed.
+              </p>
             </div>
           </div>
 
@@ -376,7 +385,12 @@ const SwapRequestModal: React.FC<SwapRequestModalProps> = ({
           </button>
           <button
             onClick={handleSubmit}
-            disabled={isSubmitting || !selectedSlot || !reason.trim() || (swapType === 'one_time' && !swapDate)}
+            disabled={
+              isSubmitting ||
+              !selectedSlot ||
+              !reason.trim() ||
+              (swapType === 'one_time' && !swapDate)
+            }
             className="px-6 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {isSubmitting ? (

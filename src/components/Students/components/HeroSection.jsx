@@ -13,7 +13,6 @@ const HeroSection = ({ approvalStatus = 'pending' }) => {
           <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-400" />
           <CardContent className="p-8">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-              
               {/* Left Column - Profile Info */}
               <div className="space-y-6">
                 {/* Profile Icon with Badge */}
@@ -28,7 +27,9 @@ const HeroSection = ({ approvalStatus = 'pending' }) => {
                   </div>
                   <div className="flex-1 pt-1">
                     <div className="flex items-center gap-3 flex-wrap">
-                      <h1 className="text-3xl font-bold text-white drop-shadow-lg">Sarah Johnson</h1>
+                      <h1 className="text-3xl font-bold text-white drop-shadow-lg">
+                        Sarah Johnson
+                      </h1>
                       {approvalStatus === 'approved' && (
                         <Badge className="bg-green-100 text-green-700 border-green-300 border px-3 py-1 text-xs font-semibold rounded-full shadow-sm flex items-center gap-1.5">
                           <CheckCircle className="w-3.5 h-3.5" />
@@ -70,7 +71,6 @@ const HeroSection = ({ approvalStatus = 'pending' }) => {
 
               {/* Right Column - QR Code and Score */}
               <div className="space-y-6">
-                
                 {/* QR Code Card */}
                 <Card className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl shadow-2xl">
                   <CardContent className="p-6 text-center">
@@ -82,31 +82,41 @@ const HeroSection = ({ approvalStatus = 'pending' }) => {
                           <div className="w-full h-full bg-indigo-600 rounded-sm"></div>
                         </div>
                         {[...Array(3)].map((_, i) => (
-                          <div key={`tl-${i}`} className={`${Math.random() > 0.5 ? 'bg-indigo-600' : ''} rounded-sm`}></div>
+                          <div
+                            key={`tl-${i}`}
+                            className={`${Math.random() > 0.5 ? 'bg-indigo-600' : ''} rounded-sm`}
+                          ></div>
                         ))}
                         {/* Second row */}
                         {[...Array(2)].map((_, i) => (
                           <div key={`r2-${i}`} className="bg-transparent"></div>
                         ))}
                         {[...Array(3)].map((_, i) => (
-                          <div key={`r2b-${i}`} className={`${Math.random() > 0.5 ? 'bg-indigo-600' : ''} rounded-sm`}></div>
+                          <div
+                            key={`r2b-${i}`}
+                            className={`${Math.random() > 0.5 ? 'bg-indigo-600' : ''} rounded-sm`}
+                          ></div>
                         ))}
                         {/* Middle rows */}
                         {[...Array(9)].map((_, i) => (
-                          <div key={`m-${i}`} className={`${Math.random() > 0.4 ? 'bg-indigo-600' : ''} rounded-sm`}></div>
+                          <div
+                            key={`m-${i}`}
+                            className={`${Math.random() > 0.4 ? 'bg-indigo-600' : ''} rounded-sm`}
+                          ></div>
                         ))}
                         {/* Bottom-left position marker */}
                         <div className="col-span-2 row-span-2 border-4 border-indigo-600 rounded-sm p-0.5">
                           <div className="w-full h-full bg-indigo-600 rounded-sm"></div>
                         </div>
                         {[...Array(3)].map((_, i) => (
-                          <div key={`bl-${i}`} className={`${Math.random() > 0.5 ? 'bg-indigo-600' : ''} rounded-sm`}></div>
+                          <div
+                            key={`bl-${i}`}
+                            className={`${Math.random() > 0.5 ? 'bg-indigo-600' : ''} rounded-sm`}
+                          ></div>
                         ))}
                       </div>
                     </div>
-                    <p className="text-xs text-white font-bold mt-2">
-                      PASSPORT-ID: SP-2024-8421
-                    </p>
+                    <p className="text-xs text-white font-bold mt-2">PASSPORT-ID: SP-2024-8421</p>
                   </CardContent>
                 </Card>
 
@@ -114,7 +124,9 @@ const HeroSection = ({ approvalStatus = 'pending' }) => {
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 mt-2">
                     <span className="font-bold text-white text-lg">Employability Score</span>
-                    <span className="ml-auto text-2xl font-bold text-yellow-300 drop-shadow-lg">78%</span>
+                    <span className="ml-auto text-2xl font-bold text-yellow-300 drop-shadow-lg">
+                      78%
+                    </span>
                   </div>
                   <div className="relative h-3 bg-white/30 rounded-full overflow-hidden backdrop-blur-sm">
                     <div

@@ -5,7 +5,7 @@ import {
   MagnifyingGlassIcon,
   Squares2X2Icon,
   ListBulletIcon,
-  FunnelIcon
+  FunnelIcon,
 } from '@heroicons/react/24/outline';
 import { RocketLaunchIcon } from '@heroicons/react/24/solid';
 import ProjectList from '../../components/Recruiter/Projects/ProjectList';
@@ -29,9 +29,7 @@ const StatsCard: React.FC<StatsCardProps> = ({ title, value, icon, color }) => {
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-5 hover:shadow-md transition-shadow">
       <div className="flex items-center gap-3">
-        <div className={`text-2xl p-2 rounded-lg ${colorClasses[color]}`}>
-          {icon}
-        </div>
+        <div className={`text-2xl p-2 rounded-lg ${colorClasses[color]}`}>{icon}</div>
         <div>
           <p className="text-sm text-gray-600">{title}</p>
           <p className="text-2xl font-bold text-gray-900">{value}</p>
@@ -52,9 +50,10 @@ const ProjectHiring = () => {
   const stats = getProjectStats();
 
   // Filter projects
-  const filteredProjects = mockProjects.filter(project => {
-    const matchesSearch = project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         project.description.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredProjects = mockProjects.filter((project) => {
+    const matchesSearch =
+      project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      project.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || project.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -62,12 +61,16 @@ const ProjectHiring = () => {
   const handleViewProject = (id: string) => {
     // For now, just show alert - later navigate to detail page
     console.log('View project:', id);
-    alert(`Project Details Page\n\nProject ID: ${id}\n\nThis will navigate to the full project details page once implemented.`);
+    alert(
+      `Project Details Page\n\nProject ID: ${id}\n\nThis will navigate to the full project details page once implemented.`
+    );
   };
 
   const handleCreateProject = () => {
     setShowCreateModal(true);
-    alert('Create Project Modal\n\nThis will open a modal form to create a new project. The modal component will be implemented next.');
+    alert(
+      'Create Project Modal\n\nThis will open a modal form to create a new project. The modal component will be implemented next.'
+    );
   };
 
   return (
@@ -94,30 +97,10 @@ const ProjectHiring = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatsCard 
-          title="Total Projects" 
-          value={stats.total} 
-          icon="📊"
-          color="purple"
-        />
-        <StatsCard 
-          title="Open Projects" 
-          value={stats.open} 
-          icon="🔓"
-          color="blue"
-        />
-        <StatsCard 
-          title="In Progress" 
-          value={stats.in_progress} 
-          icon="⚡"
-          color="yellow"
-        />
-        <StatsCard 
-          title="Completed" 
-          value={stats.completed} 
-          icon="✅"
-          color="green"
-        />
+        <StatsCard title="Total Projects" value={stats.total} icon="📊" color="purple" />
+        <StatsCard title="Open Projects" value={stats.open} icon="🔓" color="blue" />
+        <StatsCard title="In Progress" value={stats.in_progress} icon="⚡" color="yellow" />
+        <StatsCard title="Completed" value={stats.completed} icon="✅" color="green" />
       </div>
 
       {/* Filters & Search */}
@@ -173,7 +156,8 @@ const ProjectHiring = () => {
 
       {/* Results Count */}
       <div className="mb-4 text-sm text-gray-600">
-        Showing <span className="font-semibold text-gray-900">{filteredProjects.length}</span> of <span className="font-semibold text-gray-900">{stats.total}</span> projects
+        Showing <span className="font-semibold text-gray-900">{filteredProjects.length}</span> of{' '}
+        <span className="font-semibold text-gray-900">{stats.total}</span> projects
       </div>
 
       {/* Project List */}
@@ -188,4 +172,3 @@ const ProjectHiring = () => {
 };
 
 export default ProjectHiring;
-

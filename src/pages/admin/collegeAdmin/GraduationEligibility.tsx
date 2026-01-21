@@ -45,8 +45,6 @@ interface Student {
   last_updated: string;
 }
 
-
-
 // Filter Section Component
 const FilterSection = ({ title, children, defaultOpen = false }: any) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -96,24 +94,50 @@ const CheckboxGroup = ({ options, selectedValues, onChange }: any) => {
 // Status Badge Component
 const StatusBadge = ({ status }: { status: string }) => {
   const statusConfig = {
-    enrolled: { color: 'bg-blue-100 text-blue-800 border-blue-200', label: 'Enrolled', icon: BookOpenIcon },
-    eligible: { color: 'bg-green-100 text-green-800 border-green-200', label: 'Eligible', icon: CheckCircleIcon },
-    graduated: { color: 'bg-purple-100 text-purple-800 border-purple-200', label: 'Graduated', icon: AcademicCapIcon },
-    alumni: { color: 'bg-indigo-100 text-indigo-800 border-indigo-200', label: 'Alumni', icon: TrophyIcon },
-    pending: { color: 'bg-yellow-100 text-yellow-800 border-yellow-200', label: 'Pending', icon: ClockIcon },
-    ineligible: { color: 'bg-red-100 text-red-800 border-red-200', label: 'Ineligible', icon: XCircleIcon },
+    enrolled: {
+      color: 'bg-blue-100 text-blue-800 border-blue-200',
+      label: 'Enrolled',
+      icon: BookOpenIcon,
+    },
+    eligible: {
+      color: 'bg-green-100 text-green-800 border-green-200',
+      label: 'Eligible',
+      icon: CheckCircleIcon,
+    },
+    graduated: {
+      color: 'bg-purple-100 text-purple-800 border-purple-200',
+      label: 'Graduated',
+      icon: AcademicCapIcon,
+    },
+    alumni: {
+      color: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+      label: 'Alumni',
+      icon: TrophyIcon,
+    },
+    pending: {
+      color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+      label: 'Pending',
+      icon: ClockIcon,
+    },
+    ineligible: {
+      color: 'bg-red-100 text-red-800 border-red-200',
+      label: 'Ineligible',
+      icon: XCircleIcon,
+    },
   };
 
-  const config = statusConfig[status as keyof typeof statusConfig] || { 
-    color: 'bg-gray-100 text-gray-800 border-gray-200', 
+  const config = statusConfig[status as keyof typeof statusConfig] || {
+    color: 'bg-gray-100 text-gray-800 border-gray-200',
     label: status,
-    icon: ClockIcon
+    icon: ClockIcon,
   };
-  
+
   const Icon = config.icon;
 
   return (
-    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${config.color}`}>
+    <span
+      className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${config.color}`}
+    >
       <Icon className="h-3 w-3 mr-1" />
       {config.label}
     </span>
@@ -122,10 +146,11 @@ const StatusBadge = ({ status }: { status: string }) => {
 
 // Eligibility Badge Component
 const EligibilityBadge = ({ student }: { student: Student }) => {
-  const isEligible = student.credits_earned >= student.credits_required && 
-                    student.backlogs === 0 && 
-                    student.cgpa >= 6.0 && 
-                    student.documents_verified;
+  const isEligible =
+    student.credits_earned >= student.credits_required &&
+    student.backlogs === 0 &&
+    student.cgpa >= 6.0 &&
+    student.documents_verified;
 
   return (
     <div className="flex items-center gap-2">
@@ -145,7 +170,15 @@ const EligibilityBadge = ({ student }: { student: Student }) => {
 };
 
 // Progress Bar Component
-const ProgressBar = ({ current, total, label }: { current: number; total: number; label: string }) => {
+const ProgressBar = ({
+  current,
+  total,
+  label,
+}: {
+  current: number;
+  total: number;
+  label: string;
+}) => {
   const percentage = Math.min((current / total) * 100, 100);
   const isComplete = current >= total;
 
@@ -170,13 +203,13 @@ const ProgressBar = ({ current, total, label }: { current: number; total: number
 };
 
 // Student Card Component
-const StudentCard = ({ 
-  student, 
-  onViewDetails, 
-  onMarkGraduated, 
-  onPromote, 
-  onPushToAlumni, 
-  onOverrideEligibility 
+const StudentCard = ({
+  student,
+  onViewDetails,
+  onMarkGraduated,
+  onPromote,
+  onPushToAlumni,
+  onOverrideEligibility,
 }: {
   student: Student;
   onViewDetails: (student: Student) => void;
@@ -185,10 +218,11 @@ const StudentCard = ({
   onPushToAlumni: (student: Student) => void;
   onOverrideEligibility: (student: Student) => void;
 }) => {
-  const isEligible = student.credits_earned >= student.credits_required && 
-                    student.backlogs === 0 && 
-                    student.cgpa >= 6.0 && 
-                    student.documents_verified;
+  const isEligible =
+    student.credits_earned >= student.credits_required &&
+    student.backlogs === 0 &&
+    student.cgpa >= 6.0 &&
+    student.documents_verified;
 
   const canGraduate = isEligible && student.pipeline_status === 'enrolled';
   const canPromote = student.semester < 8 && student.pipeline_status === 'enrolled';
@@ -205,29 +239,29 @@ const StudentCard = ({
       <div className="p-6 pb-4">
         <div className="flex items-start space-x-4">
           {/* Avatar */}
-          <div className={`w-14 h-14 ${getAvatarColor(student.name)} rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm`}>
+          <div
+            className={`w-14 h-14 ${getAvatarColor(student.name)} rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm`}
+          >
             <span className="text-white font-bold text-xl">
               {student.name?.charAt(0)?.toUpperCase() || '?'}
             </span>
           </div>
-          
+
           {/* Student Info and Status */}
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between mb-2">
               <div className="min-w-0 flex-1">
-                <h3 className="text-lg font-bold text-gray-900 truncate mb-1">
-                  {student.name}
-                </h3>
+                <h3 className="text-lg font-bold text-gray-900 truncate mb-1">{student.name}</h3>
                 <p className="text-sm text-gray-600 truncate mb-2">{student.email}</p>
               </div>
-              
+
               {/* Status Badges - Top Right */}
               <div className="flex flex-col items-end space-y-2 ml-4 flex-shrink-0">
                 <StatusBadge status={student.pipeline_status} />
                 <EligibilityBadge student={student} />
               </div>
             </div>
-            
+
             {/* Department and Semester */}
             <div className="flex items-center space-x-2 text-sm text-gray-500">
               <span className="font-medium">{student.dept}</span>
@@ -240,10 +274,10 @@ const StudentCard = ({
 
       {/* Credits Progress Section */}
       <div className="px-6 pb-4">
-        <ProgressBar 
-          current={student.credits_earned} 
-          total={student.credits_required} 
-          label="Credits Progress" 
+        <ProgressBar
+          current={student.credits_earned}
+          total={student.credits_required}
+          label="Credits Progress"
         />
       </div>
 
@@ -252,34 +286,38 @@ const StudentCard = ({
         <div className="grid grid-cols-3 gap-4">
           {/* CGPA */}
           <div className="text-center bg-blue-50 rounded-xl py-4 px-2">
-            <div className="text-2xl font-bold text-blue-700 mb-1">
-              {student.cgpa.toFixed(2)}
-            </div>
-            <div className="text-xs font-semibold text-blue-600 uppercase tracking-wide">
-              CGPA
-            </div>
+            <div className="text-2xl font-bold text-blue-700 mb-1">{student.cgpa.toFixed(2)}</div>
+            <div className="text-xs font-semibold text-blue-600 uppercase tracking-wide">CGPA</div>
           </div>
-          
+
           {/* Backlogs */}
-          <div className={`text-center rounded-xl py-4 px-2 ${
-            student.backlogs > 0 ? 'bg-red-50' : 'bg-green-50'
-          }`}>
-            <div className={`text-2xl font-bold mb-1 ${
-              student.backlogs > 0 ? 'text-red-700' : 'text-green-700'
-            }`}>
+          <div
+            className={`text-center rounded-xl py-4 px-2 ${
+              student.backlogs > 0 ? 'bg-red-50' : 'bg-green-50'
+            }`}
+          >
+            <div
+              className={`text-2xl font-bold mb-1 ${
+                student.backlogs > 0 ? 'text-red-700' : 'text-green-700'
+              }`}
+            >
               {student.backlogs}
             </div>
-            <div className={`text-xs font-semibold uppercase tracking-wide ${
-              student.backlogs > 0 ? 'text-red-600' : 'text-green-600'
-            }`}>
+            <div
+              className={`text-xs font-semibold uppercase tracking-wide ${
+                student.backlogs > 0 ? 'text-red-600' : 'text-green-600'
+              }`}
+            >
               BACKLOGS
             </div>
           </div>
-          
+
           {/* Documents */}
-          <div className={`text-center rounded-xl py-4 px-2 ${
-            student.documents_verified ? 'bg-green-50' : 'bg-gray-50'
-          }`}>
+          <div
+            className={`text-center rounded-xl py-4 px-2 ${
+              student.documents_verified ? 'bg-green-50' : 'bg-gray-50'
+            }`}
+          >
             <div className="flex items-center justify-center mb-2">
               {student.documents_verified ? (
                 <CheckCircleIcon className="h-7 w-7 text-green-600" />
@@ -287,9 +325,11 @@ const StudentCard = ({
                 <XCircleIcon className="h-7 w-7 text-gray-400" />
               )}
             </div>
-            <div className={`text-xs font-semibold uppercase tracking-wide ${
-              student.documents_verified ? 'text-green-600' : 'text-gray-500'
-            }`}>
+            <div
+              className={`text-xs font-semibold uppercase tracking-wide ${
+                student.documents_verified ? 'text-green-600' : 'text-gray-500'
+              }`}
+            >
               DOCUMENTS
             </div>
           </div>
@@ -305,11 +345,13 @@ const StudentCard = ({
           if (canPromote) actionButtons.push('promote');
           if (canPushToAlumni) actionButtons.push('alumni');
           if (!isEligible) actionButtons.push('override');
-          
+
           const hasMultipleActions = actionButtons.length > 1;
-          
+
           return (
-            <div className={`space-y-2 min-h-[80px] flex flex-col ${hasMultipleActions ? 'justify-end' : 'justify-start'}`}>
+            <div
+              className={`space-y-2 min-h-[80px] flex flex-col ${hasMultipleActions ? 'justify-end' : 'justify-start'}`}
+            >
               {/* View Details Button - Always on top row */}
               <button
                 onClick={() => onViewDetails(student)}
@@ -318,7 +360,7 @@ const StudentCard = ({
                 <EyeIcon className="h-3.5 w-3.5 mr-1.5" />
                 View Details
               </button>
-              
+
               {/* Action Buttons Row - Only show if there are action buttons */}
               {actionButtons.length > 0 && (
                 <div className="flex gap-2">
@@ -331,7 +373,7 @@ const StudentCard = ({
                       Graduate
                     </button>
                   )}
-                  
+
                   {canPromote && (
                     <button
                       onClick={() => onPromote(student)}
@@ -341,7 +383,7 @@ const StudentCard = ({
                       Promote
                     </button>
                   )}
-                  
+
                   {canPushToAlumni && (
                     <button
                       onClick={() => onPushToAlumni(student)}
@@ -351,7 +393,7 @@ const StudentCard = ({
                       Alumni
                     </button>
                   )}
-                  
+
                   {!isEligible && (
                     <button
                       onClick={() => onOverrideEligibility(student)}
@@ -371,13 +413,13 @@ const StudentCard = ({
   );
 };
 // Action Modal Component
-const ActionModal = ({ 
-  isOpen, 
-  onClose, 
-  title, 
-  student, 
-  actionType, 
-  onConfirm 
+const ActionModal = ({
+  isOpen,
+  onClose,
+  title,
+  student,
+  actionType,
+  onConfirm,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -406,8 +448,11 @@ const ActionModal = ({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose} />
-        
+        <div
+          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          onClick={onClose}
+        />
+
         <div className="relative bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:max-w-lg sm:w-full">
           <div className="bg-white px-6 py-5">
             <div className="flex items-center justify-between mb-4">
@@ -416,10 +461,14 @@ const ActionModal = ({
                 <XMarkIcon className="h-6 w-6" />
               </button>
             </div>
-            
+
             <div className="mb-4">
-              <p className="text-sm text-gray-600 mb-2">Student: <span className="font-medium">{student.name}</span></p>
-              <p className="text-sm text-gray-600">Email: <span className="font-medium">{student.email}</span></p>
+              <p className="text-sm text-gray-600 mb-2">
+                Student: <span className="font-medium">{student.name}</span>
+              </p>
+              <p className="text-sm text-gray-600">
+                Email: <span className="font-medium">{student.email}</span>
+              </p>
             </div>
 
             {actionType === 'override' && (
@@ -476,10 +525,10 @@ const ActionModal = ({
 };
 
 // Student Details Modal Component
-const StudentDetailsModal = ({ 
-  isOpen, 
-  onClose, 
-  student 
+const StudentDetailsModal = ({
+  isOpen,
+  onClose,
+  student,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -495,14 +544,19 @@ const StudentDetailsModal = ({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose} />
-        
+        <div
+          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          onClick={onClose}
+        />
+
         <div className="relative bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:max-w-4xl sm:w-full">
           {/* Header */}
           <div className="bg-white border-b border-gray-200 px-6 py-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className={`w-16 h-16 ${getAvatarColor(student.name)} rounded-2xl flex items-center justify-center shadow-sm`}>
+                <div
+                  className={`w-16 h-16 ${getAvatarColor(student.name)} rounded-2xl flex items-center justify-center shadow-sm`}
+                >
                   <span className="text-white font-bold text-2xl">
                     {student.name?.charAt(0)?.toUpperCase() || '?'}
                   </span>
@@ -516,8 +570,8 @@ const StudentDetailsModal = ({
                   </div>
                 </div>
               </div>
-              <button 
-                onClick={onClose} 
+              <button
+                onClick={onClose}
                 className="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100 transition-colors"
               >
                 <XMarkIcon className="h-6 w-6" />
@@ -530,19 +584,27 @@ const StudentDetailsModal = ({
             {/* Basic Info */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               <div className="bg-gray-50 rounded-xl p-4 text-center border border-gray-100">
-                <p className="text-xs text-gray-500 mb-2 uppercase tracking-wide font-medium">Department</p>
+                <p className="text-xs text-gray-500 mb-2 uppercase tracking-wide font-medium">
+                  Department
+                </p>
                 <p className="font-bold text-gray-900 text-sm">{student.dept}</p>
               </div>
               <div className="bg-gray-50 rounded-xl p-4 text-center border border-gray-100">
-                <p className="text-xs text-gray-500 mb-2 uppercase tracking-wide font-medium">Semester</p>
+                <p className="text-xs text-gray-500 mb-2 uppercase tracking-wide font-medium">
+                  Semester
+                </p>
                 <p className="font-bold text-gray-900 text-xl">{student.semester}</p>
               </div>
               <div className="bg-gray-50 rounded-xl p-4 text-center border border-gray-100">
-                <p className="text-xs text-gray-500 mb-2 uppercase tracking-wide font-medium">College</p>
+                <p className="text-xs text-gray-500 mb-2 uppercase tracking-wide font-medium">
+                  College
+                </p>
                 <p className="font-bold text-gray-900 text-sm truncate">{student.college}</p>
               </div>
               <div className="bg-gray-50 rounded-xl p-4 text-center border border-gray-100">
-                <p className="text-xs text-gray-500 mb-2 uppercase tracking-wide font-medium">Phone</p>
+                <p className="text-xs text-gray-500 mb-2 uppercase tracking-wide font-medium">
+                  Phone
+                </p>
                 <p className="font-bold text-gray-900 text-sm">{student.phone || 'N/A'}</p>
               </div>
             </div>
@@ -553,13 +615,13 @@ const StudentDetailsModal = ({
                 <ChartBarIcon className="h-6 w-6 text-indigo-600" />
                 Academic Progress
               </h4>
-              
+
               {/* Credits Progress Bar */}
               <div className="mb-8">
-                <ProgressBar 
-                  current={student.credits_earned} 
-                  total={student.credits_required} 
-                  label="Credits Progress" 
+                <ProgressBar
+                  current={student.credits_earned}
+                  total={student.credits_required}
+                  label="Credits Progress"
                 />
               </div>
 
@@ -574,12 +636,22 @@ const StudentDetailsModal = ({
                     <StarIcon className="h-10 w-10 text-blue-500" />
                   </div>
                 </div>
-                
-                <div className={`${student.backlogs > 0 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'} border rounded-xl p-6`}>
+
+                <div
+                  className={`${student.backlogs > 0 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'} border rounded-xl p-6`}
+                >
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className={`text-sm mb-2 font-semibold ${student.backlogs > 0 ? 'text-red-700' : 'text-green-700'}`}>Active Backlogs</p>
-                      <p className={`text-4xl font-bold ${student.backlogs > 0 ? 'text-red-600' : 'text-green-600'}`}>{student.backlogs}</p>
+                      <p
+                        className={`text-sm mb-2 font-semibold ${student.backlogs > 0 ? 'text-red-700' : 'text-green-700'}`}
+                      >
+                        Active Backlogs
+                      </p>
+                      <p
+                        className={`text-4xl font-bold ${student.backlogs > 0 ? 'text-red-600' : 'text-green-600'}`}
+                      >
+                        {student.backlogs}
+                      </p>
                     </div>
                     {student.backlogs > 0 ? (
                       <ExclamationTriangleIcon className="h-10 w-10 text-red-500" />
@@ -588,12 +660,20 @@ const StudentDetailsModal = ({
                     )}
                   </div>
                 </div>
-                
-                <div className={`${student.documents_verified ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'} border rounded-xl p-6`}>
+
+                <div
+                  className={`${student.documents_verified ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'} border rounded-xl p-6`}
+                >
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className={`text-sm mb-2 font-semibold ${student.documents_verified ? 'text-green-700' : 'text-yellow-700'}`}>Documents</p>
-                      <p className={`text-xl font-bold ${student.documents_verified ? 'text-green-600' : 'text-yellow-600'}`}>
+                      <p
+                        className={`text-sm mb-2 font-semibold ${student.documents_verified ? 'text-green-700' : 'text-yellow-700'}`}
+                      >
+                        Documents
+                      </p>
+                      <p
+                        className={`text-xl font-bold ${student.documents_verified ? 'text-green-600' : 'text-yellow-600'}`}
+                      >
                         {student.documents_verified ? 'Verified' : 'Pending'}
                       </p>
                     </div>
@@ -614,11 +694,13 @@ const StudentDetailsModal = ({
                 Graduation Eligibility Checklist
               </h4>
               <div className="space-y-4">
-                <div className={`flex items-center gap-4 p-4 rounded-xl border-2 ${
-                  student.credits_earned >= student.credits_required 
-                    ? 'bg-green-50 border-green-200' 
-                    : 'bg-red-50 border-red-200'
-                }`}>
+                <div
+                  className={`flex items-center gap-4 p-4 rounded-xl border-2 ${
+                    student.credits_earned >= student.credits_required
+                      ? 'bg-green-50 border-green-200'
+                      : 'bg-red-50 border-red-200'
+                  }`}
+                >
                   {student.credits_earned >= student.credits_required ? (
                     <CheckCircleIcon className="h-6 w-6 text-green-500 flex-shrink-0" />
                   ) : (
@@ -631,12 +713,14 @@ const StudentDetailsModal = ({
                     </p>
                   </div>
                 </div>
-                
-                <div className={`flex items-center gap-4 p-4 rounded-xl border-2 ${
-                  student.backlogs === 0 
-                    ? 'bg-green-50 border-green-200' 
-                    : 'bg-red-50 border-red-200'
-                }`}>
+
+                <div
+                  className={`flex items-center gap-4 p-4 rounded-xl border-2 ${
+                    student.backlogs === 0
+                      ? 'bg-green-50 border-green-200'
+                      : 'bg-red-50 border-red-200'
+                  }`}
+                >
                   {student.backlogs === 0 ? (
                     <CheckCircleIcon className="h-6 w-6 text-green-500 flex-shrink-0" />
                   ) : (
@@ -645,43 +729,55 @@ const StudentDetailsModal = ({
                   <div>
                     <span className="text-sm font-semibold text-gray-900">No Active Backlogs</span>
                     <p className="text-xs text-gray-600 mt-1">
-                      {student.backlogs === 0 ? 'All subjects cleared' : `${student.backlogs} subjects pending`}
+                      {student.backlogs === 0
+                        ? 'All subjects cleared'
+                        : `${student.backlogs} subjects pending`}
                     </p>
                   </div>
                 </div>
-                
-                <div className={`flex items-center gap-4 p-4 rounded-xl border-2 ${
-                  student.cgpa >= 6.0 
-                    ? 'bg-green-50 border-green-200' 
-                    : 'bg-red-50 border-red-200'
-                }`}>
+
+                <div
+                  className={`flex items-center gap-4 p-4 rounded-xl border-2 ${
+                    student.cgpa >= 6.0
+                      ? 'bg-green-50 border-green-200'
+                      : 'bg-red-50 border-red-200'
+                  }`}
+                >
                   {student.cgpa >= 6.0 ? (
                     <CheckCircleIcon className="h-6 w-6 text-green-500 flex-shrink-0" />
                   ) : (
                     <XCircleIcon className="h-6 w-6 text-red-500 flex-shrink-0" />
                   )}
                   <div>
-                    <span className="text-sm font-semibold text-gray-900">Minimum CGPA Requirement</span>
+                    <span className="text-sm font-semibold text-gray-900">
+                      Minimum CGPA Requirement
+                    </span>
                     <p className="text-xs text-gray-600 mt-1">
                       Current: {student.cgpa.toFixed(2)} (Required: 6.0)
                     </p>
                   </div>
                 </div>
-                
-                <div className={`flex items-center gap-4 p-4 rounded-xl border-2 ${
-                  student.documents_verified 
-                    ? 'bg-green-50 border-green-200' 
-                    : 'bg-yellow-50 border-yellow-200'
-                }`}>
+
+                <div
+                  className={`flex items-center gap-4 p-4 rounded-xl border-2 ${
+                    student.documents_verified
+                      ? 'bg-green-50 border-green-200'
+                      : 'bg-yellow-50 border-yellow-200'
+                  }`}
+                >
                   {student.documents_verified ? (
                     <CheckCircleIcon className="h-6 w-6 text-green-500 flex-shrink-0" />
                   ) : (
                     <ClockIcon className="h-6 w-6 text-yellow-500 flex-shrink-0" />
                   )}
                   <div>
-                    <span className="text-sm font-semibold text-gray-900">Document Verification</span>
+                    <span className="text-sm font-semibold text-gray-900">
+                      Document Verification
+                    </span>
                     <p className="text-xs text-gray-600 mt-1">
-                      {student.documents_verified ? 'All documents verified' : 'Verification pending'}
+                      {student.documents_verified
+                        ? 'All documents verified'
+                        : 'Verification pending'}
                     </p>
                   </div>
                 </div>
@@ -698,16 +794,22 @@ const StudentDetailsModal = ({
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                   <div>
                     <span className="font-semibold text-gray-900">Enrolled:</span>
-                    <p className="text-gray-600 mt-1">{new Date(student.created_at).toLocaleDateString()}</p>
+                    <p className="text-gray-600 mt-1">
+                      {new Date(student.created_at).toLocaleDateString()}
+                    </p>
                   </div>
                   <div>
                     <span className="font-semibold text-gray-900">Last Updated:</span>
-                    <p className="text-gray-600 mt-1">{new Date(student.last_updated).toLocaleDateString()}</p>
+                    <p className="text-gray-600 mt-1">
+                      {new Date(student.last_updated).toLocaleDateString()}
+                    </p>
                   </div>
                   {student.graduation_date && (
                     <div>
                       <span className="font-semibold text-gray-900">Graduation Date:</span>
-                      <p className="text-gray-600 mt-1">{new Date(student.graduation_date).toLocaleDateString()}</p>
+                      <p className="text-gray-600 mt-1">
+                        {new Date(student.graduation_date).toLocaleDateString()}
+                      </p>
                     </div>
                   )}
                 </div>
@@ -922,8 +1024,16 @@ const GraduationEligibility: React.FC = () => {
   }, [students]);
 
   const eligibilityOptions = [
-    { value: 'eligible', label: 'Eligible', count: students.filter(s => s.eligibility_flag).length },
-    { value: 'ineligible', label: 'Ineligible', count: students.filter(s => !s.eligibility_flag).length },
+    {
+      value: 'eligible',
+      label: 'Eligible',
+      count: students.filter((s) => s.eligibility_flag).length,
+    },
+    {
+      value: 'ineligible',
+      label: 'Ineligible',
+      count: students.filter((s) => !s.eligibility_flag).length,
+    },
   ];
 
   // Apply filters and sorting
@@ -977,7 +1087,9 @@ const GraduationEligibility: React.FC = () => {
         sorted.sort((a, b) => b.cgpa - a.cgpa);
         break;
       case 'credits':
-        sorted.sort((a, b) => (b.credits_earned / b.credits_required) - (a.credits_earned / a.credits_required));
+        sorted.sort(
+          (a, b) => b.credits_earned / b.credits_required - a.credits_earned / a.credits_required
+        );
         break;
       case 'semester':
         sorted.sort((a, b) => b.semester - a.semester);
@@ -1001,9 +1113,9 @@ const GraduationEligibility: React.FC = () => {
   // Statistics
   const stats = useMemo(() => {
     const total = students.length;
-    const eligible = students.filter(s => s.eligibility_flag).length;
-    const graduated = students.filter(s => s.pipeline_status === 'graduated').length;
-    const alumni = students.filter(s => s.pipeline_status === 'alumni').length;
+    const eligible = students.filter((s) => s.eligibility_flag).length;
+    const graduated = students.filter((s) => s.pipeline_status === 'graduated').length;
+    const alumni = students.filter((s) => s.pipeline_status === 'alumni').length;
     const avgCgpa = students.reduce((sum, s) => sum + s.cgpa, 0) / total;
 
     return { total, eligible, graduated, alumni, avgCgpa };
@@ -1049,25 +1161,31 @@ const GraduationEligibility: React.FC = () => {
     try {
       // In a real app, this would make API calls to update the database
       console.log(`Action: ${actionType}, Student: ${selectedStudent.name}, Reason: ${reason}`);
-      
+
       // Update local state for demo
-      setStudents(prev => prev.map(s => {
-        if (s.id === selectedStudent.id) {
-          switch (actionType) {
-            case 'graduate':
-              return { ...s, pipeline_status: 'graduated', graduation_date: new Date().toISOString() };
-            case 'promote':
-              return { ...s, semester: s.semester + 1 };
-            case 'alumni':
-              return { ...s, pipeline_status: 'alumni' };
-            case 'override':
-              return { ...s, eligibility_flag: true };
-            default:
-              return s;
+      setStudents((prev) =>
+        prev.map((s) => {
+          if (s.id === selectedStudent.id) {
+            switch (actionType) {
+              case 'graduate':
+                return {
+                  ...s,
+                  pipeline_status: 'graduated',
+                  graduation_date: new Date().toISOString(),
+                };
+              case 'promote':
+                return { ...s, semester: s.semester + 1 };
+              case 'alumni':
+                return { ...s, pipeline_status: 'alumni' };
+              case 'override':
+                return { ...s, eligibility_flag: true };
+              default:
+                return s;
+            }
           }
-        }
-        return s;
-      }));
+          return s;
+        })
+      );
 
       // Show success message (you can add toast notification here)
       alert(`Action completed successfully!`);
@@ -1092,7 +1210,7 @@ const GraduationEligibility: React.FC = () => {
   };
 
   const handleGenerateEligibilityList = () => {
-    const eligibleStudents = students.filter(s => s.eligibility_flag);
+    const eligibleStudents = students.filter((s) => s.eligibility_flag);
     console.log('Generating eligibility list for:', eligibleStudents);
     alert(`Generated eligibility list for ${eligibleStudents.length} students`);
   };
@@ -1107,7 +1225,6 @@ const GraduationEligibility: React.FC = () => {
       </div>
     );
   }
-
 
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
@@ -1179,7 +1296,7 @@ const GraduationEligibility: React.FC = () => {
                 size="md"
               />
             </div>
-            
+
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 lg:flex-shrink-0">
               <button
                 onClick={() => setShowFilters(!showFilters)}
@@ -1187,13 +1304,20 @@ const GraduationEligibility: React.FC = () => {
               >
                 <FunnelIcon className="h-4 w-4 flex-shrink-0" />
                 <span>Filters</span>
-                {(filters.departments.length + filters.semesters.length + filters.statuses.length + filters.eligibility.length) > 0 && (
+                {filters.departments.length +
+                  filters.semesters.length +
+                  filters.statuses.length +
+                  filters.eligibility.length >
+                  0 && (
                   <span className="absolute -top-2 -right-2 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-indigo-600 rounded-full">
-                    {filters.departments.length + filters.semesters.length + filters.statuses.length + filters.eligibility.length}
+                    {filters.departments.length +
+                      filters.semesters.length +
+                      filters.statuses.length +
+                      filters.eligibility.length}
                   </span>
                 )}
               </button>
-              
+
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
@@ -1205,22 +1329,24 @@ const GraduationEligibility: React.FC = () => {
                 <option value="semester">Sort by Semester</option>
                 <option value="eligibility">Sort by Eligibility</option>
               </select>
-              
+
               <div className="flex rounded-lg border border-gray-300 overflow-hidden">
                 <button
                   onClick={() => setViewMode('grid')}
-                  className={`px-3 py-2.5 text-sm font-medium transition-colors ${viewMode === 'grid'
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                  className={`px-3 py-2.5 text-sm font-medium transition-colors ${
+                    viewMode === 'grid'
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-white text-gray-700 hover:bg-gray-50'
                   }`}
                 >
                   <Squares2X2Icon className="h-4 w-4" />
                 </button>
                 <button
                   onClick={() => setViewMode('table')}
-                  className={`px-3 py-2.5 text-sm font-medium border-l border-gray-300 transition-colors ${viewMode === 'table'
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                  className={`px-3 py-2.5 text-sm font-medium border-l border-gray-300 transition-colors ${
+                    viewMode === 'table'
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-white text-gray-700 hover:bg-gray-50'
                   }`}
                 >
                   <TableCellsIcon className="h-4 w-4" />
@@ -1229,13 +1355,14 @@ const GraduationEligibility: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         {/* Results Info - Now directly below search bar */}
         <div className="px-6 py-3 border-t border-gray-200 bg-gray-50">
           <p className="text-sm text-gray-600">
             Showing <span className="font-semibold text-gray-900">{startIndex + 1}</span> to{' '}
             <span className="font-semibold text-gray-900">{Math.min(endIndex, totalItems)}</span> of{' '}
-            <span className="font-semibold text-gray-900">{totalItems}</span> student{totalItems !== 1 ? 's' : ''}
+            <span className="font-semibold text-gray-900">{totalItems}</span> student
+            {totalItems !== 1 ? 's' : ''}
             {searchQuery && <span className="text-gray-500"> for "{searchQuery}"</span>}
           </p>
         </div>
@@ -1293,15 +1420,15 @@ const GraduationEligibility: React.FC = () => {
 
         {/* Main Content */}
         <div className="flex-1">
-
-
           {/* Students Grid/Table */}
           {viewMode === 'grid' ? (
-            <div className={`grid gap-6 ${
-              showFilters 
-                ? 'grid-cols-1 lg:grid-cols-2' 
-                : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-3'
-            }`}>
+            <div
+              className={`grid gap-6 ${
+                showFilters
+                  ? 'grid-cols-1 lg:grid-cols-2'
+                  : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-3'
+              }`}
+            >
               {paginatedStudents.map((student) => (
                 <StudentCard
                   key={student.id}
@@ -1357,7 +1484,9 @@ const GraduationEligibility: React.FC = () => {
                               </span>
                             </div>
                             <div className="ml-4">
-                              <div className="text-sm font-medium text-gray-900">{student.name}</div>
+                              <div className="text-sm font-medium text-gray-900">
+                                {student.name}
+                              </div>
                               <div className="text-sm text-gray-500">{student.email}</div>
                             </div>
                           </div>
@@ -1417,7 +1546,7 @@ const GraduationEligibility: React.FC = () => {
                 >
                   Previous
                 </button>
-                
+
                 <div className="flex space-x-1">
                   {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                     const page = i + 1;
@@ -1436,7 +1565,7 @@ const GraduationEligibility: React.FC = () => {
                     );
                   })}
                 </div>
-                
+
                 <button
                   onClick={() => handlePageChange(currentPage + 1)}
                   disabled={currentPage === totalPages}
@@ -1445,7 +1574,7 @@ const GraduationEligibility: React.FC = () => {
                   Next
                 </button>
               </div>
-              
+
               <p className="text-sm text-gray-700">
                 Page {currentPage} of {totalPages}
               </p>
@@ -1458,7 +1587,7 @@ const GraduationEligibility: React.FC = () => {
               <AcademicCapIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No students found</h3>
               <p className="text-gray-500">
-                {searchQuery || Object.values(filters).some(f => f.length > 0)
+                {searchQuery || Object.values(filters).some((f) => f.length > 0)
                   ? 'Try adjusting your search or filters'
                   : 'No students are currently enrolled in the system'}
               </p>

@@ -14,7 +14,7 @@ const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUser
   // Handle approve training
   const handleApprove = async () => {
     setActionLoading('approving');
-    
+
     try {
       if (!currentUserId) {
         toast.error('User not authenticated');
@@ -23,7 +23,7 @@ const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUser
 
       let result;
       const approvalAuthority = training.approval_authority;
-      
+
       if (approvalAuthority === 'college_admin') {
         result = await CollegeAdminNotificationService.approveTraining(
           training.id,
@@ -37,7 +37,7 @@ const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUser
           'Approved by School Admin'
         );
       }
-      
+
       toast.success(result.message || `Training "${training.title}" approved successfully!`);
       onAction && onAction('approved', training);
       onClose();
@@ -57,7 +57,7 @@ const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUser
     }
 
     setActionLoading('rejecting');
-    
+
     try {
       if (!currentUserId) {
         toast.error('User not authenticated');
@@ -66,7 +66,7 @@ const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUser
 
       let result;
       const approvalAuthority = training.approval_authority;
-      
+
       if (approvalAuthority === 'college_admin') {
         result = await CollegeAdminNotificationService.rejectTraining(
           training.id,
@@ -80,7 +80,7 @@ const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUser
           rejectionReason
         );
       }
-      
+
       toast.success(result.message || `Training "${training.title}" rejected.`);
       onAction && onAction('rejected', training);
       onClose();
@@ -97,18 +97,18 @@ const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUser
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
     });
   };
 
   const formatDuration = (startDate, endDate) => {
     if (!startDate || !endDate) return 'Duration not specified';
-    
+
     const start = new Date(startDate);
     const end = new Date(endDate);
     const diffTime = Math.abs(end - start);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays < 30) return `${diffDays} days`;
     const months = Math.floor(diffDays / 30);
     return `${months} month${months > 1 ? 's' : ''}`;
@@ -161,13 +161,13 @@ const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUser
               </div>
               <h3 className="text-lg font-semibold text-gray-900">Training Information</h3>
             </div>
-            
+
             <div className="space-y-4">
               <div>
                 <p className="text-sm text-gray-600">Training Title</p>
                 <p className="font-semibold text-gray-900 text-lg">{training.title}</p>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-600">Organization</p>
@@ -186,7 +186,7 @@ const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUser
                   </div>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-600">Start Date</p>
@@ -203,7 +203,7 @@ const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUser
                   </div>
                 </div>
               </div>
-              
+
               {training.description && (
                 <div>
                   <p className="text-sm text-gray-600">Description</p>
@@ -253,7 +253,7 @@ const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUser
           >
             Close
           </button>
-          
+
           {!showRejectForm ? (
             <>
               <button
@@ -264,7 +264,7 @@ const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUser
                 <XCircle className="h-4 w-4" />
                 Reject
               </button>
-              
+
               <button
                 onClick={handleApprove}
                 disabled={actionLoading}
@@ -289,7 +289,7 @@ const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUser
               >
                 Cancel
               </button>
-              
+
               <button
                 onClick={handleReject}
                 disabled={actionLoading || !rejectionReason.trim()}

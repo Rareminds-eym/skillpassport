@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getStudentRecentUpdates, formatRecentUpdate } from '../services/studentRecentUpdatesService';
+import {
+  getStudentRecentUpdates,
+  formatRecentUpdate,
+} from '../services/studentRecentUpdatesService';
 
 /**
  * Custom hook for fetching and managing student recent updates BY STUDENT ID
@@ -23,13 +26,12 @@ export const useStudentRecentUpdatesById = (studentId, limit = 10, since = null)
       setLoading(true);
       setError(null);
 
-
       const result = await getStudentRecentUpdates(studentId, since, limit);
 
       if (result.success) {
         // Format the updates for display
-        const formattedUpdates = result.data.map(update => formatRecentUpdate(update));
-        
+        const formattedUpdates = result.data.map((update) => formatRecentUpdate(update));
+
         setRecentUpdates(formattedUpdates);
         setError(null);
       } else {
@@ -57,7 +59,7 @@ export const useStudentRecentUpdatesById = (studentId, limit = 10, since = null)
     recentUpdates,
     loading,
     error,
-    refresh
+    refresh,
   };
 };
 

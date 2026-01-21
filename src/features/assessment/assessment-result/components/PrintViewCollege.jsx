@@ -6,7 +6,15 @@
 
 import CoverPage from './CoverPage';
 import { printStyles } from './shared/styles';
-import { safeRender, safeJoin, getSafeStudentInfo, getScoreStyle, riasecDescriptions, defaultRiasecNames, defaultTraitNames } from './shared/utils';
+import {
+  safeRender,
+  safeJoin,
+  getSafeStudentInfo,
+  getScoreStyle,
+  riasecDescriptions,
+  defaultRiasecNames,
+  defaultTraitNames,
+} from './shared/utils';
 import RiasecIcon from './shared/RiasecIcon';
 import PrintStyles from './shared/PrintStyles';
 import PrintPage from './shared/PrintPage';
@@ -16,7 +24,7 @@ import DetailedAssessmentBreakdown from './shared/DetailedAssessmentBreakdown';
 /**
  * PrintViewCollege Component
  * Renders comprehensive assessment report for college students
- * 
+ *
  * @param {Object} props - Component props
  * @param {Object} props.results - Assessment results data
  * @param {Object} props.studentInfo - Student information
@@ -26,10 +34,17 @@ import DetailedAssessmentBreakdown from './shared/DetailedAssessmentBreakdown';
  * @param {Object} props.studentAcademicData - Student academic data (optional)
  * @returns {JSX.Element} - Print view component
  */
-const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, courseRecommendations, studentAcademicData }) => {
+const PrintViewCollege = ({
+  results,
+  studentInfo,
+  riasecNames,
+  traitNames,
+  courseRecommendations,
+  studentAcademicData,
+}) => {
   // Debug: Log studentInfo to see what data is being passed
   console.log('PrintViewCollege - studentInfo received:', studentInfo);
-  
+
   // Handle null results
   if (!results) {
     return (
@@ -42,11 +57,22 @@ const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, cours
   }
 
   // Extract data from results
-  const { riasec, aptitude, bigFive, workValues, knowledge, employability, careerFit, skillGap, roadmap, overallSummary } = results;
+  const {
+    riasec,
+    aptitude,
+    bigFive,
+    workValues,
+    knowledge,
+    employability,
+    careerFit,
+    skillGap,
+    roadmap,
+    overallSummary,
+  } = results;
 
   // Safe student info with defaults
   const safeStudentInfo = getSafeStudentInfo(studentInfo);
-  
+
   // Debug: Log safeStudentInfo to see what getSafeStudentInfo returns
   console.log('PrintViewCollege - safeStudentInfo after getSafeStudentInfo:', safeStudentInfo);
 
@@ -70,29 +96,23 @@ const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, cours
       {/* Continuous content for print - flows naturally across pages */}
       <div className="print-pages">
         <DataPrivacyNotice />
-        
+
         {/* Detailed Assessment Breakdown (All stages data) */}
-        <DetailedAssessmentBreakdown 
-          results={results} 
+        <DetailedAssessmentBreakdown
+          results={results}
           riasecNames={safeRiasecNames}
           gradeLevel="college"
         />
 
         {/* Career Fit Analysis */}
-        {careerFit && (
-          <CareerFitAnalysisSection careerFit={careerFit} />
-        )}
-        
+        {careerFit && <CareerFitAnalysisSection careerFit={careerFit} />}
+
         {/* Skill Gap & Development Plan */}
-        {skillGap && (
-          <SkillGapDevelopmentSection skillGap={skillGap} />
-        )}
+        {skillGap && <SkillGapDevelopmentSection skillGap={skillGap} />}
 
         {/* Career Roadmap */}
-        {roadmap && (
-          <DetailedCareerRoadmapSection roadmap={roadmap} />
-        )}
-        
+        {roadmap && <DetailedCareerRoadmapSection roadmap={roadmap} />}
+
         {/* Course Recommendations - REMOVED for college students (only for After 12th) */}
         {/* College students are already in a degree program, they don't need degree recommendations */}
         {/* {courseRecommendations && courseRecommendations.length > 0 && (
@@ -100,19 +120,20 @@ const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, cours
         )} */}
 
         {/* Final Recommendations */}
-        {overallSummary && (
-          <FinalRecommendationsSection overallSummary={overallSummary} />
-        )}
-        
+        {overallSummary && <FinalRecommendationsSection overallSummary={overallSummary} />}
+
         <ReportDisclaimer />
       </div>
 
       {/* Screen-only continuous content (hidden in print) */}
-      <div className="print-content" style={{ position: 'relative', zIndex: 1, paddingBottom: '70px' }}>
+      <div
+        className="print-content"
+        style={{ position: 'relative', zIndex: 1, paddingBottom: '70px' }}
+      >
         <DataPrivacyNotice />
         {/* Show Detailed Assessment Breakdown for screen view */}
-        <DetailedAssessmentBreakdown 
-          results={results} 
+        <DetailedAssessmentBreakdown
+          results={results}
           riasecNames={safeRiasecNames}
           gradeLevel="college"
         />
@@ -134,22 +155,14 @@ const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, cours
         {employability && (
           <EmployabilityScoreSection employability={employability} />
         )} */}
-        {careerFit && (
-          <CareerFitAnalysisSection careerFit={careerFit} />
-        )}
-        {skillGap && (
-          <SkillGapDevelopmentSection skillGap={skillGap} />
-        )}
-        {roadmap && (
-          <DetailedCareerRoadmapSection roadmap={roadmap} />
-        )}
+        {careerFit && <CareerFitAnalysisSection careerFit={careerFit} />}
+        {skillGap && <SkillGapDevelopmentSection skillGap={skillGap} />}
+        {roadmap && <DetailedCareerRoadmapSection roadmap={roadmap} />}
         {/* Course Recommendations - REMOVED for college students (only for After 12th) */}
         {/* {courseRecommendations && courseRecommendations.length > 0 && (
           <CourseRecommendationsSection courseRecommendations={courseRecommendations} />
         )} */}
-        {overallSummary && (
-          <FinalRecommendationsSection overallSummary={overallSummary} />
-        )}
+        {overallSummary && <FinalRecommendationsSection overallSummary={overallSummary} />}
         <ReportDisclaimer />
       </div>
     </div>
@@ -166,45 +179,53 @@ const InterestProfileSection = ({ riasec, safeRiasecNames }) => {
 
   const maxScore = riasec.maxScore || 20;
   const codes = ['R', 'I', 'A', 'S', 'E', 'C'];
-  
-  // Get top three interests
-  const topThree = riasec.topThree || codes
-    .map(code => ({ code, score: riasec.scores[code] || 0 }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 3)
-    .map(item => item.code);
 
-  const topInterestsText = topThree.map(code => safeRiasecNames[code]).join(', ');
-  const hasStrongInterests = topThree.some(code => (riasec.scores?.[code] || 0) >= maxScore * 0.5);
+  // Get top three interests
+  const topThree =
+    riasec.topThree ||
+    codes
+      .map((code) => ({ code, score: riasec.scores[code] || 0 }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3)
+      .map((item) => item.code);
+
+  const topInterestsText = topThree.map((code) => safeRiasecNames[code]).join(', ');
+  const hasStrongInterests = topThree.some(
+    (code) => (riasec.scores?.[code] || 0) >= maxScore * 0.5
+  );
 
   return (
     <div>
       <h3 style={printStyles.subTitle}>Interest Explorer Results</h3>
 
       {/* RIASEC Infographic Layout with Central Circle */}
-      <div style={{
-        position: 'relative',
-        padding: '20px 0',
-        marginTop: '10px',
-        marginBottom: '8px',
-        minHeight: '320px'
-      }}>
+      <div
+        style={{
+          position: 'relative',
+          padding: '20px 0',
+          marginTop: '10px',
+          marginBottom: '8px',
+          minHeight: '320px',
+        }}
+      >
         {/* SVG for connecting lines */}
-        <svg style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          pointerEvents: 'none',
-          zIndex: 0
-        }}>
+        <svg
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            pointerEvents: 'none',
+            zIndex: 0,
+          }}
+        >
           {/* Dotted lines from red dots to central RIASEC circle */}
           {topThree.map((code, idx) => {
             const positions = [
               { x1: '14%', y1: '60%', x2: '50%', y2: '78%' },
               { x1: '50%', y1: '30%', x2: '50%', y2: '78%' },
-              { x1: '86%', y1: '60%', x2: '50%', y2: '78%' }
+              { x1: '86%', y1: '60%', x2: '50%', y2: '78%' },
             ];
             const pos = positions[idx];
             return (
@@ -222,64 +243,104 @@ const InterestProfileSection = ({ riasec, safeRiasecNames }) => {
             );
           })}
           {/* Vertical lines from red dots to diagonal start for cards 1 and 3 */}
-          <line x1="14%" y1="30%" x2="14%" y2="60%" stroke="#000000" strokeWidth="1" strokeDasharray="2,4" strokeLinecap="round" />
-          <line x1="86%" y1="30%" x2="86%" y2="60%" stroke="#000000" strokeWidth="1" strokeDasharray="2,4" strokeLinecap="round" />
+          <line
+            x1="14%"
+            y1="30%"
+            x2="14%"
+            y2="60%"
+            stroke="#000000"
+            strokeWidth="1"
+            strokeDasharray="2,4"
+            strokeLinecap="round"
+          />
+          <line
+            x1="86%"
+            y1="30%"
+            x2="86%"
+            y2="60%"
+            stroke="#000000"
+            strokeWidth="1"
+            strokeDasharray="2,4"
+            strokeLinecap="round"
+          />
         </svg>
 
         {/* Top 3 Interest Cards */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          position: 'relative',
-          zIndex: 1
-        }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            position: 'relative',
+            zIndex: 1,
+          }}
+        >
           {topThree.map((code, idx) => {
             const score = riasec.scores?.[code] || 0;
-            
+
             return (
               <div key={code} style={{ width: '28%', textAlign: 'center' }}>
-                <div style={{ fontWeight: 'bold', fontSize: '11px', color: '#1e293b', marginBottom: '4px' }}>
+                <div
+                  style={{
+                    fontWeight: 'bold',
+                    fontSize: '11px',
+                    color: '#1e293b',
+                    marginBottom: '4px',
+                  }}
+                >
                   {safeRiasecNames[code]} ({code})
                 </div>
-                <p style={{ fontSize: '8px', color: '#4b5563', margin: '0 0 8px 0', lineHeight: '1.3' }}>
+                <p
+                  style={{
+                    fontSize: '8px',
+                    color: '#4b5563',
+                    margin: '0 0 8px 0',
+                    lineHeight: '1.3',
+                  }}
+                >
                   {riasecDescriptions[code]}
                 </p>
-                <div style={{
-                  display: 'inline-block',
-                  padding: '4px 12px',
-                  background: '#e0f2fe',
-                  borderRadius: '12px',
-                  fontSize: '9px',
-                  fontWeight: '600',
-                  color: '#0369a1',
-                  marginBottom: '8px'
-                }}>
+                <div
+                  style={{
+                    display: 'inline-block',
+                    padding: '4px 12px',
+                    background: '#e0f2fe',
+                    borderRadius: '12px',
+                    fontSize: '9px',
+                    fontWeight: '600',
+                    color: '#0369a1',
+                    marginBottom: '8px',
+                  }}
+                >
                   {score}/{maxScore}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'center', position: 'relative' }}>
-                  <div style={{
-                    width: '70px',
-                    height: '70px',
-                    borderRadius: '50%',
-                    border: '2px solid #1e3a5f',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: 'white'
-                  }}>
+                  <div
+                    style={{
+                      width: '70px',
+                      height: '70px',
+                      borderRadius: '50%',
+                      border: '2px solid #1e3a5f',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: 'white',
+                    }}
+                  >
                     <RiasecIcon code={code} size={42} />
                   </div>
-                  <div style={{
-                    position: 'absolute',
-                    bottom: '-5px',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    background: '#ef4444'
-                  }}></div>
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: '-5px',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      background: '#ef4444',
+                    }}
+                  ></div>
                 </div>
               </div>
             );
@@ -287,50 +348,60 @@ const InterestProfileSection = ({ riasec, safeRiasecNames }) => {
         </div>
 
         {/* Central RIASEC Circle */}
-        <div style={{
-          position: 'absolute',
-          bottom: '10px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          textAlign: 'center',
-          zIndex: 1
-        }}>
-          <div style={{
-            width: '100px',
-            height: '100px',
-            borderRadius: '50%',
-            border: '3px dashed #1e3a5f',
-            background: 'white',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-          }}>
-            <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#000000', marginBottom: '2px' }}>
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '10px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            textAlign: 'center',
+            zIndex: 1,
+          }}
+        >
+          <div
+            style={{
+              width: '100px',
+              height: '100px',
+              borderRadius: '50%',
+              border: '3px dashed #1e3a5f',
+              background: 'white',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            }}
+          >
+            <div
+              style={{
+                fontSize: '14px',
+                fontWeight: 'bold',
+                color: '#000000',
+                marginBottom: '2px',
+              }}
+            >
               RIASEC
             </div>
-            <div style={{ fontSize: '9px', color: '#000000' }}>
-              Interest
-            </div>
-            <div style={{ fontSize: '9px', color: '#000000' }}>
-              Profile
-            </div>
+            <div style={{ fontSize: '9px', color: '#000000' }}>Interest</div>
+            <div style={{ fontSize: '9px', color: '#000000' }}>Profile</div>
           </div>
         </div>
       </div>
 
       {/* Bottom Summary Text */}
-      <div style={{ 
-        fontSize: '9px', 
-        color: '#6b7280', 
-        fontStyle: 'italic', 
-        lineHeight: '1.5',
-        marginTop: '10px',
-        textAlign: 'left'
-      }}>
-        <strong>Your Top Interests:</strong> {topInterestsText}. {hasStrongInterests 
-          ? 'These interests indicate your natural preferences and can guide your career exploration.' 
+      <div
+        style={{
+          fontSize: '9px',
+          color: '#6b7280',
+          fontStyle: 'italic',
+          lineHeight: '1.5',
+          marginTop: '10px',
+          textAlign: 'left',
+        }}
+      >
+        <strong>Your Top Interests:</strong> {topInterestsText}.{' '}
+        {hasStrongInterests
+          ? 'These interests indicate your natural preferences and can guide your career exploration.'
           : 'The student has not expressed any strong interests in any of the RIASEC categories, indicating a need for exploration in various fields.'}
       </div>
     </div>
@@ -348,7 +419,7 @@ const CognitiveAbilitiesSection = ({ aptitude }) => {
   return (
     <>
       <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>2. Cognitive Abilities</h2>
-      
+
       {/* Top Strengths Badges */}
       {aptitude.topStrengths && aptitude.topStrengths.length > 0 && (
         <div style={{ marginBottom: '15px' }}>
@@ -363,7 +434,7 @@ const CognitiveAbilitiesSection = ({ aptitude }) => {
                   color: '#166534',
                   border: '1px solid #86efac',
                   fontSize: '10px',
-                  padding: '5px 12px'
+                  padding: '5px 12px',
                 }}
               >
                 ★ {safeRender(strength)}
@@ -387,7 +458,8 @@ const CognitiveAbilitiesSection = ({ aptitude }) => {
           {Object.entries(aptitude.scores).map(([ability, scoreData]) => {
             const correct = scoreData.correct || 0;
             const total = scoreData.total || 0;
-            const percentage = scoreData.percentage || (total > 0 ? Math.round((correct / total) * 100) : 0);
+            const percentage =
+              scoreData.percentage || (total > 0 ? Math.round((correct / total) * 100) : 0);
             const scoreStyle = getScoreStyle(percentage);
             const isTopStrength = aptitude.topStrengths?.includes(ability);
 
@@ -395,12 +467,8 @@ const CognitiveAbilitiesSection = ({ aptitude }) => {
               <tr key={ability} style={isTopStrength ? { background: '#f0fdf4' } : {}}>
                 <td style={printStyles.td}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ fontWeight: '600', fontSize: '10px' }}>
-                      {ability}
-                    </span>
-                    {isTopStrength && (
-                      <span style={{ color: '#16a34a', fontSize: '10px' }}>★</span>
-                    )}
+                    <span style={{ fontWeight: '600', fontSize: '10px' }}>{ability}</span>
+                    {isTopStrength && <span style={{ color: '#16a34a', fontSize: '10px' }}>★</span>}
                   </div>
                 </td>
                 <td style={{ ...printStyles.td, textAlign: 'center', fontWeight: '600' }}>
@@ -410,19 +478,28 @@ const CognitiveAbilitiesSection = ({ aptitude }) => {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <div style={{ flex: 1 }}>
                       <div style={printStyles.progressBar}>
-                        <div style={{
-                          width: `${percentage}%`,
-                          height: '100%',
-                          background: percentage >= 70 ? '#22c55e' : percentage >= 40 ? '#eab308' : '#ef4444'
-                        }}></div>
+                        <div
+                          style={{
+                            width: `${percentage}%`,
+                            height: '100%',
+                            background:
+                              percentage >= 70
+                                ? '#22c55e'
+                                : percentage >= 40
+                                  ? '#eab308'
+                                  : '#ef4444',
+                          }}
+                        ></div>
                       </div>
                     </div>
-                    <span style={{
-                      ...printStyles.badge,
-                      background: scoreStyle.bg,
-                      color: scoreStyle.color,
-                      border: `1px solid ${scoreStyle.border}`
-                    }}>
+                    <span
+                      style={{
+                        ...printStyles.badge,
+                        background: scoreStyle.bg,
+                        color: scoreStyle.color,
+                        border: `1px solid ${scoreStyle.border}`,
+                      }}
+                    >
                       {percentage}%
                     </span>
                   </div>
@@ -439,9 +516,11 @@ const CognitiveAbilitiesSection = ({ aptitude }) => {
           Understanding Your Results
         </h4>
         <p style={{ margin: '0', fontSize: '8px', lineHeight: '1.5', color: '#475569' }}>
-          <strong>High (70%+):</strong> Strong aptitude in this area. 
-          <strong style={{ marginLeft: '10px' }}>Medium (40-69%):</strong> Moderate aptitude with room for development. 
-          <strong style={{ marginLeft: '10px' }}>Low (&lt;40%):</strong> Area for focused improvement.
+          <strong>High (70%+):</strong> Strong aptitude in this area.
+          <strong style={{ marginLeft: '10px' }}>Medium (40-69%):</strong> Moderate aptitude with
+          room for development.
+          <strong style={{ marginLeft: '10px' }}>Low (&lt;40%):</strong> Area for focused
+          improvement.
         </p>
       </div>
     </>
@@ -462,18 +541,27 @@ const BigFivePersonalitySection = ({ bigFive, safeTraitNames }) => {
     C: 'Conscientiousness - Organization, responsibility, and goal-directed behavior',
     E: 'Extraversion - Sociability, assertiveness, and energy in social situations',
     A: 'Agreeableness - Compassion, cooperation, and trust in others',
-    N: 'Neuroticism - Emotional stability and tendency to experience negative emotions'
+    N: 'Neuroticism - Emotional stability and tendency to experience negative emotions',
   };
 
   return (
     <>
-      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>3. Big Five Personality Traits</h2>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>
+        3. Big Five Personality Traits
+      </h2>
       <p style={{ fontSize: '9px', color: '#6b7280', marginBottom: '12px', lineHeight: '1.5' }}>
-        The Big Five model measures five broad dimensions of personality that influence how you interact with the world, 
-        approach work, and relate to others.
+        The Big Five model measures five broad dimensions of personality that influence how you
+        interact with the world, approach work, and relate to others.
       </p>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px', marginTop: '10px' }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(5, 1fr)',
+          gap: '10px',
+          marginTop: '10px',
+        }}
+      >
         {traits.map((trait) => {
           const score = bigFive[trait] || 0;
           const percentage = Math.round(score);
@@ -482,23 +570,32 @@ const BigFivePersonalitySection = ({ bigFive, safeTraitNames }) => {
           return (
             <div key={trait} style={{ textAlign: 'center' }}>
               {/* Circular Progress Indicator */}
-              <div style={{
-                width: '70px',
-                height: '70px',
-                borderRadius: '50%',
-                border: `5px solid ${scoreStyle.border}`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 8px',
-                background: scoreStyle.bg,
-                position: 'relative'
-              }}>
+              <div
+                style={{
+                  width: '70px',
+                  height: '70px',
+                  borderRadius: '50%',
+                  border: `5px solid ${scoreStyle.border}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 8px',
+                  background: scoreStyle.bg,
+                  position: 'relative',
+                }}
+              >
                 <span style={{ fontSize: '16px', fontWeight: 'bold', color: scoreStyle.color }}>
                   {percentage}%
                 </span>
               </div>
-              <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '2px' }}>
+              <div
+                style={{
+                  fontWeight: 'bold',
+                  fontSize: '10px',
+                  color: '#1e293b',
+                  marginBottom: '2px',
+                }}
+              >
                 {safeTraitNames[trait] || trait}
               </div>
               <div style={{ fontSize: '7px', color: '#6b7280', lineHeight: '1.2' }}>
@@ -512,7 +609,9 @@ const BigFivePersonalitySection = ({ bigFive, safeTraitNames }) => {
       {/* Work Style Summary */}
       {bigFive.workStyleSummary && (
         <div style={{ ...printStyles.summaryBox, marginTop: '15px' }}>
-          <h4 style={{ margin: '0 0 8px 0', fontSize: '10px', fontWeight: 'bold', color: '#0369a1' }}>
+          <h4
+            style={{ margin: '0 0 8px 0', fontSize: '10px', fontWeight: 'bold', color: '#0369a1' }}
+          >
             Your Work Style Profile
           </h4>
           <p style={{ margin: '0', fontSize: '9px', lineHeight: '1.6', color: '#475569' }}>
@@ -534,9 +633,12 @@ const WorkValuesSection = ({ workValues }) => {
 
   return (
     <>
-      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>4. Work Values & Motivations</h2>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>
+        4. Work Values & Motivations
+      </h2>
       <p style={{ fontSize: '9px', color: '#6b7280', marginBottom: '12px', lineHeight: '1.5' }}>
-        Understanding what motivates you at work helps identify careers and work environments where you'll thrive.
+        Understanding what motivates you at work helps identify careers and work environments where
+        you'll thrive.
       </p>
 
       <h3 style={printStyles.subTitle}>Your Top Work Values</h3>
@@ -549,19 +651,40 @@ const WorkValuesSection = ({ workValues }) => {
           const priorityColors = [
             { bg: '#dcfce7', color: '#166534', border: '#86efac' },
             { bg: '#fef9c3', color: '#854d0e', border: '#fde047' },
-            { bg: '#dbeafe', color: '#1e40af', border: '#93c5fd' }
+            { bg: '#dbeafe', color: '#1e40af', border: '#93c5fd' },
           ];
           const colors = priorityColors[idx] || priorityColors[2];
 
           return (
             <div key={idx} style={{ ...printStyles.card, marginBottom: '10px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  marginBottom: '6px',
+                }}
+              >
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 'bold', fontSize: '11px', color: '#1e293b', marginBottom: '4px' }}>
+                  <div
+                    style={{
+                      fontWeight: 'bold',
+                      fontSize: '11px',
+                      color: '#1e293b',
+                      marginBottom: '4px',
+                    }}
+                  >
                     {idx + 1}. {value}
                   </div>
                   {description && (
-                    <p style={{ fontSize: '9px', color: '#4b5563', margin: '0 0 4px 0', lineHeight: '1.4' }}>
+                    <p
+                      style={{
+                        fontSize: '9px',
+                        color: '#4b5563',
+                        margin: '0 0 4px 0',
+                        lineHeight: '1.4',
+                      }}
+                    >
                       {description}
                     </p>
                   )}
@@ -571,13 +694,15 @@ const WorkValuesSection = ({ workValues }) => {
                     </div>
                   )}
                 </div>
-                <span style={{
-                  ...printStyles.badge,
-                  background: colors.bg,
-                  color: colors.color,
-                  border: `1px solid ${colors.border}`,
-                  marginLeft: '10px'
-                }}>
+                <span
+                  style={{
+                    ...printStyles.badge,
+                    background: colors.bg,
+                    color: colors.color,
+                    border: `1px solid ${colors.border}`,
+                    marginLeft: '10px',
+                  }}
+                >
                   {priorityLabels[idx]}
                 </span>
               </div>
@@ -598,14 +723,13 @@ const KnowledgeAssessmentSection = ({ knowledge }) => {
   if (!knowledge || Object.keys(knowledge).length === 0) return null;
 
   // Sort knowledge domains by score (descending)
-  const sortedDomains = Object.entries(knowledge)
-    .sort(([, scoreA], [, scoreB]) => scoreB - scoreA);
+  const sortedDomains = Object.entries(knowledge).sort(([, scoreA], [, scoreB]) => scoreB - scoreA);
 
   return (
     <>
       <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>5. Knowledge Assessment</h2>
       <p style={{ fontSize: '9px', color: '#6b7280', marginBottom: '12px', lineHeight: '1.5' }}>
-        This assessment measures your knowledge across various academic and professional domains, 
+        This assessment measures your knowledge across various academic and professional domains,
         helping identify areas of expertise and opportunities for growth.
       </p>
 
@@ -624,27 +748,34 @@ const KnowledgeAssessmentSection = ({ knowledge }) => {
             return (
               <tr key={domain}>
                 <td style={printStyles.td}>
-                  <span style={{ fontWeight: '600', fontSize: '10px' }}>
-                    {domain}
-                  </span>
+                  <span style={{ fontWeight: '600', fontSize: '10px' }}>{domain}</span>
                 </td>
                 <td style={printStyles.td}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <div style={{ flex: 1 }}>
                       <div style={printStyles.progressBar}>
-                        <div style={{
-                          width: `${percentage}%`,
-                          height: '100%',
-                          background: percentage >= 70 ? '#22c55e' : percentage >= 40 ? '#eab308' : '#ef4444'
-                        }}></div>
+                        <div
+                          style={{
+                            width: `${percentage}%`,
+                            height: '100%',
+                            background:
+                              percentage >= 70
+                                ? '#22c55e'
+                                : percentage >= 40
+                                  ? '#eab308'
+                                  : '#ef4444',
+                          }}
+                        ></div>
                       </div>
                     </div>
-                    <span style={{
-                      ...printStyles.badge,
-                      background: scoreStyle.bg,
-                      color: scoreStyle.color,
-                      border: `1px solid ${scoreStyle.border}`
-                    }}>
+                    <span
+                      style={{
+                        ...printStyles.badge,
+                        background: scoreStyle.bg,
+                        color: scoreStyle.color,
+                        border: `1px solid ${scoreStyle.border}`,
+                      }}
+                    >
                       {percentage}%
                     </span>
                   </div>
@@ -658,12 +789,19 @@ const KnowledgeAssessmentSection = ({ knowledge }) => {
       {/* Knowledge Strengths Summary */}
       {sortedDomains.length > 0 && (
         <div style={{ ...printStyles.summaryBox, marginTop: '10px' }}>
-          <h4 style={{ margin: '0 0 6px 0', fontSize: '9px', fontWeight: 'bold', color: '#0369a1' }}>
+          <h4
+            style={{ margin: '0 0 6px 0', fontSize: '9px', fontWeight: 'bold', color: '#0369a1' }}
+          >
             Your Knowledge Strengths
           </h4>
           <p style={{ margin: '0', fontSize: '8px', lineHeight: '1.5', color: '#475569' }}>
-            Your strongest knowledge areas are: {sortedDomains.slice(0, 3).map(([domain]) => domain).join(', ')}. 
-            These domains represent areas where you have demonstrated strong understanding and can leverage in your career.
+            Your strongest knowledge areas are:{' '}
+            {sortedDomains
+              .slice(0, 3)
+              .map(([domain]) => domain)
+              .join(', ')}
+            . These domains represent areas where you have demonstrated strong understanding and can
+            leverage in your career.
           </p>
         </div>
       )}
@@ -686,29 +824,47 @@ const EmployabilityScoreSection = ({ employability }) => {
     <>
       <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>6. Employability Score</h2>
       <p style={{ fontSize: '9px', color: '#6b7280', marginBottom: '12px', lineHeight: '1.5' }}>
-        Your employability score reflects your readiness for the job market based on skills, knowledge, 
-        personality traits, and career alignment.
+        Your employability score reflects your readiness for the job market based on skills,
+        knowledge, personality traits, and career alignment.
       </p>
 
       {/* Overall Employability Score */}
-      <div style={{
-        ...printStyles.card,
-        background: overallScoreStyle.bg,
-        border: `2px solid ${overallScoreStyle.border}`,
-        textAlign: 'center',
-        padding: '20px',
-        marginBottom: '15px'
-      }}>
-        <div style={{ fontSize: '11px', fontWeight: 'bold', color: overallScoreStyle.color, marginBottom: '8px' }}>
+      <div
+        style={{
+          ...printStyles.card,
+          background: overallScoreStyle.bg,
+          border: `2px solid ${overallScoreStyle.border}`,
+          textAlign: 'center',
+          padding: '20px',
+          marginBottom: '15px',
+        }}
+      >
+        <div
+          style={{
+            fontSize: '11px',
+            fontWeight: 'bold',
+            color: overallScoreStyle.color,
+            marginBottom: '8px',
+          }}
+        >
           Overall Employability Score
         </div>
-        <div style={{ fontSize: '36px', fontWeight: 'bold', color: overallScoreStyle.color, marginBottom: '4px' }}>
+        <div
+          style={{
+            fontSize: '36px',
+            fontWeight: 'bold',
+            color: overallScoreStyle.color,
+            marginBottom: '4px',
+          }}
+        >
           {overallScore}%
         </div>
         <div style={{ fontSize: '9px', color: overallScoreStyle.color }}>
-          {overallScore >= 70 ? 'Strong Job Market Readiness' : 
-           overallScore >= 40 ? 'Moderate Job Market Readiness' : 
-           'Developing Job Market Readiness'}
+          {overallScore >= 70
+            ? 'Strong Job Market Readiness'
+            : overallScore >= 40
+              ? 'Moderate Job Market Readiness'
+              : 'Developing Job Market Readiness'}
         </div>
       </div>
 
@@ -731,27 +887,34 @@ const EmployabilityScoreSection = ({ employability }) => {
                 return (
                   <tr key={component}>
                     <td style={printStyles.td}>
-                      <span style={{ fontWeight: '600', fontSize: '10px' }}>
-                        {component}
-                      </span>
+                      <span style={{ fontWeight: '600', fontSize: '10px' }}>{component}</span>
                     </td>
                     <td style={printStyles.td}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <div style={{ flex: 1 }}>
                           <div style={printStyles.progressBar}>
-                            <div style={{
-                              width: `${percentage}%`,
-                              height: '100%',
-                              background: percentage >= 70 ? '#22c55e' : percentage >= 40 ? '#eab308' : '#ef4444'
-                            }}></div>
+                            <div
+                              style={{
+                                width: `${percentage}%`,
+                                height: '100%',
+                                background:
+                                  percentage >= 70
+                                    ? '#22c55e'
+                                    : percentage >= 40
+                                      ? '#eab308'
+                                      : '#ef4444',
+                              }}
+                            ></div>
                           </div>
                         </div>
-                        <span style={{
-                          ...printStyles.badge,
-                          background: scoreStyle.bg,
-                          color: scoreStyle.color,
-                          border: `1px solid ${scoreStyle.border}`
-                        }}>
+                        <span
+                          style={{
+                            ...printStyles.badge,
+                            background: scoreStyle.bg,
+                            color: scoreStyle.color,
+                            border: `1px solid ${scoreStyle.border}`,
+                          }}
+                        >
                           {percentage}%
                         </span>
                       </div>
@@ -770,9 +933,10 @@ const EmployabilityScoreSection = ({ employability }) => {
           What This Means
         </h4>
         <p style={{ margin: '0', fontSize: '8px', lineHeight: '1.5', color: '#475569' }}>
-          Your employability score is calculated based on multiple factors including cognitive abilities, 
-          personality traits, work values alignment, knowledge domains, and career fit. 
-          Focus on the lower-scoring components in the breakdown to improve your overall employability.
+          Your employability score is calculated based on multiple factors including cognitive
+          abilities, personality traits, work values alignment, knowledge domains, and career fit.
+          Focus on the lower-scoring components in the breakdown to improve your overall
+          employability.
         </p>
       </div>
     </>
@@ -789,7 +953,10 @@ const CareerFitAnalysisSection = ({ careerFit }) => {
 
   // Debug: Log careerFit data to see if tracks/roles/salary data exists
   console.log('CareerFitAnalysisSection - careerFit data:', careerFit);
-  console.log('CareerFitAnalysisSection - checking for tracks:', careerFit.tracks || careerFit.careerTracks || careerFit.topTracks);
+  console.log(
+    'CareerFitAnalysisSection - checking for tracks:',
+    careerFit.tracks || careerFit.careerTracks || careerFit.topTracks
+  );
 
   // Extract career tracks if they exist
   const careerTracks = careerFit.tracks || careerFit.careerTracks || careerFit.topTracks || [];
@@ -798,15 +965,23 @@ const CareerFitAnalysisSection = ({ careerFit }) => {
     <>
       <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>2. Career Fit Analysis</h2>
       <p style={{ fontSize: '9px', color: '#6b7280', marginBottom: '12px', lineHeight: '1.5' }}>
-        Based on your interests, abilities, personality, and values, these careers offer the best alignment 
-        with your profile. The fit score indicates how well each career matches your overall assessment results.
+        Based on your interests, abilities, personality, and values, these careers offer the best
+        alignment with your profile. The fit score indicates how well each career matches your
+        overall assessment results.
       </p>
 
       {/* Career Tracks with Roles & Salary (if available) */}
       {careerTracks.length > 0 && (
         <div style={{ marginBottom: '20px' }}>
           <h3 style={printStyles.subTitle}>Top Career Tracks for You</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginTop: '10px' }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '12px',
+              marginTop: '10px',
+            }}
+          >
             {careerTracks.slice(0, 3).map((track, idx) => {
               const trackNumber = idx + 1;
               const trackName = track.name || track.trackName || `Track ${trackNumber}`;
@@ -815,86 +990,102 @@ const CareerFitAnalysisSection = ({ careerFit }) => {
               const scoreStyle = getScoreStyle(matchScore);
 
               return (
-                <div key={idx} style={{
-                  ...printStyles.card,
-                  background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
-                  color: 'white',
-                  padding: '12px',
-                  borderRadius: '8px',
-                  position: 'relative'
-                }}>
+                <div
+                  key={idx}
+                  style={{
+                    ...printStyles.card,
+                    background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
+                    color: 'white',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    position: 'relative',
+                  }}
+                >
                   {/* Track Badge */}
-                  <div style={{
-                    position: 'absolute',
-                    top: '8px',
-                    left: '8px',
-                    background: 'rgba(255, 255, 255, 0.2)',
-                    padding: '3px 8px',
-                    borderRadius: '4px',
-                    fontSize: '7px',
-                    fontWeight: 'bold'
-                  }}>
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '8px',
+                      left: '8px',
+                      background: 'rgba(255, 255, 255, 0.2)',
+                      padding: '3px 8px',
+                      borderRadius: '4px',
+                      fontSize: '7px',
+                      fontWeight: 'bold',
+                    }}
+                  >
                     TRACK {trackNumber}
                   </div>
 
                   {/* Match Score Circle */}
-                  <div style={{
-                    position: 'absolute',
-                    top: '8px',
-                    right: '8px',
-                    width: '45px',
-                    height: '45px',
-                    borderRadius: '50%',
-                    border: '3px solid rgba(255, 255, 255, 0.3)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: 'rgba(255, 255, 255, 0.1)'
-                  }}>
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '8px',
+                      right: '8px',
+                      width: '45px',
+                      height: '45px',
+                      borderRadius: '50%',
+                      border: '3px solid rgba(255, 255, 255, 0.3)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: 'rgba(255, 255, 255, 0.1)',
+                    }}
+                  >
                     <div style={{ fontSize: '14px', fontWeight: 'bold' }}>{matchScore}%</div>
                     <div style={{ fontSize: '6px' }}>Match</div>
                   </div>
 
                   {/* Track Name */}
-                  <div style={{
-                    marginTop: '50px',
-                    fontSize: '11px',
-                    fontWeight: 'bold',
-                    marginBottom: '10px',
-                    lineHeight: '1.3'
-                  }}>
+                  <div
+                    style={{
+                      marginTop: '50px',
+                      fontSize: '11px',
+                      fontWeight: 'bold',
+                      marginBottom: '10px',
+                      lineHeight: '1.3',
+                    }}
+                  >
                     {trackName}
                   </div>
 
                   {/* Top Roles & Salary */}
                   {roles.length > 0 && (
                     <div>
-                      <div style={{
-                        fontSize: '7px',
-                        fontWeight: 'bold',
-                        marginBottom: '6px',
-                        opacity: 0.9
-                      }}>
+                      <div
+                        style={{
+                          fontSize: '7px',
+                          fontWeight: 'bold',
+                          marginBottom: '6px',
+                          opacity: 0.9,
+                        }}
+                      >
                         TOP ROLES & SALARY
                       </div>
                       {roles.slice(0, 3).map((role, roleIdx) => (
-                        <div key={roleIdx} style={{
-                          fontSize: '8px',
-                          marginBottom: '4px',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          opacity: 0.95
-                        }}>
+                        <div
+                          key={roleIdx}
+                          style={{
+                            fontSize: '8px',
+                            marginBottom: '4px',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            opacity: 0.95,
+                          }}
+                        >
                           <span>{role.title || role.name || role}</span>
                           {role.salary && (
-                            <span style={{
-                              fontSize: '7px',
-                              color: '#86efac',
-                              fontWeight: 'bold',
-                              marginLeft: '4px'
-                            }}>
+                            <span
+                              style={{
+                                fontSize: '7px',
+                                color: '#86efac',
+                                fontWeight: 'bold',
+                                marginLeft: '4px',
+                              }}
+                            >
                               {role.salary}
                             </span>
                           )}
@@ -923,7 +1114,7 @@ const CareerFitAnalysisSection = ({ careerFit }) => {
                   color: '#1e40af',
                   border: '1px solid #93c5fd',
                   fontSize: '9px',
-                  padding: '4px 10px'
+                  padding: '4px 10px',
                 }}
               >
                 {safeRender(cluster)}
@@ -947,22 +1138,38 @@ const CareerFitAnalysisSection = ({ careerFit }) => {
           return (
             <div key={idx} style={{ ...printStyles.card, marginBottom: '12px' }}>
               {/* Career Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  marginBottom: '8px',
+                }}
+              >
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 'bold', fontSize: '11px', color: '#1e293b', marginBottom: '2px' }}>
+                  <div
+                    style={{
+                      fontWeight: 'bold',
+                      fontSize: '11px',
+                      color: '#1e293b',
+                      marginBottom: '2px',
+                    }}
+                  >
                     {idx + 1}. {name}
                   </div>
                 </div>
                 {fitScore > 0 && (
                   <div style={{ marginLeft: '10px', textAlign: 'right' }}>
-                    <span style={{
-                      ...printStyles.badge,
-                      background: scoreStyle.bg,
-                      color: scoreStyle.color,
-                      border: `1px solid ${scoreStyle.border}`,
-                      fontSize: '10px',
-                      padding: '4px 10px'
-                    }}>
+                    <span
+                      style={{
+                        ...printStyles.badge,
+                        background: scoreStyle.bg,
+                        color: scoreStyle.color,
+                        border: `1px solid ${scoreStyle.border}`,
+                        fontSize: '10px',
+                        padding: '4px 10px',
+                      }}
+                    >
                       {fitScore}% Match
                     </span>
                   </div>
@@ -971,17 +1178,38 @@ const CareerFitAnalysisSection = ({ careerFit }) => {
 
               {/* Career Description */}
               {description && (
-                <p style={{ fontSize: '9px', color: '#4b5563', margin: '0 0 8px 0', lineHeight: '1.5' }}>
+                <p
+                  style={{
+                    fontSize: '9px',
+                    color: '#4b5563',
+                    margin: '0 0 8px 0',
+                    lineHeight: '1.5',
+                  }}
+                >
                   {description}
                 </p>
               )}
 
               {/* Career Details Grid */}
               {(requirements || outlook) && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '8px' }}>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '10px',
+                    marginTop: '8px',
+                  }}
+                >
                   {requirements && (
                     <div>
-                      <div style={{ fontSize: '8px', fontWeight: '600', color: '#374151', marginBottom: '3px' }}>
+                      <div
+                        style={{
+                          fontSize: '8px',
+                          fontWeight: '600',
+                          color: '#374151',
+                          marginBottom: '3px',
+                        }}
+                      >
                         Typical Requirements:
                       </div>
                       <div style={{ fontSize: '8px', color: '#6b7280', lineHeight: '1.4' }}>
@@ -991,7 +1219,14 @@ const CareerFitAnalysisSection = ({ careerFit }) => {
                   )}
                   {outlook && (
                     <div>
-                      <div style={{ fontSize: '8px', fontWeight: '600', color: '#374151', marginBottom: '3px' }}>
+                      <div
+                        style={{
+                          fontSize: '8px',
+                          fontWeight: '600',
+                          color: '#374151',
+                          marginBottom: '3px',
+                        }}
+                      >
                         Career Outlook:
                       </div>
                       <div style={{ fontSize: '8px', color: '#6b7280', lineHeight: '1.4' }}>
@@ -1012,8 +1247,8 @@ const CareerFitAnalysisSection = ({ careerFit }) => {
           Understanding Career Fit Scores
         </h4>
         <p style={{ margin: '0', fontSize: '8px', lineHeight: '1.5', color: '#475569' }}>
-          Career fit scores are calculated by analyzing how well each career aligns with your RIASEC interests, 
-          cognitive abilities, personality traits, work values, and knowledge domains. 
+          Career fit scores are calculated by analyzing how well each career aligns with your RIASEC
+          interests, cognitive abilities, personality traits, work values, and knowledge domains.
           Higher scores indicate stronger alignment with your overall profile.
         </p>
       </div>
@@ -1034,9 +1269,11 @@ const SkillGapDevelopmentSection = ({ skillGap }) => {
 
   return (
     <>
-      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>3. Skill Gap & Development Plan</h2>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>
+        3. Skill Gap & Development Plan
+      </h2>
       <p style={{ fontSize: '9px', color: '#6b7280', marginBottom: '12px', lineHeight: '1.5' }}>
-        This analysis compares your current skills with those required for your target careers, 
+        This analysis compares your current skills with those required for your target careers,
         helping you prioritize your professional development efforts.
       </p>
 
@@ -1054,7 +1291,7 @@ const SkillGapDevelopmentSection = ({ skillGap }) => {
                   color: '#166534',
                   border: '1px solid #86efac',
                   fontSize: '9px',
-                  padding: '4px 10px'
+                  padding: '4px 10px',
                 }}
               >
                 ✓ {safeRender(skill)}
@@ -1078,7 +1315,7 @@ const SkillGapDevelopmentSection = ({ skillGap }) => {
                   color: '#1e40af',
                   border: '1px solid #93c5fd',
                   fontSize: '9px',
-                  padding: '4px 10px'
+                  padding: '4px 10px',
                 }}
               >
                 {safeRender(skill)}
@@ -1108,24 +1345,24 @@ const SkillGapDevelopmentSection = ({ skillGap }) => {
                 const priorityColors = {
                   High: { bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' },
                   Medium: { bg: '#fef9c3', color: '#854d0e', border: '#fde047' },
-                  Low: { bg: '#dcfce7', color: '#166534', border: '#86efac' }
+                  Low: { bg: '#dcfce7', color: '#166534', border: '#86efac' },
                 };
                 const colors = priorityColors[priority] || priorityColors.Medium;
 
                 return (
                   <tr key={idx}>
                     <td style={printStyles.td}>
-                      <span style={{ fontWeight: '600', fontSize: '10px' }}>
-                        {skill}
-                      </span>
+                      <span style={{ fontWeight: '600', fontSize: '10px' }}>{skill}</span>
                     </td>
                     <td style={printStyles.td}>
-                      <span style={{
-                        ...printStyles.badge,
-                        background: colors.bg,
-                        color: colors.color,
-                        border: `1px solid ${colors.border}`
-                      }}>
+                      <span
+                        style={{
+                          ...printStyles.badge,
+                          background: colors.bg,
+                          color: colors.color,
+                          border: `1px solid ${colors.border}`,
+                        }}
+                      >
                         {priority}
                       </span>
                     </td>
@@ -1149,16 +1386,16 @@ const SkillGapDevelopmentSection = ({ skillGap }) => {
         </h4>
         <div style={{ fontSize: '9px', lineHeight: '1.6', color: '#475569' }}>
           <p style={{ margin: '0 0 8px 0' }}>
-            <strong>High Priority Skills:</strong> Focus on these immediately through courses, certifications, or hands-on projects. 
-            These skills are critical for your target careers.
+            <strong>High Priority Skills:</strong> Focus on these immediately through courses,
+            certifications, or hands-on projects. These skills are critical for your target careers.
           </p>
           <p style={{ margin: '0 0 8px 0' }}>
-            <strong>Medium Priority Skills:</strong> Develop these over the next 6-12 months through structured learning 
-            and practical application.
+            <strong>Medium Priority Skills:</strong> Develop these over the next 6-12 months through
+            structured learning and practical application.
           </p>
           <p style={{ margin: '0' }}>
-            <strong>Low Priority Skills:</strong> Consider these for long-term development or as opportunities arise 
-            in your career journey.
+            <strong>Low Priority Skills:</strong> Consider these for long-term development or as
+            opportunities arise in your career journey.
           </p>
         </div>
       </div>
@@ -1181,7 +1418,7 @@ const DetailedCareerRoadmapSection = ({ roadmap }) => {
     <>
       <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>4. Detailed Career Roadmap</h2>
       <p style={{ fontSize: '9px', color: '#6b7280', marginBottom: '12px', lineHeight: '1.5' }}>
-        This roadmap provides a structured path to achieve your career goals, with specific phases, 
+        This roadmap provides a structured path to achieve your career goals, with specific phases,
         timelines, and actionable steps.
       </p>
 
@@ -1194,30 +1431,42 @@ const DetailedCareerRoadmapSection = ({ roadmap }) => {
               { bg: '#eff6ff', border: '#3b82f6', text: '#1e40af' },
               { bg: '#f0fdf4', border: '#22c55e', text: '#166534' },
               { bg: '#fef3c7', border: '#eab308', text: '#854d0e' },
-              { bg: '#fce7f3', border: '#ec4899', text: '#9f1239' }
+              { bg: '#fce7f3', border: '#ec4899', text: '#9f1239' },
             ];
             const colors = phaseColors[idx % phaseColors.length];
 
             return (
-              <div key={idx} style={{
-                ...printStyles.card,
-                background: colors.bg,
-                border: `2px solid ${colors.border}`,
-                marginBottom: '15px'
-              }}>
+              <div
+                key={idx}
+                style={{
+                  ...printStyles.card,
+                  background: colors.bg,
+                  border: `2px solid ${colors.border}`,
+                  marginBottom: '15px',
+                }}
+              >
                 {/* Phase Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '10px',
+                  }}
+                >
                   <div style={{ fontWeight: 'bold', fontSize: '11px', color: colors.text }}>
                     Phase {idx + 1}: {safeRender(phase.phase || `Phase ${idx + 1}`)}
                   </div>
                   {phase.duration && (
-                    <span style={{
-                      ...printStyles.badge,
-                      background: 'white',
-                      color: colors.text,
-                      border: `1px solid ${colors.border}`,
-                      fontSize: '9px'
-                    }}>
+                    <span
+                      style={{
+                        ...printStyles.badge,
+                        background: 'white',
+                        color: colors.text,
+                        border: `1px solid ${colors.border}`,
+                        fontSize: '9px',
+                      }}
+                    >
                       ⏱ {phase.duration}
                     </span>
                   )}
@@ -1225,7 +1474,14 @@ const DetailedCareerRoadmapSection = ({ roadmap }) => {
 
                 {/* Phase Description */}
                 {phase.description && (
-                  <p style={{ fontSize: '9px', color: '#4b5563', margin: '0 0 10px 0', lineHeight: '1.5' }}>
+                  <p
+                    style={{
+                      fontSize: '9px',
+                      color: '#4b5563',
+                      margin: '0 0 10px 0',
+                      lineHeight: '1.5',
+                    }}
+                  >
                     {phase.description}
                   </p>
                 )}
@@ -1233,12 +1489,29 @@ const DetailedCareerRoadmapSection = ({ roadmap }) => {
                 {/* Phase Goals */}
                 {phase.goals && phase.goals.length > 0 && (
                   <div>
-                    <div style={{ fontSize: '9px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>
+                    <div
+                      style={{
+                        fontSize: '9px',
+                        fontWeight: '600',
+                        color: '#374151',
+                        marginBottom: '6px',
+                      }}
+                    >
                       Key Goals & Milestones:
                     </div>
-                    <ul style={{ margin: '0', paddingLeft: '18px', fontSize: '9px', color: '#4b5563', lineHeight: '1.6' }}>
+                    <ul
+                      style={{
+                        margin: '0',
+                        paddingLeft: '18px',
+                        fontSize: '9px',
+                        color: '#4b5563',
+                        lineHeight: '1.6',
+                      }}
+                    >
                       {phase.goals.map((goal, goalIdx) => (
-                        <li key={goalIdx} style={{ marginBottom: '3px' }}>{safeRender(goal)}</li>
+                        <li key={goalIdx} style={{ marginBottom: '3px' }}>
+                          {safeRender(goal)}
+                        </li>
                       ))}
                     </ul>
                   </div>
@@ -1247,12 +1520,29 @@ const DetailedCareerRoadmapSection = ({ roadmap }) => {
                 {/* Phase Actions */}
                 {phase.actions && phase.actions.length > 0 && (
                   <div style={{ marginTop: '8px' }}>
-                    <div style={{ fontSize: '9px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>
+                    <div
+                      style={{
+                        fontSize: '9px',
+                        fontWeight: '600',
+                        color: '#374151',
+                        marginBottom: '6px',
+                      }}
+                    >
                       Action Steps:
                     </div>
-                    <ul style={{ margin: '0', paddingLeft: '18px', fontSize: '9px', color: '#4b5563', lineHeight: '1.6' }}>
+                    <ul
+                      style={{
+                        margin: '0',
+                        paddingLeft: '18px',
+                        fontSize: '9px',
+                        color: '#4b5563',
+                        lineHeight: '1.6',
+                      }}
+                    >
                       {phase.actions.map((action, actionIdx) => (
-                        <li key={actionIdx} style={{ marginBottom: '3px' }}>{safeRender(action)}</li>
+                        <li key={actionIdx} style={{ marginBottom: '3px' }}>
+                          {safeRender(action)}
+                        </li>
                       ))}
                     </ul>
                   </div>
@@ -1267,10 +1557,24 @@ const DetailedCareerRoadmapSection = ({ roadmap }) => {
       {roadmap.twelveMonthJourney && roadmap.twelveMonthJourney.length > 0 && (
         <div style={{ marginTop: '20px' }}>
           <h3 style={printStyles.subTitle}>12-Month Action Plan</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '8px' }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '10px',
+              marginTop: '8px',
+            }}
+          >
             {roadmap.twelveMonthJourney.map((item, idx) => (
               <div key={idx} style={printStyles.card}>
-                <div style={{ fontWeight: 'bold', fontSize: '9px', color: '#4f46e5', marginBottom: '4px' }}>
+                <div
+                  style={{
+                    fontWeight: 'bold',
+                    fontSize: '9px',
+                    color: '#4f46e5',
+                    marginBottom: '4px',
+                  }}
+                >
                   {safeRender(item.month || `Month ${idx + 1}`)}
                 </div>
                 <p style={{ fontSize: '9px', color: '#4b5563', margin: '0', lineHeight: '1.4' }}>
@@ -1289,11 +1593,25 @@ const DetailedCareerRoadmapSection = ({ roadmap }) => {
           <div style={printStyles.twoCol}>
             {roadmap.projects.map((project, idx) => (
               <div key={idx} style={printStyles.card}>
-                <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '4px' }}>
+                <div
+                  style={{
+                    fontWeight: 'bold',
+                    fontSize: '10px',
+                    color: '#1e293b',
+                    marginBottom: '4px',
+                  }}
+                >
                   {safeRender(project.name || project)}
                 </div>
                 {project.description && (
-                  <p style={{ fontSize: '9px', color: '#4b5563', margin: '0 0 6px 0', lineHeight: '1.4' }}>
+                  <p
+                    style={{
+                      fontSize: '9px',
+                      color: '#4b5563',
+                      margin: '0 0 6px 0',
+                      lineHeight: '1.4',
+                    }}
+                  >
                     {project.description}
                   </p>
                 )}
@@ -1315,10 +1633,25 @@ const DetailedCareerRoadmapSection = ({ roadmap }) => {
           <div style={printStyles.twoCol}>
             {roadmap.exposure.activities && roadmap.exposure.activities.length > 0 && (
               <div style={printStyles.card}>
-                <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '6px' }}>
+                <div
+                  style={{
+                    fontWeight: 'bold',
+                    fontSize: '10px',
+                    color: '#1e293b',
+                    marginBottom: '6px',
+                  }}
+                >
                   Activities to Pursue
                 </div>
-                <ul style={{ margin: '0', paddingLeft: '15px', fontSize: '9px', color: '#4b5563', lineHeight: '1.5' }}>
+                <ul
+                  style={{
+                    margin: '0',
+                    paddingLeft: '15px',
+                    fontSize: '9px',
+                    color: '#4b5563',
+                    lineHeight: '1.5',
+                  }}
+                >
                   {roadmap.exposure.activities.map((activity, idx) => (
                     <li key={idx}>{safeRender(activity)}</li>
                   ))}
@@ -1328,10 +1661,25 @@ const DetailedCareerRoadmapSection = ({ roadmap }) => {
 
             {roadmap.exposure.resources && roadmap.exposure.resources.length > 0 && (
               <div style={printStyles.card}>
-                <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '6px' }}>
+                <div
+                  style={{
+                    fontWeight: 'bold',
+                    fontSize: '10px',
+                    color: '#1e293b',
+                    marginBottom: '6px',
+                  }}
+                >
                   Learning Resources
                 </div>
-                <ul style={{ margin: '0', paddingLeft: '15px', fontSize: '9px', color: '#4b5563', lineHeight: '1.5' }}>
+                <ul
+                  style={{
+                    margin: '0',
+                    paddingLeft: '15px',
+                    fontSize: '9px',
+                    color: '#4b5563',
+                    lineHeight: '1.5',
+                  }}
+                >
                   {roadmap.exposure.resources.map((resource, idx) => (
                     <li key={idx}>{safeRender(resource)}</li>
                   ))}
@@ -1355,10 +1703,10 @@ const FinalRecommendationsSection = ({ overallSummary }) => {
 
   return (
     <div style={printStyles.finalBox}>
-      <h3 style={{ margin: '0 0 10px 0', fontSize: '12px', color: '#fbbf24' }}>Final Recommendations</h3>
-      <p style={{ margin: '0', fontSize: '10px', lineHeight: '1.6' }}>
-        {overallSummary}
-      </p>
+      <h3 style={{ margin: '0 0 10px 0', fontSize: '12px', color: '#fbbf24' }}>
+        Final Recommendations
+      </h3>
+      <p style={{ margin: '0', fontSize: '10px', lineHeight: '1.6' }}>{overallSummary}</p>
     </div>
   );
 };
@@ -1381,55 +1729,65 @@ const CourseRecommendationsSection = ({ courseRecommendations }) => {
     <>
       <h2 style={printStyles.sectionTitle}>Recommended Degree Programs</h2>
       <p style={{ fontSize: '10px', color: '#6b7280', marginBottom: '15px', lineHeight: '1.5' }}>
-        Based on your assessment results, interests, and aptitudes, here are the top degree programs that align with your profile:
+        Based on your assessment results, interests, and aptitudes, here are the top degree programs
+        that align with your profile:
       </p>
 
       {topCourses.map((course, index) => (
-        <div key={index} style={{ 
-          ...printStyles.card, 
-          marginBottom: '12px',
-          border: index === 0 ? '2px solid #3b82f6' : '1px solid #e5e7eb',
-          backgroundColor: index === 0 ? '#eff6ff' : '#ffffff'
-        }}>
+        <div
+          key={index}
+          style={{
+            ...printStyles.card,
+            marginBottom: '12px',
+            border: index === 0 ? '2px solid #3b82f6' : '1px solid #e5e7eb',
+            backgroundColor: index === 0 ? '#eff6ff' : '#ffffff',
+          }}
+        >
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
             {/* Rank Badge */}
-            <div style={{
-              width: '28px',
-              height: '28px',
-              borderRadius: '50%',
-              backgroundColor: index === 0 ? '#3b82f6' : index === 1 ? '#60a5fa' : '#93c5fd',
-              color: 'white',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 'bold',
-              fontSize: '12px',
-              flexShrink: 0
-            }}>
+            <div
+              style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: '50%',
+                backgroundColor: index === 0 ? '#3b82f6' : index === 1 ? '#60a5fa' : '#93c5fd',
+                color: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 'bold',
+                fontSize: '12px',
+                flexShrink: 0,
+              }}
+            >
               {index + 1}
             </div>
 
             <div style={{ flex: 1 }}>
               {/* Course Name */}
-              <div style={{ 
-                fontWeight: 'bold', 
-                fontSize: '11px', 
-                color: '#1e293b', 
-                marginBottom: '4px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}>
+              <div
+                style={{
+                  fontWeight: 'bold',
+                  fontSize: '11px',
+                  color: '#1e293b',
+                  marginBottom: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
                 {course.courseName}
                 {index === 0 && (
-                  <span style={{
-                    fontSize: '8px',
-                    backgroundColor: '#fbbf24',
-                    color: '#78350f',
-                    padding: '2px 6px',
-                    borderRadius: '4px',
-                    fontWeight: 'bold'
-                  }}>
+                  <span
+                    style={{
+                      fontSize: '8px',
+                      backgroundColor: '#fbbf24',
+                      color: '#78350f',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      fontWeight: 'bold',
+                    }}
+                  >
                     TOP PICK
                   </span>
                 )}
@@ -1437,33 +1795,39 @@ const CourseRecommendationsSection = ({ courseRecommendations }) => {
 
               {/* Category */}
               {course.category && (
-                <div style={{ 
-                  fontSize: '8px', 
-                  color: '#6b7280',
-                  marginBottom: '6px'
-                }}>
+                <div
+                  style={{
+                    fontSize: '8px',
+                    color: '#6b7280',
+                    marginBottom: '6px',
+                  }}
+                >
                   Category: {course.category}
                 </div>
               )}
 
               {/* Match Score */}
-              <div style={{ 
-                fontSize: '9px', 
-                color: '#059669',
-                fontWeight: '600',
-                marginBottom: '6px'
-              }}>
+              <div
+                style={{
+                  fontSize: '9px',
+                  color: '#059669',
+                  fontWeight: '600',
+                  marginBottom: '6px',
+                }}
+              >
                 Match Score: {Math.round(course.matchScore)}%
               </div>
 
               {/* Description */}
               {course.description && (
-                <p style={{ 
-                  fontSize: '9px', 
-                  color: '#4b5563', 
-                  lineHeight: '1.5',
-                  margin: '0 0 8px 0'
-                }}>
+                <p
+                  style={{
+                    fontSize: '9px',
+                    color: '#4b5563',
+                    lineHeight: '1.5',
+                    margin: '0 0 8px 0',
+                  }}
+                >
                   {course.description}
                 </p>
               )}
@@ -1471,21 +1835,25 @@ const CourseRecommendationsSection = ({ courseRecommendations }) => {
               {/* Reasons for Recommendation */}
               {course.reasons && course.reasons.length > 0 && (
                 <div style={{ marginTop: '8px' }}>
-                  <div style={{ 
-                    fontSize: '9px', 
-                    fontWeight: 'bold', 
-                    color: '#1e293b',
-                    marginBottom: '4px'
-                  }}>
+                  <div
+                    style={{
+                      fontSize: '9px',
+                      fontWeight: 'bold',
+                      color: '#1e293b',
+                      marginBottom: '4px',
+                    }}
+                  >
                     Why this program suits you:
                   </div>
-                  <ul style={{ 
-                    margin: '0', 
-                    paddingLeft: '15px', 
-                    fontSize: '8px', 
-                    color: '#4b5563', 
-                    lineHeight: '1.5' 
-                  }}>
+                  <ul
+                    style={{
+                      margin: '0',
+                      paddingLeft: '15px',
+                      fontSize: '8px',
+                      color: '#4b5563',
+                      lineHeight: '1.5',
+                    }}
+                  >
                     {course.reasons.slice(0, 3).map((reason, idx) => (
                       <li key={idx}>{reason}</li>
                     ))}
@@ -1497,17 +1865,20 @@ const CourseRecommendationsSection = ({ courseRecommendations }) => {
         </div>
       ))}
 
-      <div style={{ 
-        marginTop: '15px', 
-        padding: '10px', 
-        backgroundColor: '#f0f9ff', 
-        borderLeft: '3px solid #3b82f6',
-        fontSize: '9px',
-        color: '#1e40af',
-        lineHeight: '1.5'
-      }}>
-        <strong>Note:</strong> These recommendations are based on your assessment results. Consider exploring each program further, 
-        talking to professionals in these fields, and aligning them with your long-term career goals.
+      <div
+        style={{
+          marginTop: '15px',
+          padding: '10px',
+          backgroundColor: '#f0f9ff',
+          borderLeft: '3px solid #3b82f6',
+          fontSize: '9px',
+          color: '#1e40af',
+          lineHeight: '1.5',
+        }}
+      >
+        <strong>Note:</strong> These recommendations are based on your assessment results. Consider
+        exploring each program further, talking to professionals in these fields, and aligning them
+        with your long-term career goals.
       </div>
     </>
   );

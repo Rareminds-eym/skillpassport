@@ -12,12 +12,12 @@ interface ProjectListProps {
   onCreateProject?: () => void;
 }
 
-const ProjectList: React.FC<ProjectListProps> = ({ 
-  projects, 
+const ProjectList: React.FC<ProjectListProps> = ({
+  projects,
   loading = false,
   viewMode = 'grid',
   onViewProject,
-  onCreateProject
+  onCreateProject,
 }) => {
   if (loading) {
     return <LoadingSkeleton count={6} />;
@@ -40,20 +40,16 @@ const ProjectList: React.FC<ProjectListProps> = ({
   }
 
   return (
-    <div className={viewMode === 'grid' 
-      ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' 
-      : 'space-y-4'
-    }>
+    <div
+      className={
+        viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'
+      }
+    >
       {projects.map((project) => (
-        <ProjectCard
-          key={project.id}
-          project={project}
-          onView={onViewProject}
-        />
+        <ProjectCard key={project.id} project={project} onView={onViewProject} />
       ))}
     </div>
   );
 };
 
 export default ProjectList;
-

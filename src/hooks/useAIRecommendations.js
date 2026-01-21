@@ -10,11 +10,11 @@ import AIRecommendationService from '../services/aiRecommendationService';
  * @param {number} options.limit - Number of recommendations to fetch (default: 20)
  * @returns {Object} Hook state with recommendations, loading, error, and actions
  */
-export const useAIRecommendations = ({ 
-  studentId, 
-  enabled = true, 
+export const useAIRecommendations = ({
+  studentId,
+  enabled = true,
   autoFetch = true,
-  limit = 20 
+  limit = 20,
 } = {}) => {
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -25,36 +25,36 @@ export const useAIRecommendations = ({
   /**
    * Fetch recommendations from the service
    */
-  const fetchRecommendations = useCallback(async (forceRefresh = false) => {
-    if (!studentId || !enabled) {
-      setRecommendations([]);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      const result = await AIRecommendationService.getRecommendations(
-        studentId, 
-        forceRefresh
-      );
-
-      if (result.success) {
-        setRecommendations(result.recommendations || []);
-        setCached(result.cached || false);
-        setFallback(result.fallback || false);
-      } else {
-        throw new Error(result.error || 'Failed to fetch recommendations');
+  const fetchRecommendations = useCallback(
+    async (forceRefresh = false) => {
+      if (!studentId || !enabled) {
+        setRecommendations([]);
+        setLoading(false);
+        return;
       }
-    } catch (err) {
-      setError(err.message || 'Failed to fetch recommendations');
-      setRecommendations([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [studentId, enabled]);
+
+      try {
+        setLoading(true);
+        setError(null);
+
+        const result = await AIRecommendationService.getRecommendations(studentId, forceRefresh);
+
+        if (result.success) {
+          setRecommendations(result.recommendations || []);
+          setCached(result.cached || false);
+          setFallback(result.fallback || false);
+        } else {
+          throw new Error(result.error || 'Failed to fetch recommendations');
+        }
+      } catch (err) {
+        setError(err.message || 'Failed to fetch recommendations');
+        setRecommendations([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [studentId, enabled]
+  );
 
   /**
    * Refresh recommendations (bypass cache)
@@ -66,70 +66,70 @@ export const useAIRecommendations = ({
   /**
    * Track when user views an opportunity
    */
-  const trackView = useCallback(async (opportunityId) => {
-    if (!studentId) return;
-    
-    try {
-      await AIRecommendationService.trackInteraction(
-        studentId, 
-        opportunityId, 
-        'view'
-      );
-    } catch (err) {
-      console.error('Error tracking view:', err);
-    }
-  }, [studentId]);
+  const trackView = useCallback(
+    async (opportunityId) => {
+      if (!studentId) return;
+
+      try {
+        await AIRecommendationService.trackInteraction(studentId, opportunityId, 'view');
+      } catch (err) {
+        console.error('Error tracking view:', err);
+      }
+    },
+    [studentId]
+  );
 
   /**
    * Track when user saves an opportunity
    */
-  const trackSave = useCallback(async (opportunityId) => {
-    if (!studentId) return;
-    
-    try {
-      await AIRecommendationService.trackInteraction(
-        studentId, 
-        opportunityId, 
-        'save'
-      );
-    } catch (err) {
-      console.error('Error tracking save:', err);
-    }
-  }, [studentId]);
+  const trackSave = useCallback(
+    async (opportunityId) => {
+      if (!studentId) return;
+
+      try {
+        await AIRecommendationService.trackInteraction(studentId, opportunityId, 'save');
+      } catch (err) {
+        console.error('Error tracking save:', err);
+      }
+    },
+    [studentId]
+  );
 
   /**
    * Track when user applies to an opportunity
    */
-  const trackApply = useCallback(async (opportunityId) => {
-    if (!studentId) return;
-    
-    try {
-      await AIRecommendationService.trackInteraction(
-        studentId, 
-        opportunityId, 
-        'apply'
-      );
-      // Invalidate cache after apply
-      await AIRecommendationService.invalidateCache(studentId);
-    } catch (err) {
-      console.error('Error tracking apply:', err);
-    }
-  }, [studentId]);
+  const trackApply = useCallback(
+    async (opportunityId) => {
+      if (!studentId) return;
+
+      try {
+        await AIRecommendationService.trackInteraction(studentId, opportunityId, 'apply');
+        // Invalidate cache after apply
+        await AIRecommendationService.invalidateCache(studentId);
+      } catch (err) {
+        console.error('Error tracking apply:', err);
+      }
+    },
+    [studentId]
+  );
 
   /**
    * Dismiss an opportunity (won't show again)
    */
-  const dismissOpportunity = useCallback(async (opportunityId) => {
-    if (!studentId) return;
-    
-    try {
-      await AIRecommendationService.dismissOpportunity(studentId, opportunityId);
-      // Remove from current recommendations
-      setRecommendations(prev => prev.filter(rec => rec.id !== opportunityId));
-    } catch (err) {
-      console.error('Error dismissing opportunity:', err);
-    }
-  }, [studentId]);
+  const dismissOpportunity = useCallback(
+    async (opportunityId) => {
+      if (!studentId) return;
+
+      try {
+        await AIRecommendationService.dismissOpportunity(studentId, opportunityId);
+        // Remove from current recommendations
+        setRecommendations((prev) => prev.filter((rec) => rec.id !== opportunityId));
+      } catch (err) {
+        console.error('Error dismissing opportunity:', err);
+      }
+    },
+    [studentId]
+  );
 
   /**
    * Get match reasons for an opportunity
@@ -144,12 +144,12 @@ export const useAIRecommendations = ({
    */
   const generateStudentEmbedding = useCallback(async () => {
     if (!studentId) return;
-    
+
     try {
       setLoading(true);
-      
+
       const result = await AIRecommendationService.generateStudentEmbedding(studentId);
-      
+
       if (result.success) {
         // Fetch fresh recommendations after generating embedding
         await fetchRecommendations(true);
@@ -183,7 +183,7 @@ export const useAIRecommendations = ({
     trackApply,
     dismissOpportunity,
     getMatchReasons,
-    generateStudentEmbedding
+    generateStudentEmbedding,
   };
 };
 

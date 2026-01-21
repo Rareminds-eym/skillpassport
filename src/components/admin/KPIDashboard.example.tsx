@@ -1,6 +1,6 @@
 /**
  * KPI Dashboard Usage Examples
- * 
+ *
  * This file demonstrates how to use the KPI Dashboard components
  * in different scenarios for the School Admin Portal
  */
@@ -30,7 +30,7 @@ export const AdvancedKPIDashboardExample = () => {
   const handleKPIClick = (kpiType: string, data: any) => {
     console.log('KPI Clicked:', kpiType, data);
     setSelectedKPI({ type: kpiType, data });
-    
+
     // Navigate to detailed view or show modal
     // Example: router.push(`/admin/details/${kpiType}`);
   };
@@ -38,7 +38,7 @@ export const AdvancedKPIDashboardExample = () => {
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-6">School Admin Dashboard</h1>
-      
+
       <KPIDashboardAdvanced
         schoolId="your-school-id"
         refreshInterval={15 * 60 * 1000} // 15 minutes
@@ -64,7 +64,7 @@ export const FastRefreshDashboardExample = () => {
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-6">Real-Time Attendance Dashboard</h1>
-      <KPIDashboard 
+      <KPIDashboard
         schoolId="your-school-id"
         refreshInterval={5 * 60 * 1000} // 5 minutes for real-time attendance
       />
@@ -87,65 +87,65 @@ export const PrincipalDashboardExample = () => {
         setModalContent({
           title: 'Student Details',
           type: 'students',
-          data: data
+          data: data,
         });
         break;
-      
+
       case 'attendance':
         // Fetch attendance breakdown by class/section
         setModalContent({
           title: 'Attendance Breakdown',
           type: 'attendance',
-          data: data
+          data: data,
         });
         break;
-      
+
       case 'exams':
         // Fetch exam schedule
         setModalContent({
           title: 'Upcoming Exams',
           type: 'exams',
-          data: data
+          data: data,
         });
         break;
-      
+
       case 'assessments':
         // Fetch pending assessments list
         setModalContent({
           title: 'Pending Assessments',
           type: 'assessments',
-          data: data
+          data: data,
         });
         break;
-      
+
       case 'fees':
         // Fetch fee collection details
         setModalContent({
           title: 'Fee Collection Details',
           type: 'fees',
-          data: data
+          data: data,
         });
         break;
-      
+
       case 'career':
         // Fetch career readiness breakdown
         setModalContent({
           title: 'Career Readiness Analysis',
           type: 'career',
-          data: data
+          data: data,
         });
         break;
-      
+
       case 'library':
         // Fetch overdue books list
         setModalContent({
           title: 'Overdue Library Items',
           type: 'library',
-          data: data
+          data: data,
         });
         break;
     }
-    
+
     setShowDetailModal(true);
   };
 
@@ -153,9 +153,7 @@ export const PrincipalDashboardExample = () => {
     <div className="p-6">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Principal Dashboard</h1>
-        <p className="text-gray-600 mt-1">
-          Real-time overview of school operations
-        </p>
+        <p className="text-gray-600 mt-1">Real-time overview of school operations</p>
       </div>
 
       <KPIDashboardAdvanced
@@ -178,7 +176,7 @@ export const PrincipalDashboardExample = () => {
                 ✕
               </button>
             </div>
-            
+
             <div className="space-y-4">
               {/* Render detailed content based on type */}
               <pre className="bg-gray-50 p-4 rounded-lg text-sm">
@@ -197,7 +195,7 @@ export const PrincipalDashboardExample = () => {
 // ============================================================================
 export const MultiSchoolDashboardExample = () => {
   const [selectedSchool, setSelectedSchool] = useState('school-1');
-  
+
   const schools = [
     { id: 'school-1', name: 'Delhi Public School' },
     { id: 'school-2', name: 'Ryan International' },
@@ -208,13 +206,13 @@ export const MultiSchoolDashboardExample = () => {
     <div className="p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold mb-4">Multi-School Dashboard</h1>
-        
+
         <select
           value={selectedSchool}
           onChange={(e) => setSelectedSchool(e.target.value)}
           className="px-4 py-2 border border-gray-300 rounded-md"
         >
-          {schools.map(school => (
+          {schools.map((school) => (
             <option key={school.id} value={school.id}>
               {school.name}
             </option>
@@ -245,7 +243,7 @@ export const ExportableDashboardExample = () => {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">School Admin Dashboard</h1>
-        
+
         <button
           onClick={handleExportData}
           className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"

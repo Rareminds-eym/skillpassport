@@ -1,15 +1,15 @@
 import {
-    AlertCircle,
-    ArrowRight,
-    Building2,
-    CheckCircle,
-    Globe,
-    GraduationCap,
-    Landmark,
-    Loader2,
-    MapPin,
-    Phone,
-    School
+  AlertCircle,
+  ArrowRight,
+  Building2,
+  CheckCircle,
+  Globe,
+  GraduationCap,
+  Landmark,
+  Loader2,
+  MapPin,
+  Phone,
+  School,
 } from 'lucide-react';
 import React, { useState } from 'react';
 // @ts-ignore - AuthContext is a JS file
@@ -48,47 +48,58 @@ const OrganizationSetup: React.FC<OrganizationSetupProps> = ({ organizationType,
     email: user?.email || '',
     website: '',
   });
-  const [validationErrors, setValidationErrors] = useState<Partial<Record<keyof OrganizationFormData, string>>>({});
+  const [validationErrors, setValidationErrors] = useState<
+    Partial<Record<keyof OrganizationFormData, string>>
+  >({});
 
   const getOrganizationLabel = (): string => {
     switch (organizationType) {
-      case 'school': return 'School';
-      case 'college': return 'College';
-      case 'university': return 'University';
+      case 'school':
+        return 'School';
+      case 'college':
+        return 'College';
+      case 'university':
+        return 'University';
     }
   };
 
   const getIcon = () => {
     switch (organizationType) {
-      case 'school': return <School className="h-12 w-12 text-blue-600" />;
-      case 'college': return <GraduationCap className="h-12 w-12 text-purple-600" />;
-      case 'university': return <Landmark className="h-12 w-12 text-indigo-600" />;
+      case 'school':
+        return <School className="h-12 w-12 text-blue-600" />;
+      case 'college':
+        return <GraduationCap className="h-12 w-12 text-purple-600" />;
+      case 'university':
+        return <Landmark className="h-12 w-12 text-indigo-600" />;
     }
   };
 
   const getColorScheme = () => {
     switch (organizationType) {
-      case 'school': return { 
-        primary: 'blue', 
-        bg: 'bg-blue-50', 
-        border: 'border-blue-200', 
-        button: 'bg-blue-600 hover:bg-blue-700',
-        gradient: 'from-blue-600 to-blue-700'
-      };
-      case 'college': return { 
-        primary: 'purple', 
-        bg: 'bg-purple-50', 
-        border: 'border-purple-200', 
-        button: 'bg-purple-600 hover:bg-purple-700',
-        gradient: 'from-purple-600 to-purple-700'
-      };
-      case 'university': return { 
-        primary: 'indigo', 
-        bg: 'bg-indigo-50', 
-        border: 'border-indigo-200', 
-        button: 'bg-indigo-600 hover:bg-indigo-700',
-        gradient: 'from-indigo-600 to-indigo-700'
-      };
+      case 'school':
+        return {
+          primary: 'blue',
+          bg: 'bg-blue-50',
+          border: 'border-blue-200',
+          button: 'bg-blue-600 hover:bg-blue-700',
+          gradient: 'from-blue-600 to-blue-700',
+        };
+      case 'college':
+        return {
+          primary: 'purple',
+          bg: 'bg-purple-50',
+          border: 'border-purple-200',
+          button: 'bg-purple-600 hover:bg-purple-700',
+          gradient: 'from-purple-600 to-purple-700',
+        };
+      case 'university':
+        return {
+          primary: 'indigo',
+          bg: 'bg-indigo-50',
+          border: 'border-indigo-200',
+          button: 'bg-indigo-600 hover:bg-indigo-700',
+          gradient: 'from-indigo-600 to-indigo-700',
+        };
     }
   };
 
@@ -129,16 +140,16 @@ const OrganizationSetup: React.FC<OrganizationSetupProps> = ({ organizationType,
   };
 
   const handleInputChange = (field: keyof OrganizationFormData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
     // Clear validation error when user starts typing
     if (validationErrors[field]) {
-      setValidationErrors(prev => ({ ...prev, [field]: undefined }));
+      setValidationErrors((prev) => ({ ...prev, [field]: undefined }));
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -166,7 +177,9 @@ const OrganizationSetup: React.FC<OrganizationSetupProps> = ({ organizationType,
       }
 
       if (existingOrg) {
-        setValidationErrors({ name: `A ${getOrganizationLabel().toLowerCase()} with this name already exists` });
+        setValidationErrors({
+          name: `A ${getOrganizationLabel().toLowerCase()} with this name already exists`,
+        });
         setStep('form');
         return;
       }
@@ -190,7 +203,9 @@ const OrganizationSetup: React.FC<OrganizationSetupProps> = ({ organizationType,
         .single();
 
       if (createError) {
-        throw new Error(`Failed to create ${getOrganizationLabel().toLowerCase()}: ${createError.message}`);
+        throw new Error(
+          `Failed to create ${getOrganizationLabel().toLowerCase()}: ${createError.message}`
+        );
       }
 
       console.log(`[OrganizationSetup] ${getOrganizationLabel()} created successfully:`, newOrg.id);
@@ -200,7 +215,6 @@ const OrganizationSetup: React.FC<OrganizationSetupProps> = ({ organizationType,
       setTimeout(() => {
         onComplete();
       }, 2000);
-
     } catch (err) {
       console.error('[OrganizationSetup] Error creating organization:', err);
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
@@ -215,7 +229,9 @@ const OrganizationSetup: React.FC<OrganizationSetupProps> = ({ organizationType,
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <Loader2 className={`h-16 w-16 animate-spin text-${colors.primary}-600 mx-auto mb-4`} />
-          <h2 className="text-xl font-semibold text-gray-900">Creating your {getOrganizationLabel().toLowerCase()}...</h2>
+          <h2 className="text-xl font-semibold text-gray-900">
+            Creating your {getOrganizationLabel().toLowerCase()}...
+          </h2>
           <p className="text-gray-500 mt-2">Please wait while we set everything up</p>
         </div>
       </div>
@@ -227,7 +243,9 @@ const OrganizationSetup: React.FC<OrganizationSetupProps> = ({ organizationType,
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900">{getOrganizationLabel()} Created Successfully!</h2>
+          <h2 className="text-xl font-semibold text-gray-900">
+            {getOrganizationLabel()} Created Successfully!
+          </h2>
           <p className="text-gray-500 mt-2">Redirecting to your dashboard...</p>
         </div>
       </div>
@@ -259,12 +277,15 @@ const OrganizationSetup: React.FC<OrganizationSetupProps> = ({ organizationType,
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full ${colors.bg} mb-4`}>
+          <div
+            className={`inline-flex items-center justify-center w-20 h-20 rounded-full ${colors.bg} mb-4`}
+          >
             {getIcon()}
           </div>
           <h1 className="text-3xl font-bold text-gray-900">Set Up Your {getOrganizationLabel()}</h1>
           <p className="mt-2 text-gray-600 max-w-lg mx-auto">
-            Welcome! Before you can access your dashboard, please provide some basic information about your {getOrganizationLabel().toLowerCase()}.
+            Welcome! Before you can access your dashboard, please provide some basic information
+            about your {getOrganizationLabel().toLowerCase()}.
           </p>
         </div>
 

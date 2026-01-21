@@ -1,5 +1,10 @@
 import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react';
-import { XMarkIcon, CheckCircleIcon, ExclamationCircleIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
+import {
+  XMarkIcon,
+  CheckCircleIcon,
+  ExclamationCircleIcon,
+  InformationCircleIcon,
+} from '@heroicons/react/24/outline';
 
 type ToastType = 'success' | 'error' | 'info' | 'warning';
 
@@ -32,7 +37,7 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const addToast = (type: ToastType, title: string, message?: string, duration: number = 5000) => {
     const id = `toast-${Date.now()}-${Math.random()}`;
     const newToast: Toast = { id, type, title, message, duration };
-    
+
     setToasts((prev) => [...prev, newToast]);
 
     if (duration > 0) {
@@ -54,7 +59,10 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   );
 };
 
-const ToastContainer: React.FC<{ toasts: Toast[]; onRemove: (id: string) => void }> = ({ toasts, onRemove }) => {
+const ToastContainer: React.FC<{ toasts: Toast[]; onRemove: (id: string) => void }> = ({
+  toasts,
+  onRemove,
+}) => {
   return (
     <div className="fixed top-4 right-4 z-50 space-y-3 max-w-md">
       {toasts.map((toast) => (
@@ -64,7 +72,10 @@ const ToastContainer: React.FC<{ toasts: Toast[]; onRemove: (id: string) => void
   );
 };
 
-const ToastItem: React.FC<{ toast: Toast; onRemove: (id: string) => void }> = ({ toast, onRemove }) => {
+const ToastItem: React.FC<{ toast: Toast; onRemove: (id: string) => void }> = ({
+  toast,
+  onRemove,
+}) => {
   const [isExiting, setIsExiting] = useState(false);
 
   const handleClose = () => {
@@ -128,4 +139,3 @@ style.textContent = `
   }
 `;
 document.head.appendChild(style);
-

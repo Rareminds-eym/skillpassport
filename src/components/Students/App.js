@@ -1,26 +1,26 @@
-import React, { useState } from "react";
-import "./App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Header from "./components/Header";
-import HeroSection from "./components/HeroSection";
-import ProfileHeroEdit from "./components/ProfileHeroEdit";
-import Dashboard from "./components/Dashboard";
-import ProfileEditSection from "./components/ProfileEditSection";
-import Footer from "./components/Footer";
-import { Toaster } from "./components/ui/toaster";
-import CertificatesDemo from "./components/CertificatesDemo";
+import React, { useState } from 'react';
+import './App.css';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Header from './components/Header';
+import HeroSection from './components/HeroSection';
+import ProfileHeroEdit from './components/ProfileHeroEdit';
+import Dashboard from './components/Dashboard';
+import ProfileEditSection from './components/ProfileEditSection';
+import Footer from './components/Footer';
+import { Toaster } from './components/ui/toaster';
+import CertificatesDemo from './components/CertificatesDemo';
 import {
   EducationEditModal,
   TrainingEditModal,
   ExperienceEditModal,
-  SkillsEditModal
+  SkillsEditModal,
 } from './components/ProfileEditModals';
 import {
   educationData,
   trainingData,
   experienceData,
   technicalSkills,
-  softSkills
+  softSkills,
 } from './data/mockData';
 
 const SkillPassportDashboard = () => {
@@ -31,13 +31,13 @@ const SkillPassportDashboard = () => {
     training: trainingData,
     experience: experienceData,
     technicalSkills: technicalSkills,
-    softSkills: softSkills
+    softSkills: softSkills,
   });
 
   const handleSave = (section, data) => {
-    setUserData(prev => ({
+    setUserData((prev) => ({
       ...prev,
-      [section]: data
+      [section]: data,
     }));
   };
 

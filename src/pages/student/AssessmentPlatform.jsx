@@ -17,8 +17,8 @@ const AssessmentPlatform = () => {
         state: {
           assessmentCompleted: true,
           showResults: true,
-          results: results
-        }
+          results: results,
+        },
       });
     } else {
       // User exited without completing

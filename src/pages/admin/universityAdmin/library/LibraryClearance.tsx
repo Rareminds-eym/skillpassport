@@ -8,14 +8,7 @@ import {
   DocumentTextIcon,
   BuildingLibraryIcon,
 } from '@heroicons/react/24/outline';
-import {
-  Users,
-  Filter,
-  Search,
-  Book,
-  Calendar,
-  GraduationCap,
-} from 'lucide-react';
+import { Users, Filter, Search, Book, Calendar, GraduationCap } from 'lucide-react';
 import KPICard from '../../../../components/admin/KPICard';
 
 const LibraryClearance = () => {
@@ -82,42 +75,53 @@ const LibraryClearance = () => {
   // KPI Data for consistent theming
   const kpiData = [
     {
-      title: "Total Requests",
-      value: "291",
+      title: 'Total Requests',
+      value: '291',
       change: 12,
-      changeLabel: "vs last month",
+      changeLabel: 'vs last month',
       icon: <DocumentTextIcon className="h-6 w-6" />,
-      color: "blue" as const,
+      color: 'blue' as const,
     },
     {
-      title: "Pending Clearances",
-      value: "45",
+      title: 'Pending Clearances',
+      value: '45',
       change: 8,
-      changeLabel: "awaiting review",
+      changeLabel: 'awaiting review',
       icon: <ClockIcon className="h-6 w-6" />,
-      color: "yellow" as const,
+      color: 'yellow' as const,
     },
     {
-      title: "Approved Today",
-      value: "23",
+      title: 'Approved Today',
+      value: '23',
       change: 15,
-      changeLabel: "processed today",
+      changeLabel: 'processed today',
       icon: <CheckCircleIcon className="h-6 w-6" />,
-      color: "green" as const,
+      color: 'green' as const,
     },
     {
-      title: "Avg Processing Time",
-      value: "2.3 days",
+      title: 'Avg Processing Time',
+      value: '2.3 days',
       change: -10,
-      changeLabel: "faster than before",
+      changeLabel: 'faster than before',
       icon: <Calendar className="h-6 w-6" />,
-      color: "purple" as const,
+      color: 'purple' as const,
     },
   ];
 
   // Filter options
-  const colleges = ['All Colleges', 'Engineering College A', 'Arts & Science College B', 'Medical College C'];
-  const programs = ['All Programs', 'B.Tech Computer Science', 'M.Sc Physics', 'B.Tech Mechanical', 'MBBS'];
+  const colleges = [
+    'All Colleges',
+    'Engineering College A',
+    'Arts & Science College B',
+    'Medical College C',
+  ];
+  const programs = [
+    'All Programs',
+    'B.Tech Computer Science',
+    'M.Sc Physics',
+    'B.Tech Mechanical',
+    'MBBS',
+  ];
   const statuses = ['All Status', 'pending', 'approved', 'rejected'];
 
   const getStatusColor = (status: string) => {
@@ -146,20 +150,27 @@ const LibraryClearance = () => {
     }
   };
 
-  const filteredRequests = clearanceRequests.filter(request => {
+  const filteredRequests = clearanceRequests.filter((request) => {
     const matchesTab = activeTab === 'graduation' || request.status === activeTab;
-    const matchesSearch = request.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         request.studentId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         request.college.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCollege = !filterCollege || filterCollege === 'All Colleges' || request.college === filterCollege;
-    const matchesProgram = !filterProgram || filterProgram === 'All Programs' || request.program === filterProgram;
-    const matchesStatus = !filterStatus || filterStatus === 'All Status' || request.status === filterStatus;
-    
+    const matchesSearch =
+      request.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.studentId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.college.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCollege =
+      !filterCollege || filterCollege === 'All Colleges' || request.college === filterCollege;
+    const matchesProgram =
+      !filterProgram || filterProgram === 'All Programs' || request.program === filterProgram;
+    const matchesStatus =
+      !filterStatus || filterStatus === 'All Status' || request.status === filterStatus;
+
     return matchesTab && matchesSearch && matchesCollege && matchesProgram && matchesStatus;
   });
 
   const renderClearanceCard = (request: any) => (
-    <div key={request.id} className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md hover:border-purple-300 transition-all duration-200">
+    <div
+      key={request.id}
+      className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md hover:border-purple-300 transition-all duration-200"
+    >
       <div className="flex justify-between items-start mb-4">
         <div className="flex items-center gap-3">
           <div className="p-3 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-xl">
@@ -172,7 +183,9 @@ const LibraryClearance = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className={`inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(request.status)}`}>
+          <span
+            className={`inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(request.status)}`}
+          >
             {getStatusIcon(request.status)}
             {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
           </span>
@@ -190,13 +203,17 @@ const LibraryClearance = () => {
         </div>
         <div>
           <p className="text-sm font-medium text-gray-700">Books Issued</p>
-          <p className={`text-sm font-bold ${request.booksIssued > 0 ? 'text-red-600' : 'text-green-600'}`}>
+          <p
+            className={`text-sm font-bold ${request.booksIssued > 0 ? 'text-red-600' : 'text-green-600'}`}
+          >
             {request.booksIssued}
           </p>
         </div>
         <div>
           <p className="text-sm font-medium text-gray-700">Fine Amount</p>
-          <p className={`text-sm font-bold ${request.fineAmount > 0 ? 'text-red-600' : 'text-green-600'}`}>
+          <p
+            className={`text-sm font-bold ${request.fineAmount > 0 ? 'text-red-600' : 'text-green-600'}`}
+          >
             ₹{request.fineAmount}
           </p>
         </div>
@@ -206,7 +223,10 @@ const LibraryClearance = () => {
         <p className="text-sm font-medium text-gray-700 mb-2">Documents Submitted</p>
         <div className="flex flex-wrap gap-2">
           {request.documents.map((doc: string, index: number) => (
-            <span key={index} className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full border border-blue-200">
+            <span
+              key={index}
+              className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full border border-blue-200"
+            >
               <DocumentTextIcon className="h-3 w-3" />
               {doc}
             </span>
@@ -246,13 +266,17 @@ const LibraryClearance = () => {
   const renderGraduationIntegration = () => (
     <div className="space-y-6">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Graduation Integration Settings</h3>
-        
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">
+          Graduation Integration Settings
+        </h3>
+
         <div className="space-y-4">
           <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
             <div>
               <h4 className="font-semibold text-blue-900">Library Clearance Integration</h4>
-              <p className="text-sm text-blue-700">Automatically integrate library clearance with graduation process</p>
+              <p className="text-sm text-blue-700">
+                Automatically integrate library clearance with graduation process
+              </p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" className="sr-only peer" defaultChecked />
@@ -294,7 +318,9 @@ const LibraryClearance = () => {
         <div className="text-center py-8 text-gray-500">
           <GraduationCap className="h-12 w-12 mx-auto mb-4 text-gray-300" />
           <p className="font-medium">Graduation integration dashboard will be implemented here</p>
-          <p className="text-sm">Features: Batch processing, Clearance status tracking, Automated notifications</p>
+          <p className="text-sm">
+            Features: Batch processing, Clearance status tracking, Automated notifications
+          </p>
         </div>
       </div>
     </div>
@@ -308,7 +334,8 @@ const LibraryClearance = () => {
           Library Clearance
         </h1>
         <p className="text-gray-600 mt-2">
-          Manage library clearances for graduation and student services across all affiliated colleges
+          Manage library clearances for graduation and student services across all affiliated
+          colleges
         </p>
       </div>
 
@@ -360,7 +387,7 @@ const LibraryClearance = () => {
                   className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                 />
               </div>
-              <button 
+              <button
                 onClick={() => setShowFilters(!showFilters)}
                 className={`px-6 py-2.5 border border-gray-300 rounded-xl hover:bg-gray-50 flex items-center gap-2 font-medium transition-all duration-200 ${
                   showFilters ? 'bg-purple-50 border-purple-300 text-purple-700' : ''
@@ -386,7 +413,7 @@ const LibraryClearance = () => {
                     onChange={(e) => setFilterCollege(e.target.value)}
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                   >
-                    {colleges.map(college => (
+                    {colleges.map((college) => (
                       <option key={college} value={college === 'All Colleges' ? '' : college}>
                         {college}
                       </option>
@@ -400,7 +427,7 @@ const LibraryClearance = () => {
                     onChange={(e) => setFilterProgram(e.target.value)}
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                   >
-                    {programs.map(program => (
+                    {programs.map((program) => (
                       <option key={program} value={program === 'All Programs' ? '' : program}>
                         {program}
                       </option>
@@ -414,9 +441,11 @@ const LibraryClearance = () => {
                     onChange={(e) => setFilterStatus(e.target.value)}
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                   >
-                    {statuses.map(status => (
+                    {statuses.map((status) => (
                       <option key={status} value={status === 'All Status' ? '' : status}>
-                        {status === 'All Status' ? status : status.charAt(0).toUpperCase() + status.slice(1)}
+                        {status === 'All Status'
+                          ? status
+                          : status.charAt(0).toUpperCase() + status.slice(1)}
                       </option>
                     ))}
                   </select>

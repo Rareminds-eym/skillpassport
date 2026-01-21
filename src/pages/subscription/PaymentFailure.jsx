@@ -1,19 +1,22 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { 
-  XCircle, 
-  RefreshCw, 
-  HelpCircle, 
-  ArrowLeft, 
-  Phone, 
+import {
+  XCircle,
+  RefreshCw,
+  HelpCircle,
+  ArrowLeft,
+  Phone,
   Mail,
   AlertTriangle,
   CreditCard,
   Wifi,
   Building2,
-  ShieldAlert
+  ShieldAlert,
 } from 'lucide-react';
-import { extractPaymentParams, logFailedTransaction } from '../../services/Subscriptions/paymentVerificationService';
+import {
+  extractPaymentParams,
+  logFailedTransaction,
+} from '../../services/Subscriptions/paymentVerificationService';
 import useAuth from '../../hooks/useAuth';
 
 // Issue Card Component
@@ -37,12 +40,14 @@ function PaymentFailure() {
   const [showSupportModal, setShowSupportModal] = useState(false);
 
   const paymentParams = useMemo(() => extractPaymentParams(searchParams), [searchParams]);
-  
+
   const failureReason = useMemo(() => {
-    return paymentParams.error_description || 
-           paymentParams.error_reason || 
-           searchParams.get('reason') ||
-           'Payment could not be completed';
+    return (
+      paymentParams.error_description ||
+      paymentParams.error_reason ||
+      searchParams.get('reason') ||
+      'Payment could not be completed'
+    );
   }, [paymentParams, searchParams]);
 
   const errorCode = useMemo(() => {
@@ -50,10 +55,12 @@ function PaymentFailure() {
   }, [paymentParams, searchParams]);
 
   const transactionReference = useMemo(() => {
-    return paymentParams.razorpay_order_id || 
-           paymentParams.razorpay_payment_id || 
-           searchParams.get('reference') ||
-           `REF-${Date.now()}`;
+    return (
+      paymentParams.razorpay_order_id ||
+      paymentParams.razorpay_payment_id ||
+      searchParams.get('reference') ||
+      `REF-${Date.now()}`
+    );
   }, [paymentParams, searchParams]);
 
   const planDetails = useMemo(() => {
@@ -74,7 +81,7 @@ function PaymentFailure() {
           amount: planDetails?.price || 0,
           currency: 'INR',
           error: failureReason,
-          error_description: paymentParams.error_description
+          error_description: paymentParams.error_description,
         });
       }
     };
@@ -83,29 +90,29 @@ function PaymentFailure() {
 
   const getUserFriendlyMessage = (code) => {
     const messages = {
-      'BAD_REQUEST_ERROR': 'There was an issue with the payment request. Please try again.',
-      'GATEWAY_ERROR': 'Payment gateway is temporarily unavailable. Please try again later.',
-      'SERVER_ERROR': 'Our servers encountered an error. Please try again.',
-      'PAYMENT_CANCELLED': 'You cancelled the payment.',
-      'PAYMENT_FAILED': 'Payment could not be processed.',
-      'INSUFFICIENT_FUNDS': 'Insufficient funds in your account.',
-      'CARD_DECLINED': 'Your card was declined. Please try a different payment method.',
-      'INVALID_CARD': 'Invalid card details. Please check and try again.',
-      'EXPIRED_CARD': 'Your card has expired. Please use a different card.',
-      'NETWORK_ERROR': 'Network connection issue. Please check your internet and try again.'
+      BAD_REQUEST_ERROR: 'There was an issue with the payment request. Please try again.',
+      GATEWAY_ERROR: 'Payment gateway is temporarily unavailable. Please try again later.',
+      SERVER_ERROR: 'Our servers encountered an error. Please try again.',
+      PAYMENT_CANCELLED: 'You cancelled the payment.',
+      PAYMENT_FAILED: 'Payment could not be processed.',
+      INSUFFICIENT_FUNDS: 'Insufficient funds in your account.',
+      CARD_DECLINED: 'Your card was declined. Please try a different payment method.',
+      INVALID_CARD: 'Invalid card details. Please check and try again.',
+      EXPIRED_CARD: 'Your card has expired. Please use a different card.',
+      NETWORK_ERROR: 'Network connection issue. Please check your internet and try again.',
     };
     return messages[code] || 'Payment could not be completed. Please try again.';
   };
 
   const handleRetry = () => {
-    setRetryAttempts(prev => prev + 1);
+    setRetryAttempts((prev) => prev + 1);
     if (planDetails) {
       navigate('/subscription/payment', {
         state: {
           plan: planDetails,
           studentType: planDetails.studentType || 'student',
-          retryAttempt: retryAttempts + 1
-        }
+          retryAttempt: retryAttempts + 1,
+        },
       });
     } else {
       // Include user role type for proper plan display
@@ -115,10 +122,26 @@ function PaymentFailure() {
   };
 
   const commonIssues = [
-    { icon: CreditCard, title: 'Insufficient Funds', description: 'Ensure your account has sufficient balance or credit limit.' },
-    { icon: ShieldAlert, title: 'Card Details', description: 'Double-check your card number, expiry date, and CVV.' },
-    { icon: Wifi, title: 'Network Issues', description: 'Check your internet connection and try again.' },
-    { icon: Building2, title: 'Bank Restrictions', description: 'Some banks block online transactions. Contact your bank.' }
+    {
+      icon: CreditCard,
+      title: 'Insufficient Funds',
+      description: 'Ensure your account has sufficient balance or credit limit.',
+    },
+    {
+      icon: ShieldAlert,
+      title: 'Card Details',
+      description: 'Double-check your card number, expiry date, and CVV.',
+    },
+    {
+      icon: Wifi,
+      title: 'Network Issues',
+      description: 'Check your internet connection and try again.',
+    },
+    {
+      icon: Building2,
+      title: 'Bank Restrictions',
+      description: 'Some banks block online transactions. Contact your bank.',
+    },
   ];
 
   return (
@@ -156,7 +179,9 @@ function PaymentFailure() {
                   <p className="text-sm text-slate-600 mb-3">{failureReason}</p>
                   <div className="flex items-center gap-2 text-xs">
                     <span className="text-slate-500">Reference:</span>
-                    <code className="px-2 py-1 bg-white rounded font-mono text-slate-700">{transactionReference.slice(-12)}</code>
+                    <code className="px-2 py-1 bg-white rounded font-mono text-slate-700">
+                      {transactionReference.slice(-12)}
+                    </code>
                   </div>
                 </div>
               </div>
@@ -210,8 +235,8 @@ function PaymentFailure() {
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
                 <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                 <p className="text-sm text-amber-800">
-                  You've attempted payment {retryAttempts} time{retryAttempts > 1 ? 's' : ''}. 
-                  If issues persist, please contact support.
+                  You've attempted payment {retryAttempts} time{retryAttempts > 1 ? 's' : ''}. If
+                  issues persist, please contact support.
                 </p>
               </div>
             )}
@@ -220,7 +245,13 @@ function PaymentFailure() {
 
         {/* Help Text */}
         <p className="mt-6 text-center text-sm text-slate-500">
-          Having trouble? <button onClick={() => setShowSupportModal(true)} className="text-indigo-600 font-medium hover:text-indigo-700">Contact Support</button>
+          Having trouble?{' '}
+          <button
+            onClick={() => setShowSupportModal(true)}
+            className="text-indigo-600 font-medium hover:text-indigo-700"
+          >
+            Contact Support
+          </button>
         </p>
       </div>
 
@@ -235,10 +266,10 @@ function PaymentFailure() {
               <h2 className="text-2xl font-bold text-slate-900">Contact Support</h2>
               <p className="text-slate-500 mt-2">Our team is ready to help you</p>
             </div>
-            
+
             <div className="space-y-3 mb-6">
-              <a 
-                href="mailto:support@rareminds.com" 
+              <a
+                href="mailto:support@rareminds.com"
                 className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl hover:bg-indigo-50 transition-colors group"
               >
                 <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow">
@@ -249,9 +280,9 @@ function PaymentFailure() {
                   <p className="text-sm text-indigo-600">support@rareminds.com</p>
                 </div>
               </a>
-              
-              <a 
-                href="tel:+911234567890" 
+
+              <a
+                href="tel:+911234567890"
                 className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl hover:bg-indigo-50 transition-colors group"
               >
                 <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow">
@@ -266,8 +297,12 @@ function PaymentFailure() {
 
             <div className="bg-indigo-50 rounded-xl p-4 mb-6">
               <p className="text-xs text-indigo-700 font-medium mb-1">Transaction Reference</p>
-              <code className="text-sm font-mono text-indigo-900 break-all">{transactionReference}</code>
-              <p className="text-xs text-indigo-600 mt-2">Please share this when contacting support</p>
+              <code className="text-sm font-mono text-indigo-900 break-all">
+                {transactionReference}
+              </code>
+              <p className="text-xs text-indigo-600 mt-2">
+                Please share this when contacting support
+              </p>
             </div>
 
             <button

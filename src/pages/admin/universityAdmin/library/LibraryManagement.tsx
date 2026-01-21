@@ -1,10 +1,5 @@
 import { useState, useEffect } from 'react';
-import {
-  BuildingLibraryIcon,
-  BookOpenIcon,
-  EyeIcon,
-  TrashIcon,
-} from '@heroicons/react/24/outline';
+import { BuildingLibraryIcon, BookOpenIcon, EyeIcon, TrashIcon } from '@heroicons/react/24/outline';
 import {
   Users,
   AlertTriangle,
@@ -16,14 +11,19 @@ import {
   Search,
   Book,
 } from 'lucide-react';
-import { libraryService, LibraryBook, LibraryBookIssue, LibraryStats } from '../../../../services/libraryService';
+import {
+  libraryService,
+  LibraryBook,
+  LibraryBookIssue,
+  LibraryStats,
+} from '../../../../services/libraryService';
 import KPICard from '../../../../components/admin/KPICard';
 
 const LibraryManagement = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
-  
+
   // Data states
   const [stats, setStats] = useState<LibraryStats | null>(null);
   const [books, setBooks] = useState<LibraryBook[]>([]);
@@ -45,7 +45,7 @@ const LibraryManagement = () => {
 
   const loadData = async () => {
     setLoading(true);
-    
+
     try {
       // Load stats for overview
       if (activeTab === 'overview') {
@@ -54,29 +54,28 @@ const LibraryManagement = () => {
           libraryService.getBookIssues({ limit: 10 }),
           libraryService.getOverdueBooks(),
         ]);
-        
+
         setStats(statsData);
         setIssues(recentIssues.issues);
         setOverdueBooks(overdueData);
       }
-      
+
       // Load books for book management
       if (activeTab === 'books') {
         const [booksData, categoriesData] = await Promise.all([
           libraryService.getBooks({ limit: 50 }),
           libraryService.getCategories(),
         ]);
-        
+
         setBooks(booksData.books);
         setCategories(categoriesData);
       }
-      
+
       // Load transactions
       if (activeTab === 'transactions') {
         const issuesData = await libraryService.getBookIssues({ limit: 50 });
         setIssues(issuesData.issues);
       }
-      
     } catch (err) {
       console.error('Failed to load data:', err);
     } finally {
@@ -86,7 +85,7 @@ const LibraryManagement = () => {
 
   const handleDeleteBook = async (bookId: string) => {
     if (!confirm('Are you sure you want to delete this book?')) return;
-    
+
     try {
       setLoading(true);
       await libraryService.deleteBook(bookId);
@@ -117,40 +116,42 @@ ${issue.fine_amount ? `Fine Amount: ₹${issue.fine_amount}` : ''}`);
   };
 
   // KPI Data based on stats
-  const kpiData = stats ? [
-    {
-      title: "Total Books",
-      value: stats.total_books.toLocaleString(),
-      change: 0,
-      changeLabel: "unique titles",
-      icon: <Book className="h-6 w-6" />,
-      color: "blue" as const,
-    },
-    {
-      title: "Total Copies",
-      value: stats.total_copies.toLocaleString(),
-      change: 0,
-      changeLabel: "physical copies",
-      icon: <BookOpenIcon className="h-6 w-6" />,
-      color: "green" as const,
-    },
-    {
-      title: "Currently Issued",
-      value: stats.currently_issued.toLocaleString(),
-      change: 0,
-      changeLabel: "books in circulation",
-      icon: <Users className="h-6 w-6" />,
-      color: "purple" as const,
-    },
-    {
-      title: "Overdue Books",
-      value: stats.overdue_count.toLocaleString(),
-      change: 0,
-      changeLabel: "need attention",
-      icon: <AlertTriangle className="h-6 w-6" />,
-      color: "yellow" as const,
-    },
-  ] : [];
+  const kpiData = stats
+    ? [
+        {
+          title: 'Total Books',
+          value: stats.total_books.toLocaleString(),
+          change: 0,
+          changeLabel: 'unique titles',
+          icon: <Book className="h-6 w-6" />,
+          color: 'blue' as const,
+        },
+        {
+          title: 'Total Copies',
+          value: stats.total_copies.toLocaleString(),
+          change: 0,
+          changeLabel: 'physical copies',
+          icon: <BookOpenIcon className="h-6 w-6" />,
+          color: 'green' as const,
+        },
+        {
+          title: 'Currently Issued',
+          value: stats.currently_issued.toLocaleString(),
+          change: 0,
+          changeLabel: 'books in circulation',
+          icon: <Users className="h-6 w-6" />,
+          color: 'purple' as const,
+        },
+        {
+          title: 'Overdue Books',
+          value: stats.overdue_count.toLocaleString(),
+          change: 0,
+          changeLabel: 'need attention',
+          icon: <AlertTriangle className="h-6 w-6" />,
+          color: 'yellow' as const,
+        },
+      ]
+    : [];
 
   const renderOverview = () => (
     <div className="space-y-6">
@@ -167,7 +168,7 @@ ${issue.fine_amount ? `Fine Amount: ₹${issue.fine_amount}` : ''}`);
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-gray-800">Recent Transactions</h3>
-            <button 
+            <button
               onClick={() => setActiveTab('transactions')}
               className="text-sm text-purple-600 hover:text-purple-700 font-medium"
             >
@@ -176,16 +177,29 @@ ${issue.fine_amount ? `Fine Amount: ₹${issue.fine_amount}` : ''}`);
           </div>
           <div className="space-y-4">
             {issues.slice(0, 5).map((issue) => (
-              <div key={issue.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div
+                key={issue.id}
+                className="flex items-center justify-between p-4 bg-gray-50 rounded-xl"
+              >
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${
-                    issue.status === 'issued' ? 'bg-blue-100' :
-                    issue.status === 'returned' ? 'bg-green-100' : 'bg-red-100'
-                  }`}>
-                    <Book className={`h-4 w-4 ${
-                      issue.status === 'issued' ? 'text-blue-600' :
-                      issue.status === 'returned' ? 'text-green-600' : 'text-red-600'
-                    }`} />
+                  <div
+                    className={`p-2 rounded-lg ${
+                      issue.status === 'issued'
+                        ? 'bg-blue-100'
+                        : issue.status === 'returned'
+                          ? 'bg-green-100'
+                          : 'bg-red-100'
+                    }`}
+                  >
+                    <Book
+                      className={`h-4 w-4 ${
+                        issue.status === 'issued'
+                          ? 'text-blue-600'
+                          : issue.status === 'returned'
+                            ? 'text-green-600'
+                            : 'text-red-600'
+                      }`}
+                    />
                   </div>
                   <div>
                     <p className="font-medium text-gray-900">{issue.student_name}</p>
@@ -194,11 +208,15 @@ ${issue.fine_amount ? `Fine Amount: ₹${issue.fine_amount}` : ''}`);
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-medium text-gray-900">{issue.issue_date}</p>
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                    issue.status === 'issued' ? 'bg-blue-100 text-blue-800' :
-                    issue.status === 'returned' ? 'bg-green-100 text-green-800' :
-                    'bg-red-100 text-red-800'
-                  }`}>
+                  <span
+                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      issue.status === 'issued'
+                        ? 'bg-blue-100 text-blue-800'
+                        : issue.status === 'returned'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800'
+                    }`}
+                  >
                     {issue.status}
                   </span>
                 </div>
@@ -215,7 +233,10 @@ ${issue.fine_amount ? `Fine Amount: ₹${issue.fine_amount}` : ''}`);
           </div>
           <div className="space-y-4">
             {overdueBooks.slice(0, 5).map((overdue) => (
-              <div key={overdue.id} className="flex items-center justify-between p-4 bg-red-50 rounded-xl border border-red-200">
+              <div
+                key={overdue.id}
+                className="flex items-center justify-between p-4 bg-red-50 rounded-xl border border-red-200"
+              >
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-red-100 rounded-lg">
                     <AlertTriangle className="h-4 w-4 text-red-600" />
@@ -241,7 +262,7 @@ ${issue.fine_amount ? `Fine Amount: ₹${issue.fine_amount}` : ''}`);
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h3 className="text-lg font-semibold text-gray-800">Book Inventory ({books.length})</h3>
-        <button 
+        <button
           onClick={() => console.log('Add book functionality would be implemented here')}
           className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-medium"
         >
@@ -267,8 +288,10 @@ ${issue.fine_amount ? `Fine Amount: ₹${issue.fine_amount}` : ''}`);
             <Filter className="h-5 w-5 text-gray-400" />
             <select className="px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none">
               <option value="">All Categories</option>
-              {categories.map(cat => (
-                <option key={cat.id} value={cat.name}>{cat.name}</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.name}>
+                  {cat.name}
+                </option>
               ))}
             </select>
           </div>
@@ -278,80 +301,90 @@ ${issue.fine_amount ? `Fine Amount: ₹${issue.fine_amount}` : ''}`);
       {/* Books Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {books
-          .filter(book => 
-            book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            book.author.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            book.isbn.toLowerCase().includes(searchTerm.toLowerCase())
+          .filter(
+            (book) =>
+              book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              book.author.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              book.isbn.toLowerCase().includes(searchTerm.toLowerCase())
           )
           .map((book) => (
-          <div key={book.id} className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md hover:border-purple-300 transition-all duration-200">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-xl">
-                  <Book className="h-6 w-6 text-purple-600" />
+            <div
+              key={book.id}
+              className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md hover:border-purple-300 transition-all duration-200"
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-xl">
+                    <Book className="h-6 w-6 text-purple-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-bold text-gray-900 text-lg line-clamp-2">{book.title}</h4>
+                    <p className="text-sm text-gray-600">by {book.author}</p>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <h4 className="font-bold text-gray-900 text-lg line-clamp-2">{book.title}</h4>
-                  <p className="text-sm text-gray-600">by {book.author}</p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => openEditModal(book)}
+                    className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteBook(book.id)}
+                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  >
+                    <TrashIcon className="h-4 w-4" />
+                  </button>
                 </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => openEditModal(book)}
-                  className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-                >
-                  <Edit2 className="h-4 w-4" />
-                </button>
-                <button 
-                  onClick={() => handleDeleteBook(book.id)}
-                  className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                >
-                  <TrashIcon className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">ISBN:</span>
-                <span className="text-sm font-medium text-gray-900">{book.isbn}</span>
-              </div>
-              
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Total Copies:</span>
-                <span className="text-sm font-bold text-gray-900">{book.total_copies}</span>
-              </div>
-              
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Available:</span>
-                <span className={`text-sm font-bold ${
-                  book.available_copies > 0 ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {book.available_copies}
-                </span>
               </div>
 
-              {book.category && (
+              <div className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Category:</span>
-                  <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
-                    {book.category}
+                  <span className="text-sm text-gray-600">ISBN:</span>
+                  <span className="text-sm font-medium text-gray-900">{book.isbn}</span>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Total Copies:</span>
+                  <span className="text-sm font-bold text-gray-900">{book.total_copies}</span>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Available:</span>
+                  <span
+                    className={`text-sm font-bold ${
+                      book.available_copies > 0 ? 'text-green-600' : 'text-red-600'
+                    }`}
+                  >
+                    {book.available_copies}
                   </span>
                 </div>
-              )}
 
-              <div className="pt-4 border-t border-gray-100">
-                <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${
-                  book.status === 'available' ? 'bg-green-100 text-green-700 border border-green-200' :
-                  book.status === 'all_issued' ? 'bg-yellow-100 text-yellow-700 border border-yellow-200' :
-                  'bg-red-100 text-red-700 border border-red-200'
-                }`}>
-                  {book.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                </span>
+                {book.category && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Category:</span>
+                    <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
+                      {book.category}
+                    </span>
+                  </div>
+                )}
+
+                <div className="pt-4 border-t border-gray-100">
+                  <span
+                    className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${
+                      book.status === 'available'
+                        ? 'bg-green-100 text-green-700 border border-green-200'
+                        : book.status === 'all_issued'
+                          ? 'bg-yellow-100 text-yellow-700 border border-yellow-200'
+                          : 'bg-red-100 text-red-700 border border-red-200'
+                    }`}
+                  >
+                    {book.status.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))}
       </div>
 
       {books.length === 0 && !loading && (
@@ -377,7 +410,9 @@ ${issue.fine_amount ? `Fine Amount: ₹${issue.fine_amount}` : ''}`);
       <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
         <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
         <p className="text-gray-500 mb-2">Member management interface</p>
-        <p className="text-sm text-gray-400">Features: Student registration, Faculty access, Membership types, Access levels</p>
+        <p className="text-sm text-gray-400">
+          Features: Student registration, Faculty access, Membership types, Access levels
+        </p>
       </div>
     </div>
   );
@@ -385,8 +420,10 @@ ${issue.fine_amount ? `Fine Amount: ₹${issue.fine_amount}` : ''}`);
   const renderTransactions = () => (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h3 className="text-lg font-semibold text-gray-800">Library Transactions ({issues.length})</h3>
-        <button 
+        <h3 className="text-lg font-semibold text-gray-800">
+          Library Transactions ({issues.length})
+        </h3>
+        <button
           onClick={() => console.log('Issue book functionality would be implemented here')}
           className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-medium"
         >
@@ -411,7 +448,7 @@ ${issue.fine_amount ? `Fine Amount: ₹${issue.fine_amount}` : ''}`);
             </div>
           </div>
         </div>
-        
+
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -426,7 +463,10 @@ ${issue.fine_amount ? `Fine Amount: ₹${issue.fine_amount}` : ''}`);
             </thead>
             <tbody>
               {issues.map((issue) => (
-                <tr key={issue.id} className="border-b border-gray-100 hover:bg-purple-50/30 transition-colors">
+                <tr
+                  key={issue.id}
+                  className="border-b border-gray-100 hover:bg-purple-50/30 transition-colors"
+                >
                   <td className="p-4">
                     <div>
                       <p className="font-medium text-gray-900">{issue.student_name}</p>
@@ -446,17 +486,21 @@ ${issue.fine_amount ? `Fine Amount: ₹${issue.fine_amount}` : ''}`);
                     <span className="text-gray-700">{issue.due_date}</span>
                   </td>
                   <td className="p-4 text-center">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      issue.status === 'issued' ? 'bg-blue-100 text-blue-800' :
-                      issue.status === 'returned' ? 'bg-green-100 text-green-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        issue.status === 'issued'
+                          ? 'bg-blue-100 text-blue-800'
+                          : issue.status === 'returned'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                      }`}
+                    >
                       {issue.status}
                     </span>
                   </td>
                   <td className="p-4">
                     <div className="flex items-center justify-center gap-2">
-                      <button 
+                      <button
                         onClick={() => handleViewDetails(issue)}
                         className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                         title="View Details"

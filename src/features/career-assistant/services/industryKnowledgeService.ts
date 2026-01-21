@@ -111,17 +111,18 @@ Identify the industry/domain being discussed. Consider ALL possible domains incl
         messages: [
           {
             role: 'system',
-            content: 'You are an industry classification expert. You can identify ANY industry or domain from user queries with deep understanding of context and nuance.'
+            content:
+              'You are an industry classification expert. You can identify ANY industry or domain from user queries with deep understanding of context and nuance.',
           },
-          { role: 'user', content: prompt }
+          { role: 'user', content: prompt },
         ],
         temperature: 0.3,
         max_tokens: 400,
-        response_format: { type: 'json_object' }
+        response_format: { type: 'json_object' },
       });
 
       const result = JSON.parse(completion.choices[0]?.message?.content || '{}');
-      
+
       console.log('🌍 Domain Detected:', result.domain);
       console.log('📊 Sub-domain:', result.subDomain || 'General');
       console.log('🎯 Confidence:', `${(result.confidence * 100).toFixed(0)}%`);
@@ -132,7 +133,7 @@ Identify the industry/domain being discussed. Consider ALL possible domains incl
         subDomain: result.subDomain,
         confidence: result.confidence || 0.85,
         industryContext: result.industryContext || 'Technology sector',
-        relatedDomains: result.relatedDomains || []
+        relatedDomains: result.relatedDomains || [],
       };
     } catch (error) {
       console.error('Domain detection error:', error);
@@ -140,7 +141,7 @@ Identify the industry/domain being discussed. Consider ALL possible domains incl
         domain: 'General Technology',
         confidence: 0.5,
         industryContext: 'General technology projects',
-        relatedDomains: []
+        relatedDomains: [],
       };
     }
   }
@@ -210,21 +211,22 @@ ${studentSkills ? `**Student Skills:** ${studentSkills.join(', ')}` : ''}
         messages: [
           {
             role: 'system',
-            content: 'You are an industry research expert with deep knowledge of technology trends, business problems, and market dynamics across all sectors.'
+            content:
+              'You are an industry research expert with deep knowledge of technology trends, business problems, and market dynamics across all sectors.',
           },
-          { role: 'user', content: prompt }
+          { role: 'user', content: prompt },
         ],
         temperature: 0.5,
         max_tokens: 800,
-        response_format: { type: 'json_object' }
+        response_format: { type: 'json_object' },
       });
 
       const result = JSON.parse(completion.choices[0]?.message?.content || '{}');
-      
+
       console.log('📚 Industry Knowledge Retrieved:', {
         problems: result.commonProblems?.length || 0,
         technologies: result.popularTechnologies?.length || 0,
-        trends: result.industryTrends?.length || 0
+        trends: result.industryTrends?.length || 0,
       });
 
       return {
@@ -234,7 +236,7 @@ ${studentSkills ? `**Student Skills:** ${studentSkills.join(', ')}` : ''}
         complianceRequirements: result.complianceRequirements || [],
         industryTrends: result.industryTrends || [],
         jobOpportunities: result.jobOpportunities || 'Growing demand for tech professionals',
-        typicalProjects: result.typicalProjects || []
+        typicalProjects: result.typicalProjects || [],
       };
     } catch (error) {
       console.error('Industry research error:', error);
@@ -245,7 +247,7 @@ ${studentSkills ? `**Student Skills:** ${studentSkills.join(', ')}` : ''}
         complianceRequirements: [],
         industryTrends: [],
         jobOpportunities: 'Market data unavailable',
-        typicalProjects: []
+        typicalProjects: [],
       };
     }
   }
@@ -277,11 +279,11 @@ Look for:
         model: DEFAULT_MODEL,
         messages: [
           { role: 'system', content: 'You detect multiple domains in queries.' },
-          { role: 'user', content: prompt }
+          { role: 'user', content: prompt },
         ],
         temperature: 0.3,
         max_tokens: 200,
-        response_format: { type: 'json_object' }
+        response_format: { type: 'json_object' },
       });
 
       const result = JSON.parse(completion.choices[0]?.message?.content || '{}');

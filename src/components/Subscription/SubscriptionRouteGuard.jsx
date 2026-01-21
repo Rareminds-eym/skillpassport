@@ -10,7 +10,7 @@ import { isActiveOrPaused, isManageable } from '../../utils/subscriptionHelpers'
  */
 function getManagePath(userRole) {
   if (!userRole) return null; // Return null to prevent wrong redirects
-  
+
   const manageRoutes = {
     super_admin: '/admin/subscription/manage',
     rm_admin: '/admin/subscription/manage',
@@ -87,7 +87,7 @@ const SubscriptionRouteGuard = ({ children, mode, showSkeleton = false }) => {
     // Preserve query params during redirects
     const searchParams = new URLSearchParams(location.search);
     const queryString = searchParams.toString();
-    const addQueryParams = (path) => queryString ? `${path}?${queryString}` : path;
+    const addQueryParams = (path) => (queryString ? `${path}?${queryString}` : path);
 
     // Route logic based on mode
     switch (mode) {
@@ -111,18 +111,18 @@ const SubscriptionRouteGuard = ({ children, mode, showSkeleton = false }) => {
           const userType = getUserTypeFromPath(location.pathname);
           const plansUrlNoUser = `/subscription/plans?type=${userType}`;
           setRedirecting(true);
-          navigate(addQueryParams(plansUrlNoUser), { 
+          navigate(addQueryParams(plansUrlNoUser), {
             replace: true,
-            state: { from: location.pathname }
+            state: { from: location.pathname },
           });
         } else if (!hasManageableSubscription) {
           // No subscription or expired subscription - redirect to plans with user type from path
           const userType = getUserTypeFromPath(location.pathname);
           const plansUrl = `/subscription/plans?type=${userType}`;
           setRedirecting(true);
-          navigate(addQueryParams(plansUrl), { 
+          navigate(addQueryParams(plansUrl), {
             replace: true,
-            state: { from: location.pathname, message: 'no-subscription' }
+            state: { from: location.pathname, message: 'no-subscription' },
           });
         }
         break;
@@ -130,7 +130,17 @@ const SubscriptionRouteGuard = ({ children, mode, showSkeleton = false }) => {
       default:
         break;
     }
-  }, [user, subscriptionData, hasActiveSubscription, hasManageableSubscription, isLoading, navigate, mode, location, managePath]);
+  }, [
+    user,
+    subscriptionData,
+    hasActiveSubscription,
+    hasManageableSubscription,
+    isLoading,
+    navigate,
+    mode,
+    location,
+    managePath,
+  ]);
 
   // Show loading state while checking or redirecting
   if (isLoading || redirecting) {
@@ -194,4 +204,3 @@ const SkeletonLoader = () => (
 );
 
 export default SubscriptionRouteGuard;
-

@@ -1,5 +1,11 @@
 import React, { useState } from 'react';
-import { XMarkIcon, CalendarIcon, UserIcon, CogIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import {
+  XMarkIcon,
+  CalendarIcon,
+  UserIcon,
+  CogIcon,
+  CheckCircleIcon,
+} from '@heroicons/react/24/outline';
 
 interface Student {
   id: number;
@@ -48,10 +54,10 @@ interface AllocationConfigurationModalProps {
   onClose: () => void;
   onBack: () => void;
   onAllocate: (
-    mentorId: number, 
-    studentIds: number[], 
-    allocationPeriod: {startDate: string; endDate: string},
-    capacityConfig: {capacity: number; officeLocation: string; availableHours: string}
+    mentorId: number,
+    studentIds: number[],
+    allocationPeriod: { startDate: string; endDate: string },
+    capacityConfig: { capacity: number; officeLocation: string; availableHours: string }
   ) => void;
   // Helper functions passed from parent
   getMentorCurrentLoad: (mentorId: number) => number;
@@ -72,16 +78,16 @@ const AllocationConfigurationModal: React.FC<AllocationConfigurationModalProps> 
 }) => {
   const currentLoad = getMentorCurrentLoad(selectedMentor.id);
   const activeAllocations = getMentorActiveAllocations(selectedMentor.id);
-  const latestAllocation = activeAllocations.sort((a, b) => 
-    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  const latestAllocation = activeAllocations.sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   )[0];
-  
+
   // Allocation Period State
   const [allocationPeriod, setAllocationPeriod] = useState({
     startDate: new Date().toISOString().split('T')[0], // Today
     endDate: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 6 months from now
   });
-  const [periodError, setPeriodError] = useState("");
+  const [periodError, setPeriodError] = useState('');
 
   // Capacity Configuration State
   const [capacityConfig, setCapacityConfig] = useState({
@@ -89,51 +95,53 @@ const AllocationConfigurationModal: React.FC<AllocationConfigurationModalProps> 
     officeLocation: latestAllocation?.officeLocation || '',
     availableHours: latestAllocation?.availableHours || '',
   });
-  const [capacityErrors, setCapacityErrors] = useState<{[key: string]: string}>({});
+  const [capacityErrors, setCapacityErrors] = useState<{ [key: string]: string }>({});
 
   const validatePeriod = () => {
     if (!allocationPeriod.startDate || !allocationPeriod.endDate) {
-      setPeriodError("Both start and end dates are required");
+      setPeriodError('Both start and end dates are required');
       return false;
     }
 
     if (new Date(allocationPeriod.startDate) >= new Date(allocationPeriod.endDate)) {
-      setPeriodError("End date must be after start date");
+      setPeriodError('End date must be after start date');
       return false;
     }
 
     if (new Date(allocationPeriod.endDate) < new Date()) {
-      setPeriodError("End date cannot be in the past");
+      setPeriodError('End date cannot be in the past');
       return false;
     }
 
     // Check for overlapping periods for this mentor
     const newStartDate = new Date(allocationPeriod.startDate);
     const newEndDate = new Date(allocationPeriod.endDate);
-    
-    const overlappingAllocation = allAllocations.find(allocation => {
+
+    const overlappingAllocation = allAllocations.find((allocation) => {
       if (allocation.mentorId !== selectedMentor.id || allocation.status !== 'active') {
         return false;
       }
-      
+
       const existingStartDate = new Date(allocation.allocationPeriod.startDate);
       const existingEndDate = new Date(allocation.allocationPeriod.endDate);
-      
+
       // Check if periods overlap: start1 <= end2 && start2 <= end1
       return newStartDate <= existingEndDate && existingStartDate <= newEndDate;
     });
 
     if (overlappingAllocation) {
-      setPeriodError(`This period overlaps with an existing allocation (${overlappingAllocation.allocationPeriod.startDate} to ${overlappingAllocation.allocationPeriod.endDate}). Please choose a different date range.`);
+      setPeriodError(
+        `This period overlaps with an existing allocation (${overlappingAllocation.allocationPeriod.startDate} to ${overlappingAllocation.allocationPeriod.endDate}). Please choose a different date range.`
+      );
       return false;
     }
 
-    setPeriodError("");
+    setPeriodError('');
     return true;
   };
 
   const validateCapacity = () => {
-    const newErrors: {[key: string]: string} = {};
+    const newErrors: { [key: string]: string } = {};
 
     if (capacityConfig.capacity < 1) {
       newErrors.capacity = 'Capacity must be at least 1';
@@ -153,17 +161,17 @@ const AllocationConfigurationModal: React.FC<AllocationConfigurationModalProps> 
   };
 
   const handlePeriodChange = (field: 'startDate' | 'endDate', value: string) => {
-    setAllocationPeriod(prev => ({
+    setAllocationPeriod((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
-    setPeriodError(""); // Clear error when user makes changes
+    setPeriodError(''); // Clear error when user makes changes
   };
 
   const handleCapacityChange = (field: string, value: string | number) => {
-    setCapacityConfig(prev => ({
+    setCapacityConfig((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
     setCapacityErrors({}); // Clear errors when user makes changes
   };
@@ -174,8 +182,8 @@ const AllocationConfigurationModal: React.FC<AllocationConfigurationModalProps> 
 
     if (isPeriodValid && isCapacityValid) {
       onAllocate(
-        selectedMentor.id, 
-        selectedStudents.map(s => s.id), 
+        selectedMentor.id,
+        selectedStudents.map((s) => s.id),
         allocationPeriod,
         capacityConfig // Always pass capacity config since it's now mandatory
       );
@@ -187,9 +195,7 @@ const AllocationConfigurationModal: React.FC<AllocationConfigurationModalProps> 
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">
-              Configure Allocation
-            </h2>
+            <h2 className="text-xl font-bold text-gray-900">Configure Allocation</h2>
             <p className="text-sm text-gray-600 mt-1">
               Set allocation period and mentor capacity details
             </p>
@@ -203,7 +209,9 @@ const AllocationConfigurationModal: React.FC<AllocationConfigurationModalProps> 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           {/* Selected Students */}
           <div className="bg-gray-50 rounded-lg p-4">
-            <h3 className="text-sm font-semibold text-gray-900 mb-3">Selected Students ({selectedStudents.length})</h3>
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">
+              Selected Students ({selectedStudents.length})
+            </h3>
             <div className="space-y-2 max-h-32 overflow-y-auto">
               {selectedStudents.map((student) => (
                 <div key={student.id} className="flex items-center justify-between text-sm">
@@ -238,9 +246,7 @@ const AllocationConfigurationModal: React.FC<AllocationConfigurationModalProps> 
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Start Date *
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Start Date *</label>
               <input
                 type="date"
                 value={allocationPeriod.startDate}
@@ -249,9 +255,7 @@ const AllocationConfigurationModal: React.FC<AllocationConfigurationModalProps> 
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                End Date *
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">End Date *</label>
               <input
                 type="date"
                 value={allocationPeriod.endDate}
@@ -266,7 +270,8 @@ const AllocationConfigurationModal: React.FC<AllocationConfigurationModalProps> 
             </div>
           )}
           <p className="text-xs text-blue-600 mt-2">
-            This mentoring period will be assigned to all {selectedStudents.length} selected students. Each unique period creates a separate allocation card.
+            This mentoring period will be assigned to all {selectedStudents.length} selected
+            students. Each unique period creates a separate allocation card.
           </p>
         </div>
 
@@ -296,7 +301,8 @@ const AllocationConfigurationModal: React.FC<AllocationConfigurationModalProps> 
                 <p className="mt-1 text-sm text-red-600">{capacityErrors.capacity}</p>
               )}
               <p className="mt-1 text-xs text-gray-500">
-                Current allocation: {currentLoad} students, After allocation: {currentLoad + selectedStudents.length} students
+                Current allocation: {currentLoad} students, After allocation:{' '}
+                {currentLoad + selectedStudents.length} students
               </p>
             </div>
 

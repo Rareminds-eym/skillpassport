@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabaseClient';
 
 // ============================================
 // LIBRARY MANAGEMENT SERVICE
-// Connects to: library_books, library_issued_books, 
+// Connects to: library_books, library_issued_books,
 //              library_history, library_reservations, library_reviews
 // ============================================
 
@@ -72,15 +72,18 @@ export interface LibraryReview {
 
 export async function addBook(data: Partial<LibraryBook>): Promise<LibraryBook> {
   // Generate book_id if not provided
-  const bookId = data.book_id || `BK${Date.now()}${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+  const bookId =
+    data.book_id || `BK${Date.now()}${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
 
   const { data: book, error } = await supabase
     .from('library_books')
-    .insert([{
-      ...data,
-      book_id: bookId,
-      available_copies: data.total_copies || 1
-    }])
+    .insert([
+      {
+        ...data,
+        book_id: bookId,
+        available_copies: data.total_copies || 1,
+      },
+    ])
     .select()
     .single();
 
@@ -100,7 +103,9 @@ export async function getBooks(filters?: {
   if (filters?.status) query = query.eq('status', filters.status);
   if (filters?.department_id) query = query.eq('department_id', filters.department_id);
   if (filters?.search) {
-    query = query.or(`title.ilike.%${filters.search}%,author.ilike.%${filters.search}%,isbn.ilike.%${filters.search}%`);
+    query = query.or(
+      `title.ilike.%${filters.search}%,author.ilike.%${filters.search}%,isbn.ilike.%${filters.search}%`
+    );
   }
 
   const { data, error } = await query.order('title');
@@ -134,10 +139,7 @@ export async function deleteBook(id: string): Promise<void> {
     throw new Error('Cannot delete book that is currently issued');
   }
 
-  const { error } = await supabase
-    .from('library_books')
-    .delete()
-    .eq('id', id);
+  const { error } = await supabase.from('library_books').delete().eq('id', id);
 
   if (error) throw error;
 }
@@ -191,15 +193,17 @@ export async function issueBook(data: {
   // Issue book
   const { data: issued, error } = await supabase
     .from('library_issued_books')
-    .insert([{
-      ...data,
-      issue_date: issueDate.toISOString().split('T')[0],
-      due_date: dueDate.toISOString().split('T')[0],
-      status: 'issued',
-      renewal_count: 0,
-      max_renewals: 2,
-      fine_per_day: 10.00
-    }])
+    .insert([
+      {
+        ...data,
+        issue_date: issueDate.toISOString().split('T')[0],
+        due_date: dueDate.toISOString().split('T')[0],
+        status: 'issued',
+        renewal_count: 0,
+        max_renewals: 2,
+        fine_per_day: 10.0,
+      },
+    ])
     .select()
     .single();
 
@@ -226,7 +230,10 @@ export async function returnBook(issuedBookId: string, returnedTo: string): Prom
 
   const returnDate = new Date();
   const dueDate = new Date(issued.due_date);
-  const daysOverdue = Math.max(0, Math.floor((returnDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)));
+  const daysOverdue = Math.max(
+    0,
+    Math.floor((returnDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24))
+  );
   const fineAmount = daysOverdue * (issued.fine_per_day || 10);
 
   // Update issued book
@@ -238,7 +245,7 @@ export async function returnBook(issuedBookId: string, returnedTo: string): Prom
       days_overdue: daysOverdue,
       fine_amount: fineAmount,
       status: 'returned',
-      returned_to: returnedTo
+      returned_to: returnedTo,
     })
     .eq('id', issuedBookId);
 
@@ -259,24 +266,26 @@ export async function returnBook(issuedBookId: string, returnedTo: string): Prom
   }
 
   // Add to history
-  await supabase.from('library_history').insert([{
-    book_id: issued.book_id,
-    book_title: issued.library_books?.title,
-    book_author: issued.library_books?.author,
-    student_id: issued.student_id,
-    student_name: issued.student_name,
-    roll_number: issued.roll_number,
-    email: issued.email,
-    issue_date: issued.issue_date,
-    due_date: issued.due_date,
-    return_date: returnDate.toISOString().split('T')[0],
-    days_overdue: daysOverdue,
-    fine_amount: fineAmount,
-    status: 'returned',
-    renewal_count: issued.renewal_count,
-    issued_by: issued.issued_by,
-    returned_to: returnedTo
-  }]);
+  await supabase.from('library_history').insert([
+    {
+      book_id: issued.book_id,
+      book_title: issued.library_books?.title,
+      book_author: issued.library_books?.author,
+      student_id: issued.student_id,
+      student_name: issued.student_name,
+      roll_number: issued.roll_number,
+      email: issued.email,
+      issue_date: issued.issue_date,
+      due_date: issued.due_date,
+      return_date: returnDate.toISOString().split('T')[0],
+      days_overdue: daysOverdue,
+      fine_amount: fineAmount,
+      status: 'returned',
+      renewal_count: issued.renewal_count,
+      issued_by: issued.issued_by,
+      returned_to: returnedTo,
+    },
+  ]);
 }
 
 export async function renewBook(issuedBookId: string): Promise<void> {
@@ -301,7 +310,7 @@ export async function renewBook(issuedBookId: string): Promise<void> {
     .update({
       due_date: newDueDate.toISOString().split('T')[0],
       renewal_count: issued.renewal_count + 1,
-      last_renewed_date: new Date().toISOString().split('T')[0]
+      last_renewed_date: new Date().toISOString().split('T')[0],
     })
     .eq('id', issuedBookId);
 
@@ -317,9 +326,7 @@ export async function getIssuedBooks(filters?: {
   status?: string;
   overdue?: boolean;
 }): Promise<IssuedBook[]> {
-  let query = supabase
-    .from('library_issued_books')
-    .select('*');
+  let query = supabase.from('library_issued_books').select('*');
 
   if (filters?.student_id) query = query.eq('student_id', filters.student_id);
   if (filters?.status) query = query.eq('status', filters.status);
@@ -335,7 +342,7 @@ export async function getIssuedBooks(filters?: {
 
 export async function getOverdueBooks(): Promise<IssuedBook[]> {
   const today = new Date().toISOString().split('T')[0];
-  
+
   const { data, error } = await supabase
     .from('library_issued_books')
     .select('*')
@@ -385,13 +392,15 @@ export async function reserveBook(data: {
 
   const { data: reservation, error } = await supabase
     .from('library_reservations')
-    .insert([{
-      ...data,
-      reserved_date: reservedDate.toISOString().split('T')[0],
-      expiry_date: expiryDate.toISOString().split('T')[0],
-      priority: nextPriority,
-      status: 'active'
-    }])
+    .insert([
+      {
+        ...data,
+        reserved_date: reservedDate.toISOString().split('T')[0],
+        expiry_date: expiryDate.toISOString().split('T')[0],
+        priority: nextPriority,
+        status: 'active',
+      },
+    ])
     .select()
     .single();
 
@@ -400,10 +409,7 @@ export async function reserveBook(data: {
 }
 
 export async function getReservations(bookId?: string): Promise<LibraryReservation[]> {
-  let query = supabase
-    .from('library_reservations')
-    .select('*')
-    .eq('status', 'active');
+  let query = supabase.from('library_reservations').select('*').eq('status', 'active');
 
   if (bookId) query = query.eq('book_id', bookId);
 
@@ -450,15 +456,23 @@ export async function getBookReviews(bookId: string): Promise<LibraryReview[]> {
 // ============================================
 
 export async function getLibraryStatistics(): Promise<any> {
-  const { data: books } = await supabase.from('library_books').select('total_copies, available_copies, issued_copies');
-  const { data: issued } = await supabase.from('library_issued_books').select('status').eq('status', 'issued');
-  const { data: overdue } = await supabase.from('library_issued_books').select('id').eq('status', 'overdue');
+  const { data: books } = await supabase
+    .from('library_books')
+    .select('total_copies, available_copies, issued_copies');
+  const { data: issued } = await supabase
+    .from('library_issued_books')
+    .select('status')
+    .eq('status', 'issued');
+  const { data: overdue } = await supabase
+    .from('library_issued_books')
+    .select('id')
+    .eq('status', 'overdue');
 
   return {
     totalBooks: books?.reduce((sum, b) => sum + b.total_copies, 0) || 0,
     availableBooks: books?.reduce((sum, b) => sum + b.available_copies, 0) || 0,
     issuedBooks: issued?.length || 0,
-    overdueBooks: overdue?.length || 0
+    overdueBooks: overdue?.length || 0,
   };
 }
 

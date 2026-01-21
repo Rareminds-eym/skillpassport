@@ -3,7 +3,12 @@ import { supabase } from '../lib/supabaseClient';
 // @ts-ignore - AuthContext is a .jsx file
 import { useAuth } from '../context/AuthContext';
 
-export type UserRole = 'school_admin' | 'principal' | 'it_admin' | 'class_teacher' | 'subject_teacher';
+export type UserRole =
+  | 'school_admin'
+  | 'principal'
+  | 'it_admin'
+  | 'class_teacher'
+  | 'subject_teacher';
 
 export type PermissionLevel = 'C' | 'A' | 'U' | 'V' | 'C/A' | 'N/A';
 
@@ -45,9 +50,7 @@ export const useUserRole = () => {
   const { user: authUser, role: authRole } = useAuth();
   const [role, setRole] = useState<UserRole>('subject_teacher');
   const [loading, setLoading] = useState(true);
-  const [permissions, setPermissions] = useState<RolePermissions>(
-    ROLE_PERMISSIONS.subject_teacher
-  );
+  const [permissions, setPermissions] = useState<RolePermissions>(ROLE_PERMISSIONS.subject_teacher);
 
   useEffect(() => {
     fetchUserRole();
@@ -134,7 +137,10 @@ export const useUserRole = () => {
     } catch (error) {
       console.error('Error fetching user role:', error);
       // On error, default to school_admin if on school admin routes
-      if (window.location.pathname.includes('/school-admin') || window.location.pathname.includes('/admin/schoolAdmin')) {
+      if (
+        window.location.pathname.includes('/school-admin') ||
+        window.location.pathname.includes('/admin/schoolAdmin')
+      ) {
         setRole('school_admin');
         setPermissions(ROLE_PERMISSIONS.school_admin);
       }

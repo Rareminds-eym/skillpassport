@@ -22,6 +22,5 @@ export const queryLogger = {
     if (isDevelopment) {
       console.info(...args);
     }
-  }
+  },
 };
-

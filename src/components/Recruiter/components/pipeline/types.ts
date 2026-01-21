@@ -61,7 +61,7 @@ export const STAGES: StageConfig[] = [
   { key: 'interview_1', label: 'Interview 1', color: 'bg-yellow-400' },
   { key: 'interview_2', label: 'Interview 2', color: 'bg-orange-400' },
   { key: 'offer', label: 'Offer', color: 'bg-green-400' },
-  { key: 'hired', label: 'Hired', color: 'bg-emerald-400' }
+  { key: 'hired', label: 'Hired', color: 'bg-emerald-400' },
 ];
 
 export const STAGE_LABELS: Record<string, string> = {
@@ -70,7 +70,7 @@ export const STAGE_LABELS: Record<string, string> = {
   interview_1: 'Interview 1',
   interview_2: 'Interview 2',
   offer: 'Offer',
-  hired: 'Hired'
+  hired: 'Hired',
 };
 
 export const NEXT_ACTIONS = [
@@ -78,5 +78,5 @@ export const NEXT_ACTIONS = [
   { value: 'schedule_interview', label: 'Schedule Interview' },
   { value: 'make_offer', label: 'Prepare Offer' },
   { value: 'follow_up', label: 'General Follow-up' },
-  { value: 'review_application', label: 'Review Application' }
+  { value: 'review_application', label: 'Review Application' },
 ];

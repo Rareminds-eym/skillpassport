@@ -1,6 +1,6 @@
 /**
  * 🧠 ENHANCED AI-FIRST REASONING & INTENT DETECTION
- * 
+ *
  * Advanced features:
  * - Deep contextual reasoning (understands nuance)
  * - Multi-intent detection (handles complex queries)
@@ -25,13 +25,13 @@ export type EnhancedIntent =
   | 'profile-improvement'
   | 'certification-advice'
   | 'project-ideas'
-  | 'code-review'           // NEW: Student wants code reviewed
-  | 'debugging-help'        // NEW: Student stuck on bug
-  | 'learning-struggle'     // NEW: Student struggling with concept
-  | 'project-guidance'      // NEW: Help with ongoing project
-  | 'career-anxiety'        // NEW: Worried about career prospects
-  | 'imposter-syndrome'     // NEW: Feeling inadequate
-  | 'time-management'       // NEW: Overwhelmed with learning
+  | 'code-review' // NEW: Student wants code reviewed
+  | 'debugging-help' // NEW: Student stuck on bug
+  | 'learning-struggle' // NEW: Student struggling with concept
+  | 'project-guidance' // NEW: Help with ongoing project
+  | 'career-anxiety' // NEW: Worried about career prospects
+  | 'imposter-syndrome' // NEW: Feeling inadequate
+  | 'time-management' // NEW: Overwhelmed with learning
   | 'general';
 
 export type EmotionalTone =
@@ -48,24 +48,24 @@ export interface EnhancedDetectedIntent {
   // Primary intent
   primary: EnhancedIntent;
   primaryConfidence: number;
-  
+
   // Multi-intent support
   secondary: Array<{
     intent: EnhancedIntent;
     confidence: number;
     reasoning: string;
   }>;
-  
+
   // Emotional intelligence
   emotionalTone: EmotionalTone;
   emotionalIntensity: number; // 0-1
   needsEmpathy: boolean;
-  
+
   // Deep understanding
   userGoal: string; // What they want to achieve
   underlyingProblem?: string; // Real problem behind the ask
   contextualFactors: string[]; // Things affecting their query
-  
+
   // Extracted entities
   entities: {
     skills?: string[];
@@ -76,11 +76,11 @@ export interface EnhancedDetectedIntent {
     timeframes?: string[];
     codeLanguage?: string;
   };
-  
+
   // Proactive intelligence
   predictedNextQuestions: string[];
   suggestedProactiveTips: string[];
-  
+
   // Response strategy
   responseStrategy: {
     tone: 'supportive' | 'informative' | 'motivational' | 'technical';
@@ -89,17 +89,16 @@ export interface EnhancedDetectedIntent {
     shouldProvideVisual: boolean; // For multi-modal learning
     shouldProvideCodeExample: boolean;
   };
-  
+
   // Learning insights
   learningStage?: 'beginner' | 'intermediate' | 'advanced';
   strugglingWith?: string[];
-  
+
   // AI reasoning (transparent)
   aiReasoning: string;
 }
 
 class EnhancedIntentService {
-  
   /**
    * 🧠 MAIN DETECTION: Deep AI reasoning with emotional intelligence
    */
@@ -109,17 +108,16 @@ class EnhancedIntentService {
     conversationHistory?: Array<{ role: string; content: string }>,
     recentProfileChanges?: string[]
   ): Promise<EnhancedDetectedIntent> {
-    
     try {
       console.log('🧠 ENHANCED AI-FIRST: Deep reasoning with emotional intelligence...');
-      
+
       const prompt = this.buildDeepReasoningPrompt(
         message,
         profile,
         conversationHistory,
         recentProfileChanges
       );
-      
+
       const client = getOpenAIClient();
       const completion = await client.chat.completions.create({
         model: DEFAULT_MODEL,
@@ -134,34 +132,37 @@ You think like a human mentor who:
 - Provides personalized guidance
 - Never dismisses struggles
 
-Think deeply. Be empathetic. Be proactive.`
+Think deeply. Be empathetic. Be proactive.`,
           },
-          { role: 'user', content: prompt }
+          { role: 'user', content: prompt },
         ],
         temperature: 0.5, // Balanced creativity + consistency
         max_tokens: 1200,
-        response_format: { type: 'json_object' }
+        response_format: { type: 'json_object' },
       });
-      
+
       const result = JSON.parse(completion.choices[0]?.message?.content || '{}');
-      
+
       // Log AI's deep understanding
       console.log('🧠 AI Reasoning:', result.reasoning);
       console.log('🎯 Primary Intent:', result.primary_intent, `(${result.primary_confidence}%)`);
-      console.log('💭 Emotional Tone:', result.emotional_tone, `(intensity: ${result.emotional_intensity})`);
+      console.log(
+        '💭 Emotional Tone:',
+        result.emotional_tone,
+        `(intensity: ${result.emotional_intensity})`
+      );
       console.log('🎯 User Goal:', result.user_goal);
       if (result.underlying_problem) {
         console.log('⚠️ Underlying Problem:', result.underlying_problem);
       }
-      
+
       return this.parseAIResponse(result);
-      
     } catch (error) {
       console.error('Enhanced intent detection error:', error);
       return this.getFallbackIntent(message);
     }
   }
-  
+
   /**
    * Build comprehensive prompt for deep reasoning
    */
@@ -171,19 +172,23 @@ Think deeply. Be empathetic. Be proactive.`
     conversationHistory?: Array<{ role: string; content: string }>,
     recentProfileChanges?: string[]
   ): string {
-    
-    const profileSkills = profile?.profile?.technicalSkills?.map((s: any) => s.name).join(', ') || 'None';
+    const profileSkills =
+      profile?.profile?.technicalSkills?.map((s: any) => s.name).join(', ') || 'None';
     const profileLevel = profile?.profile?.technicalSkills?.length || 0;
     const department = profile?.department || 'Unknown';
-    
-    const historyContext = conversationHistory 
-      ? conversationHistory.slice(-5).map(h => `${h.role}: ${h.content}`).join('\n')
+
+    const historyContext = conversationHistory
+      ? conversationHistory
+          .slice(-5)
+          .map((h) => `${h.role}: ${h.content}`)
+          .join('\n')
       : 'No prior conversation';
-    
-    const recentChanges = recentProfileChanges && recentProfileChanges.length > 0
-      ? `Recent profile changes: ${recentProfileChanges.join(', ')}`
-      : '';
-    
+
+    const recentChanges =
+      recentProfileChanges && recentProfileChanges.length > 0
+        ? `Recent profile changes: ${recentProfileChanges.join(', ')}`
+        : '';
+
     return `You are analyzing a student's query with DEEP INTELLIGENCE and EMPATHY.
 
 **STUDENT PROFILE:**
@@ -309,7 +314,7 @@ ${historyContext}
   "struggling_with": ["React hooks", "Component architecture", "State management"]
 }`;
   }
-  
+
   /**
    * Parse AI response into structured format
    */
@@ -331,14 +336,14 @@ ${historyContext}
         tone: 'informative',
         shouldAskFollowup: false,
         shouldProvideVisual: false,
-        shouldProvideCodeExample: false
+        shouldProvideCodeExample: false,
       },
       learningStage: result.learning_stage,
       strugglingWith: result.struggling_with || [],
-      aiReasoning: result.reasoning || ''
+      aiReasoning: result.reasoning || '',
     };
   }
-  
+
   /**
    * Fallback for errors
    */
@@ -360,9 +365,9 @@ ${historyContext}
         shouldAskFollowup: true,
         followupQuestion: 'How can I help you today?',
         shouldProvideVisual: false,
-        shouldProvideCodeExample: false
+        shouldProvideCodeExample: false,
       },
-      aiReasoning: 'Fallback detection due to error'
+      aiReasoning: 'Fallback detection due to error',
     };
   }
 }

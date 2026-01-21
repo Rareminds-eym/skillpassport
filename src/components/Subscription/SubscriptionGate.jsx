@@ -1,11 +1,11 @@
 /**
  * SubscriptionGate
- * 
+ *
  * Conditionally renders content based on subscription status.
  * Use for gating premium features within pages.
- * 
+ *
  * Usage:
- * <SubscriptionGate 
+ * <SubscriptionGate
  *   fallback={<UpgradePrompt />}
  *   requiredPlan="professional"
  * >
@@ -46,15 +46,23 @@ function getUserTypeFromPath(pathname) {
 const DefaultFallback = ({ requiredPlan, basePath, userType }) => (
   <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 rounded-lg p-6 text-center">
     <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
-      <svg className="w-6 h-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+      <svg
+        className="w-6 h-6 text-indigo-600"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+        />
       </svg>
     </div>
-    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-      Premium Feature
-    </h3>
+    <h3 className="text-lg font-semibold text-gray-900 mb-2">Premium Feature</h3>
     <p className="text-gray-600 mb-4">
-      {requiredPlan 
+      {requiredPlan
         ? `This feature requires a ${requiredPlan} plan or higher.`
         : 'This feature requires an active subscription.'}
     </p>
@@ -79,20 +87,11 @@ const getPlanLevel = (planId) => {
   return index >= 0 ? index : -1;
 };
 
-const SubscriptionGate = ({ 
-  children, 
-  fallback,
-  requiredPlan = null,
-  requireActive = true,
-}) => {
+const SubscriptionGate = ({ children, fallback, requiredPlan = null, requireActive = true }) => {
   const location = useLocation();
   const basePath = getSubscriptionBasePath(location.pathname);
   const userType = getUserTypeFromPath(location.pathname);
-  const { 
-    hasAccess, 
-    subscription,
-    isLoading,
-  } = useSubscriptionContext();
+  const { hasAccess, subscription, isLoading } = useSubscriptionContext();
 
   // Show nothing while loading
   if (isLoading) {
@@ -101,7 +100,11 @@ const SubscriptionGate = ({
 
   // Check basic access
   if (requireActive && !hasAccess) {
-    return fallback || <DefaultFallback requiredPlan={requiredPlan} basePath={basePath} userType={userType} />;
+    return (
+      fallback || (
+        <DefaultFallback requiredPlan={requiredPlan} basePath={basePath} userType={userType} />
+      )
+    );
   }
 
   // Check plan level if specified
@@ -110,7 +113,11 @@ const SubscriptionGate = ({
     const requiredPlanLevel = getPlanLevel(requiredPlan);
 
     if (userPlanLevel < requiredPlanLevel) {
-      return fallback || <DefaultFallback requiredPlan={requiredPlan} basePath={basePath} userType={userType} />;
+      return (
+        fallback || (
+          <DefaultFallback requiredPlan={requiredPlan} basePath={basePath} userType={userType} />
+        )
+      );
     }
   }
 

@@ -122,13 +122,13 @@ const StudentCertificates: React.FC = () => {
 
     setCertificates(mockCertificates);
     setFilteredCertificates(mockCertificates);
-    
+
     // Calculate stats
     const newStats = {
       total: mockCertificates.length,
-      pending: mockCertificates.filter(c => c.status === 'pending').length,
-      issued: mockCertificates.filter(c => c.status === 'issued').length,
-      rejected: mockCertificates.filter(c => c.status === 'rejected').length,
+      pending: mockCertificates.filter((c) => c.status === 'pending').length,
+      issued: mockCertificates.filter((c) => c.status === 'issued').length,
+      rejected: mockCertificates.filter((c) => c.status === 'rejected').length,
     };
     setStats(newStats);
     setLoading(false);
@@ -140,27 +140,28 @@ const StudentCertificates: React.FC = () => {
 
     // Search filter
     if (searchTerm) {
-      filtered = filtered.filter(cert =>
-        cert.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        cert.studentId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        cert.program.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        cert.college.toLowerCase().includes(searchTerm.toLowerCase())
+      filtered = filtered.filter(
+        (cert) =>
+          cert.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          cert.studentId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          cert.program.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          cert.college.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
     // Status filter
     if (statusFilter !== 'all') {
-      filtered = filtered.filter(cert => cert.status === statusFilter);
+      filtered = filtered.filter((cert) => cert.status === statusFilter);
     }
 
     // Type filter
     if (typeFilter !== 'all') {
-      filtered = filtered.filter(cert => cert.certificateType === typeFilter);
+      filtered = filtered.filter((cert) => cert.certificateType === typeFilter);
     }
 
     // College filter
     if (collegeFilter !== 'all') {
-      filtered = filtered.filter(cert => cert.college === collegeFilter);
+      filtered = filtered.filter((cert) => cert.college === collegeFilter);
     }
 
     setFilteredCertificates(filtered);
@@ -180,7 +181,7 @@ const StudentCertificates: React.FC = () => {
   };
 
   const getStatusBadge = (status: string) => {
-    const baseClasses = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium";
+    const baseClasses = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium';
     switch (status) {
       case 'issued':
         return `${baseClasses} bg-green-100 text-green-800`;
@@ -208,32 +209,36 @@ const StudentCertificates: React.FC = () => {
     }
   };
 
-  const handleStatusUpdate = (certificateId: string, newStatus: 'pending' | 'issued' | 'rejected') => {
-    setCertificates(prev => prev.map(cert => 
-      cert.id === certificateId 
-        ? { 
-            ...cert, 
-            status: newStatus,
-            issueDate: newStatus === 'issued' ? new Date().toISOString().split('T')[0] : '',
-            certificateNumber: newStatus === 'issued' && !cert.certificateNumber 
-              ? `CERT-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`
-              : cert.certificateNumber
-          }
-        : cert
-    ));
-    
-    // Update stats
-    const updatedCertificates = certificates.map(cert => 
-      cert.id === certificateId 
-        ? { ...cert, status: newStatus }
-        : cert
+  const handleStatusUpdate = (
+    certificateId: string,
+    newStatus: 'pending' | 'issued' | 'rejected'
+  ) => {
+    setCertificates((prev) =>
+      prev.map((cert) =>
+        cert.id === certificateId
+          ? {
+              ...cert,
+              status: newStatus,
+              issueDate: newStatus === 'issued' ? new Date().toISOString().split('T')[0] : '',
+              certificateNumber:
+                newStatus === 'issued' && !cert.certificateNumber
+                  ? `CERT-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`
+                  : cert.certificateNumber,
+            }
+          : cert
+      )
     );
-    
+
+    // Update stats
+    const updatedCertificates = certificates.map((cert) =>
+      cert.id === certificateId ? { ...cert, status: newStatus } : cert
+    );
+
     const newStats = {
       total: updatedCertificates.length,
-      pending: updatedCertificates.filter(c => c.status === 'pending').length,
-      issued: updatedCertificates.filter(c => c.status === 'issued').length,
-      rejected: updatedCertificates.filter(c => c.status === 'rejected').length,
+      pending: updatedCertificates.filter((c) => c.status === 'pending').length,
+      issued: updatedCertificates.filter((c) => c.status === 'issued').length,
+      rejected: updatedCertificates.filter((c) => c.status === 'rejected').length,
     };
     setStats(newStats);
   };
@@ -251,7 +256,7 @@ const StudentCertificates: React.FC = () => {
     }
   };
 
-  const uniqueColleges = Array.from(new Set(certificates.map(cert => cert.college)));
+  const uniqueColleges = Array.from(new Set(certificates.map((cert) => cert.college)));
 
   if (loading) {
     return (
@@ -401,8 +406,10 @@ const StudentCertificates: React.FC = () => {
             onChange={(e) => setCollegeFilter(e.target.value)}
           >
             <option value="all">All Colleges</option>
-            {uniqueColleges.map(college => (
-              <option key={college} value={college}>{college}</option>
+            {uniqueColleges.map((college) => (
+              <option key={college} value={college}>
+                {college}
+              </option>
             ))}
           </select>
         </div>
@@ -456,9 +463,7 @@ const StudentCertificates: React.FC = () => {
                         <div className="text-sm font-medium text-gray-900">
                           {certificate.studentName}
                         </div>
-                        <div className="text-sm text-gray-500">
-                          ID: {certificate.studentId}
-                        </div>
+                        <div className="text-sm text-gray-500">ID: {certificate.studentId}</div>
                       </div>
                     </div>
                   </td>
@@ -482,7 +487,7 @@ const StudentCertificates: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div 
+                    <div
                       className="flex items-center cursor-pointer hover:bg-blue-50 rounded-md p-2 transition-colors duration-200 border border-transparent hover:border-blue-200"
                       onClick={() => handleStatusClick(certificate)}
                       title="Click to change status"
@@ -548,17 +553,25 @@ const StudentCertificates: React.FC = () => {
                     <XCircleIcon className="h-6 w-6" />
                   </button>
                 </div>
-                
+
                 <div className="mb-4">
                   <div className="bg-gray-50 rounded-lg p-4">
                     <div className="flex items-center mb-2">
                       <UserGroupIcon className="h-5 w-5 text-gray-400 mr-2" />
-                      <span className="font-medium text-gray-900">{selectedCertificate.studentName}</span>
+                      <span className="font-medium text-gray-900">
+                        {selectedCertificate.studentName}
+                      </span>
                     </div>
                     <div className="text-sm text-gray-600 space-y-1">
-                      <p><span className="font-medium">ID:</span> {selectedCertificate.studentId}</p>
-                      <p><span className="font-medium">Program:</span> {selectedCertificate.program}</p>
-                      <p><span className="font-medium">College:</span> {selectedCertificate.college}</p>
+                      <p>
+                        <span className="font-medium">ID:</span> {selectedCertificate.studentId}
+                      </p>
+                      <p>
+                        <span className="font-medium">Program:</span> {selectedCertificate.program}
+                      </p>
+                      <p>
+                        <span className="font-medium">College:</span> {selectedCertificate.college}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -571,7 +584,9 @@ const StudentCertificates: React.FC = () => {
                     <button
                       onClick={() => handleStatusModalUpdate('pending')}
                       className={`w-full flex items-center justify-between p-3 border rounded-lg hover:bg-yellow-50 transition-colors ${
-                        selectedCertificate.status === 'pending' ? 'border-yellow-300 bg-yellow-50 ring-2 ring-yellow-200' : 'border-gray-200'
+                        selectedCertificate.status === 'pending'
+                          ? 'border-yellow-300 bg-yellow-50 ring-2 ring-yellow-200'
+                          : 'border-gray-200'
                       }`}
                     >
                       <div className="flex items-center">
@@ -589,14 +604,18 @@ const StudentCertificates: React.FC = () => {
                     <button
                       onClick={() => handleStatusModalUpdate('issued')}
                       className={`w-full flex items-center justify-between p-3 border rounded-lg hover:bg-green-50 transition-colors ${
-                        selectedCertificate.status === 'issued' ? 'border-green-300 bg-green-50 ring-2 ring-green-200' : 'border-gray-200'
+                        selectedCertificate.status === 'issued'
+                          ? 'border-green-300 bg-green-50 ring-2 ring-green-200'
+                          : 'border-gray-200'
                       }`}
                     >
                       <div className="flex items-center">
                         <CheckCircleIcon className="h-5 w-5 text-green-500 mr-3" />
                         <div className="text-left">
                           <div className="font-medium text-gray-900">Issued</div>
-                          <div className="text-sm text-gray-500">Certificate has been issued to student</div>
+                          <div className="text-sm text-gray-500">
+                            Certificate has been issued to student
+                          </div>
                         </div>
                       </div>
                       {selectedCertificate.status === 'issued' && (
@@ -607,14 +626,18 @@ const StudentCertificates: React.FC = () => {
                     <button
                       onClick={() => handleStatusModalUpdate('rejected')}
                       className={`w-full flex items-center justify-between p-3 border rounded-lg hover:bg-red-50 transition-colors ${
-                        selectedCertificate.status === 'rejected' ? 'border-red-300 bg-red-50 ring-2 ring-red-200' : 'border-gray-200'
+                        selectedCertificate.status === 'rejected'
+                          ? 'border-red-300 bg-red-50 ring-2 ring-red-200'
+                          : 'border-gray-200'
                       }`}
                     >
                       <div className="flex items-center">
                         <XCircleIcon className="h-5 w-5 text-red-500 mr-3" />
                         <div className="text-left">
                           <div className="font-medium text-gray-900">Rejected</div>
-                          <div className="text-sm text-gray-500">Certificate request has been rejected</div>
+                          <div className="text-sm text-gray-500">
+                            Certificate request has been rejected
+                          </div>
                         </div>
                       </div>
                       {selectedCertificate.status === 'rejected' && (

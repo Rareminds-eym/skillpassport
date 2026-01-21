@@ -29,7 +29,9 @@ const TeacherBulkImport: React.FC = () => {
   const [data, setData] = useState<ImportRow[]>([]);
   const [errors, setErrors] = useState<ValidationError[]>([]);
   const [importing, setImporting] = useState(false);
-  const [importResult, setImportResult] = useState<{ success: number; failed: number } | null>(null);
+  const [importResult, setImportResult] = useState<{ success: number; failed: number } | null>(
+    null
+  );
 
   const downloadTemplate = () => {
     const template = `first_name,last_name,email,phone_number,role,designation,department,qualification,specialization,experience_years,date_of_joining,subjects
@@ -78,7 +80,13 @@ Jane,Smith,jane.smith@school.edu,+1234567891,class_teacher,Class Teacher,Science
   const validateData = (rows: ImportRow[]) => {
     const validationErrors: ValidationError[] = [];
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const validRoles = ['school_admin', 'principal', 'it_admin', 'class_teacher', 'subject_teacher'];
+    const validRoles = [
+      'school_admin',
+      'principal',
+      'it_admin',
+      'class_teacher',
+      'subject_teacher',
+    ];
 
     rows.forEach((row, index) => {
       // Required fields
@@ -173,13 +181,13 @@ Jane,Smith,jane.smith@school.edu,+1234567891,class_teacher,Class Teacher,Science
         specialization: row.specialization || null,
         experience_years: row.experience_years ? Number(row.experience_years) : null,
         date_of_joining: row.date_of_joining || null,
-        subjects_handled: row.subjects ? row.subjects.split(',').map(s => s.trim()) : [],
+        subjects_handled: row.subjects ? row.subjects.split(',').map((s) => s.trim()) : [],
         school_id: schoolId,
         onboarding_status: 'pending' as const,
       }));
 
       const result = await bulkImportTeachers(teachersToImport);
-      
+
       setImportResult({
         success: result.length,
         failed: data.length - result.length,
@@ -238,12 +246,7 @@ Jane,Smith,jane.smith@school.edu,+1234567891,class_teacher,Class Teacher,Science
               Click to upload
             </span>
             <span className="text-gray-600"> or drag and drop</span>
-            <input
-              type="file"
-              accept=".csv"
-              onChange={handleFileChange}
-              className="hidden"
-            />
+            <input type="file" accept=".csv" onChange={handleFileChange} className="hidden" />
           </label>
           <p className="text-sm text-gray-500 mt-2">CSV file only</p>
           {file && (
@@ -277,7 +280,8 @@ Jane,Smith,jane.smith@school.edu,+1234567891,class_teacher,Class Teacher,Science
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {errors.map((error, index) => (
               <div key={index} className="text-sm text-red-800 bg-red-100 rounded p-2">
-                <span className="font-medium">Row {error.row}</span> - {error.field}: {error.message}
+                <span className="font-medium">Row {error.row}</span> - {error.field}:{' '}
+                {error.message}
               </div>
             ))}
           </div>
@@ -292,20 +296,28 @@ Jane,Smith,jane.smith@school.edu,+1234567891,class_teacher,Class Teacher,Science
               <h3 className="font-semibold text-gray-900">Preview ({data.length} teachers)</h3>
               <p className="text-sm text-gray-600">Review the data before importing</p>
             </div>
-            {errors.length === 0 && (
-              <CheckCircle className="h-6 w-6 text-green-600" />
-            )}
+            {errors.length === 0 && <CheckCircle className="h-6 w-6 text-green-600" />}
           </div>
-          
+
           <div className="overflow-x-auto max-h-96">
             <table className="w-full">
               <thead className="bg-gray-50 sticky top-0">
                 <tr>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Department</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Subjects</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                    Name
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                    Email
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                    Role
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                    Department
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                    Subjects
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -332,25 +344,34 @@ Jane,Smith,jane.smith@school.edu,+1234567891,class_teacher,Class Teacher,Science
 
       {/* Import Result */}
       {importResult && (
-        <div className={`rounded-xl p-6 border ${
-          importResult.failed === 0
-            ? 'bg-green-50 border-green-200'
-            : 'bg-yellow-50 border-yellow-200'
-        }`}>
+        <div
+          className={`rounded-xl p-6 border ${
+            importResult.failed === 0
+              ? 'bg-green-50 border-green-200'
+              : 'bg-yellow-50 border-yellow-200'
+          }`}
+        >
           <div className="flex items-center gap-2 mb-2">
-            <CheckCircle className={`h-6 w-6 ${
-              importResult.failed === 0 ? 'text-green-600' : 'text-yellow-600'
-            }`} />
-            <h3 className={`font-semibold ${
-              importResult.failed === 0 ? 'text-green-900' : 'text-yellow-900'
-            }`}>
+            <CheckCircle
+              className={`h-6 w-6 ${
+                importResult.failed === 0 ? 'text-green-600' : 'text-yellow-600'
+              }`}
+            />
+            <h3
+              className={`font-semibold ${
+                importResult.failed === 0 ? 'text-green-900' : 'text-yellow-900'
+              }`}
+            >
               Import Complete
             </h3>
           </div>
-          <p className={`text-sm ${
-            importResult.failed === 0 ? 'text-green-800' : 'text-yellow-800'
-          }`}>
-            Successfully imported {importResult.success} teacher{importResult.success !== 1 ? 's' : ''}.
+          <p
+            className={`text-sm ${
+              importResult.failed === 0 ? 'text-green-800' : 'text-yellow-800'
+            }`}
+          >
+            Successfully imported {importResult.success} teacher
+            {importResult.success !== 1 ? 's' : ''}.
             {importResult.failed > 0 && ` ${importResult.failed} failed.`}
           </p>
         </div>

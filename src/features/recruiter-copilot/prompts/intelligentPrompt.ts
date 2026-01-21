@@ -19,7 +19,12 @@ export function buildRecruiterSystemPrompt(context: RecruiterContext): string {
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📈 RECENT RECRUITMENT ACTIVITY
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-${context.recent_activities.slice(0, 5).map((activity, i) => `${i + 1}. ${activity}`).join('\n') || 'Starting fresh recruitment cycle'}
+${
+  context.recent_activities
+    .slice(0, 5)
+    .map((activity, i) => `${i + 1}. ${activity}`)
+    .join('\n') || 'Starting fresh recruitment cycle'
+}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎯 YOUR MISSION AS AN AI RECRUITMENT EXPERT
@@ -141,9 +146,10 @@ export function buildGeneralResponsePrompt(
   context: RecruiterContext,
   conversationHistory: any[]
 ): string {
-  const recentContext = conversationHistory.slice(-3).map(h => 
-    `User: ${h.query}\nAI: ${h.response}`
-  ).join('\n\n');
+  const recentContext = conversationHistory
+    .slice(-3)
+    .map((h) => `User: ${h.query}\nAI: ${h.response}`)
+    .join('\n\n');
 
   return `${buildRecruiterSystemPrompt(context)}
 
@@ -187,10 +193,7 @@ STRENGTHS: [brief description]`;
 /**
  * Build interview guidance prompt
  */
-export function buildInterviewGuidancePrompt(
-  role: string,
-  candidateProfile: string
-): string {
+export function buildInterviewGuidancePrompt(role: string, candidateProfile: string): string {
   return `Provide interview guidance for this scenario:
 
 ROLE: ${role}

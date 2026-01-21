@@ -1,6 +1,6 @@
 /**
  * Organization Entitlement Service
- * 
+ *
  * Manages entitlement granting and revoking based on license assignments.
  * Handles both organization-provided and self-purchased entitlements.
  */
@@ -44,9 +44,7 @@ export class OrganizationEntitlementService {
   /**
    * Grant entitlements to a user based on their license assignment
    */
-  async grantEntitlementsFromAssignment(
-    assignment: LicenseAssignment
-  ): Promise<UserEntitlement[]> {
+  async grantEntitlementsFromAssignment(assignment: LicenseAssignment): Promise<UserEntitlement[]> {
     try {
       // Get subscription plan features
       const { data: subscription } = await supabase
@@ -84,7 +82,7 @@ export class OrganizationEntitlementService {
             granted_by_organization: true,
             organization_subscription_id: assignment.organizationSubscriptionId,
             granted_by: assignment.assignedBy,
-            expires_at: assignment.expiresAt
+            expires_at: assignment.expiresAt,
           })
           .select()
           .single();
@@ -125,7 +123,7 @@ export class OrganizationEntitlementService {
         .from('user_entitlements')
         .update({
           is_active: false,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('user_id', assignment.user_id)
         .eq('organization_subscription_id', assignment.organization_subscription_id)
@@ -141,21 +139,20 @@ export class OrganizationEntitlementService {
   /**
    * Check if a user has access to a feature through organization
    */
-  async hasOrganizationAccess(
-    userId: string,
-    featureKey: string
-  ): Promise<FeatureAccessResult> {
+  async hasOrganizationAccess(userId: string, featureKey: string): Promise<FeatureAccessResult> {
     try {
       // Check organization-provided access
       const { data: orgEntitlement } = await supabase
         .from('user_entitlements')
-        .select(`
+        .select(
+          `
           *,
           license_assignments!inner(
             status,
             expires_at
           )
-        `)
+        `
+        )
         .eq('user_id', userId)
         .eq('feature_key', featureKey)
         .eq('granted_by_organization', true)
@@ -166,7 +163,7 @@ export class OrganizationEntitlementService {
         return {
           hasAccess: true,
           source: 'organization',
-          expiresAt: orgEntitlement.expires_at
+          expiresAt: orgEntitlement.expires_at,
         };
       }
 
@@ -185,7 +182,7 @@ export class OrganizationEntitlementService {
         return {
           hasAccess: true,
           source: 'personal',
-          expiresAt: personalEntitlement.expires_at
+          expiresAt: personalEntitlement.expires_at,
         };
       }
 
@@ -212,8 +209,8 @@ export class OrganizationEntitlementService {
       const entitlements = (data || []).map(this.mapToUserEntitlement);
 
       return {
-        organizationProvided: entitlements.filter(e => e.grantedByOrganization),
-        selfPurchased: entitlements.filter(e => !e.grantedByOrganization)
+        organizationProvided: entitlements.filter((e) => e.grantedByOrganization),
+        selfPurchased: entitlements.filter((e) => !e.grantedByOrganization),
       };
     } catch (error) {
       console.error('Error fetching user entitlements:', error);
@@ -274,7 +271,7 @@ export class OrganizationEntitlementService {
               is_active: true,
               granted_by_organization: true,
               organization_subscription_id: organizationSubscriptionId,
-              granted_by: grantedBy
+              granted_by: grantedBy,
             })
             .select()
             .single();
@@ -306,7 +303,7 @@ export class OrganizationEntitlementService {
         .from('user_entitlements')
         .update({
           is_active: false,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .in('user_id', userIds)
         .eq('organization_subscription_id', organizationSubscriptionId)
@@ -339,21 +336,21 @@ export class OrganizationEntitlementService {
         return {
           totalMembers: 0,
           activeEntitlements: 0,
-          featureBreakdown: {}
+          featureBreakdown: {},
         };
       }
 
-      const uniqueMembers = new Set(entitlements.map(e => e.user_id));
+      const uniqueMembers = new Set(entitlements.map((e) => e.user_id));
       const featureBreakdown: Record<string, number> = {};
 
-      entitlements.forEach(e => {
+      entitlements.forEach((e) => {
         featureBreakdown[e.feature_key] = (featureBreakdown[e.feature_key] || 0) + 1;
       });
 
       return {
         totalMembers: uniqueMembers.size,
         activeEntitlements: entitlements.length,
-        featureBreakdown
+        featureBreakdown,
       };
     } catch (error) {
       console.error('Error fetching entitlement stats:', error);
@@ -375,7 +372,7 @@ export class OrganizationEntitlementService {
       grantedBy: data.granted_by,
       expiresAt: data.expires_at,
       createdAt: data.created_at,
-      updatedAt: data.updated_at
+      updatedAt: data.updated_at,
     };
   }
 }

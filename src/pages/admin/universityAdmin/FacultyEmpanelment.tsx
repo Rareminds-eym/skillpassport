@@ -70,7 +70,7 @@ const FacultyEmpanelment: React.FC = () => {
       assignedSubjects: ['Data Structures', 'Machine Learning', 'AI Fundamentals'],
       rating: 4.8,
       documents: ['CV', 'Certificates', 'Research Papers'],
-      profileImage: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150'
+      profileImage: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150',
     },
     {
       id: '2',
@@ -103,22 +103,49 @@ const FacultyEmpanelment: React.FC = () => {
       assignedSubjects: ['Calculus', 'Linear Algebra'],
       rating: 4.9,
       documents: ['CV', 'Certificates', 'Publications'],
-      profileImage: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150'
-    }
+      profileImage: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150',
+    },
   ];
 
-  const colleges = ['All Colleges', 'Engineering College', 'Science College', 'Arts College', 'Commerce College'];
-  const departments = ['All Departments', 'Computer Science', 'Electronics', 'Mathematics', 'Physics', 'Chemistry'];
-  const subjects = ['Data Structures', 'Machine Learning', 'Digital Electronics', 'Calculus', 'Physics', 'Chemistry'];
+  const colleges = [
+    'All Colleges',
+    'Engineering College',
+    'Science College',
+    'Arts College',
+    'Commerce College',
+  ];
+  const departments = [
+    'All Departments',
+    'Computer Science',
+    'Electronics',
+    'Mathematics',
+    'Physics',
+    'Chemistry',
+  ];
+  const subjects = [
+    'Data Structures',
+    'Machine Learning',
+    'Digital Electronics',
+    'Calculus',
+    'Physics',
+    'Chemistry',
+  ];
 
-  const filteredFaculty = facultyData.filter(faculty => {
-    const matchesSearch = faculty.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         faculty.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         faculty.specialization.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredFaculty = facultyData.filter((faculty) => {
+    const matchesSearch =
+      faculty.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      faculty.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      faculty.specialization.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = selectedStatus === 'all' || faculty.status === selectedStatus;
-    const matchesCollege = selectedCollege === 'all' || selectedCollege === 'All Colleges' || faculty.college === selectedCollege;
-    const matchesDepartment = selectedDepartment === 'all' || selectedDepartment === 'All Departments' || faculty.department === selectedDepartment;
-    
+    const matchesCollege =
+      selectedCollege === 'all' ||
+      selectedCollege === 'All Colleges' ||
+      faculty.college === selectedCollege;
+    const matchesDepartment =
+      selectedDepartment === 'all' ||
+      selectedDepartment === 'All Departments' ||
+      faculty.department === selectedDepartment;
+
     return matchesSearch && matchesStatus && matchesCollege && matchesDepartment;
   });
 
@@ -128,11 +155,13 @@ const FacultyEmpanelment: React.FC = () => {
       approved: 'bg-green-100 text-green-800 border-green-200',
       rejected: 'bg-red-100 text-red-800 border-red-200',
       active: 'bg-blue-100 text-blue-800 border-blue-200',
-      inactive: 'bg-gray-100 text-gray-800 border-gray-200'
+      inactive: 'bg-gray-100 text-gray-800 border-gray-200',
     };
-    
+
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusConfig[status as keyof typeof statusConfig]}`}>
+      <span
+        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusConfig[status as keyof typeof statusConfig]}`}
+      >
         {status.charAt(0).toUpperCase() + status.slice(1)}
       </span>
     );
@@ -174,7 +203,7 @@ const FacultyEmpanelment: React.FC = () => {
             <XMarkIcon className="h-6 w-6" />
           </button>
         </div>
-        
+
         <form className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -218,7 +247,9 @@ const FacultyEmpanelment: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Experience (Years)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Experience (Years)
+              </label>
               <input
                 type="number"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -229,8 +260,10 @@ const FacultyEmpanelment: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">College</label>
               <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="">Select College</option>
-                {colleges.slice(1).map(college => (
-                  <option key={college} value={college}>{college}</option>
+                {colleges.slice(1).map((college) => (
+                  <option key={college} value={college}>
+                    {college}
+                  </option>
                 ))}
               </select>
             </div>
@@ -238,13 +271,15 @@ const FacultyEmpanelment: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
               <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="">Select Department</option>
-                {departments.slice(1).map(dept => (
-                  <option key={dept} value={dept}>{dept}</option>
+                {departments.slice(1).map((dept) => (
+                  <option key={dept} value={dept}>
+                    {dept}
+                  </option>
                 ))}
               </select>
             </div>
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Upload Documents</label>
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
@@ -253,7 +288,7 @@ const FacultyEmpanelment: React.FC = () => {
               <p className="text-xs text-gray-500">CV, Certificates, Research Papers (PDF, DOC)</p>
             </div>
           </div>
-          
+
           <div className="flex justify-end space-x-3 pt-4">
             <button
               type="button"
@@ -285,7 +320,7 @@ const FacultyEmpanelment: React.FC = () => {
             <XMarkIcon className="h-6 w-6" />
           </button>
         </div>
-        
+
         {selectedFacultyDetails && (
           <div className="space-y-6">
             <div className="flex items-start space-x-4">
@@ -303,36 +338,53 @@ const FacultyEmpanelment: React.FC = () => {
                 )}
               </div>
               <div className="flex-1">
-                <h4 className="text-xl font-semibold text-gray-900">{selectedFacultyDetails.name}</h4>
+                <h4 className="text-xl font-semibold text-gray-900">
+                  {selectedFacultyDetails.name}
+                </h4>
                 <p className="text-gray-600">{selectedFacultyDetails.qualification}</p>
                 <p className="text-gray-600">{selectedFacultyDetails.specialization}</p>
                 <div className="flex items-center mt-2">
                   <StarIcon className="h-5 w-5 text-yellow-400 fill-current" />
-                  <span className="ml-1 text-sm text-gray-600">{selectedFacultyDetails.rating}/5.0</span>
+                  <span className="ml-1 text-sm text-gray-600">
+                    {selectedFacultyDetails.rating}/5.0
+                  </span>
                 </div>
               </div>
-              <div className="flex-shrink-0">
-                {getStatusBadge(selectedFacultyDetails.status)}
-              </div>
+              <div className="flex-shrink-0">{getStatusBadge(selectedFacultyDetails.status)}</div>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <h5 className="font-medium text-gray-900">Contact Information</h5>
                 <div className="space-y-2">
-                  <p className="text-sm"><span className="font-medium">Email:</span> {selectedFacultyDetails.email}</p>
-                  <p className="text-sm"><span className="font-medium">Phone:</span> {selectedFacultyDetails.phone}</p>
+                  <p className="text-sm">
+                    <span className="font-medium">Email:</span> {selectedFacultyDetails.email}
+                  </p>
+                  <p className="text-sm">
+                    <span className="font-medium">Phone:</span> {selectedFacultyDetails.phone}
+                  </p>
                 </div>
-                
+
                 <h5 className="font-medium text-gray-900">Academic Information</h5>
                 <div className="space-y-2">
-                  <p className="text-sm"><span className="font-medium">College:</span> {selectedFacultyDetails.college}</p>
-                  <p className="text-sm"><span className="font-medium">Department:</span> {selectedFacultyDetails.department}</p>
-                  <p className="text-sm"><span className="font-medium">Experience:</span> {selectedFacultyDetails.experience} years</p>
-                  <p className="text-sm"><span className="font-medium">Empanelment Date:</span> {selectedFacultyDetails.empanelmentDate}</p>
+                  <p className="text-sm">
+                    <span className="font-medium">College:</span> {selectedFacultyDetails.college}
+                  </p>
+                  <p className="text-sm">
+                    <span className="font-medium">Department:</span>{' '}
+                    {selectedFacultyDetails.department}
+                  </p>
+                  <p className="text-sm">
+                    <span className="font-medium">Experience:</span>{' '}
+                    {selectedFacultyDetails.experience} years
+                  </p>
+                  <p className="text-sm">
+                    <span className="font-medium">Empanelment Date:</span>{' '}
+                    {selectedFacultyDetails.empanelmentDate}
+                  </p>
                 </div>
               </div>
-              
+
               <div className="space-y-4">
                 <h5 className="font-medium text-gray-900">Assigned Subjects</h5>
                 <div className="flex flex-wrap gap-2">
@@ -345,11 +397,14 @@ const FacultyEmpanelment: React.FC = () => {
                     </span>
                   ))}
                 </div>
-                
+
                 <h5 className="font-medium text-gray-900">Documents</h5>
                 <div className="space-y-2">
                   {selectedFacultyDetails.documents.map((doc, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-2 bg-gray-50 rounded"
+                    >
                       <div className="flex items-center">
                         <DocumentTextIcon className="h-4 w-4 text-gray-400 mr-2" />
                         <span className="text-sm">{doc}</span>
@@ -360,7 +415,7 @@ const FacultyEmpanelment: React.FC = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex justify-end space-x-3 pt-4 border-t">
               <button
                 onClick={() => handleAssignSubjects(selectedFacultyDetails)}
@@ -389,16 +444,20 @@ const FacultyEmpanelment: React.FC = () => {
             <XMarkIcon className="h-6 w-6" />
           </button>
         </div>
-        
+
         {selectedFacultyDetails && (
           <div className="space-y-4">
             <div className="p-4 bg-gray-50 rounded-lg">
               <h4 className="font-medium text-gray-900">{selectedFacultyDetails.name}</h4>
-              <p className="text-sm text-gray-600">{selectedFacultyDetails.department} - {selectedFacultyDetails.college}</p>
+              <p className="text-sm text-gray-600">
+                {selectedFacultyDetails.department} - {selectedFacultyDetails.college}
+              </p>
             </div>
-            
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Available Subjects</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Available Subjects
+              </label>
               <div className="space-y-2 max-h-60 overflow-y-auto">
                 {subjects.map((subject, index) => (
                   <label key={index} className="flex items-center p-2 hover:bg-gray-50 rounded">
@@ -412,7 +471,7 @@ const FacultyEmpanelment: React.FC = () => {
                 ))}
               </div>
             </div>
-            
+
             <div className="flex justify-end space-x-3 pt-4">
               <button
                 onClick={() => setShowAssignmentModal(false)}
@@ -522,7 +581,7 @@ const FacultyEmpanelment: React.FC = () => {
               />
             </div>
           </div>
-          
+
           <div className="flex items-center space-x-4">
             <button
               onClick={() => setShowFilters(!showFilters)}
@@ -530,16 +589,22 @@ const FacultyEmpanelment: React.FC = () => {
             >
               <FunnelIcon className="h-4 w-4 mr-2" />
               Filters
-              <ChevronDownIcon className={`h-4 w-4 ml-2 transform transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+              <ChevronDownIcon
+                className={`h-4 w-4 ml-2 transform transition-transform ${showFilters ? 'rotate-180' : ''}`}
+              />
             </button>
-            
+
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => setViewMode('list')}
                 className={`p-2 rounded-md ${viewMode === 'list' ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
               >
                 <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                  <path
+                    fillRule="evenodd"
+                    d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
+                    clipRule="evenodd"
+                  />
                 </svg>
               </button>
               <button
@@ -547,13 +612,17 @@ const FacultyEmpanelment: React.FC = () => {
                 className={`p-2 rounded-md ${viewMode === 'grid' ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
               >
                 <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M3 3a1 1 0 000 2h4a1 1 0 100-2H3zM3 7a1 1 0 000 2h4a1 1 0 100-2H3zM3 11a1 1 0 100 2h4a1 1 0 100-2H3zM11 3a1 1 0 100 2h4a1 1 0 100-2h-4zM11 7a1 1 0 100 2h4a1 1 0 100-2h-4zM11 11a1 1 0 100 2h4a1 1 0 100-2h-4z" clipRule="evenodd" />
+                  <path
+                    fillRule="evenodd"
+                    d="M3 3a1 1 0 000 2h4a1 1 0 100-2H3zM3 7a1 1 0 000 2h4a1 1 0 100-2H3zM3 11a1 1 0 100 2h4a1 1 0 100-2H3zM11 3a1 1 0 100 2h4a1 1 0 100-2h-4zM11 7a1 1 0 100 2h4a1 1 0 100-2h-4zM11 11a1 1 0 100 2h4a1 1 0 100-2h-4z"
+                    clipRule="evenodd"
+                  />
                 </svg>
               </button>
             </div>
           </div>
         </div>
-        
+
         {showFilters && (
           <div className="mt-4 pt-4 border-t border-gray-200">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -579,7 +648,7 @@ const FacultyEmpanelment: React.FC = () => {
                   onChange={(e) => setSelectedCollege(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  {colleges.map(college => (
+                  {colleges.map((college) => (
                     <option key={college} value={college === 'All Colleges' ? 'all' : college}>
                       {college}
                     </option>
@@ -593,7 +662,7 @@ const FacultyEmpanelment: React.FC = () => {
                   onChange={(e) => setSelectedDepartment(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  {departments.map(dept => (
+                  {departments.map((dept) => (
                     <option key={dept} value={dept === 'All Departments' ? 'all' : dept}>
                       {dept}
                     </option>
@@ -649,7 +718,6 @@ const FacultyEmpanelment: React.FC = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Faculty
                   </th>
@@ -676,7 +744,6 @@ const FacultyEmpanelment: React.FC = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredFaculty.map((faculty) => (
                   <tr key={faculty.id} className="hover:bg-gray-50">
-                    
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="ml-4">
@@ -737,20 +804,21 @@ const FacultyEmpanelment: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
             {filteredFaculty.map((faculty) => (
-              <div key={faculty.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+              <div
+                key={faculty.id}
+                className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
+              >
                 <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center">
-                    
-                  </div>
+                  <div className="flex items-center"></div>
                   {getStatusBadge(faculty.status)}
                 </div>
-                
+
                 <div className="mb-4">
                   <h3 className="text-lg font-medium text-gray-900 mb-1">{faculty.name}</h3>
                   <p className="text-sm text-gray-600 mb-1">{faculty.qualification}</p>
                   <p className="text-sm text-gray-500">{faculty.specialization}</p>
                 </div>
-                
+
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center text-sm text-gray-600">
                     <BuildingOfficeIcon className="h-4 w-4 mr-2" />
@@ -769,7 +837,7 @@ const FacultyEmpanelment: React.FC = () => {
                     {faculty.rating}/5.0 rating
                   </div>
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <button
                     onClick={() => handleViewDetails(faculty)}
@@ -801,12 +869,16 @@ const FacultyEmpanelment: React.FC = () => {
         <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
           <div>
             <p className="text-sm text-gray-700">
-              Showing <span className="font-medium">1</span> to <span className="font-medium">10</span> of{' '}
+              Showing <span className="font-medium">1</span> to{' '}
+              <span className="font-medium">10</span> of{' '}
               <span className="font-medium">{filteredFaculty.length}</span> results
             </p>
           </div>
           <div>
-            <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+            <nav
+              className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
+              aria-label="Pagination"
+            >
               <button className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
                 Previous
               </button>

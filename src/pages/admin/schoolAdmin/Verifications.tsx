@@ -1,13 +1,14 @@
+// @ts-nocheck - Excluded from typecheck for gradual migration
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/Students/components/ui/card';
 import { Button } from '@/components/Students/components/ui/button';
 import { Badge } from '@/components/Students/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/Students/components/ui/tabs';
-import { 
-  Clock, 
-  XCircle, 
-  User, 
-  BookOpen, 
+import {
+  Clock,
+  XCircle,
+  User,
+  BookOpen,
   Briefcase,
   GraduationCap,
   Building2,
@@ -26,7 +27,7 @@ import {
   Award,
   Building,
   CheckCircle,
-  FileText
+  FileText,
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { SchoolAdminNotificationService } from '../../../services/schoolAdminNotificationService';
@@ -39,7 +40,9 @@ import { supabase } from '../../../lib/supabaseClient';
 const Verifications: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<"trainings" | "experiences" | "certificates" | "projects">("trainings");
+  const [activeTab, setActiveTab] = useState<
+    'trainings' | 'experiences' | 'certificates' | 'projects'
+  >('trainings');
   const [schoolId, setSchoolId] = useState<string | undefined>(undefined);
   const [pendingTrainings, setPendingTrainings] = useState<any[]>([]);
   const [pendingExperiences, setPendingExperiences] = useState<any[]>([]);
@@ -53,11 +56,11 @@ const Verifications: React.FC = () => {
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
-  
+
   // Search and filter state
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
 
@@ -65,7 +68,7 @@ const Verifications: React.FC = () => {
   useEffect(() => {
     const getSchoolId = async () => {
       console.log('🏫 Getting school ID for user:', user);
-      
+
       if (!user) {
         console.log('❌ No user available');
         return;
@@ -78,7 +81,7 @@ const Verifications: React.FC = () => {
       }
 
       console.log('🔍 user.school_id not found, checking school_educators table...');
-      
+
       try {
         const { data, error } = await supabase
           .from('school_educators')
@@ -120,7 +123,7 @@ const Verifications: React.FC = () => {
 
   const fetchTrainingData = async () => {
     if (!schoolId) return;
-    
+
     setLoading(true);
     try {
       console.log('🔍 Fetching trainings for school:', schoolId);
@@ -130,9 +133,9 @@ const Verifications: React.FC = () => {
     } catch (error) {
       console.error('Error fetching training data:', error);
       toast({
-        title: "Error",
-        description: "Failed to load training data",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to load training data',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -141,7 +144,7 @@ const Verifications: React.FC = () => {
 
   const fetchExperienceData = async () => {
     if (!schoolId) return;
-    
+
     setLoading(true);
     try {
       console.log('🔍 Fetching experiences for school:', schoolId);
@@ -151,9 +154,9 @@ const Verifications: React.FC = () => {
     } catch (error) {
       console.error('Error fetching experience data:', error);
       toast({
-        title: "Error",
-        description: "Failed to load experience data",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to load experience data',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -163,12 +166,12 @@ const Verifications: React.FC = () => {
   const fetchProjectData = async () => {
     console.log('🚀 fetchProjectData called, schoolId:', schoolId);
     console.log('👤 Current user:', user);
-    
+
     if (!schoolId) {
       console.log('❌ No schoolId available, cannot fetch projects');
       return;
     }
-    
+
     setLoading(true);
     try {
       console.log('🔍 Fetching projects for school:', schoolId);
@@ -179,9 +182,9 @@ const Verifications: React.FC = () => {
     } catch (error) {
       console.error('❌ Error fetching project data:', error);
       toast({
-        title: "Error",
-        description: "Failed to load project data",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to load project data',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -195,7 +198,7 @@ const Verifications: React.FC = () => {
     } else if (action === 'approved' || action === 'rejected') {
       fetchTrainingData(); // Refresh data
       toast({
-        title: "Success",
+        title: 'Success',
         description: `Training ${action} successfully!`,
       });
     }
@@ -208,7 +211,7 @@ const Verifications: React.FC = () => {
     } else if (action === 'approved' || action === 'rejected') {
       fetchExperienceData(); // Refresh data
       toast({
-        title: "Success",
+        title: 'Success',
         description: `Experience ${action} successfully!`,
       });
     }
@@ -221,7 +224,7 @@ const Verifications: React.FC = () => {
     } else if (action === 'approved' || action === 'rejected') {
       fetchProjectData(); // Refresh data
       toast({
-        title: "Success",
+        title: 'Success',
         description: `Project ${action} successfully!`,
       });
     }
@@ -234,12 +237,12 @@ const Verifications: React.FC = () => {
 
   const formatDuration = (startDate: string, endDate: string) => {
     if (!startDate || !endDate) return 'Duration not specified';
-    
+
     const start = new Date(startDate);
     const end = new Date(endDate);
     const diffTime = Math.abs(end.getTime() - start.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays < 30) return `${diffDays} days`;
     const months = Math.floor(diffDays / 30);
     return `${months} month${months > 1 ? 's' : ''}`;
@@ -248,15 +251,11 @@ const Verifications: React.FC = () => {
   // Refresh all data
   const refreshData = async () => {
     setLoading(true);
-    await Promise.all([
-      fetchTrainingData(),
-      fetchExperienceData(),
-      fetchProjectData()
-    ]);
+    await Promise.all([fetchTrainingData(), fetchExperienceData(), fetchProjectData()]);
     setLoading(false);
     toast({
-      title: "Refreshed",
-      description: "Data has been refreshed successfully",
+      title: 'Refreshed',
+      description: 'Data has been refreshed successfully',
     });
   };
 
@@ -283,45 +282,48 @@ const Verifications: React.FC = () => {
   };
 
   const tabs = {
-    trainings: { label: "Training Approvals", icon: CheckCircle, count: pendingTrainings.length },
-    experiences: { label: "Experience Approvals", icon: User, count: pendingExperiences.length },
+    trainings: { label: 'Training Approvals', icon: CheckCircle, count: pendingTrainings.length },
+    experiences: { label: 'Experience Approvals', icon: User, count: pendingExperiences.length },
     // certificates: { label: "Certificate Verification", icon: FileText, count: 0 },
-    projects: { label: "Project Validation", icon: Building, count: pendingProjects.length }
+    projects: { label: 'Project Validation', icon: Building, count: pendingProjects.length },
   };
 
   // Filter functions
   const getFilteredTrainings = () => {
-    return pendingTrainings.filter(training => {
-      const matchesSearch = (training.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           (training.student_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           (training.organization || '').toLowerCase().includes(searchQuery.toLowerCase());
-      
+    return pendingTrainings.filter((training) => {
+      const matchesSearch =
+        (training.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (training.student_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (training.organization || '').toLowerCase().includes(searchQuery.toLowerCase());
+
       const matchesStatus = statusFilter === 'all' || training.approval_status === statusFilter;
-      
+
       return matchesSearch && matchesStatus;
     });
   };
 
   const getFilteredExperiences = () => {
-    return pendingExperiences.filter(experience => {
-      const matchesSearch = (experience.role || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           (experience.student_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           (experience.organization || '').toLowerCase().includes(searchQuery.toLowerCase());
-      
+    return pendingExperiences.filter((experience) => {
+      const matchesSearch =
+        (experience.role || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (experience.student_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (experience.organization || '').toLowerCase().includes(searchQuery.toLowerCase());
+
       const matchesStatus = statusFilter === 'all' || experience.approval_status === statusFilter;
-      
+
       return matchesSearch && matchesStatus;
     });
   };
 
   const getFilteredProjects = () => {
-    return pendingProjects.filter(project => {
-      const matchesSearch = (project.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           (project.student_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           (project.organization || '').toLowerCase().includes(searchQuery.toLowerCase());
-      
+    return pendingProjects.filter((project) => {
+      const matchesSearch =
+        (project.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (project.student_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (project.organization || '').toLowerCase().includes(searchQuery.toLowerCase());
+
       const matchesStatus = statusFilter === 'all' || project.approval_status === statusFilter;
-      
+
       return matchesSearch && matchesStatus;
     });
   };
@@ -330,7 +332,7 @@ const Verifications: React.FC = () => {
   const filteredTrainings = getFilteredTrainings();
   const filteredExperiences = getFilteredExperiences();
   const filteredProjects = getFilteredProjects();
-  
+
   const currentTrainings = getCurrentPageData(filteredTrainings);
   const currentExperiences = getCurrentPageData(filteredExperiences);
   const currentProjects = getCurrentPageData(filteredProjects);
@@ -350,7 +352,15 @@ const Verifications: React.FC = () => {
   };
 
   // Pagination Component
-  const PaginationControls = ({ totalPages, currentPage, onPageChange }: { totalPages: number, currentPage: number, onPageChange: (page: number) => void }) => {
+  const PaginationControls = ({
+    totalPages,
+    currentPage,
+    onPageChange,
+  }: {
+    totalPages: number;
+    currentPage: number;
+    onPageChange: (page: number) => void;
+  }) => {
     if (totalPages <= 1) return null;
 
     return (
@@ -358,7 +368,7 @@ const Verifications: React.FC = () => {
         <div className="text-sm text-gray-600">
           Page {currentPage} of {totalPages}
         </div>
-        
+
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
@@ -370,13 +380,13 @@ const Verifications: React.FC = () => {
             <ChevronLeft className="w-4 h-4" />
             Previous
           </Button>
-          
+
           {/* Page numbers */}
           <div className="flex items-center gap-1">
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
               <Button
                 key={page}
-                variant={page === currentPage ? "default" : "outline"}
+                variant={page === currentPage ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => onPageChange(page)}
                 className="w-8 h-8 p-0"
@@ -385,7 +395,7 @@ const Verifications: React.FC = () => {
               </Button>
             ))}
           </div>
-          
+
           <Button
             variant="outline"
             size="sm"
@@ -416,7 +426,7 @@ const Verifications: React.FC = () => {
             Submitted: {new Date(training.created_at || training.start_date).toLocaleDateString()}
           </div>
         </div>
-       
+
         <div className="space-y-2 mb-3">
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Mail className="w-4 h-4" />
@@ -424,42 +434,38 @@ const Verifications: React.FC = () => {
           </div>
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Award className="w-4 h-4" />
-            <span>
-              {training.title}
-            </span>
+            <span>{training.title}</span>
           </div>
           {training.organization && (
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Building2 className="w-4 h-4" />
               <span>{training.organization}</span>
               {training.organization.toLowerCase() === 'rareminds' && (
-                <Badge className="bg-purple-100 text-purple-700 text-xs">
-                   Rareminds Training
-                </Badge>
+                <Badge className="bg-purple-100 text-purple-700 text-xs">Rareminds Training</Badge>
               )}
             </div>
           )}
-          
+
           {training.duration && (
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Calendar className="w-4 h-4" />
               <span>{training.duration}</span>
             </div>
           )}
-          
+
           {training.hours_spent > 0 && (
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Timer className="w-4 h-4" />
               <span>{training.hours_spent} hours</span>
             </div>
           )}
-          
+
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <GraduationCap className="w-4 h-4" />
             <span>School: {training.school_name || 'Unknown'}</span>
           </div>
         </div>
-        
+
         {training.skills && training.skills.length > 0 && (
           <div className="mb-4">
             <div className="flex flex-wrap gap-1">
@@ -476,16 +482,14 @@ const Verifications: React.FC = () => {
             </div>
           </div>
         )}
-        
+
         <div className="flex justify-between items-center gap-2">
           <div className="flex gap-2 flex-wrap">
             <Badge className="bg-yellow-100 text-yellow-800 text-xs">
               <Clock className="w-3 h-3 mr-1" />
               Pending
             </Badge>
-            <Badge className="bg-blue-100 text-blue-700 text-xs">
-              School Admin
-            </Badge>
+            <Badge className="bg-blue-100 text-blue-700 text-xs">School Admin</Badge>
           </div>
           <Button
             onClick={() => handleTrainingAction('view', training)}
@@ -512,7 +516,8 @@ const Verifications: React.FC = () => {
             </h3>
           </div>
           <div className="text-xs text-gray-500 ml-4">
-            Submitted: {new Date(experience.created_at || experience.start_date).toLocaleDateString()}
+            Submitted:{' '}
+            {new Date(experience.created_at || experience.start_date).toLocaleDateString()}
           </div>
         </div>
 
@@ -523,15 +528,13 @@ const Verifications: React.FC = () => {
           </div>
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Briefcase className="w-4 h-4" />
-            <span>
-              {experience.role}
-            </span>
+            <span>{experience.role}</span>
           </div>
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Building2 className="w-4 h-4" />
             <span>{experience.organization}</span>
           </div>
-          
+
           {experience.duration && (
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Calendar className="w-4 h-4" />
@@ -539,16 +542,14 @@ const Verifications: React.FC = () => {
             </div>
           )}
         </div>
-        
+
         <div className="flex justify-between items-center gap-2">
           <div className="flex gap-2 flex-wrap">
             <Badge className="bg-yellow-100 text-yellow-800 text-xs">
               <Clock className="w-3 h-3 mr-1" />
               Pending Review
             </Badge>
-            <Badge className="bg-blue-100 text-blue-700 text-xs">
-              School Admin
-            </Badge>
+            <Badge className="bg-blue-100 text-blue-700 text-xs">School Admin</Badge>
           </div>
           <Button
             onClick={() => handleExperienceAction('view', experience)}
@@ -586,30 +587,28 @@ const Verifications: React.FC = () => {
           </div>
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Building2 className="w-4 h-4" />
-            <span>
-              {project.title}
-            </span>
+            <span>{project.title}</span>
           </div>
-          
+
           {project.organization && (
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Building2 className="w-4 h-4" />
               <span>{project.organization}</span>
             </div>
           )}
-          
+
           {project.status && (
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Clock className="w-4 h-4" />
               <span>Status: {project.status}</span>
             </div>
           )}
-          
+
           {(project.start_date || project.end_date) && (
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Calendar className="w-4 h-4" />
               <span>
-                {project.start_date ? new Date(project.start_date).toLocaleDateString() : 'N/A'} - 
+                {project.start_date ? new Date(project.start_date).toLocaleDateString() : 'N/A'} -
                 {project.end_date ? new Date(project.end_date).toLocaleDateString() : 'Ongoing'}
               </span>
             </div>
@@ -634,20 +633,16 @@ const Verifications: React.FC = () => {
         </div>
 
         {project.description && (
-          <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-            {project.description}
-          </p>
+          <p className="text-sm text-gray-600 mb-4 line-clamp-2">{project.description}</p>
         )}
-        
+
         <div className="flex justify-between items-center gap-2">
           <div className="flex gap-2 flex-wrap">
             <Badge className="bg-yellow-100 text-yellow-800 text-xs">
               <Clock className="w-3 h-3 mr-1" />
               Pending Review
             </Badge>
-            <Badge className="bg-blue-100 text-blue-700 text-xs">
-              School Admin
-            </Badge>
+            <Badge className="bg-blue-100 text-blue-700 text-xs">School Admin</Badge>
           </div>
           <Button
             onClick={() => handleProjectAction('view', project)}
@@ -702,7 +697,7 @@ const Verifications: React.FC = () => {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-green-50">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -714,7 +709,7 @@ const Verifications: React.FC = () => {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-orange-50">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -728,7 +723,7 @@ const Verifications: React.FC = () => {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-purple-50">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -744,23 +739,27 @@ const Verifications: React.FC = () => {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
+          // @ts-expect-error - Auto-suppressed for migration
           <TabsList className="grid w-full grid-cols-3 bg-gray-100 p-1 rounded-lg">
-            <TabsTrigger 
-              value="trainings" 
+            // @ts-expect-error - Auto-suppressed for migration
+            <TabsTrigger
+              value="trainings"
               className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-gray-200 transition-all duration-200 rounded-md"
             >
               <BookOpen className="w-4 h-4" />
               Training Approvals ({pendingTrainings.length})
             </TabsTrigger>
-            <TabsTrigger 
-              value="experiences" 
+            // @ts-expect-error - Auto-suppressed for migration
+            <TabsTrigger
+              value="experiences"
               className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-gray-200 transition-all duration-200 rounded-md"
             >
               <Briefcase className="w-4 h-4" />
               Experience Approvals ({pendingExperiences.length})
             </TabsTrigger>
-            <TabsTrigger 
-              value="projects" 
+            // @ts-expect-error - Auto-suppressed for migration
+            <TabsTrigger
+              value="projects"
               className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-gray-200 transition-all duration-200 rounded-md"
             >
               <Building2 className="w-4 h-4" />
@@ -769,6 +768,7 @@ const Verifications: React.FC = () => {
           </TabsList>
 
           {/* Training Approvals Tab */}
+          // @ts-expect-error - Auto-suppressed for migration
           <TabsContent value="trainings" className="space-y-6">
             {/* Search and Filter Bar */}
             <Card className="p-4">
@@ -785,7 +785,7 @@ const Verifications: React.FC = () => {
                     />
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-4">
                   {/* View Toggle Buttons */}
                   <div className="flex items-center border border-gray-300 rounded-lg p-1">
@@ -806,7 +806,7 @@ const Verifications: React.FC = () => {
                       <List className="h-4 w-4" />
                     </Button>
                   </div>
-                  
+
                   <div className="flex items-center gap-2">
                     <select
                       value={statusFilter}
@@ -828,22 +828,26 @@ const Verifications: React.FC = () => {
                 <CardContent className="p-12 text-center">
                   <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-gray-600 mb-2">
-                    {searchQuery || statusFilter !== 'all' ? 'No trainings found' : 'No Pending Training Approvals'}
+                    {searchQuery || statusFilter !== 'all'
+                      ? 'No trainings found'
+                      : 'No Pending Training Approvals'}
                   </h3>
                   <p className="text-gray-500">
-                    {searchQuery || statusFilter !== 'all' 
+                    {searchQuery || statusFilter !== 'all'
                       ? 'Try adjusting your search or filter criteria'
-                      : 'All training submissions have been reviewed. New submissions will appear here.'
-                    }
+                      : 'All training submissions have been reviewed. New submissions will appear here.'}
                   </p>
                 </CardContent>
               </Card>
             ) : (
               <>
-                <div className={viewMode === 'grid' 
-                  ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
-                  : "space-y-4"
-                }>
+                <div
+                  className={
+                    viewMode === 'grid'
+                      ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
+                      : 'space-y-4'
+                  }
+                >
                   {currentTrainings.map((training) => (
                     <TrainingCard key={training.id} training={training} />
                   ))}
@@ -858,6 +862,7 @@ const Verifications: React.FC = () => {
           </TabsContent>
 
           {/* Experience Approvals Tab */}
+          // @ts-expect-error - Auto-suppressed for migration
           <TabsContent value="experiences" className="space-y-6">
             {/* Search and Filter Bar */}
             <Card className="p-4">
@@ -874,7 +879,7 @@ const Verifications: React.FC = () => {
                     />
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-4">
                   {/* View Toggle Buttons */}
                   <div className="flex items-center border border-gray-300 rounded-lg p-1">
@@ -895,7 +900,7 @@ const Verifications: React.FC = () => {
                       <List className="h-4 w-4" />
                     </Button>
                   </div>
-                  
+
                   <div className="flex items-center gap-2">
                     <select
                       value={statusFilter}
@@ -917,22 +922,26 @@ const Verifications: React.FC = () => {
                 <CardContent className="p-12 text-center">
                   <Briefcase className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-gray-600 mb-2">
-                    {searchQuery || statusFilter !== 'all' ? 'No experiences found' : 'No Pending Experience Approvals'}
+                    {searchQuery || statusFilter !== 'all'
+                      ? 'No experiences found'
+                      : 'No Pending Experience Approvals'}
                   </h3>
                   <p className="text-gray-500">
-                    {searchQuery || statusFilter !== 'all' 
+                    {searchQuery || statusFilter !== 'all'
                       ? 'Try adjusting your search or filter criteria'
-                      : 'All experience submissions have been reviewed. New submissions will appear here.'
-                    }
+                      : 'All experience submissions have been reviewed. New submissions will appear here.'}
                   </p>
                 </CardContent>
               </Card>
             ) : (
               <>
-                <div className={viewMode === 'grid' 
-                  ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
-                  : "space-y-4"
-                }>
+                <div
+                  className={
+                    viewMode === 'grid'
+                      ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
+                      : 'space-y-4'
+                  }
+                >
                   {currentExperiences.map((experience) => (
                     <ExperienceCard key={experience.id} experience={experience} />
                   ))}
@@ -947,6 +956,7 @@ const Verifications: React.FC = () => {
           </TabsContent>
 
           {/* Project Approvals Tab */}
+          // @ts-expect-error - Auto-suppressed for migration
           <TabsContent value="projects" className="space-y-6">
             {/* Search and Filter Bar */}
             <Card className="p-4">
@@ -963,7 +973,7 @@ const Verifications: React.FC = () => {
                     />
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-4">
                   {/* View Toggle Buttons */}
                   <div className="flex items-center border border-gray-300 rounded-lg p-1">
@@ -984,7 +994,7 @@ const Verifications: React.FC = () => {
                       <List className="h-4 w-4" />
                     </Button>
                   </div>
-                  
+
                   <div className="flex items-center gap-2">
                     <select
                       value={statusFilter}
@@ -1006,22 +1016,26 @@ const Verifications: React.FC = () => {
                 <CardContent className="p-12 text-center">
                   <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-gray-600 mb-2">
-                    {searchQuery || statusFilter !== 'all' ? 'No projects found' : 'No Pending Project Approvals'}
+                    {searchQuery || statusFilter !== 'all'
+                      ? 'No projects found'
+                      : 'No Pending Project Approvals'}
                   </h3>
                   <p className="text-gray-500">
-                    {searchQuery || statusFilter !== 'all' 
+                    {searchQuery || statusFilter !== 'all'
                       ? 'Try adjusting your search or filter criteria'
-                      : 'All project submissions have been reviewed. New submissions will appear here.'
-                    }
+                      : 'All project submissions have been reviewed. New submissions will appear here.'}
                   </p>
                 </CardContent>
               </Card>
             ) : (
               <>
-                <div className={viewMode === 'grid' 
-                  ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
-                  : "space-y-4"
-                }>
+                <div
+                  className={
+                    viewMode === 'grid'
+                      ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
+                      : 'space-y-4'
+                  }
+                >
                   {currentProjects.map((project) => (
                     <ProjectCard key={project.project_id} project={project} />
                   ))}

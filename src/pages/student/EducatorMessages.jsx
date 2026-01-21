@@ -2,13 +2,13 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { 
-  Search, 
-  Send, 
-  MoreVertical, 
-  Phone, 
-  Video, 
-  Paperclip, 
+import {
+  Search,
+  Send,
+  MoreVertical,
+  Phone,
+  Video,
+  Paperclip,
   Smile,
   Check,
   CheckCheck,
@@ -16,9 +16,12 @@ import {
   Loader2,
   Trash2,
   BookOpen,
-  GraduationCap
+  GraduationCap,
 } from 'lucide-react';
-import { useStudentEducatorConversations, useStudentEducatorMessages } from '../../hooks/useStudentEducatorMessages';
+import {
+  useStudentEducatorConversations,
+  useStudentEducatorMessages,
+} from '../../hooks/useStudentEducatorMessages';
 import MessageService from '../../services/messageService';
 import { useMutation } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
@@ -34,40 +37,46 @@ const EducatorMessages = () => {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const conversationIdFromUrl = searchParams.get('conversation');
-  
+
   const [selectedConversationId, setSelectedConversationId] = useState(conversationIdFromUrl);
   const [messageInput, setMessageInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showMenu, setShowMenu] = useState(null);
-  const [deleteModal, setDeleteModal] = useState({ isOpen: false, conversationId: null, contactName: '' });
+  const [deleteModal, setDeleteModal] = useState({
+    isOpen: false,
+    conversationId: null,
+    contactName: '',
+  });
   const messagesEndRef = useRef(null);
   const markedAsReadRef = useRef(new Set());
   const menuRef = useRef(null);
-  
+
   // Get student data
   const { user } = useAuth();
   const userEmail = localStorage.getItem('userEmail') || user?.email;
   const { studentData, loading: loadingStudentData } = useStudentDataByEmail(userEmail);
   const studentId = studentData?.id || user?.id;
   const studentName = studentData?.profile?.name || user?.name || 'Student';
-  
+
   // Fetch conversations with educators
-  const { 
-    conversations, 
-    isLoading: loadingConversations, 
+  const {
+    conversations,
+    isLoading: loadingConversations,
     refetch: refetchConversations,
-    clearUnreadCount
-  } = useStudentEducatorConversations(
-    studentId,
-    !!studentId && !loadingStudentData
-  );
-  
+    clearUnreadCount,
+  } = useStudentEducatorConversations(studentId, !!studentId && !loadingStudentData);
+
   // Fetch messages for selected conversation
-  const { messages, isLoading: loadingMessages, sendMessage, isSending } = useStudentEducatorMessages({
+  const {
+    messages,
+    isLoading: loadingMessages,
+    sendMessage,
+    isSending,
+  } = useStudentEducatorMessages({
     studentId,
     conversationId: selectedConversationId,
     enabled: !!selectedConversationId,
-    enableRealtime: true
+    enableRealtime: true,
   });
 
   // Use shared global presence context
@@ -82,9 +91,9 @@ const EducatorMessages = () => {
       userType: 'student',
       status: 'online',
       lastSeen: new Date().toISOString(),
-      conversationId: selectedConversationId || undefined
+      conversationId: selectedConversationId || undefined,
     },
-    enabled: !!selectedConversationId && !!studentId
+    enabled: !!selectedConversationId && !!studentId,
   });
 
   // Typing indicators
@@ -92,20 +101,20 @@ const EducatorMessages = () => {
     conversationId: selectedConversationId || '',
     currentUserId: studentId || '',
     currentUserName: studentName,
-    enabled: !!selectedConversationId && !!studentId
+    enabled: !!selectedConversationId && !!studentId,
   });
 
   // Notification broadcasts
   const { sendNotification } = useNotificationBroadcast({
     userId: studentId || '',
     showToast: true,
-    enabled: !!studentId
+    enabled: !!studentId,
   });
-  
+
   // Auto-select conversation from URL parameter
   useEffect(() => {
     if (conversationIdFromUrl && conversations.length > 0) {
-      const conversationExists = conversations.find(c => c.id === conversationIdFromUrl);
+      const conversationExists = conversations.find((c) => c.id === conversationIdFromUrl);
       if (conversationExists) {
         setSelectedConversationId(conversationIdFromUrl);
         // Clear URL parameter after selecting
@@ -113,7 +122,7 @@ const EducatorMessages = () => {
       }
     }
   }, [conversationIdFromUrl, conversations, setSearchParams]);
-  
+
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async ({ conversationId }) => {
@@ -122,42 +131,48 @@ const EducatorMessages = () => {
     },
     onMutate: async ({ conversationId }) => {
       await queryClient.cancelQueries({ queryKey: ['student-educator-conversations', studentId] });
-      
-      const previousConversations = queryClient.getQueryData(['student-educator-conversations', studentId]);
-      
+
+      const previousConversations = queryClient.getQueryData([
+        'student-educator-conversations',
+        studentId,
+      ]);
+
       queryClient.setQueryData(['student-educator-conversations', studentId], (old) => {
         if (!old) return [];
-        return old.map(conv => 
+        return old.map((conv) =>
           conv.id === conversationId ? { ...conv, _pendingDelete: true } : conv
         );
       });
-      
-      queryClient.invalidateQueries({ 
+
+      queryClient.invalidateQueries({
         queryKey: ['student-educator-conversations', studentId],
-        refetchType: 'none'
+        refetchType: 'none',
       });
-      
+
       return { previousConversations, conversationId };
     },
     onError: (err, variables, context) => {
       if (context?.previousConversations) {
-        queryClient.setQueryData(['student-educator-conversations', studentId], context.previousConversations);
+        queryClient.setQueryData(
+          ['student-educator-conversations', studentId],
+          context.previousConversations
+        );
       }
       toast.error('Failed to delete conversation');
     },
     onSuccess: (data, variables, context) => {
       queryClient.setQueryData(['student-educator-conversations', studentId], (old) => {
         if (!old) return [];
-        return old.filter(conv => conv.id !== variables.conversationId);
+        return old.filter((conv) => conv.id !== variables.conversationId);
       });
-      
-      queryClient.invalidateQueries({ 
+
+      queryClient.invalidateQueries({
         queryKey: ['student-educator-conversations', studentId],
-        refetchType: 'none'
+        refetchType: 'none',
       });
-    }
+    },
   });
-  
+
   // Undo mutation
   const undoMutation = useMutation({
     mutationFn: async ({ conversationId }) => {
@@ -167,40 +182,43 @@ const EducatorMessages = () => {
     onSuccess: () => {
       toast.success('Conversation restored');
       refetchConversations();
-    }
+    },
   });
-  
+
   // Mark messages as read when conversation is selected
-  const markConversationAsRead = useCallback(async (conversationId, unreadCount) => {
-    if (!studentId || !clearUnreadCount) return;
-    
-    const markKey = `${conversationId}-${unreadCount}`;
-    
-    if (markedAsReadRef.current.has(markKey)) {
-      return;
-    }
-    markedAsReadRef.current.add(markKey);
-    
-    clearUnreadCount(conversationId);
-    
-    try {
-      await MessageService.markConversationAsRead(conversationId, studentId);
-    } catch (err) {
-      console.error('❌ Failed to mark as read:', err);
-      markedAsReadRef.current.delete(markKey);
-      refetchConversations();
-    }
-  }, [studentId, clearUnreadCount, refetchConversations]);
-  
+  const markConversationAsRead = useCallback(
+    async (conversationId, unreadCount) => {
+      if (!studentId || !clearUnreadCount) return;
+
+      const markKey = `${conversationId}-${unreadCount}`;
+
+      if (markedAsReadRef.current.has(markKey)) {
+        return;
+      }
+      markedAsReadRef.current.add(markKey);
+
+      clearUnreadCount(conversationId);
+
+      try {
+        await MessageService.markConversationAsRead(conversationId, studentId);
+      } catch (err) {
+        console.error('❌ Failed to mark as read:', err);
+        markedAsReadRef.current.delete(markKey);
+        refetchConversations();
+      }
+    },
+    [studentId, clearUnreadCount, refetchConversations]
+  );
+
   // Trigger mark as read when conversation changes
   useEffect(() => {
     if (!selectedConversationId || !studentId) {
       return;
     }
-    
-    const conversation = conversations.find(c => c.id === selectedConversationId);
+
+    const conversation = conversations.find((c) => c.id === selectedConversationId);
     const hasUnread = conversation?.student_unread_count > 0;
-    
+
     if (hasUnread) {
       markConversationAsRead(selectedConversationId, conversation.student_unread_count);
     }
@@ -219,28 +237,29 @@ const EducatorMessages = () => {
     }
     return profile;
   };
-  
+
   // Transform conversations for display
   const contacts = useMemo(() => {
-    const activeConversations = conversations.filter(conv => !conv._pendingDelete);
-    
-    return activeConversations.map(conv => {
+    const activeConversations = conversations.filter((conv) => !conv._pendingDelete);
+
+    return activeConversations.map((conv) => {
       const educator = conv.educator;
       const educatorProfile = parseProfile(educator?.profile);
       const educatorName = educator?.name || educatorProfile?.name || 'Educator';
       const courseName = conv.course?.title || 'General Discussion';
       const className = conv.class?.name || '';
-      
+
       // Build role string
       let role = courseName;
       if (className) {
         role += ` • ${className}`;
       }
-      
+
       // Generate avatar URL
-      const avatar = educatorProfile?.profilePicture || 
+      const avatar =
+        educatorProfile?.profilePicture ||
         `https://ui-avatars.com/api/?name=${encodeURIComponent(educatorName)}&background=10B981&color=fff`;
-      
+
       // Format time
       let timeDisplay = 'No messages';
       if (conv.last_message_at) {
@@ -250,7 +269,7 @@ const EducatorMessages = () => {
           timeDisplay = conv.last_message_at;
         }
       }
-      
+
       return {
         id: conv.id,
         name: educatorName,
@@ -262,24 +281,25 @@ const EducatorMessages = () => {
         online: isUserOnlineGlobal(conv.educator_id),
         educatorId: conv.educator_id,
         courseId: conv.course_id,
-        classId: conv.class_id
+        classId: conv.class_id,
       };
     });
   }, [conversations, globalOnlineUsers, isUserOnlineGlobal]);
-  
+
   // Filter contacts based on search
   const filteredContacts = useMemo(() => {
     if (!searchQuery) return contacts;
-    
-    return contacts.filter(contact =>
-      contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      contact.role.toLowerCase().includes(searchQuery.toLowerCase())
+
+    return contacts.filter(
+      (contact) =>
+        contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        contact.role.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [contacts, searchQuery]);
 
   // Get selected conversation
-  const currentChat = selectedConversationId 
-    ? contacts.find(c => c.id === selectedConversationId) 
+  const currentChat = selectedConversationId
+    ? contacts.find((c) => c.id === selectedConversationId)
     : null;
 
   const handleSendMessage = async (e) => {
@@ -293,21 +313,22 @@ const EducatorMessages = () => {
           receiverType: 'educator',
           messageText: messageInput,
           courseId: currentChat.courseId,
-          classId: currentChat.classId
+          classId: currentChat.classId,
         });
-        
+
         // Send notification broadcast to educator
         try {
           await sendNotification(currentChat.educatorId, {
             title: 'New Message from Student',
-            message: messageInput.length > 50 ? messageInput.substring(0, 50) + '...' : messageInput,
+            message:
+              messageInput.length > 50 ? messageInput.substring(0, 50) + '...' : messageInput,
             type: 'message',
-            link: `/educator/messages?conversation=${selectedConversationId}`
+            link: `/educator/messages?conversation=${selectedConversationId}`,
           });
         } catch (notifError) {
           // Silent fail
         }
-        
+
         setMessageInput('');
         setTyping(false);
       } catch (error) {
@@ -317,21 +338,24 @@ const EducatorMessages = () => {
   };
 
   // Handle typing in input
-  const handleInputChange = useCallback((value) => {
-    setMessageInput(value);
-    setTyping(value.length > 0);
-  }, [setTyping]);
+  const handleInputChange = useCallback(
+    (value) => {
+      setMessageInput(value);
+      setTyping(value.length > 0);
+    },
+    [setTyping]
+  );
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (!messages.length) return;
-    
+
     const scrollToBottom = () => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
-    
+
     const rafId = requestAnimationFrame(scrollToBottom);
-    
+
     return () => cancelAnimationFrame(rafId);
   }, [messages]);
 
@@ -346,38 +370,45 @@ const EducatorMessages = () => {
   };
 
   // Transform messages for display
-  const displayMessages = messages.map(msg => ({
+  const displayMessages = messages.map((msg) => ({
     id: msg.id,
     text: msg.message_text,
     sender: msg.sender_type === 'student' ? 'me' : 'them',
     time: formatDistanceToNow(new Date(msg.created_at), { addSuffix: true }),
-    status: msg.is_read ? 'read' : 'delivered'
+    status: msg.is_read ? 'read' : 'delivered',
   }));
 
   // Handle delete conversation
   const handleDeleteConversation = useCallback(async () => {
     if (!deleteModal.conversationId || !studentId) return;
-    
+
     const conversationId = deleteModal.conversationId;
     const contactName = deleteModal.contactName;
-    
+
     if (selectedConversationId === conversationId) {
       setSelectedConversationId(null);
     }
-    
+
     setDeleteModal({ isOpen: false, conversationId: null, contactName: '' });
-    
+
     deleteMutation.mutate({ conversationId });
-    
+
     // Show undo toast (similar to the recruiter implementation)
     toast.success(`Conversation with ${contactName} deleted`, {
       duration: 5000,
       action: {
         label: 'Undo',
-        onClick: () => undoMutation.mutate({ conversationId })
-      }
+        onClick: () => undoMutation.mutate({ conversationId }),
+      },
     });
-  }, [deleteModal.conversationId, deleteModal.contactName, studentId, selectedConversationId, deleteMutation, undoMutation]);
+  }, [
+    deleteModal.conversationId,
+    deleteModal.contactName,
+    studentId,
+    selectedConversationId,
+    deleteMutation,
+    undoMutation,
+  ]);
 
   // Open delete confirmation modal
   const openDeleteModal = useCallback((conversationId, contactName, e) => {
@@ -385,7 +416,7 @@ const EducatorMessages = () => {
     setShowMenu(null);
     setDeleteModal({ isOpen: true, conversationId, contactName });
   }, []);
-  
+
   // Show loading state
   if (loadingConversations || !studentId) {
     return (
@@ -399,7 +430,7 @@ const EducatorMessages = () => {
       </div>
     );
   }
-  
+
   return (
     <div className="flex h-[calc(100vh-180px)] bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
       {/* Left Panel - Contacts List */}
@@ -449,23 +480,15 @@ const EducatorMessages = () => {
                     <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
                   )}
                 </div>
-                
+
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
-                    <h3 className="font-semibold text-gray-900 text-sm truncate">
-                      {contact.name}
-                    </h3>
-                    <span className="text-xs text-gray-500 flex-shrink-0 ml-2">
-                      {contact.time}
-                    </span>
+                    <h3 className="font-semibold text-gray-900 text-sm truncate">{contact.name}</h3>
+                    <span className="text-xs text-gray-500 flex-shrink-0 ml-2">{contact.time}</span>
                   </div>
-                  <p className="text-xs text-green-600 font-medium mb-1 truncate">
-                    {contact.role}
-                  </p>
+                  <p className="text-xs text-green-600 font-medium mb-1 truncate">{contact.role}</p>
                   <div className="flex items-center justify-between">
-                    <p className="text-sm text-gray-600 truncate">
-                      {contact.lastMessage}
-                    </p>
+                    <p className="text-sm text-gray-600 truncate">{contact.lastMessage}</p>
                     {contact.unread > 0 && (
                       <span className="flex-shrink-0 ml-2 bg-green-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
                         {contact.unread}
@@ -525,7 +548,7 @@ const EducatorMessages = () => {
                   </p>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                   <Phone className="w-5 h-5 text-gray-600" />
@@ -549,7 +572,9 @@ const EducatorMessages = () => {
                 <div className="flex items-center justify-center h-full">
                   <div className="text-center">
                     <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-400 text-sm">No messages yet. Start the conversation!</p>
+                    <p className="text-gray-400 text-sm">
+                      No messages yet. Start the conversation!
+                    </p>
                   </div>
                 </div>
               ) : (
@@ -567,25 +592,36 @@ const EducatorMessages = () => {
                         }`}
                       >
                         <p className="text-sm leading-relaxed">{message.text}</p>
-                        <div className={`flex items-center gap-1 mt-1 text-xs ${
-                          message.sender === 'me' ? 'text-green-100' : 'text-gray-500'
-                        }`}>
+                        <div
+                          className={`flex items-center gap-1 mt-1 text-xs ${
+                            message.sender === 'me' ? 'text-green-100' : 'text-gray-500'
+                          }`}
+                        >
                           <span>{message.time}</span>
                           {message.sender === 'me' && getStatusIcon(message.status)}
                         </div>
                       </div>
                     </div>
                   ))}
-                  
+
                   {/* Typing indicator */}
                   {isAnyoneTyping && (
                     <div className="flex justify-start">
                       <div className="bg-white border border-gray-200 rounded-2xl px-4 py-2.5 shadow-sm">
                         <div className="flex items-center gap-2">
                           <div className="flex gap-1">
-                            <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                            <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                            <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                            <span
+                              className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                              style={{ animationDelay: '0ms' }}
+                            />
+                            <span
+                              className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                              style={{ animationDelay: '150ms' }}
+                            />
+                            <span
+                              className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                              style={{ animationDelay: '300ms' }}
+                            />
                           </div>
                           <span className="text-xs text-gray-500 italic">{getTypingText()}</span>
                         </div>
@@ -594,7 +630,7 @@ const EducatorMessages = () => {
                   )}
                 </div>
               )}
-              
+
               <div ref={messagesEndRef} />
             </div>
 
@@ -607,7 +643,7 @@ const EducatorMessages = () => {
                 >
                   <Paperclip className="w-5 h-5 text-gray-600" />
                 </button>
-                
+
                 <div className="flex-1 relative">
                   <input
                     type="text"
@@ -647,12 +683,8 @@ const EducatorMessages = () => {
               <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <GraduationCap className="w-12 h-12 text-green-500" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                Select a conversation
-              </h3>
-              <p className="text-gray-500 text-sm">
-                Choose from your conversations with educators
-              </p>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Select a conversation</h3>
+              <p className="text-gray-500 text-sm">Choose from your conversations with educators</p>
             </div>
           </div>
         )}

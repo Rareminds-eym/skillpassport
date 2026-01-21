@@ -3,13 +3,16 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import fc from 'fast-check';
 import { BrowserRouter } from 'react-router-dom';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import DigitalPortfolioSideDrawer, { mainMenuItems, settingsMenuItems } from '../DigitalPortfolioSideDrawer';
+import DigitalPortfolioSideDrawer, {
+  mainMenuItems,
+  settingsMenuItems,
+} from '../DigitalPortfolioSideDrawer';
 
 // Mock window.matchMedia
 beforeAll(() => {
   Object.defineProperty(window, 'matchMedia', {
     writable: true,
-    value: vi.fn().mockImplementation(query => ({
+    value: vi.fn().mockImplementation((query) => ({
       matches: false,
       media: query,
       onchange: null,
@@ -24,9 +27,7 @@ beforeAll(() => {
 
 // Wrapper component for tests
 const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <BrowserRouter>
-    {children}
-  </BrowserRouter>
+  <BrowserRouter>{children}</BrowserRouter>
 );
 
 describe('DigitalPortfolioSideDrawer', () => {
@@ -54,7 +55,7 @@ describe('DigitalPortfolioSideDrawer', () => {
       expect(screen.getByText('Portfolio Mode')).toBeInTheDocument();
       expect(screen.getByText('Passport Mode')).toBeInTheDocument();
       expect(screen.getByText('Video Portfolio')).toBeInTheDocument();
-      
+
       // Verify settings section
       expect(screen.getByText('Settings')).toBeInTheDocument();
       expect(screen.getByText('Theme Settings')).toBeInTheDocument();
@@ -94,12 +95,16 @@ describe('DigitalPortfolioSideDrawer', () => {
         fc.property(fc.boolean(), (isOpen) => {
           const { container } = render(
             <TestWrapper>
-              <DigitalPortfolioSideDrawer isOpen={isOpen} onClose={mockOnClose} onOpen={mockOnOpen} />
+              <DigitalPortfolioSideDrawer
+                isOpen={isOpen}
+                onClose={mockOnClose}
+                onOpen={mockOnOpen}
+              />
             </TestWrapper>
           );
 
           const portfolioElement = screen.queryByText('Portfolio Mode');
-          
+
           if (isOpen) {
             expect(portfolioElement).toBeInTheDocument();
           } else {
@@ -126,19 +131,20 @@ describe('DigitalPortfolioSideDrawer', () => {
       );
 
       const buttons = screen.getAllByRole('button');
-      
+
       // Filter to menu item buttons (exclude close button)
-      const menuButtons = buttons.filter(btn => 
-        btn.textContent?.includes('Portfolio Mode') ||
-        btn.textContent?.includes('Passport Mode') ||
-        btn.textContent?.includes('Video Portfolio') ||
-        btn.textContent?.includes('Theme Settings') ||
-        btn.textContent?.includes('Portfolio Layout') ||
-        btn.textContent?.includes('Export') ||
-        btn.textContent?.includes('Sharing')
+      const menuButtons = buttons.filter(
+        (btn) =>
+          btn.textContent?.includes('Portfolio Mode') ||
+          btn.textContent?.includes('Passport Mode') ||
+          btn.textContent?.includes('Video Portfolio') ||
+          btn.textContent?.includes('Theme Settings') ||
+          btn.textContent?.includes('Portfolio Layout') ||
+          btn.textContent?.includes('Export') ||
+          btn.textContent?.includes('Sharing')
       );
 
-      menuButtons.forEach(button => {
+      menuButtons.forEach((button) => {
         const svg = button.querySelector('svg');
         expect(svg).toBeInTheDocument();
       });
@@ -147,16 +153,13 @@ describe('DigitalPortfolioSideDrawer', () => {
     // Property-based test
     it('property: all menu items in config have icons defined', () => {
       const allItems = [...mainMenuItems, ...settingsMenuItems];
-      
+
       fc.assert(
-        fc.property(
-          fc.integer({ min: 0, max: allItems.length - 1 }),
-          (index) => {
-            const item = allItems[index];
-            expect(item.icon).toBeDefined();
-            expect(typeof item.icon === 'function' || typeof item.icon === 'object').toBe(true);
-          }
-        ),
+        fc.property(fc.integer({ min: 0, max: allItems.length - 1 }), (index) => {
+          const item = allItems[index];
+          expect(item.icon).toBeDefined();
+          expect(typeof item.icon === 'function' || typeof item.icon === 'object').toBe(true);
+        }),
         { numRuns: 100 }
       );
     });

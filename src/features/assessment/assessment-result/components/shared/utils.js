@@ -7,7 +7,7 @@
 /**
  * Safely render items that might be objects, strings, null, or undefined
  * Requirements: 3.4 - Safe rendering of potentially null/object values
- * 
+ *
  * @param {*} item - The item to render
  * @returns {string} - A string representation of the item
  */
@@ -22,7 +22,7 @@ export const safeRender = (item) => {
 /**
  * Safely join array items into a string
  * Requirements: 3.4 - Safe rendering of potentially null/object values
- * 
+ *
  * @param {Array} arr - The array to join
  * @param {string} separator - The separator to use (default: ', ')
  * @returns {string} - A joined string representation
@@ -35,7 +35,7 @@ export const safeJoin = (arr, separator = ', ') => {
 /**
  * Get score style colors based on percentage
  * Requirements: 3.3 - Score color calculations
- * 
+ *
  * @param {number} pct - The percentage value (0-100)
  * @returns {Object} - Object with bg, color, and border properties
  */
@@ -82,7 +82,7 @@ export const riasecDescriptions = {
 
 /**
  * Get safe student info with defaults
- * 
+ *
  * @param {Object} studentInfo - The student info object
  * @returns {Object} - Student info with default values for missing fields
  */

@@ -1,6 +1,6 @@
 /**
  * 📚 TECHNICAL EXPLAINER SERVICE
- * 
+ *
  * Provides clear, comprehensive explanations for ANY technology, concept, or tool.
  * Works for any domain: web dev, databases, cloud, AI, etc.
  */
@@ -11,27 +11,26 @@ export interface TechnicalExplanation {
   topic: string;
   summary: string; // Brief 1-2 sentence overview
   detailedExplanation: string; // Comprehensive explanation
-  
+
   keyPoints: string[]; // Bullet points of key features/concepts
-  
+
   useCases: {
     whatItsFor: string[];
     whenToUse: string;
     whenNotToUse?: string;
   };
-  
+
   examples?: {
     description: string;
     code?: string;
     language?: string;
   }[];
-  
+
   relatedConcepts: string[];
   nextSteps?: string; // What to explore next
 }
 
 class TechnicalExplainerService {
-  
   /**
    * 📚 Explain Any Technology or Concept
    */
@@ -40,10 +39,9 @@ class TechnicalExplainerService {
     studentLevel?: 'beginner' | 'intermediate' | 'advanced',
     includeCode?: boolean
   ): Promise<TechnicalExplanation> {
-    
     try {
       console.log(`📚 Technical Explainer: Explaining ${topic}...`);
-      
+
       const prompt = `You are a technical educator. Explain this technology/concept clearly and comprehensively.
 
 **TOPIC TO EXPLAIN:** ${topic}
@@ -129,27 +127,27 @@ class TechnicalExplainerService {
         messages: [
           {
             role: 'system',
-            content: 'You are a technical educator who explains complex concepts clearly. You adapt explanations to student level and always include practical examples.'
+            content:
+              'You are a technical educator who explains complex concepts clearly. You adapt explanations to student level and always include practical examples.',
           },
-          { role: 'user', content: prompt }
+          { role: 'user', content: prompt },
         ],
         temperature: 0.6,
         max_tokens: 2000,
-        response_format: { type: 'json_object' }
+        response_format: { type: 'json_object' },
       });
-      
+
       const result = JSON.parse(completion.choices[0]?.message?.content || '{}');
-      
+
       console.log('✅ Technical explanation generated');
-      
+
       return result as TechnicalExplanation;
-      
     } catch (error) {
       console.error('Technical explanation error:', error);
       throw new Error('Failed to generate explanation');
     }
   }
-  
+
   /**
    * 📊 Compare Technologies
    */
@@ -169,7 +167,6 @@ class TechnicalExplainerService {
       bestFor2: string[];
     };
   }> {
-    
     try {
       const prompt = `Compare these two technologies objectively:
 
@@ -202,21 +199,20 @@ Provide:
         model: DEFAULT_MODEL,
         messages: [
           { role: 'system', content: 'You provide objective technology comparisons.' },
-          { role: 'user', content: prompt }
+          { role: 'user', content: prompt },
         ],
         temperature: 0.6,
         max_tokens: 1500,
-        response_format: { type: 'json_object' }
+        response_format: { type: 'json_object' },
       });
-      
+
       return JSON.parse(completion.choices[0]?.message?.content || '{}');
-      
     } catch (error) {
       console.error('Comparison error:', error);
       throw new Error('Failed to generate comparison');
     }
   }
-  
+
   /**
    * 🔧 How-To Guide
    */
@@ -237,7 +233,6 @@ Provide:
     troubleshooting: string[];
     nextSteps: string;
   }> {
-    
     try {
       const prompt = `Create a step-by-step guide for: ${task}
 
@@ -273,21 +268,20 @@ Provide:
         model: DEFAULT_MODEL,
         messages: [
           { role: 'system', content: 'You create clear, actionable step-by-step guides.' },
-          { role: 'user', content: prompt }
+          { role: 'user', content: prompt },
         ],
         temperature: 0.6,
         max_tokens: 750,
-        response_format: { type: 'json_object' }
+        response_format: { type: 'json_object' },
       });
-      
+
       return JSON.parse(completion.choices[0]?.message?.content || '{}');
-      
     } catch (error) {
       console.error('How-to guide error:', error);
       throw new Error('Failed to generate guide');
     }
   }
-  
+
   /**
    * Get level-specific guidance
    */

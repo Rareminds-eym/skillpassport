@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { BookOpen, CheckCircle, XCircle, Eye, MessageSquare, Clock } from "lucide-react";
-import { supabase } from "../../../lib/supabaseClient";
+import React, { useState, useEffect } from 'react';
+import { BookOpen, CheckCircle, XCircle, Eye, MessageSquare, Clock } from 'lucide-react';
+import { supabase } from '../../../lib/supabaseClient';
 
 interface LessonPlan {
   id: string;
@@ -25,7 +25,7 @@ interface LessonPlan {
 const LessonPlanApprovals: React.FC = () => {
   const [lessonPlans, setLessonPlans] = useState<LessonPlan[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<LessonPlan | null>(null);
-  const [reviewComments, setReviewComments] = useState("");
+  const [reviewComments, setReviewComments] = useState('');
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -37,13 +37,15 @@ const LessonPlanApprovals: React.FC = () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from("lesson_plans")
-        .select(`
+        .from('lesson_plans')
+        .select(
+          `
           *,
           teachers!inner(first_name, last_name)
-        `)
-        .in("status", ["submitted", "revision_required"])
-        .order("submitted_at", { ascending: true });
+        `
+        )
+        .in('status', ['submitted', 'revision_required'])
+        .order('submitted_at', { ascending: true });
 
       if (error) throw error;
 
@@ -54,7 +56,7 @@ const LessonPlanApprovals: React.FC = () => {
 
       setLessonPlans(formattedData || []);
     } catch (error: any) {
-      console.error("Error loading lesson plans:", error);
+      console.error('Error loading lesson plans:', error);
     } finally {
       setLoading(false);
     }
@@ -66,22 +68,22 @@ const LessonPlanApprovals: React.FC = () => {
       const { data: userData } = await supabase.auth.getUser();
 
       const { error } = await supabase
-        .from("lesson_plans")
+        .from('lesson_plans')
         .update({
-          status: "approved",
+          status: 'approved',
           reviewed_by: userData?.user?.id,
           reviewed_at: new Date().toISOString(),
-          review_comments: reviewComments || "Approved",
+          review_comments: reviewComments || 'Approved',
         })
-        .eq("id", planId);
+        .eq('id', planId);
 
       if (error) throw error;
 
       setSelectedPlan(null);
-      setReviewComments("");
+      setReviewComments('');
       loadPendingLessonPlans();
     } catch (error: any) {
-      alert("Error approving lesson plan: " + error.message);
+      alert('Error approving lesson plan: ' + error.message);
     } finally {
       setActionLoading(false);
     }
@@ -89,7 +91,7 @@ const LessonPlanApprovals: React.FC = () => {
 
   const handleReject = async (planId: string) => {
     if (!reviewComments.trim()) {
-      alert("Please provide feedback for rejection");
+      alert('Please provide feedback for rejection');
       return;
     }
 
@@ -98,22 +100,22 @@ const LessonPlanApprovals: React.FC = () => {
       const { data: userData } = await supabase.auth.getUser();
 
       const { error } = await supabase
-        .from("lesson_plans")
+        .from('lesson_plans')
         .update({
-          status: "rejected",
+          status: 'rejected',
           reviewed_by: userData?.user?.id,
           reviewed_at: new Date().toISOString(),
           review_comments: reviewComments,
         })
-        .eq("id", planId);
+        .eq('id', planId);
 
       if (error) throw error;
 
       setSelectedPlan(null);
-      setReviewComments("");
+      setReviewComments('');
       loadPendingLessonPlans();
     } catch (error: any) {
-      alert("Error rejecting lesson plan: " + error.message);
+      alert('Error rejecting lesson plan: ' + error.message);
     } finally {
       setActionLoading(false);
     }
@@ -121,7 +123,7 @@ const LessonPlanApprovals: React.FC = () => {
 
   const handleRequestRevision = async (planId: string) => {
     if (!reviewComments.trim()) {
-      alert("Please provide feedback for revision");
+      alert('Please provide feedback for revision');
       return;
     }
 
@@ -130,22 +132,22 @@ const LessonPlanApprovals: React.FC = () => {
       const { data: userData } = await supabase.auth.getUser();
 
       const { error } = await supabase
-        .from("lesson_plans")
+        .from('lesson_plans')
         .update({
-          status: "revision_required",
+          status: 'revision_required',
           reviewed_by: userData?.user?.id,
           reviewed_at: new Date().toISOString(),
           review_comments: reviewComments,
         })
-        .eq("id", planId);
+        .eq('id', planId);
 
       if (error) throw error;
 
       setSelectedPlan(null);
-      setReviewComments("");
+      setReviewComments('');
       loadPendingLessonPlans();
     } catch (error: any) {
-      alert("Error requesting revision: " + error.message);
+      alert('Error requesting revision: ' + error.message);
     } finally {
       setActionLoading(false);
     }
@@ -163,9 +165,7 @@ const LessonPlanApprovals: React.FC = () => {
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
       {/* Header */}
       <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 rounded-2xl p-6 border border-indigo-100">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
-          Lesson Plan Approvals
-        </h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Lesson Plan Approvals</h1>
         <p className="text-gray-600 text-sm sm:text-base">
           Review and approve lesson plans submitted by teachers
         </p>
@@ -181,7 +181,7 @@ const LessonPlanApprovals: React.FC = () => {
             <div>
               <p className="text-sm text-gray-600">Pending Review</p>
               <p className="text-2xl font-bold text-gray-900">
-                {lessonPlans.filter((lp) => lp.status === "submitted").length}
+                {lessonPlans.filter((lp) => lp.status === 'submitted').length}
               </p>
             </div>
           </div>
@@ -195,7 +195,7 @@ const LessonPlanApprovals: React.FC = () => {
             <div>
               <p className="text-sm text-gray-600">Needs Revision</p>
               <p className="text-2xl font-bold text-gray-900">
-                {lessonPlans.filter((lp) => lp.status === "revision_required").length}
+                {lessonPlans.filter((lp) => lp.status === 'revision_required').length}
               </p>
             </div>
           </div>
@@ -234,19 +234,19 @@ const LessonPlanApprovals: React.FC = () => {
                   key={plan.id}
                   onClick={() => setSelectedPlan(plan)}
                   className={`p-4 cursor-pointer transition ${
-                    selectedPlan?.id === plan.id ? "bg-indigo-50" : "hover:bg-gray-50"
+                    selectedPlan?.id === plan.id ? 'bg-indigo-50' : 'hover:bg-gray-50'
                   }`}
                 >
                   <div className="flex items-start justify-between mb-2">
                     <h3 className="font-semibold text-gray-900">{plan.title}</h3>
                     <span
                       className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        plan.status === "submitted"
-                          ? "bg-blue-100 text-blue-800"
-                          : "bg-yellow-100 text-yellow-800"
+                        plan.status === 'submitted'
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-yellow-100 text-yellow-800'
                       }`}
                     >
-                      {plan.status === "submitted" ? "New" : "Revision"}
+                      {plan.status === 'submitted' ? 'New' : 'Revision'}
                     </span>
                   </div>
 
@@ -255,11 +255,11 @@ const LessonPlanApprovals: React.FC = () => {
                       <span className="font-medium">Teacher:</span> {plan.teacher_name}
                     </p>
                     <p>
-                      <span className="font-medium">Subject:</span> {plan.subject} • Class{" "}
+                      <span className="font-medium">Subject:</span> {plan.subject} • Class{' '}
                       {plan.class_name}
                     </p>
                     <p>
-                      <span className="font-medium">Date:</span>{" "}
+                      <span className="font-medium">Date:</span>{' '}
                       {new Date(plan.date).toLocaleDateString()}
                     </p>
                     <p className="text-xs text-gray-500">

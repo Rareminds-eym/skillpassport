@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from "react";
-import ReactApexChart from "react-apexcharts";
+import React, { useState, useMemo } from 'react';
+import ReactApexChart from 'react-apexcharts';
 import {
   Briefcase,
   Building2,
@@ -26,8 +26,8 @@ import {
   Star,
   TrendingDown,
   Activity,
-} from "lucide-react";
-import KPICard from "../../../components/admin/KPICard";
+} from 'lucide-react';
+import KPICard from '../../../components/admin/KPICard';
 
 // TypeScript Interfaces
 interface Internship {
@@ -40,7 +40,7 @@ interface Internship {
   endDate: string;
   duration: number; // in months
   stipend: number;
-  status: "ongoing" | "completed" | "pending" | "cancelled";
+  status: 'ongoing' | 'completed' | 'pending' | 'cancelled';
   domain: string;
   mentorRating?: number;
   convertedToFullTime?: boolean;
@@ -56,7 +56,7 @@ interface IndustryVisit {
   totalStudents: number;
   objectives: string[];
   learnings: string[];
-  status: "upcoming" | "completed" | "cancelled";
+  status: 'upcoming' | 'completed' | 'cancelled';
   coordinator: string;
 }
 
@@ -71,85 +71,87 @@ interface ReadinessMetrics {
   certifications: number; // 0-100
   attendance: number; // 0-100
   overallReadiness: number; // 0-100
-  readinessLevel: "placement-ready" | "developing" | "needs-support" | "at-risk";
+  readinessLevel: 'placement-ready' | 'developing' | 'needs-support' | 'at-risk';
 }
 
 const PlacementReadiness: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"overview" | "internships" | "visits" | "readiness">("overview");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [internshipFilter, setInternshipFilter] = useState<string>("all");
-  const [visitFilter, setVisitFilter] = useState<string>("all");
+  const [activeTab, setActiveTab] = useState<'overview' | 'internships' | 'visits' | 'readiness'>(
+    'overview'
+  );
+  const [searchQuery, setSearchQuery] = useState('');
+  const [internshipFilter, setInternshipFilter] = useState<string>('all');
+  const [visitFilter, setVisitFilter] = useState<string>('all');
 
   // ===== Mock Data: Internships =====
   const internships: Internship[] = [
     {
-      id: "1",
-      studentName: "Arjun Mehta",
-      rollNumber: "CS2021015",
-      company: "Google",
-      role: "Software Engineering Intern",
-      startDate: "2025-06-01",
-      endDate: "2025-08-31",
+      id: '1',
+      studentName: 'Arjun Mehta',
+      rollNumber: 'CS2021015',
+      company: 'Google',
+      role: 'Software Engineering Intern',
+      startDate: '2025-06-01',
+      endDate: '2025-08-31',
       duration: 3,
       stipend: 80000,
-      status: "ongoing",
-      domain: "Cloud Computing",
+      status: 'ongoing',
+      domain: 'Cloud Computing',
       mentorRating: 4.5,
     },
     {
-      id: "2",
-      studentName: "Sneha Reddy",
-      rollNumber: "CS2021032",
-      company: "Microsoft",
-      role: "Azure Cloud Intern",
-      startDate: "2025-05-15",
-      endDate: "2025-08-15",
+      id: '2',
+      studentName: 'Sneha Reddy',
+      rollNumber: 'CS2021032',
+      company: 'Microsoft',
+      role: 'Azure Cloud Intern',
+      startDate: '2025-05-15',
+      endDate: '2025-08-15',
       duration: 3,
       stipend: 75000,
-      status: "ongoing",
-      domain: "Cloud Infrastructure",
+      status: 'ongoing',
+      domain: 'Cloud Infrastructure',
       mentorRating: 4.8,
       convertedToFullTime: true,
     },
     {
-      id: "3",
-      studentName: "Karthik Sharma",
-      rollNumber: "CS2021048",
-      company: "Amazon",
-      role: "ML Engineering Intern",
-      startDate: "2025-01-10",
-      endDate: "2025-04-10",
+      id: '3',
+      studentName: 'Karthik Sharma',
+      rollNumber: 'CS2021048',
+      company: 'Amazon',
+      role: 'ML Engineering Intern',
+      startDate: '2025-01-10',
+      endDate: '2025-04-10',
       duration: 3,
       stipend: 70000,
-      status: "completed",
-      domain: "Machine Learning",
+      status: 'completed',
+      domain: 'Machine Learning',
       mentorRating: 4.2,
     },
     {
-      id: "4",
-      studentName: "Priya Iyer",
-      rollNumber: "CS2021067",
-      company: "Tata Consultancy Services",
-      role: "Full Stack Developer Intern",
-      startDate: "2025-07-01",
-      endDate: "2025-09-30",
+      id: '4',
+      studentName: 'Priya Iyer',
+      rollNumber: 'CS2021067',
+      company: 'Tata Consultancy Services',
+      role: 'Full Stack Developer Intern',
+      startDate: '2025-07-01',
+      endDate: '2025-09-30',
       duration: 3,
       stipend: 25000,
-      status: "pending",
-      domain: "Web Development",
+      status: 'pending',
+      domain: 'Web Development',
     },
     {
-      id: "5",
-      studentName: "Rohan Patel",
-      rollNumber: "CS2021089",
-      company: "Infosys",
-      role: "Data Analytics Intern",
-      startDate: "2024-12-01",
-      endDate: "2025-02-28",
+      id: '5',
+      studentName: 'Rohan Patel',
+      rollNumber: 'CS2021089',
+      company: 'Infosys',
+      role: 'Data Analytics Intern',
+      startDate: '2024-12-01',
+      endDate: '2025-02-28',
       duration: 3,
       stipend: 20000,
-      status: "completed",
-      domain: "Data Science",
+      status: 'completed',
+      domain: 'Data Science',
       mentorRating: 4.0,
     },
   ];
@@ -157,89 +159,89 @@ const PlacementReadiness: React.FC = () => {
   // ===== Mock Data: Industry Visits =====
   const industryVisits: IndustryVisit[] = [
     {
-      id: "1",
-      company: "Tesla Gigafactory",
-      location: "Bangalore, Karnataka",
-      date: "2025-12-10",
-      department: "Computer Science & Engineering",
+      id: '1',
+      company: 'Tesla Gigafactory',
+      location: 'Bangalore, Karnataka',
+      date: '2025-12-10',
+      department: 'Computer Science & Engineering',
       studentsParticipated: 45,
       totalStudents: 50,
       objectives: [
-        "Understand EV manufacturing process",
-        "Learn about automation and robotics",
-        "Explore IoT applications in manufacturing",
+        'Understand EV manufacturing process',
+        'Learn about automation and robotics',
+        'Explore IoT applications in manufacturing',
       ],
       learnings: [],
-      status: "upcoming",
-      coordinator: "Dr. Ramesh Kumar",
+      status: 'upcoming',
+      coordinator: 'Dr. Ramesh Kumar',
     },
     {
-      id: "2",
-      company: "Wipro Innovation Lab",
-      location: "Hyderabad, Telangana",
-      date: "2025-10-22",
-      department: "Computer Science & Engineering",
+      id: '2',
+      company: 'Wipro Innovation Lab',
+      location: 'Hyderabad, Telangana',
+      date: '2025-10-22',
+      department: 'Computer Science & Engineering',
       studentsParticipated: 38,
       totalStudents: 40,
       objectives: [
-        "Explore AI/ML research projects",
-        "Industry interaction with engineers",
-        "Understand project lifecycle",
+        'Explore AI/ML research projects',
+        'Industry interaction with engineers',
+        'Understand project lifecycle',
       ],
       learnings: [
-        "Hands-on experience with GenAI tools",
-        "Understanding of agile methodologies",
-        "Career guidance from industry experts",
+        'Hands-on experience with GenAI tools',
+        'Understanding of agile methodologies',
+        'Career guidance from industry experts',
       ],
-      status: "completed",
-      coordinator: "Prof. Anita Desai",
+      status: 'completed',
+      coordinator: 'Prof. Anita Desai',
     },
     {
-      id: "3",
-      company: "Amazon Web Services Center",
-      location: "Mumbai, Maharashtra",
-      date: "2025-09-15",
-      department: "Computer Science & Engineering",
+      id: '3',
+      company: 'Amazon Web Services Center',
+      location: 'Mumbai, Maharashtra',
+      date: '2025-09-15',
+      department: 'Computer Science & Engineering',
       studentsParticipated: 52,
       totalStudents: 55,
       objectives: [
-        "Learn cloud infrastructure management",
-        "Understanding of AWS services",
-        "Networking with cloud engineers",
+        'Learn cloud infrastructure management',
+        'Understanding of AWS services',
+        'Networking with cloud engineers',
       ],
       learnings: [
-        "Deep dive into AWS architecture",
-        "Serverless computing concepts",
-        "Career opportunities in cloud domain",
+        'Deep dive into AWS architecture',
+        'Serverless computing concepts',
+        'Career opportunities in cloud domain',
       ],
-      status: "completed",
-      coordinator: "Dr. Suresh Babu",
+      status: 'completed',
+      coordinator: 'Dr. Suresh Babu',
     },
     {
-      id: "4",
-      company: "ISRO Satellite Centre",
-      location: "Bangalore, Karnataka",
-      date: "2026-01-20",
-      department: "Electronics & Communication",
+      id: '4',
+      company: 'ISRO Satellite Centre',
+      location: 'Bangalore, Karnataka',
+      date: '2026-01-20',
+      department: 'Electronics & Communication',
       studentsParticipated: 0,
       totalStudents: 30,
       objectives: [
-        "Understand satellite technology",
-        "Learn about space research programs",
-        "Explore career opportunities in ISRO",
+        'Understand satellite technology',
+        'Learn about space research programs',
+        'Explore career opportunities in ISRO',
       ],
       learnings: [],
-      status: "upcoming",
-      coordinator: "Dr. Lakshmi Narayan",
+      status: 'upcoming',
+      coordinator: 'Dr. Lakshmi Narayan',
     },
   ];
 
   // ===== Mock Data: Readiness Metrics =====
   const readinessMetrics: ReadinessMetrics[] = [
     {
-      studentId: "1",
-      studentName: "Sneha Reddy",
-      rollNumber: "CS2021032",
+      studentId: '1',
+      studentName: 'Sneha Reddy',
+      rollNumber: 'CS2021032',
       technicalSkills: 92,
       softSkills: 88,
       projects: 90,
@@ -247,12 +249,12 @@ const PlacementReadiness: React.FC = () => {
       certifications: 85,
       attendance: 94,
       overallReadiness: 91,
-      readinessLevel: "placement-ready",
+      readinessLevel: 'placement-ready',
     },
     {
-      studentId: "2",
-      studentName: "Arjun Mehta",
-      rollNumber: "CS2021015",
+      studentId: '2',
+      studentName: 'Arjun Mehta',
+      rollNumber: 'CS2021015',
       technicalSkills: 88,
       softSkills: 82,
       projects: 85,
@@ -260,12 +262,12 @@ const PlacementReadiness: React.FC = () => {
       certifications: 80,
       attendance: 92,
       overallReadiness: 86,
-      readinessLevel: "placement-ready",
+      readinessLevel: 'placement-ready',
     },
     {
-      studentId: "3",
-      studentName: "Karthik Sharma",
-      rollNumber: "CS2021048",
+      studentId: '3',
+      studentName: 'Karthik Sharma',
+      rollNumber: 'CS2021048',
       technicalSkills: 78,
       softSkills: 75,
       projects: 80,
@@ -273,12 +275,12 @@ const PlacementReadiness: React.FC = () => {
       certifications: 70,
       attendance: 88,
       overallReadiness: 79,
-      readinessLevel: "developing",
+      readinessLevel: 'developing',
     },
     {
-      studentId: "4",
-      studentName: "Priya Iyer",
-      rollNumber: "CS2021067",
+      studentId: '4',
+      studentName: 'Priya Iyer',
+      rollNumber: 'CS2021067',
       technicalSkills: 65,
       softSkills: 70,
       projects: 68,
@@ -286,12 +288,12 @@ const PlacementReadiness: React.FC = () => {
       certifications: 60,
       attendance: 85,
       overallReadiness: 66,
-      readinessLevel: "developing",
+      readinessLevel: 'developing',
     },
     {
-      studentId: "5",
-      studentName: "Rohan Patel",
-      rollNumber: "CS2021089",
+      studentId: '5',
+      studentName: 'Rohan Patel',
+      rollNumber: 'CS2021089',
       technicalSkills: 52,
       softSkills: 58,
       projects: 55,
@@ -299,26 +301,30 @@ const PlacementReadiness: React.FC = () => {
       certifications: 45,
       attendance: 72,
       overallReadiness: 57,
-      readinessLevel: "needs-support",
+      readinessLevel: 'needs-support',
     },
   ];
 
   // ===== Computed Metrics =====
   const metrics = useMemo(() => {
     const totalInternships = internships.length;
-    const ongoingInternships = internships.filter(i => i.status === "ongoing").length;
-    const completedInternships = internships.filter(i => i.status === "completed").length;
-    const conversionRate = internships.filter(i => i.convertedToFullTime).length / completedInternships * 100;
-    
+    const ongoingInternships = internships.filter((i) => i.status === 'ongoing').length;
+    const completedInternships = internships.filter((i) => i.status === 'completed').length;
+    const conversionRate =
+      (internships.filter((i) => i.convertedToFullTime).length / completedInternships) * 100;
+
     const avgStipend = internships.reduce((sum, i) => sum + i.stipend, 0) / totalInternships;
-    
+
     const totalVisits = industryVisits.length;
-    const completedVisits = industryVisits.filter(v => v.status === "completed").length;
-    const upcomingVisits = industryVisits.filter(v => v.status === "upcoming").length;
-    
-    const avgReadiness = readinessMetrics.reduce((sum, r) => sum + r.overallReadiness, 0) / readinessMetrics.length;
-    const placementReady = readinessMetrics.filter(r => r.readinessLevel === "placement-ready").length;
-    
+    const completedVisits = industryVisits.filter((v) => v.status === 'completed').length;
+    const upcomingVisits = industryVisits.filter((v) => v.status === 'upcoming').length;
+
+    const avgReadiness =
+      readinessMetrics.reduce((sum, r) => sum + r.overallReadiness, 0) / readinessMetrics.length;
+    const placementReady = readinessMetrics.filter(
+      (r) => r.readinessLevel === 'placement-ready'
+    ).length;
+
     return {
       totalInternships,
       ongoingInternships,
@@ -336,61 +342,61 @@ const PlacementReadiness: React.FC = () => {
   // ===== KPI Data =====
   const kpiData = [
     {
-      title: "Active Internships",
+      title: 'Active Internships',
       value: metrics.ongoingInternships.toString(),
       change: 15.3,
-      changeLabel: "vs last quarter",
+      changeLabel: 'vs last quarter',
       icon: <Briefcase className="h-6 w-6" />,
-      color: "blue" as const,
+      color: 'blue' as const,
     },
     {
-      title: "Industry Visits",
+      title: 'Industry Visits',
       value: metrics.totalVisits.toString(),
       change: 0,
       changeLabel: `${metrics.upcomingVisits} upcoming`,
       icon: <Building2 className="h-6 w-6" />,
-      color: "purple" as const,
+      color: 'purple' as const,
     },
     {
-      title: "Avg Readiness Score",
+      title: 'Avg Readiness Score',
       value: `${metrics.avgReadiness.toFixed(1)}%`,
       change: 8.5,
-      changeLabel: "improved this semester",
+      changeLabel: 'improved this semester',
       icon: <TrendingUp className="h-6 w-6" />,
-      color: "green" as const,
+      color: 'green' as const,
     },
     {
-      title: "Placement Ready",
+      title: 'Placement Ready',
       value: metrics.placementReady.toString(),
       change: 12.1,
-      changeLabel: "students ready",
+      changeLabel: 'students ready',
       icon: <Award className="h-6 w-6" />,
-      color: "yellow" as const,
+      color: 'yellow' as const,
     },
   ];
 
   // ===== Charts Data =====
   const internshipDistributionChart = {
     series: [
-      internships.filter(i => i.status === "completed").length,
-      internships.filter(i => i.status === "ongoing").length,
-      internships.filter(i => i.status === "pending").length,
+      internships.filter((i) => i.status === 'completed').length,
+      internships.filter((i) => i.status === 'ongoing').length,
+      internships.filter((i) => i.status === 'pending').length,
     ],
     options: {
-      chart: { type: "donut" },
-      labels: ["Completed", "Ongoing", "Pending"],
-      colors: ["#10b981", "#3b82f6", "#f59e0b"],
+      chart: { type: 'donut' },
+      labels: ['Completed', 'Ongoing', 'Pending'],
+      colors: ['#10b981', '#3b82f6', '#f59e0b'],
       dataLabels: { enabled: true },
-      legend: { position: "bottom" },
+      legend: { position: 'bottom' },
       plotOptions: {
         pie: {
           donut: {
-            size: "70%",
+            size: '70%',
             labels: {
               show: true,
               total: {
                 show: true,
-                label: "Total",
+                label: 'Total',
                 formatter: () => internships.length.toString(),
               },
             },
@@ -401,55 +407,67 @@ const PlacementReadiness: React.FC = () => {
   };
 
   const companyWiseInternshipsChart = {
-    series: [{
-      name: "Internships",
-      data: [
-        internships.filter(i => i.company === "Google").length,
-        internships.filter(i => i.company === "Microsoft").length,
-        internships.filter(i => i.company === "Amazon").length,
-        internships.filter(i => i.company.includes("Tata") || i.company.includes("Infosys")).length,
-      ],
-    }],
+    series: [
+      {
+        name: 'Internships',
+        data: [
+          internships.filter((i) => i.company === 'Google').length,
+          internships.filter((i) => i.company === 'Microsoft').length,
+          internships.filter((i) => i.company === 'Amazon').length,
+          internships.filter((i) => i.company.includes('Tata') || i.company.includes('Infosys'))
+            .length,
+        ],
+      },
+    ],
     options: {
-      chart: { type: "bar", toolbar: { show: false } },
+      chart: { type: 'bar', toolbar: { show: false } },
       plotOptions: {
         bar: {
           horizontal: false,
-          columnWidth: "60%",
+          columnWidth: '60%',
           borderRadius: 8,
         },
       },
-      colors: ["#8b5cf6"],
+      colors: ['#8b5cf6'],
       dataLabels: { enabled: false },
       xaxis: {
-        categories: ["Google", "Microsoft", "Amazon", "Others"],
-        labels: { style: { colors: "#6b7280" } },
+        categories: ['Google', 'Microsoft', 'Amazon', 'Others'],
+        labels: { style: { colors: '#6b7280' } },
       },
       yaxis: {
-        labels: { style: { colors: "#6b7280" } },
-        title: { text: "Number of Internships", style: { color: "#6b7280" } },
+        labels: { style: { colors: '#6b7280' } },
+        title: { text: 'Number of Internships', style: { color: '#6b7280' } },
       },
-      grid: { borderColor: "#f1f5f9" },
+      grid: { borderColor: '#f1f5f9' },
     },
   };
 
   const readinessRadarChart = {
-    series: [{
-      name: "Average Readiness",
-      data: [
-        readinessMetrics.reduce((sum, r) => sum + r.technicalSkills, 0) / readinessMetrics.length,
-        readinessMetrics.reduce((sum, r) => sum + r.softSkills, 0) / readinessMetrics.length,
-        readinessMetrics.reduce((sum, r) => sum + r.projects, 0) / readinessMetrics.length,
-        readinessMetrics.reduce((sum, r) => sum + r.internships, 0) / readinessMetrics.length,
-        readinessMetrics.reduce((sum, r) => sum + r.certifications, 0) / readinessMetrics.length,
-        readinessMetrics.reduce((sum, r) => sum + r.attendance, 0) / readinessMetrics.length,
-      ],
-    }],
+    series: [
+      {
+        name: 'Average Readiness',
+        data: [
+          readinessMetrics.reduce((sum, r) => sum + r.technicalSkills, 0) / readinessMetrics.length,
+          readinessMetrics.reduce((sum, r) => sum + r.softSkills, 0) / readinessMetrics.length,
+          readinessMetrics.reduce((sum, r) => sum + r.projects, 0) / readinessMetrics.length,
+          readinessMetrics.reduce((sum, r) => sum + r.internships, 0) / readinessMetrics.length,
+          readinessMetrics.reduce((sum, r) => sum + r.certifications, 0) / readinessMetrics.length,
+          readinessMetrics.reduce((sum, r) => sum + r.attendance, 0) / readinessMetrics.length,
+        ],
+      },
+    ],
     options: {
-      chart: { type: "radar", toolbar: { show: false } },
-      colors: ["#3b82f6"],
+      chart: { type: 'radar', toolbar: { show: false } },
+      colors: ['#3b82f6'],
       xaxis: {
-        categories: ["Technical Skills", "Soft Skills", "Projects", "Internships", "Certifications", "Attendance"],
+        categories: [
+          'Technical Skills',
+          'Soft Skills',
+          'Projects',
+          'Internships',
+          'Certifications',
+          'Attendance',
+        ],
       },
       yaxis: {
         show: true,
@@ -469,17 +487,19 @@ const PlacementReadiness: React.FC = () => {
   };
 
   const readinessDistributionChart = {
-    series: [{
-      name: "Students",
-      data: [
-        readinessMetrics.filter(r => r.readinessLevel === "placement-ready").length,
-        readinessMetrics.filter(r => r.readinessLevel === "developing").length,
-        readinessMetrics.filter(r => r.readinessLevel === "needs-support").length,
-        readinessMetrics.filter(r => r.readinessLevel === "at-risk").length,
-      ],
-    }],
+    series: [
+      {
+        name: 'Students',
+        data: [
+          readinessMetrics.filter((r) => r.readinessLevel === 'placement-ready').length,
+          readinessMetrics.filter((r) => r.readinessLevel === 'developing').length,
+          readinessMetrics.filter((r) => r.readinessLevel === 'needs-support').length,
+          readinessMetrics.filter((r) => r.readinessLevel === 'at-risk').length,
+        ],
+      },
+    ],
     options: {
-      chart: { type: "bar", toolbar: { show: false } },
+      chart: { type: 'bar', toolbar: { show: false } },
       plotOptions: {
         bar: {
           horizontal: true,
@@ -487,81 +507,82 @@ const PlacementReadiness: React.FC = () => {
           distributed: true,
         },
       },
-      colors: ["#10b981", "#3b82f6", "#f59e0b", "#ef4444"],
+      colors: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'],
       dataLabels: { enabled: true },
       xaxis: {
-        categories: ["Placement Ready", "Developing", "Needs Support", "At Risk"],
-        labels: { style: { colors: "#6b7280" } },
+        categories: ['Placement Ready', 'Developing', 'Needs Support', 'At Risk'],
+        labels: { style: { colors: '#6b7280' } },
       },
       yaxis: {
-        labels: { style: { colors: "#6b7280" } },
+        labels: { style: { colors: '#6b7280' } },
       },
       legend: { show: false },
-      grid: { borderColor: "#f1f5f9" },
+      grid: { borderColor: '#f1f5f9' },
     },
   };
 
   // ===== Helper Functions =====
-  const getStatusColor = (status: Internship["status"]) => {
+  const getStatusColor = (status: Internship['status']) => {
     switch (status) {
-      case "completed":
-        return "bg-green-100 text-green-700 border-green-200";
-      case "ongoing":
-        return "bg-blue-100 text-blue-700 border-blue-200";
-      case "pending":
-        return "bg-yellow-100 text-yellow-700 border-yellow-200";
-      case "cancelled":
-        return "bg-red-100 text-red-700 border-red-200";
+      case 'completed':
+        return 'bg-green-100 text-green-700 border-green-200';
+      case 'ongoing':
+        return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+      case 'cancelled':
+        return 'bg-red-100 text-red-700 border-red-200';
     }
   };
 
-  const getVisitStatusColor = (status: IndustryVisit["status"]) => {
+  const getVisitStatusColor = (status: IndustryVisit['status']) => {
     switch (status) {
-      case "completed":
-        return "bg-green-100 text-green-700";
-      case "upcoming":
-        return "bg-blue-100 text-blue-700";
-      case "cancelled":
-        return "bg-red-100 text-red-700";
+      case 'completed':
+        return 'bg-green-100 text-green-700';
+      case 'upcoming':
+        return 'bg-blue-100 text-blue-700';
+      case 'cancelled':
+        return 'bg-red-100 text-red-700';
     }
   };
 
-  const getReadinessColor = (level: ReadinessMetrics["readinessLevel"]) => {
+  const getReadinessColor = (level: ReadinessMetrics['readinessLevel']) => {
     switch (level) {
-      case "placement-ready":
-        return "bg-green-100 text-green-700 border-green-200";
-      case "developing":
-        return "bg-blue-100 text-blue-700 border-blue-200";
-      case "needs-support":
-        return "bg-yellow-100 text-yellow-700 border-yellow-200";
-      case "at-risk":
-        return "bg-red-100 text-red-700 border-red-200";
+      case 'placement-ready':
+        return 'bg-green-100 text-green-700 border-green-200';
+      case 'developing':
+        return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'needs-support':
+        return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+      case 'at-risk':
+        return 'bg-red-100 text-red-700 border-red-200';
     }
   };
 
-  const getReadinessLabel = (level: ReadinessMetrics["readinessLevel"]) => {
+  const getReadinessLabel = (level: ReadinessMetrics['readinessLevel']) => {
     switch (level) {
-      case "placement-ready":
-        return "Placement Ready";
-      case "developing":
-        return "Developing";
-      case "needs-support":
-        return "Needs Support";
-      case "at-risk":
-        return "At Risk";
+      case 'placement-ready':
+        return 'Placement Ready';
+      case 'developing':
+        return 'Developing';
+      case 'needs-support':
+        return 'Needs Support';
+      case 'at-risk':
+        return 'At Risk';
     }
   };
 
   const filteredInternships = internships.filter((internship) => {
-    const matchesSearch = internship.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    const matchesSearch =
+      internship.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       internship.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
       internship.rollNumber.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = internshipFilter === "all" || internship.status === internshipFilter;
+    const matchesFilter = internshipFilter === 'all' || internship.status === internshipFilter;
     return matchesSearch && matchesFilter;
   });
 
   const filteredVisits = industryVisits.filter((visit) => {
-    const matchesFilter = visitFilter === "all" || visit.status === visitFilter;
+    const matchesFilter = visitFilter === 'all' || visit.status === visitFilter;
     return matchesFilter;
   });
 
@@ -590,18 +611,18 @@ const PlacementReadiness: React.FC = () => {
       <div className="bg-white rounded-2xl border border-gray-200 p-2 shadow-sm">
         <div className="flex flex-wrap gap-2">
           {[
-            { key: "overview", label: "Overview", icon: BarChart3 },
-            { key: "internships", label: "Internships", icon: Briefcase },
-            { key: "visits", label: "Industry Visits", icon: Building2 },
-            { key: "readiness", label: "Readiness Analysis", icon: TrendingUp },
+            { key: 'overview', label: 'Overview', icon: BarChart3 },
+            { key: 'internships', label: 'Internships', icon: Briefcase },
+            { key: 'visits', label: 'Industry Visits', icon: Building2 },
+            { key: 'readiness', label: 'Readiness Analysis', icon: TrendingUp },
           ].map(({ key, label, icon: Icon }) => (
             <button
               key={key}
               onClick={() => setActiveTab(key as any)}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all duration-200 ${
                 activeTab === key
-                  ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md"
-                  : "text-gray-600 hover:bg-gray-100"
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
+                  : 'text-gray-600 hover:bg-gray-100'
               }`}
             >
               <Icon className="h-4 w-4" />
@@ -619,7 +640,7 @@ const PlacementReadiness: React.FC = () => {
       </div>
 
       {/* Tab Content */}
-      {activeTab === "overview" && (
+      {activeTab === 'overview' && (
         <div className="space-y-6">
           {/* Quick Stats */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -675,6 +696,7 @@ const PlacementReadiness: React.FC = () => {
                 Internship Status Distribution
               </h2>
               <ReactApexChart
+                // @ts-expect-error - Auto-suppressed for migration
                 options={internshipDistributionChart.options}
                 series={internshipDistributionChart.series}
                 type="donut"
@@ -687,6 +709,7 @@ const PlacementReadiness: React.FC = () => {
                 Company-wise Internship Distribution
               </h2>
               <ReactApexChart
+                // @ts-expect-error - Auto-suppressed for migration
                 options={companyWiseInternshipsChart.options}
                 series={companyWiseInternshipsChart.series}
                 type="bar"
@@ -698,11 +721,9 @@ const PlacementReadiness: React.FC = () => {
           {/* Readiness Preview */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-800">
-                Placement Readiness Overview
-              </h2>
-              <button 
-                onClick={() => setActiveTab("readiness")}
+              <h2 className="text-lg font-semibold text-gray-800">Placement Readiness Overview</h2>
+              <button
+                onClick={() => setActiveTab('readiness')}
                 className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
               >
                 View Details <Eye className="h-4 w-4" />
@@ -710,6 +731,7 @@ const PlacementReadiness: React.FC = () => {
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <ReactApexChart
+                // @ts-expect-error - Auto-suppressed for migration
                 options={readinessRadarChart.options}
                 series={readinessRadarChart.series}
                 type="radar"
@@ -717,12 +739,12 @@ const PlacementReadiness: React.FC = () => {
               />
               <div className="space-y-4">
                 {[
-                  { label: "Technical Skills", value: 76, color: "bg-blue-500" },
-                  { label: "Soft Skills", value: 74, color: "bg-purple-500" },
-                  { label: "Projects", value: 76, color: "bg-cyan-500" },
-                  { label: "Internships", value: 76, color: "bg-green-500" },
-                  { label: "Certifications", value: 68, color: "bg-orange-500" },
-                  { label: "Attendance", value: 86, color: "bg-pink-500" },
+                  { label: 'Technical Skills', value: 76, color: 'bg-blue-500' },
+                  { label: 'Soft Skills', value: 74, color: 'bg-purple-500' },
+                  { label: 'Projects', value: 76, color: 'bg-cyan-500' },
+                  { label: 'Internships', value: 76, color: 'bg-green-500' },
+                  { label: 'Certifications', value: 68, color: 'bg-orange-500' },
+                  { label: 'Attendance', value: 86, color: 'bg-pink-500' },
                 ].map((item) => (
                   <div key={item.label}>
                     <div className="flex justify-between items-center mb-2">
@@ -743,7 +765,7 @@ const PlacementReadiness: React.FC = () => {
         </div>
       )}
 
-      {activeTab === "internships" && (
+      {activeTab === 'internships' && (
         <div className="space-y-6">
           {/* Search and Filter Bar */}
           <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm">
@@ -805,9 +827,7 @@ const PlacementReadiness: React.FC = () => {
                       <Users className="h-4 w-4" />
                       Student:
                     </span>
-                    <span className="font-semibold text-gray-900">
-                      {internship.studentName}
-                    </span>
+                    <span className="font-semibold text-gray-900">{internship.studentName}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600 flex items-center gap-2">
@@ -855,10 +875,16 @@ const PlacementReadiness: React.FC = () => {
                 </div>
 
                 <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(internship.status)}`}>
-                    {internship.status === "ongoing" && <Clock className="h-3 w-3 inline mr-1" />}
-                    {internship.status === "completed" && <CheckCircle className="h-3 w-3 inline mr-1" />}
-                    {internship.status === "pending" && <Calendar className="h-3 w-3 inline mr-1" />}
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(internship.status)}`}
+                  >
+                    {internship.status === 'ongoing' && <Clock className="h-3 w-3 inline mr-1" />}
+                    {internship.status === 'completed' && (
+                      <CheckCircle className="h-3 w-3 inline mr-1" />
+                    )}
+                    {internship.status === 'pending' && (
+                      <Calendar className="h-3 w-3 inline mr-1" />
+                    )}
                     {internship.status.charAt(0).toUpperCase() + internship.status.slice(1)}
                   </span>
                   {internship.convertedToFullTime && (
@@ -880,7 +906,7 @@ const PlacementReadiness: React.FC = () => {
         </div>
       )}
 
-      {activeTab === "visits" && (
+      {activeTab === 'visits' && (
         <div className="space-y-6">
           {/* Filter Bar */}
           <div className="flex items-center justify-between">
@@ -914,7 +940,9 @@ const PlacementReadiness: React.FC = () => {
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="font-bold text-gray-900 text-lg">{visit.company}</h3>
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getVisitStatusColor(visit.status)}`}>
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-medium ${getVisitStatusColor(visit.status)}`}
+                        >
                           {visit.status.charAt(0).toUpperCase() + visit.status.slice(1)}
                         </span>
                       </div>
@@ -925,10 +953,10 @@ const PlacementReadiness: React.FC = () => {
                         </p>
                         <p className="text-sm text-gray-600 flex items-center gap-2">
                           <Calendar className="h-4 w-4" />
-                          {new Date(visit.date).toLocaleDateString("en-IN", {
-                            day: "numeric",
-                            month: "long",
-                            year: "numeric",
+                          {new Date(visit.date).toLocaleDateString('en-IN', {
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric',
                           })}
                         </p>
                         <p className="text-sm text-gray-600 flex items-center gap-2">
@@ -938,9 +966,13 @@ const PlacementReadiness: React.FC = () => {
                         <p className="text-sm text-gray-600 flex items-center gap-2">
                           <Users className="h-4 w-4" />
                           {visit.studentsParticipated}/{visit.totalStudents} students
-                          {visit.status === "completed" && (
+                          {visit.status === 'completed' && (
                             <span className="text-green-600 font-medium">
-                              ({((visit.studentsParticipated / visit.totalStudents) * 100).toFixed(0)}% participation)
+                              (
+                              {((visit.studentsParticipated / visit.totalStudents) * 100).toFixed(
+                                0
+                              )}
+                              % participation)
                             </span>
                           )}
                         </p>
@@ -1003,7 +1035,7 @@ const PlacementReadiness: React.FC = () => {
         </div>
       )}
 
-      {activeTab === "readiness" && (
+      {activeTab === 'readiness' && (
         <div className="space-y-6">
           {/* Readiness Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1012,6 +1044,7 @@ const PlacementReadiness: React.FC = () => {
                 Multi-Dimensional Readiness Analysis
               </h2>
               <ReactApexChart
+                // @ts-expect-error - Auto-suppressed for migration
                 options={readinessRadarChart.options}
                 series={readinessRadarChart.series}
                 type="radar"
@@ -1024,6 +1057,7 @@ const PlacementReadiness: React.FC = () => {
                 Readiness Level Distribution
               </h2>
               <ReactApexChart
+                // @ts-expect-error - Auto-suppressed for migration
                 options={readinessDistributionChart.options}
                 series={readinessDistributionChart.series}
                 type="bar"
@@ -1035,9 +1069,7 @@ const PlacementReadiness: React.FC = () => {
           {/* Student Readiness Table */}
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
             <div className="p-6 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-800">
-                Student-wise Readiness Scores
-              </h2>
+              <h2 className="text-lg font-semibold text-gray-800">Student-wise Readiness Scores</h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -1045,10 +1077,18 @@ const PlacementReadiness: React.FC = () => {
                   <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
                     <th className="text-left p-4 font-semibold text-gray-700 text-sm">Student</th>
                     <th className="text-center p-4 font-semibold text-gray-700 text-sm">Overall</th>
-                    <th className="text-center p-4 font-semibold text-gray-700 text-sm">Technical</th>
-                    <th className="text-center p-4 font-semibold text-gray-700 text-sm">Soft Skills</th>
-                    <th className="text-center p-4 font-semibold text-gray-700 text-sm">Projects</th>
-                    <th className="text-center p-4 font-semibold text-gray-700 text-sm">Internships</th>
+                    <th className="text-center p-4 font-semibold text-gray-700 text-sm">
+                      Technical
+                    </th>
+                    <th className="text-center p-4 font-semibold text-gray-700 text-sm">
+                      Soft Skills
+                    </th>
+                    <th className="text-center p-4 font-semibold text-gray-700 text-sm">
+                      Projects
+                    </th>
+                    <th className="text-center p-4 font-semibold text-gray-700 text-sm">
+                      Internships
+                    </th>
                     <th className="text-center p-4 font-semibold text-gray-700 text-sm">Certs</th>
                     <th className="text-center p-4 font-semibold text-gray-700 text-sm">Status</th>
                   </tr>
@@ -1067,17 +1107,19 @@ const PlacementReadiness: React.FC = () => {
                       </td>
                       <td className="p-4">
                         <div className="flex flex-col items-center gap-2">
-                          <span className="font-bold text-lg text-gray-900">{student.overallReadiness}%</span>
+                          <span className="font-bold text-lg text-gray-900">
+                            {student.overallReadiness}%
+                          </span>
                           <div className="w-full bg-gray-200 rounded-full h-2">
                             <div
                               className={`h-2 rounded-full transition-all duration-500 ${
                                 student.overallReadiness >= 80
-                                  ? "bg-gradient-to-r from-green-500 to-green-600"
+                                  ? 'bg-gradient-to-r from-green-500 to-green-600'
                                   : student.overallReadiness >= 60
-                                  ? "bg-gradient-to-r from-blue-500 to-blue-600"
-                                  : student.overallReadiness >= 40
-                                  ? "bg-gradient-to-r from-yellow-500 to-yellow-600"
-                                  : "bg-gradient-to-r from-red-500 to-red-600"
+                                    ? 'bg-gradient-to-r from-blue-500 to-blue-600'
+                                    : student.overallReadiness >= 40
+                                      ? 'bg-gradient-to-r from-yellow-500 to-yellow-600'
+                                      : 'bg-gradient-to-r from-red-500 to-red-600'
                               }`}
                               style={{ width: `${student.overallReadiness}%` }}
                             />
@@ -1085,7 +1127,9 @@ const PlacementReadiness: React.FC = () => {
                         </div>
                       </td>
                       <td className="p-4 text-center">
-                        <span className="font-semibold text-gray-900">{student.technicalSkills}%</span>
+                        <span className="font-semibold text-gray-900">
+                          {student.technicalSkills}%
+                        </span>
                       </td>
                       <td className="p-4 text-center">
                         <span className="font-semibold text-gray-900">{student.softSkills}%</span>
@@ -1097,11 +1141,15 @@ const PlacementReadiness: React.FC = () => {
                         <span className="font-semibold text-gray-900">{student.internships}%</span>
                       </td>
                       <td className="p-4 text-center">
-                        <span className="font-semibold text-gray-900">{student.certifications}%</span>
+                        <span className="font-semibold text-gray-900">
+                          {student.certifications}%
+                        </span>
                       </td>
                       <td className="p-4">
                         <div className="flex justify-center">
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getReadinessColor(student.readinessLevel)}`}>
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-medium border ${getReadinessColor(student.readinessLevel)}`}
+                          >
                             {getReadinessLabel(student.readinessLevel)}
                           </span>
                         </div>
@@ -1121,28 +1169,36 @@ const PlacementReadiness: React.FC = () => {
                 <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="font-semibold text-gray-900 mb-1">Strong Technical Foundation</p>
-                  <p className="text-sm text-gray-600">76% average in technical skills across cohort</p>
+                  <p className="text-sm text-gray-600">
+                    76% average in technical skills across cohort
+                  </p>
                 </div>
               </div>
               <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-xl border border-blue-200">
                 <Activity className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="font-semibold text-gray-900 mb-1">Good Project Engagement</p>
-                  <p className="text-sm text-gray-600">76% average project completion and quality</p>
+                  <p className="text-sm text-gray-600">
+                    76% average project completion and quality
+                  </p>
                 </div>
               </div>
               <div className="flex items-start gap-3 p-4 bg-yellow-50 rounded-xl border border-yellow-200">
                 <TrendingDown className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="font-semibold text-gray-900 mb-1">Certification Gap</p>
-                  <p className="text-sm text-gray-600">Only 68% average - recommend more industry certifications</p>
+                  <p className="text-sm text-gray-600">
+                    Only 68% average - recommend more industry certifications
+                  </p>
                 </div>
               </div>
               <div className="flex items-start gap-3 p-4 bg-purple-50 rounded-xl border border-purple-200">
                 <Award className="h-5 w-5 text-purple-600 flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="font-semibold text-gray-900 mb-1">Internship Experience</p>
-                  <p className="text-sm text-gray-600">76% average - ensure all students get opportunities</p>
+                  <p className="text-sm text-gray-600">
+                    76% average - ensure all students get opportunities
+                  </p>
                 </div>
               </div>
             </div>
@@ -1154,4 +1210,3 @@ const PlacementReadiness: React.FC = () => {
 };
 
 export default PlacementReadiness;
-

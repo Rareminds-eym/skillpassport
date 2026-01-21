@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 import {
   Users,
   Building2,
@@ -17,11 +17,11 @@ import {
   CheckCircle,
   AlertCircle,
   Loader2,
-} from "lucide-react";
-import KPICard from "../../../components/admin/KPICard";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "../../../lib/supabaseClient";
-import { useAuth } from "../../../context/AuthContext";
+} from 'lucide-react';
+import KPICard from '../../../components/admin/KPICard';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '../../../lib/supabaseClient';
+import { useAuth } from '../../../context/AuthContext';
 
 interface DashboardStats {
   totalStudents: number;
@@ -46,7 +46,7 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     const fetchDashboardData = async () => {
       if (!user) return;
-      
+
       setLoading(true);
       try {
         // Get college_id for current user from college_lecturers table
@@ -88,9 +88,10 @@ const Dashboard: React.FC = () => {
           .select('*', { count: 'exact', head: true })
           .eq('placementStatus', 'hired');
 
-        const placementRate = studentsCount && studentsCount > 0 
-          ? Math.round(((totalPlaced || 0) / studentsCount) * 100) 
-          : 0;
+        const placementRate =
+          studentsCount && studentsCount > 0
+            ? Math.round(((totalPlaced || 0) / studentsCount) * 100)
+            : 0;
 
         setStats({
           totalStudents: studentsCount || 0,
@@ -111,82 +112,82 @@ const Dashboard: React.FC = () => {
   // ===== KPI Cards with real data =====
   const kpiData = [
     {
-      title: "Total Students",
-      value: loading ? "..." : stats.totalStudents.toLocaleString(),
+      title: 'Total Students',
+      value: loading ? '...' : stats.totalStudents.toLocaleString(),
       change: 0,
-      changeLabel: "enrolled",
+      changeLabel: 'enrolled',
       icon: <Users className="h-6 w-6" />,
-      color: "blue" as const,
+      color: 'blue' as const,
     },
     {
-      title: "Total Faculty",
-      value: loading ? "..." : stats.totalFaculty.toLocaleString(),
+      title: 'Total Faculty',
+      value: loading ? '...' : stats.totalFaculty.toLocaleString(),
       change: 0,
-      changeLabel: "active members",
+      changeLabel: 'active members',
       icon: <Award className="h-6 w-6" />,
-      color: "purple" as const,
+      color: 'purple' as const,
     },
     {
-      title: "Departments",
-      value: loading ? "..." : stats.totalDepartments.toLocaleString(),
+      title: 'Departments',
+      value: loading ? '...' : stats.totalDepartments.toLocaleString(),
       change: 0,
-      changeLabel: "across programs",
+      changeLabel: 'across programs',
       icon: <Building2 className="h-6 w-6" />,
-      color: "green" as const,
+      color: 'green' as const,
     },
     {
-      title: "Placement Rate",
-      value: loading ? "..." : `${stats.placementRate}%`,
+      title: 'Placement Rate',
+      value: loading ? '...' : `${stats.placementRate}%`,
       change: 0,
-      changeLabel: "this academic year",
+      changeLabel: 'this academic year',
       icon: <Briefcase className="h-6 w-6" />,
-      color: "yellow" as const,
+      color: 'yellow' as const,
     },
   ];
 
   // ===== Quick Actions =====
   const quickActions = [
     {
-      title: "Department Management",
-      description: "Manage departments & faculty",
+      title: 'Department Management',
+      description: 'Manage departments & faculty',
       icon: Building2,
-      color: "bg-blue-50 text-blue-600",
-      route: "/college-admin/departments/management",
+      color: 'bg-blue-50 text-blue-600',
+      route: '/college-admin/departments/management',
     },
     {
-      title: "Student Admissions",
-      description: "Process new admissions",
+      title: 'Student Admissions',
+      description: 'Process new admissions',
       icon: Users,
-      color: "bg-blue-50 text-blue-600",
-      route: "/college-admin/students/data-management",
+      color: 'bg-blue-50 text-blue-600',
+      route: '/college-admin/students/data-management',
     },
     {
-      title: "Attendance Tracking",
-      description: "View attendance reports",
+      title: 'Attendance Tracking',
+      description: 'View attendance reports',
       icon: CheckCircle,
-      color: "bg-blue-50 text-blue-600",
-      route: "/college-admin/students/attendance",
+      color: 'bg-blue-50 text-blue-600',
+      route: '/college-admin/students/attendance',
     },
     {
-      title: "Course Mapping",
-      description: "Map courses to programs",
+      title: 'Course Mapping',
+      description: 'Map courses to programs',
       icon: BookOpen,
-      color: "bg-blue-50 text-blue-600",
-      route: "/college-admin/departments/mapping",
+      color: 'bg-blue-50 text-blue-600',
+      route: '/college-admin/departments/mapping',
     },
     {
-      title: "Exam Management",
-      description: "Schedule & manage exams",
+      title: 'Exam Management',
+      description: 'Schedule & manage exams',
       icon: FileText,
-      color: "bg-blue-50 text-blue-600",
-      route: "/college-admin/examinations",
+      color: 'bg-blue-50 text-blue-600',
+      route: '/college-admin/examinations',
     },
     {
-      title: "Placement Dashboard",
-      description: "Track placement activities",
+      title: 'Placement Dashboard',
+      description: 'Track placement activities',
       icon: Briefcase,
-      color: "bg-blue-50 text-blue-600",
-      route: "/college-admin/placements",
+      color: 'bg-blue-50 text-blue-600',
+      route: '/college-admin/placements',
     },
   ];
 
@@ -197,9 +198,7 @@ const Dashboard: React.FC = () => {
       <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 border border-blue-100">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
-              College Dashboard
-            </h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">College Dashboard</h1>
             <p className="text-gray-600 text-sm sm:text-base">
               Overview of institutional performance and program analytics
             </p>
@@ -246,9 +245,7 @@ const Dashboard: React.FC = () => {
                   <p className="font-semibold text-gray-800 group-hover:text-blue-600 transition">
                     {action.title}
                   </p>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {action.description}
-                  </p>
+                  <p className="text-sm text-gray-600 mt-1">{action.description}</p>
                 </div>
               </button>
             );

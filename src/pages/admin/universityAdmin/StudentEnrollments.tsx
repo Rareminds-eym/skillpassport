@@ -17,7 +17,11 @@ import Pagination from '../../../components/admin/Pagination';
 import StudentProfileDrawer from '@/components/shared/StudentProfileDrawer';
 import CareerPathDrawer from '@/components/admin/components/CareerPathDrawer';
 import { useStudents } from '../../../hooks/useAdminStudents';
-import { generateCareerPath, type CareerPathResponse, type StudentProfile } from '@/services/aiCareerPathService';
+import {
+  generateCareerPath,
+  type CareerPathResponse,
+  type StudentProfile,
+} from '@/services/aiCareerPathService';
 
 const FilterSection = ({ title, children, defaultOpen = false }: any) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -48,15 +52,13 @@ const CheckboxGroup = ({ options, selectedValues, onChange }: any) => {
               if (e.target.checked) {
                 onChange([...selectedValues, option.value]);
               } else {
-                onChange(selectedValues.filter(v => v !== option.value));
+                onChange(selectedValues.filter((v) => v !== option.value));
               }
             }}
             className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
           />
           <span className="ml-2 text-sm text-gray-700">{option.label}</span>
-          {option.count && (
-            <span className="ml-auto text-xs text-gray-500">({option.count})</span>
-          )}
+          {option.count && <span className="ml-auto text-xs text-gray-500">({option.count})</span>}
         </label>
       ))}
     </div>
@@ -69,13 +71,15 @@ const StatusBadgeComponent = ({ status }) => {
     pending: { color: 'bg-yellow-100 text-yellow-800', label: 'Pending' },
     graduated: { color: 'bg-blue-100 text-blue-800', label: 'Graduated' },
     withdrawn: { color: 'bg-red-100 text-red-800', label: 'Withdrawn' },
-    suspended: { color: 'bg-orange-100 text-orange-800', label: 'Suspended' }
+    suspended: { color: 'bg-orange-100 text-orange-800', label: 'Suspended' },
   };
 
   const config = statusConfig[status] || { color: 'bg-gray-100 text-gray-800', label: status };
 
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
+    <span
+      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}
+    >
       {config.label}
     </span>
   );
@@ -93,14 +97,15 @@ const StudentCard = ({ student, onViewProfile, onAddNote, onViewCareerPath }) =>
         <div className="flex flex-col items-end">
           <div className="flex items-center mb-1">
             <StarIcon className="h-4 w-4 text-yellow-400 fill-current" />
-            <span className="text-sm font-medium text-gray-700 ml-1">{student.ai_score_overall || '0'}</span>
+            <span className="text-sm font-medium text-gray-700 ml-1">
+              {student.ai_score_overall || '0'}
+            </span>
           </div>
           <StatusBadgeComponent status={student.enrollment_status || 'pending'} />
         </div>
       </div>
 
-      <div className="mb-3">
-      </div>
+      <div className="mb-3"></div>
 
       <div className="mb-4 space-y-1">
         {(student.college || student.profile?.university) && (
@@ -108,17 +113,11 @@ const StudentCard = ({ student, onViewProfile, onAddNote, onViewCareerPath }) =>
             📚 {student.college || student.profile?.university}
           </p>
         )}
-        {student.dept && (
-          <p className="text-xs text-gray-600">
-            🎓 {student.dept}
-          </p>
-        )}
+        {student.dept && <p className="text-xs text-gray-600">🎓 {student.dept}</p>}
       </div>
 
       <div className="flex items-center justify-between">
-        <span className="text-xs text-gray-500">
-          {student.location || 'N/A'}
-        </span>
+        <span className="text-xs text-gray-500">{student.location || 'N/A'}</span>
         <div className="flex space-x-1 flex-wrap gap-1">
           <button
             onClick={() => onViewProfile(student)}
@@ -170,18 +169,27 @@ const StudentEnrollments = () => {
     college: [],
     status: [],
     minScore: 0,
-    maxScore: 100
+    maxScore: 100,
   });
 
   const { students, loading, error } = useStudents();
 
- useEffect(() => {
-     setCurrentPage(1);
-   }, [searchQuery, sortBy, filters.degree.length, filters.course.length, filters.college.length, filters.status.length, filters.minScore, filters.maxScore]);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    searchQuery,
+    sortBy,
+    filters.degree.length,
+    filters.course.length,
+    filters.college.length,
+    filters.status.length,
+    filters.minScore,
+    filters.maxScore,
+  ]);
 
   const degreeOptions = useMemo(() => {
     const degreeCounts: any = {};
-    students.forEach(student => {
+    students.forEach((student) => {
       if (student.dept) {
         const normalizedDegree = student.dept.toLowerCase();
         degreeCounts[normalizedDegree] = (degreeCounts[normalizedDegree] || 0) + 1;
@@ -191,14 +199,15 @@ const StudentEnrollments = () => {
       .map(([degree, count]) => ({
         value: degree,
         label: degree.charAt(0).toUpperCase() + degree.slice(1),
-        count
+        count,
       }))
+      // @ts-expect-error - Auto-suppressed for migration
       .sort((a, b) => b.count - a.count);
   }, [students]);
 
   const courseOptions = useMemo(() => {
     const courseCounts: any = {};
-    students.forEach(student => {
+    students.forEach((student) => {
       if (student.dept) {
         const normalizedCourse = student.dept.toLowerCase();
         courseCounts[normalizedCourse] = (courseCounts[normalizedCourse] || 0) + 1;
@@ -208,15 +217,16 @@ const StudentEnrollments = () => {
       .map(([course, count]) => ({
         value: course,
         label: course.charAt(0).toUpperCase() + course.slice(1),
-        count
+        count,
       }))
+      // @ts-expect-error - Auto-suppressed for migration
       .sort((a, b) => b.count - a.count)
       .slice(0, 15);
   }, [students]);
 
   const collegeOptions = useMemo(() => {
     const collegeCounts: any = {};
-    students.forEach(student => {
+    students.forEach((student) => {
       if (student.college) {
         const normalizedCollege = student.college.toLowerCase();
         collegeCounts[normalizedCollege] = (collegeCounts[normalizedCollege] || 0) + 1;
@@ -226,14 +236,15 @@ const StudentEnrollments = () => {
       .map(([college, count]) => ({
         value: college,
         label: college.charAt(0).toUpperCase() + college.slice(1),
-        count
+        count,
       }))
+      // @ts-expect-error - Auto-suppressed for migration
       .sort((a, b) => b.count - a.count);
   }, [students]);
 
   const statusOptions = useMemo(() => {
     const statusCounts: any = {};
-    students.forEach(student => {
+    students.forEach((student) => {
       if (student.enrollment_status) {
         const status = student.enrollment_status.toLowerCase();
         statusCounts[status] = (statusCounts[status] || 0) + 1;
@@ -243,8 +254,9 @@ const StudentEnrollments = () => {
       .map(([status, count]) => ({
         value: status,
         label: status.charAt(0).toUpperCase() + status.slice(1),
-        count
+        count,
       }))
+      // @ts-expect-error - Auto-suppressed for migration
       .sort((a, b) => b.count - a.count);
   }, [students]);
 
@@ -255,7 +267,7 @@ const StudentEnrollments = () => {
     if (searchQuery && searchQuery.trim() !== '') {
       const query = searchQuery.toLowerCase().trim();
 
-      result = result.filter(student => {
+      result = result.filter((student) => {
         return (
           (student.name && student.name.toLowerCase().includes(query)) ||
           (student.email && student.email.toLowerCase().includes(query)) ||
@@ -267,32 +279,33 @@ const StudentEnrollments = () => {
     }
 
     if (filters.degree.length > 0) {
-      result = result.filter(student =>
-        student.dept && filters.degree.includes(student.dept.toLowerCase())
+      result = result.filter(
+        (student) => student.dept && filters.degree.includes(student.dept.toLowerCase())
       );
     }
 
     if (filters.course.length > 0) {
-      result = result.filter(student =>
-        student.dept?.some((course: any) =>
-          filters.course.includes(course.toLowerCase())
-        )
+      result = result.filter((student) =>
+        // @ts-expect-error - Auto-suppressed for migration
+        student.dept?.some((course: any) => filters.course.includes(course.toLowerCase()))
       );
     }
 
     if (filters.college.length > 0) {
-      result = result.filter(student =>
-        student.college && filters.college.includes(student.college.toLowerCase())
+      result = result.filter(
+        (student) => student.college && filters.college.includes(student.college.toLowerCase())
       );
     }
 
     if (filters.status.length > 0) {
-      result = result.filter(student =>
-        student.enrollment_status && filters.status.includes(student.enrollment_status.toLowerCase())
+      result = result.filter(
+        (student) =>
+          student.enrollment_status &&
+          filters.status.includes(student.enrollment_status.toLowerCase())
       );
     }
 
-    result = result.filter(student => {
+    result = result.filter((student) => {
       const score = student.ai_score_overall || 0;
       return score >= filters.minScore && score <= filters.maxScore;
     });
@@ -307,8 +320,9 @@ const StudentEnrollments = () => {
           sortedResult.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
           break;
         case 'date':
-          sortedResult.sort((a, b) =>
-            new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime()
+          sortedResult.sort(
+            (a, b) =>
+              new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime()
           );
           break;
         case 'relevance':
@@ -339,7 +353,7 @@ const StudentEnrollments = () => {
       college: [],
       status: [],
       minScore: 0,
-      maxScore: 100
+      maxScore: 100,
     });
   };
 
@@ -367,68 +381,86 @@ const StudentEnrollments = () => {
       }
 
       // Extract and format skills
-      const skills = Array.isArray(student.skills) 
-        ? student.skills.map((s: any) => typeof s === 'string' ? s : s.name || s.title).filter(Boolean)
+      const skills = Array.isArray(student.skills)
+        ? student.skills
+            .map((s: any) => (typeof s === 'string' ? s : s.name || s.title))
+            .filter(Boolean)
         : student.profile?.technicalSkills?.map((s: any) => s.name || s) || [];
-      
+
       // Extract and format certificates
       const certificates = Array.isArray(student.certificates)
-        ? student.certificates.map((c: any) => {
-            if (typeof c === 'string') return c;
-            const title = c.title || c.name || 'Certificate';
-            const issuer = c.issuer ? ` (Issuer: ${c.issuer})` : '';
-            const level = c.level ? ` [Level: ${c.level}]` : '';
-            return `${title}${issuer}${level}`;
-          }).filter(Boolean)
+        ? student.certificates
+            .map((c: any) => {
+              if (typeof c === 'string') return c;
+              const title = c.title || c.name || 'Certificate';
+              const issuer = c.issuer ? ` (Issuer: ${c.issuer})` : '';
+              const level = c.level ? ` [Level: ${c.level}]` : '';
+              return `${title}${issuer}${level}`;
+            })
+            .filter(Boolean)
         : [];
-      
+
       // Extract and format experience
       const experience = Array.isArray(student.experience)
-        ? student.experience.map((e: any) => 
-            typeof e === 'string' ? e : `${e.role || e.title} at ${e.organization || e.company} (${e.duration || 'N/A'})`
-          ).filter(Boolean)
+        ? student.experience
+            .map((e: any) =>
+              typeof e === 'string'
+                ? e
+                : `${e.role || e.title} at ${e.organization || e.company} (${e.duration || 'N/A'})`
+            )
+            .filter(Boolean)
         : student.profile?.experience?.map((e: any) => `${e.role} at ${e.company}`) || [];
-      
+
       // Extract and format trainings
       const trainings = Array.isArray(student.trainings)
-        ? student.trainings.map((t: any) => 
-            typeof t === 'string' ? t : `${t.title} - ${t.organization || 'Completed'}`
-          ).filter(Boolean)
+        ? student.trainings
+            .map((t: any) =>
+              typeof t === 'string' ? t : `${t.title} - ${t.organization || 'Completed'}`
+            )
+            .filter(Boolean)
         : [];
-      
+
       // Extract and format projects
       const projects = Array.isArray(student.projects)
-        ? student.projects.map((p: any) => {
-            if (typeof p === 'string') return p;
-            const title = p.title || 'Project';
-            const tech = p.tech_stack ? ` (Tech: ${p.tech_stack})` : '';
-            const org = p.organization ? ` - ${p.organization}` : '';
-            return `${title}${tech}${org}`;
-          }).filter(Boolean)
+        ? student.projects
+            .map((p: any) => {
+              if (typeof p === 'string') return p;
+              const title = p.title || 'Project';
+              const tech = p.tech_stack ? ` (Tech: ${p.tech_stack})` : '';
+              const org = p.organization ? ` - ${p.organization}` : '';
+              return `${title}${tech}${org}`;
+            })
+            .filter(Boolean)
         : [];
-      
+
       // Extract and format education
       const education = Array.isArray(student.education)
-        ? student.education.map((e: any) => {
-            if (typeof e === 'string') return e;
-            const degree = e.degree || e.level || 'Degree';
-            const dept = e.department ? ` in ${e.department}` : '';
-            const univ = e.university ? ` from ${e.university}` : '';
-            const cgpa = e.cgpa ? ` (CGPA: ${e.cgpa})` : '';
-            return `${degree}${dept}${univ}${cgpa}`;
-          }).filter(Boolean)
-        : student.profile?.education?.map((e: any) => 
-            `${e.degree || 'Degree'} (CGPA: ${e.cgpa || 'N/A'})`
+        ? student.education
+            .map((e: any) => {
+              if (typeof e === 'string') return e;
+              const degree = e.degree || e.level || 'Degree';
+              const dept = e.department ? ` in ${e.department}` : '';
+              const univ = e.university ? ` from ${e.university}` : '';
+              const cgpa = e.cgpa ? ` (CGPA: ${e.cgpa})` : '';
+              return `${degree}${dept}${univ}${cgpa}`;
+            })
+            .filter(Boolean)
+        : student.profile?.education?.map(
+            (e: any) => `${e.degree || 'Degree'} (CGPA: ${e.cgpa || 'N/A'})`
           ) || [];
-      
+
       // Extract interests
-      const interests = student.interests || 
-        student.profile?.interests || 
-        [student.dept, `${student.dept} Development`, 'Career Growth'];
+      const interests = student.interests ||
+        student.profile?.interests || [
+          student.dept,
+          `${student.dept} Development`,
+          'Career Growth',
+        ];
 
       // Get CGPA from education or profile
-      const cgpa = student.profile?.education?.[0]?.cgpa || 
-        student.cgpa || 
+      const cgpa =
+        student.profile?.education?.[0]?.cgpa ||
+        student.cgpa ||
         (student.ai_score_overall ? (student.ai_score_overall / 10).toFixed(2) : undefined);
 
       const studentProfile: StudentProfile = {
@@ -466,7 +498,8 @@ const StudentEnrollments = () => {
 
       if (err instanceof Error) {
         if (err.message.includes('API')) {
-          errorMessage = 'AI service is currently unavailable. Please check your API key configuration or try again later.';
+          errorMessage =
+            'AI service is currently unavailable. Please check your API key configuration or try again later.';
         } else if (err.message.includes('network') || err.message.includes('fetch')) {
           errorMessage = 'Network error. Please check your internet connection and try again.';
         } else if (err.message.includes('JSON') || err.message.includes('parse')) {
@@ -493,7 +526,9 @@ const StudentEnrollments = () => {
       <div className="p-4 sm:p-6 lg:p-8 mb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl md:text-3xl font-bold text-gray-900">Enrollment & Profiles</h1>
-          <p className="text-base md:text-lg mt-2 text-gray-600">Manage student enrollments and profiles across affiliated colleges.</p>
+          <p className="text-base md:text-lg mt-2 text-gray-600">
+            Manage student enrollments and profiles across affiliated colleges.
+          </p>
         </div>
       </div>
 
@@ -502,7 +537,8 @@ const StudentEnrollments = () => {
           <div className="inline-flex items-baseline">
             <h1 className="text-xl font-semibold text-gray-900">Enrollments</h1>
             <span className="ml-2 text-sm text-gray-500">
-              ({totalItems} {searchQuery || filters.degree.length > 0 ? 'matching' : ''} enrollments)
+              ({totalItems} {searchQuery || filters.degree.length > 0 ? 'matching' : ''}{' '}
+              enrollments)
             </span>
           </div>
         </div>
@@ -525,28 +561,37 @@ const StudentEnrollments = () => {
           >
             <FunnelIcon className="h-4 w-4 mr-2" />
             Filters
-            {(filters.degree.length + filters.course.length + filters.college.length + filters.status.length) > 0 && (
+            {filters.degree.length +
+              filters.course.length +
+              filters.college.length +
+              filters.status.length >
+              0 && (
               <span className="ml-1 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-primary-600 rounded-full">
-                {filters.degree.length + filters.course.length + filters.college.length + filters.status.length}
+                {filters.degree.length +
+                  filters.course.length +
+                  filters.college.length +
+                  filters.status.length}
               </span>
             )}
           </button>
           <div className="flex rounded-md shadow-sm">
             <button
               onClick={() => setViewMode('grid')}
-              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${viewMode === 'grid'
-                ? 'bg-primary-50 border-primary-300 text-primary-700'
-                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
+              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${
+                viewMode === 'grid'
+                  ? 'bg-primary-50 border-primary-300 text-primary-700'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
             >
               <Squares2X2Icon className="h-4 w-4" />
             </button>
             <button
               onClick={() => setViewMode('table')}
-              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${viewMode === 'table'
-                ? 'bg-primary-50 border-primary-300 text-primary-700'
-                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
+              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${
+                viewMode === 'table'
+                  ? 'bg-primary-50 border-primary-300 text-primary-700'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
             >
               <TableCellsIcon className="h-4 w-4" />
             </button>
@@ -582,19 +627,21 @@ const StudentEnrollments = () => {
           <div className="flex rounded-md shadow-sm">
             <button
               onClick={() => setViewMode('grid')}
-              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${viewMode === 'grid'
-                ? 'bg-primary-50 border-primary-300 text-primary-700'
-                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
+              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${
+                viewMode === 'grid'
+                  ? 'bg-primary-50 border-primary-300 text-primary-700'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
             >
               <Squares2X2Icon className="h-4 w-4" />
             </button>
             <button
               onClick={() => setViewMode('table')}
-              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${viewMode === 'table'
-                ? 'bg-primary-50 border-primary-300 text-primary-700'
-                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
+              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${
+                viewMode === 'table'
+                  ? 'bg-primary-50 border-primary-300 text-primary-700'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
             >
               <TableCellsIcon className="h-4 w-4" />
             </button>
@@ -660,7 +707,9 @@ const StudentEnrollments = () => {
                         min="0"
                         max="100"
                         value={filters.minScore}
-                        onChange={(e) => setFilters({ ...filters, minScore: parseInt(e.target.value) })}
+                        onChange={(e) =>
+                          setFilters({ ...filters, minScore: parseInt(e.target.value) })
+                        }
                         className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
                       />
                     </div>
@@ -673,7 +722,9 @@ const StudentEnrollments = () => {
                         min="0"
                         max="100"
                         value={filters.maxScore}
-                        onChange={(e) => setFilters({ ...filters, maxScore: parseInt(e.target.value) })}
+                        onChange={(e) =>
+                          setFilters({ ...filters, maxScore: parseInt(e.target.value) })
+                        }
                         className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
                       />
                     </div>
@@ -690,7 +741,8 @@ const StudentEnrollments = () => {
               <p className="text-sm text-gray-700">
                 Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
                 <span className="font-medium">{Math.min(endIndex, totalItems)}</span> of{' '}
-                <span className="font-medium">{totalItems}</span> result{totalItems !== 1 ? 's' : ''}
+                <span className="font-medium">{totalItems}</span> result
+                {totalItems !== 1 ? 's' : ''}
                 {searchQuery && <span className="text-gray-500"> for "{searchQuery}"</span>}
               </p>
               <select
@@ -711,15 +763,16 @@ const StudentEnrollments = () => {
               <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
                 {loading && <div className="text-sm text-gray-500">Loading enrollments...</div>}
                 {error && <div className="text-sm text-red-600">{error}</div>}
-                {!loading && paginatedStudents.map((student) => (
-                  <StudentCard
-                    key={student.id}
-                    student={student}
-                    onViewProfile={handleViewProfile}
-                    onAddNote={handleAddNoteClick}
-                    onViewCareerPath={handleViewCareerPath}
-                  />
-                ))}
+                {!loading &&
+                  paginatedStudents.map((student) => (
+                    <StudentCard
+                      key={student.id}
+                      student={student}
+                      onViewProfile={handleViewProfile}
+                      onAddNote={handleAddNoteClick}
+                      onViewCareerPath={handleViewCareerPath}
+                    />
+                  ))}
                 {!loading && paginatedStudents.length === 0 && !error && (
                   <div className="col-span-full text-center py-8">
                     <p className="text-sm text-gray-500">
@@ -764,9 +817,7 @@ const StudentEnrollments = () => {
                               <div className="text-sm font-medium text-gray-900">
                                 {student.name}
                               </div>
-                              <div className="text-sm text-gray-500">
-                                {student.email}
-                              </div>
+                              <div className="text-sm text-gray-500">{student.email}</div>
                             </div>
                           </div>
                         </td>

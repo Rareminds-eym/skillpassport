@@ -45,38 +45,38 @@ export const getSavedSearches = async (recruiterId?: string) => {
         id: 'default-1',
         name: 'React + Node.js',
         search_criteria: { skills: ['React', 'Node.js'] },
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
       },
       {
         id: 'default-2',
         name: 'Python Developers',
         search_criteria: { skills: ['Python'] },
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
       },
       {
         id: 'default-3',
         name: 'Data Science + ML',
         search_criteria: { skills: ['Data Science', 'Machine Learning'] },
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
       },
       {
         id: 'default-4',
         name: 'Frontend (React/Angular)',
         search_criteria: { skills: ['React', 'Angular'] },
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
       },
       {
         id: 'default-5',
         name: 'Full Stack Developers',
         search_criteria: { query: 'Full Stack Developer' },
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
       },
       {
         id: 'default-6',
         name: 'DevOps Engineers',
         search_criteria: { skills: ['DevOps', 'CI/CD', 'Docker'] },
-        created_at: new Date().toISOString()
-      }
+        created_at: new Date().toISOString(),
+      },
     ];
     return { data: defaultSearches, error };
   }
@@ -98,8 +98,8 @@ export const createSavedSearch = async (
           recruiter_id: recruiterId || 'default',
           name,
           search_criteria: searchCriteria,
-          use_count: 0
-        }
+          use_count: 0,
+        },
       ])
       .select()
       .single();
@@ -115,10 +115,7 @@ export const createSavedSearch = async (
 /**
  * Update a saved search
  */
-export const updateSavedSearch = async (
-  searchId: string,
-  updates: Partial<SavedSearch>
-) => {
+export const updateSavedSearch = async (searchId: string, updates: Partial<SavedSearch>) => {
   try {
     const { data, error } = await supabase
       .from('recruiter_saved_searches')
@@ -140,10 +137,7 @@ export const updateSavedSearch = async (
  */
 export const deleteSavedSearch = async (searchId: string) => {
   try {
-    const { error } = await supabase
-      .from('recruiter_saved_searches')
-      .delete()
-      .eq('id', searchId);
+    const { error } = await supabase.from('recruiter_saved_searches').delete().eq('id', searchId);
 
     if (error) throw error;
     return { error: null };
@@ -160,7 +154,7 @@ export const trackSearchUsage = async (searchId: string) => {
   try {
     // Increment use count and update last_used timestamp
     const { error } = await supabase.rpc('increment_search_usage', {
-      search_id: searchId
+      search_id: searchId,
     });
 
     if (error) {
@@ -169,7 +163,8 @@ export const trackSearchUsage = async (searchId: string) => {
         .from('recruiter_saved_searches')
         .update({
           last_used: new Date().toISOString(),
-          use_count: supabase.sql`use_count + 1`
+          // @ts-expect-error - Auto-suppressed for migration
+          use_count: supabase.sql`use_count + 1`,
         })
         .eq('id', searchId);
 

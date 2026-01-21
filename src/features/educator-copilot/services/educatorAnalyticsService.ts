@@ -2,7 +2,14 @@ import type { StudentWithAssignments } from './dataFetcherService';
 import type { Opportunity } from './educatorDataService';
 
 export interface AtRiskFlag {
-  type: 'low-skills' | 'no-projects' | 'stalled-training' | 'low-activity' | 'low-grades' | 'many-late' | 'missing-certificates';
+  type:
+    | 'low-skills'
+    | 'no-projects'
+    | 'stalled-training'
+    | 'low-activity'
+    | 'low-grades'
+    | 'many-late'
+    | 'missing-certificates';
   reason: string;
   severity: 'low' | 'medium' | 'high';
 }
@@ -41,7 +48,10 @@ const toArray = <T>(v: T[] | undefined | null): T[] => (Array.isArray(v) ? v : [
 
 class EducatorAnalyticsService {
   private normalizeSkillName(name: string) {
-    return name.trim().toLowerCase().replace(/[^a-z0-9+#.]/g, ' ');
+    return name
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9+#.]/g, ' ');
   }
 
   buildStudentInsights(students: StudentWithAssignments[]): StudentInsightSummary[] {
@@ -49,7 +59,9 @@ class EducatorAnalyticsService {
 
     return students.map((s) => {
       const profile = s.profile || ({} as any);
-      const tech = toArray<{ name: string; level: number }>(profile.technicalSkills).filter(Boolean);
+      const tech = toArray<{ name: string; level: number }>(profile.technicalSkills).filter(
+        Boolean
+      );
       const projects = toArray<any>(profile.projects).filter((p) => p?.enabled !== false);
       const training = toArray<any>(profile.training).filter((t) => t?.enabled !== false);
       const certs = toArray<any>(profile.certificates).filter((c) => c?.enabled !== false);
@@ -62,29 +74,44 @@ class EducatorAnalyticsService {
 
       const trainingProgress = training.map((t) => Number(t?.progress || 0));
       const trainingProgressAvg = trainingProgress.length
-        ? Math.round((trainingProgress.reduce((a, b) => a + b, 0) / trainingProgress.length) * 10) / 10
+        ? Math.round((trainingProgress.reduce((a, b) => a + b, 0) / trainingProgress.length) * 10) /
+          10
         : 0;
 
       const flags: AtRiskFlag[] = [];
       // Low skills
       if (skillsCount < 3) {
-        flags.push({ type: 'low-skills', reason: `Only ${skillsCount} technical skills`, severity: 'high' });
+        flags.push({
+          type: 'low-skills',
+          reason: `Only ${skillsCount} technical skills`,
+          severity: 'high',
+        });
       }
       // No or incomplete projects
       if (projects.length === 0) {
         flags.push({ type: 'no-projects', reason: 'No projects added', severity: 'medium' });
       } else if (projects.every((p) => p.processing === true)) {
-        flags.push({ type: 'no-projects', reason: 'All projects still processing', severity: 'low' });
+        flags.push({
+          type: 'no-projects',
+          reason: 'All projects still processing',
+          severity: 'low',
+        });
       }
       // Stalled training: progress < 50 and last updated > 30 days
-      const staleTraining = training.filter((t) => Number(t?.progress || 0) < 50).some((t) => {
-        const updatedAt = t?.updated_at ? new Date(t.updated_at) : null;
-        if (!updatedAt) return true; // treat missing date as stale
-        const days = (now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60 * 24);
-        return days > 30;
-      });
+      const staleTraining = training
+        .filter((t) => Number(t?.progress || 0) < 50)
+        .some((t) => {
+          const updatedAt = t?.updated_at ? new Date(t.updated_at) : null;
+          if (!updatedAt) return true; // treat missing date as stale
+          const days = (now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60 * 24);
+          return days > 30;
+        });
       if (staleTraining) {
-        flags.push({ type: 'stalled-training', reason: 'Training progress < 50% and stale > 30 days', severity: 'medium' });
+        flags.push({
+          type: 'stalled-training',
+          reason: 'Training progress < 50% and stale > 30 days',
+          severity: 'medium',
+        });
       }
       // Low activity: profile.updatedAt > 30 days
       const updatedAtStr = profile?.updatedAt || profile?.updated_at;
@@ -92,7 +119,11 @@ class EducatorAnalyticsService {
         const updatedAt = new Date(updatedAtStr);
         const days = (now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60 * 24);
         if (days > 30) {
-          flags.push({ type: 'low-activity', reason: 'Profile not updated in > 30 days', severity: 'low' });
+          flags.push({
+            type: 'low-activity',
+            reason: 'Profile not updated in > 30 days',
+            severity: 'low',
+          });
         }
       }
       // Assignments: low grades or many late
@@ -106,7 +137,11 @@ class EducatorAnalyticsService {
       }
       // Missing verified certificates when some exist but pending
       if (certs.length > 0 && certs.every((c) => (c.status || '').toLowerCase() !== 'approved')) {
-        flags.push({ type: 'missing-certificates', reason: 'Certificates pending approval', severity: 'low' });
+        flags.push({
+          type: 'missing-certificates',
+          reason: 'Certificates pending approval',
+          severity: 'low',
+        });
       }
 
       return {
@@ -159,20 +194,28 @@ class EducatorAnalyticsService {
       avgSkillsPerStudent: totalStudents ? Math.round((totalSkills / totalStudents) * 10) / 10 : 0,
       topSkills,
       projectsDistribution: projectsDist,
-      trainingCompletionRate: totalStudents ? Math.round((trainingCompleted / totalStudents) * 100) : 0,
+      trainingCompletionRate: totalStudents
+        ? Math.round((trainingCompleted / totalStudents) * 100)
+        : 0,
     };
   }
 
-  matchStudentsToOpportunities(students: StudentWithAssignments[], opportunities: Opportunity[]): MatchResult[] {
+  matchStudentsToOpportunities(
+    students: StudentWithAssignments[],
+    opportunities: Opportunity[]
+  ): MatchResult[] {
     const results: MatchResult[] = [];
 
     students.forEach((s) => {
       const profile = s.profile || ({} as any);
-      const skillNames = toArray<any>(profile.technicalSkills).map((t) => this.normalizeSkillName(String(t?.name || '')));
+      const skillNames = toArray<any>(profile.technicalSkills).map((t) =>
+        this.normalizeSkillName(String(t?.name || ''))
+      );
 
       opportunities.forEach((op) => {
-        const required = (Array.isArray(op.skills_required) ? op.skills_required : [])
-          .map((k: any) => this.normalizeSkillName(String(k)));
+        const required = (Array.isArray(op.skills_required) ? op.skills_required : []).map(
+          (k: any) => this.normalizeSkillName(String(k))
+        );
         if (required.length === 0) return;
 
         const matched = required.filter((r) => skillNames.includes(r));
@@ -201,12 +244,17 @@ class EducatorAnalyticsService {
 
   identifyAtRiskStudents(studentInsights: StudentInsightSummary[]): StudentInsightSummary[] {
     // Rank by severity and number of flags
-    const severityScore = (f: AtRiskFlag) => (f.severity === 'high' ? 3 : f.severity === 'medium' ? 2 : 1);
+    const severityScore = (f: AtRiskFlag) =>
+      f.severity === 'high' ? 3 : f.severity === 'medium' ? 2 : 1;
 
     return [...studentInsights]
       .map((insight) => ({
         ...insight,
-        riskScore: insight.flags.reduce((sum, f) => sum + severityScore(f), 0) + (insight.skillsCount < 3 ? 2 : 0) + (insight.projectsCount === 0 ? 1 : 0) + (insight.assignmentStats?.avgGrade && insight.assignmentStats.avgGrade < 60 ? 2 : 0),
+        riskScore:
+          insight.flags.reduce((sum, f) => sum + severityScore(f), 0) +
+          (insight.skillsCount < 3 ? 2 : 0) +
+          (insight.projectsCount === 0 ? 1 : 0) +
+          (insight.assignmentStats?.avgGrade && insight.assignmentStats.avgGrade < 60 ? 2 : 0),
       }))
       .sort((a, b) => (b as any).riskScore - (a as any).riskScore);
   }

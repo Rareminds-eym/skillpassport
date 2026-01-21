@@ -107,7 +107,7 @@ export const useStudentProjects = (studentId, enabled = true) => {
       }
 
       // Transform data to match UI expectations
-      const transformedData = data.map(item => ({
+      const transformedData = data.map((item) => ({
         id: item.id,
         title: item.title || item.name,
         description: item.description,
@@ -136,7 +136,7 @@ export const useStudentProjects = (studentId, enabled = true) => {
         enabled: item.enabled !== false,
         createdAt: item.created_at,
         updatedAt: item.updated_at,
-        verifiedAt: item.updated_at || item.created_at
+        verifiedAt: item.updated_at || item.created_at,
       }));
 
       setProjects(transformedData);
@@ -160,6 +160,6 @@ export const useStudentProjects = (studentId, enabled = true) => {
     projects,
     loading,
     error,
-    refresh
+    refresh,
   };
 };

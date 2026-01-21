@@ -11,14 +11,14 @@ import {
   EducationEditModal,
   TrainingEditModal,
   ExperienceEditModal,
-  SkillsEditModal
+  SkillsEditModal,
 } from '../components/Students/components/ProfileEditModals';
 import {
   educationData,
   trainingData,
   experienceData,
   technicalSkills,
-  softSkills
+  softSkills,
 } from '../components/Students/data/mockData';
 
 // Helper function to get active tab from pathname
@@ -36,7 +36,8 @@ const getActiveTabFromPath = (pathname) => {
   if (pathname.includes('/profile')) return 'profile';
   if (pathname.includes('/saved-jobs')) return 'saved-jobs';
   if (pathname.includes('/settings')) return 'settings';
-  if (pathname.includes('/dashboard') || pathname === '/student' || pathname === '/student/') return 'dashboard';
+  if (pathname.includes('/dashboard') || pathname === '/student' || pathname === '/student/')
+    return 'dashboard';
   return 'dashboard';
 };
 
@@ -60,13 +61,13 @@ const StudentLayout = () => {
     training: trainingData,
     experience: experienceData,
     technicalSkills: technicalSkills,
-    softSkills: softSkills
+    softSkills: softSkills,
   });
 
   const handleSave = (section, data) => {
-    setUserData(prev => ({
+    setUserData((prev) => ({
       ...prev,
-      [section]: data
+      [section]: data,
     }));
   };
 
@@ -81,13 +82,20 @@ const StudentLayout = () => {
   };
 
   // Check if current page is dashboard
-  const isDashboardPage = location.pathname === '/student/dashboard' || location.pathname === '/student' || location.pathname === '/student/';
+  const isDashboardPage =
+    location.pathname === '/student/dashboard' ||
+    location.pathname === '/student' ||
+    location.pathname === '/student/';
 
   // Check if current page is Career AI
-  const isCareerAIPage = location.pathname === '/student/career-ai' || location.pathname.includes('/career-ai');
+  const isCareerAIPage =
+    location.pathname === '/student/career-ai' || location.pathname.includes('/career-ai');
 
   // Check if current page is Assessment (should be full-screen without padding)
-  const isAssessmentPage = location.pathname.includes('/assessment/platform') || location.pathname.includes('/assessment/start') || location.pathname.includes('/assessment/result');
+  const isAssessmentPage =
+    location.pathname.includes('/assessment/platform') ||
+    location.pathname.includes('/assessment/start') ||
+    location.pathname.includes('/assessment/result');
 
   // Assessment result page needs scrolling, unlike test/platform pages
   const isAssessmentResultPage = location.pathname.includes('/assessment/result');
@@ -95,10 +103,18 @@ const StudentLayout = () => {
 
   return (
     <GlobalPresenceProvider userType="student">
-      <div className={isCareerAIPage || isFullScreenAssessment ? "h-screen bg-gray-50 flex flex-col" : "min-h-screen bg-gray-50 flex flex-col"}>
+      <div
+        className={
+          isCareerAIPage || isFullScreenAssessment
+            ? 'h-screen bg-gray-50 flex flex-col'
+            : 'min-h-screen bg-gray-50 flex flex-col'
+        }
+      >
         {!isAssessmentPage && <Header activeTab={activeTab} setActiveTab={setActiveTab} />}
-        {!isViewingOthersProfile && isDashboardPage && <ProfileHeroEdit onEditClick={handleEditClick} />}
-        <main className={isCareerAIPage ? "flex-1 overflow-hidden" : ""}>
+        {!isViewingOthersProfile && isDashboardPage && (
+          <ProfileHeroEdit onEditClick={handleEditClick} />
+        )}
+        <main className={isCareerAIPage ? 'flex-1 overflow-hidden' : ''}>
           <Outlet context={{ activeTab, userData, handleSave, setActiveModal }} />
         </main>
         {!isCareerAIPage && !isAssessmentPage && (
@@ -106,9 +122,15 @@ const StudentLayout = () => {
             <div className="flex items-center justify-between text-sm text-gray-500">
               <span>© {new Date().getFullYear()} Student Portal. All rights reserved.</span>
               <div className="flex items-center gap-4">
-                <Link to="/privacy-policy" className="hover:text-gray-700 transition-colors">Privacy Policy</Link>
-                <Link to="/terms" className="hover:text-gray-700 transition-colors">Terms of Service</Link>
-                <a href="#" className="hover:text-gray-700 transition-colors">Help</a>
+                <Link to="/privacy-policy" className="hover:text-gray-700 transition-colors">
+                  Privacy Policy
+                </Link>
+                <Link to="/terms" className="hover:text-gray-700 transition-colors">
+                  Terms of Service
+                </Link>
+                <a href="#" className="hover:text-gray-700 transition-colors">
+                  Help
+                </a>
               </div>
             </div>
           </footer>

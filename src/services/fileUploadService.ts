@@ -50,7 +50,7 @@ export const uploadFile = async (
     }
 
     const result = await response.json();
-    
+
     if (!result.success) {
       throw new Error(result.error || 'Upload failed');
     }
@@ -78,17 +78,17 @@ export const uploadMultipleFiles = async (
   onProgress?: (fileIndex: number, progress: UploadProgress) => void
 ): Promise<UploadResult[]> => {
   const results: UploadResult[] = [];
-  
+
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     const result = await uploadFile(
-      file, 
-      folder, 
+      file,
+      folder,
       onProgress ? (progress) => onProgress(i, progress) : undefined
     );
     results.push(result);
   }
-  
+
   return results;
 };
 
@@ -128,13 +128,16 @@ export const deleteFile = async (fileUrl: string): Promise<boolean> => {
 /**
  * Validate file before upload
  */
-export const validateFile = (file: File, options?: {
-  maxSize?: number; // in MB
-  allowedTypes?: string[];
-}): { valid: boolean; error?: string } => {
+export const validateFile = (
+  file: File,
+  options?: {
+    maxSize?: number; // in MB
+    allowedTypes?: string[];
+  }
+): { valid: boolean; error?: string } => {
   const maxSize = options?.maxSize || 10; // 10MB default
   const allowedTypes = options?.allowedTypes || ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'];
-  
+
   // Check file size
   if (file.size > maxSize * 1024 * 1024) {
     return {
@@ -142,7 +145,7 @@ export const validateFile = (file: File, options?: {
       error: `File size must be less than ${maxSize}MB`,
     };
   }
-  
+
   // Check file type
   const fileExtension = file.name.split('.').pop()?.toLowerCase();
   if (!fileExtension || !allowedTypes.includes(fileExtension)) {
@@ -151,6 +154,6 @@ export const validateFile = (file: File, options?: {
       error: `File type must be one of: ${allowedTypes.join(', ')}`,
     };
   }
-  
+
   return { valid: true };
 };

@@ -32,7 +32,10 @@ export async function streamCareerChat(
   onChunk: (chunk: string) => void
 ): Promise<CareerChatResult> {
   try {
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
 
     if (sessionError || !session) {
       console.error('Auth error:', sessionError);
@@ -41,7 +44,7 @@ export async function streamCareerChat(
 
     console.log('🚀 Calling Career AI Worker');
 
-    let result: CareerChatResult = { success: true };
+    const result: CareerChatResult = { success: true };
 
     await new Promise<void>((resolve) => {
       careerApiService.sendCareerChatMessage(
@@ -71,12 +74,11 @@ export async function streamCareerChat(
 
     console.log('✅ Career AI stream complete:', result);
     return result;
-
   } catch (error: any) {
     console.error('❌ Career AI stream error:', error);
     return {
       success: false,
-      error: error.message || 'Failed to connect to Career AI service'
+      error: error.message || 'Failed to connect to Career AI service',
     };
   }
 }
@@ -95,5 +97,5 @@ export async function checkWorkerHealth(): Promise<boolean> {
 
 export default {
   streamCareerChat,
-  checkWorkerHealth
+  checkWorkerHealth,
 };

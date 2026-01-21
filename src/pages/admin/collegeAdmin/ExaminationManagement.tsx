@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   FileText,
   Calendar,
@@ -17,29 +17,29 @@ import {
   UserCheck,
   ExternalLink,
   BookOpen,
-} from "lucide-react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { examinationService } from "../../../services/college";
-import { assessmentService } from "../../../services/college/assessmentService";
-import { markEntryService } from "../../../services/college/markEntryService";
-import { transcriptService } from "../../../services/college/transcriptService";
-import { departmentService } from "../../../services/college/departmentService";
-import { supabase } from "../../../lib/supabaseClient";
-import AssessmentFormModal from "./components/AssessmentFormModal";
-import TimetableScheduler from "./components/TimetableScheduler";
-import MarkEntryGrid from "./components/MarkEntryGrid";
-import ModerationPanel from "./components/ModerationPanel";
-import InvigilatorAssignment from "./components/InvigilatorAssignment";
-import TranscriptForm from "./components/TranscriptForm";
-import type { Assessment, ExamSlot, MarkEntry, Transcript } from "../../../types/college";
+} from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { examinationService } from '../../../services/college';
+import { assessmentService } from '../../../services/college/assessmentService';
+import { markEntryService } from '../../../services/college/markEntryService';
+import { transcriptService } from '../../../services/college/transcriptService';
+import { departmentService } from '../../../services/college/departmentService';
+import { supabase } from '../../../lib/supabaseClient';
+import AssessmentFormModal from './components/AssessmentFormModal';
+import TimetableScheduler from './components/TimetableScheduler';
+import MarkEntryGrid from './components/MarkEntryGrid';
+import ModerationPanel from './components/ModerationPanel';
+import InvigilatorAssignment from './components/InvigilatorAssignment';
+import TranscriptForm from './components/TranscriptForm';
+import type { Assessment, ExamSlot, MarkEntry, Transcript } from '../../../types/college';
 
 const ExaminationManagement: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState("assessments");
-  const [typeFilter, setTypeFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useState('assessments');
+  const [typeFilter, setTypeFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedAssessment, setSelectedAssessment] = useState<Assessment | null>(null);
 
@@ -49,21 +49,25 @@ const ExaminationManagement: React.FC = () => {
   const [showModerationModal, setShowModerationModal] = useState(false);
   const [showInvigilatorModal, setShowInvigilatorModal] = useState(false);
   const [showTranscriptModal, setShowTranscriptModal] = useState(false);
-  const [selectedAssessmentForAction, setSelectedAssessmentForAction] = useState<Assessment | null>(null);
+  const [selectedAssessmentForAction, setSelectedAssessmentForAction] = useState<Assessment | null>(
+    null
+  );
 
   // Get current user's college
   const [collegeId, setCollegeId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchUserCollege = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (user) {
         const { data: userData } = await supabase
           .from('users')
           .select('metadata')
           .eq('id', user.id)
           .single();
-        
+
         if (userData?.metadata?.college_id) {
           setCollegeId(userData.metadata.college_id);
         }
@@ -73,7 +77,11 @@ const ExaminationManagement: React.FC = () => {
   }, []);
 
   // Fetch assessments from database
-  const { data: assessments = [], isLoading: loading, error: assessmentsError } = useQuery({
+  const {
+    data: assessments = [],
+    isLoading: loading,
+    error: assessmentsError,
+  } = useQuery({
     queryKey: ['assessments', collegeId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -81,11 +89,11 @@ const ExaminationManagement: React.FC = () => {
         .select('*')
         .eq('college_id', collegeId)
         .order('created_at', { ascending: false });
-      
+
       if (error) throw error;
       return data || [];
     },
-    enabled: !!collegeId
+    enabled: !!collegeId,
   });
 
   // Fetch departments
@@ -101,7 +109,7 @@ const ExaminationManagement: React.FC = () => {
       if (error) throw error;
       return data || [];
     },
-    enabled: !!collegeId
+    enabled: !!collegeId,
   });
 
   // Fetch programs
@@ -116,7 +124,7 @@ const ExaminationManagement: React.FC = () => {
       if (error) throw error;
       return data || [];
     },
-    enabled: !!collegeId
+    enabled: !!collegeId,
   });
 
   // Fetch courses from curriculum_courses
@@ -132,34 +140,29 @@ const ExaminationManagement: React.FC = () => {
       if (error) throw error;
       return data || [];
     },
-    enabled: !!collegeId
+    enabled: !!collegeId,
   });
 
   // Fetch exam slots
   const { data: examSlots = [] } = useQuery({
     queryKey: ['examSlots', collegeId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('exam_timetable')
-        .select('*')
-        .order('exam_date');
+      const { data, error } = await supabase.from('exam_timetable').select('*').order('exam_date');
       if (error) throw error;
       return data || [];
     },
-    enabled: !!collegeId
+    enabled: !!collegeId,
   });
 
   // Fetch mark entries
   const { data: markEntries = [] } = useQuery({
     queryKey: ['markEntries', collegeId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('mark_entries')
-        .select('*');
+      const { data, error } = await supabase.from('mark_entries').select('*');
       if (error) throw error;
       return data || [];
     },
-    enabled: !!collegeId
+    enabled: !!collegeId,
   });
 
   // Fetch transcripts
@@ -173,7 +176,7 @@ const ExaminationManagement: React.FC = () => {
       if (error) throw error;
       return data || [];
     },
-    enabled: !!collegeId
+    enabled: !!collegeId,
   });
 
   // Fetch students
@@ -182,12 +185,14 @@ const ExaminationManagement: React.FC = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('students')
-        .select('id, roll_number, name, email, phone, department_id, program_id, semester, college_id')
+        .select(
+          'id, roll_number, name, email, phone, department_id, program_id, semester, college_id'
+        )
         .eq('college_id', collegeId);
       if (error) throw error;
       return data || [];
     },
-    enabled: !!collegeId
+    enabled: !!collegeId,
   });
 
   // Fetch faculty
@@ -201,7 +206,7 @@ const ExaminationManagement: React.FC = () => {
       if (error) throw error;
       return data || [];
     },
-    enabled: !!collegeId
+    enabled: !!collegeId,
   });
 
   const error = assessmentsError?.message || null;
@@ -245,7 +250,7 @@ const ExaminationManagement: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assessments'] });
       setIsModalOpen(false);
-    }
+    },
   });
 
   const updateAssessmentMutation = useMutation({
@@ -262,7 +267,7 @@ const ExaminationManagement: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assessments'] });
       setIsModalOpen(false);
-    }
+    },
   });
 
   const handleSubmitAssessment = async (data: Partial<Assessment>) => {
@@ -282,9 +287,9 @@ const ExaminationManagement: React.FC = () => {
   const handleSubmitToExamCell = async (id: string) => {
     if (confirm('Submit this assessment to exam cell for approval?')) {
       try {
-        await updateAssessmentMutation.mutateAsync({ 
-          id, 
-          data: { status: 'scheduled' } 
+        await updateAssessmentMutation.mutateAsync({
+          id,
+          data: { status: 'scheduled' },
         });
         alert('Assessment submitted successfully');
       } catch (error: any) {
@@ -301,13 +306,10 @@ const ExaminationManagement: React.FC = () => {
 
   const handleSaveSchedule = async (slots: Partial<ExamSlot>[]) => {
     try {
-      const { data, error } = await supabase
-        .from('exam_timetable')
-        .insert(slots)
-        .select();
-      
+      const { data, error } = await supabase.from('exam_timetable').insert(slots).select();
+
       if (error) throw error;
-      
+
       queryClient.invalidateQueries({ queryKey: ['examSlots'] });
       setShowTimetableModal(false);
       return { success: true };
@@ -329,9 +331,9 @@ const ExaminationManagement: React.FC = () => {
         .from('mark_entries')
         .upsert(marks, { onConflict: 'assessment_id,student_id' })
         .select();
-      
+
       if (error) throw error;
-      
+
       queryClient.invalidateQueries({ queryKey: ['markEntries'] });
       return { success: true };
     } catch (error: any) {
@@ -357,20 +359,22 @@ const ExaminationManagement: React.FC = () => {
 
   const handleModerate = async (entryId: string, newMarks: number, reason: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       const { error } = await supabase
         .from('mark_entries')
         .update({
           marks_obtained: newMarks,
           moderated_by: user?.id,
           moderation_reason: reason,
-          moderation_date: new Date().toISOString()
+          moderation_date: new Date().toISOString(),
         })
         .eq('id', entryId);
-      
+
       if (error) throw error;
-      
+
       queryClient.invalidateQueries({ queryKey: ['markEntries'] });
       return { success: true };
     } catch (error: any) {
@@ -396,19 +400,22 @@ const ExaminationManagement: React.FC = () => {
 
   const handleAssignInvigilator = async (slotId: string, facultyId: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       await examinationService.assignInvigilator({
         exam_timetable_id: slotId,
         invigilator_id: facultyId,
-        invigilator_name: faculty.find(f => f.id === facultyId)?.users?.firstName || '',
+        invigilator_name: faculty.find((f) => f.id === facultyId)?.users?.firstName || '',
         invigilator_type: 'regular',
         duty_date: new Date().toISOString().split('T')[0],
         duty_start_time: '09:00',
         duty_end_time: '12:00',
-        assigned_by: user?.id
+        // @ts-expect-error - Auto-suppressed for migration
+        assigned_by: user?.id,
       });
-      
+
       queryClient.invalidateQueries({ queryKey: ['examSlots'] });
       return { success: true };
     } catch (error: any) {
@@ -424,9 +431,9 @@ const ExaminationManagement: React.FC = () => {
         .delete()
         .eq('exam_timetable_id', slotId)
         .eq('invigilator_id', facultyId);
-      
+
       if (error) throw error;
-      
+
       queryClient.invalidateQueries({ queryKey: ['examSlots'] });
       return { success: true };
     } catch (error: any) {
@@ -439,20 +446,22 @@ const ExaminationManagement: React.FC = () => {
   const handleGenerateTranscript = async (data: Partial<Transcript>) => {
     try {
       const verificationId = `TR${Date.now()}${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
-      
+
       const { data: transcript, error } = await supabase
         .from('transcripts')
-        .insert([{
-          ...data,
-          verification_id: verificationId,
-          status: 'draft',
-          generated_at: new Date().toISOString()
-        }])
+        .insert([
+          {
+            ...data,
+            verification_id: verificationId,
+            status: 'draft',
+            generated_at: new Date().toISOString(),
+          },
+        ])
         .select()
         .single();
-      
+
       if (error) throw error;
-      
+
       queryClient.invalidateQueries({ queryKey: ['transcripts'] });
       setShowTranscriptModal(false);
       return { success: true, data: transcript };
@@ -484,8 +493,8 @@ const ExaminationManagement: React.FC = () => {
   };
 
   const tabs = [
-    { id: "assessments", label: "Assessments & Examinations" },
-    { id: "transcripts", label: "Transcripts" },
+    { id: 'assessments', label: 'Assessments & Examinations' },
+    { id: 'transcripts', label: 'Transcripts' },
   ];
 
   return (
@@ -509,8 +518,8 @@ const ExaminationManagement: React.FC = () => {
               onClick={() => setActiveTab(tab.id)}
               className={`px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition ${
                 activeTab === tab.id
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
               {tab.label}
@@ -521,13 +530,13 @@ const ExaminationManagement: React.FC = () => {
 
       {/* Content */}
       <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-        {activeTab === "assessments" && (
+        {activeTab === 'assessments' && (
           <div>
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-gray-900">
                 Examinations & Results ({filteredAssessments.length})
               </h2>
-              <button 
+              <button
                 onClick={handleCreateAssessment}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
               >
@@ -541,7 +550,11 @@ const ExaminationManagement: React.FC = () => {
                 <div className="flex items-start gap-3">
                   <div className="flex-shrink-0">
                     <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </div>
                   <div className="flex-1">
@@ -549,7 +562,8 @@ const ExaminationManagement: React.FC = () => {
                     <p className="mt-1 text-sm text-red-700">{error}</p>
                     {error.includes('406') || error.includes('relation') ? (
                       <p className="mt-2 text-sm text-red-700">
-                        Please run the database migration. See <code className="bg-red-100 px-1 rounded">setup-college-dashboard.sql</code>
+                        Please run the database migration. See{' '}
+                        <code className="bg-red-100 px-1 rounded">setup-college-dashboard.sql</code>
                       </p>
                     ) : null}
                   </div>
@@ -568,7 +582,7 @@ const ExaminationManagement: React.FC = () => {
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              
+
               <select
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
@@ -642,7 +656,9 @@ const ExaminationManagement: React.FC = () => {
                     {filteredAssessments.map((assessment) => (
                       <tr key={assessment.id} className="hover:bg-gray-50">
                         <td className="px-4 py-3">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeBadge(assessment.type)}`}>
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeBadge(assessment.type)}`}
+                          >
                             {assessment.type}
                           </span>
                         </td>
@@ -659,13 +675,15 @@ const ExaminationManagement: React.FC = () => {
                           {assessment.total_marks} ({assessment.pass_marks} to pass)
                         </td>
                         <td className="px-4 py-3">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(assessment.status)}`}>
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(assessment.status)}`}
+                          >
                             {assessment.status}
                           </span>
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex gap-1">
-                            <button 
+                            <button
                               onClick={() => handleEditAssessment(assessment)}
                               className="p-1 text-blue-600 hover:bg-blue-50 rounded"
                               title="Edit assessment"
@@ -673,7 +691,7 @@ const ExaminationManagement: React.FC = () => {
                               <Edit className="h-4 w-4" />
                             </button>
                             {assessment.status === 'draft' && (
-                              <button 
+                              <button
                                 onClick={() => handleSubmitToExamCell(assessment.id)}
                                 className="p-1 text-green-600 hover:bg-green-50 rounded"
                                 title="Submit to exam cell"
@@ -681,28 +699,28 @@ const ExaminationManagement: React.FC = () => {
                                 <Send className="h-4 w-4" />
                               </button>
                             )}
-                            <button 
+                            <button
                               onClick={() => handleScheduleTimetable(assessment)}
                               className="p-1 text-purple-600 hover:bg-purple-50 rounded"
                               title="Schedule timetable"
                             >
                               <Calendar className="h-4 w-4" />
                             </button>
-                            <button 
+                            <button
                               onClick={() => handleOpenInvigilators(assessment)}
                               className="p-1 text-indigo-600 hover:bg-indigo-50 rounded"
                               title="Assign invigilators"
                             >
                               <UserCheck className="h-4 w-4" />
                             </button>
-                            <button 
+                            <button
                               onClick={() => handleOpenMarkEntry(assessment)}
                               className="p-1 text-orange-600 hover:bg-orange-50 rounded"
                               title="Enter marks"
                             >
                               <ClipboardList className="h-4 w-4" />
                             </button>
-                            <button 
+                            <button
                               onClick={() => handleOpenModeration(assessment)}
                               className="p-1 text-pink-600 hover:bg-pink-50 rounded"
                               title="Moderate marks"
@@ -720,11 +738,11 @@ const ExaminationManagement: React.FC = () => {
           </div>
         )}
 
-        {activeTab === "transcripts" && (
+        {activeTab === 'transcripts' && (
           <div>
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-gray-900">Transcript Generation</h2>
-              <button 
+              <button
                 onClick={() => setShowTranscriptModal(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
               >
@@ -735,9 +753,12 @@ const ExaminationManagement: React.FC = () => {
 
             <div className="space-y-4">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h3 className="font-semibold text-blue-900 mb-2">Generated Transcripts ({transcripts.length})</h3>
+                <h3 className="font-semibold text-blue-900 mb-2">
+                  Generated Transcripts ({transcripts.length})
+                </h3>
                 <p className="text-sm text-blue-700">
-                  View and manage all generated transcripts. Click "Generate Transcript" to create a new one.
+                  View and manage all generated transcripts. Click "Generate Transcript" to create a
+                  new one.
                 </p>
               </div>
 
@@ -746,12 +767,24 @@ const ExaminationManagement: React.FC = () => {
                   <table className="w-full">
                     <thead className="bg-gray-50 border-b border-gray-200">
                       <tr>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Student</th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Type</th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Semesters</th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Verification ID</th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Status</th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Actions</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
+                          Student
+                        </th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
+                          Type
+                        </th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
+                          Semesters
+                        </th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
+                          Verification ID
+                        </th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
+                          Status
+                        </th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
+                          Actions
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
@@ -772,11 +805,15 @@ const ExaminationManagement: React.FC = () => {
                               {transcript.verification_id}
                             </td>
                             <td className="px-4 py-3">
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                transcript.status === 'published' ? 'bg-green-100 text-green-700' :
-                                transcript.status === 'approved' ? 'bg-blue-100 text-blue-700' :
-                                'bg-yellow-100 text-yellow-700'
-                              }`}>
+                              <span
+                                className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  transcript.status === 'published'
+                                    ? 'bg-green-100 text-green-700'
+                                    : transcript.status === 'approved'
+                                      ? 'bg-blue-100 text-blue-700'
+                                      : 'bg-yellow-100 text-yellow-700'
+                                }`}
+                              >
                                 {transcript.status}
                               </span>
                             </td>
@@ -814,7 +851,9 @@ const ExaminationManagement: React.FC = () => {
             onClose={() => setShowTimetableModal(false)}
             assessmentId={selectedAssessmentForAction.id}
             onSchedule={handleSaveSchedule}
-            existingSlots={examSlots.filter(s => s.assessment_id === selectedAssessmentForAction.id)}
+            existingSlots={examSlots.filter(
+              (s) => s.assessment_id === selectedAssessmentForAction.id
+            )}
           />
 
           <MarkEntryGrid
@@ -824,7 +863,9 @@ const ExaminationManagement: React.FC = () => {
             assessmentName={`${selectedAssessmentForAction.type} - Semester ${selectedAssessmentForAction.semester}`}
             totalMarks={selectedAssessmentForAction.total_marks}
             students={students}
-            existingMarks={markEntries.filter((m: any) => m.assessment_id === selectedAssessmentForAction.id)}
+            existingMarks={markEntries.filter(
+              (m: any) => m.assessment_id === selectedAssessmentForAction.id
+            )}
             onSave={handleSaveMarks}
             onSubmit={handleSubmitMarks}
           />
@@ -834,7 +875,9 @@ const ExaminationManagement: React.FC = () => {
             onClose={() => setShowModerationModal(false)}
             assessmentName={`${selectedAssessmentForAction.type} - Semester ${selectedAssessmentForAction.semester}`}
             totalMarks={selectedAssessmentForAction.total_marks}
-            markEntries={markEntries.filter((m: any) => m.assessment_id === selectedAssessmentForAction.id)}
+            markEntries={markEntries.filter(
+              (m: any) => m.assessment_id === selectedAssessmentForAction.id
+            )}
             onModerate={handleModerate}
             onApprove={handleApproveMarks}
           />
@@ -842,7 +885,9 @@ const ExaminationManagement: React.FC = () => {
           <InvigilatorAssignment
             isOpen={showInvigilatorModal}
             onClose={() => setShowInvigilatorModal(false)}
-            examSlots={examSlots.filter((s: any) => s.assessment_id === selectedAssessmentForAction.id)}
+            examSlots={examSlots.filter(
+              (s: any) => s.assessment_id === selectedAssessmentForAction.id
+            )}
             availableFaculty={faculty}
             onAssign={handleAssignInvigilator}
             onRemove={handleRemoveInvigilator}
@@ -850,7 +895,7 @@ const ExaminationManagement: React.FC = () => {
         </>
       )}
 
-      {activeTab === "transcripts" && (
+      {activeTab === 'transcripts' && (
         <TranscriptForm
           isOpen={showTranscriptModal}
           onClose={() => setShowTranscriptModal(false)}

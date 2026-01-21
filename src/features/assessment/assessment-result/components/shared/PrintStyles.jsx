@@ -7,7 +7,7 @@
 /**
  * PrintStyles Component
  * Renders a style tag with print-specific CSS rules
- * 
+ *
  * @returns {JSX.Element} - Style element with print CSS
  */
 const PrintStyles = () => (

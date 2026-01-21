@@ -26,7 +26,7 @@ const CompanyStatusModal: React.FC<CompanyStatusModalProps> = ({
   currentStatus,
   companyName,
   onStatusChange,
-  isUpdating
+  isUpdating,
 }) => {
   if (!isOpen) return null;
 
@@ -38,7 +38,7 @@ const CompanyStatusModal: React.FC<CompanyStatusModalProps> = ({
       icon: Clock,
       color: 'text-yellow-700',
       bgColor: 'bg-yellow-50',
-      borderColor: 'border-yellow-200 hover:border-yellow-300'
+      borderColor: 'border-yellow-200 hover:border-yellow-300',
     },
     {
       value: 'approved',
@@ -47,7 +47,7 @@ const CompanyStatusModal: React.FC<CompanyStatusModalProps> = ({
       icon: CheckCircle,
       color: 'text-blue-700',
       bgColor: 'bg-blue-50',
-      borderColor: 'border-blue-200 hover:border-blue-300'
+      borderColor: 'border-blue-200 hover:border-blue-300',
     },
     {
       value: 'active',
@@ -56,7 +56,7 @@ const CompanyStatusModal: React.FC<CompanyStatusModalProps> = ({
       icon: CheckCircle,
       color: 'text-green-700',
       bgColor: 'bg-green-50',
-      borderColor: 'border-green-200 hover:border-green-300'
+      borderColor: 'border-green-200 hover:border-green-300',
     },
     {
       value: 'inactive',
@@ -65,7 +65,7 @@ const CompanyStatusModal: React.FC<CompanyStatusModalProps> = ({
       icon: AlertTriangle,
       color: 'text-orange-700',
       bgColor: 'bg-orange-50',
-      borderColor: 'border-orange-200 hover:border-orange-300'
+      borderColor: 'border-orange-200 hover:border-orange-300',
     },
     {
       value: 'suspended',
@@ -74,7 +74,7 @@ const CompanyStatusModal: React.FC<CompanyStatusModalProps> = ({
       icon: AlertTriangle,
       color: 'text-red-700',
       bgColor: 'bg-red-50',
-      borderColor: 'border-red-200 hover:border-red-300'
+      borderColor: 'border-red-200 hover:border-red-300',
     },
     {
       value: 'rejected',
@@ -83,7 +83,7 @@ const CompanyStatusModal: React.FC<CompanyStatusModalProps> = ({
       icon: XCircle,
       color: 'text-red-700',
       bgColor: 'bg-red-50',
-      borderColor: 'border-red-200 hover:border-red-300'
+      borderColor: 'border-red-200 hover:border-red-300',
     },
     {
       value: 'blacklisted',
@@ -92,8 +92,8 @@ const CompanyStatusModal: React.FC<CompanyStatusModalProps> = ({
       icon: Shield,
       color: 'text-gray-700',
       bgColor: 'bg-gray-50',
-      borderColor: 'border-gray-200 hover:border-gray-300'
-    }
+      borderColor: 'border-gray-200 hover:border-gray-300',
+    },
   ];
 
   const handleStatusSelect = async (newStatus: string) => {
@@ -134,12 +134,14 @@ const CompanyStatusModal: React.FC<CompanyStatusModalProps> = ({
         <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-gray-700">Current Status:</span>
-            <span className={`px-3 py-1 text-sm font-medium rounded-full ${
-              statusOptions.find(opt => opt.value === currentStatus)?.bgColor || 'bg-gray-100'
-            } ${
-              statusOptions.find(opt => opt.value === currentStatus)?.color || 'text-gray-700'
-            }`}>
-              {statusOptions.find(opt => opt.value === currentStatus)?.label || currentStatus}
+            <span
+              className={`px-3 py-1 text-sm font-medium rounded-full ${
+                statusOptions.find((opt) => opt.value === currentStatus)?.bgColor || 'bg-gray-100'
+              } ${
+                statusOptions.find((opt) => opt.value === currentStatus)?.color || 'text-gray-700'
+              }`}
+            >
+              {statusOptions.find((opt) => opt.value === currentStatus)?.label || currentStatus}
             </span>
           </div>
         </div>
@@ -150,7 +152,7 @@ const CompanyStatusModal: React.FC<CompanyStatusModalProps> = ({
             {statusOptions.map((option) => {
               const IconComponent = option.icon;
               const isCurrentStatus = option.value === currentStatus;
-              
+
               return (
                 <button
                   key={option.value}
@@ -159,9 +161,10 @@ const CompanyStatusModal: React.FC<CompanyStatusModalProps> = ({
                   className={`
                     relative p-4 rounded-lg border-2 text-left transition-all duration-200
                     ${option.bgColor} ${option.color} ${option.borderColor}
-                    ${isCurrentStatus 
-                      ? 'opacity-50 cursor-not-allowed ring-2 ring-blue-200' 
-                      : 'hover:shadow-md cursor-pointer transform hover:scale-[1.02]'
+                    ${
+                      isCurrentStatus
+                        ? 'opacity-50 cursor-not-allowed ring-2 ring-blue-200'
+                        : 'hover:shadow-md cursor-pointer transform hover:scale-[1.02]'
                     }
                     ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''}
                   `}
@@ -171,7 +174,7 @@ const CompanyStatusModal: React.FC<CompanyStatusModalProps> = ({
                       <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                     </div>
                   )}
-                  
+
                   <div className="flex items-start gap-3">
                     <div className="flex-shrink-0 mt-0.5">
                       <IconComponent className="h-5 w-5" />
@@ -183,9 +186,7 @@ const CompanyStatusModal: React.FC<CompanyStatusModalProps> = ({
                           <span className="ml-2 text-xs font-normal opacity-75">(Current)</span>
                         )}
                       </div>
-                      <div className="text-xs opacity-80 leading-relaxed">
-                        {option.description}
-                      </div>
+                      <div className="text-xs opacity-80 leading-relaxed">{option.description}</div>
                     </div>
                   </div>
                 </button>

@@ -8,13 +8,13 @@ interface AIThinkingBubbleProps {
 
 /**
  * ChatGPT-style thinking bubble with animated dots
- * 
+ *
  * @param status - Optional status message to display above the bubble (e.g., "Searching database...")
  * @param showStatusPill - Whether to show the status pill above the bubble (default: true if status is provided)
  */
-export const AIThinkingBubble: React.FC<AIThinkingBubbleProps> = ({ 
-  status, 
-  showStatusPill = true 
+export const AIThinkingBubble: React.FC<AIThinkingBubbleProps> = ({
+  status,
+  showStatusPill = true,
 }) => {
   return (
     <motion.div
@@ -38,12 +38,12 @@ export const AIThinkingBubble: React.FC<AIThinkingBubbleProps> = ({
           <span className="text-xs font-medium text-blue-700">{status}</span>
         </motion.div>
       )}
-      
+
       {/* Thinking bubble with tail */}
       <div className="relative">
         {/* Tail for chat bubble effect */}
         <div className="absolute bottom-1 left-2 w-3 h-3 bg-white transform rotate-45 shadow-sm" />
-        
+
         {/* Main bubble */}
         <div className="relative bg-white rounded-2xl rounded-bl-sm shadow-md px-6 py-4">
           <div className="flex items-center gap-1.5">
@@ -51,38 +51,38 @@ export const AIThinkingBubble: React.FC<AIThinkingBubbleProps> = ({
               className="w-2 h-2 bg-gray-400 rounded-full"
               animate={{
                 y: [0, -6, 0],
-                opacity: [0.4, 1, 0.4]
+                opacity: [0.4, 1, 0.4],
               }}
               transition={{
                 duration: 1,
                 repeat: Infinity,
-                ease: "easeInOut"
+                ease: 'easeInOut',
               }}
             />
             <motion.div
               className="w-2 h-2 bg-gray-400 rounded-full"
               animate={{
                 y: [0, -6, 0],
-                opacity: [0.4, 1, 0.4]
+                opacity: [0.4, 1, 0.4],
               }}
               transition={{
                 duration: 1,
                 repeat: Infinity,
-                ease: "easeInOut",
-                delay: 0.15
+                ease: 'easeInOut',
+                delay: 0.15,
               }}
             />
             <motion.div
               className="w-2 h-2 bg-gray-400 rounded-full"
               animate={{
                 y: [0, -6, 0],
-                opacity: [0.4, 1, 0.4]
+                opacity: [0.4, 1, 0.4],
               }}
               transition={{
                 duration: 1,
                 repeat: Infinity,
-                ease: "easeInOut",
-                delay: 0.3
+                ease: 'easeInOut',
+                delay: 0.3,
               }}
             />
           </div>
@@ -101,15 +101,12 @@ interface AIStatusPillProps {
  * Standalone status pill for showing AI activity
  * Can be used separately from the thinking bubble
  */
-export const AIStatusPill: React.FC<AIStatusPillProps> = ({ 
-  status, 
-  variant = 'default' 
-}) => {
+export const AIStatusPill: React.FC<AIStatusPillProps> = ({ status, variant = 'default' }) => {
   const variantStyles = {
     default: 'from-blue-50 to-purple-50 border-blue-100/50 text-blue-700',
     searching: 'from-green-50 to-emerald-50 border-green-100/50 text-green-700',
     processing: 'from-amber-50 to-yellow-50 border-amber-100/50 text-amber-700',
-    running: 'from-purple-50 to-pink-50 border-purple-100/50 text-purple-700'
+    running: 'from-purple-50 to-pink-50 border-purple-100/50 text-purple-700',
   };
 
   return (
@@ -166,26 +163,26 @@ interface AITypingIndicatorProps {
  * Minimal typing indicator showing just the dots
  * Good for compact spaces or inline use
  */
-export const AITypingIndicator: React.FC<AITypingIndicatorProps> = ({ 
+export const AITypingIndicator: React.FC<AITypingIndicatorProps> = ({
   text = 'Typing',
-  variant = 'bubble' 
+  variant = 'bubble',
 }) => {
   const dots = (
     <div className="flex items-center gap-1.5">
       <motion.div
         className="w-2 h-2 bg-gray-400 rounded-full"
         animate={{ y: [0, -4, 0], opacity: [0.4, 1, 0.4] }}
-        transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut" }}
+        transition={{ duration: 0.8, repeat: Infinity, ease: 'easeInOut' }}
       />
       <motion.div
         className="w-2 h-2 bg-gray-400 rounded-full"
         animate={{ y: [0, -4, 0], opacity: [0.4, 1, 0.4] }}
-        transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut", delay: 0.15 }}
+        transition={{ duration: 0.8, repeat: Infinity, ease: 'easeInOut', delay: 0.15 }}
       />
       <motion.div
         className="w-2 h-2 bg-gray-400 rounded-full"
         animate={{ y: [0, -4, 0], opacity: [0.4, 1, 0.4] }}
-        transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut", delay: 0.3 }}
+        transition={{ duration: 0.8, repeat: Infinity, ease: 'easeInOut', delay: 0.3 }}
       />
     </div>
   );
@@ -199,11 +196,7 @@ export const AITypingIndicator: React.FC<AITypingIndicatorProps> = ({
     );
   }
 
-  return (
-    <div className="bg-white rounded-2xl rounded-bl-sm shadow-md px-6 py-4">
-      {dots}
-    </div>
-  );
+  return <div className="bg-white rounded-2xl rounded-bl-sm shadow-md px-6 py-4">{dots}</div>;
 };
 
 // Add shimmer animation to Tailwind config or use inline style
@@ -217,4 +210,3 @@ export const shimmerKeyframes = `
   }
 }
 `;
-

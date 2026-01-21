@@ -1,6 +1,18 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GraduationCap, Briefcase, Award, Code, Trophy, MapPin, Calendar, Github, ExternalLink, ChevronRight, BookOpen } from 'lucide-react';
+import {
+  GraduationCap,
+  Briefcase,
+  Award,
+  Code,
+  Trophy,
+  MapPin,
+  Calendar,
+  Github,
+  ExternalLink,
+  ChevronRight,
+  BookOpen,
+} from 'lucide-react';
 import { usePortfolio } from '../../../../context/PortfolioContext';
 import type { Student, AnimationType, DisplayPreferences } from '../../../../types/student';
 
@@ -25,7 +37,9 @@ const JourneyMapLayout: React.FC<JourneyMapLayoutProps> = (props) => {
     showDownloadResume: true,
   };
   const [selectedMilestone, setSelectedMilestone] = useState<any | null>(null);
-  const [activeTab, setActiveTab] = useState<'education' | 'experience' | 'projects' | 'certifications' | 'achievements'>('education');
+  const [activeTab, setActiveTab] = useState<
+    'education' | 'experience' | 'projects' | 'certifications' | 'achievements'
+  >('education');
 
   if (!student) {
     return (
@@ -48,7 +62,7 @@ const JourneyMapLayout: React.FC<JourneyMapLayoutProps> = (props) => {
     color: 'from-blue-500 to-indigo-600',
     bgColor: 'bg-blue-50',
     borderColor: 'border-blue-500',
-    year: new Date(edu.startDate).getFullYear()
+    year: new Date(edu.startDate).getFullYear(),
   }));
 
   const experienceMilestones = (student.profile.experience || []).map((exp, index) => ({
@@ -63,7 +77,7 @@ const JourneyMapLayout: React.FC<JourneyMapLayoutProps> = (props) => {
     color: 'from-green-500 to-emerald-600',
     bgColor: 'bg-green-50',
     borderColor: 'border-green-500',
-    year: new Date(exp.startDate).getFullYear()
+    year: new Date(exp.startDate).getFullYear(),
   }));
 
   const projectMilestones = (student.profile.projects || []).map((proj, index) => ({
@@ -78,7 +92,7 @@ const JourneyMapLayout: React.FC<JourneyMapLayoutProps> = (props) => {
     color: 'from-purple-500 to-violet-600',
     bgColor: 'bg-purple-50',
     borderColor: 'border-purple-500',
-    year: proj.startDate ? new Date(proj.startDate).getFullYear() : new Date().getFullYear()
+    year: proj.startDate ? new Date(proj.startDate).getFullYear() : new Date().getFullYear(),
   }));
 
   const certificationMilestones = (student.profile.certifications || []).map((cert, index) => ({
@@ -93,7 +107,7 @@ const JourneyMapLayout: React.FC<JourneyMapLayoutProps> = (props) => {
     color: 'from-orange-500 to-red-600',
     bgColor: 'bg-orange-50',
     borderColor: 'border-orange-500',
-    year: new Date(cert.date).getFullYear()
+    year: new Date(cert.date).getFullYear(),
   }));
 
   const achievementMilestones = (student.profile.achievements || []).map((achievement, index) => ({
@@ -108,20 +122,25 @@ const JourneyMapLayout: React.FC<JourneyMapLayoutProps> = (props) => {
     color: 'from-yellow-500 to-amber-600',
     bgColor: 'bg-yellow-50',
     borderColor: 'border-yellow-500',
-    year: new Date(achievement.date).getFullYear()
+    year: new Date(achievement.date).getFullYear(),
   }));
 
   const getMilestonesByTab = () => {
     switch (activeTab) {
-      case 'education': return educationMilestones;
-      case 'experience': return experienceMilestones;
-      case 'projects': return projectMilestones;
-      case 'certifications': return certificationMilestones;
-      case 'achievements': return achievementMilestones;
-      default: return educationMilestones;
+      case 'education':
+        return educationMilestones;
+      case 'experience':
+        return experienceMilestones;
+      case 'projects':
+        return projectMilestones;
+      case 'certifications':
+        return certificationMilestones;
+      case 'achievements':
+        return achievementMilestones;
+      default:
+        return educationMilestones;
     }
   };
-
 
   const currentMilestones = getMilestonesByTab();
 
@@ -140,7 +159,10 @@ const JourneyMapLayout: React.FC<JourneyMapLayoutProps> = (props) => {
             >
               <div className="w-32 h-32 rounded-full overflow-hidden ring-4 ring-indigo-500 ring-offset-4 shadow-xl">
                 <img
-                  src={student.profile.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(student.name || 'Student')}&size=200&background=6366f1&color=fff&bold=true`}
+                  src={
+                    student.profile.profileImage ||
+                    `https://ui-avatars.com/api/?name=${encodeURIComponent(student.name || 'Student')}&size=200&background=6366f1&color=fff&bold=true`
+                  }
                   alt={student.name || 'Student'}
                   className="w-full h-full object-cover"
                 />
@@ -160,7 +182,7 @@ const JourneyMapLayout: React.FC<JourneyMapLayoutProps> = (props) => {
               >
                 {student.name || student.profile.name || 'Student'}
               </motion.h1>
-              
+
               <motion.p
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -196,18 +218,27 @@ const JourneyMapLayout: React.FC<JourneyMapLayoutProps> = (props) => {
                     <span className="text-sm">{student.contact_number}</span>
                   </span>
                 )}
-                {(student.school?.name || student.profile?.school?.name || 
-                  student.college_school_name || student.university || 
-                  student.universityCollege?.name || student.profile?.universityCollege?.name) && (
+                {(student.school?.name ||
+                  // @ts-expect-error - Auto-suppressed for migration
+                  student.profile?.school?.name ||
+                  student.college_school_name ||
+                  student.university ||
+                  // @ts-expect-error - Auto-suppressed for migration
+                  student.universityCollege?.name ||
+                  // @ts-expect-error - Auto-suppressed for migration
+                  student.profile?.universityCollege?.name) && (
                   <span className="flex items-center gap-2 text-gray-600 bg-gray-100 px-4 py-2 rounded-full">
                     <GraduationCap className="w-4 h-4" />
                     <span className="text-sm">
-                      {student.school?.name || 
-                       student.profile?.school?.name || 
-                       student.college_school_name || 
-                       student.universityCollege?.name || 
-                       student.profile?.universityCollege?.name ||
-                       student.university}
+                      {student.school?.name ||
+                        // @ts-expect-error - Auto-suppressed for migration
+                        student.profile?.school?.name ||
+                        student.college_school_name ||
+                        // @ts-expect-error - Auto-suppressed for migration
+                        student.universityCollege?.name ||
+                        // @ts-expect-error - Auto-suppressed for migration
+                        student.profile?.universityCollege?.name ||
+                        student.university}
                     </span>
                   </span>
                 )}
@@ -225,9 +256,7 @@ const JourneyMapLayout: React.FC<JourneyMapLayoutProps> = (props) => {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-8"
         >
-          <h2 className="text-4xl font-bold text-gray-900 mb-3">
-            My Professional Journey
-          </h2>
+          <h2 className="text-4xl font-bold text-gray-900 mb-3">My Professional Journey</h2>
           <p className="text-lg text-gray-600">
             Navigate through my career milestones and achievements
           </p>
@@ -250,9 +279,11 @@ const JourneyMapLayout: React.FC<JourneyMapLayoutProps> = (props) => {
             >
               <GraduationCap className="w-5 h-5" />
               <span>Education</span>
-              <span className={`text-xs px-2 py-0.5 rounded-full ${
-                activeTab === 'education' ? 'bg-white/20' : 'bg-gray-200'
-              }`}>
+              <span
+                className={`text-xs px-2 py-0.5 rounded-full ${
+                  activeTab === 'education' ? 'bg-white/20' : 'bg-gray-200'
+                }`}
+              >
                 {educationMilestones.length}
               </span>
             </button>
@@ -267,9 +298,11 @@ const JourneyMapLayout: React.FC<JourneyMapLayoutProps> = (props) => {
             >
               <Briefcase className="w-5 h-5" />
               <span>Experience</span>
-              <span className={`text-xs px-2 py-0.5 rounded-full ${
-                activeTab === 'experience' ? 'bg-white/20' : 'bg-gray-200'
-              }`}>
+              <span
+                className={`text-xs px-2 py-0.5 rounded-full ${
+                  activeTab === 'experience' ? 'bg-white/20' : 'bg-gray-200'
+                }`}
+              >
                 {experienceMilestones.length}
               </span>
             </button>
@@ -285,9 +318,11 @@ const JourneyMapLayout: React.FC<JourneyMapLayoutProps> = (props) => {
               >
                 <Code className="w-5 h-5" />
                 <span>Projects</span>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${
-                  activeTab === 'projects' ? 'bg-white/20' : 'bg-gray-200'
-                }`}>
+                <span
+                  className={`text-xs px-2 py-0.5 rounded-full ${
+                    activeTab === 'projects' ? 'bg-white/20' : 'bg-gray-200'
+                  }`}
+                >
                   {projectMilestones.length}
                 </span>
               </button>
@@ -303,9 +338,11 @@ const JourneyMapLayout: React.FC<JourneyMapLayoutProps> = (props) => {
             >
               <Award className="w-5 h-5" />
               <span>Certifications</span>
-              <span className={`text-xs px-2 py-0.5 rounded-full ${
-                activeTab === 'certifications' ? 'bg-white/20' : 'bg-gray-200'
-              }`}>
+              <span
+                className={`text-xs px-2 py-0.5 rounded-full ${
+                  activeTab === 'certifications' ? 'bg-white/20' : 'bg-gray-200'
+                }`}
+              >
                 {certificationMilestones.length}
               </span>
             </button>
@@ -320,9 +357,11 @@ const JourneyMapLayout: React.FC<JourneyMapLayoutProps> = (props) => {
             >
               <Trophy className="w-5 h-5" />
               <span>Achievements</span>
-              <span className={`text-xs px-2 py-0.5 rounded-full ${
-                activeTab === 'achievements' ? 'bg-white/20' : 'bg-gray-200'
-              }`}>
+              <span
+                className={`text-xs px-2 py-0.5 rounded-full ${
+                  activeTab === 'achievements' ? 'bg-white/20' : 'bg-gray-200'
+                }`}
+              >
                 {achievementMilestones.length}
               </span>
             </button>
@@ -367,12 +406,13 @@ const JourneyMapLayout: React.FC<JourneyMapLayoutProps> = (props) => {
                         } flex-row`}
                       >
                         {/* Year Badge (Desktop) */}
-                        <div className={`hidden md:block ${isLeft ? 'md:w-1/2 md:pr-12 md:text-right' : 'md:w-1/2 md:pl-12 md:text-left'}`}>
-                          <motion.div
-                            whileHover={{ scale: 1.05 }}
-                            className="inline-block"
-                          >
-                            <div className={`inline-flex items-center gap-2 bg-gradient-to-r ${milestone.color} text-white px-4 py-2 rounded-full shadow-lg`}>
+                        <div
+                          className={`hidden md:block ${isLeft ? 'md:w-1/2 md:pr-12 md:text-right' : 'md:w-1/2 md:pl-12 md:text-left'}`}
+                        >
+                          <motion.div whileHover={{ scale: 1.05 }} className="inline-block">
+                            <div
+                              className={`inline-flex items-center gap-2 bg-gradient-to-r ${milestone.color} text-white px-4 py-2 rounded-full shadow-lg`}
+                            >
                               <Calendar className="w-4 h-4" />
                               <span className="font-bold">{milestone.year}</span>
                             </div>
@@ -395,19 +435,27 @@ const JourneyMapLayout: React.FC<JourneyMapLayoutProps> = (props) => {
                           <motion.div
                             whileHover={{ scale: 1.02, y: -4 }}
                             className={`bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-6 border-l-4 ${milestone.borderColor} ${milestone.bgColor} cursor-pointer`}
-                            onClick={() => setSelectedMilestone(selectedMilestone?.id === milestone.id ? null : milestone)}
+                            onClick={() =>
+                              setSelectedMilestone(
+                                selectedMilestone?.id === milestone.id ? null : milestone
+                              )
+                            }
                           >
                             {/* Mobile Year Badge */}
                             <div className="md:hidden mb-3">
-                              <div className={`inline-flex items-center gap-2 bg-gradient-to-r ${milestone.color} text-white px-3 py-1 rounded-full shadow-md text-sm`}>
+                              <div
+                                className={`inline-flex items-center gap-2 bg-gradient-to-r ${milestone.color} text-white px-3 py-1 rounded-full shadow-md text-sm`}
+                              >
                                 <Calendar className="w-3 h-3" />
                                 <span className="font-bold">{milestone.year}</span>
                               </div>
                             </div>
 
-                            <h3 className="text-xl font-bold text-gray-900 mb-2">{milestone.title}</h3>
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">
+                              {milestone.title}
+                            </h3>
                             <p className="text-indigo-600 font-medium mb-3">{milestone.subtitle}</p>
-                            
+
                             {milestone.date && (
                               <div className="flex items-center gap-2 text-sm text-gray-600 mb-3">
                                 <Calendar className="w-4 h-4" />
@@ -425,49 +473,68 @@ const JourneyMapLayout: React.FC<JourneyMapLayoutProps> = (props) => {
                                 exit={{ opacity: 0, height: 0 }}
                                 className="mt-4 pt-4 border-t border-gray-200"
                               >
-                                {milestone.type === 'project' && 'technologies' in milestone.details && milestone.details.technologies && (
-                                  <div className="mb-3">
-                                    <p className="text-sm font-semibold text-gray-700 mb-2">Technologies:</p>
-                                    <div className="flex flex-wrap gap-2">
-                                      {milestone.details.technologies.map((tech: string, idx: number) => (
-                                        <span key={idx} className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs">
-                                          {tech}
-                                        </span>
-                                      ))}
+                                {milestone.type === 'project' &&
+                                  'technologies' in milestone.details &&
+                                  milestone.details.technologies && (
+                                    <div className="mb-3">
+                                      <p className="text-sm font-semibold text-gray-700 mb-2">
+                                        Technologies:
+                                      </p>
+                                      <div className="flex flex-wrap gap-2">
+                                        {milestone.details.technologies.map(
+                                          (tech: string, idx: number) => (
+                                            <span
+                                              key={idx}
+                                              className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs"
+                                            >
+                                              {tech}
+                                            </span>
+                                          )
+                                        )}
+                                      </div>
                                     </div>
-                                  </div>
-                                )}
-                                
-                                {milestone.type === 'project' && 'github_url' in milestone.details && milestone.details.github_url && (
-                                  <a
-                                    href={milestone.details.github_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 text-indigo-600 hover:text-indigo-800 text-sm font-medium mt-2"
-                                  >
-                                    <Github className="w-4 h-4" />
-                                    <span>View on GitHub</span>
-                                    <ExternalLink className="w-3 h-3" />
-                                  </a>
-                                )}
-                                
-                                {milestone.type === 'project' && 'live_url' in milestone.details && milestone.details.live_url && (
-                                  <a
-                                    href={milestone.details.live_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 text-indigo-600 hover:text-indigo-800 text-sm font-medium mt-2 ml-4"
-                                  >
-                                    <ExternalLink className="w-4 h-4" />
-                                    <span>Live Demo</span>
-                                  </a>
-                                )}
+                                  )}
+
+                                {milestone.type === 'project' &&
+                                  'github_url' in milestone.details &&
+                                  milestone.details.github_url && (
+                                    <a
+                                      href={milestone.details.github_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-2 text-indigo-600 hover:text-indigo-800 text-sm font-medium mt-2"
+                                    >
+                                      <Github className="w-4 h-4" />
+                                      <span>View on GitHub</span>
+                                      <ExternalLink className="w-3 h-3" />
+                                    </a>
+                                  )}
+
+                                {milestone.type === 'project' &&
+                                  'live_url' in milestone.details &&
+                                  milestone.details.live_url && (
+                                    <a
+                                      href={milestone.details.live_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-2 text-indigo-600 hover:text-indigo-800 text-sm font-medium mt-2 ml-4"
+                                    >
+                                      <ExternalLink className="w-4 h-4" />
+                                      <span>Live Demo</span>
+                                    </a>
+                                  )}
                               </motion.div>
                             )}
 
                             <div className="flex items-center gap-2 text-indigo-600 mt-4 font-medium text-sm">
-                              <span>{selectedMilestone?.id === milestone.id ? 'Hide Details' : 'View Details'}</span>
-                              <ChevronRight className={`w-4 h-4 transition-transform ${selectedMilestone?.id === milestone.id ? 'rotate-90' : ''}`} />
+                              <span>
+                                {selectedMilestone?.id === milestone.id
+                                  ? 'Hide Details'
+                                  : 'View Details'}
+                              </span>
+                              <ChevronRight
+                                className={`w-4 h-4 transition-transform ${selectedMilestone?.id === milestone.id ? 'rotate-90' : ''}`}
+                              />
                             </div>
                           </motion.div>
                         </div>

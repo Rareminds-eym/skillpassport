@@ -68,7 +68,7 @@ export async function handleGetAddonCatalog(request: Request, env: Env): Promise
     });
 
     // Fetch bundles
-    let bundlesQuery = supabaseAdmin
+    const bundlesQuery = supabaseAdmin
       .from('bundles')
       .select('*, bundle_features(feature_key)')
       .eq('is_active', true)

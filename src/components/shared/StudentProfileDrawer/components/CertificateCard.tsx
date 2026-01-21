@@ -15,7 +15,9 @@ const CertificateCard: React.FC<CertificateCardProps> = ({ certificate }) => {
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
             <ShieldCheckIcon className="h-4 w-4 text-yellow-600" />
-            <h4 className="text-sm font-semibold text-gray-900">{certificate.title || 'Untitled Certificate'}</h4>
+            <h4 className="text-sm font-semibold text-gray-900">
+              {certificate.title || 'Untitled Certificate'}
+            </h4>
           </div>
           {certificate.issuer && (
             <p className="text-xs text-gray-600">Issued by: {certificate.issuer}</p>
@@ -27,14 +29,24 @@ const CertificateCard: React.FC<CertificateCardProps> = ({ certificate }) => {
       <div className="flex items-center justify-between mt-3 text-xs">
         <div className="flex gap-4">
           {certificate.level && (
-            <span className="text-gray-600">Level: <span className="font-medium">{certificate.level}</span></span>
+            <span className="text-gray-600">
+              Level: <span className="font-medium">{certificate.level}</span>
+            </span>
           )}
           {certificate.issued_on && (
-            <span className="text-gray-600">Issued: <span className="font-medium">{new Date(certificate.issued_on).toLocaleDateString()}</span></span>
+            <span className="text-gray-600">
+              Issued:{' '}
+              <span className="font-medium">
+                {new Date(certificate.issued_on).toLocaleDateString()}
+              </span>
+            </span>
           )}
         </div>
         {certificate.credential_id && (
-          <span className="text-blue-600 font-mono text-xs truncate max-w-[150px]" title={certificate.credential_id}>
+          <span
+            className="text-blue-600 font-mono text-xs truncate max-w-[150px]"
+            title={certificate.credential_id}
+          >
             ID: {certificate.credential_id}
           </span>
         )}

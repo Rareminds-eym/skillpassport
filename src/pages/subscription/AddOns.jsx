@@ -1,8 +1,8 @@
 /**
  * AddOns Page
- * 
+ *
  * Full-page add-on marketplace with category filters, search, and bundle section.
- * 
+ *
  * @requirement Task 6.2 - Create AddOns page
  */
 
@@ -60,37 +60,40 @@ function AddOns() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { user, role, loading: authLoading } = useAuth();
-  
+
   // Get base path for subscription routes from URL (more reliable)
   const basePath = useMemo(() => getSubscriptionBasePath(location.pathname), [location.pathname]);
-  
+
   // Get user type from URL path (more reliable than role from auth)
   const userType = useMemo(() => getUserTypeFromUrl(location.pathname), [location.pathname]);
-  
+
   // Check if we're in checkout mode
   const checkoutMode = searchParams.get('checkout') === 'true';
 
   // Get role for filtering add-ons
   const userRole = user?.user_metadata?.role || user?.raw_user_meta_data?.role || role || 'student';
-  
+
   // Get settings path from URL (more reliable than role)
-  const settingsPath = useMemo(() => getSettingsPathFromUrl(location.pathname), [location.pathname]);
+  const settingsPath = useMemo(
+    () => getSettingsPathFromUrl(location.pathname),
+    [location.pathname]
+  );
 
   // Map user roles to add-on categories
   const getAddOnRole = useCallback(() => {
     const roleMapping = {
-      'student': 'student',
-      'school_student': 'student',
-      'college_student': 'student',
-      'educator': 'educator',
-      'school_educator': 'educator',
-      'college_educator': 'educator',
-      'admin': 'admin',
-      'school_admin': 'admin',
-      'college_admin': 'admin',
-      'university_admin': 'admin',
-      'recruiter': 'recruiter',
-      'company_admin': 'recruiter',
+      student: 'student',
+      school_student: 'student',
+      college_student: 'student',
+      educator: 'educator',
+      school_educator: 'educator',
+      college_educator: 'educator',
+      admin: 'admin',
+      school_admin: 'admin',
+      college_admin: 'admin',
+      university_admin: 'admin',
+      recruiter: 'recruiter',
+      company_admin: 'recruiter',
     };
     return roleMapping[userRole] || 'student';
   }, [userRole]);
@@ -127,7 +130,7 @@ function AddOns() {
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
             {checkoutMode ? 'Back to Add-ons' : 'Back'}
           </button>
-          
+
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -144,13 +147,12 @@ function AddOns() {
                 )}
               </h1>
               <p className="text-gray-600 mt-1">
-                {checkoutMode 
+                {checkoutMode
                   ? 'Complete your purchase'
-                  : 'Enhance your experience with premium features'
-                }
+                  : 'Enhance your experience with premium features'}
               </p>
             </div>
-            
+
             {!checkoutMode && (
               <button
                 onClick={() => navigate(`${basePath}/subscription/manage`)}
@@ -166,15 +168,12 @@ function AddOns() {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {checkoutMode ? (
-          <AddOnCheckout 
+          <AddOnCheckout
             onSuccess={() => navigate(`${basePath}/subscription/manage?success=true`)}
             onCancel={() => navigate(`${basePath}/subscription/add-ons`)}
           />
         ) : (
-          <AddOnMarketplace 
-            role={getAddOnRole()}
-            showBundles={true}
-          />
+          <AddOnMarketplace role={getAddOnRole()} showBundles={true} />
         )}
       </div>
 
@@ -185,7 +184,8 @@ function AddOns() {
             <div className="text-center">
               <h2 className="text-xl font-bold text-gray-900 mb-2">Need Help Choosing?</h2>
               <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
-                Not sure which add-ons are right for you? Our team can help you find the perfect combination for your needs.
+                Not sure which add-ons are right for you? Our team can help you find the perfect
+                combination for your needs.
               </p>
               <div className="flex items-center justify-center gap-4">
                 <a

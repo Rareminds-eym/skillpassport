@@ -16,7 +16,7 @@ import {
   deleteTechnicalSkill,
   addSoftSkill,
   updateSoftSkill,
-  deleteSoftSkill
+  deleteSoftSkill,
 } from '../services/studentService';
 
 /**
@@ -68,8 +68,8 @@ export const useStudentData = (studentId, useMockData = false) => {
             id: idx + 1,
             message: msg,
             priority: mockData.suggestions.length - idx,
-            is_active: true
-          }))
+            is_active: true,
+          })),
         });
       }
     } finally {
@@ -79,7 +79,7 @@ export const useStudentData = (studentId, useMockData = false) => {
 
   // Trigger refresh
   const refresh = useCallback(() => {
-    setRefreshKey(prev => prev + 1);
+    setRefreshKey((prev) => prev + 1);
   }, []);
 
   // Load data on mount and when studentId or refreshKey changes
@@ -290,36 +290,36 @@ export const useStudentData = (studentId, useMockData = false) => {
     studentData,
     loading,
     error,
-    
+
     // Refresh function
     refresh,
-    
+
     // Profile operations
     updateProfile,
-    
+
     // Education operations
     addEducation: addEducationRecord,
     updateEducation: updateEducationRecord,
     deleteEducation: deleteEducationRecord,
-    
+
     // Training operations
     addTraining: addTrainingRecord,
     updateTraining: updateTrainingRecord,
     deleteTraining: deleteTrainingRecord,
-    
+
     // Experience operations
     addExperience: addExperienceRecord,
     updateExperience: updateExperienceRecord,
     deleteExperience: deleteExperienceRecord,
-    
+
     // Technical skills operations
     addTechnicalSkill: addTechnicalSkillRecord,
     updateTechnicalSkill: updateTechnicalSkillRecord,
     deleteTechnicalSkill: deleteTechnicalSkillRecord,
-    
+
     // Soft skills operations
     addSoftSkill: addSoftSkillRecord,
     updateSoftSkill: updateSoftSkillRecord,
-    deleteSoftSkill: deleteSoftSkillRecord
+    deleteSoftSkill: deleteSoftSkillRecord,
   };
 };

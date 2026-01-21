@@ -1,41 +1,36 @@
 import {
-    Award,
-    BookOpen,
-    Briefcase,
-    Calendar,
-    CheckCircle,
-    Clock,
-    Download,
-    Edit,
-    Eye,
-    ListChecks,
-    MoreVertical,
-    Play,
-    Target,
-    Trash2,
-    TrendingUp,
-    Users,
-    Zap
-} from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../../context/AuthContext";
-import { useStudentDataByEmail } from "../../../hooks/useStudentDataByEmail";
-import { supabase } from "../../../lib/supabaseClient";
-import { downloadCertificate, getCertificateProxyUrl } from "../../../services/certificateService";
-import { checkAssessmentStatus } from "../../../services/externalAssessmentService";
+  Award,
+  BookOpen,
+  Briefcase,
+  Calendar,
+  CheckCircle,
+  Clock,
+  Download,
+  Edit,
+  Eye,
+  ListChecks,
+  MoreVertical,
+  Play,
+  Target,
+  Trash2,
+  TrendingUp,
+  Users,
+  Zap,
+} from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../context/AuthContext';
+import { useStudentDataByEmail } from '../../../hooks/useStudentDataByEmail';
+import { supabase } from '../../../lib/supabaseClient';
+import { downloadCertificate, getCertificateProxyUrl } from '../../../services/certificateService';
+import { checkAssessmentStatus } from '../../../services/externalAssessmentService';
 
 /**
  * Modern Learning Card Component - Completely Redesigned
  * Professional, enterprise-grade design with blue and green color scheme
  * Supports both grid and list view modes with enhanced visual hierarchy
  */
-const ModernLearningCard = ({
-  item,
-  onEdit,
-  onDelete,
-  viewMode = 'grid'
-}) => {
+const ModernLearningCard = ({ item, onEdit, onDelete, viewMode = 'grid' }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isHovered, setIsHovered] = useState(false);
@@ -44,23 +39,26 @@ const ModernLearningCard = ({
   const [checkingAssessment, setCheckingAssessment] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
   const [certificateUrl, setCertificateUrl] = useState(item.certificateUrl || '');
-  
+
   // Update certificate URL when item.certificateUrl changes
   useEffect(() => {
     setCertificateUrl(item.certificateUrl || '');
   }, [item.certificateUrl]);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
-  
+
   const userEmail = user?.email;
   const { studentData } = useStudentDataByEmail(userEmail, false);
 
   // Check if this is a course enrollment (started from course player)
-  const isCourseEnrollment = item.type === 'course_enrollment' || item.source === 'course_enrollment';
+  const isCourseEnrollment =
+    item.type === 'course_enrollment' || item.source === 'course_enrollment';
 
   // Check if course is from RareMinds platform (internal) or external
-  const isInternalCourse = isCourseEnrollment || !!(item.course_id && item.source === "internal_course");
-  const isExternalCourse = !isInternalCourse && (item.source === "external_course" || item.source === "manual");
+  const isInternalCourse =
+    isCourseEnrollment || !!(item.course_id && item.source === 'internal_course');
+  const isExternalCourse =
+    !isInternalCourse && (item.source === 'external_course' || item.source === 'manual');
 
   // Memoize progress calculation to avoid recalculation on re-renders
   const progress = useMemo(() => {
@@ -81,7 +79,7 @@ const ModernLearningCard = ({
       // Default to 0% if no progress data
       return 0;
     }
-    
+
     // Course enrollments - calculate progress based on actual lesson completion
     if (isCourseEnrollment) {
       // Calculate progress from completed vs total modules (lessons)
@@ -89,28 +87,28 @@ const ModernLearningCard = ({
         return Math.round(((item.completedModules || 0) / item.totalModules) * 100);
       }
       // If no module data, check if status is completed
-      if (item.status === "completed") return 100;
+      if (item.status === 'completed') return 100;
       // Fallback to stored progress if no module data
       if (item.progress !== undefined && item.progress !== null) {
         return Math.round(item.progress);
       }
       return 0;
     }
-    
+
     // Regular trainings (internal courses not from enrollment)
-    if (item.status === "completed") return 100;
+    if (item.status === 'completed') return 100;
     if (item.totalModules > 0) {
       return Math.round(((item.completedModules || 0) / item.totalModules) * 100);
     }
     return item.progress || 0;
   }, [
-    isExternalCourse, 
-    isCourseEnrollment, 
-    item.totalModules, 
-    item.completedModules, 
-    item.progress, 
-    item.status, 
-    assessmentCompleted
+    isExternalCourse,
+    isCourseEnrollment,
+    item.totalModules,
+    item.completedModules,
+    item.progress,
+    item.status,
+    assessmentCompleted,
   ]);
   // For external courses, completion is based on assessment completion only
   // For internal courses, completion is based on actual progress (100% = all lessons completed)
@@ -132,7 +130,7 @@ const ModernLearningCard = ({
         setCheckingAssessment(false);
       }
     };
-    
+
     checkCompletion();
   }, [isExternalCourse, studentData?.id, item.course]);
 
@@ -154,10 +152,16 @@ const ModernLearningCard = ({
   useEffect(() => {
     const fetchCertificateUrl = async () => {
       // Only fetch if it's a completed internal course without a certificate URL
-      if (!isInternalCourse || !isCompleted || certificateUrl || !item.course_id || !studentData?.id) {
+      if (
+        !isInternalCourse ||
+        !isCompleted ||
+        certificateUrl ||
+        !item.course_id ||
+        !studentData?.id
+      ) {
         return;
       }
-      
+
       try {
         const { data: enrollment } = await supabase
           .from('course_enrollments')
@@ -204,7 +208,7 @@ const ModernLearningCard = ({
           bg: 'bg-gradient-to-r from-green-100 to-green-200',
           text: 'text-green-800',
           icon: CheckCircle,
-          label: 'Assessment Completed'
+          label: 'Assessment Completed',
         };
       } else {
         // External course added but assessment not taken yet
@@ -212,7 +216,7 @@ const ModernLearningCard = ({
           bg: 'bg-gradient-to-r from-orange-100 to-orange-200',
           text: 'text-orange-800',
           icon: Target,
-          label: 'Assessment Pending'
+          label: 'Assessment Pending',
         };
       }
     } else {
@@ -222,14 +226,14 @@ const ModernLearningCard = ({
           bg: 'bg-gradient-to-r from-green-100 to-green-200',
           text: 'text-green-800',
           icon: CheckCircle,
-          label: 'Completed'
+          label: 'Completed',
         };
       }
       return {
         bg: 'bg-gradient-to-r from-blue-100 to-blue-200',
         text: 'text-blue-600',
         icon: Clock,
-        label: 'In Progress'
+        label: 'In Progress',
       };
     }
   };
@@ -241,7 +245,7 @@ const ModernLearningCard = ({
   const handleDownloadCertificate = async (e) => {
     e?.stopPropagation();
     if (!certificateUrl) return;
-    
+
     setIsDownloading(true);
     try {
       await downloadCertificate(certificateUrl, item.course || item.title);
@@ -280,7 +284,7 @@ const ModernLearningCard = ({
 
   const renderListCertificateButton = () => (
     <button
-      onClick={() => window.open(certificateUrl, "_blank")}
+      onClick={() => window.open(certificateUrl, '_blank')}
       className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 transition-all duration-300 hover:scale-105 shadow-lg shadow-green-500/25"
     >
       <Award className="w-4 h-4" />
@@ -288,7 +292,7 @@ const ModernLearningCard = ({
     </button>
   );
 
-  const renderListCompletedStatus = (label = "Completed") => (
+  const renderListCompletedStatus = (label = 'Completed') => (
     <div className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm bg-gradient-to-r from-green-100 to-green-200 text-green-800">
       <CheckCircle className="w-4 h-4" />
       <span>{label}</span>
@@ -304,15 +308,17 @@ const ModernLearningCard = ({
 
   const renderListAssessmentButton = () => (
     <button
-      onClick={() => navigate("/student/assessment/platform", {
-        state: {
-          courseName: item.course || item.title,
-          certificateName: item.course || item.title,
-          level: item.level || 'Intermediate',
-          courseId: item.id,
-          useDynamicGeneration: true
-        }
-      })}
+      onClick={() =>
+        navigate('/student/assessment/platform', {
+          state: {
+            courseName: item.course || item.title,
+            certificateName: item.course || item.title,
+            level: item.level || 'Intermediate',
+            courseId: item.id,
+            useDynamicGeneration: true,
+          },
+        })
+      }
       className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm border-2 border-blue-500 text-blue-600 hover:bg-blue-50 hover:border-blue-600 transition-all duration-300 hover:scale-105"
     >
       <Target className="w-4 h-4" />
@@ -321,7 +327,7 @@ const ModernLearningCard = ({
   );
 
   const renderListContinueButton = () => (
-    <button 
+    <button
       onClick={handleContinue}
       className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 transition-all duration-300 hover:scale-105 shadow-lg shadow-blue-500/25"
     >
@@ -342,7 +348,9 @@ const ModernLearningCard = ({
     // External courses logic - simplified
     if (isExternalCourse && !isCourseEnrollment && !checkingAssessment) {
       if (assessmentCompleted) {
-        return certificateUrl ? renderListCertificateButton() : renderListCompletedStatus("Assessment Completed");
+        return certificateUrl
+          ? renderListCertificateButton()
+          : renderListCompletedStatus('Assessment Completed');
       }
       // Always show assessment button for external courses that haven't completed assessment
       return renderListAssessmentButton();
@@ -350,13 +358,15 @@ const ModernLearningCard = ({
 
     // Internal courses logic
     if (isCompleted) {
-      return certificateUrl ? renderListCertificateButtons() : renderListCompletedStatus("Course Completed");
+      return certificateUrl
+        ? renderListCertificateButtons()
+        : renderListCompletedStatus('Course Completed');
     }
-    
+
     if (isCourseEnrollment) {
       return renderListContinueButton();
     }
-    
+
     return renderListGenericContinueButton();
   };
 
@@ -364,7 +374,7 @@ const ModernLearningCard = ({
   const renderCertificateButtons = () => (
     <div className="space-y-2">
       {/* View Course Button */}
-      <button 
+      <button
         onClick={handleContinue}
         className="flex items-center justify-center gap-2 w-full py-3 rounded-xl sm:rounded-2xl font-bold text-sm bg-gradient-to-r from-indigo-500 to-indigo-600 text-white hover:from-indigo-600 hover:to-indigo-700 transition-all duration-300 hover:scale-105 shadow-lg shadow-indigo-500/25"
       >
@@ -377,7 +387,7 @@ const ModernLearningCard = ({
   // Helper function to render certificate button (for external courses - just "View")
   const renderCertificateButton = () => (
     <button
-      onClick={() => window.open(certificateUrl, "_blank")}
+      onClick={() => window.open(certificateUrl, '_blank')}
       className="flex items-center justify-center gap-2 w-full py-3 rounded-xl sm:rounded-2xl font-bold text-sm bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 transition-all duration-300 hover:scale-105 shadow-lg shadow-green-500/25"
     >
       <Award className="w-4 sm:w-5 h-4 sm:h-5" />
@@ -386,7 +396,7 @@ const ModernLearningCard = ({
   );
 
   // Helper function to render completed status
-  const renderCompletedStatus = (label = "Completed") => (
+  const renderCompletedStatus = (label = 'Completed') => (
     <div className="flex items-center justify-center gap-2 w-full py-3 rounded-xl sm:rounded-2xl font-bold text-sm bg-gradient-to-r from-green-100 to-green-200 text-green-800">
       <CheckCircle className="w-4 sm:w-5 h-4 sm:h-5" />
       <span className="hidden xs:inline">{label}</span>
@@ -406,15 +416,17 @@ const ModernLearningCard = ({
   // Helper function to render take assessment button
   const renderAssessmentButton = () => (
     <button
-      onClick={() => navigate("/student/assessment/platform", {
-        state: {
-          courseName: item.course || item.title,
-          certificateName: item.course || item.title,
-          level: item.level || 'Intermediate',
-          courseId: item.id,
-          useDynamicGeneration: true
-        }
-      })}
+      onClick={() =>
+        navigate('/student/assessment/platform', {
+          state: {
+            courseName: item.course || item.title,
+            certificateName: item.course || item.title,
+            level: item.level || 'Intermediate',
+            courseId: item.id,
+            useDynamicGeneration: true,
+          },
+        })
+      }
       className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm border-2 border-blue-500 text-blue-600 hover:bg-blue-50 hover:border-blue-600 transition-all duration-300 hover:scale-105"
     >
       <Target className="w-4 h-4" />
@@ -425,12 +437,14 @@ const ModernLearningCard = ({
 
   // Helper function to render continue/start button
   const renderContinueButton = () => (
-    <button 
+    <button
       onClick={handleContinue}
       className="flex items-center justify-center gap-2 w-full py-3 rounded-xl sm:rounded-2xl font-bold text-sm bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 transition-all duration-300 hover:scale-105 shadow-md shadow-blue-500/25"
     >
       <Play className="w-4 sm:w-5 h-4 sm:h-5" />
-      <span className="hidden xs:inline">{progress > 0 ? 'Continue Learning' : 'Start Course'}</span>
+      <span className="hidden xs:inline">
+        {progress > 0 ? 'Continue Learning' : 'Start Course'}
+      </span>
       <span className="xs:hidden">{progress > 0 ? 'Continue' : 'Start'}</span>
     </button>
   );
@@ -449,7 +463,9 @@ const ModernLearningCard = ({
     // External courses logic - simplified
     if (isExternalCourse && !isCourseEnrollment && !checkingAssessment) {
       if (assessmentCompleted) {
-        return certificateUrl ? renderCertificateButton() : renderCompletedStatus("Assessment Completed");
+        return certificateUrl
+          ? renderCertificateButton()
+          : renderCompletedStatus('Assessment Completed');
       }
       // Always show assessment button for external courses that haven't completed assessment
       return renderAssessmentButton();
@@ -457,13 +473,15 @@ const ModernLearningCard = ({
 
     // Internal courses logic
     if (isCompleted) {
-      return certificateUrl ? renderCertificateButtons() : renderCompletedStatus("Course Completed");
+      return certificateUrl
+        ? renderCertificateButtons()
+        : renderCompletedStatus('Course Completed');
     }
-    
+
     if (isCourseEnrollment) {
       return renderContinueButton();
     }
-    
+
     return renderGenericContinueButton();
   };
 
@@ -480,12 +498,10 @@ const ModernLearningCard = ({
       >
         {/* Animated Background Gradient */}
         <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-white to-green-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-        
+
         {/* Top Status Indicator - Blue Color */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-slate-100">
-          <div 
-            className="h-full w-full transition-all duration-300 bg-blue-500"
-          />
+          <div className="h-full w-full transition-all duration-300 bg-blue-500" />
         </div>
 
         <div className="relative p-4 sm:p-6">
@@ -500,17 +516,19 @@ const ModernLearningCard = ({
                   <p className="text-slate-600 text-sm line-clamp-1 mb-2">
                     {item.provider || item.organization}
                   </p>
-                  
+
                   {/* Course Type Badge */}
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className={`
+                    <span
+                      className={`
                       inline-flex items-center px-2 sm:px-3 py-1 rounded-full text-xs font-semibold
                       ${statusBadge.bg} ${statusBadge.text}
-                    `}>
+                    `}
+                    >
                       <StatusIcon className="w-3 h-3 mr-1 sm:mr-1.5" />
                       {statusBadge.label}
                     </span>
-                    
+
                     {isCourseEnrollment && (
                       <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
                         <Zap className="w-3 h-3 mr-1" />
@@ -528,35 +546,47 @@ const ModernLearningCard = ({
                   <div className="bg-gradient-to-r from-slate-50 to-slate-100/50 rounded-xl p-3 sm:p-4 border border-slate-200/60">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${
-                          assessmentScore >= 80 ? 'bg-green-500' : 
-                          assessmentScore >= 60 ? 'bg-blue-500' : 
-                          'bg-orange-500'
-                        }`} />
+                        <div
+                          className={`w-2 h-2 rounded-full ${
+                            assessmentScore >= 80
+                              ? 'bg-green-500'
+                              : assessmentScore >= 60
+                                ? 'bg-blue-500'
+                                : 'bg-orange-500'
+                          }`}
+                        />
                         <span className="text-xs sm:text-sm font-semibold text-slate-600 uppercase tracking-wide">
                           Assessment Result
                         </span>
                       </div>
-                      
+
                       <div className="text-right">
-                        <div className={`text-2xl sm:text-3xl font-black ${
-                          assessmentScore >= 80 ? 'text-green-600' : 
-                          assessmentScore >= 60 ? 'text-blue-600' : 
-                          'text-orange-600'
-                        }`}>
+                        <div
+                          className={`text-2xl sm:text-3xl font-black ${
+                            assessmentScore >= 80
+                              ? 'text-green-600'
+                              : assessmentScore >= 60
+                                ? 'text-blue-600'
+                                : 'text-orange-600'
+                          }`}
+                        >
                           {assessmentScore}
                         </div>
                         <div className="text-xs text-slate-500 font-medium">out of 100</div>
                       </div>
                     </div>
-                    
+
                     {/* Performance Indicator */}
                     <div className="mt-3 flex justify-center">
-                      <div className={`inline-flex items-center gap-2 px-2 sm:px-3 py-1 rounded-full text-xs font-semibold ${
-                        assessmentScore >= 80 ? 'bg-green-100 text-green-800' : 
-                        assessmentScore >= 60 ? 'bg-blue-100 text-blue-600' : 
-                        'bg-orange-100 text-orange-800'
-                      }`}>
+                      <div
+                        className={`inline-flex items-center gap-2 px-2 sm:px-3 py-1 rounded-full text-xs font-semibold ${
+                          assessmentScore >= 80
+                            ? 'bg-green-100 text-green-800'
+                            : assessmentScore >= 60
+                              ? 'bg-blue-100 text-blue-600'
+                              : 'bg-orange-100 text-orange-800'
+                        }`}
+                      >
                         {assessmentScore >= 80 ? (
                           <>
                             <div className="w-1.5 h-1.5 bg-green-600 rounded-full" />
@@ -593,7 +623,7 @@ const ModernLearningCard = ({
                               <span>{item.instructor}</span>
                             </div>
                           )}
-                          
+
                           {item.completion_date && (
                             <div className="flex items-center gap-2 text-slate-600">
                               <Calendar className="w-3.5 h-3.5 text-slate-400" />
@@ -604,20 +634,22 @@ const ModernLearningCard = ({
                         </div>
                       </div>
                     )}
-                    
+
                     {/* Skill Assessment Card */}
-                    <div className={`rounded-xl p-3 sm:p-4 border-2 ${
-                      assessmentCompleted 
-                        ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200' 
-                        : 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200'
-                    }`}>
+                    <div
+                      className={`rounded-xl p-3 sm:p-4 border-2 ${
+                        assessmentCompleted
+                          ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200'
+                          : 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200'
+                      }`}
+                    >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                            assessmentCompleted 
-                              ? 'bg-green-100' 
-                              : 'bg-blue-100'
-                          }`}>
+                          <div
+                            className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                              assessmentCompleted ? 'bg-green-100' : 'bg-blue-100'
+                            }`}
+                          >
                             {assessmentCompleted ? (
                               <CheckCircle className="w-4 h-4 text-green-600" />
                             ) : (
@@ -629,15 +661,19 @@ const ModernLearningCard = ({
                               Skill Assessment
                             </h4>
                             <p className="text-xs text-slate-600">
-                              {assessmentCompleted ? 'Assessment completed' : 'Validate your skills'}
+                              {assessmentCompleted
+                                ? 'Assessment completed'
+                                : 'Validate your skills'}
                             </p>
                           </div>
                         </div>
-                        <div className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                          assessmentCompleted 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-blue-100 text-blue-600'
-                        }`}>
+                        <div
+                          className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                            assessmentCompleted
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-blue-100 text-blue-600'
+                          }`}
+                        >
                           {assessmentCompleted ? 'Completed' : 'Pending'}
                         </div>
                       </div>
@@ -648,14 +684,20 @@ const ModernLearningCard = ({
                   <>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${
-                          isCompleted ? 'bg-green-500' : 'bg-blue-500'
-                        }`} />
-                        <span className="text-xs sm:text-sm font-medium text-slate-600">Progress</span>
+                        <div
+                          className={`w-2 h-2 rounded-full ${
+                            isCompleted ? 'bg-green-500' : 'bg-blue-500'
+                          }`}
+                        />
+                        <span className="text-xs sm:text-sm font-medium text-slate-600">
+                          Progress
+                        </span>
                       </div>
-                      <span className={`text-base sm:text-lg font-bold ${
-                        isCompleted ? 'text-green-600' : 'text-blue-600'
-                      }`}>
+                      <span
+                        className={`text-base sm:text-lg font-bold ${
+                          isCompleted ? 'text-green-600' : 'text-blue-600'
+                        }`}
+                      >
                         {progress}%
                       </span>
                     </div>
@@ -678,10 +720,12 @@ const ModernLearningCard = ({
                     {item.skills && item.skills.length > 0 && (
                       <div className="flex items-center gap-1.5">
                         <Briefcase className="w-4 h-4 text-blue-500" />
-                        <span className="font-medium text-blue-600">{item.skills.length} professional skills</span>
+                        <span className="font-medium text-blue-600">
+                          {item.skills.length} professional skills
+                        </span>
                       </div>
                     )}
-                    
+
                     {/* Duration */}
                     {item.duration && (
                       <div className="flex items-center gap-1.5">
@@ -689,7 +733,7 @@ const ModernLearningCard = ({
                         <span>{item.duration}</span>
                       </div>
                     )}
-                    
+
                     {/* Hours Spent */}
                     {item.hoursSpent && item.hoursSpent > 0 && (
                       <div className="flex items-center gap-1.5">
@@ -697,12 +741,19 @@ const ModernLearningCard = ({
                         <span>{item.hoursSpent} hours learning</span>
                       </div>
                     )}
-                    
+
                     {/* End Date */}
                     {item.endDate && (
                       <div className="flex items-center gap-1.5">
                         <Calendar className="w-4 h-4" />
-                        <span>Completed: {new Date(item.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                        <span>
+                          Completed:{' '}
+                          {new Date(item.endDate).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })}
+                        </span>
                       </div>
                     )}
                   </>
@@ -712,7 +763,9 @@ const ModernLearningCard = ({
                     {item.totalModules > 0 && (
                       <div className="flex items-center gap-1.5">
                         <ListChecks className="w-4 h-4" />
-                        <span>{item.completedModules || 0}/{item.totalModules} modules</span>
+                        <span>
+                          {item.completedModules || 0}/{item.totalModules} modules
+                        </span>
                       </div>
                     )}
                     {item.skills && item.skills.length > 0 && (
@@ -748,7 +801,8 @@ const ModernLearningCard = ({
               )}
 
               {/* 3-dots menu for courses with certificates */}
-              {((isInternalCourse && isCompleted && certificateUrl) || (isExternalCourse && certificateUrl)) && (
+              {((isInternalCourse && isCompleted && certificateUrl) ||
+                (isExternalCourse && certificateUrl)) && (
                 <div className="relative" ref={dropdownRef}>
                   <button
                     onClick={() => setShowDropdown(!showDropdown)}
@@ -757,7 +811,7 @@ const ModernLearningCard = ({
                   >
                     <MoreVertical className="w-4 h-4" />
                   </button>
-                  
+
                   {/* Dropdown Menu */}
                   {showDropdown && (
                     <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-lg border border-slate-200 py-2 z-10">
@@ -781,12 +835,14 @@ const ModernLearningCard = ({
                           }}
                           disabled={isDownloading}
                           className={`flex items-center gap-3 w-full px-4 py-2 text-sm transition-colors ${
-                            isDownloading 
-                              ? 'text-gray-400 cursor-not-allowed' 
+                            isDownloading
+                              ? 'text-gray-400 cursor-not-allowed'
                               : 'text-slate-700 hover:bg-green-50 hover:text-green-600'
                           }`}
                         >
-                          <Download className={`w-4 h-4 ${isDownloading ? 'animate-bounce' : ''}`} />
+                          <Download
+                            className={`w-4 h-4 ${isDownloading ? 'animate-bounce' : ''}`}
+                          />
                           {isDownloading ? 'Downloading...' : 'Download Certificate'}
                         </button>
                       )}
@@ -823,7 +879,7 @@ const ModernLearningCard = ({
       className={`
         group relative bg-white rounded-2xl sm:rounded-3xl overflow-hidden border border-slate-200/60 shadow-sm
         transition-all duration-500 ease-out hover:shadow-2xl hover:shadow-blue-500/10 hover:-translate-y-2
-        ${isHovered ? "shadow-2xl shadow-blue-500/10 -translate-y-2" : ""}
+        ${isHovered ? 'shadow-2xl shadow-blue-500/10 -translate-y-2' : ''}
         flex flex-col h-full
       `}
       onMouseEnter={() => setIsHovered(true)}
@@ -831,26 +887,26 @@ const ModernLearningCard = ({
     >
       {/* Animated Background Gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-white to-green-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-      
+
       {/* Top Status Indicator - Blue Color */}
       <div className="absolute top-0 left-0 right-0 h-1.5 bg-slate-100">
-        <div 
-          className="h-full w-full transition-all duration-300 bg-blue-500"
-        />
+        <div className="h-full w-full transition-all duration-300 bg-blue-500" />
       </div>
-      
+
       <div className="relative p-4 sm:p-6 flex flex-col flex-1">
         {/* Header Section */}
         <div className="flex items-start justify-between mb-4">
           {/* Status Badge Only */}
-          <span className={`
+          <span
+            className={`
             inline-flex items-center px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm font-semibold
             ${statusBadge.bg} ${statusBadge.text}
-          `}>
+          `}
+          >
             <StatusIcon className="w-3 sm:w-4 h-3 sm:h-4 mr-1 sm:mr-1.5" />
             {statusBadge.label}
           </span>
-          
+
           {/* Course Type & Actions */}
           <div className="flex items-center gap-2">
             {isCourseEnrollment && (
@@ -883,7 +939,8 @@ const ModernLearningCard = ({
             )}
 
             {/* 3-dots menu for courses with certificates */}
-            {((isInternalCourse && isCompleted && certificateUrl) || (isExternalCourse && certificateUrl)) && (
+            {((isInternalCourse && isCompleted && certificateUrl) ||
+              (isExternalCourse && certificateUrl)) && (
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setShowDropdown(!showDropdown)}
@@ -892,7 +949,7 @@ const ModernLearningCard = ({
                 >
                   <MoreVertical className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
                 </button>
-                
+
                 {/* Dropdown Menu */}
                 {showDropdown && (
                   <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-lg border border-slate-200 py-2 z-10">
@@ -916,8 +973,8 @@ const ModernLearningCard = ({
                         }}
                         disabled={isDownloading}
                         className={`flex items-center gap-3 w-full px-4 py-2 text-sm transition-colors ${
-                          isDownloading 
-                            ? 'text-gray-400 cursor-not-allowed' 
+                          isDownloading
+                            ? 'text-gray-400 cursor-not-allowed'
                             : 'text-slate-700 hover:bg-green-50 hover:text-green-600'
                         }`}
                       >
@@ -972,7 +1029,7 @@ const ModernLearningCard = ({
                   <div className="text-xs text-blue-600">Professional Skills</div>
                 </div>
               </div>
-              
+
               {/* Hours Spent - Show for external courses, default to 0 if not available */}
               {isExternalCourse && (
                 <div className="flex items-center gap-2 text-sm text-slate-600 bg-slate-50 rounded-lg sm:rounded-xl p-3">
@@ -992,11 +1049,13 @@ const ModernLearningCard = ({
                   <ListChecks className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-slate-400" />
                   <div>
                     <div className="font-semibold text-sm sm:text-base">{item.totalModules}</div>
-                    <div className="text-xs text-slate-500">{isCourseEnrollment ? 'lessons' : 'modules'}</div>
+                    <div className="text-xs text-slate-500">
+                      {isCourseEnrollment ? 'lessons' : 'modules'}
+                    </div>
                   </div>
                 </div>
               )}
-              
+
               {item.skills && item.skills.length > 0 && (
                 <div className="flex items-center gap-2 text-sm text-slate-600 bg-slate-50 rounded-lg sm:rounded-xl p-2.5 sm:p-3">
                   <Briefcase className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-slate-400" />
@@ -1006,7 +1065,7 @@ const ModernLearningCard = ({
                   </div>
                 </div>
               )}
-              
+
               {item.duration && (
                 <div className="flex items-center gap-2 text-sm text-slate-600 bg-slate-50 rounded-lg sm:rounded-xl p-2.5 sm:p-3 col-span-2">
                   <Calendar className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-slate-400" />
@@ -1027,39 +1086,51 @@ const ModernLearningCard = ({
             <div className="relative">
               <div className="text-center p-4 sm:p-6 bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-xl sm:rounded-2xl border border-slate-200/60">
                 <div className="flex items-center justify-center gap-2 mb-3">
-                  <div className={`w-2 h-2 rounded-full ${
-                    assessmentScore >= 80 ? 'bg-green-500' : 
-                    assessmentScore >= 60 ? 'bg-blue-500' : 
-                    'bg-orange-500'
-                  }`} />
+                  <div
+                    className={`w-2 h-2 rounded-full ${
+                      assessmentScore >= 80
+                        ? 'bg-green-500'
+                        : assessmentScore >= 60
+                          ? 'bg-blue-500'
+                          : 'bg-orange-500'
+                    }`}
+                  />
                   <span className="text-xs sm:text-sm font-semibold text-slate-600 uppercase tracking-wide">
                     Assessment Result
                   </span>
                 </div>
-                
+
                 <div className="relative">
-                  <div className={`text-4xl sm:text-5xl font-black mb-2 ${
-                    assessmentScore >= 80 ? 'text-green-600' : 
-                    assessmentScore >= 60 ? 'text-blue-600' : 
-                    'text-orange-600'
-                  }`}>
+                  <div
+                    className={`text-4xl sm:text-5xl font-black mb-2 ${
+                      assessmentScore >= 80
+                        ? 'text-green-600'
+                        : assessmentScore >= 60
+                          ? 'text-blue-600'
+                          : 'text-orange-600'
+                    }`}
+                  >
                     {assessmentScore}
                   </div>
-                  
+
                   <div className="flex items-center justify-center gap-2 text-slate-500">
                     <div className="h-px bg-slate-300 flex-1 max-w-6 sm:max-w-8" />
                     <span className="text-xs font-medium">out of 100</span>
                     <div className="h-px bg-slate-300 flex-1 max-w-6 sm:max-w-8" />
                   </div>
                 </div>
-                
+
                 {/* Performance Indicator */}
                 <div className="mt-3 sm:mt-4">
-                  <div className={`inline-flex items-center gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs font-semibold ${
-                    assessmentScore >= 80 ? 'bg-green-100 text-green-800' : 
-                    assessmentScore >= 60 ? 'bg-blue-100 text-blue-600' : 
-                    'bg-orange-100 text-orange-800'
-                  }`}>
+                  <div
+                    className={`inline-flex items-center gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs font-semibold ${
+                      assessmentScore >= 80
+                        ? 'bg-green-100 text-green-800'
+                        : assessmentScore >= 60
+                          ? 'bg-blue-100 text-blue-600'
+                          : 'bg-orange-100 text-orange-800'
+                    }`}
+                  >
                     {assessmentScore >= 80 ? (
                       <>
                         <div className="w-1.5 h-1.5 bg-green-600 rounded-full" />
@@ -1110,19 +1181,25 @@ const ModernLearningCard = ({
                       </div>
                     )}
                   </div>
-                  
+
                   {/* Course Metrics */}
                   <div className="grid grid-cols-3 gap-3">
                     <div className="text-center">
-                      <div className="text-lg sm:text-xl font-bold text-green-800">{item.totalModules || 20}</div>
+                      <div className="text-lg sm:text-xl font-bold text-green-800">
+                        {item.totalModules || 20}
+                      </div>
                       <div className="text-xs text-green-600">Modules</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-lg sm:text-xl font-bold text-green-800">{item.hoursSpent || 40}</div>
+                      <div className="text-lg sm:text-xl font-bold text-green-800">
+                        {item.hoursSpent || 40}
+                      </div>
                       <div className="text-xs text-green-600">Hours</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-lg sm:text-xl font-bold text-green-800">{item.skills?.length || 0}</div>
+                      <div className="text-lg sm:text-xl font-bold text-green-800">
+                        {item.skills?.length || 0}
+                      </div>
                       <div className="text-xs text-green-600">Skills</div>
                     </div>
                   </div>
@@ -1137,14 +1214,16 @@ const ModernLearningCard = ({
                     <div>
                       <div className="flex items-center gap-2 mb-2">
                         <BookOpen className="w-4 h-4 text-slate-500" />
-                        <span className="text-sm font-semibold text-slate-700">Course Overview</span>
+                        <span className="text-sm font-semibold text-slate-700">
+                          Course Overview
+                        </span>
                       </div>
                       <p className="text-sm text-slate-600 leading-relaxed line-clamp-3">
                         {item.description}
                       </p>
                     </div>
                   )}
-                  
+
                   {/* Course Timeline */}
                   <div className="grid grid-cols-2 gap-4">
                     {item.endDate && (
@@ -1153,7 +1232,11 @@ const ModernLearningCard = ({
                         <div>
                           <div className="text-xs text-slate-500">Completed</div>
                           <div className="text-sm font-medium text-slate-700">
-                            {new Date(item.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            {new Date(item.endDate).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}
                           </div>
                         </div>
                       </div>
@@ -1161,27 +1244,30 @@ const ModernLearningCard = ({
                   </div>
                 </div>
               </div>
-
             </div>
           ) : (
             /* Internal Course Progress Display */
             <div className="space-y-3 sm:space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${
-                    isCompleted ? 'bg-green-500' : 'bg-blue-500'
-                  }`} />
+                  <div
+                    className={`w-2 h-2 rounded-full ${
+                      isCompleted ? 'bg-green-500' : 'bg-blue-500'
+                    }`}
+                  />
                   <span className="text-xs sm:text-sm font-semibold text-slate-600 uppercase tracking-wide">
                     Learning Progress
                   </span>
                 </div>
-                <span className={`text-xl sm:text-2xl font-bold ${
-                  isCompleted ? "text-green-600" : "text-blue-600"
-                }`}>
+                <span
+                  className={`text-xl sm:text-2xl font-bold ${
+                    isCompleted ? 'text-green-600' : 'text-blue-600'
+                  }`}
+                >
                   {progress}%
                 </span>
               </div>
-              
+
               {/* Enhanced Progress Bar */}
               <div className="relative">
                 <div className="h-2.5 sm:h-3 bg-slate-100 rounded-full overflow-hidden">
@@ -1192,13 +1278,15 @@ const ModernLearningCard = ({
                     <div className="absolute inset-0 bg-white/20 rounded-full animate-pulse" />
                   </div>
                 </div>
-                
+
                 {/* Progress Milestones */}
                 <div className="flex justify-between mt-2">
                   <div className="flex items-center gap-1.5">
-                    <div className={`w-1.5 h-1.5 rounded-full ${
-                      (item.completedModules || 0) > 0 ? 'bg-blue-500' : 'bg-slate-300'
-                    }`} />
+                    <div
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        (item.completedModules || 0) > 0 ? 'bg-blue-500' : 'bg-slate-300'
+                      }`}
+                    />
                     <span className="text-xs text-slate-500 font-medium">
                       {item.completedModules || 0} completed
                     </span>
@@ -1216,9 +1304,7 @@ const ModernLearningCard = ({
         </div>
 
         {/* Action Buttons - Always at Bottom */}
-        <div className="space-y-2 sm:space-y-3 mt-auto">
-          {renderActionButton()}
-        </div>
+        <div className="space-y-2 sm:space-y-3 mt-auto">{renderActionButton()}</div>
       </div>
     </div>
   );

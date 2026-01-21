@@ -1,5 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { generateIndustryDemand, getFallbackIndustryDemand, IndustryDemandData } from '../services/aiCareerPathService';
+import {
+  generateIndustryDemand,
+  getFallbackIndustryDemand,
+  IndustryDemandData,
+} from '../services/aiCareerPathService';
 
 /**
  * Cache structure for storing industry demand data
@@ -32,12 +36,12 @@ function getCacheKey(roleName: string, clusterTitle: string): string {
 export function checkCache(roleName: string, clusterTitle: string): IndustryDemandData | null {
   const key = getCacheKey(roleName, clusterTitle);
   const entry = sessionCache[key];
-  
+
   if (entry && entry.data) {
     console.log(`[IndustryDemand] Cache hit for ${roleName}:`, entry.data);
     return entry.data;
   }
-  
+
   console.log(`[IndustryDemand] Cache miss for ${roleName}`);
   return null;
 }
@@ -59,7 +63,7 @@ function setCache(roleName: string, clusterTitle: string, data: IndustryDemandDa
  * Clear the session cache (useful for testing)
  */
 export function clearIndustryDemandCache(): void {
-  Object.keys(sessionCache).forEach(key => delete sessionCache[key]);
+  Object.keys(sessionCache).forEach((key) => delete sessionCache[key]);
 }
 
 /**
@@ -73,7 +77,7 @@ interface UseIndustryDemandReturn {
 
 /**
  * Custom hook for fetching and caching industry demand data
- * 
+ *
  * @param roleName - The job role name (e.g., "Software Engineer")
  * @param clusterTitle - The career cluster title (e.g., "Technology")
  * @returns Object containing demand data, loading state, and error (internal only)
@@ -85,7 +89,7 @@ export function useIndustryDemand(
   const [demandData, setDemandData] = useState<IndustryDemandData | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
-  
+
   // Track the current request to handle race conditions
   const currentRequestRef = useRef<string | null>(null);
 
@@ -107,7 +111,7 @@ export function useIndustryDemand(
 
     try {
       const result = await generateIndustryDemand(role, cluster);
-      
+
       // Only update state if this is still the current request
       if (currentRequestRef.current === requestKey) {
         setDemandData(result);
@@ -119,7 +123,7 @@ export function useIndustryDemand(
       if (currentRequestRef.current === requestKey) {
         console.error('Error fetching industry demand:', err);
         setError(err instanceof Error ? err : new Error('Failed to generate industry demand'));
-        
+
         // Return fallback without exposing error to user
         const fallback = getFallbackIndustryDemand(role);
         setDemandData(fallback);

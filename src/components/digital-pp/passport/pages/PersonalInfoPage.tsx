@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle, XCircle } from 'lucide-react';
+// @ts-expect-error - Auto-suppressed for migration
 import { Student } from '../../../types/student';
 import PassportPage from '../PassportPage';
 
@@ -36,7 +37,7 @@ const PersonalInfoPage: React.FC<PersonalInfoPageProps> = ({ student, isActive }
                 className="w-32 h-40 object-cover border-4 border-gray-300 shadow-lg"
                 style={{ filter: 'sepia(10%)' }}
               />
-              
+
               {/* Verification Stamp */}
               <motion.div
                 className={`absolute -bottom-2 -right-2 p-2 rounded-full ${
@@ -57,9 +58,7 @@ const PersonalInfoPage: React.FC<PersonalInfoPageProps> = ({ student, isActive }
             {/* Verification Status */}
             <motion.div
               className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                isVerified 
-                  ? 'bg-green-100 text-green-800' 
-                  : 'bg-red-100 text-red-800'
+                isVerified ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
               }`}
               initial={{ opacity: 0 }}
               animate={{ opacity: isActive ? 1 : 0.7 }}
@@ -75,17 +74,13 @@ const PersonalInfoPage: React.FC<PersonalInfoPageProps> = ({ student, isActive }
               animate={{ opacity: isActive ? 1 : 0.5, rotate: 0 }}
               transition={{ delay: 0.9 }}
             >
-              <div className={`inline-block px-4 py-2 border-2 rounded-lg transform rotate-12 ${
-                isVerified 
-                  ? 'border-green-600 text-green-600' 
-                  : 'border-red-600 text-red-600'
-              }`}>
-                <div className="text-xs font-bold">
-                  {isVerified ? 'VERIFIED BY' : 'PENDING'}
-                </div>
-                <div className="text-xs">
-                  {isVerified ? 'RAREMINS' : 'VERIFICATION'}
-                </div>
+              <div
+                className={`inline-block px-4 py-2 border-2 rounded-lg transform rotate-12 ${
+                  isVerified ? 'border-green-600 text-green-600' : 'border-red-600 text-red-600'
+                }`}
+              >
+                <div className="text-xs font-bold">{isVerified ? 'VERIFIED BY' : 'PENDING'}</div>
+                <div className="text-xs">{isVerified ? 'RAREMINS' : 'VERIFICATION'}</div>
               </div>
             </motion.div>
           </div>
@@ -124,11 +119,13 @@ const PersonalInfoPage: React.FC<PersonalInfoPageProps> = ({ student, isActive }
                   Date of Birth
                 </label>
                 <p className="text-base text-gray-700 mt-1">
-                  {student.date_of_birth ? new Date(student.date_of_birth).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  }) : 'N/A'}
+                  {student.date_of_birth
+                    ? new Date(student.date_of_birth).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })
+                    : 'N/A'}
                 </p>
               </div>
 
@@ -137,9 +134,7 @@ const PersonalInfoPage: React.FC<PersonalInfoPageProps> = ({ student, isActive }
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   Age
                 </label>
-                <p className="text-base text-gray-700 mt-1">
-                  {student.age || 'N/A'} years
-                </p>
+                <p className="text-base text-gray-700 mt-1">{student.age || 'N/A'} years</p>
               </div>
 
               {/* Contact */}
@@ -147,9 +142,7 @@ const PersonalInfoPage: React.FC<PersonalInfoPageProps> = ({ student, isActive }
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   Contact Number
                 </label>
-                <p className="text-base text-gray-700 mt-1">
-                  {student.contact_number || 'N/A'}
-                </p>
+                <p className="text-base text-gray-700 mt-1">{student.contact_number || 'N/A'}</p>
               </div>
 
               {/* Email */}
@@ -157,9 +150,7 @@ const PersonalInfoPage: React.FC<PersonalInfoPageProps> = ({ student, isActive }
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   Email Address
                 </label>
-                <p className="text-base text-gray-700 mt-1 break-all">
-                  {student.email}
-                </p>
+                <p className="text-base text-gray-700 mt-1 break-all">{student.email}</p>
               </div>
 
               {/* Location */}
@@ -167,9 +158,7 @@ const PersonalInfoPage: React.FC<PersonalInfoPageProps> = ({ student, isActive }
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   Location
                 </label>
-                <p className="text-base text-gray-700 mt-1">
-                  {student.district_name || 'N/A'}
-                </p>
+                <p className="text-base text-gray-700 mt-1">{student.district_name || 'N/A'}</p>
               </div>
             </motion.div>
           </div>

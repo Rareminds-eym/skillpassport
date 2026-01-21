@@ -2,7 +2,7 @@
  * Role-Based Course Matcher
  * Uses RAG (Retrieval-Augmented Generation) with vector similarity
  * to match courses to specific job roles.
- * 
+ *
  * This is optimized for the CareerTrackModal use case where we need
  * to quickly match 4 courses to a specific role.
  */
@@ -14,7 +14,7 @@ import { parseEmbedding } from './utils';
 
 /**
  * Match courses to a specific job role using RAG.
- * 
+ *
  * @param {string} roleName - Job role name (e.g., "Junior Accountant")
  * @param {string} clusterTitle - Career cluster (e.g., "Finance, Accounting & Business Management")
  * @param {Array} courses - Array of course objects from database
@@ -26,7 +26,7 @@ export const matchCoursesForRole = async (roleName, clusterTitle = '', courses =
     roleName,
     clusterTitle,
     coursesAvailable: courses.length,
-    limit
+    limit,
   });
 
   // Validate inputs
@@ -43,12 +43,17 @@ export const matchCoursesForRole = async (roleName, clusterTitle = '', courses =
   try {
     // Step 1: Pre-filter courses by domain relevance
     const domainKeywords = extractDomainKeywords(roleName, clusterTitle);
-    const relevantCourses = preFilterCoursesByDomain(courses, roleName, clusterTitle, domainKeywords);
-    
+    const relevantCourses = preFilterCoursesByDomain(
+      courses,
+      roleName,
+      clusterTitle,
+      domainKeywords
+    );
+
     console.log('[RAG] Pre-filtered courses:', {
       original: courses.length,
       relevant: relevantCourses.length,
-      domainKeywords: domainKeywords
+      domainKeywords: domainKeywords,
     });
 
     // If we have enough relevant courses, use only those; otherwise use all
@@ -63,7 +68,7 @@ export const matchCoursesForRole = async (roleName, clusterTitle = '', courses =
     try {
       roleEmbedding = await generateEmbedding(roleContext);
       console.log('[RAG] Generated embedding:', roleEmbedding.length, 'dimensions');
-      
+
       // Debug: Check if embedding is valid
       const sum = roleEmbedding.reduce((a, b) => a + Math.abs(b), 0);
       const avg = sum / roleEmbedding.length;
@@ -71,8 +76,8 @@ export const matchCoursesForRole = async (roleName, clusterTitle = '', courses =
         dimensions: roleEmbedding.length,
         sum: sum.toFixed(4),
         avg: avg.toFixed(6),
-        first5: roleEmbedding.slice(0, 5).map(v => v.toFixed(4)),
-        isAllZeros: sum === 0
+        first5: roleEmbedding.slice(0, 5).map((v) => v.toFixed(4)),
+        isAllZeros: sum === 0,
       });
     } catch (error) {
       console.error('[RAG] Failed to generate role embedding:', error);
@@ -82,11 +87,11 @@ export const matchCoursesForRole = async (roleName, clusterTitle = '', courses =
 
     // Step 4: Parse and filter courses that have embeddings
     const coursesWithEmbeddings = coursesToMatch
-      .map(course => ({
+      .map((course) => ({
         ...course,
-        embedding: parseEmbedding(course.embedding)
+        embedding: parseEmbedding(course.embedding),
       }))
-      .filter(course => {
+      .filter((course) => {
         const hasEmbedding = course.embedding && Array.isArray(course.embedding);
         if (!hasEmbedding) {
           console.log('[RAG] Course missing embedding:', course.title || course.course_id);
@@ -94,7 +99,12 @@ export const matchCoursesForRole = async (roleName, clusterTitle = '', courses =
         return hasEmbedding;
       });
 
-    console.log('[RAG] Courses with embeddings:', coursesWithEmbeddings.length, '/', coursesToMatch.length);
+    console.log(
+      '[RAG] Courses with embeddings:',
+      coursesWithEmbeddings.length,
+      '/',
+      coursesToMatch.length
+    );
 
     // Debug: Check first course embedding
     if (coursesWithEmbeddings.length > 0) {
@@ -106,8 +116,8 @@ export const matchCoursesForRole = async (roleName, clusterTitle = '', courses =
         dimensions: firstCourse.embedding.length,
         sum: sum.toFixed(4),
         avg: avg.toFixed(6),
-        first5: firstCourse.embedding.slice(0, 5).map(v => v.toFixed(4)),
-        isAllZeros: sum === 0
+        first5: firstCourse.embedding.slice(0, 5).map((v) => v.toFixed(4)),
+        isAllZeros: sum === 0,
       });
     }
 
@@ -117,7 +127,7 @@ export const matchCoursesForRole = async (roleName, clusterTitle = '', courses =
     }
 
     // Step 5: Calculate similarity scores
-    const scoredCourses = coursesWithEmbeddings.map(course => {
+    const scoredCourses = coursesWithEmbeddings.map((course) => {
       const similarity = cosineSimilarity(roleEmbedding, course.embedding);
       const relevanceScore = calculateRelevanceScore(similarity);
 
@@ -133,18 +143,22 @@ export const matchCoursesForRole = async (roleName, clusterTitle = '', courses =
         thumbnail: course.thumbnail,
         relevance_score: relevanceScore,
         match_reason: `Matched to ${roleName} role`,
-        _similarity: similarity
+        _similarity: similarity,
       };
     });
 
     // Log top 10 by similarity for debugging
-    const top10 = [...scoredCourses]
-      .sort((a, b) => b._similarity - a._similarity)
-      .slice(0, 10);
-    
-    console.log('[RAG] Top 10 by similarity:', top10.map((c, i) => 
-      `${i+1}. ${c.title} (sim: ${c._similarity.toFixed(4)}, score: ${c.relevance_score}%)`
-    ).join('\n'));
+    const top10 = [...scoredCourses].sort((a, b) => b._similarity - a._similarity).slice(0, 10);
+
+    console.log(
+      '[RAG] Top 10 by similarity:',
+      top10
+        .map(
+          (c, i) =>
+            `${i + 1}. ${c.title} (sim: ${c._similarity.toFixed(4)}, score: ${c.relevance_score}%)`
+        )
+        .join('\n')
+    );
 
     // Step 6: Sort by similarity and return top N
     const topMatches = scoredCourses
@@ -152,9 +166,11 @@ export const matchCoursesForRole = async (roleName, clusterTitle = '', courses =
       .slice(0, limit)
       .map(({ _similarity, ...course }) => course);
 
-    console.log('[RAG] Top matches for', roleName + ':', topMatches.map((c, i) => 
-      `${i+1}. ${c.title} (${c.relevance_score}%)`
-    ).join('\n'));
+    console.log(
+      '[RAG] Top matches for',
+      roleName + ':',
+      topMatches.map((c, i) => `${i + 1}. ${c.title} (${c.relevance_score}%)`).join('\n')
+    );
 
     return topMatches;
   } catch (error) {
@@ -167,7 +183,7 @@ export const matchCoursesForRole = async (roleName, clusterTitle = '', courses =
 /**
  * Pre-filter courses by domain relevance before RAG matching.
  * This ensures we only match against courses that are relevant to the role's domain.
- * 
+ *
  * @param {Array} courses - All available courses
  * @param {string} roleName - Job role name
  * @param {string} clusterTitle - Career cluster
@@ -184,29 +200,28 @@ function preFilterCoursesByDomain(courses, roleName, clusterTitle, domainKeyword
   const searchTerms = [
     ...roleName.toLowerCase().split(/\s+/),
     ...clusterTitle.toLowerCase().split(/\s+/),
-    ...domainKeywords.map(k => k.toLowerCase())
-  ].filter(term => term.length > 2);
+    ...domainKeywords.map((k) => k.toLowerCase()),
+  ].filter((term) => term.length > 2);
 
   // Filter courses that match domain keywords
-  const filtered = courses.filter(course => {
-    const courseText = `${course.title} ${course.description || ''} ${(course.skills || []).join(' ')} ${course.category || ''}`.toLowerCase();
-    
+  const filtered = courses.filter((course) => {
+    const courseText =
+      `${course.title} ${course.description || ''} ${(course.skills || []).join(' ')} ${course.category || ''}`.toLowerCase();
+
     // Check if course matches any domain keyword
-    const domainMatch = domainKeywords.some(keyword => 
+    const domainMatch = domainKeywords.some((keyword) =>
       courseText.includes(keyword.toLowerCase())
     );
 
     // Check if course matches role/cluster terms
-    const roleMatch = searchTerms.some(term => 
-      courseText.includes(term)
-    );
+    const roleMatch = searchTerms.some((term) => courseText.includes(term));
 
     return domainMatch || roleMatch;
   });
 
   console.log('[RAG] Pre-filter results:', {
-    matchedCourses: filtered.map(c => c.title).slice(0, 10),
-    totalMatched: filtered.length
+    matchedCourses: filtered.map((c) => c.title).slice(0, 10),
+    totalMatched: filtered.length,
   });
 
   return filtered;
@@ -215,7 +230,7 @@ function preFilterCoursesByDomain(courses, roleName, clusterTitle, domainKeyword
 /**
  * Build rich context text for role embedding.
  * This helps the embedding capture the semantic meaning of the role.
- * 
+ *
  * @param {string} roleName - Job role name
  * @param {string} clusterTitle - Career cluster
  * @returns {string} - Rich context text
@@ -243,7 +258,9 @@ function buildRoleContext(roleName, clusterTitle) {
   }
 
   // Add context about what we're looking for
-  parts.push(`Looking for courses that teach skills and knowledge required for ${roleName} position.`);
+  parts.push(
+    `Looking for courses that teach skills and knowledge required for ${roleName} position.`
+  );
   parts.push(`Courses should cover technical skills, tools, and competencies needed in this role.`);
   parts.push(`Training for ${roleName} career path.`);
 
@@ -253,7 +270,7 @@ function buildRoleContext(roleName, clusterTitle) {
 /**
  * Extract domain-specific keywords from role and cluster.
  * This helps emphasize the specific domain in the embedding.
- * 
+ *
  * @param {string} roleName - Job role name
  * @param {string} clusterTitle - Career cluster
  * @returns {string[]} - Array of domain keywords
@@ -264,17 +281,38 @@ function extractDomainKeywords(roleName, clusterTitle) {
 
   // Finance/Accounting domain
   if (text.includes('account') || text.includes('finance') || text.includes('audit')) {
-    keywords.push('accounting', 'finance', 'bookkeeping', 'financial analysis', 'taxation', 'auditing', 'Excel', 'Tally', 'GST');
+    keywords.push(
+      'accounting',
+      'finance',
+      'bookkeeping',
+      'financial analysis',
+      'taxation',
+      'auditing',
+      'Excel',
+      'Tally',
+      'GST'
+    );
   }
 
   // Technology domain
-  if (text.includes('software') || text.includes('developer') || text.includes('engineer') || text.includes('programmer')) {
+  if (
+    text.includes('software') ||
+    text.includes('developer') ||
+    text.includes('engineer') ||
+    text.includes('programmer')
+  ) {
     keywords.push('programming', 'coding', 'software development', 'algorithms', 'data structures');
   }
 
   // Business/Management domain
   if (text.includes('business') || text.includes('management') || text.includes('manager')) {
-    keywords.push('business management', 'leadership', 'strategy', 'operations', 'project management');
+    keywords.push(
+      'business management',
+      'leadership',
+      'strategy',
+      'operations',
+      'project management'
+    );
   }
 
   // Marketing domain
@@ -298,7 +336,7 @@ function extractDomainKeywords(roleName, clusterTitle) {
 /**
  * Fallback keyword-based matching when RAG fails.
  * Uses domain-aware text matching against role name and cluster.
- * 
+ *
  * @param {string} roleName - Job role name
  * @param {string} clusterTitle - Career cluster
  * @param {Array} courses - Array of courses
@@ -311,31 +349,32 @@ function fallbackKeywordMatching(roleName, clusterTitle, courses, limit) {
   // Extract keywords from role and cluster
   const basicKeywords = [
     ...roleName.toLowerCase().split(/\s+/),
-    ...clusterTitle.toLowerCase().split(/\s+/)
-  ].filter(word => word.length > 2); // Filter out short words
+    ...clusterTitle.toLowerCase().split(/\s+/),
+  ].filter((word) => word.length > 2); // Filter out short words
 
   // Add domain-specific keywords
   const domainKeywords = extractDomainKeywords(roleName, clusterTitle);
-  const allKeywords = [...basicKeywords, ...domainKeywords.map(k => k.toLowerCase())];
+  const allKeywords = [...basicKeywords, ...domainKeywords.map((k) => k.toLowerCase())];
 
   console.log('[RAG Fallback] Keywords:', allKeywords);
 
   // Score courses by keyword matches with domain emphasis
-  const scoredCourses = courses.map(course => {
-    const courseText = `${course.title} ${course.description || ''} ${(course.skills || []).join(' ')} ${course.category || ''}`.toLowerCase();
+  const scoredCourses = courses.map((course) => {
+    const courseText =
+      `${course.title} ${course.description || ''} ${(course.skills || []).join(' ')} ${course.category || ''}`.toLowerCase();
 
     let matchCount = 0;
     let domainMatchCount = 0;
 
     // Count basic keyword matches
-    basicKeywords.forEach(keyword => {
+    basicKeywords.forEach((keyword) => {
       if (courseText.includes(keyword)) {
         matchCount++;
       }
     });
 
     // Count domain keyword matches (weighted higher)
-    domainKeywords.forEach(keyword => {
+    domainKeywords.forEach((keyword) => {
       if (courseText.includes(keyword.toLowerCase())) {
         domainMatchCount++;
         matchCount += 2; // Domain keywords count double
@@ -353,15 +392,18 @@ function fallbackKeywordMatching(roleName, clusterTitle, courses, limit) {
       target_outcomes: course.target_outcomes || [],
       thumbnail: course.thumbnail,
       relevance_score: Math.min(100, Math.round((matchCount / (allKeywords.length * 1.5)) * 100)),
-      match_reason: domainMatchCount > 0 ? `Strong domain match for ${roleName}` : `Keyword match for ${roleName}`,
+      match_reason:
+        domainMatchCount > 0
+          ? `Strong domain match for ${roleName}`
+          : `Keyword match for ${roleName}`,
       _matchCount: matchCount,
-      _domainMatchCount: domainMatchCount
+      _domainMatchCount: domainMatchCount,
     };
   });
 
   // Return top matches, prioritizing domain matches
   const topMatches = scoredCourses
-    .filter(c => c._matchCount > 0)
+    .filter((c) => c._matchCount > 0)
     .sort((a, b) => {
       // First sort by domain matches
       if (b._domainMatchCount !== a._domainMatchCount) {
@@ -378,7 +420,7 @@ function fallbackKeywordMatching(roleName, clusterTitle, courses, limit) {
   // If still no matches, return top N courses by popularity/category
   if (topMatches.length === 0) {
     console.log('[RAG Fallback] No keyword matches, returning first', limit, 'courses');
-    return courses.slice(0, limit).map(course => ({
+    return courses.slice(0, limit).map((course) => ({
       course_id: course.course_id,
       title: course.title,
       code: course.code,
@@ -389,7 +431,7 @@ function fallbackKeywordMatching(roleName, clusterTitle, courses, limit) {
       target_outcomes: course.target_outcomes || [],
       thumbnail: course.thumbnail,
       relevance_score: 50,
-      match_reason: `Recommended course`
+      match_reason: `Recommended course`,
     }));
   }
 

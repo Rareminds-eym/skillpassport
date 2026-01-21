@@ -1,14 +1,15 @@
+// @ts-nocheck - Excluded from typecheck for gradual migration
 import {
-    BookmarkIcon,
-    CalendarIcon,
-    CheckIcon,
-    ChevronDownIcon,
-    EyeIcon,
-    FunnelIcon,
-    Squares2X2Icon,
-    StarIcon,
-    TableCellsIcon,
-    XMarkIcon
+  BookmarkIcon,
+  CalendarIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  EyeIcon,
+  FunnelIcon,
+  Squares2X2Icon,
+  StarIcon,
+  TableCellsIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
 import { useEffect, useMemo, useState } from 'react';
@@ -24,7 +25,7 @@ import { addCandidateToShortlist, getShortlists } from '../../services/shortlist
 
 const FilterSection = ({ title, children, defaultOpen = false }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
-  
+
   return (
     <div className="border-b border-gray-200 py-4">
       <button
@@ -51,15 +52,13 @@ const CheckboxGroup = ({ options, selectedValues, onChange }) => {
               if (e.target.checked) {
                 onChange([...selectedValues, option.value]);
               } else {
-                onChange(selectedValues.filter(v => v !== option.value));
+                onChange(selectedValues.filter((v) => v !== option.value));
               }
             }}
             className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
           />
           <span className="ml-2 text-sm text-gray-700">{option.label}</span>
-          {option.count && (
-            <span className="ml-auto text-xs text-gray-500">({option.count})</span>
-          )}
+          {option.count && <span className="ml-auto text-xs text-gray-500">({option.count})</span>}
         </label>
       ))}
     </div>
@@ -103,10 +102,7 @@ const AddToShortlistModal = ({ isOpen, onClose, candidate, onSuccess }) => {
     setError(null);
 
     try {
-      const { error } = await addCandidateToShortlist(
-        selectedShortlistId,
-        candidate.id
-      );
+      const { error } = await addCandidateToShortlist(selectedShortlistId, candidate.id);
 
       if (error) {
         throw new Error(error.message || 'Failed to add candidate to shortlist');
@@ -127,7 +123,10 @@ const AddToShortlistModal = ({ isOpen, onClose, candidate, onSuccess }) => {
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        <div
+          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          onClick={onClose}
+        ></div>
 
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-4">
@@ -150,9 +149,7 @@ const AddToShortlistModal = ({ isOpen, onClose, candidate, onSuccess }) => {
           )}
 
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Select Shortlist
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Select Shortlist</label>
             {loadingShortlists ? (
               <div className="text-sm text-gray-500">Loading shortlists...</div>
             ) : shortlists.length === 0 ? (
@@ -190,9 +187,25 @@ const AddToShortlistModal = ({ isOpen, onClose, candidate, onSuccess }) => {
             >
               {loading ? (
                 <>
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <svg
+                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
                   </svg>
                   Adding...
                 </>
@@ -223,7 +236,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
     type: 'Technical',
     meeting_type: 'meet',
     meeting_link: '',
-    meeting_notes: ''
+    meeting_notes: '',
   });
 
   const handleSchedule = async () => {
@@ -254,7 +267,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
         type: formData.type,
         meeting_type: formData.meeting_type,
         meeting_link: formData.meeting_link,
-        meeting_notes: formData.meeting_notes
+        meeting_notes: formData.meeting_notes,
       };
 
       const { error } = await createInterview(interviewData);
@@ -265,7 +278,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
 
       onSuccess?.();
       onClose();
-      
+
       // Reset form
       setFormData({
         job_title: '',
@@ -277,7 +290,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
         type: 'Technical',
         meeting_type: 'meet',
         meeting_link: '',
-        meeting_notes: ''
+        meeting_notes: '',
       });
     } catch (err) {
       console.error('Error scheduling interview:', err);
@@ -297,7 +310,10 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        <div
+          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          onClick={onClose}
+        ></div>
 
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-4">
@@ -325,7 +341,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
               <input
                 type="text"
                 value={formData.job_title}
-                onChange={(e) => setFormData({...formData, job_title: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="e.g., Software Engineer, Data Analyst"
               />
@@ -340,7 +356,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
                 <input
                   type="text"
                   value={formData.interviewer}
-                  onChange={(e) => setFormData({...formData, interviewer: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, interviewer: e.target.value })}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="John Smith"
                 />
@@ -352,7 +368,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
                 <input
                   type="email"
                   value={formData.interviewer_email}
-                  onChange={(e) => setFormData({...formData, interviewer_email: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, interviewer_email: e.target.value })}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="john@company.com"
                 />
@@ -368,7 +384,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
                 <input
                   type="date"
                   value={formData.date}
-                  onChange={(e) => setFormData({...formData, date: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                   min={minDate}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
@@ -380,7 +396,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
                 <input
                   type="time"
                   value={formData.time}
-                  onChange={(e) => setFormData({...formData, time: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, time: e.target.value })}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
               </div>
@@ -394,7 +410,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
                 </label>
                 <select
                   value={formData.duration}
-                  onChange={(e) => setFormData({...formData, duration: parseInt(e.target.value)})}
+                  onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) })}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value={30}>30 minutes</option>
@@ -410,7 +426,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
                 </label>
                 <select
                   value={formData.type}
-                  onChange={(e) => setFormData({...formData, type: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="Technical">Technical</option>
@@ -430,7 +446,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
                 </label>
                 <select
                   value={formData.meeting_type}
-                  onChange={(e) => setFormData({...formData, meeting_type: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, meeting_type: e.target.value })}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="meet">Google Meet</option>
@@ -441,13 +457,11 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
                 </select>
               </div>
               <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Meeting Link
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Meeting Link</label>
                 <input
                   type="url"
                   value={formData.meeting_link}
-                  onChange={(e) => setFormData({...formData, meeting_link: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, meeting_link: e.target.value })}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="https://meet.google.com/abc-defg-hij"
                 />
@@ -461,7 +475,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
               </label>
               <textarea
                 value={formData.meeting_notes}
-                onChange={(e) => setFormData({...formData, meeting_notes: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, meeting_notes: e.target.value })}
                 rows={3}
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Any additional notes or instructions for the interview..."
@@ -484,9 +498,25 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
             >
               {loading ? (
                 <>
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <svg
+                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
                   </svg>
                   Scheduling...
                 </>
@@ -516,10 +546,8 @@ const SaveSearchModal = ({ isOpen, onClose, searchQuery, filters, onSuccess }) =
       if (searchQuery) nameParts.push(searchQuery);
       if (filters.skills.length > 0) nameParts.push(filters.skills.slice(0, 2).join(', '));
       if (filters.locations.length > 0) nameParts.push(filters.locations[0]);
-      
-      const autoName = nameParts.length > 0 
-        ? nameParts.join(' - ').slice(0, 50)
-        : 'My Search';
+
+      const autoName = nameParts.length > 0 ? nameParts.join(' - ').slice(0, 50) : 'My Search';
       setSearchName(autoName);
       setError(null);
     }
@@ -532,14 +560,15 @@ const SaveSearchModal = ({ isOpen, onClose, searchQuery, filters, onSuccess }) =
     }
 
     // Check if there's anything to save
-    const hasFilters = filters.skills.length > 0 || 
-                       filters.courses.length > 0 || 
-                       filters.badges.length > 0 ||
-                       filters.locations.length > 0 || 
-                       filters.years.length > 0 ||
-                       filters.minScore !== 0 || 
-                       filters.maxScore !== 100;
-    
+    const hasFilters =
+      filters.skills.length > 0 ||
+      filters.courses.length > 0 ||
+      filters.badges.length > 0 ||
+      filters.locations.length > 0 ||
+      filters.years.length > 0 ||
+      filters.minScore !== 0 ||
+      filters.maxScore !== 100;
+
     if (!searchQuery && !hasFilters) {
       setError('Please add search terms or filters before saving');
       return;
@@ -551,7 +580,7 @@ const SaveSearchModal = ({ isOpen, onClose, searchQuery, filters, onSuccess }) =
     try {
       // Build search criteria object
       const searchCriteria: any = {};
-      
+
       if (searchQuery) searchCriteria.query = searchQuery;
       if (filters.skills.length > 0) searchCriteria.skills = filters.skills;
       if (filters.courses.length > 0) searchCriteria.courses = filters.courses;
@@ -586,13 +615,18 @@ const SaveSearchModal = ({ isOpen, onClose, searchQuery, filters, onSuccess }) =
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        <div
+          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          onClick={onClose}
+        ></div>
 
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-lg font-medium text-gray-900">Save Search</h3>
-              <p className="text-sm text-gray-500 mt-1">Save your current search and filters for quick access</p>
+              <p className="text-sm text-gray-500 mt-1">
+                Save your current search and filters for quick access
+              </p>
             </div>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
               <XMarkIcon className="h-6 w-6" />
@@ -609,9 +643,7 @@ const SaveSearchModal = ({ isOpen, onClose, searchQuery, filters, onSuccess }) =
           <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-md">
             <p className="text-xs font-medium text-gray-700 mb-2">What will be saved:</p>
             <div className="space-y-1">
-              {searchQuery && (
-                <p className="text-xs text-gray-600">• Search: "{searchQuery}"</p>
-              )}
+              {searchQuery && <p className="text-xs text-gray-600">• Search: "{searchQuery}"</p>}
               {filters.skills.length > 0 && (
                 <p className="text-xs text-gray-600">• Skills: {filters.skills.join(', ')}</p>
               )}
@@ -628,7 +660,9 @@ const SaveSearchModal = ({ isOpen, onClose, searchQuery, filters, onSuccess }) =
                 <p className="text-xs text-gray-600">• Years: {filters.years.join(', ')}</p>
               )}
               {(filters.minScore !== 0 || filters.maxScore !== 100) && (
-                <p className="text-xs text-gray-600">• Score Range: {filters.minScore}-{filters.maxScore}</p>
+                <p className="text-xs text-gray-600">
+                  • Score Range: {filters.minScore}-{filters.maxScore}
+                </p>
               )}
             </div>
           </div>
@@ -663,9 +697,25 @@ const SaveSearchModal = ({ isOpen, onClose, searchQuery, filters, onSuccess }) =
             >
               {loading ? (
                 <>
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <svg
+                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
                   </svg>
                   Saving...
                 </>
@@ -687,7 +737,10 @@ const BadgeComponent = ({ badges }) => {
   const badgeConfig = {
     self_verified: { color: 'bg-gray-100 text-gray-800', label: 'Self' },
     institution_verified: { color: 'bg-blue-100 text-blue-800', label: 'Institution' },
-    external_audited: { color: 'bg-yellow-100 text-yellow-800 border border-yellow-300', label: 'External' }
+    external_audited: {
+      color: 'bg-yellow-100 text-yellow-800 border border-yellow-300',
+      label: 'External',
+    },
   };
 
   return (
@@ -715,12 +768,16 @@ const CandidateCard = ({ candidate, onViewProfile, onShortlist, onScheduleInterv
         <div>
           <h3 className="font-medium text-gray-900">{candidate.name}</h3>
           <p className="text-sm text-gray-500">{candidate.dept}</p>
-          <p className="text-xs text-gray-400">{candidate.college} • {candidate.location}</p>
+          <p className="text-xs text-gray-400">
+            {candidate.college} • {candidate.location}
+          </p>
         </div>
         <div className="flex flex-col items-end">
           <div className="flex items-center mb-1">
             <StarIcon className="h-4 w-4 text-yellow-400 fill-current" />
-            <span className="text-sm font-medium text-gray-700 ml-1">{candidate.ai_score_overall}</span>
+            <span className="text-sm font-medium text-gray-700 ml-1">
+              {candidate.ai_score_overall}
+            </span>
           </div>
           <BadgeComponent badges={candidate.badges} />
         </div>
@@ -759,9 +816,7 @@ const CandidateCard = ({ candidate, onViewProfile, onShortlist, onScheduleInterv
           </p>
         )}
         {candidate.projects && candidate.projects.length > 0 && (
-          <p className="text-xs text-gray-600">
-            🔬 {candidate.projects[0].title}
-          </p>
+          <p className="text-xs text-gray-600">🔬 {candidate.projects[0].title}</p>
         )}
       </div>
 
@@ -778,14 +833,14 @@ const CandidateCard = ({ candidate, onViewProfile, onShortlist, onScheduleInterv
             <EyeIcon className="h-3 w-3 mr-1" />
             Preview
           </button>
-          <button 
+          <button
             onClick={() => onShortlist(candidate)}
             className="inline-flex items-center px-2 py-1 border border-primary-300 rounded text-xs font-medium text-primary-700 bg-primary-50 hover:bg-primary-100"
           >
             <BookmarkIcon className="h-3 w-3 mr-1" />
             Shortlist
           </button>
-          <button 
+          <button
             onClick={() => onScheduleInterview(candidate)}
             className="inline-flex items-center px-2 py-1 border border-green-300 rounded text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100"
           >
@@ -799,8 +854,8 @@ const CandidateCard = ({ candidate, onViewProfile, onShortlist, onScheduleInterv
 };
 
 type RecruiterOutletContext = {
-  onViewProfile: (candidate: any) => void
-}
+  onViewProfile: (candidate: any) => void;
+};
 
 // const TalentPool = () => {
 //   const { onViewProfile } = useOutletContext<RecruiterOutletContext>()
@@ -986,7 +1041,7 @@ type RecruiterOutletContext = {
 //         sortedResult.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 //         break;
 //       case 'last_updated':
-//         sortedResult.sort((a, b) => 
+//         sortedResult.sort((a, b) =>
 //           new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime()
 //         );
 //         break;
@@ -1191,7 +1246,7 @@ type RecruiterOutletContext = {
 //             <div className="p-4">
 //               <div className="flex items-center justify-between mb-4">
 //                 <h2 className="font-medium text-gray-900">Filters</h2>
-//                 <button 
+//                 <button
 //                   onClick={handleClearFilters}
 //                   className="text-sm text-primary-600 hover:text-primary-700"
 //                 >
@@ -1295,7 +1350,7 @@ type RecruiterOutletContext = {
 //                 Showing <span className="font-medium">{filteredAndSortedStudents.length}</span> result{filteredAndSortedStudents.length !== 1 ? 's' : ''}
 //                 {searchQuery && <span className="text-gray-500"> for "{searchQuery}"</span>}
 //               </p>
-//               <select 
+//               <select
 //                 value={sortBy}
 //                 onChange={(e) => setSortBy(e.target.value)}
 //                 className="text-sm border border-gray-300 rounded-md px-3 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -1326,8 +1381,8 @@ type RecruiterOutletContext = {
 //                 {!loading && filteredAndSortedStudents.length === 0 && !error && (
 //                   <div className="col-span-full text-center py-8">
 //                     <p className="text-sm text-gray-500">
-//                       {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 
-//                         ? 'No candidates match your current filters' 
+//                       {searchQuery || filters.skills.length > 0 || filters.locations.length > 0
+//                         ? 'No candidates match your current filters'
 //                         : 'No students found.'}
 //                     </p>
 //                     <p className="text-xs text-gray-400 mt-2">
@@ -1416,13 +1471,13 @@ type RecruiterOutletContext = {
 //                             >
 //                               View
 //                             </button>
-//                             <button 
+//                             <button
 //                               onClick={() => handleShortlistClick(candidate)}
 //                               className="text-primary-600 hover:text-primary-900"
 //                             >
 //                               Shortlist
 //                             </button>
-//                             <button 
+//                             <button
 //                               onClick={() => handleScheduleInterviewClick(candidate)}
 //                               className="text-green-600 hover:text-green-900"
 //                             >
@@ -1473,7 +1528,6 @@ type RecruiterOutletContext = {
 //     </div>
 //   );
 // };
-
 
 // const TalentPool = () => {
 //   const { onViewProfile } = useOutletContext<RecruiterOutletContext>()
@@ -1608,12 +1662,11 @@ type RecruiterOutletContext = {
 //     // Apply comprehensive search query filter
 //     if (searchQuery && searchQuery.trim() !== '') {
 //       const query = searchQuery.toLowerCase().trim();
-      
-      
+
 //       result = result.filter(student => {
 //         // Access the profile data - handles both nested and direct structures
 //         const profile = (student as any).profile || student;
-        
+
 //         // Helper function to safely check string fields
 //         const matchesField = (field: any): boolean => {
 //           if (!field) return false;
@@ -1644,7 +1697,7 @@ type RecruiterOutletContext = {
 //         if (matchesField(student.location) || matchesField(profile.location)) return true;
 //         if (matchesField(profile.university)) return true;
 //         if (matchesField(profile.registration_number)) return true;
-        
+
 //         // Skills array - handle both formats (string array and object array)
 //         const skillsToCheck = student.skills || profile.skills;
 //         if (skillsToCheck && Array.isArray(skillsToCheck)) {
@@ -1660,38 +1713,38 @@ type RecruiterOutletContext = {
 //             return true;
 //           }
 //         }
-        
+
 //         // Projects - search in title, tech, techStack, technologies, description
 //         if (searchInArray(profile.projects, ['title', 'tech', 'techStack', 'technologies', 'description', 'skills', 'status'])) {
 //           return true;
 //         }
-        
+
 //         // Education - check all relevant fields
 //         if (searchInArray(profile.education, ['yearOfPassing', 'university', 'degree', 'department', 'college_school_name', 'level', 'cgpa', 'status'])) {
 //           return true;
 //         }
-        
+
 //         // Experience - comprehensive check including verified status
 //         if (profile.experience && Array.isArray(profile.experience)) {
 //           const expMatch = profile.experience.some((exp: any) => {
 //             if (!exp) return false;
-            
+
 //             // Check text fields
 //             if (matchesField(exp.duration)) return true;
 //             if (matchesField(exp.role)) return true;
 //             if (matchesField(exp.organization)) return true;
-            
+
 //             // Handle verified status search
 //             if (exp.verified === true && (query.includes('verified') || query === 'true')) return true;
 //             if (exp.verified === false && (query.includes('unverified') || query.includes('not verified') || query === 'false')) return true;
-            
+
 //             return false;
 //           });
 //           if (expMatch) {
 //             return true;
 //           }
 //         }
-        
+
 //         // Soft Skills - name, description, type
 //         if (profile.softSkills && Array.isArray(profile.softSkills)) {
 //           const softSkillMatch = profile.softSkills.some((skill: any) => {
@@ -1706,12 +1759,12 @@ type RecruiterOutletContext = {
 //             return true;
 //           }
 //         }
-        
+
 //         // Certificates - comprehensive search
 //         if (profile.certificates && Array.isArray(profile.certificates)) {
 //           const certMatch = profile.certificates.some((cert: any) => {
 //             if (!cert) return false;
-            
+
 //             // Check all certificate fields
 //             if (matchesField(cert.level)) return true;
 //             if (matchesField(cert.title)) return true;
@@ -1720,15 +1773,15 @@ type RecruiterOutletContext = {
 //             if (matchesField(cert.description)) return true;
 //             if (matchesField(cert.credentialId)) return true;
 //             if (matchesField(cert.status)) return true;
-            
+
 //             return false;
 //           });
-          
+
 //           if (certMatch) {
 //             return true;
 //           }
 //         }
-        
+
 //         // Technical Skills - name, level, category
 //         if (profile.technicalSkills && Array.isArray(profile.technicalSkills)) {
 //           const techMatch = profile.technicalSkills.some((skill: any) => {
@@ -1740,12 +1793,12 @@ type RecruiterOutletContext = {
 //             if (skill.verified === true && query.includes('verified')) return true;
 //             return false;
 //           });
-          
+
 //           if (techMatch) {
 //             return true;
 //           }
 //         }
-        
+
 //         // Training - if exists
 //         if (profile.training && Array.isArray(profile.training)) {
 //           const trainingMatch = profile.training.some((training: any) => {
@@ -1760,10 +1813,10 @@ type RecruiterOutletContext = {
 //             return true;
 //           }
 //         }
-        
+
 //         return false;
 //       });
-      
+
 //       if (result.length > 0) {
 //       }
 //     }
@@ -1830,7 +1883,7 @@ type RecruiterOutletContext = {
 //         sortedResult.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 //         break;
 //       case 'last_updated':
-//         sortedResult.sort((a, b) => 
+//         sortedResult.sort((a, b) =>
 //           new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime()
 //         );
 //         break;
@@ -2026,7 +2079,7 @@ type RecruiterOutletContext = {
 //             <div className="p-4">
 //               <div className="flex items-center justify-between mb-4">
 //                 <h2 className="font-medium text-gray-900">Filters</h2>
-//                 <button 
+//                 <button
 //                   onClick={handleClearFilters}
 //                   className="text-sm text-primary-600 hover:text-primary-700"
 //                 >
@@ -2130,7 +2183,7 @@ type RecruiterOutletContext = {
 //                 Showing <span className="font-medium">{filteredAndSortedStudents.length}</span> result{filteredAndSortedStudents.length !== 1 ? 's' : ''}
 //                 {searchQuery && <span className="text-gray-500"> for "{searchQuery}"</span>}
 //               </p>
-//               <select 
+//               <select
 //                 value={sortBy}
 //                 onChange={(e) => setSortBy(e.target.value)}
 //                 className="text-sm border border-gray-300 rounded-md px-3 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -2161,8 +2214,8 @@ type RecruiterOutletContext = {
 //                 {!loading && filteredAndSortedStudents.length === 0 && !error && (
 //                   <div className="col-span-full text-center py-8">
 //                     <p className="text-sm text-gray-500">
-//                       {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 
-//                         ? 'No candidates match your current filters' 
+//                       {searchQuery || filters.skills.length > 0 || filters.locations.length > 0
+//                         ? 'No candidates match your current filters'
 //                         : 'No students found.'}
 //                     </p>
 //                     <p className="text-xs text-gray-400 mt-2">
@@ -2251,13 +2304,13 @@ type RecruiterOutletContext = {
 //                             >
 //                               View
 //                             </button>
-//                             <button 
+//                             <button
 //                               onClick={() => handleShortlistClick(candidate)}
 //                               className="text-primary-600 hover:text-primary-900"
 //                             >
 //                               Shortlist
 //                             </button>
-//                             <button 
+//                             <button
 //                               onClick={() => handleScheduleInterviewClick(candidate)}
 //                               className="text-green-600 hover:text-green-900"
 //                             >
@@ -2308,8 +2361,6 @@ type RecruiterOutletContext = {
 //     </div>
 //   );
 // };
-
-
 
 // const TalentPool = () => {
 //   const { onViewProfile } = useOutletContext<RecruiterOutletContext>()
@@ -2444,15 +2495,14 @@ type RecruiterOutletContext = {
 //     // Apply comprehensive search query filter with lexicographical sorting
 //     if (searchQuery && searchQuery.trim() !== '') {
 //       const query = searchQuery.toLowerCase().trim();
-      
-      
+
 //       // Store match results with the matched field for sorting
 //       const resultsWithScores = students.map(student => {
 //         // Access the profile data - handles both nested and direct structures
 //         const profile = (student as any).profile || student;
 //         let matchedField = '';
 //         let isMatch = false;
-        
+
 //         // Helper function to safely check string fields and track matches
 //         const matchesField = (field: any, fieldName: string = ''): boolean => {
 //           if (!field) return false;
@@ -2494,7 +2544,7 @@ type RecruiterOutletContext = {
 //         if (matchesField(student.location, 'location') || matchesField(profile.location, 'location')) return { student, matchedField };
 //         if (matchesField(profile.university, 'university')) return { student, matchedField };
 //         if (matchesField(profile.registration_number, 'registration')) return { student, matchedField };
-        
+
 //         // Skills array - handle both formats (string array and object array)
 //         const skillsToCheck = student.skills || profile.skills;
 //         if (skillsToCheck && Array.isArray(skillsToCheck)) {
@@ -2518,28 +2568,28 @@ type RecruiterOutletContext = {
 //             return { student, matchedField };
 //           }
 //         }
-        
+
 //         // Projects - search in title, tech, techStack, technologies, description
 //         if (searchInArray(profile.projects, ['title', 'id', 'link', 'tech', 'techStack', 'technologies', 'organization', 'description', 'skills', 'status','enabled','processing','duration','github'], 'projects')) {
 //           return { student, matchedField };
 //         }
-        
+
 //         // Education - check all relevant fields
 //         if (searchInArray(profile.education, ['yearOfPassing', 'university', 'degree', 'department', 'college_school_name', 'level', 'cgpa', 'status'], 'education')) {
 //           return { student, matchedField };
 //         }
-        
+
 //         // Experience - comprehensive check including verified status
 //         if (profile.experience && Array.isArray(profile.experience)) {
 //           const expMatch = profile.experience.some((exp: any) => {
 //             if (!exp) return false;
-            
+
 //             // Check text fields
 //             if (matchesField(exp.duration, 'experience')) return true;
 //             if (matchesField(exp.role, 'experience')) return true;
 //             if (matchesField(exp.duration, 'experience')) return true;
 //             if (matchesField(exp.organization, 'experience')) return true;
-            
+
 //             // Handle verified status search
 //             if (exp.verified === true && (query.includes('verified') || query === 'true')) {
 //               if (!isMatch) matchedField = 'verified experience';
@@ -2567,7 +2617,7 @@ type RecruiterOutletContext = {
 //             return { student, matchedField };
 //           }
 //         }
-        
+
 //         // Soft Skills - name, description, type
 //         if (profile.softSkills && Array.isArray(profile.softSkills)) {
 //           const softSkillMatch = profile.softSkills.some((skill: any) => {
@@ -2583,12 +2633,12 @@ type RecruiterOutletContext = {
 //             return { student, matchedField };
 //           }
 //         }
-        
+
 //         // Certificates - comprehensive search
 //         if (profile.certificates && Array.isArray(profile.certificates)) {
 //           const certMatch = profile.certificates.some((cert: any) => {
 //             if (!cert) return false;
-            
+
 //             // Check all certificate fields
 //             if (matchesField(cert.id, 'certificate')) return true;
 //             if (matchesField(cert.link, 'certificate')) return true;
@@ -2611,7 +2661,7 @@ type RecruiterOutletContext = {
 //               isMatch = true;
 //               return true;
 //             }
-            
+
 //             // Handle processing status search
 //             if (cert.processing === true && (query.includes('processing') || query.includes('pending'))) {
 //               if (!isMatch) matchedField = 'processing certificate';
@@ -2623,15 +2673,15 @@ type RecruiterOutletContext = {
 //               isMatch = true;
 //               return true;
 //             }
-            
+
 //             return false;
 //           });
-          
+
 //           if (certMatch) {
 //             return { student, matchedField };
 //           }
 //         }
-        
+
 //         // Technical Skills - name, level, category
 //         if (profile.technicalSkills && Array.isArray(profile.technicalSkills)) {
 //           const techMatch = profile.technicalSkills.some((skill: any) => {
@@ -2647,12 +2697,12 @@ type RecruiterOutletContext = {
 //             }
 //             return false;
 //           });
-          
+
 //           if (techMatch) {
 //             return { student, matchedField };
 //           }
 //         }
-        
+
 //         // Training - if exists
 //         if (profile.training && Array.isArray(profile.training)) {
 //           const trainingMatch = profile.training.some((training: any) => {
@@ -2667,17 +2717,17 @@ type RecruiterOutletContext = {
 //             return { student, matchedField };
 //           }
 //         }
-        
+
 //         return null;
 //       }).filter(item => item !== null);
-      
+
 //       // Sort results lexicographically by matched field
 //       resultsWithScores.sort((a, b) => {
 //         return a.matchedField.localeCompare(b.matchedField);
 //       });
-      
+
 //       result = resultsWithScores.map(item => item.student);
-      
+
 //       if (result.length > 0) {
 //       }
 //     }
@@ -2745,7 +2795,7 @@ type RecruiterOutletContext = {
 //           sortedResult.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 //           break;
 //         case 'last_updated':
-//           sortedResult.sort((a, b) => 
+//           sortedResult.sort((a, b) =>
 //             new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime()
 //           );
 //           break;
@@ -2943,7 +2993,7 @@ type RecruiterOutletContext = {
 //             <div className="p-4">
 //               <div className="flex items-center justify-between mb-4">
 //                 <h2 className="font-medium text-gray-900">Filters</h2>
-//                 <button 
+//                 <button
 //                   onClick={handleClearFilters}
 //                   className="text-sm text-primary-600 hover:text-primary-700"
 //                 >
@@ -3034,7 +3084,7 @@ type RecruiterOutletContext = {
 //                 Showing <span className="font-medium">{filteredAndSortedStudents.length}</span> result{filteredAndSortedStudents.length !== 1 ? 's' : ''}
 //                 {searchQuery && <span className="text-gray-500"> for "{searchQuery}"</span>}
 //               </p>
-//               <select 
+//               <select
 //                 value={sortBy}
 //                 onChange={(e) => setSortBy(e.target.value)}
 //                 className="text-sm border border-gray-300 rounded-md px-3 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -3065,8 +3115,8 @@ type RecruiterOutletContext = {
 //                 {!loading && filteredAndSortedStudents.length === 0 && !error && (
 //                   <div className="col-span-full text-center py-8">
 //                     <p className="text-sm text-gray-500">
-//                       {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 
-//                         ? 'No candidates match your current filters' 
+//                       {searchQuery || filters.skills.length > 0 || filters.locations.length > 0
+//                         ? 'No candidates match your current filters'
 //                         : 'No students found.'}
 //                     </p>
 //                     <p className="text-xs text-gray-400 mt-2">
@@ -3155,13 +3205,13 @@ type RecruiterOutletContext = {
 //                             >
 //                               View
 //                             </button>
-//                             <button 
+//                             <button
 //                               onClick={() => handleShortlistClick(candidate)}
 //                               className="text-primary-600 hover:text-primary-900"
 //                             >
 //                               Shortlist
 //                             </button>
-//                             <button 
+//                             <button
 //                               onClick={() => handleScheduleInterviewClick(candidate)}
 //                               className="text-green-600 hover:text-green-900"
 //                             >
@@ -3215,14 +3265,13 @@ type RecruiterOutletContext = {
 
 // export default TalentPool;
 
-
 /**
  * TalentPool - Access to verified talent pool
- * 
+ *
  * Wrapped with FeatureGate for talent_pool_access add-on access control
  */
 const TalentPoolContent = () => {
-  const { onViewProfile } = useOutletContext<RecruiterOutletContext>()
+  const { onViewProfile } = useOutletContext<RecruiterOutletContext>();
   const { searchQuery, setSearchQuery } = useSearch();
   const [viewMode, setViewMode] = useState('grid');
   const [showFilters, setShowFilters] = useState(false);
@@ -3239,7 +3288,7 @@ const TalentPoolContent = () => {
     locations: [],
     years: [],
     minScore: 0,
-    maxScore: 100
+    maxScore: 100,
   });
 
   const itemsPerPage = 10;
@@ -3254,9 +3303,9 @@ const TalentPoolContent = () => {
   // Dynamically generate filter options from actual data
   const skillOptions = useMemo(() => {
     const skillCounts = {};
-    students.forEach(student => {
+    students.forEach((student) => {
       if (student.skills && Array.isArray(student.skills)) {
-        student.skills.forEach(skill => {
+        student.skills.forEach((skill) => {
           const skillName = typeof skill === 'string' ? skill : skill?.name;
           if (skillName) {
             const normalizedSkill = skillName.toLowerCase();
@@ -3269,15 +3318,16 @@ const TalentPoolContent = () => {
       .map(([skill, count]) => ({
         value: skill,
         label: skill.charAt(0).toUpperCase() + skill.slice(1),
-        count
+        count,
       }))
+      // @ts-expect-error - Auto-suppressed for migration
       .sort((a, b) => b.count - a.count)
       .slice(0, 20);
   }, [students]);
 
   const courseOptions = useMemo(() => {
     const courseCounts = {};
-    students.forEach(student => {
+    students.forEach((student) => {
       const dept = student.dept || student.course_name || student.branch_field;
       if (dept) {
         const normalizedCourse = dept.toLowerCase();
@@ -3288,16 +3338,17 @@ const TalentPoolContent = () => {
       .map(([course, count]) => ({
         value: course,
         label: course,
-        count
+        count,
       }))
+      // @ts-expect-error - Auto-suppressed for migration
       .sort((a, b) => b.count - a.count);
   }, [students]);
 
   const badgeOptions = useMemo(() => {
     const badgeCounts = {};
-    students.forEach(student => {
+    students.forEach((student) => {
       if (student.badges && Array.isArray(student.badges)) {
-        student.badges.forEach(badge => {
+        student.badges.forEach((badge) => {
           badgeCounts[badge] = (badgeCounts[badge] || 0) + 1;
         });
       }
@@ -3305,15 +3356,19 @@ const TalentPoolContent = () => {
     return Object.entries(badgeCounts)
       .map(([badge, count]) => ({
         value: badge,
-        label: badge.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
-        count
+        label: badge
+          .split('_')
+          .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+          .join(' '),
+        count,
       }))
+      // @ts-expect-error - Auto-suppressed for migration
       .sort((a, b) => b.count - a.count);
   }, [students]);
 
   const locationOptions = useMemo(() => {
     const locationCounts = {};
-    students.forEach(student => {
+    students.forEach((student) => {
       const location = student.location || student.district_name;
       if (location) {
         const normalizedLocation = location.toLowerCase();
@@ -3324,15 +3379,18 @@ const TalentPoolContent = () => {
       .map(([location, count]) => ({
         value: location,
         label: location.charAt(0).toUpperCase() + location.slice(1),
-        count
+        count,
       }))
+      // @ts-expect-error - Auto-suppressed for migration
       .sort((a, b) => b.count - a.count);
   }, [students]);
 
   const yearOptions = useMemo(() => {
     const yearCounts = {};
-    students.forEach(student => {
+    students.forEach((student) => {
+      // @ts-expect-error - Auto-suppressed for migration
       if (student.year) {
+        // @ts-expect-error - Auto-suppressed for migration
         yearCounts[student.year] = (yearCounts[student.year] || 0) + 1;
       }
     });
@@ -3340,8 +3398,9 @@ const TalentPoolContent = () => {
       .map(([year, count]) => ({
         value: year,
         label: year,
-        count
+        count,
       }))
+      // @ts-expect-error - Auto-suppressed for migration
       .sort((a, b) => b.count - a.count);
   }, [students]);
 
@@ -3352,248 +3411,270 @@ const TalentPoolContent = () => {
     // Apply comprehensive search query filter with lexicographical sorting
     if (searchQuery && searchQuery.trim() !== '') {
       const query = searchQuery.toLowerCase().trim();
-      
-      
-      // Store match results with the matched field for sorting
-      const resultsWithScores = students.map(student => {
-        let matchedField = '';
-        let isMatch = false;
-        
-        // Helper function to safely check string fields and track matches
-        const matchesField = (field: any, fieldName: string = ''): boolean => {
-          if (!field) return false;
-          const fieldStr = field.toString().toLowerCase();
-          if (fieldStr.includes(query)) {
-            if (!isMatch) matchedField = fieldName || fieldStr;
-            isMatch = true;
-            return true;
-          }
-          return false;
-        };
 
-        // Helper function to search in arrays
-        const searchInArray = (arr: any[], fields: string[], arrayName: string = ''): boolean => {
-          if (!arr || !Array.isArray(arr)) return false;
-          return arr.some((item: any) => {
-            if (!item) return false;
-            return fields.some(field => {
-              const value = item[field];
-              if (value && value.toString().toLowerCase().includes(query)) {
-                if (!isMatch) matchedField = arrayName || field;
+      // Store match results with the matched field for sorting
+      const resultsWithScores = students
+        .map((student) => {
+          let matchedField = '';
+          let isMatch = false;
+
+          // Helper function to safely check string fields and track matches
+          const matchesField = (field: any, fieldName: string = ''): boolean => {
+            if (!field) return false;
+            const fieldStr = field.toString().toLowerCase();
+            if (fieldStr.includes(query)) {
+              if (!isMatch) matchedField = fieldName || fieldStr;
+              isMatch = true;
+              return true;
+            }
+            return false;
+          };
+
+          // Helper function to search in arrays
+          const searchInArray = (arr: any[], fields: string[], arrayName: string = ''): boolean => {
+            if (!arr || !Array.isArray(arr)) return false;
+            return arr.some((item: any) => {
+              if (!item) return false;
+              return fields.some((field) => {
+                const value = item[field];
+                if (value && value.toString().toLowerCase().includes(query)) {
+                  if (!isMatch) matchedField = arrayName || field;
+                  isMatch = true;
+                  return true;
+                }
+                return false;
+              });
+            });
+          };
+
+          // Basic fields - use direct student properties
+          if (matchesField(student.name, 'name'))
+            return { student, matchedField: matchedField || student.name?.toLowerCase() || '' };
+          if (matchesField(student.email, 'email'))
+            return { student, matchedField: matchedField || student.email?.toLowerCase() || '' };
+          if (matchesField(student.nm_id, 'nm_id'))
+            return { student, matchedField: matchedField || 'nm_id' };
+          if (matchesField(student.contact_number?.toString(), 'contact'))
+            return { student, matchedField: matchedField || 'contact' };
+          if (matchesField(student.alternate_number?.toString(), 'alternate contact'))
+            return { student, matchedField: matchedField || 'alternate contact' };
+          if (matchesField(student.contact_dial_code?.toString(), 'dial code'))
+            return { student, matchedField: matchedField || 'dial code' };
+          if (matchesField(student.date_of_birth, 'date of birth'))
+            return { student, matchedField: matchedField || 'date of birth' };
+          if (matchesField(student.imported_at, 'imported date'))
+            return { student, matchedField: matchedField || 'imported date' };
+          if (matchesField(student.updated_at, 'updated at'))
+            return { student, matchedField: matchedField || 'updated at' };
+          if (matchesField(student.age?.toString(), 'age')) return { student, matchedField };
+          if (matchesField(student.course_name, 'course')) return { student, matchedField };
+          if (matchesField(student.university, 'university')) return { student, matchedField };
+          if (matchesField(student.branch_field, 'branch')) return { student, matchedField };
+          if (matchesField(student.trainer_name, 'trainer')) return { student, matchedField };
+          if (matchesField(student.district_name, 'district')) return { student, matchedField };
+          if (matchesField(student.college, 'college')) return { student, matchedField };
+          if (matchesField(student.registration_number?.toString(), 'registration'))
+            return { student, matchedField };
+          if (matchesField(student.bio, 'bio')) return { student, matchedField };
+
+          // Social media and portfolio links
+          if (matchesField(student.github_link, 'github'))
+            return { student, matchedField: matchedField || 'github' };
+          if (matchesField(student.linkedin_link, 'linkedin'))
+            return { student, matchedField: matchedField || 'linkedin' };
+          if (matchesField(student.twitter_link, 'twitter'))
+            return { student, matchedField: matchedField || 'twitter' };
+          if (matchesField(student.facebook_link, 'facebook'))
+            return { student, matchedField: matchedField || 'facebook' };
+          if (matchesField(student.instagram_link, 'instagram'))
+            return { student, matchedField: matchedField || 'instagram' };
+          if (matchesField(student.portfolio_link, 'portfolio'))
+            return { student, matchedField: matchedField || 'portfolio' };
+
+          // Other social links array
+          if (student.other_social_links && Array.isArray(student.other_social_links)) {
+            const socialMatch = student.other_social_links.some((link: any) => {
+              if (typeof link === 'string' && link.toLowerCase().includes(query)) {
+                if (!isMatch) matchedField = 'social link';
                 isMatch = true;
                 return true;
               }
               return false;
             });
-          });
-        };
+            if (socialMatch) return { student, matchedField };
+          }
 
-        // Basic fields - use direct student properties
-        if (matchesField(student.name, 'name')) return { student, matchedField: matchedField || student.name?.toLowerCase() || '' };
-        if (matchesField(student.email, 'email')) return { student, matchedField: matchedField || student.email?.toLowerCase() || '' };
-        if (matchesField(student.nm_id, 'nm_id')) return { student, matchedField: matchedField || 'nm_id' };
-        if (matchesField(student.contact_number?.toString(), 'contact')) return { student, matchedField: matchedField || 'contact' };
-        if (matchesField(student.alternate_number?.toString(), 'alternate contact')) return { student, matchedField: matchedField || 'alternate contact' };
-        if (matchesField(student.contact_dial_code?.toString(), 'dial code')) return { student, matchedField: matchedField || 'dial code' };
-        if (matchesField(student.date_of_birth, 'date of birth')) return { student, matchedField: matchedField || 'date of birth' };
-        if (matchesField(student.imported_at, 'imported date')) return { student, matchedField: matchedField || 'imported date' };
-        if (matchesField(student.updated_at, 'updated at')) return { student, matchedField: matchedField || 'updated at' };
-        if (matchesField(student.age?.toString(), 'age')) return { student, matchedField };
-        if (matchesField(student.course_name, 'course')) return { student, matchedField };
-        if (matchesField(student.university, 'university')) return { student, matchedField };
-        if (matchesField(student.branch_field, 'branch')) return { student, matchedField };
-        if (matchesField(student.trainer_name, 'trainer')) return { student, matchedField };
-        if (matchesField(student.district_name, 'district')) return { student, matchedField };
-        if (matchesField(student.college, 'college')) return { student, matchedField };
-        if (matchesField(student.registration_number?.toString(), 'registration')) return { student, matchedField };
-        if (matchesField(student.bio, 'bio')) return { student, matchedField };
-        
-        // Social media and portfolio links
-        if (matchesField(student.github_link, 'github')) return { student, matchedField: matchedField || 'github' };
-        if (matchesField(student.linkedin_link, 'linkedin')) return { student, matchedField: matchedField || 'linkedin' };
-        if (matchesField(student.twitter_link, 'twitter')) return { student, matchedField: matchedField || 'twitter' };
-        if (matchesField(student.facebook_link, 'facebook')) return { student, matchedField: matchedField || 'facebook' };
-        if (matchesField(student.instagram_link, 'instagram')) return { student, matchedField: matchedField || 'instagram' };
-        if (matchesField(student.portfolio_link, 'portfolio')) return { student, matchedField: matchedField || 'portfolio' };
-        
-        // Other social links array
-        if (student.other_social_links && Array.isArray(student.other_social_links)) {
-          const socialMatch = student.other_social_links.some((link: any) => {
-            if (typeof link === 'string' && link.toLowerCase().includes(query)) {
-              if (!isMatch) matchedField = 'social link';
-              isMatch = true;
-              return true;
+          if (matchesField(student.dept, 'dept')) return { student, matchedField };
+          if (matchesField(student.location, 'location')) return { student, matchedField };
+
+          // Skills array - from skills table
+          if (student.skills && Array.isArray(student.skills)) {
+            const skillMatch = student.skills.some((skill: any) => {
+              if (typeof skill === 'string') {
+                if (skill.toLowerCase().includes(query)) {
+                  if (!isMatch) matchedField = skill.toLowerCase();
+                  isMatch = true;
+                  return true;
+                }
+              } else if (skill && skill.name) {
+                if (skill.name.toLowerCase().includes(query)) {
+                  if (!isMatch) matchedField = skill.name.toLowerCase();
+                  isMatch = true;
+                  return true;
+                }
+              }
+              return false;
+            });
+            if (skillMatch) {
+              return { student, matchedField };
             }
-            return false;
-          });
-          if (socialMatch) return { student, matchedField };
-        }
-        
-        if (matchesField(student.dept, 'dept')) return { student, matchedField };
-        if (matchesField(student.location, 'location')) return { student, matchedField };
-        
-        // Skills array - from skills table
-        if (student.skills && Array.isArray(student.skills)) {
-          const skillMatch = student.skills.some((skill: any) => {
-            if (typeof skill === 'string') {
-              if (skill.toLowerCase().includes(query)) {
-                if (!isMatch) matchedField = skill.toLowerCase();
+          }
+
+          // Projects - from projects table
+          if (student.projects && Array.isArray(student.projects)) {
+            const projectMatch = student.projects.some((project: any) => {
+              if (!project) return false;
+
+              if (matchesField(project.id, 'project')) return true;
+              if (matchesField(project.title, 'project')) return true;
+              if (matchesField(project.tech_stack, 'project')) return true;
+              if (matchesField(project.description, 'project')) return true;
+              if (matchesField(project.status, 'project')) return true;
+              if (matchesField(project.demo_link, 'project')) return true;
+              if (matchesField(project.github_link, 'project')) return true;
+              if (matchesField(project.duration, 'project')) return true;
+              if (matchesField(project.start_date, 'project')) return true;
+              if (matchesField(project.end_date, 'project')) return true;
+              if (matchesField(project.organization, 'project')) return true;
+
+              // Handle enabled status
+              if (project.enabled === true && query.includes('enabled')) {
+                if (!isMatch) matchedField = 'enabled project';
                 isMatch = true;
                 return true;
               }
-            } else if (skill && skill.name) {
-              if (skill.name.toLowerCase().includes(query)) {
-                if (!isMatch) matchedField = skill.name.toLowerCase();
+              if (project.enabled === false && query.includes('disabled')) {
+                if (!isMatch) matchedField = 'disabled project';
                 isMatch = true;
                 return true;
               }
+
+              return false;
+            });
+            if (projectMatch) {
+              return { student, matchedField };
             }
-            return false;
-          });
-          if (skillMatch) {
-            return { student, matchedField };
           }
-        }
-        
-        // Projects - from projects table
-        if (student.projects && Array.isArray(student.projects)) {
-          const projectMatch = student.projects.some((project: any) => {
-            if (!project) return false;
-            
-            if (matchesField(project.id, 'project')) return true;
-            if (matchesField(project.title, 'project')) return true;
-            if (matchesField(project.tech_stack, 'project')) return true;
-            if (matchesField(project.description, 'project')) return true;
-            if (matchesField(project.status, 'project')) return true;
-            if (matchesField(project.demo_link, 'project')) return true;
-            if (matchesField(project.github_link, 'project')) return true;
-            if (matchesField(project.duration, 'project')) return true;
-            if (matchesField(project.start_date, 'project')) return true;
-            if (matchesField(project.end_date, 'project')) return true;
-            if (matchesField(project.organization, 'project')) return true;
-            
-            // Handle enabled status
-            if (project.enabled === true && query.includes('enabled')) {
-              if (!isMatch) matchedField = 'enabled project';
-              isMatch = true;
-              return true;
+
+          // Experience - from experience table
+          if (student.experience && Array.isArray(student.experience)) {
+            const expMatch = student.experience.some((exp: any) => {
+              if (!exp) return false;
+
+              // Check all text fields
+              if (matchesField(exp.id, 'experience')) return true;
+              if (matchesField(exp.role, 'experience')) return true;
+              if (matchesField(exp.duration, 'experience')) return true;
+              if (matchesField(exp.organization, 'experience')) return true;
+              if (matchesField(exp.start_date, 'experience')) return true;
+              if (matchesField(exp.end_date, 'experience')) return true;
+
+              // Handle verified status search
+              if (exp.verified === true && (query.includes('verified') || query === 'true')) {
+                if (!isMatch) matchedField = 'verified experience';
+                isMatch = true;
+                return true;
+              }
+              if (
+                exp.verified === false &&
+                (query.includes('unverified') ||
+                  query.includes('not verified') ||
+                  query === 'false')
+              ) {
+                if (!isMatch) matchedField = 'unverified experience';
+                isMatch = true;
+                return true;
+              }
+
+              return false;
+            });
+            if (expMatch) {
+              return { student, matchedField };
             }
-            if (project.enabled === false && query.includes('disabled')) {
-              if (!isMatch) matchedField = 'disabled project';
-              isMatch = true;
-              return true;
-            }
-            
-            return false;
-          });
-          if (projectMatch) {
-            return { student, matchedField };
           }
-        }
-        
-        // Experience - from experience table
-        if (student.experience && Array.isArray(student.experience)) {
-          const expMatch = student.experience.some((exp: any) => {
-            if (!exp) return false;
-            
-            // Check all text fields
-            if (matchesField(exp.id, 'experience')) return true;
-            if (matchesField(exp.role, 'experience')) return true;
-            if (matchesField(exp.duration, 'experience')) return true;
-            if (matchesField(exp.organization, 'experience')) return true;
-            if (matchesField(exp.start_date, 'experience')) return true;
-            if (matchesField(exp.end_date, 'experience')) return true;
-            
-            // Handle verified status search
-            if (exp.verified === true && (query.includes('verified') || query === 'true')) {
-              if (!isMatch) matchedField = 'verified experience';
-              isMatch = true;
-              return true;
+
+          // Certificates - from certificates table
+          if (student.certificates && Array.isArray(student.certificates)) {
+            const certMatch = student.certificates.some((cert: any) => {
+              if (!cert) return false;
+
+              // Check all certificate fields
+              if (matchesField(cert.id, 'certificate')) return true;
+              if (matchesField(cert.link, 'certificate')) return true;
+              if (matchesField(cert.level, 'certificate')) return true;
+              if (matchesField(cert.title, 'certificate')) return true;
+              if (matchesField(cert.issuer, 'certificate')) return true;
+              if (matchesField(cert.status, 'certificate')) return true;
+              if (matchesField(cert.issued_on, 'certificate')) return true;
+              if (matchesField(cert.description, 'certificate')) return true;
+              if (matchesField(cert.credential_id, 'certificate')) return true;
+
+              // Handle enabled status search
+              if (cert.enabled === true && query.includes('enabled')) {
+                if (!isMatch) matchedField = 'enabled certificate';
+                isMatch = true;
+                return true;
+              }
+              if (cert.enabled === false && query.includes('disabled')) {
+                if (!isMatch) matchedField = 'disabled certificate';
+                isMatch = true;
+                return true;
+              }
+
+              return false;
+            });
+
+            if (certMatch) {
+              return { student, matchedField };
             }
-            if (exp.verified === false && (query.includes('unverified') || query.includes('not verified') || query === 'false')) {
-              if (!isMatch) matchedField = 'unverified experience';
-              isMatch = true;
-              return true;
-            }
-            
-            return false;
-          });
-          if (expMatch) {
-            return { student, matchedField };
           }
-        }
-        
-        // Certificates - from certificates table
-        if (student.certificates && Array.isArray(student.certificates)) {
-          const certMatch = student.certificates.some((cert: any) => {
-            if (!cert) return false;
-            
-            // Check all certificate fields
-            if (matchesField(cert.id, 'certificate')) return true;
-            if (matchesField(cert.link, 'certificate')) return true;
-            if (matchesField(cert.level, 'certificate')) return true;
-            if (matchesField(cert.title, 'certificate')) return true;
-            if (matchesField(cert.issuer, 'certificate')) return true;
-            if (matchesField(cert.status, 'certificate')) return true;
-            if (matchesField(cert.issued_on, 'certificate')) return true;
-            if (matchesField(cert.description, 'certificate')) return true;
-            if (matchesField(cert.credential_id, 'certificate')) return true;
-            
-            // Handle enabled status search
-            if (cert.enabled === true && query.includes('enabled')) {
-              if (!isMatch) matchedField = 'enabled certificate';
-              isMatch = true;
-              return true;
+
+          // Trainings - from trainings table
+          if (student.trainings && Array.isArray(student.trainings)) {
+            const trainingMatch = student.trainings.some((training: any) => {
+              if (!training) return false;
+              if (matchesField(training.id, 'training')) return true;
+              if (matchesField(training.title, 'training')) return true;
+              if (matchesField(training.organization, 'training')) return true;
+              if (matchesField(training.description, 'training')) return true;
+              if (matchesField(training.duration, 'training')) return true;
+              if (matchesField(training.start_date, 'training')) return true;
+              if (matchesField(training.end_date, 'training')) return true;
+              return false;
+            });
+            if (trainingMatch) {
+              return { student, matchedField };
             }
-            if (cert.enabled === false && query.includes('disabled')) {
-              if (!isMatch) matchedField = 'disabled certificate';
-              isMatch = true;
-              return true;
-            }
-            
-            return false;
-          });
-          
-          if (certMatch) {
-            return { student, matchedField };
           }
-        }
-        
-        // Trainings - from trainings table
-        if (student.trainings && Array.isArray(student.trainings)) {
-          const trainingMatch = student.trainings.some((training: any) => {
-            if (!training) return false;
-            if (matchesField(training.id, 'training')) return true;
-            if (matchesField(training.title, 'training')) return true;
-            if (matchesField(training.organization, 'training')) return true;
-            if (matchesField(training.description, 'training')) return true;
-            if (matchesField(training.duration, 'training')) return true;
-            if (matchesField(training.start_date, 'training')) return true;
-            if (matchesField(training.end_date, 'training')) return true;
-            return false;
-          });
-          if (trainingMatch) {
-            return { student, matchedField };
-          }
-        }
-        
-        return null;
-      }).filter(item => item !== null);
-      
+
+          return null;
+        })
+        .filter((item) => item !== null);
+
       // Sort results lexicographically by matched field
       resultsWithScores.sort((a, b) => {
         return a.matchedField.localeCompare(b.matchedField);
       });
-      
-      result = resultsWithScores.map(item => item.student);
-      
+
+      result = resultsWithScores.map((item) => item.student);
+
       if (result.length > 0) {
       }
     }
 
     // Apply skill filters
     if (filters.skills.length > 0) {
-      result = result.filter(student => {
+      result = result.filter((student) => {
         return student.skills?.some((skill: any) => {
           const skillName = typeof skill === 'string' ? skill : skill?.name;
           return skillName && filters.skills.includes(skillName.toLowerCase());
@@ -3603,7 +3684,7 @@ const TalentPoolContent = () => {
 
     // Apply course/department filters
     if (filters.courses.length > 0) {
-      result = result.filter(student => {
+      result = result.filter((student) => {
         const dept = student.dept || student.course_name || student.branch_field;
         return dept && filters.courses.includes(dept.toLowerCase());
       });
@@ -3611,16 +3692,14 @@ const TalentPoolContent = () => {
 
     // Apply badge filters
     if (filters.badges.length > 0) {
-      result = result.filter(student =>
-        student.badges?.some(badge =>
-          filters.badges.includes(badge)
-        )
+      result = result.filter((student) =>
+        student.badges?.some((badge) => filters.badges.includes(badge))
       );
     }
 
     // Apply location filters
     if (filters.locations.length > 0) {
-      result = result.filter(student => {
+      result = result.filter((student) => {
         const location = student.location || student.district_name;
         return location && filters.locations.includes(location.toLowerCase());
       });
@@ -3628,13 +3707,12 @@ const TalentPoolContent = () => {
 
     // Apply year filters
     if (filters.years.length > 0) {
-      result = result.filter(student =>
-        filters.years.includes(student.year)
-      );
+      // @ts-expect-error - Auto-suppressed for migration
+      result = result.filter((student) => filters.years.includes(student.year));
     }
 
     // Apply AI score range filter
-    result = result.filter(student => {
+    result = result.filter((student) => {
       const score = student.ai_score_overall || 0;
       return score >= filters.minScore && score <= filters.maxScore;
     });
@@ -3650,8 +3728,9 @@ const TalentPoolContent = () => {
           sortedResult.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
           break;
         case 'last_updated':
-          sortedResult.sort((a, b) => 
-            new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime()
+          sortedResult.sort(
+            (a, b) =>
+              new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime()
           );
           break;
         case 'relevance':
@@ -3693,7 +3772,7 @@ const TalentPoolContent = () => {
       locations: [],
       years: [],
       minScore: 0,
-      maxScore: 100
+      maxScore: 100,
     });
   };
 
@@ -3736,7 +3815,15 @@ const TalentPoolContent = () => {
           <div className="inline-flex items-baseline">
             <h1 className="text-xl font-semibold text-gray-900">Talent Pool</h1>
             <span className="ml-2 text-sm text-gray-500">
-              ({filteredAndSortedStudents.length} {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 ? 'matching' : ''} candidates{(searchQuery || filters.skills.length > 0) && students.length !== filteredAndSortedStudents.length && ` of ${students.length} total`})
+              ({filteredAndSortedStudents.length}{' '}
+              {searchQuery || filters.skills.length > 0 || filters.locations.length > 0
+                ? 'matching'
+                : ''}{' '}
+              candidates
+              {(searchQuery || filters.skills.length > 0) &&
+                students.length !== filteredAndSortedStudents.length &&
+                ` of ${students.length} total`}
+              )
             </span>
           </div>
         </div>
@@ -3767,9 +3854,18 @@ const TalentPoolContent = () => {
           >
             <FunnelIcon className="h-4 w-4 mr-2" />
             Filters
-            {(filters.skills.length + filters.courses.length + filters.badges.length + filters.locations.length + filters.years.length) > 0 && (
+            {filters.skills.length +
+              filters.courses.length +
+              filters.badges.length +
+              filters.locations.length +
+              filters.years.length >
+              0 && (
               <span className="ml-1 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-primary-600 rounded-full">
-                {filters.skills.length + filters.courses.length + filters.badges.length + filters.locations.length + filters.years.length}
+                {filters.skills.length +
+                  filters.courses.length +
+                  filters.badges.length +
+                  filters.locations.length +
+                  filters.years.length}
               </span>
             )}
           </button>
@@ -3803,7 +3899,14 @@ const TalentPoolContent = () => {
         <div className="text-left">
           <h1 className="text-xl font-semibold text-gray-900">Talent Pool</h1>
           <span className="text-sm text-gray-500">
-            {filteredAndSortedStudents.length} {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 ? 'matching' : ''} candidates{(searchQuery || filters.skills.length > 0) && students.length !== filteredAndSortedStudents.length && ` of ${students.length} total`}
+            {filteredAndSortedStudents.length}{' '}
+            {searchQuery || filters.skills.length > 0 || filters.locations.length > 0
+              ? 'matching'
+              : ''}{' '}
+            candidates
+            {(searchQuery || filters.skills.length > 0) &&
+              students.length !== filteredAndSortedStudents.length &&
+              ` of ${students.length} total`}
           </span>
         </div>
 
@@ -3830,9 +3933,18 @@ const TalentPoolContent = () => {
           >
             <FunnelIcon className="h-4 w-4 mr-2" />
             Filters
-            {(filters.skills.length + filters.courses.length + filters.badges.length + filters.locations.length + filters.years.length) > 0 && (
+            {filters.skills.length +
+              filters.courses.length +
+              filters.badges.length +
+              filters.locations.length +
+              filters.years.length >
+              0 && (
               <span className="ml-1 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-primary-600 rounded-full">
-                {filters.skills.length + filters.courses.length + filters.badges.length + filters.locations.length + filters.years.length}
+                {filters.skills.length +
+                  filters.courses.length +
+                  filters.badges.length +
+                  filters.locations.length +
+                  filters.years.length}
               </span>
             )}
           </button>
@@ -3868,7 +3980,7 @@ const TalentPoolContent = () => {
             <div className="p-4">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-medium text-gray-900">Filters</h2>
-                <button 
+                <button
                   onClick={handleClearFilters}
                   className="text-sm text-primary-600 hover:text-primary-700"
                 >
@@ -3881,7 +3993,7 @@ const TalentPoolContent = () => {
                   <CheckboxGroup
                     options={skillOptions}
                     selectedValues={filters.skills}
-                    onChange={(values) => setFilters({...filters, skills: values})}
+                    onChange={(values) => setFilters({ ...filters, skills: values })}
                   />
                 </FilterSection>
 
@@ -3889,7 +4001,7 @@ const TalentPoolContent = () => {
                   <CheckboxGroup
                     options={courseOptions}
                     selectedValues={filters.courses}
-                    onChange={(values) => setFilters({...filters, courses: values})}
+                    onChange={(values) => setFilters({ ...filters, courses: values })}
                   />
                 </FilterSection>
 
@@ -3897,7 +4009,7 @@ const TalentPoolContent = () => {
                   <CheckboxGroup
                     options={badgeOptions}
                     selectedValues={filters.badges}
-                    onChange={(values) => setFilters({...filters, badges: values})}
+                    onChange={(values) => setFilters({ ...filters, badges: values })}
                   />
                   <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
                     <label className="flex items-center">
@@ -3916,7 +4028,7 @@ const TalentPoolContent = () => {
                   <CheckboxGroup
                     options={locationOptions}
                     selectedValues={filters.locations}
-                    onChange={(values) => setFilters({...filters, locations: values})}
+                    onChange={(values) => setFilters({ ...filters, locations: values })}
                   />
                 </FilterSection>
 
@@ -3924,7 +4036,7 @@ const TalentPoolContent = () => {
                   <CheckboxGroup
                     options={yearOptions}
                     selectedValues={filters.years}
-                    onChange={(values) => setFilters({...filters, years: values})}
+                    onChange={(values) => setFilters({ ...filters, years: values })}
                   />
                 </FilterSection>
 
@@ -3939,7 +4051,9 @@ const TalentPoolContent = () => {
                         min="0"
                         max="100"
                         value={filters.minScore}
-                        onChange={(e) => setFilters({...filters, minScore: parseInt(e.target.value)})}
+                        onChange={(e) =>
+                          setFilters({ ...filters, minScore: parseInt(e.target.value) })
+                        }
                         className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
                       />
                     </div>
@@ -3956,7 +4070,16 @@ const TalentPoolContent = () => {
           <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <p className="text-sm text-gray-700">
-                Showing <span className="font-medium">{Math.min((currentPage * itemsPerPage) + 1, filteredAndSortedStudents.length)}</span> to <span className="font-medium">{Math.min((currentPage + 1) * itemsPerPage, filteredAndSortedStudents.length)}</span> of <span className="font-medium">{filteredAndSortedStudents.length}</span> result{filteredAndSortedStudents.length !== 1 ? 's' : ''}
+                Showing{' '}
+                <span className="font-medium">
+                  {Math.min(currentPage * itemsPerPage + 1, filteredAndSortedStudents.length)}
+                </span>{' '}
+                to{' '}
+                <span className="font-medium">
+                  {Math.min((currentPage + 1) * itemsPerPage, filteredAndSortedStudents.length)}
+                </span>{' '}
+                of <span className="font-medium">{filteredAndSortedStudents.length}</span> result
+                {filteredAndSortedStudents.length !== 1 ? 's' : ''}
                 {searchQuery && <span className="text-gray-500"> for "{searchQuery}"</span>}
               </p>
               <div className="flex items-center gap-3">
@@ -3986,7 +4109,7 @@ const TalentPoolContent = () => {
                     marginPagesDisplayed={1}
                   />
                 )}
-                <select 
+                <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
                   className="text-sm border border-gray-300 rounded-md px-3 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -4007,26 +4130,29 @@ const TalentPoolContent = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {loading && <div className="text-sm text-gray-500">Loading students...</div>}
                   {error && <div className="text-sm text-red-600">{error}</div>}
-                  {!loading && paginatedStudents.map((candidate) => (
-                    <CandidateCard
-                      key={candidate.id}
-                      candidate={candidate as any}
-                      onViewProfile={onViewProfile}
-                      onShortlist={handleShortlistClick}
-                      onScheduleInterview={handleScheduleInterviewClick}
-                    />
-                  ))}
+                  {!loading &&
+                    paginatedStudents.map((candidate) => (
+                      <CandidateCard
+                        key={candidate.id}
+                        candidate={candidate as any}
+                        onViewProfile={onViewProfile}
+                        onShortlist={handleShortlistClick}
+                        onScheduleInterview={handleScheduleInterviewClick}
+                      />
+                    ))}
                   {!loading && filteredAndSortedStudents.length === 0 && !error && (
                     <div className="col-span-full text-center py-8">
                       <p className="text-sm text-gray-500">
-                        {searchQuery || filters.skills.length > 0 || filters.locations.length > 0 
-                          ? 'No candidates match your current filters' 
+                        {searchQuery || filters.skills.length > 0 || filters.locations.length > 0
+                          ? 'No candidates match your current filters'
                           : 'No students found.'}
                       </p>
                       <p className="text-xs text-gray-400 mt-2">
                         Try adjusting your search terms or filters.
                       </p>
-                      {(filters.skills.length > 0 || filters.locations.length > 0 || filters.courses.length > 0) && (
+                      {(filters.skills.length > 0 ||
+                        filters.locations.length > 0 ||
+                        filters.courses.length > 0) && (
                         <button
                           onClick={handleClearFilters}
                           className="mt-3 text-sm text-primary-600 hover:text-primary-700 font-medium"
@@ -4098,9 +4224,7 @@ const TalentPoolContent = () => {
                                 <div className="text-sm font-medium text-gray-900">
                                   {candidate.name}
                                 </div>
-                                <div className="text-sm text-gray-500">
-                                  {candidate.dept}
-                                </div>
+                                <div className="text-sm text-gray-500">{candidate.dept}</div>
                                 <BadgeComponent badges={candidate.badges} />
                               </div>
                             </div>
@@ -4112,11 +4236,14 @@ const TalentPoolContent = () => {
                                   key={index}
                                   className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800"
                                 >
+                                  // @ts-expect-error - Auto-suppressed for migration
                                   {skill}
                                 </span>
                               ))}
                               {candidate.skills && candidate.skills.length > 3 && (
-                                <span className="text-xs text-gray-500">+{candidate.skills.length - 3}</span>
+                                <span className="text-xs text-gray-500">
+                                  +{candidate.skills.length - 3}
+                                </span>
                               )}
                             </div>
                           </td>
@@ -4139,13 +4266,13 @@ const TalentPoolContent = () => {
                               >
                                 View
                               </button>
-                              <button 
+                              <button
                                 onClick={() => handleShortlistClick(candidate)}
                                 className="text-primary-600 hover:text-primary-900"
                               >
                                 Shortlist
                               </button>
-                              <button 
+                              <button
                                 onClick={() => handleScheduleInterviewClick(candidate)}
                                 className="text-green-600 hover:text-green-900"
                               >
@@ -4230,6 +4357,7 @@ const TalentPoolContent = () => {
  * Wrapped TalentPool with FeatureGate for talent_pool_access add-on
  */
 const TalentPool = () => (
+  // @ts-expect-error - Auto-suppressed for migration
   <FeatureGate featureKey="talent_pool_access" showUpgradePrompt={true}>
     <TalentPoolContent />
   </FeatureGate>

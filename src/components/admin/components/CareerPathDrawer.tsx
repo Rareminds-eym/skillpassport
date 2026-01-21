@@ -70,13 +70,13 @@ export const CareerPathDrawer: React.FC<CareerPathDrawerProps> = ({
       timestamp: new Date(),
     };
 
-    setChatMessages(prev => [...prev, userMessage]);
+    setChatMessages((prev) => [...prev, userMessage]);
     setChatInput('');
     setChatLoading(true);
 
     try {
       const studentData = careerPath.studentData || {};
-      
+
       const careerContext = `
 Student: ${careerPath.studentName}
 Current Role: ${careerPath.currentRole}
@@ -109,20 +109,24 @@ Interests: ${studentData.interests?.length ? studentData.interests.join(', ') : 
 CAREER PATH ANALYSIS:
 Strengths: ${careerPath.strengths.join(', ')}
 Skill Gaps: ${careerPath.gaps.join(', ')}
-Career Path: ${careerPath.recommendedPath.map(s => s.roleTitle).join(' → ')}
+Career Path: ${careerPath.recommendedPath.map((s) => s.roleTitle).join(' → ')}
 Action Items: ${careerPath.actionItems.join('; ')}
 Next Steps: ${careerPath.nextSteps.join('; ')}
 Alternative Paths: ${careerPath.alternativePaths.join('; ')}
 
 Detailed Career Steps:
-${careerPath.recommendedPath.map((step, idx) => `
+${careerPath.recommendedPath
+  .map(
+    (step, idx) => `
 Step ${idx + 1}: ${step.roleTitle} (${step.level})
 - Timeline: ${step.timeline}
 - Skills Needed: ${step.skillsNeeded.join(', ')}
 - Skills to Gain: ${step.skillsToGain.join(', ')}
 - Learning Resources: ${step.learningResources.join('; ')}
 ${step.salaryRange ? `- Salary Range: ${step.salaryRange}` : ''}
-`).join('\n')}
+`
+  )
+  .join('\n')}
 `;
 
       const completion = await openai.chat.completions.create({
@@ -142,7 +146,7 @@ IMPORTANT INSTRUCTIONS:
 - Be concise but COMPLETE when listing data
 - Reference specific details from the career path when answering`,
           },
-          ...chatMessages.map(msg => ({
+          ...chatMessages.map((msg) => ({
             role: msg.role,
             content: msg.content,
           })),
@@ -157,15 +161,16 @@ IMPORTANT INSTRUCTIONS:
 
       const assistantMessage: ChatMessage = {
         role: 'assistant',
-        content: completion.choices[0]?.message?.content || 'Sorry, I could not generate a response.',
+        content:
+          completion.choices[0]?.message?.content || 'Sorry, I could not generate a response.',
         timestamp: new Date(),
       };
 
-      setChatMessages(prev => [...prev, assistantMessage]);
+      setChatMessages((prev) => [...prev, assistantMessage]);
     } catch (err) {
       console.error('Chat error:', err);
       let errorText = 'Sorry, I encountered an error. Please try again.';
-      
+
       if (err instanceof Error) {
         if (err.message.includes('fetch')) {
           errorText = 'Network error. Please check your internet connection.';
@@ -175,13 +180,13 @@ IMPORTANT INSTRUCTIONS:
           errorText = 'API authentication error. Please check your API key configuration.';
         }
       }
-      
+
       const errorMessage: ChatMessage = {
         role: 'assistant',
         content: errorText,
         timestamp: new Date(),
       };
-      setChatMessages(prev => [...prev, errorMessage]);
+      setChatMessages((prev) => [...prev, errorMessage]);
     } finally {
       setChatLoading(false);
     }
@@ -227,9 +232,7 @@ IMPORTANT INSTRUCTIONS:
             <SparklesIcon className="h-6 w-6 text-white" />
             <div>
               <h2 className="text-xl font-bold text-white">Career Development Path</h2>
-              {careerPath && (
-                <p className="text-primary-100 text-sm">{careerPath.studentName}</p>
-              )}
+              {careerPath && <p className="text-primary-100 text-sm">{careerPath.studentName}</p>}
             </div>
           </div>
           <button
@@ -258,11 +261,23 @@ IMPORTANT INSTRUCTIONS:
             <div className="bg-red-50 border border-red-200 rounded-lg p-6">
               <div className="text-center">
                 <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
-                  <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  <svg
+                    className="h-6 w-6 text-red-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                    />
                   </svg>
                 </div>
-                <p className="text-red-800 font-medium text-lg mb-2">Failed to Generate Career Path</p>
+                <p className="text-red-800 font-medium text-lg mb-2">
+                  Failed to Generate Career Path
+                </p>
                 <p className="text-red-700 text-sm mb-4">{error}</p>
                 {onRetry && (
                   <button
@@ -282,23 +297,25 @@ IMPORTANT INSTRUCTIONS:
               {/* Career Overview */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-white rounded-lg p-4 border-2 border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                  <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">Current Level</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">
-                    {careerPath.currentRole}
+                  <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">
+                    Current Level
                   </p>
+                  <p className="text-2xl font-bold text-gray-900 mt-1">{careerPath.currentRole}</p>
                 </div>
                 <div className="bg-white rounded-lg p-4 border-2 border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                  <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">Career Goal</p>
-                  <p className="text-lg font-bold text-gray-900 mt-1">
-                    {careerPath.careerGoal}
+                  <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">
+                    Career Goal
                   </p>
+                  <p className="text-lg font-bold text-gray-900 mt-1">{careerPath.careerGoal}</p>
                 </div>
               </div>
 
               {/* Overall Score */}
               <div className="bg-white border-2 border-gray-200 rounded-lg p-5 shadow-sm">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm text-gray-600 font-semibold">Career Readiness Score</span>
+                  <span className="text-sm text-gray-600 font-semibold">
+                    Career Readiness Score
+                  </span>
                   <span className="text-3xl font-bold text-gray-900">
                     {careerPath.overallScore}%
                   </span>
@@ -323,7 +340,10 @@ IMPORTANT INSTRUCTIONS:
                   </div>
                   <ul className="space-y-2">
                     {careerPath.strengths.map((strength: any, idx) => {
-                      const strengthText = typeof strength === 'string' ? strength : strength?.text || strength?.description || JSON.stringify(strength);
+                      const strengthText =
+                        typeof strength === 'string'
+                          ? strength
+                          : strength?.text || strength?.description || JSON.stringify(strength);
                       return (
                         <li key={idx} className="text-sm text-green-800 flex items-start">
                           <span className="mr-2">•</span>
@@ -344,7 +364,10 @@ IMPORTANT INSTRUCTIONS:
                   </div>
                   <ul className="space-y-2">
                     {careerPath.gaps.map((gap: any, idx) => {
-                      const gapText = typeof gap === 'string' ? gap : gap?.text || gap?.description || JSON.stringify(gap);
+                      const gapText =
+                        typeof gap === 'string'
+                          ? gap
+                          : gap?.text || gap?.description || JSON.stringify(gap);
                       return (
                         <li key={idx} className="text-sm text-amber-800 flex items-start">
                           <span className="mr-2">•</span>
@@ -371,9 +394,7 @@ IMPORTANT INSTRUCTIONS:
                       )}`}
                     >
                       <button
-                        onClick={() =>
-                          setExpandedStep(expandedStep === idx ? -1 : idx)
-                        }
+                        onClick={() => setExpandedStep(expandedStep === idx ? -1 : idx)}
                         className="w-full text-left p-4 hover:bg-gray-50 transition-colors"
                       >
                         <div className="flex items-start justify-between">
@@ -385,11 +406,11 @@ IMPORTANT INSTRUCTIONS:
                                 </span>
                               </div>
                               <div>
-                                <h4 className="font-bold text-gray-900">
-                                  {step.roleTitle}
-                                </h4>
+                                <h4 className="font-bold text-gray-900">{step.roleTitle}</h4>
                                 <div className="flex items-center space-x-2 mt-1">
-                                  <span className={`text-xs font-semibold px-2 py-1 rounded-full ${getLevelColor(step.level)}`}>
+                                  <span
+                                    className={`text-xs font-semibold px-2 py-1 rounded-full ${getLevelColor(step.level)}`}
+                                  >
                                     {step.level.toUpperCase()}
                                   </span>
                                   <span className="text-sm text-gray-600 flex items-center">
@@ -401,8 +422,9 @@ IMPORTANT INSTRUCTIONS:
                             </div>
                           </div>
                           <ChevronDownIcon
-                            className={`h-5 w-5 text-gray-400 transition-transform ${expandedStep === idx ? 'transform rotate-180' : ''
-                              }`}
+                            className={`h-5 w-5 text-gray-400 transition-transform ${
+                              expandedStep === idx ? 'transform rotate-180' : ''
+                            }`}
                           />
                         </div>
                       </button>
@@ -414,12 +436,8 @@ IMPORTANT INSTRUCTIONS:
                           </div>
 
                           <div>
-                            <h5 className="font-semibold text-gray-900 mb-2 text-sm">
-                              Timeline
-                            </h5>
-                            <p className="text-sm text-gray-700">
-                              {step.estimatedTimeline}
-                            </p>
+                            <h5 className="font-semibold text-gray-900 mb-2 text-sm">Timeline</h5>
+                            <p className="text-sm text-gray-700">{step.estimatedTimeline}</p>
                           </div>
 
                           <div>
@@ -464,15 +482,15 @@ IMPORTANT INSTRUCTIONS:
                             <ul className="space-y-1">
                               {step.learningResources.map((resource: any, ridx) => {
                                 // Handle both string and object formats
-                                const resourceText = typeof resource === 'string'
-                                  ? resource
-                                  : resource?.path || resource?.description || JSON.stringify(resource);
+                                const resourceText =
+                                  typeof resource === 'string'
+                                    ? resource
+                                    : resource?.path ||
+                                      resource?.description ||
+                                      JSON.stringify(resource);
 
                                 return (
-                                  <li
-                                    key={ridx}
-                                    className="text-sm text-gray-700 flex items-start"
-                                  >
+                                  <li key={ridx} className="text-sm text-gray-700 flex items-start">
                                     <span className="mr-2">→</span>
                                     <span>{resourceText}</span>
                                   </li>
@@ -496,12 +514,12 @@ IMPORTANT INSTRUCTIONS:
                   </h3>
                   <ul className="space-y-2">
                     {careerPath.alternativePaths.map((path: any, idx) => {
-                      const pathText = typeof path === 'string' ? path : path?.path || path?.title || path?.description || JSON.stringify(path);
+                      const pathText =
+                        typeof path === 'string'
+                          ? path
+                          : path?.path || path?.title || path?.description || JSON.stringify(path);
                       return (
-                        <li
-                          key={idx}
-                          className="text-sm text-indigo-800 flex items-start"
-                        >
+                        <li key={idx} className="text-sm text-indigo-800 flex items-start">
                           <span className="mr-2">→</span>
                           <span>{pathText}</span>
                         </li>
@@ -514,20 +532,16 @@ IMPORTANT INSTRUCTIONS:
               {/* Action Items */}
               {careerPath.actionItems && careerPath.actionItems.length > 0 && (
                 <div className="bg-white border-2 border-gray-200 rounded-lg p-5 shadow-sm">
-                  <h3 className="font-bold text-gray-900 mb-4">
-                    Immediate Action Items
-                  </h3>
+                  <h3 className="font-bold text-gray-900 mb-4">Immediate Action Items</h3>
                   <ol className="space-y-2">
                     {careerPath.actionItems.map((item: any, idx) => {
-                      const itemText = typeof item === 'string' ? item : item?.text || item?.action || item?.description || JSON.stringify(item);
+                      const itemText =
+                        typeof item === 'string'
+                          ? item
+                          : item?.text || item?.action || item?.description || JSON.stringify(item);
                       return (
-                        <li
-                          key={idx}
-                          className="text-sm text-blue-800 flex items-start"
-                        >
-                          <span className="mr-3 font-bold text-blue-600">
-                            {idx + 1}.
-                          </span>
+                        <li key={idx} className="text-sm text-blue-800 flex items-start">
+                          <span className="mr-3 font-bold text-blue-600">{idx + 1}.</span>
                           <span>{itemText}</span>
                         </li>
                       );
@@ -539,17 +553,15 @@ IMPORTANT INSTRUCTIONS:
               {/* Next Steps */}
               {careerPath.nextSteps && careerPath.nextSteps.length > 0 && (
                 <div className="bg-white border-2 border-gray-200 rounded-lg p-5 shadow-sm">
-                  <h3 className="font-bold text-gray-900 mb-4">
-                    Next Steps (This Month)
-                  </h3>
+                  <h3 className="font-bold text-gray-900 mb-4">Next Steps (This Month)</h3>
                   <ul className="space-y-2">
                     {careerPath.nextSteps.map((step: any, idx) => {
-                      const stepText = typeof step === 'string' ? step : step?.text || step?.step || step?.description || JSON.stringify(step);
+                      const stepText =
+                        typeof step === 'string'
+                          ? step
+                          : step?.text || step?.step || step?.description || JSON.stringify(step);
                       return (
-                        <li
-                          key={idx}
-                          className="text-sm text-purple-800 flex items-start"
-                        >
+                        <li key={idx} className="text-sm text-purple-800 flex items-start">
                           <span className="mr-2">✓</span>
                           <span>{stepText}</span>
                         </li>
@@ -574,8 +586,9 @@ IMPORTANT INSTRUCTIONS:
                     </span>
                   </div>
                   <ChevronDownIcon
-                    className={`h-5 w-5 text-primary-600 transition-transform ${showChat ? 'transform rotate-180' : ''
-                      }`}
+                    className={`h-5 w-5 text-primary-600 transition-transform ${
+                      showChat ? 'transform rotate-180' : ''
+                    }`}
                   />
                 </button>
 
@@ -588,7 +601,8 @@ IMPORTANT INSTRUCTIONS:
                           <ChatBubbleLeftRightIcon className="h-12 w-12 mx-auto mb-3 text-gray-400" />
                           <p className="text-sm">Ask me anything about your career path!</p>
                           <p className="text-xs mt-1">
-                            For example: "What courses should I take first?" or "How can I improve my skills?"
+                            For example: "What courses should I take first?" or "How can I improve
+                            my skills?"
                           </p>
                         </div>
                       )}
@@ -599,15 +613,17 @@ IMPORTANT INSTRUCTIONS:
                           className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                         >
                           <div
-                            className={`max-w-[80%] rounded-lg px-4 py-2 ${msg.role === 'user'
-                              ? 'bg-primary-600 text-white'
-                              : 'bg-white border border-gray-200 text-gray-900'
-                              }`}
+                            className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                              msg.role === 'user'
+                                ? 'bg-primary-600 text-white'
+                                : 'bg-white border border-gray-200 text-gray-900'
+                            }`}
                           >
                             <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                             <p
-                              className={`text-xs mt-1 ${msg.role === 'user' ? 'text-primary-200' : 'text-gray-500'
-                                }`}
+                              className={`text-xs mt-1 ${
+                                msg.role === 'user' ? 'text-primary-200' : 'text-gray-500'
+                              }`}
                             >
                               {msg.timestamp.toLocaleTimeString([], {
                                 hour: '2-digit',

@@ -1,6 +1,6 @@
 /**
  * OrganizationPurchasePanel Component
- * 
+ *
  * A panel that appears when organization mode is active on the subscription plans page.
  * Allows admins to configure seat count, member type, and see pricing before purchase.
  */
@@ -47,17 +47,14 @@ function OrganizationPurchasePanel({
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('annual');
   const [pricing, setPricing] = useState<PricingBreakdownData | null>(null);
 
-  const handleSeatCountChange = useCallback(
-    (count: number, newPricing: PricingBreakdownData) => {
-      setSeatCount(count);
-      setPricing(newPricing);
-    },
-    []
-  );
+  const handleSeatCountChange = useCallback((count: number, newPricing: PricingBreakdownData) => {
+    setSeatCount(count);
+    setPricing(newPricing);
+  }, []);
 
   const handlePurchase = useCallback(() => {
     if (!pricing) return;
-    
+
     onPurchase({
       planId: plan.id,
       seatCount,
@@ -83,9 +80,7 @@ function OrganizationPurchasePanel({
               <Building2 className="w-5 h-5 text-blue-600" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900">
-                {organizationLabel} Subscription
-              </h2>
+              <h2 className="text-lg font-bold text-gray-900">{organizationLabel} Subscription</h2>
               <p className="text-sm text-gray-500">{plan.name} Plan</p>
             </div>
           </div>
@@ -102,9 +97,7 @@ function OrganizationPurchasePanel({
         <div className="p-6 space-y-6">
           {/* Billing Cycle Toggle */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Billing Cycle
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Billing Cycle</label>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -136,9 +129,7 @@ function OrganizationPurchasePanel({
 
           {/* Seat Selector */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
-              Number of Seats
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-3">Number of Seats</label>
             <SeatSelector
               basePrice={plan.price}
               initialSeats={seatCount}
@@ -166,15 +157,10 @@ function OrganizationPurchasePanel({
 
           {/* Plan Features */}
           <div className="bg-gray-50 rounded-xl p-4">
-            <h4 className="text-sm font-medium text-gray-700 mb-3">
-              Included Features
-            </h4>
+            <h4 className="text-sm font-medium text-gray-700 mb-3">Included Features</h4>
             <ul className="grid grid-cols-2 gap-2">
               {plan.features.slice(0, 6).map((feature, index) => (
-                <li
-                  key={index}
-                  className="flex items-start gap-2 text-sm text-gray-600"
-                >
+                <li key={index} className="flex items-start gap-2 text-sm text-gray-600">
                   <svg
                     className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0"
                     fill="currentColor"

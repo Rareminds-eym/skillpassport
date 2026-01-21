@@ -11,13 +11,13 @@ interface ApprovalModalProps {
   loading: boolean;
 }
 
-const ApprovalModal: React.FC<ApprovalModalProps> = ({ 
-  isOpen, 
-  onClose, 
-  student, 
-  onApprove, 
-  onReject, 
-  loading 
+const ApprovalModal: React.FC<ApprovalModalProps> = ({
+  isOpen,
+  onClose,
+  student,
+  onApprove,
+  onReject,
+  loading,
 }) => {
   const [reason, setReason] = useState('');
   const [action, setAction] = useState<'approve' | 'reject' | null>(null);
@@ -35,7 +35,10 @@ const ApprovalModal: React.FC<ApprovalModalProps> = ({
   return (
     <div className="fixed inset-0 z-[60] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        <div
+          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          onClick={onClose}
+        ></div>
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium text-gray-900">Student Verification</h3>
@@ -49,7 +52,7 @@ const ApprovalModal: React.FC<ApprovalModalProps> = ({
               <p className="text-sm text-gray-600 mb-4">
                 Review and verify the enrollment status for <strong>{student.name}</strong>
               </p>
-              
+
               <div className="space-y-3">
                 <label className="flex items-center">
                   <input
@@ -65,7 +68,7 @@ const ApprovalModal: React.FC<ApprovalModalProps> = ({
                     Approve Enrollment
                   </span>
                 </label>
-                
+
                 <label className="flex items-center">
                   <input
                     type="radio"
@@ -109,14 +112,20 @@ const ApprovalModal: React.FC<ApprovalModalProps> = ({
               onClick={handleSubmit}
               disabled={loading || !action}
               className={`px-4 py-2 text-sm font-medium text-white border border-transparent rounded-md disabled:opacity-50 ${
-                action === 'approve' 
-                  ? 'bg-green-600 hover:bg-green-700' 
+                action === 'approve'
+                  ? 'bg-green-600 hover:bg-green-700'
                   : action === 'reject'
-                  ? 'bg-red-600 hover:bg-red-700'
-                  : 'bg-gray-400'
+                    ? 'bg-red-600 hover:bg-red-700'
+                    : 'bg-gray-400'
               }`}
             >
-              {loading ? 'Processing...' : action === 'approve' ? 'Approve' : action === 'reject' ? 'Reject' : 'Select Action'}
+              {loading
+                ? 'Processing...'
+                : action === 'approve'
+                  ? 'Approve'
+                  : action === 'reject'
+                    ? 'Reject'
+                    : 'Select Action'}
             </button>
           </div>
         </div>

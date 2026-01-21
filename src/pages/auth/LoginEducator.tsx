@@ -1,47 +1,37 @@
-import { motion } from "framer-motion";
-import {
-    AlertCircle,
-    BookOpen,
-    Eye,
-    EyeOff,
-    Lock,
-    Mail,
-    Star,
-    Users,
-} from "lucide-react";
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import educatorIllustration from "../../../public/login/yyu.png";
-import { useAuth } from "../../context/AuthContext";
-import { supabase } from "../../lib/supabaseClient";
-import FeatureCard from "./components/ui/FeatureCard";
+import { motion } from 'framer-motion';
+import { AlertCircle, BookOpen, Eye, EyeOff, Lock, Mail, Star, Users } from 'lucide-react';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import educatorIllustration from '../../../public/login/yyu.png';
+import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../lib/supabaseClient';
+import FeatureCard from './components/ui/FeatureCard';
 
 export default function LoginEducator() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   const navigate = useNavigate();
   const { login } = useAuth();
 
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setError('');
     setLoading(true);
 
     try {
       // Validate email format
-      if (!email.includes("@")) {
-        setError("Invalid email address");
+      if (!email.includes('@')) {
+        setError('Invalid email address');
         setLoading(false);
         return;
       }
 
       if (!password || password.length < 6) {
-        setError("Password must be at least 6 characters");
+        setError('Password must be at least 6 characters');
         setLoading(false);
         return;
       }
@@ -53,47 +43,47 @@ export default function LoginEducator() {
       });
 
       if (authError) {
-        setError(authError.message || "Failed to sign in. Please check your credentials.");
+        setError(authError.message || 'Failed to sign in. Please check your credentials.');
         setLoading(false);
         return;
       }
 
       if (!authData.user) {
-        setError("Authentication failed. Please try again.");
+        setError('Authentication failed. Please try again.');
         setLoading(false);
         return;
       }
 
       // Fetch educator profile from school_educators table first
       const { data: educatorData, error: educatorError } = await supabase
-        .from("school_educators")
-        .select("*")
-        .eq("user_id", authData.user.id)
+        .from('school_educators')
+        .select('*')
+        .eq('user_id', authData.user.id)
         .maybeSingle();
 
       // If not found in school_educators, check college_lecturers table
       let collegeEducatorData = null;
       if (!educatorData) {
         const { data: collegeLecturerData, error: collegeLecturerError } = await supabase
-          .from("college_lecturers")
-          .select("*")
-          .eq("user_id", authData.user.id)
+          .from('college_lecturers')
+          .select('*')
+          .eq('user_id', authData.user.id)
           .maybeSingle();
 
         if (collegeLecturerError) {
-          console.error("Error fetching college lecturer profile:", collegeLecturerError);
+          console.error('Error fetching college lecturer profile:', collegeLecturerError);
         }
 
         collegeEducatorData = collegeLecturerData;
       }
 
       if (educatorError && !collegeEducatorData) {
-        console.error("Error fetching educator profile:", educatorError);
+        console.error('Error fetching educator profile:', educatorError);
       }
 
       // Check if user is either a school educator or college lecturer
       if (!educatorData && !collegeEducatorData) {
-        setError("No educator profile found. Please contact your administrator.");
+        setError('No educator profile found. Please contact your administrator.');
         setLoading(false);
         return;
       }
@@ -102,25 +92,29 @@ export default function LoginEducator() {
       const userData = {
         id: authData.user.id,
         email: authData.user.email,
-        role: educatorData ? "educator" : "college_educator",
-        full_name: educatorData?.first_name && educatorData?.last_name
-          ? `${educatorData.first_name} ${educatorData.last_name}`
-          : collegeEducatorData?.metadata?.first_name && collegeEducatorData?.metadata?.last_name
-          ? `${collegeEducatorData.metadata.first_name} ${collegeEducatorData.metadata.last_name}`
-          : educatorData?.first_name || collegeEducatorData?.metadata?.first_name || authData.user.email?.split("@")[0] || "Educator",
+        role: educatorData ? 'educator' : 'college_educator',
+        full_name:
+          educatorData?.first_name && educatorData?.last_name
+            ? `${educatorData.first_name} ${educatorData.last_name}`
+            : collegeEducatorData?.metadata?.first_name && collegeEducatorData?.metadata?.last_name
+              ? `${collegeEducatorData.metadata.first_name} ${collegeEducatorData.metadata.last_name}`
+              : educatorData?.first_name ||
+                collegeEducatorData?.metadata?.first_name ||
+                authData.user.email?.split('@')[0] ||
+                'Educator',
         educator_id: educatorData?.id || collegeEducatorData?.id,
         school_id: educatorData?.school_id,
         college_id: collegeEducatorData?.collegeId,
-        educator_type: educatorData ? "school" : "college",
+        educator_type: educatorData ? 'school' : 'college',
       };
 
       login(userData);
 
       // Redirect to educator dashboard
-      navigate("/educator/dashboard");
+      navigate('/educator/dashboard');
     } catch (err) {
-      console.error("Login error:", err);
-      setError("An unexpected error occurred. Please try again.");
+      console.error('Login error:', err);
+      setError('An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -132,8 +126,9 @@ export default function LoginEducator() {
       <div className="space-y-2">
         <label
           htmlFor="email"
-          className={`block text-sm font-medium ${isLg ? "text-gray-800 lg:text-gray-700" : "text-white/90"
-            }`}
+          className={`block text-sm font-medium ${
+            isLg ? 'text-gray-800 lg:text-gray-700' : 'text-white/90'
+          }`}
         >
           Email ID
         </label>
@@ -146,10 +141,9 @@ export default function LoginEducator() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Enter email ID"
             autoComplete="username"
-            className={`w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition border-gray-300/90 hover:border-gray-400/90 placeholder:text-white/70 lg:placeholder:text-gray-400 ${isLg
-              ? "bg-white/90"
-              : "bg-white/20 border-2 border-white/15 backdrop-blur-sm"
-              }`}
+            className={`w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition border-gray-300/90 hover:border-gray-400/90 placeholder:text-white/70 lg:placeholder:text-gray-400 ${
+              isLg ? 'bg-white/90' : 'bg-white/20 border-2 border-white/15 backdrop-blur-sm'
+            }`}
           />
           <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60 lg:text-gray-400" />
         </div>
@@ -159,31 +153,31 @@ export default function LoginEducator() {
       <div className="space-y-2">
         <label
           htmlFor="password"
-          className={`block text-sm font-medium ${isLg ? "text-gray-800 lg:text-gray-700" : "text-white/90"
-            }`}
+          className={`block text-sm font-medium ${
+            isLg ? 'text-gray-800 lg:text-gray-700' : 'text-white/90'
+          }`}
         >
           Password
         </label>
         <div className="relative">
           <input
-            type={showPassword ? "text" : "password"}
+            type={showPassword ? 'text' : 'password'}
             id="password"
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Enter your password"
             autoComplete="current-password"
-            className={`w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition border-gray-300/90 hover:border-gray-400/90 placeholder:text-white/80 lg:placeholder:text-gray-400 ${isLg
-              ? "bg-white/90"
-              : "bg-white/20 border-2 border-white/15 backdrop-blur-sm"
-              }`}
+            className={`w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition border-gray-300/90 hover:border-gray-400/90 placeholder:text-white/80 lg:placeholder:text-gray-400 ${
+              isLg ? 'bg-white/90' : 'bg-white/20 border-2 border-white/15 backdrop-blur-sm'
+            }`}
           />
           <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60 lg:text-gray-400" />
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
             className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700"
-            aria-label={showPassword ? "Hide password" : "Show password"}
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
           >
             {showPassword ? (
               <EyeOff className="w-5 h-5 text-white/60 lg:text-gray-400" />
@@ -205,7 +199,7 @@ export default function LoginEducator() {
               background: `linear-gradient(90deg, #f59e0b, #d97706)`,
             }}
           >
-            {loading ? "Signing in..." : "Login"}
+            {loading ? 'Signing in...' : 'Login'}
           </button>
         ) : (
           <button
@@ -216,9 +210,8 @@ export default function LoginEducator() {
               background: `linear-gradient(90deg, #f59e0b, #d97706)`,
             }}
           >
-            {loading ? "Signing in..." : "Login"}
+            {loading ? 'Signing in...' : 'Login'}
           </button>
-
         )}
       </div>
 
@@ -228,17 +221,14 @@ export default function LoginEducator() {
           to="/educator/forgot-password"
           className={
             isLg
-              ? "text-[#4f46e5] font-semibold hover:text-[#1e1b4b]"
-              : "text-white/90 font-semibold hover:opacity-90"
+              ? 'text-[#4f46e5] font-semibold hover:text-[#1e1b4b]'
+              : 'text-white/90 font-semibold hover:opacity-90'
           }
         >
           Forgot password?
         </Link>
         {isLg ? (
-          <Link
-            to="/signup"
-            className="text-[#4f46e5] font-semibold hover:text-[#312e81]"
-          >
+          <Link to="/signup" className="text-[#4f46e5] font-semibold hover:text-[#312e81]">
             Sign up
           </Link>
         ) : null}
@@ -268,14 +258,14 @@ export default function LoginEducator() {
               style={{
                 alignSelf: 'flex-end',
                 marginBottom: '0px',
-                transform: 'translateY(0px)'
+                transform: 'translateY(0px)',
               }}
             />
 
             <motion.div
               className="absolute top-1 lg:left-[8rem] xl:left-[12rem]"
               animate={{ y: [0, -10, 0] }}
-              transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+              transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
             >
               <FeatureCard title="Track Progress" Icon={BookOpen} />
             </motion.div>
@@ -286,7 +276,7 @@ export default function LoginEducator() {
               transition={{
                 repeat: Infinity,
                 duration: 3.5,
-                ease: "easeInOut",
+                ease: 'easeInOut',
               }}
             >
               <FeatureCard title="Manage Students" Icon={Users} />
@@ -295,7 +285,7 @@ export default function LoginEducator() {
             <motion.div
               className="absolute bottom-8 lg:left-[8rem] xl:left-[12rem]"
               animate={{ y: [0, -8, 0] }}
-              transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+              transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
             >
               <FeatureCard title="Recognize Excellence" Icon={Star} />
             </motion.div>
@@ -345,9 +335,7 @@ export default function LoginEducator() {
           {/* DESKTOP */}
           <div className="relative w-full max-w-md hidden lg:block">
             <div className="text-center mb-8">
-              <h3 className="text-3xl font-bold text-[#000000]">
-                Educator Login
-              </h3>
+              <h3 className="text-3xl font-bold text-[#000000]">Educator Login</h3>
               <p className="text-sm text-gray-700/90 lg:text-gray-500 mt-2">
                 Access your educator dashboard with verified student data.
               </p>

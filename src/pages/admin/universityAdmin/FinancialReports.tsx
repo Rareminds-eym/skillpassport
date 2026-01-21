@@ -19,7 +19,7 @@ import {
   Eye,
   RefreshCw,
   Search,
-  Settings
+  Settings,
 } from 'lucide-react';
 
 interface ReportData {
@@ -71,7 +71,7 @@ const mockReports: ReportData[] = [
     color: 'bg-green-500',
     lastGenerated: '2024-01-09T10:30:00Z',
     size: '2.4 MB',
-    status: 'ready'
+    status: 'ready',
   },
   {
     id: '2',
@@ -82,7 +82,7 @@ const mockReports: ReportData[] = [
     color: 'bg-blue-500',
     lastGenerated: '2024-01-09T09:15:00Z',
     size: '1.8 MB',
-    status: 'ready'
+    status: 'ready',
   },
   {
     id: '3',
@@ -93,7 +93,7 @@ const mockReports: ReportData[] = [
     color: 'bg-red-500',
     lastGenerated: '2024-01-09T08:45:00Z',
     size: '1.2 MB',
-    status: 'ready'
+    status: 'ready',
   },
   {
     id: '4',
@@ -104,7 +104,7 @@ const mockReports: ReportData[] = [
     color: 'bg-purple-500',
     lastGenerated: '2024-01-08T16:20:00Z',
     size: '3.1 MB',
-    status: 'ready'
+    status: 'ready',
   },
   {
     id: '5',
@@ -113,7 +113,7 @@ const mockReports: ReportData[] = [
     type: 'analytics',
     icon: PieChart,
     color: 'bg-indigo-500',
-    status: 'generating'
+    status: 'generating',
   },
   {
     id: '6',
@@ -124,8 +124,8 @@ const mockReports: ReportData[] = [
     color: 'bg-teal-500',
     lastGenerated: '2024-01-07T14:10:00Z',
     size: '4.2 MB',
-    status: 'ready'
-  }
+    status: 'ready',
+  },
 ];
 
 const mockMetrics: FinancialMetrics = {
@@ -136,7 +136,7 @@ const mockMetrics: FinancialMetrics = {
   averagePaymentTime: 12,
   topPayingCollege: 'Anna University College of Engineering',
   revenueGrowth: 12.5,
-  collectionTrend: 8.3
+  collectionTrend: 8.3,
 };
 
 const mockCollegeData: CollegeRevenueData[] = [
@@ -145,36 +145,36 @@ const mockCollegeData: CollegeRevenueData[] = [
     total_revenue: 4500000,
     pending_amount: 320000,
     collection_rate: 93.2,
-    student_count: 2800
+    student_count: 2800,
   },
   {
     college_name: 'PSG College of Technology',
     total_revenue: 3200000,
     pending_amount: 180000,
     collection_rate: 89.7,
-    student_count: 2100
+    student_count: 2100,
   },
   {
     college_name: 'Coimbatore Institute of Technology',
     total_revenue: 2800000,
     pending_amount: 240000,
     collection_rate: 85.4,
-    student_count: 1900
+    student_count: 1900,
   },
   {
     college_name: 'Thiagarajar College of Engineering',
     total_revenue: 2600000,
     pending_amount: 150000,
     collection_rate: 91.8,
-    student_count: 1700
+    student_count: 1700,
   },
   {
     college_name: 'Madras Institute of Technology',
     total_revenue: 2650000,
     pending_amount: 200000,
     collection_rate: 88.1,
-    student_count: 1800
-  }
+    student_count: 1800,
+  },
 ];
 
 const mockMonthlyData: MonthlyRevenueData[] = [
@@ -183,7 +183,7 @@ const mockMonthlyData: MonthlyRevenueData[] = [
   { month: 'Oct 2024', revenue: 2600000, payments: 1180, growth: 18.2 },
   { month: 'Nov 2024', revenue: 2400000, payments: 1050, growth: -7.7 },
   { month: 'Dec 2024', revenue: 3100000, payments: 1420, growth: 29.2 },
-  { month: 'Jan 2025', revenue: 2340000, payments: 1080, growth: -24.5 }
+  { month: 'Jan 2025', revenue: 2340000, payments: 1080, growth: -24.5 },
 ];
 
 const FinancialReports: React.FC = () => {
@@ -234,24 +234,26 @@ const FinancialReports: React.FC = () => {
   };
 
   const handleGenerateReport = (reportId: string) => {
-    setReports(prev => prev.map(report => 
-      report.id === reportId 
-        ? { ...report, status: 'generating' as const }
-        : report
-    ));
+    setReports((prev) =>
+      prev.map((report) =>
+        report.id === reportId ? { ...report, status: 'generating' as const } : report
+      )
+    );
 
     // Simulate report generation
     setTimeout(() => {
-      setReports(prev => prev.map(report => 
-        report.id === reportId 
-          ? { 
-              ...report, 
-              status: 'ready' as const,
-              lastGenerated: new Date().toISOString(),
-              size: `${(Math.random() * 3 + 1).toFixed(1)} MB`
-            }
-          : report
-      ));
+      setReports((prev) =>
+        prev.map((report) =>
+          report.id === reportId
+            ? {
+                ...report,
+                status: 'ready' as const,
+                lastGenerated: new Date().toISOString(),
+                size: `${(Math.random() * 3 + 1).toFixed(1)} MB`,
+              }
+            : report
+        )
+      );
     }, 3000);
   };
 
@@ -261,9 +263,7 @@ const FinancialReports: React.FC = () => {
         <div>
           <p className="text-sm font-medium text-gray-600">{title}</p>
           <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
-          {subtitle && (
-            <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
-          )}
+          {subtitle && <p className="text-sm text-gray-500 mt-1">{subtitle}</p>}
           {change !== undefined && (
             <div className="flex items-center gap-1 mt-2">
               {change > 0 ? (
@@ -272,7 +272,8 @@ const FinancialReports: React.FC = () => {
                 <TrendingDown className="h-4 w-4 text-red-500" />
               )}
               <span className={`text-sm ${change > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {change > 0 ? '+' : ''}{change}%
+                {change > 0 ? '+' : ''}
+                {change}%
               </span>
             </div>
           )}
@@ -284,7 +285,7 @@ const FinancialReports: React.FC = () => {
     </div>
   );
 
-  const filteredReports = reports.filter(report => {
+  const filteredReports = reports.filter((report) => {
     return !selectedReportType || report.type === selectedReportType;
   });
 
@@ -292,9 +293,7 @@ const FinancialReports: React.FC = () => {
     <div className="space-y-6 p-6">
       {/* Header */}
       <div className="bg-gradient-to-r from-purple-50 via-indigo-50 to-blue-50 rounded-2xl p-6 border border-purple-100">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
-          Financial Reports
-        </h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Financial Reports</h1>
         <p className="text-gray-600 text-sm sm:text-base">
           Generate comprehensive financial reports and analytics for university operations
         </p>
@@ -343,19 +342,26 @@ const FinancialReports: React.FC = () => {
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Colleges by Revenue</h3>
           <div className="space-y-4">
             {collegeData.slice(0, 5).map((college, index) => (
-              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div
+                key={index}
+                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+              >
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium text-gray-900">{college.college_name}</span>
-                    <span className="text-sm font-bold text-green-600">{formatCurrency(college.total_revenue)}</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {college.college_name}
+                    </span>
+                    <span className="text-sm font-bold text-green-600">
+                      {formatCurrency(college.total_revenue)}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between text-xs text-gray-500">
                     <span>{college.student_count} students</span>
                     <span>Collection: {college.collection_rate}%</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                    <div 
-                      className="bg-green-500 h-2 rounded-full" 
+                    <div
+                      className="bg-green-500 h-2 rounded-full"
                       style={{ width: `${college.collection_rate}%` }}
                     ></div>
                   </div>
@@ -370,11 +376,16 @@ const FinancialReports: React.FC = () => {
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Revenue Trend</h3>
           <div className="space-y-3">
             {monthlyData.slice(-6).map((month, index) => (
-              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div
+                key={index}
+                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+              >
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-sm font-medium text-gray-900">{month.month}</span>
-                    <span className="text-sm font-bold text-blue-600">{formatCurrency(month.revenue)}</span>
+                    <span className="text-sm font-bold text-blue-600">
+                      {formatCurrency(month.revenue)}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between text-xs text-gray-500">
                     <span>{month.payments} payments</span>
@@ -385,7 +396,8 @@ const FinancialReports: React.FC = () => {
                         <TrendingDown className="h-3 w-3 text-red-500" />
                       )}
                       <span className={month.growth > 0 ? 'text-green-600' : 'text-red-600'}>
-                        {month.growth > 0 ? '+' : ''}{month.growth}%
+                        {month.growth > 0 ? '+' : ''}
+                        {month.growth}%
                       </span>
                     </div>
                   </div>
@@ -414,13 +426,13 @@ const FinancialReports: React.FC = () => {
               <option value="analytics">Analytics Reports</option>
             </select>
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">From Date</label>
             <input
               type="date"
               value={dateRange.from}
-              onChange={(e) => setDateRange(prev => ({ ...prev, from: e.target.value }))}
+              onChange={(e) => setDateRange((prev) => ({ ...prev, from: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             />
           </div>
@@ -430,7 +442,7 @@ const FinancialReports: React.FC = () => {
             <input
               type="date"
               value={dateRange.to}
-              onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value }))}
+              onChange={(e) => setDateRange((prev) => ({ ...prev, to: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             />
           </div>
@@ -458,12 +470,17 @@ const FinancialReports: React.FC = () => {
         {filteredReports.map((report) => {
           const IconComponent = report.icon;
           return (
-            <div key={report.id} className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow">
+            <div
+              key={report.id}
+              className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow"
+            >
               <div className="flex items-start justify-between mb-4">
                 <div className={`p-3 rounded-lg ${report.color}`}>
                   <IconComponent className="h-6 w-6 text-white" />
                 </div>
-                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(report.status)}`}>
+                <span
+                  className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(report.status)}`}
+                >
                   {getStatusIcon(report.status)}
                   {report.status}
                 </span>
@@ -475,7 +492,9 @@ const FinancialReports: React.FC = () => {
               {report.lastGenerated && (
                 <div className="text-xs text-gray-500 mb-4">
                   <div className="flex items-center justify-between">
-                    <span>Last generated: {new Date(report.lastGenerated).toLocaleDateString()}</span>
+                    <span>
+                      Last generated: {new Date(report.lastGenerated).toLocaleDateString()}
+                    </span>
                     {report.size && <span>Size: {report.size}</span>}
                   </div>
                 </div>
@@ -488,7 +507,7 @@ const FinancialReports: React.FC = () => {
                       <Download className="h-4 w-4" />
                       Download
                     </button>
-                    <button 
+                    <button
                       onClick={() => handleGenerateReport(report.id)}
                       className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                     >
@@ -496,12 +515,15 @@ const FinancialReports: React.FC = () => {
                     </button>
                   </>
                 ) : report.status === 'generating' ? (
-                  <button disabled className="flex-1 bg-gray-400 text-white px-4 py-2 rounded-lg cursor-not-allowed flex items-center justify-center gap-2">
+                  <button
+                    disabled
+                    className="flex-1 bg-gray-400 text-white px-4 py-2 rounded-lg cursor-not-allowed flex items-center justify-center gap-2"
+                  >
                     <RefreshCw className="h-4 w-4 animate-spin" />
                     Generating...
                   </button>
                 ) : (
-                  <button 
+                  <button
                     onClick={() => handleGenerateReport(report.id)}
                     className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
                   >
@@ -557,8 +579,16 @@ const FinancialReports: React.FC = () => {
           <h4 className="text-sm font-medium text-gray-900 mb-2">Available Fields</h4>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {[
-              'Student Name', 'College Name', 'Fee Type', 'Amount Due', 'Amount Paid',
-              'Payment Date', 'Status', 'Transaction ID', 'Late Fee', 'Discount'
+              'Student Name',
+              'College Name',
+              'Fee Type',
+              'Amount Due',
+              'Amount Paid',
+              'Payment Date',
+              'Status',
+              'Transaction ID',
+              'Late Fee',
+              'Discount',
             ].map((field, index) => (
               <label key={index} className="flex items-center gap-2 text-sm">
                 <input type="checkbox" className="rounded border-gray-300" />
@@ -581,11 +611,26 @@ const FinancialReports: React.FC = () => {
 
         <div className="space-y-3">
           {[
-            { name: 'Weekly Revenue Summary', schedule: 'Every Monday at 9:00 AM', nextRun: '2024-01-15' },
-            { name: 'Monthly Collection Report', schedule: 'First day of month at 8:00 AM', nextRun: '2024-02-01' },
-            { name: 'Overdue Payments Alert', schedule: 'Every Friday at 5:00 PM', nextRun: '2024-01-12' }
+            {
+              name: 'Weekly Revenue Summary',
+              schedule: 'Every Monday at 9:00 AM',
+              nextRun: '2024-01-15',
+            },
+            {
+              name: 'Monthly Collection Report',
+              schedule: 'First day of month at 8:00 AM',
+              nextRun: '2024-02-01',
+            },
+            {
+              name: 'Overdue Payments Alert',
+              schedule: 'Every Friday at 5:00 PM',
+              nextRun: '2024-01-12',
+            },
           ].map((scheduled, index) => (
-            <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            <div
+              key={index}
+              className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+            >
               <div>
                 <div className="font-medium text-gray-900">{scheduled.name}</div>
                 <div className="text-sm text-gray-500">{scheduled.schedule}</div>

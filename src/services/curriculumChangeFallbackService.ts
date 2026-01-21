@@ -19,12 +19,15 @@ export class CurriculumChangeFallbackService {
   ): Promise<{ success: boolean; data?: string; error?: string }> {
     try {
       // Check authentication
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
       if (authError || !user) {
-        return { 
-          success: false, 
-          error: 'Authentication required. Please refresh the page and try again.' 
+        return {
+          success: false,
+          error: 'Authentication required. Please refresh the page and try again.',
         };
       }
 
@@ -40,9 +43,9 @@ export class CurriculumChangeFallbackService {
       }
 
       // Construct full name from firstName and lastName
-      const fullName = userData ? 
-        `${userData.firstName || ''}${userData.lastName ? ' ' + userData.lastName : ''}`.trim() : 
-        null;
+      const fullName = userData
+        ? `${userData.firstName || ''}${userData.lastName ? ' ' + userData.lastName : ''}`.trim()
+        : null;
 
       // Generate change ID
       const changeId = crypto.randomUUID();
@@ -58,7 +61,7 @@ export class CurriculumChangeFallbackService {
         requester_name: fullName || userData?.email || 'Unknown User',
         request_message: message,
         status: 'pending',
-        data: changeData
+        data: changeData,
       };
 
       // Get current pending changes
@@ -85,7 +88,7 @@ export class CurriculumChangeFallbackService {
         request_timestamp: new Date().toISOString(),
         user_id: user.id,
         user_name: fullName || userData?.email || 'Unknown User',
-        message: message
+        message: message,
       };
       const updatedChangeHistory = [...currentChangeHistory, historyEntry];
 
@@ -96,7 +99,7 @@ export class CurriculumChangeFallbackService {
           pending_changes: updatedPendingChanges,
           change_history: updatedChangeHistory,
           has_pending_changes: true,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', curriculumId);
 
@@ -107,15 +110,17 @@ export class CurriculumChangeFallbackService {
       // Create notification for university admins
       try {
         console.log('🔔 Attempting to create notification for university admins...');
-        
+
         // Get curriculum details for notification
         const { data: curriculumDetails, error: detailsError } = await supabase
           .from('college_curriculums')
-          .select(`
+          .select(
+            `
             course:college_courses!college_curriculums_course_id_fkey(course_name),
             departments(name),
             university_id
-          `)
+          `
+          )
           .eq('id', curriculumId)
           .single();
 
@@ -126,8 +131,10 @@ export class CurriculumChangeFallbackService {
 
         console.log('✅ Curriculum details fetched:', {
           university_id: curriculumDetails?.university_id,
+          // @ts-expect-error - Auto-suppressed for migration
           course_name: curriculumDetails?.course?.course_name,
-          department_name: curriculumDetails?.departments?.name
+          // @ts-expect-error - Auto-suppressed for migration
+          department_name: curriculumDetails?.departments?.name,
         });
 
         if (curriculumDetails?.university_id) {
@@ -143,17 +150,26 @@ export class CurriculumChangeFallbackService {
             throw adminsError;
           }
 
-          console.log(`✅ Found ${universityAdmins?.length || 0} university admin(s):`, 
-            universityAdmins?.map(admin => admin.email));
+          console.log(
+            `✅ Found ${universityAdmins?.length || 0} university admin(s):`,
+            universityAdmins?.map((admin) => admin.email)
+          );
 
           if (universityAdmins && universityAdmins.length > 0) {
+            // @ts-expect-error - Auto-suppressed for migration
             const courseName = curriculumDetails.course?.course_name || 'Unknown Course';
+            // @ts-expect-error - Auto-suppressed for migration
             const departmentName = curriculumDetails.departments?.name || 'Unknown Department';
-            const changeTypeLabel = changeType === 'outcome_add' ? 'New Learning Outcome' :
-                                  changeType === 'outcome_edit' ? 'Learning Outcome Edit' :
-                                  changeType === 'unit_add' ? 'New Unit' :
-                                  changeType === 'unit_edit' ? 'Unit Edit' :
-                                  'Curriculum Change';
+            const changeTypeLabel =
+              changeType === 'outcome_add'
+                ? 'New Learning Outcome'
+                : changeType === 'outcome_edit'
+                  ? 'Learning Outcome Edit'
+                  : changeType === 'unit_add'
+                    ? 'New Unit'
+                    : changeType === 'unit_edit'
+                      ? 'Unit Edit'
+                      : 'Curriculum Change';
 
             const notificationTitle = `${changeTypeLabel} Approval Required`;
             const notificationMessage = `${fullName || 'College Admin'} has submitted a ${changeTypeLabel.toLowerCase()} for ${courseName} (${departmentName}) that requires your approval.`;
@@ -162,7 +178,7 @@ export class CurriculumChangeFallbackService {
               title: notificationTitle,
               message: notificationMessage,
               type: 'approval_required',
-              recipients: universityAdmins.length
+              recipients: universityAdmins.length,
             });
 
             // Send notification to all university admins
@@ -170,7 +186,7 @@ export class CurriculumChangeFallbackService {
             for (const admin of universityAdmins) {
               try {
                 console.log(`📤 Sending notification to: ${admin.email}`);
-                
+
                 await AdminNotificationService.createNotification(
                   admin.id,
                   'approval_required',
@@ -185,7 +201,9 @@ export class CurriculumChangeFallbackService {
               }
             }
 
-            console.log(`🎉 Notifications sent to ${successCount}/${universityAdmins.length} university admin(s)`);
+            console.log(
+              `🎉 Notifications sent to ${successCount}/${universityAdmins.length} university admin(s)`
+            );
           } else {
             console.warn('⚠️ No university admins found for this university');
           }
@@ -222,7 +240,7 @@ export class CurriculumChangeFallbackService {
 
     return {
       success: result.success,
-      error: result.error
+      error: result.error,
     };
   }
 
@@ -244,7 +262,7 @@ export class CurriculumChangeFallbackService {
 
     return {
       success: result.success,
-      error: result.error
+      error: result.error,
     };
   }
 
@@ -260,17 +278,20 @@ export class CurriculumChangeFallbackService {
       console.log('🔍 Starting approval process:', {
         curriculumId,
         changeId,
-        reviewNotes
+        reviewNotes,
       });
 
       // Check authentication
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
       if (authError || !user) {
         console.error('❌ Authentication failed:', authError);
-        return { 
-          success: false, 
-          error: 'Authentication required. Please refresh the page and try again.' 
+        return {
+          success: false,
+          error: 'Authentication required. Please refresh the page and try again.',
         };
       }
 
@@ -290,7 +311,7 @@ export class CurriculumChangeFallbackService {
 
       console.log('📋 Curriculum fetched:', {
         status: curriculum.status,
-        pendingChangesCount: curriculum.pending_changes?.length || 0
+        pendingChangesCount: curriculum.pending_changes?.length || 0,
       });
 
       const pendingChanges = curriculum.pending_changes || [];
@@ -299,7 +320,7 @@ export class CurriculumChangeFallbackService {
       if (changeIndex === -1) {
         console.error('❌ Change not found in pending changes:', {
           changeId,
-          availableChanges: pendingChanges.map((c: any) => c.id)
+          availableChanges: pendingChanges.map((c: any) => c.id),
         });
         return { success: false, error: 'Change request not found' };
       }
@@ -308,13 +329,13 @@ export class CurriculumChangeFallbackService {
       console.log('📝 Found change to approve:', {
         changeType: change.change_type,
         entityId: change.entity_id,
-        requestedBy: change.requester_name
+        requestedBy: change.requester_name,
       });
 
       // Apply the change based on type
       console.log('🔧 Applying change to database...');
       const applyResult = await this.applyChange(curriculumId, change, user.id);
-      
+
       if (!applyResult.success) {
         console.error('❌ Failed to apply change:', applyResult.error);
         return applyResult;
@@ -323,7 +344,9 @@ export class CurriculumChangeFallbackService {
       console.log('✅ Change applied successfully to database');
 
       // Remove from pending changes
-      const updatedPendingChanges = pendingChanges.filter((_: any, index: number) => index !== changeIndex);
+      const updatedPendingChanges = pendingChanges.filter(
+        (_: any, index: number) => index !== changeIndex
+      );
       console.log('📊 Updated pending changes count:', updatedPendingChanges.length);
 
       // Add to change history
@@ -338,7 +361,7 @@ export class CurriculumChangeFallbackService {
         user_name: 'University Admin',
         review_notes: reviewNotes,
         applied: true,
-        original_change: change // Store the original change for audit trail
+        original_change: change, // Store the original change for audit trail
       };
       const updatedChangeHistory = [...currentChangeHistory, historyEntry];
 
@@ -350,7 +373,7 @@ export class CurriculumChangeFallbackService {
           pending_changes: updatedPendingChanges,
           change_history: updatedChangeHistory,
           has_pending_changes: updatedPendingChanges.length > 0,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', curriculumId);
 
@@ -364,15 +387,17 @@ export class CurriculumChangeFallbackService {
       // Send notification to college admin about approval
       try {
         console.log('📧 Sending approval notification...');
-        
+
         // Get curriculum details for notification
         const { data: curriculumDetails, error: detailsError } = await supabase
           .from('college_curriculums')
-          .select(`
+          .select(
+            `
             course:college_courses!college_curriculums_course_id_fkey(course_name),
             departments(name),
             college_id
-          `)
+          `
+          )
           .eq('id', curriculumId)
           .single();
 
@@ -385,19 +410,28 @@ export class CurriculumChangeFallbackService {
             .eq('role', 'college_admin');
 
           if (!adminsError && collegeAdmins && collegeAdmins.length > 0) {
+            // @ts-expect-error - Auto-suppressed for migration
             const courseName = curriculumDetails.course?.course_name || 'Unknown Course';
+            // @ts-expect-error - Auto-suppressed for migration
             const departmentName = curriculumDetails.departments?.name || 'Unknown Department';
-            const changeTypeLabel = change.change_type === 'outcome_add' ? 'Learning Outcome Addition' :
-                                  change.change_type === 'outcome_edit' ? 'Learning Outcome Edit' :
-                                  change.change_type === 'unit_add' ? 'Unit Addition' :
-                                  change.change_type === 'unit_edit' ? 'Unit Edit' :
-                                  'Curriculum Change';
+            const changeTypeLabel =
+              change.change_type === 'outcome_add'
+                ? 'Learning Outcome Addition'
+                : change.change_type === 'outcome_edit'
+                  ? 'Learning Outcome Edit'
+                  : change.change_type === 'unit_add'
+                    ? 'Unit Addition'
+                    : change.change_type === 'unit_edit'
+                      ? 'Unit Edit'
+                      : 'Curriculum Change';
 
             const notificationTitle = `${changeTypeLabel} Approved`;
             const notificationMessage = `Your ${changeTypeLabel.toLowerCase()} for ${courseName} (${departmentName}) has been approved by the university admin and is now live.`;
 
             // Send to the original requester if they're still a college admin
-            const originalRequester = collegeAdmins.find(admin => admin.id === change.requested_by);
+            const originalRequester = collegeAdmins.find(
+              (admin) => admin.id === change.requested_by
+            );
             if (originalRequester) {
               await AdminNotificationService.createNotification(
                 originalRequester.id,
@@ -430,12 +464,15 @@ export class CurriculumChangeFallbackService {
   ): Promise<{ success: boolean; error?: string }> {
     try {
       // Check authentication
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
       if (authError || !user) {
-        return { 
-          success: false, 
-          error: 'Authentication required. Please refresh the page and try again.' 
+        return {
+          success: false,
+          error: 'Authentication required. Please refresh the page and try again.',
         };
       }
 
@@ -460,7 +497,9 @@ export class CurriculumChangeFallbackService {
       const change = pendingChanges[changeIndex];
 
       // Remove from pending changes
-      const updatedPendingChanges = pendingChanges.filter((_: any, index: number) => index !== changeIndex);
+      const updatedPendingChanges = pendingChanges.filter(
+        (_: any, index: number) => index !== changeIndex
+      );
 
       // Add to change history
       const currentChangeHistory = curriculum.change_history || [];
@@ -471,7 +510,7 @@ export class CurriculumChangeFallbackService {
         request_timestamp: new Date().toISOString(),
         user_id: user.id,
         user_name: 'College Admin',
-        applied: false
+        applied: false,
       };
       const updatedChangeHistory = [...currentChangeHistory, historyEntry];
 
@@ -482,7 +521,7 @@ export class CurriculumChangeFallbackService {
           pending_changes: updatedPendingChanges,
           change_history: updatedChangeHistory,
           has_pending_changes: updatedPendingChanges.length > 0,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', curriculumId);
 
@@ -509,17 +548,20 @@ export class CurriculumChangeFallbackService {
       console.log('🚫 Starting rejection process:', {
         curriculumId,
         changeId,
-        reviewNotes
+        reviewNotes,
       });
 
       // Check authentication
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
       if (authError || !user) {
         console.error('❌ Authentication failed:', authError);
-        return { 
-          success: false, 
-          error: 'Authentication required. Please refresh the page and try again.' 
+        return {
+          success: false,
+          error: 'Authentication required. Please refresh the page and try again.',
         };
       }
 
@@ -543,7 +585,7 @@ export class CurriculumChangeFallbackService {
       if (changeIndex === -1) {
         console.error('❌ Change not found in pending changes:', {
           changeId,
-          availableChanges: pendingChanges.map((c: any) => c.id)
+          availableChanges: pendingChanges.map((c: any) => c.id),
         });
         return { success: false, error: 'Change request not found' };
       }
@@ -552,11 +594,13 @@ export class CurriculumChangeFallbackService {
       console.log('📝 Found change to reject:', {
         changeType: change.change_type,
         entityId: change.entity_id,
-        requestedBy: change.requester_name
+        requestedBy: change.requester_name,
       });
 
       // Remove from pending changes
-      const updatedPendingChanges = pendingChanges.filter((_: any, index: number) => index !== changeIndex);
+      const updatedPendingChanges = pendingChanges.filter(
+        (_: any, index: number) => index !== changeIndex
+      );
       console.log('📊 Updated pending changes count:', updatedPendingChanges.length);
 
       // Add to change history
@@ -571,7 +615,7 @@ export class CurriculumChangeFallbackService {
         user_name: 'University Admin',
         review_notes: reviewNotes,
         applied: false,
-        original_change: change // Store the original change for audit trail
+        original_change: change, // Store the original change for audit trail
       };
       const updatedChangeHistory = [...currentChangeHistory, historyEntry];
 
@@ -583,7 +627,7 @@ export class CurriculumChangeFallbackService {
           pending_changes: updatedPendingChanges,
           change_history: updatedChangeHistory,
           has_pending_changes: updatedPendingChanges.length > 0,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', curriculumId);
 
@@ -597,15 +641,17 @@ export class CurriculumChangeFallbackService {
       // Send notification to college admin about rejection
       try {
         console.log('📧 Sending rejection notification...');
-        
+
         // Get curriculum details for notification
         const { data: curriculumDetails, error: detailsError } = await supabase
           .from('college_curriculums')
-          .select(`
+          .select(
+            `
             course:college_courses!college_curriculums_course_id_fkey(course_name),
             departments(name),
             college_id
-          `)
+          `
+          )
           .eq('id', curriculumId)
           .single();
 
@@ -618,19 +664,28 @@ export class CurriculumChangeFallbackService {
             .eq('role', 'college_admin');
 
           if (!adminsError && collegeAdmins && collegeAdmins.length > 0) {
+            // @ts-expect-error - Auto-suppressed for migration
             const courseName = curriculumDetails.course?.course_name || 'Unknown Course';
+            // @ts-expect-error - Auto-suppressed for migration
             const departmentName = curriculumDetails.departments?.name || 'Unknown Department';
-            const changeTypeLabel = change.change_type === 'outcome_add' ? 'Learning Outcome Addition' :
-                                  change.change_type === 'outcome_edit' ? 'Learning Outcome Edit' :
-                                  change.change_type === 'unit_add' ? 'Unit Addition' :
-                                  change.change_type === 'unit_edit' ? 'Unit Edit' :
-                                  'Curriculum Change';
+            const changeTypeLabel =
+              change.change_type === 'outcome_add'
+                ? 'Learning Outcome Addition'
+                : change.change_type === 'outcome_edit'
+                  ? 'Learning Outcome Edit'
+                  : change.change_type === 'unit_add'
+                    ? 'Unit Addition'
+                    : change.change_type === 'unit_edit'
+                      ? 'Unit Edit'
+                      : 'Curriculum Change';
 
             const notificationTitle = `${changeTypeLabel} Rejected`;
             const notificationMessage = `Your ${changeTypeLabel.toLowerCase()} for ${courseName} (${departmentName}) has been rejected. Feedback: ${reviewNotes || 'No specific feedback provided.'}`;
 
             // Send to the original requester if they're still a college admin
-            const originalRequester = collegeAdmins.find(admin => admin.id === change.requested_by);
+            const originalRequester = collegeAdmins.find(
+              (admin) => admin.id === change.requested_by
+            );
             if (originalRequester) {
               await AdminNotificationService.createNotification(
                 originalRequester.id,
@@ -657,20 +712,24 @@ export class CurriculumChangeFallbackService {
   /**
    * Apply the actual change to the database tables
    */
-  private async applyChange(curriculumId: string, change: any, userId: string): Promise<{ success: boolean; error?: string }> {
+  private async applyChange(
+    curriculumId: string,
+    change: any,
+    userId: string
+  ): Promise<{ success: boolean; error?: string }> {
     try {
       const changeType = change.change_type;
-      
+
       console.log('🔧 Applying change:', {
         changeType,
         changeId: change.id,
         entityId: change.entity_id,
-        changeData: change.data
+        changeData: change.data,
       });
 
       // Extract change data with multiple fallback paths
       let changeData = change.data;
-      
+
       // Handle nested data structures
       if (changeData?.data) {
         changeData = changeData.data;
@@ -681,13 +740,14 @@ export class CurriculumChangeFallbackService {
         const unitId = changeData.unitId || changeData.unit_id;
         const outcomeText = changeData.outcome || changeData.outcome_text || changeData.outcomeText;
         const bloomLevel = changeData.bloomLevel || changeData.bloom_level || 'Apply';
-        const assessmentMappings = changeData.assessmentMappings || changeData.assessment_mappings || [];
+        const assessmentMappings =
+          changeData.assessmentMappings || changeData.assessment_mappings || [];
 
         console.log('📝 Adding outcome:', {
           unitId,
           outcomeText,
           bloomLevel,
-          assessmentMappings
+          assessmentMappings,
         });
 
         if (!unitId) {
@@ -709,7 +769,7 @@ export class CurriculumChangeFallbackService {
             bloom_level: bloomLevel,
             assessment_mappings: assessmentMappings,
             created_by: userId,
-            updated_by: userId
+            updated_by: userId,
           })
           .select()
           .single();
@@ -720,7 +780,6 @@ export class CurriculumChangeFallbackService {
         }
 
         console.log('✅ Outcome added successfully:', insertedOutcome?.id);
-
       } else if (changeType === 'unit_add') {
         // Extract unit data with multiple field name variations
         const name = changeData.name;
@@ -736,7 +795,7 @@ export class CurriculumChangeFallbackService {
           description,
           credits,
           estimatedDuration,
-          durationUnit
+          durationUnit,
         });
 
         if (!name) {
@@ -762,9 +821,8 @@ export class CurriculumChangeFallbackService {
           return { success: false, error: 'Failed to check existing units: ' + orderError.message };
         }
 
-        const nextOrderIndex = existingUnits && existingUnits.length > 0 
-          ? (existingUnits[0].order_index || 0) + 1 
-          : 1;
+        const nextOrderIndex =
+          existingUnits && existingUnits.length > 0 ? (existingUnits[0].order_index || 0) + 1 : 1;
 
         const { data: insertedUnit, error } = await supabase
           .from('college_curriculum_units')
@@ -778,7 +836,7 @@ export class CurriculumChangeFallbackService {
             duration_unit: durationUnit,
             order_index: nextOrderIndex,
             created_by: userId,
-            updated_by: userId
+            updated_by: userId,
           })
           .select()
           .single();
@@ -789,11 +847,10 @@ export class CurriculumChangeFallbackService {
         }
 
         console.log('✅ Unit added successfully:', insertedUnit?.id);
-
       } else if (changeType === 'outcome_edit') {
         // For edit operations, extract the 'after' data which contains the new values
         let afterData = changeData.after || changeData;
-        
+
         // Handle nested after data
         if (afterData?.data) {
           afterData = afterData.data;
@@ -802,7 +859,7 @@ export class CurriculumChangeFallbackService {
         console.log('✏️ Editing outcome:', {
           entityId: change.entity_id,
           beforeData: changeData.before,
-          afterData: afterData
+          afterData: afterData,
         });
 
         if (!change.entity_id) {
@@ -813,7 +870,7 @@ export class CurriculumChangeFallbackService {
         // Build update object with all possible fields
         const updateData: any = {
           updated_by: userId,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         };
 
         // Update outcome text if provided
@@ -854,11 +911,10 @@ export class CurriculumChangeFallbackService {
         }
 
         console.log('✅ Outcome updated successfully:', updatedOutcome?.id);
-
       } else if (changeType === 'unit_edit') {
         // For unit edit, extract the 'after' data
         let afterData = changeData.after || changeData;
-        
+
         // Handle nested after data
         if (afterData?.data) {
           afterData = afterData.data;
@@ -867,7 +923,7 @@ export class CurriculumChangeFallbackService {
         console.log('✏️ Editing unit:', {
           entityId: change.entity_id,
           beforeData: changeData.before,
-          afterData: afterData
+          afterData: afterData,
         });
 
         if (!change.entity_id) {
@@ -878,7 +934,7 @@ export class CurriculumChangeFallbackService {
         // Build update object
         const updateData: any = {
           updated_by: userId,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         };
 
         // Update fields if provided
@@ -886,9 +942,12 @@ export class CurriculumChangeFallbackService {
         if (afterData.code !== undefined) updateData.code = afterData.code;
         if (afterData.description !== undefined) updateData.description = afterData.description;
         if (afterData.credits !== undefined) updateData.credits = afterData.credits;
-        if (afterData.estimated_duration !== undefined) updateData.estimated_duration = afterData.estimated_duration;
-        if (afterData.estimatedDuration !== undefined) updateData.estimated_duration = afterData.estimatedDuration;
-        if (afterData.duration_unit !== undefined) updateData.duration_unit = afterData.duration_unit;
+        if (afterData.estimated_duration !== undefined)
+          updateData.estimated_duration = afterData.estimated_duration;
+        if (afterData.estimatedDuration !== undefined)
+          updateData.estimated_duration = afterData.estimatedDuration;
+        if (afterData.duration_unit !== undefined)
+          updateData.duration_unit = afterData.duration_unit;
         if (afterData.durationUnit !== undefined) updateData.duration_unit = afterData.durationUnit;
         if (afterData.order_index !== undefined) updateData.order_index = afterData.order_index;
         if (afterData.orderIndex !== undefined) updateData.order_index = afterData.orderIndex;
@@ -908,7 +967,6 @@ export class CurriculumChangeFallbackService {
         }
 
         console.log('✅ Unit updated successfully:', updatedUnit?.id);
-
       } else if (changeType === 'outcome_delete') {
         console.log('🗑️ Deleting outcome:', change.entity_id);
 
@@ -928,7 +986,6 @@ export class CurriculumChangeFallbackService {
         }
 
         console.log('✅ Outcome deleted successfully');
-
       } else if (changeType === 'unit_delete') {
         console.log('🗑️ Deleting unit:', change.entity_id);
 
@@ -945,7 +1002,10 @@ export class CurriculumChangeFallbackService {
 
         if (outcomeDeleteError) {
           console.error('❌ Failed to delete unit outcomes:', outcomeDeleteError);
-          return { success: false, error: 'Failed to delete unit outcomes: ' + outcomeDeleteError.message };
+          return {
+            success: false,
+            error: 'Failed to delete unit outcomes: ' + outcomeDeleteError.message,
+          };
         }
 
         // Then delete the unit
@@ -960,25 +1020,25 @@ export class CurriculumChangeFallbackService {
         }
 
         console.log('✅ Unit and its outcomes deleted successfully');
-
       } else if (changeType === 'curriculum_edit') {
         // Handle curriculum-level edits
-        let afterData = changeData.after || changeData;
-        
+        const afterData = changeData.after || changeData;
+
         console.log('📋 Editing curriculum:', {
           curriculumId,
           beforeData: changeData.before,
-          afterData: afterData
+          afterData: afterData,
         });
 
         // Build update object for curriculum
         const updateData: any = {
           updated_by: userId,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         };
 
         // Update curriculum fields if provided
-        if (afterData.academic_year !== undefined) updateData.academic_year = afterData.academic_year;
+        if (afterData.academic_year !== undefined)
+          updateData.academic_year = afterData.academic_year;
         if (afterData.semester !== undefined) updateData.semester = afterData.semester;
         if (afterData.description !== undefined) updateData.description = afterData.description;
 
@@ -997,7 +1057,6 @@ export class CurriculumChangeFallbackService {
         }
 
         console.log('✅ Curriculum updated successfully');
-
       } else {
         console.error('❌ Unknown change type:', changeType);
         return { success: false, error: 'Unknown change type: ' + changeType };

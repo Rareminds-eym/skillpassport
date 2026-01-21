@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import toast from "react-hot-toast";
-import { supabase } from "../../../../../lib/supabaseClient";
-import { FeePayment, PaymentStatus, StudentFeeSummary, StudentLedger } from "../types";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import toast from 'react-hot-toast';
+import { supabase } from '../../../../../lib/supabaseClient';
+import { FeePayment, PaymentStatus, StudentFeeSummary, StudentLedger } from '../types';
 
 export const useFeeTracking = () => {
   const [ledgers, setLedgers] = useState<StudentLedger[]>([]);
@@ -18,16 +18,21 @@ export const useFeeTracking = () => {
       if (storedUser) {
         const userData = JSON.parse(storedUser);
         if (userData.role === 'college_admin' && userData.collegeId) {
-          console.log('✅ College admin detected, using collegeId from localStorage:', userData.collegeId);
+          console.log(
+            '✅ College admin detected, using collegeId from localStorage:',
+            userData.collegeId
+          );
           return userData.collegeId;
         }
       }
 
       // If not found in localStorage, try Supabase Auth
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (user) {
         console.log('🔍 Checking Supabase auth user for college admin:', user.email);
-        
+
         // Get user role from users table
         const { data: userRecord } = await supabase
           .from('users')
@@ -48,26 +53,29 @@ export const useFeeTracking = () => {
             console.log('✅ Found college_id for college admin:', org.id, 'College:', org.name);
             return org.id;
           } else {
-            console.warn('⚠️ College admin but no matching organization found for email:', user.email);
+            console.warn(
+              '⚠️ College admin but no matching organization found for email:',
+              user.email
+            );
           }
         }
       }
-      
+
       return null;
     } catch (err) {
-      console.error("Failed to get college ID:", err);
+      console.error('Failed to get college ID:', err);
       return null;
     }
   }, []);
 
   const loadStats = useCallback(async () => {
     if (!collegeId) return;
-    
+
     try {
       console.log('🚀 [Fee Tracking] Loading stats from database function for college:', collegeId);
-      
+
       const { data, error } = await supabase.rpc('get_expenditure_summary', {
-        p_college_id: collegeId
+        p_college_id: collegeId,
       });
 
       if (error) {
@@ -90,23 +98,22 @@ export const useFeeTracking = () => {
         });
       }
     } catch (err) {
-      console.error("Failed to load stats from database:", err);
+      console.error('Failed to load stats from database:', err);
     }
   }, [collegeId]);
 
   const loadLedgers = useCallback(async () => {
     if (!collegeId) return;
-    
+
     try {
       setLoading(true);
       console.log('🚀 [Fee Tracking] Loading all students for college:', collegeId);
 
       // Always load all students first, then merge with any existing ledger data
       await loadStudentsAsFallback();
-      
     } catch (err) {
-      console.error("Failed to load ledgers:", err);
-      toast.error("Failed to load student ledgers");
+      console.error('Failed to load ledgers:', err);
+      toast.error('Failed to load student ledgers');
       setLedgers([]);
     } finally {
       setLoading(false);
@@ -115,17 +122,17 @@ export const useFeeTracking = () => {
 
   const loadStudentsAsFallback = useCallback(async () => {
     if (!collegeId) return;
-    
+
     try {
       console.log('🚀 [Fee Tracking] Loading all students for college:', collegeId);
-      
+
       // Get all students for this college
       const { data: students, error } = await supabase
-        .from("students")
-        .select("id, user_id, name, roll_number, email, college_id, grade, section")
-        .eq("college_id", collegeId)
-        .order("name", { ascending: true });
-      
+        .from('students')
+        .select('id, user_id, name, roll_number, email, college_id, grade, section')
+        .eq('college_id', collegeId)
+        .order('name', { ascending: true });
+
       if (error) {
         console.error('Students query failed:', error);
         return;
@@ -134,64 +141,69 @@ export const useFeeTracking = () => {
       console.log(`✅ [Fee Tracking] Found ${students?.length || 0} students in college`);
 
       // Get existing ledger entries for these students
-      const studentIds = students?.map(s => s.user_id || s.id).filter(Boolean) || [];
+      const studentIds = students?.map((s) => s.user_id || s.id).filter(Boolean) || [];
       let existingLedgers: any[] = [];
-      
+
       if (studentIds.length > 0) {
         const { data: ledgerData } = await supabase
-          .from("student_ledgers")
-          .select("*")
-          .in("student_id", studentIds);
-        
+          .from('student_ledgers')
+          .select('*')
+          .in('student_id', studentIds);
+
         existingLedgers = ledgerData || [];
         console.log(`✅ [Fee Tracking] Found ${existingLedgers.length} existing ledger entries`);
       }
 
       // Create ledger entries for all students (real + mock)
-      const allLedgers = students?.map((student: any) => {
-        const studentId = student.user_id || student.id;
-        const existingLedger = existingLedgers.find(l => l.student_id === studentId);
-        
-        if (existingLedger) {
-          // Use real ledger data
-          return {
-            ...existingLedger,
-            student_name: student.name || 'Unknown',
-            roll_number: student.roll_number || 'N/A',
-            student_email: student.email || '',
-            college_id: student.college_id,
-          };
-        } else {
-          // Create mock ledger entry
-          const mockAmount = 50000 + Math.floor(Math.random() * 25000); // 50K-75K
-          const paidAmount = Math.random() > 0.3 ? Math.floor(Math.random() * mockAmount * 0.8) : 0;
-          
-          return {
-            id: `mock-${student.id}`,
-            student_id: studentId,
-            student_name: student.name || 'Unknown',
-            roll_number: student.roll_number || 'N/A',
-            student_email: student.email || '',
-            college_id: student.college_id,
-            fee_structure_id: 'mock-fee-structure',
-            fee_head_id: 'mock-fee-head',
-            fee_head_name: 'Tuition Fee',
-            due_amount: mockAmount,
-            paid_amount: paidAmount,
-            balance: mockAmount - paidAmount,
-            due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-            payment_status: (mockAmount - paidAmount) <= 0 ? 'paid' : paidAmount > 0 ? 'partial' : 'pending',
-            is_overdue: Math.random() > 0.8, // 20% chance of being overdue
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          };
-        }
-      }) || [];
+      const allLedgers =
+        students?.map((student: any) => {
+          const studentId = student.user_id || student.id;
+          const existingLedger = existingLedgers.find((l) => l.student_id === studentId);
 
-      console.log(`✅ [Fee Tracking] Created ${allLedgers.length} total ledger entries (${existingLedgers.length} real + ${allLedgers.length - existingLedgers.length} mock)`);
+          if (existingLedger) {
+            // Use real ledger data
+            return {
+              ...existingLedger,
+              student_name: student.name || 'Unknown',
+              roll_number: student.roll_number || 'N/A',
+              student_email: student.email || '',
+              college_id: student.college_id,
+            };
+          } else {
+            // Create mock ledger entry
+            const mockAmount = 50000 + Math.floor(Math.random() * 25000); // 50K-75K
+            const paidAmount =
+              Math.random() > 0.3 ? Math.floor(Math.random() * mockAmount * 0.8) : 0;
+
+            return {
+              id: `mock-${student.id}`,
+              student_id: studentId,
+              student_name: student.name || 'Unknown',
+              roll_number: student.roll_number || 'N/A',
+              student_email: student.email || '',
+              college_id: student.college_id,
+              fee_structure_id: 'mock-fee-structure',
+              fee_head_id: 'mock-fee-head',
+              fee_head_name: 'Tuition Fee',
+              due_amount: mockAmount,
+              paid_amount: paidAmount,
+              balance: mockAmount - paidAmount,
+              due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+              payment_status:
+                mockAmount - paidAmount <= 0 ? 'paid' : paidAmount > 0 ? 'partial' : 'pending',
+              is_overdue: Math.random() > 0.8, // 20% chance of being overdue
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            };
+          }
+        }) || [];
+
+      console.log(
+        `✅ [Fee Tracking] Created ${allLedgers.length} total ledger entries (${existingLedgers.length} real + ${allLedgers.length - existingLedgers.length} mock)`
+      );
       setLedgers(allLedgers);
     } catch (err) {
-      console.error("Failed to load students:", err);
+      console.error('Failed to load students:', err);
       setLedgers([]);
     }
   }, [collegeId]);
@@ -199,17 +211,17 @@ export const useFeeTracking = () => {
   const loadPayments = useCallback(async (studentId?: string) => {
     try {
       let query = supabase
-        .from("fee_payments")
-        .select("*")
-        .order("payment_date", { ascending: false });
+        .from('fee_payments')
+        .select('*')
+        .order('payment_date', { ascending: false });
 
-      if (studentId) query = query.eq("student_id", studentId);
+      if (studentId) query = query.eq('student_id', studentId);
 
       const { data, error } = await query;
       if (error) throw error;
       setPayments(data || []);
     } catch (err) {
-      console.error("Failed to load payments:", err);
+      console.error('Failed to load payments:', err);
     }
   }, []);
 
@@ -218,7 +230,7 @@ export const useFeeTracking = () => {
       const id = await getCollegeId();
       setCollegeId(id);
     };
-    
+
     initializeCollegeId();
   }, [getCollegeId]);
 
@@ -229,14 +241,15 @@ export const useFeeTracking = () => {
     }
   }, [collegeId, loadStats, loadLedgers]);
 
-
   // Generate receipt number
   const generateReceiptNumber = () => {
     const date = new Date();
-    const prefix = "RCP";
+    const prefix = 'RCP';
     const year = date.getFullYear().toString().slice(-2);
-    const month = (date.getMonth() + 1).toString().padStart(2, "0");
-    const random = Math.floor(Math.random() * 10000).toString().padStart(4, "0");
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const random = Math.floor(Math.random() * 10000)
+      .toString()
+      .padStart(4, '0');
     return `${prefix}${year}${month}${random}`;
   };
 
@@ -246,9 +259,11 @@ export const useFeeTracking = () => {
     paymentData: Partial<FeePayment>
   ): Promise<boolean> => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
-        toast.error("User not authenticated");
+        toast.error('User not authenticated');
         return false;
       }
 
@@ -265,18 +280,16 @@ export const useFeeTracking = () => {
         cheque_date: paymentData.cheque_date || null,
         dd_number: paymentData.dd_number || null,
         receipt_number: receiptNumber,
-        payment_date: paymentData.payment_date || new Date().toISOString().split("T")[0],
+        payment_date: paymentData.payment_date || new Date().toISOString().split('T')[0],
         paid_at: new Date().toISOString(),
-        status: "completed",
+        status: 'completed',
         remarks: paymentData.remarks || null,
         recorded_by: user.id,
         is_verified: false,
         is_reconciled: false,
       };
 
-      const { error: paymentError } = await supabase
-        .from("fee_payments")
-        .insert(payload);
+      const { error: paymentError } = await supabase.from('fee_payments').insert(payload);
 
       if (paymentError) throw paymentError;
 
@@ -285,17 +298,18 @@ export const useFeeTracking = () => {
       if (ledger) {
         const newPaidAmount = (ledger.paid_amount || 0) + (paymentData.amount || 0);
         const newBalance = ledger.due_amount - newPaidAmount;
-        const newStatus: PaymentStatus = newBalance <= 0 ? "paid" : newBalance < ledger.due_amount ? "partial" : "pending";
+        const newStatus: PaymentStatus =
+          newBalance <= 0 ? 'paid' : newBalance < ledger.due_amount ? 'partial' : 'pending';
 
         const { error: updateError } = await supabase
-          .from("student_ledgers")
+          .from('student_ledgers')
           .update({
             paid_amount: newPaidAmount,
             balance: newBalance,
             payment_status: newStatus,
             updated_at: new Date().toISOString(),
           })
-          .eq("id", ledgerId);
+          .eq('id', ledgerId);
 
         if (updateError) throw updateError;
       }
@@ -304,31 +318,32 @@ export const useFeeTracking = () => {
       loadLedgers();
       return true;
     } catch (err) {
-      console.error("Failed to record payment:", err);
-      toast.error("Failed to record payment");
+      console.error('Failed to record payment:', err);
+      toast.error('Failed to record payment');
       return false;
     }
   };
 
-
   const verifyPayment = async (paymentId: string): Promise<boolean> => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       const { error } = await supabase
-        .from("fee_payments")
+        .from('fee_payments')
         .update({
           is_verified: true,
           verified_by: user?.id,
           verified_at: new Date().toISOString(),
         })
-        .eq("id", paymentId);
+        .eq('id', paymentId);
 
       if (error) throw error;
-      toast.success("Payment verified");
+      toast.success('Payment verified');
       return true;
     } catch (err) {
-      console.error("Failed to verify payment:", err);
-      toast.error("Failed to verify payment");
+      console.error('Failed to verify payment:', err);
+      toast.error('Failed to verify payment');
       return false;
     }
   };
@@ -360,10 +375,10 @@ export const useFeeTracking = () => {
 
     // Update status based on aggregated values
     summaryMap.forEach((summary) => {
-      if (summary.balance <= 0) summary.status = "paid";
-      else if (summary.total_paid > 0) summary.status = "partial";
-      else if (summary.ledger_entries.some((l) => l.is_overdue)) summary.status = "overdue";
-      else summary.status = "pending";
+      if (summary.balance <= 0) summary.status = 'paid';
+      else if (summary.total_paid > 0) summary.status = 'partial';
+      else if (summary.ledger_entries.some((l) => l.is_overdue)) summary.status = 'overdue';
+      else summary.status = 'pending';
     });
 
     return Array.from(summaryMap.values());
@@ -382,10 +397,10 @@ export const useFeeTracking = () => {
       const totalCollected = studentSummaries.reduce((sum, s) => sum + s.total_paid, 0);
       const totalPending = studentSummaries.reduce((sum, s) => sum + s.balance, 0);
       const totalStudents = studentSummaries.length;
-      const paidCount = studentSummaries.filter((s) => s.status === "paid").length;
-      const partialCount = studentSummaries.filter((s) => s.status === "partial").length;
-      const pendingCount = studentSummaries.filter((s) => s.status === "pending").length;
-      const overdueCount = studentSummaries.filter((s) => s.status === "overdue").length;
+      const paidCount = studentSummaries.filter((s) => s.status === 'paid').length;
+      const partialCount = studentSummaries.filter((s) => s.status === 'partial').length;
+      const pendingCount = studentSummaries.filter((s) => s.status === 'pending').length;
+      const overdueCount = studentSummaries.filter((s) => s.status === 'overdue').length;
 
       return {
         totalDue,

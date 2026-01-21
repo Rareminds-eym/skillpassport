@@ -1,9 +1,9 @@
 /**
  * QuestionNavigation Component
- * 
+ *
  * Navigation buttons for moving between questions.
  * Handles previous/next with proper disabled states.
- * 
+ *
  * @module features/assessment/career-test/components/QuestionNavigation
  */
 
@@ -34,7 +34,7 @@ export const QuestionNavigation: React.FC<QuestionNavigationProps> = ({
   isSaving = false,
   isLastQuestion,
   onPrevious,
-  onNext
+  onNext,
 }) => {
   return (
     <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-100">
@@ -67,9 +67,10 @@ export const QuestionNavigation: React.FC<QuestionNavigationProps> = ({
           disabled={!isAnswered || isSubmitting}
           className={`
             flex items-center gap-2 px-8 py-3 transition-all duration-300
-            ${isAnswered && !isSubmitting
-              ? 'bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white shadow-lg shadow-indigo-500/30 hover:shadow-xl'
-              : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+            ${
+              isAnswered && !isSubmitting
+                ? 'bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white shadow-lg shadow-indigo-500/30 hover:shadow-xl'
+                : 'bg-gray-200 text-gray-500 cursor-not-allowed'
             }
           `}
         >

@@ -1,15 +1,15 @@
-import React, { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   BellIcon,
   UserCircleIcon,
   Bars3Icon,
   XMarkIcon,
   ChevronDownIcon,
-} from "@heroicons/react/24/outline";
-import { useAuth } from "../../context/AuthContext";
-import NotificationPanel from "./NotificationPanel";
-import { useAdminNotifications } from "../../hooks/useAdminNotifications";
+} from '@heroicons/react/24/outline';
+import { useAuth } from '../../context/AuthContext';
+import NotificationPanel from './NotificationPanel';
+import { useAdminNotifications } from '../../hooks/useAdminNotifications';
 
 interface HeaderProps {
   onMenuToggle: () => void;
@@ -17,11 +17,7 @@ interface HeaderProps {
   notificationCount?: number;
 }
 
-const Header: React.FC<HeaderProps> = ({
-  onMenuToggle,
-  showMobileMenu,
-  notificationCount,
-}) => {
+const Header: React.FC<HeaderProps> = ({ onMenuToggle, showMobileMenu, notificationCount }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const { user, logout } = useAuth();
@@ -44,11 +40,11 @@ const Header: React.FC<HeaderProps> = ({
     };
 
     if (showProfileMenu || showNotifications) {
-      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showProfileMenu, showNotifications]);
 
@@ -63,27 +59,27 @@ const Header: React.FC<HeaderProps> = ({
   const handleLogout = () => {
     setShowProfileMenu(false);
     logout?.(); // optional: clear auth context
-    navigate("/login");
+    navigate('/login');
   };
 
   // Get settings path based on role (same logic as sidebar)
   const getSettingsPath = () => {
-    if (user?.role === "school_admin") return "/school-admin/settings";
-    if (user?.role === "college_admin") return "/college-admin/settings";
-    if (user?.role === "university_admin") return "/university-admin/settings";
-    return "/college-admin/settings";
+    if (user?.role === 'school_admin') return '/school-admin/settings';
+    if (user?.role === 'college_admin') return '/college-admin/settings';
+    if (user?.role === 'university_admin') return '/university-admin/settings';
+    return '/college-admin/settings';
   };
 
   // Fallbacks
-  const userName = user?.name || "Admin User";
+  const userName = user?.name || 'Admin User';
   const userRoleLabel =
-    user?.role === "school_admin"
-      ? "School Admin"
-      : user?.role === "college_admin"
-        ? "College Admin"
-        : user?.role === "university_admin"
-          ? "University Admin"
-          : "Administrator";
+    user?.role === 'school_admin'
+      ? 'School Admin'
+      : user?.role === 'college_admin'
+        ? 'College Admin'
+        : user?.role === 'university_admin'
+          ? 'University Admin'
+          : 'Administrator';
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -120,7 +116,7 @@ const Header: React.FC<HeaderProps> = ({
                 className="relative p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full focus:ring-2 focus:ring-indigo-500 transition"
               >
                 <BellIcon className="h-6 w-6" />
-                {(unreadCount > 0) && (
+                {unreadCount > 0 && (
                   <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
                 )}
               </button>
@@ -148,8 +144,9 @@ const Header: React.FC<HeaderProps> = ({
                   <p className="text-xs text-gray-500">{userRoleLabel}</p>
                 </div>
                 <ChevronDownIcon
-                  className={`hidden sm:block h-4 w-4 text-gray-500 transition-transform ${showProfileMenu ? "rotate-180" : ""
-                    }`}
+                  className={`hidden sm:block h-4 w-4 text-gray-500 transition-transform ${
+                    showProfileMenu ? 'rotate-180' : ''
+                  }`}
                 />
               </button>
 
@@ -178,10 +175,7 @@ const Header: React.FC<HeaderProps> = ({
 
       {/* Mobile overlay for menu */}
       {showMobileMenu && (
-        <div
-          className="md:hidden fixed inset-0 z-30 top-16"
-          onClick={onMenuToggle}
-        />
+        <div className="md:hidden fixed inset-0 z-30 top-16" onClick={onMenuToggle} />
       )}
     </header>
   );

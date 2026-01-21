@@ -1,26 +1,18 @@
 import { motion } from 'framer-motion';
-import {
-    BarChart3,
-    CheckCircle,
-    Clock,
-    Download,
-    Search,
-    TrendingUp,
-    Users
-} from 'lucide-react';
+import { BarChart3, CheckCircle, Clock, Download, Search, TrendingUp, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
-    Bar,
-    BarChart,
-    CartesianGrid,
-    Cell,
-    Legend,
-    Pie,
-    PieChart,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts';
 import { supabase } from '../../lib/supabaseClient';
 
@@ -64,7 +56,6 @@ const CourseProgressAnalytics = ({ courseId, courseName }) => {
 
       if (progressError) throw progressError;
       setLessonProgress(progressData || []);
-
     } catch (error) {
       console.error('Error fetching analytics:', error);
     } finally {
@@ -75,39 +66,71 @@ const CourseProgressAnalytics = ({ courseId, courseName }) => {
   // Calculate summary stats
   const stats = {
     totalEnrollments: enrollments.length,
-    activeStudents: enrollments.filter(e => e.status === 'active').length,
-    completedStudents: enrollments.filter(e => e.status === 'completed' || e.progress === 100).length,
-    averageProgress: enrollments.length > 0
-      ? Math.round(enrollments.reduce((acc, e) => acc + (e.progress || 0), 0) / enrollments.length)
-      : 0,
+    activeStudents: enrollments.filter((e) => e.status === 'active').length,
+    completedStudents: enrollments.filter((e) => e.status === 'completed' || e.progress === 100)
+      .length,
+    averageProgress:
+      enrollments.length > 0
+        ? Math.round(
+            enrollments.reduce((acc, e) => acc + (e.progress || 0), 0) / enrollments.length
+          )
+        : 0,
     totalTimeSpent: enrollments.reduce((acc, e) => acc + (e.total_time_spent_seconds || 0), 0),
-    averageTimePerStudent: enrollments.length > 0
-      ? Math.round(enrollments.reduce((acc, e) => acc + (e.total_time_spent_seconds || 0), 0) / enrollments.length)
-      : 0
+    averageTimePerStudent:
+      enrollments.length > 0
+        ? Math.round(
+            enrollments.reduce((acc, e) => acc + (e.total_time_spent_seconds || 0), 0) /
+              enrollments.length
+          )
+        : 0,
   };
 
   // Progress distribution data for pie chart
   const progressDistribution = [
-    { name: 'Not Started (0%)', value: enrollments.filter(e => e.progress === 0).length, color: '#94a3b8' },
-    { name: '1-25%', value: enrollments.filter(e => e.progress > 0 && e.progress <= 25).length, color: '#f97316' },
-    { name: '26-50%', value: enrollments.filter(e => e.progress > 25 && e.progress <= 50).length, color: '#eab308' },
-    { name: '51-75%', value: enrollments.filter(e => e.progress > 50 && e.progress <= 75).length, color: '#22c55e' },
-    { name: '76-99%', value: enrollments.filter(e => e.progress > 75 && e.progress < 100).length, color: '#3b82f6' },
-    { name: 'Completed (100%)', value: enrollments.filter(e => e.progress === 100).length, color: '#8b5cf6' }
-  ].filter(d => d.value > 0);
+    {
+      name: 'Not Started (0%)',
+      value: enrollments.filter((e) => e.progress === 0).length,
+      color: '#94a3b8',
+    },
+    {
+      name: '1-25%',
+      value: enrollments.filter((e) => e.progress > 0 && e.progress <= 25).length,
+      color: '#f97316',
+    },
+    {
+      name: '26-50%',
+      value: enrollments.filter((e) => e.progress > 25 && e.progress <= 50).length,
+      color: '#eab308',
+    },
+    {
+      name: '51-75%',
+      value: enrollments.filter((e) => e.progress > 50 && e.progress <= 75).length,
+      color: '#22c55e',
+    },
+    {
+      name: '76-99%',
+      value: enrollments.filter((e) => e.progress > 75 && e.progress < 100).length,
+      color: '#3b82f6',
+    },
+    {
+      name: 'Completed (100%)',
+      value: enrollments.filter((e) => e.progress === 100).length,
+      color: '#8b5cf6',
+    },
+  ].filter((d) => d.value > 0);
 
   // Weekly enrollment trend (last 4 weeks)
   const getWeeklyTrend = () => {
     const weeks = [];
     const now = new Date();
-    
+
     for (let i = 3; i >= 0; i--) {
       const weekStart = new Date(now);
-      weekStart.setDate(weekStart.getDate() - (i * 7) - weekStart.getDay());
+      weekStart.setDate(weekStart.getDate() - i * 7 - weekStart.getDay());
       const weekEnd = new Date(weekStart);
       weekEnd.setDate(weekEnd.getDate() + 6);
-      
-      const weekEnrollments = enrollments.filter(e => {
+
+      const weekEnrollments = enrollments.filter((e) => {
         const enrollDate = new Date(e.enrolled_at);
         return enrollDate >= weekStart && enrollDate <= weekEnd;
       });
@@ -115,22 +138,24 @@ const CourseProgressAnalytics = ({ courseId, courseName }) => {
       weeks.push({
         week: `Week ${4 - i}`,
         enrollments: weekEnrollments.length,
-        completions: weekEnrollments.filter(e => e.progress === 100).length
+        completions: weekEnrollments.filter((e) => e.progress === 100).length,
       });
     }
-    
+
     return weeks;
   };
 
   // Filter and sort students
   const filteredStudents = enrollments
-    .filter(e => {
-      const matchesSearch = e.student_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           e.student_email?.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesFilter = filterStatus === 'all' ||
-                           (filterStatus === 'completed' && e.progress === 100) ||
-                           (filterStatus === 'in_progress' && e.progress > 0 && e.progress < 100) ||
-                           (filterStatus === 'not_started' && e.progress === 0);
+    .filter((e) => {
+      const matchesSearch =
+        e.student_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        e.student_email?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesFilter =
+        filterStatus === 'all' ||
+        (filterStatus === 'completed' && e.progress === 100) ||
+        (filterStatus === 'in_progress' && e.progress > 0 && e.progress < 100) ||
+        (filterStatus === 'not_started' && e.progress === 0);
       return matchesSearch && matchesFilter;
     })
     .sort((a, b) => {
@@ -163,24 +188,32 @@ const CourseProgressAnalytics = ({ courseId, courseName }) => {
     return new Date(dateStr).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
-      year: 'numeric'
+      year: 'numeric',
     });
   };
 
   // Export to CSV
   const exportToCSV = () => {
-    const headers = ['Student Name', 'Email', 'Progress', 'Status', 'Time Spent', 'Last Accessed', 'Enrolled Date'];
-    const rows = enrollments.map(e => [
+    const headers = [
+      'Student Name',
+      'Email',
+      'Progress',
+      'Status',
+      'Time Spent',
+      'Last Accessed',
+      'Enrolled Date',
+    ];
+    const rows = enrollments.map((e) => [
       e.student_name || '',
       e.student_email || '',
       `${e.progress || 0}%`,
       e.progress === 100 ? 'Completed' : e.progress > 0 ? 'In Progress' : 'Not Started',
       formatDuration(e.total_time_spent_seconds),
       formatDate(e.last_accessed),
-      formatDate(e.enrolled_at)
+      formatDate(e.enrolled_at),
     ]);
 
-    const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+    const csv = [headers, ...rows].map((row) => row.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -278,7 +311,9 @@ const CourseProgressAnalytics = ({ courseId, courseName }) => {
             </div>
             <div>
               <p className="text-sm text-gray-600">Avg Time/Student</p>
-              <p className="text-2xl font-bold text-gray-900">{formatDuration(stats.averageTimePerStudent)}</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {formatDuration(stats.averageTimePerStudent)}
+              </p>
             </div>
           </div>
         </motion.div>
@@ -359,7 +394,7 @@ const CourseProgressAnalytics = ({ courseId, courseName }) => {
       >
         <div className="p-6 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Student Progress</h3>
-          
+
           {/* Filters */}
           <div className="flex flex-wrap gap-4">
             <div className="flex-1 min-w-[200px]">
@@ -374,7 +409,7 @@ const CourseProgressAnalytics = ({ courseId, courseName }) => {
                 />
               </div>
             </div>
-            
+
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
@@ -437,7 +472,9 @@ const CourseProgressAnalytics = ({ courseId, courseName }) => {
                           {(student.student_name || student.student_email || '?')[0].toUpperCase()}
                         </div>
                         <div>
-                          <p className="font-medium text-gray-900">{student.student_name || 'Unknown'}</p>
+                          <p className="font-medium text-gray-900">
+                            {student.student_name || 'Unknown'}
+                          </p>
                           <p className="text-sm text-gray-500">{student.student_email}</p>
                         </div>
                       </div>
@@ -447,9 +484,13 @@ const CourseProgressAnalytics = ({ courseId, courseName }) => {
                         <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
                           <div
                             className={`h-full rounded-full ${
-                              student.progress === 100 ? 'bg-emerald-500' :
-                              student.progress > 50 ? 'bg-blue-500' :
-                              student.progress > 0 ? 'bg-amber-500' : 'bg-gray-300'
+                              student.progress === 100
+                                ? 'bg-emerald-500'
+                                : student.progress > 50
+                                  ? 'bg-blue-500'
+                                  : student.progress > 0
+                                    ? 'bg-amber-500'
+                                    : 'bg-gray-300'
                             }`}
                             style={{ width: `${student.progress || 0}%` }}
                           />
@@ -466,14 +507,20 @@ const CourseProgressAnalytics = ({ courseId, courseName }) => {
                       {formatDate(student.last_accessed)}
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        student.progress === 100
-                          ? 'bg-emerald-100 text-emerald-800'
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          student.progress === 100
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : student.progress > 0
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-gray-100 text-gray-800'
+                        }`}
+                      >
+                        {student.progress === 100
+                          ? 'Completed'
                           : student.progress > 0
-                          ? 'bg-blue-100 text-blue-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {student.progress === 100 ? 'Completed' : student.progress > 0 ? 'In Progress' : 'Not Started'}
+                            ? 'In Progress'
+                            : 'Not Started'}
                       </span>
                     </td>
                   </tr>

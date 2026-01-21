@@ -41,11 +41,11 @@ export function usePermissions(userId?: string) {
   };
 
   const hasAnyPermission = (module: string, permissionList: Permission[]): boolean => {
-    return permissionList.some(permission => hasPermission(module, permission));
+    return permissionList.some((permission) => hasPermission(module, permission));
   };
 
   const hasAllPermissions = (module: string, permissionList: Permission[]): boolean => {
-    return permissionList.every(permission => hasPermission(module, permission));
+    return permissionList.every((permission) => hasPermission(module, permission));
   };
 
   return {

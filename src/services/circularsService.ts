@@ -45,11 +45,13 @@ export interface CircularsFilters {
 
 class CircularsService {
   // Get all circulars with optional filters
-  async getCirculars(filters: CircularsFilters = {}): Promise<{ data: Circular[] | null; error: any }> {
+  async getCirculars(
+    filters: CircularsFilters = {}
+  ): Promise<{ data: Circular[] | null; error: any }> {
     try {
       // Get user's college ID to filter circulars
       const collegeId = await this.getUserCollegeId();
-      
+
       let query = supabase
         .from('college_circulars')
         .select('*')
@@ -72,7 +74,9 @@ class CircularsService {
 
       // Apply search filter
       if (filters.search) {
-        query = query.or(`title.ilike.%${filters.search}%,content.ilike.%${filters.search}%,audience.ilike.%${filters.search}%`);
+        query = query.or(
+          `title.ilike.%${filters.search}%,content.ilike.%${filters.search}%,audience.ilike.%${filters.search}%`
+        );
       }
 
       const { data, error } = await query;
@@ -86,10 +90,11 @@ class CircularsService {
       // Note: Since there's no foreign key relationship with users table,
       // we use a default value. In the future, this could be enhanced to
       // manually join with users table if needed.
-      const transformedData = data?.map(circular => ({
-        ...circular,
-        creator_name: 'College Admin' // Default value
-      })) || [];
+      const transformedData =
+        data?.map((circular) => ({
+          ...circular,
+          creator_name: 'College Admin', // Default value
+        })) || [];
 
       return { data: transformedData, error: null };
     } catch (error) {
@@ -115,7 +120,7 @@ class CircularsService {
       // Transform data to include default creator name
       const transformedData = {
         ...data,
-        creator_name: 'College Admin' // Default value
+        creator_name: 'College Admin', // Default value
       };
 
       return { data: transformedData, error: null };
@@ -128,7 +133,9 @@ class CircularsService {
   // Get user's college ID
   private async getUserCollegeId(): Promise<string | null> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
         console.warn('No authenticated user found');
         return null;
@@ -152,7 +159,7 @@ class CircularsService {
           .ilike('name', '%college%')
           .limit(1)
           .maybeSingle();
-        
+
         data = collegeData;
         error = collegeError;
       }
@@ -176,14 +183,18 @@ class CircularsService {
   }
 
   // Create a new circular
-  async createCircular(circularData: CreateCircularData): Promise<{ data: Circular | null; error: any }> {
+  async createCircular(
+    circularData: CreateCircularData
+  ): Promise<{ data: Circular | null; error: any }> {
     try {
       // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       // Get user's college ID
       const collegeId = await this.getUserCollegeId();
-      
+
       const { data, error } = await supabase
         .from('college_circulars')
         .insert([
@@ -191,7 +202,7 @@ class CircularsService {
             ...circularData,
             created_by: user?.id,
             college_id: collegeId, // Set the college ID
-          }
+          },
         ])
         .select('*')
         .single();
@@ -204,7 +215,7 @@ class CircularsService {
       // Transform data to include default creator name
       const transformedData = {
         ...data,
-        creator_name: 'College Admin' // Default value
+        creator_name: 'College Admin', // Default value
       };
 
       return { data: transformedData, error: null };
@@ -215,10 +226,12 @@ class CircularsService {
   }
 
   // Update an existing circular
-  async updateCircular(updateData: UpdateCircularData): Promise<{ data: Circular | null; error: any }> {
+  async updateCircular(
+    updateData: UpdateCircularData
+  ): Promise<{ data: Circular | null; error: any }> {
     try {
       const { id, ...dataToUpdate } = updateData;
-      
+
       const { data, error } = await supabase
         .from('college_circulars')
         .update({
@@ -237,7 +250,7 @@ class CircularsService {
       // Transform data to include default creator name
       const transformedData = {
         ...data,
-        creator_name: 'Admin' // Default value since we don't have user relationship
+        creator_name: 'Admin', // Default value since we don't have user relationship
       };
 
       return { data: transformedData, error: null };
@@ -250,10 +263,7 @@ class CircularsService {
   // Delete a circular
   async deleteCircular(id: string): Promise<{ error: any }> {
     try {
-      const { error } = await supabase
-        .from('college_circulars')
-        .delete()
-        .eq('id', id);
+      const { error } = await supabase.from('college_circulars').delete().eq('id', id);
 
       if (error) {
         console.error('Error deleting circular:', error);
@@ -268,13 +278,16 @@ class CircularsService {
   }
 
   // Toggle circular status (publish/unpublish)
-  async toggleCircularStatus(id: string, currentStatus: string): Promise<{ data: Circular | null; error: any }> {
+  async toggleCircularStatus(
+    id: string,
+    currentStatus: string
+  ): Promise<{ data: Circular | null; error: any }> {
     try {
       const newStatus = currentStatus === 'published' ? 'draft' : 'published';
-      
+
       const { data, error } = await supabase
         .from('college_circulars')
-        .update({ 
+        .update({
           status: newStatus,
           updated_at: new Date().toISOString(),
         })
@@ -290,7 +303,7 @@ class CircularsService {
       // Transform data to include default creator name
       const transformedData = {
         ...data,
-        creator_name: 'Admin' // Default value since we don't have user relationship
+        creator_name: 'Admin', // Default value since we don't have user relationship
       };
 
       return { data: transformedData, error: null };
@@ -301,22 +314,20 @@ class CircularsService {
   }
 
   // Get circulars statistics
-  async getCircularsStats(): Promise<{ 
-    data: { 
-      total: number; 
-      published: number; 
-      draft: number; 
-      urgent_priority: number; 
-    } | null; 
-    error: any 
+  async getCircularsStats(): Promise<{
+    data: {
+      total: number;
+      published: number;
+      draft: number;
+      urgent_priority: number;
+    } | null;
+    error: any;
   }> {
     try {
       // Get user's college ID to filter stats
       const collegeId = await this.getUserCollegeId();
-      
-      let query = supabase
-        .from('college_circulars')
-        .select('status, priority');
+
+      let query = supabase.from('college_circulars').select('status, priority');
 
       // Filter by college ID if available
       if (collegeId) {
@@ -332,9 +343,9 @@ class CircularsService {
 
       const stats = {
         total: data.length,
-        published: data.filter(c => c.status === 'published').length,
-        draft: data.filter(c => c.status === 'draft').length,
-        urgent_priority: data.filter(c => c.priority === 'urgent').length,
+        published: data.filter((c) => c.status === 'published').length,
+        draft: data.filter((c) => c.status === 'draft').length,
+        urgent_priority: data.filter((c) => c.priority === 'urgent').length,
       };
 
       return { data: stats, error: null };

@@ -81,14 +81,10 @@ const AICounsellingFAB: React.FC = () => {
                 >
                   <div className="whitespace-nowrap">
                     <div className="flex items-center gap-2">
-                      <span className="text-white font-semibold text-lg">
-                        AI Counselling
-                      </span>
+                      <span className="text-white font-semibold text-lg">AI Counselling</span>
                       <GraduationCap className="w-5 h-5 text-white/80" />
                     </div>
-                    <p className="text-white/80 text-xs mt-0.5">
-                      Get personalized guidance
-                    </p>
+                    <p className="text-white/80 text-xs mt-0.5">Get personalized guidance</p>
                   </div>
                 </motion.div>
               )}

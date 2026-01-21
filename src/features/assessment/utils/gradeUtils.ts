@@ -10,7 +10,9 @@ import { GRADE_LEVELS, GRADE_RANGES, PROGRAM_GRADE_MAPPINGS } from '../constants
  * Determine grade level from student's grade string
  * Handles numeric grades (6, 7, 8...) and string grades ("12th", "UG", etc.)
  */
-export const getGradeLevelFromGrade = (grade: string | number | null | undefined): GradeLevel | null => {
+export const getGradeLevelFromGrade = (
+  grade: string | number | null | undefined
+): GradeLevel | null => {
   if (!grade) return null;
 
   const gradeStr = String(grade).toUpperCase().trim();
@@ -20,7 +22,7 @@ export const getGradeLevelFromGrade = (grade: string | number | null | undefined
   if (PROGRAM_GRADE_MAPPINGS[gradeStr]) {
     return PROGRAM_GRADE_MAPPINGS[gradeStr];
   }
-  
+
   // Check if grade string contains any of the program keywords
   for (const [key, value] of Object.entries(PROGRAM_GRADE_MAPPINGS)) {
     if (gradeStr.includes(key)) {
@@ -30,7 +32,7 @@ export const getGradeLevelFromGrade = (grade: string | number | null | undefined
 
   // Try to extract numeric grade
   const gradeNum = parseInt(gradeStr, 10);
-  
+
   if (isNaN(gradeNum)) {
     // Handle non-numeric grades like "12th", "10th"
     const match = gradeStr.match(/(\d+)/);
@@ -54,7 +56,10 @@ export const getGradeLevelFromNumber = (gradeNum: number): GradeLevel | null => 
   if (gradeNum >= GRADE_RANGES.HIGHSCHOOL.min && gradeNum <= GRADE_RANGES.HIGHSCHOOL.max) {
     return GRADE_LEVELS.HIGHSCHOOL;
   }
-  if (gradeNum >= GRADE_RANGES.HIGHER_SECONDARY.min && gradeNum <= GRADE_RANGES.HIGHER_SECONDARY.max) {
+  if (
+    gradeNum >= GRADE_RANGES.HIGHER_SECONDARY.min &&
+    gradeNum <= GRADE_RANGES.HIGHER_SECONDARY.max
+  ) {
     return GRADE_LEVELS.HIGHER_SECONDARY;
   }
   return null;
@@ -63,7 +68,9 @@ export const getGradeLevelFromNumber = (gradeNum: number): GradeLevel | null => 
 /**
  * Map UI grade level to adaptive aptitude grade level
  */
-export const getAdaptiveGradeLevel = (gradeLevel: GradeLevel | null): 'middle_school' | 'high_school' | 'higher_secondary' => {
+export const getAdaptiveGradeLevel = (
+  gradeLevel: GradeLevel | null
+): 'middle_school' | 'high_school' | 'higher_secondary' => {
   switch (gradeLevel) {
     case 'highschool':
     case 'higher_secondary':
@@ -117,11 +124,12 @@ export const getDefaultStreamId = (gradeLevel: GradeLevel | null): string => {
  */
 export const calculateMonthsInGrade = (startDate: string | Date | null): number | null => {
   if (!startDate) return null;
-  
+
   const start = new Date(startDate);
   const now = new Date();
-  const months = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
-  
+  const months =
+    (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
+
   return Math.max(0, months);
 };
 

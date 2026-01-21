@@ -11,7 +11,7 @@ interface Chapter {
   description: string;
   order: number;
   estimatedDuration?: number;
-  durationUnit?: "hours" | "weeks";
+  durationUnit?: 'hours' | 'weeks';
 }
 
 interface AssessmentMapping {
@@ -86,14 +86,14 @@ export const exportCurriculumToPDF = (data: CurriculumExportData): void => {
   yPosition += 6;
   doc.text(`Total Learning Outcomes: ${data.learningOutcomes.length}`, 20, yPosition);
   yPosition += 6;
-  
+
   const totalDuration = data.chapters.reduce((sum, ch) => {
     if (ch.estimatedDuration && ch.durationUnit === 'hours') {
       return sum + ch.estimatedDuration;
     }
     return sum;
   }, 0);
-  
+
   if (totalDuration > 0) {
     doc.text(`Estimated Duration: ${totalDuration} hours`, 20, yPosition);
     yPosition += 10;
@@ -139,14 +139,16 @@ export const exportCurriculumToPDF = (data: CurriculumExportData): void => {
     if (chapter.estimatedDuration) {
       doc.setFontSize(9);
       doc.setTextColor(100, 100, 100);
-      doc.text(`Duration: ${chapter.estimatedDuration} ${chapter.durationUnit || 'hours'}`, 20, yPosition);
+      doc.text(
+        `Duration: ${chapter.estimatedDuration} ${chapter.durationUnit || 'hours'}`,
+        20,
+        yPosition
+      );
       yPosition += 8;
     }
 
     // Learning Outcomes for this chapter
-    const chapterOutcomes = data.learningOutcomes.filter(
-      (lo) => lo.chapterId === chapter.id
-    );
+    const chapterOutcomes = data.learningOutcomes.filter((lo) => lo.chapterId === chapter.id);
 
     if (chapterOutcomes.length > 0) {
       doc.setFontSize(11);
@@ -165,7 +167,7 @@ export const exportCurriculumToPDF = (data: CurriculumExportData): void => {
         doc.setFontSize(9);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(40, 40, 40);
-        
+
         // Outcome text
         const outcomeText = `${loIndex + 1}. ${outcome.outcome}`;
         const outcomeLines = doc.splitTextToSize(outcomeText, pageWidth - 50);
@@ -185,9 +187,12 @@ export const exportCurriculumToPDF = (data: CurriculumExportData): void => {
           doc.setFontSize(8);
           doc.setTextColor(100, 100, 100);
           const assessments = outcome.assessmentMappings
-            .map(m => `${m.assessmentType}${m.weightage ? ` (${m.weightage}%)` : ''}`)
+            .map((m) => `${m.assessmentType}${m.weightage ? ` (${m.weightage}%)` : ''}`)
             .join(', ');
-          const assessmentLines = doc.splitTextToSize(`   Assessments: ${assessments}`, pageWidth - 50);
+          const assessmentLines = doc.splitTextToSize(
+            `   Assessments: ${assessments}`,
+            pageWidth - 50
+          );
           doc.text(assessmentLines, 30, yPosition);
           yPosition += assessmentLines.length * 4 + 3;
         }
@@ -211,12 +216,9 @@ export const exportCurriculumToPDF = (data: CurriculumExportData): void => {
     doc.setPage(i);
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
-    doc.text(
-      `Page ${i} of ${pageCount}`,
-      pageWidth / 2,
-      doc.internal.pageSize.getHeight() - 10,
-      { align: 'center' }
-    );
+    doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, {
+      align: 'center',
+    });
   }
 
   // Save the PDF
@@ -259,25 +261,20 @@ export const exportCurriculumToExcel = (data: CurriculumExportData): void => {
   }
 
   const overviewSheet = XLSX.utils.aoa_to_sheet(overviewData);
-  
+
   // Set column widths
-  overviewSheet['!cols'] = [
-    { wch: 25 },
-    { wch: 40 }
-  ];
+  overviewSheet['!cols'] = [{ wch: 25 }, { wch: 40 }];
 
   XLSX.utils.book_append_sheet(workbook, overviewSheet, 'Overview');
 
   // Sheet 2: Units/Chapters
   const unitLabel = data.collegeName ? 'Unit' : 'Chapter';
   const chaptersData: any[][] = [
-    [`${unitLabel} #`, 'Code', 'Name', 'Description', 'Duration', 'Unit', 'Outcomes Count']
+    [`${unitLabel} #`, 'Code', 'Name', 'Description', 'Duration', 'Unit', 'Outcomes Count'],
   ];
 
   data.chapters.forEach((chapter, index) => {
-    const outcomesCount = data.learningOutcomes.filter(
-      (lo) => lo.chapterId === chapter.id
-    ).length;
+    const outcomesCount = data.learningOutcomes.filter((lo) => lo.chapterId === chapter.id).length;
 
     chaptersData.push([
       index + 1,
@@ -286,12 +283,12 @@ export const exportCurriculumToExcel = (data: CurriculumExportData): void => {
       chapter.description,
       chapter.estimatedDuration || '',
       chapter.durationUnit || '',
-      outcomesCount
+      outcomesCount,
     ]);
   });
 
   const chaptersSheet = XLSX.utils.aoa_to_sheet(chaptersData);
-  
+
   // Set column widths
   chaptersSheet['!cols'] = [
     { wch: 10 },
@@ -300,7 +297,7 @@ export const exportCurriculumToExcel = (data: CurriculumExportData): void => {
     { wch: 50 },
     { wch: 10 },
     { wch: 8 },
-    { wch: 15 }
+    { wch: 15 },
   ];
 
   const unitSheetName = data.collegeName ? 'Units' : 'Chapters';
@@ -308,21 +305,25 @@ export const exportCurriculumToExcel = (data: CurriculumExportData): void => {
 
   // Sheet 3: Learning Outcomes
   const outcomesData: any[][] = [
-    [`${unitLabel} #`, `${unitLabel} Name`, 'Outcome #', 'Learning Outcome', "Bloom's Level", 'Assessment Types', 'Weightages']
+    [
+      `${unitLabel} #`,
+      `${unitLabel} Name`,
+      'Outcome #',
+      'Learning Outcome',
+      "Bloom's Level",
+      'Assessment Types',
+      'Weightages',
+    ],
   ];
 
   data.chapters.forEach((chapter, chapterIndex) => {
-    const chapterOutcomes = data.learningOutcomes.filter(
-      (lo) => lo.chapterId === chapter.id
-    );
+    const chapterOutcomes = data.learningOutcomes.filter((lo) => lo.chapterId === chapter.id);
 
     chapterOutcomes.forEach((outcome, outcomeIndex) => {
-      const assessmentTypes = outcome.assessmentMappings
-        .map(m => m.assessmentType)
-        .join(', ');
-      
+      const assessmentTypes = outcome.assessmentMappings.map((m) => m.assessmentType).join(', ');
+
       const weightages = outcome.assessmentMappings
-        .map(m => m.weightage ? `${m.weightage}%` : 'N/A')
+        .map((m) => (m.weightage ? `${m.weightage}%` : 'N/A'))
         .join(', ');
 
       outcomesData.push([
@@ -332,13 +333,13 @@ export const exportCurriculumToExcel = (data: CurriculumExportData): void => {
         outcome.outcome,
         outcome.bloomLevel || '',
         assessmentTypes,
-        weightages
+        weightages,
       ]);
     });
   });
 
   const outcomesSheet = XLSX.utils.aoa_to_sheet(outcomesData);
-  
+
   // Set column widths
   outcomesSheet['!cols'] = [
     { wch: 10 },
@@ -347,20 +348,18 @@ export const exportCurriculumToExcel = (data: CurriculumExportData): void => {
     { wch: 60 },
     { wch: 15 },
     { wch: 40 },
-    { wch: 20 }
+    { wch: 20 },
   ];
 
   XLSX.utils.book_append_sheet(workbook, outcomesSheet, 'Learning Outcomes');
 
   // Sheet 4: Assessment Mappings (Detailed)
   const assessmentData: any[][] = [
-    [unitLabel, 'Learning Outcome', 'Assessment Type', 'Weightage (%)']
+    [unitLabel, 'Learning Outcome', 'Assessment Type', 'Weightage (%)'],
   ];
 
   data.chapters.forEach((chapter) => {
-    const chapterOutcomes = data.learningOutcomes.filter(
-      (lo) => lo.chapterId === chapter.id
-    );
+    const chapterOutcomes = data.learningOutcomes.filter((lo) => lo.chapterId === chapter.id);
 
     chapterOutcomes.forEach((outcome) => {
       outcome.assessmentMappings.forEach((mapping) => {
@@ -368,38 +367,32 @@ export const exportCurriculumToExcel = (data: CurriculumExportData): void => {
           chapter.name,
           outcome.outcome.substring(0, 100) + (outcome.outcome.length > 100 ? '...' : ''),
           mapping.assessmentType,
-          mapping.weightage || 'N/A'
+          mapping.weightage || 'N/A',
         ]);
       });
     });
   });
 
   const assessmentSheet = XLSX.utils.aoa_to_sheet(assessmentData);
-  
+
   // Set column widths
-  assessmentSheet['!cols'] = [
-    { wch: 25 },
-    { wch: 60 },
-    { wch: 25 },
-    { wch: 15 }
-  ];
+  assessmentSheet['!cols'] = [{ wch: 25 }, { wch: 60 }, { wch: 25 }, { wch: 15 }];
 
   XLSX.utils.book_append_sheet(workbook, assessmentSheet, 'Assessment Mappings');
 
   // Save the Excel file
   const fileName = `Curriculum_${data.subject}_Class${data.class}_${data.academicYear.replace(/\s+/g, '')}.xlsx`;
   const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-  const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const blob = new Blob([excelBuffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
   saveAs(blob, fileName);
 };
 
 /**
  * Export curriculum in the specified format
  */
-export const exportCurriculum = (
-  format: 'pdf' | 'excel',
-  data: CurriculumExportData
-): void => {
+export const exportCurriculum = (format: 'pdf' | 'excel', data: CurriculumExportData): void => {
   if (format === 'pdf') {
     exportCurriculumToPDF(data);
   } else if (format === 'excel') {

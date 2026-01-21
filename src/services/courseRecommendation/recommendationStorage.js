@@ -9,7 +9,7 @@ import { getRecommendedCourses } from './recommendationService';
 /**
  * Save course recommendations to the database.
  * Creates records in student_course_recommendations table.
- * 
+ *
  * @param {string} studentId - Student's user_id
  * @param {Array} recommendations - Array of recommended courses from getRecommendedCourses
  * @param {string} assessmentResultId - ID of the assessment result (optional)
@@ -29,7 +29,7 @@ export const saveRecommendations = async (
 
   try {
     // Prepare records for insertion
-    const records = recommendations.map(rec => ({
+    const records = recommendations.map((rec) => ({
       student_id: studentId,
       course_id: rec.course_id,
       assessment_result_id: assessmentResultId,
@@ -38,7 +38,7 @@ export const saveRecommendations = async (
       skill_gaps_addressed: rec.skill_gaps_addressed || [],
       recommendation_type: recommendationType,
       status: 'active',
-      recommended_at: new Date().toISOString()
+      recommended_at: new Date().toISOString(),
     }));
 
     // Upsert to handle duplicates (update if exists)
@@ -46,7 +46,7 @@ export const saveRecommendations = async (
       .from('student_course_recommendations')
       .upsert(records, {
         onConflict: 'student_id,course_id,assessment_result_id',
-        ignoreDuplicates: false
+        ignoreDuplicates: false,
       })
       .select();
 
@@ -64,7 +64,7 @@ export const saveRecommendations = async (
 
 /**
  * Get saved recommendations for a student from the database.
- * 
+ *
  * @param {string} studentId - Student's user_id
  * @param {Object} options - Query options
  * @param {string} options.status - Filter by status ('active', 'enrolled', 'dismissed', 'completed')
@@ -81,7 +81,8 @@ export const getSavedRecommendations = async (studentId, options = {}) => {
   try {
     let query = supabase
       .from('student_course_recommendations')
-      .select(`
+      .select(
+        `
         *,
         course:courses(
           course_id,
@@ -92,7 +93,8 @@ export const getSavedRecommendations = async (studentId, options = {}) => {
           category,
           status
         )
-      `)
+      `
+      )
       .eq('student_id', studentId)
       .order('relevance_score', { ascending: false });
 
@@ -120,13 +122,17 @@ export const getSavedRecommendations = async (studentId, options = {}) => {
 
 /**
  * Update recommendation status (e.g., when student enrolls or dismisses).
- * 
+ *
  * @param {string} recommendationId - ID of the recommendation record
  * @param {string} status - New status: 'active', 'enrolled', 'dismissed', 'completed'
  * @param {string} dismissedReason - Reason for dismissal (optional)
  * @returns {Promise<Object>} - Updated recommendation record
  */
-export const updateRecommendationStatus = async (recommendationId, status, dismissedReason = null) => {
+export const updateRecommendationStatus = async (
+  recommendationId,
+  status,
+  dismissedReason = null
+) => {
   if (!recommendationId || !status) {
     throw new Error('Recommendation ID and status are required');
   }
@@ -139,7 +145,7 @@ export const updateRecommendationStatus = async (recommendationId, status, dismi
   try {
     const updateData = {
       status,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     };
 
     if (status === 'dismissed') {
@@ -169,13 +175,17 @@ export const updateRecommendationStatus = async (recommendationId, status, dismi
 /**
  * Get recommendations and save them to the database.
  * Combines getRecommendedCourses with saveRecommendations.
- * 
+ *
  * @param {string} studentId - Student's user_id
  * @param {Object} assessmentResults - Assessment results from AI analysis
  * @param {string} assessmentResultId - ID of the assessment result record
  * @returns {Promise<Array>} - Array of recommended courses (also saved to DB)
  */
-export const getAndSaveRecommendations = async (studentId, assessmentResults, assessmentResultId = null) => {
+export const getAndSaveRecommendations = async (
+  studentId,
+  assessmentResults,
+  assessmentResultId = null
+) => {
   if (!studentId || !assessmentResults) {
     console.warn('Student ID and assessment results required');
     return [];
@@ -184,14 +194,14 @@ export const getAndSaveRecommendations = async (studentId, assessmentResults, as
   try {
     // Get recommendations
     const recommendations = await getRecommendedCourses(assessmentResults);
-    
+
     if (recommendations.length === 0) {
       return [];
     }
 
     // Save to database
     await saveRecommendations(studentId, recommendations, assessmentResultId, 'assessment');
-    
+
     return recommendations;
   } catch (error) {
     console.error('Error in getAndSaveRecommendations:', error);

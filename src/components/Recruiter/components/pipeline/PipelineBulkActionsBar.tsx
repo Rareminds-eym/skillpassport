@@ -4,7 +4,7 @@ import {
   PhoneIcon,
   UserIcon,
   XCircleIcon,
-  XMarkIcon
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 
 interface PipelineBulkActionsBarProps {
@@ -22,23 +22,22 @@ export const PipelineBulkActionsBar: React.FC<PipelineBulkActionsBarProps> = ({
   onBulkWhatsApp,
   onAssignInterviewer,
   onBulkReject,
-  onClearSelection
+  onClearSelection,
 }) => {
   const hasSelection = selectedCandidates.length > 0;
 
   return (
-    <div className={`bg-white border-t-2 px-6 py-3 transition-colors ${
-      hasSelection ? 'border-primary-500 bg-primary-50' : 'border-gray-200'
-    }`}>
+    <div
+      className={`bg-white border-t-2 px-6 py-3 transition-colors ${
+        hasSelection ? 'border-primary-500 bg-primary-50' : 'border-gray-200'
+      }`}
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <span className={`text-sm font-medium ${
-            hasSelection ? 'text-primary-700' : 'text-gray-500'
-          }`}>
-            {hasSelection 
-              ? `${selectedCandidates.length} selected` 
-              : 'No candidates selected'
-            }
+          <span
+            className={`text-sm font-medium ${hasSelection ? 'text-primary-700' : 'text-gray-500'}`}
+          >
+            {hasSelection ? `${selectedCandidates.length} selected` : 'No candidates selected'}
           </span>
           <div className="h-4 w-px bg-gray-300" />
           <div className="flex items-center space-x-2">

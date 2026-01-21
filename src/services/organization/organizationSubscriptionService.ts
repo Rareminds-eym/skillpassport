@@ -1,6 +1,6 @@
 /**
  * Organization Subscription Service
- * 
+ *
  * Handles organization-level subscription purchases, management, and lifecycle operations.
  * Supports bulk seat purchases with volume discounts and Razorpay integration.
  */
@@ -96,7 +96,7 @@ export function calculateBulkPricing(
   const afterDiscount = subtotal - discountAmount;
   const taxAmount = afterDiscount * 0.18; // 18% GST
   const finalAmount = afterDiscount + taxAmount;
-  
+
   return {
     basePrice: basePricePerSeat,
     seatCount,
@@ -105,7 +105,7 @@ export function calculateBulkPricing(
     discountAmount,
     taxAmount,
     finalAmount,
-    pricePerSeat: finalAmount / seatCount
+    pricePerSeat: finalAmount / seatCount,
   };
 }
 
@@ -146,7 +146,9 @@ export class OrganizationSubscriptionService {
       }
 
       // 4. Get current user
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
         throw new Error('User not authenticated');
       }
@@ -169,7 +171,7 @@ export class OrganizationSubscriptionService {
           price_per_seat: pricing.pricePerSeat,
           total_amount: pricing.subtotal,
           discount_percentage: pricing.discountPercentage,
-          final_amount: pricing.finalAmount
+          final_amount: pricing.finalAmount,
         })
         .select()
         .single();
@@ -195,13 +197,15 @@ export class OrganizationSubscriptionService {
     try {
       const { data, error } = await supabase
         .from('organization_subscriptions')
-        .select(`
+        .select(
+          `
           *,
           subscription_plans:subscription_plan_id (
             name,
             plan_code
           )
-        `)
+        `
+        )
         .eq('organization_id', organizationId)
         .eq('organization_type', organizationType)
         .order('created_at', { ascending: false });
@@ -222,13 +226,15 @@ export class OrganizationSubscriptionService {
     try {
       const { data, error } = await supabase
         .from('organization_subscriptions')
-        .select(`
+        .select(
+          `
           *,
           subscription_plans:subscription_plan_id (
             name,
             plan_code
           )
-        `)
+        `
+        )
         .eq('id', subscriptionId)
         .single();
 
@@ -257,9 +263,7 @@ export class OrganizationSubscriptionService {
 
       // Validate new seat count
       if (newSeatCount < current.assignedSeats) {
-        throw new Error(
-          `Cannot reduce seats below assigned count (${current.assignedSeats})`
-        );
+        throw new Error(`Cannot reduce seats below assigned count (${current.assignedSeats})`);
       }
 
       // Recalculate pricing
@@ -273,7 +277,7 @@ export class OrganizationSubscriptionService {
           total_amount: pricing.subtotal,
           discount_percentage: pricing.discountPercentage,
           final_amount: pricing.finalAmount,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', subscriptionId)
         .select()
@@ -291,10 +295,7 @@ export class OrganizationSubscriptionService {
   /**
    * Cancel a subscription
    */
-  async cancelSubscription(
-    subscriptionId: string,
-    reason: string
-  ): Promise<void> {
+  async cancelSubscription(subscriptionId: string, reason: string): Promise<void> {
     try {
       const { error } = await supabase
         .from('organization_subscriptions')
@@ -303,7 +304,7 @@ export class OrganizationSubscriptionService {
           cancelled_at: new Date().toISOString(),
           cancellation_reason: reason,
           auto_renew: false,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', subscriptionId);
 
@@ -351,7 +352,7 @@ export class OrganizationSubscriptionService {
           total_amount: pricing.subtotal,
           discount_percentage: pricing.discountPercentage,
           final_amount: pricing.finalAmount,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', subscriptionId)
         .select()
@@ -401,7 +402,7 @@ export class OrganizationSubscriptionService {
           total_amount: pricing.subtotal,
           discount_percentage: pricing.discountPercentage,
           final_amount: pricing.finalAmount,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', subscriptionId)
         .select()
@@ -432,10 +433,9 @@ export class OrganizationSubscriptionService {
    */
   private mapToOrganizationSubscription(data: any): OrganizationSubscription {
     // Extract plan name from joined subscription_plans data
-    const planName = data.subscription_plans?.name || 
-                     data.subscription_plans?.plan_code || 
-                     'Standard Plan';
-    
+    const planName =
+      data.subscription_plans?.name || data.subscription_plans?.plan_code || 'Standard Plan';
+
     return {
       id: data.id,
       organizationId: data.organization_id,
@@ -460,7 +460,7 @@ export class OrganizationSubscriptionService {
       createdAt: data.created_at,
       updatedAt: data.updated_at,
       cancelledAt: data.cancelled_at,
-      cancellationReason: data.cancellation_reason
+      cancellationReason: data.cancellation_reason,
     };
   }
 }

@@ -10,7 +10,7 @@ import {
   FileCheck,
   User,
   ClipboardList,
-  X
+  X,
 } from 'lucide-react';
 
 const Sidebar = ({ isOpen, closeSidebar }) => {
@@ -18,7 +18,7 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
   const location = useLocation();
 
   // Fetch student data to check school/college association
-  const userEmail = user?.email || localStorage.getItem("userEmail");
+  const userEmail = user?.email || localStorage.getItem('userEmail');
   const { studentData } = useStudentDataByEmail(userEmail);
 
   // Check if student is part of a school or college
@@ -39,17 +39,15 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
   const studentLinks = [
     { path: '/student/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     // Only show My Profile if student is NOT part of school or college
-    ...(!isPartOfSchoolOrCollege ? [{ path: '/student/profile', label: 'My Profile', icon: User }] : []),
+    ...(!isPartOfSchoolOrCollege
+      ? [{ path: '/student/profile', label: 'My Profile', icon: User }]
+      : []),
     { path: '/student/applied-jobs', label: 'Applied Jobs', icon: ClipboardList },
     { path: '/student/browse-jobs', label: 'Browse Jobs', icon: FileCheck },
   ];
 
   const links =
-    role === 'admin'
-      ? adminLinks
-      : role === 'recruiter'
-      ? recruiterLinks
-      : studentLinks;
+    role === 'admin' ? adminLinks : role === 'recruiter' ? recruiterLinks : studentLinks;
 
   return (
     <>
@@ -83,9 +81,7 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
                 to={link.path}
                 onClick={closeSidebar}
                 className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                  isActive
-                    ? 'bg-blue-50 text-blue-600'
-                    : 'text-gray-700 hover:bg-gray-100'
+                  isActive ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-100'
                 }`}
               >
                 <Icon className="w-5 h-5" />

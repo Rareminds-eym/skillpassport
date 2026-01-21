@@ -1,20 +1,20 @@
 /**
  * Add-On Analytics Dashboard
- * 
+ *
  * Displays analytics for add-on subscriptions including revenue,
  * adoption rates, churn, and feature usage metrics.
- * 
+ *
  * @requirement Task 9.1 - Create analytics dashboard
  */
 
 import {
-    ArrowDownRight,
-    ArrowUpRight,
-    DollarSign,
-    Package,
-    RefreshCw,
-    TrendingDown,
-    Users
+  ArrowDownRight,
+  ArrowUpRight,
+  DollarSign,
+  Package,
+  RefreshCw,
+  TrendingDown,
+  Users,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import addOnAnalyticsService from '../../services/addOnAnalyticsService';
@@ -25,7 +25,7 @@ import addOnAnalyticsService from '../../services/addOnAnalyticsService';
 const MetricCard = ({ title, value, change, changeType, icon: Icon, loading }) => {
   const isPositive = changeType === 'positive' || (changeType === 'auto' && change >= 0);
   const isNegative = changeType === 'negative' || (changeType === 'auto' && change < 0);
-  
+
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between">
@@ -37,9 +37,11 @@ const MetricCard = ({ title, value, change, changeType, icon: Icon, loading }) =
             <p className="text-2xl font-bold text-gray-900">{value}</p>
           )}
           {change !== undefined && !loading && (
-            <div className={`flex items-center gap-1 mt-2 text-sm ${
-              isPositive ? 'text-green-600' : isNegative ? 'text-red-600' : 'text-gray-500'
-            }`}>
+            <div
+              className={`flex items-center gap-1 mt-2 text-sm ${
+                isPositive ? 'text-green-600' : isNegative ? 'text-red-600' : 'text-gray-500'
+              }`}
+            >
               {isPositive ? (
                 <ArrowUpRight className="w-4 h-4" />
               ) : isNegative ? (
@@ -69,12 +71,14 @@ const RevenueChart = ({ data, loading }) => {
     );
   }
 
-  const chartData = Object.entries(data || {}).map(([period, info]) => ({
-    period,
-    revenue: info.revenue || 0
-  })).slice(-12);
+  const chartData = Object.entries(data || {})
+    .map(([period, info]) => ({
+      period,
+      revenue: info.revenue || 0,
+    }))
+    .slice(-12);
 
-  const maxRevenue = Math.max(...chartData.map(d => d.revenue), 1);
+  const maxRevenue = Math.max(...chartData.map((d) => d.revenue), 1);
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -82,7 +86,7 @@ const RevenueChart = ({ data, loading }) => {
       <div className="h-64 flex items-end gap-2">
         {chartData.map((item, index) => (
           <div key={index} className="flex-1 flex flex-col items-center gap-2">
-            <div 
+            <div
               className="w-full bg-indigo-500 rounded-t hover:bg-indigo-600 transition-colors cursor-pointer"
               style={{ height: `${(item.revenue / maxRevenue) * 100}%`, minHeight: '4px' }}
               title={`₹${item.revenue.toLocaleString()}`}
@@ -105,7 +109,7 @@ const AddOnBreakdown = ({ data, loading }) => {
     return (
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <div className="space-y-4">
-          {[1, 2, 3, 4].map(i => (
+          {[1, 2, 3, 4].map((i) => (
             <div key={i} className="h-12 bg-gray-100 rounded animate-pulse" />
           ))}
         </div>
@@ -115,13 +119,20 @@ const AddOnBreakdown = ({ data, loading }) => {
 
   const items = Object.entries(data || {}).map(([key, info]) => ({
     feature_key: key,
-    name: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+    name: key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
     subscribers: info.count || 0,
-    revenue: info.revenue || 0
+    revenue: info.revenue || 0,
   }));
 
   const total = items.reduce((sum, item) => sum + item.subscribers, 0) || 1;
-  const colors = ['bg-indigo-500', 'bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-purple-500', 'bg-pink-500'];
+  const colors = [
+    'bg-indigo-500',
+    'bg-blue-500',
+    'bg-green-500',
+    'bg-yellow-500',
+    'bg-purple-500',
+    'bg-pink-500',
+  ];
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -136,7 +147,7 @@ const AddOnBreakdown = ({ data, loading }) => {
                 <span className="text-gray-500">{item.subscribers} subscribers</span>
               </div>
               <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                <div 
+                <div
                   className={`h-full ${colors[index % colors.length]} rounded-full transition-all`}
                   style={{ width: `${percentage}%` }}
                 />
@@ -240,18 +251,27 @@ const AddOnAnalyticsDashboard = () => {
     { value: '7d', label: 'Last 7 days' },
     { value: '30d', label: 'Last 30 days' },
     { value: '90d', label: 'Last 90 days' },
-    { value: '1y', label: 'Last year' }
+    { value: '1y', label: 'Last year' },
   ];
 
   const getDateRange = (range) => {
     const end = new Date();
     const start = new Date();
     switch (range) {
-      case '7d': start.setDate(start.getDate() - 7); break;
-      case '30d': start.setDate(start.getDate() - 30); break;
-      case '90d': start.setDate(start.getDate() - 90); break;
-      case '1y': start.setFullYear(start.getFullYear() - 1); break;
-      default: start.setDate(start.getDate() - 30);
+      case '7d':
+        start.setDate(start.getDate() - 7);
+        break;
+      case '30d':
+        start.setDate(start.getDate() - 30);
+        break;
+      case '90d':
+        start.setDate(start.getDate() - 90);
+        break;
+      case '1y':
+        start.setFullYear(start.getFullYear() - 1);
+        break;
+      default:
+        start.setDate(start.getDate() - 30);
     }
     return { startDate: start, endDate: end };
   };
@@ -265,7 +285,7 @@ const AddOnAnalyticsDashboard = () => {
         addOnAnalyticsService.getAddOnRevenue({ startDate, endDate, groupBy: 'day' }),
         addOnAnalyticsService.getChurnRate(null, { startDate, endDate }),
         addOnAnalyticsService.getAdoptionMetrics(),
-        addOnAnalyticsService.getFeatureUsage(null, { startDate, endDate })
+        addOnAnalyticsService.getFeatureUsage(null, { startDate, endDate }),
       ]);
 
       if (revenue.success) setRevenueData(revenue.data);
@@ -283,36 +303,39 @@ const AddOnAnalyticsDashboard = () => {
     fetchAnalytics();
   }, [dateRange]);
 
-  const metrics = useMemo(() => [
-    {
-      title: 'Total Revenue',
-      value: `₹${(revenueData?.totalRevenue || 0).toLocaleString()}`,
-      change: 12.5,
-      changeType: 'positive',
-      icon: DollarSign
-    },
-    {
-      title: 'Active Subscriptions',
-      value: adoptionData?.totalActiveEntitlements || 0,
-      change: 8.3,
-      changeType: 'positive',
-      icon: Users
-    },
-    {
-      title: 'Bundle Adoption',
-      value: `${adoptionData?.bundleVsIndividualRatio || 0}%`,
-      change: 5.2,
-      changeType: 'positive',
-      icon: Package
-    },
-    {
-      title: 'Churn Rate',
-      value: `${churnData?.churnRate || 0}%`,
-      change: -2.1,
-      changeType: 'negative',
-      icon: TrendingDown
-    }
-  ], [revenueData, adoptionData, churnData]);
+  const metrics = useMemo(
+    () => [
+      {
+        title: 'Total Revenue',
+        value: `₹${(revenueData?.totalRevenue || 0).toLocaleString()}`,
+        change: 12.5,
+        changeType: 'positive',
+        icon: DollarSign,
+      },
+      {
+        title: 'Active Subscriptions',
+        value: adoptionData?.totalActiveEntitlements || 0,
+        change: 8.3,
+        changeType: 'positive',
+        icon: Users,
+      },
+      {
+        title: 'Bundle Adoption',
+        value: `${adoptionData?.bundleVsIndividualRatio || 0}%`,
+        change: 5.2,
+        changeType: 'positive',
+        icon: Package,
+      },
+      {
+        title: 'Churn Rate',
+        value: `${churnData?.churnRate || 0}%`,
+        change: -2.1,
+        changeType: 'negative',
+        icon: TrendingDown,
+      },
+    ],
+    [revenueData, adoptionData, churnData]
+  );
 
   return (
     <div className="p-6 space-y-6">
@@ -328,8 +351,10 @@ const AddOnAnalyticsDashboard = () => {
             onChange={(e) => setDateRange(e.target.value)}
             className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
           >
-            {dateRangeOptions.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            {dateRangeOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
             ))}
           </select>
           <button
@@ -369,34 +394,45 @@ const AddOnAnalyticsDashboard = () => {
             <thead>
               <tr className="border-b border-gray-200">
                 <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Add-On</th>
-                <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Subscribers</th>
+                <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">
+                  Subscribers
+                </th>
                 <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Monthly</th>
                 <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Annual</th>
                 <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Bundle</th>
               </tr>
             </thead>
             <tbody>
-              {loading ? (
-                [1, 2, 3].map(i => (
-                  <tr key={i} className="border-b border-gray-100">
-                    <td colSpan={5} className="py-4 px-4">
-                      <div className="h-6 bg-gray-100 rounded animate-pulse" />
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                (adoptionData?.topAddOns || []).map((addOn, index) => (
-                  <tr key={addOn.featureKey} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 px-4">
-                      <span className="font-medium text-gray-900">{addOn.name}</span>
-                    </td>
-                    <td className="py-3 px-4 text-right text-gray-600">{addOn.activeSubscribers}</td>
-                    <td className="py-3 px-4 text-right text-gray-600">{addOn.monthlySubscribers}</td>
-                    <td className="py-3 px-4 text-right text-gray-600">{addOn.annualSubscribers}</td>
-                    <td className="py-3 px-4 text-right text-gray-600">{addOn.bundleSubscribers}</td>
-                  </tr>
-                ))
-              )}
+              {loading
+                ? [1, 2, 3].map((i) => (
+                    <tr key={i} className="border-b border-gray-100">
+                      <td colSpan={5} className="py-4 px-4">
+                        <div className="h-6 bg-gray-100 rounded animate-pulse" />
+                      </td>
+                    </tr>
+                  ))
+                : (adoptionData?.topAddOns || []).map((addOn, index) => (
+                    <tr
+                      key={addOn.featureKey}
+                      className="border-b border-gray-100 hover:bg-gray-50"
+                    >
+                      <td className="py-3 px-4">
+                        <span className="font-medium text-gray-900">{addOn.name}</span>
+                      </td>
+                      <td className="py-3 px-4 text-right text-gray-600">
+                        {addOn.activeSubscribers}
+                      </td>
+                      <td className="py-3 px-4 text-right text-gray-600">
+                        {addOn.monthlySubscribers}
+                      </td>
+                      <td className="py-3 px-4 text-right text-gray-600">
+                        {addOn.annualSubscribers}
+                      </td>
+                      <td className="py-3 px-4 text-right text-gray-600">
+                        {addOn.bundleSubscribers}
+                      </td>
+                    </tr>
+                  ))}
             </tbody>
           </table>
         </div>

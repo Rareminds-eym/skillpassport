@@ -51,42 +51,41 @@ const FloatingAIButton: React.FC = () => {
               initial={{ opacity: 0, scale: 0.8, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.8, y: 10 }}
-              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 20 }}
               className="absolute bottom-full mb-5 px-4 py-3 bg-blue-600 text-white text-sm font-semibold rounded-2xl shadow-2xl whitespace-nowrap "
-              style={{ 
+              style={{
                 right: '1.5rem',
-                boxShadow: '0 10px 30px rgba(37, 99, 235, 0.3)'
+                boxShadow: '0 10px 30px rgba(37, 99, 235, 0.3)',
               }}
             >
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
                 Ask Career AI
               </div>
-               <div className="absolute -bottom-2 right-4 w-4 h-4 bg-blue-600 rotate-45"></div>
-
+              <div className="absolute -bottom-2 right-4 w-4 h-4 bg-blue-600 rotate-45"></div>
             </motion.div>
           )}
         </AnimatePresence>
 
         <motion.button
           initial={{ scale: 0 }}
-          animate={{ 
+          animate={{
             scale: 1,
-            y: isPulsing ? [0, -8, 0] : 0
+            y: isPulsing ? [0, -8, 0] : 0,
           }}
-          whileHover={{ 
-            scale: 1.05
+          whileHover={{
+            scale: 1.05,
           }}
           whileTap={{ scale: 0.95 }}
           transition={{
-            type: "spring",
+            type: 'spring',
             stiffness: 260,
             damping: 20,
             y: {
               duration: 2,
               repeat: isPulsing ? Infinity : 0,
-              ease: "easeInOut"
-            }
+              ease: 'easeInOut',
+            },
           }}
           onClick={handleClick}
           onMouseEnter={handleMouseEnter}
@@ -96,8 +95,8 @@ const FloatingAIButton: React.FC = () => {
           aria-label="Open Career AI Assistant"
           tabIndex={0}
         >
-          <img 
-            src="/ai.gif" 
+          <img
+            src="/ai.gif"
             alt="AI Assistant Animation"
             className="
               w-20 h-20 md:w-24 md:h-24 

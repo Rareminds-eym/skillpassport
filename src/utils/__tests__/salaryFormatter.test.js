@@ -1,9 +1,9 @@
 /**
  * Property-based tests for salary formatting utility
- * 
+ *
  * Feature: career-fit-salary-display, Property 3: Salary formatting produces valid output
  * Validates: Requirements 2.3, 3.3
- * 
+ *
  * @vitest-environment node
  */
 
@@ -15,8 +15,8 @@ describe('salaryFormatter', () => {
   describe('formatSalaryRange', () => {
     /**
      * Property 3: Salary formatting produces valid output
-     * For any salary object with numeric min and max values, the formatSalaryRange 
-     * function SHALL return a string containing the ₹ symbol and both min and max 
+     * For any salary object with numeric min and max values, the formatSalaryRange
+     * function SHALL return a string containing the ₹ symbol and both min and max
      * values in lakhs notation.
      */
     it('should return string with ₹ symbol for valid salary objects', () => {
@@ -24,17 +24,17 @@ describe('salaryFormatter', () => {
         fc.property(
           fc.record({
             min: fc.float({ min: 0, max: 100, noNaN: true }),
-            max: fc.float({ min: 0, max: 100, noNaN: true })
+            max: fc.float({ min: 0, max: 100, noNaN: true }),
           }),
           (salary) => {
             const result = formatSalaryRange(salary);
-            
+
             // Result should be a string
             expect(typeof result).toBe('string');
-            
+
             // Result should contain ₹ symbol
             expect(result).toContain('₹');
-            
+
             // Result should contain L notation
             expect(result).toContain('L');
           }
@@ -48,19 +48,16 @@ describe('salaryFormatter', () => {
      */
     it('should show single value when min equals max', () => {
       fc.assert(
-        fc.property(
-          fc.float({ min: 0, max: 100, noNaN: true }),
-          (value) => {
-            const salary = { min: value, max: value };
-            const result = formatSalaryRange(salary);
-            
-            // Should not contain range separator
-            expect(result).not.toContain(' - ');
-            
-            // Should contain single ₹ symbol
-            expect((result.match(/₹/g) || []).length).toBe(1);
-          }
-        ),
+        fc.property(fc.float({ min: 0, max: 100, noNaN: true }), (value) => {
+          const salary = { min: value, max: value };
+          const result = formatSalaryRange(salary);
+
+          // Should not contain range separator
+          expect(result).not.toContain(' - ');
+
+          // Should contain single ₹ symbol
+          expect((result.match(/₹/g) || []).length).toBe(1);
+        }),
         { numRuns: 100 }
       );
     });
@@ -76,10 +73,10 @@ describe('salaryFormatter', () => {
           (min, max) => {
             const salary = { min, max };
             const result = formatSalaryRange(salary);
-            
+
             // Should contain range separator
             expect(result).toContain(' - ');
-            
+
             // Should contain two ₹ symbols
             expect((result.match(/₹/g) || []).length).toBe(2);
           }
@@ -136,12 +133,9 @@ describe('salaryFormatter', () => {
      */
     it('should return string for string roles', () => {
       fc.assert(
-        fc.property(
-          fc.string({ minLength: 1 }),
-          (roleName) => {
-            expect(getRoleName(roleName)).toBe(roleName);
-          }
-        ),
+        fc.property(fc.string({ minLength: 1 }), (roleName) => {
+          expect(getRoleName(roleName)).toBe(roleName);
+        }),
         { numRuns: 100 }
       );
     });
@@ -154,10 +148,13 @@ describe('salaryFormatter', () => {
         fc.property(
           fc.record({
             name: fc.string({ minLength: 1 }),
-            salary: fc.option(fc.record({
-              min: fc.float({ min: 0, max: 100, noNaN: true }),
-              max: fc.float({ min: 0, max: 100, noNaN: true })
-            }), { nil: null })
+            salary: fc.option(
+              fc.record({
+                min: fc.float({ min: 0, max: 100, noNaN: true }),
+                max: fc.float({ min: 0, max: 100, noNaN: true }),
+              }),
+              { nil: null }
+            ),
           }),
           (role) => {
             expect(getRoleName(role)).toBe(role.name);
@@ -182,12 +179,9 @@ describe('salaryFormatter', () => {
      */
     it('should return null for string roles', () => {
       fc.assert(
-        fc.property(
-          fc.string(),
-          (roleName) => {
-            expect(getRoleSalary(roleName)).toBeNull();
-          }
-        ),
+        fc.property(fc.string(), (roleName) => {
+          expect(getRoleSalary(roleName)).toBeNull();
+        }),
         { numRuns: 100 }
       );
     });
@@ -202,8 +196,8 @@ describe('salaryFormatter', () => {
             name: fc.string({ minLength: 1 }),
             salary: fc.record({
               min: fc.float({ min: 0, max: 100, noNaN: true }),
-              max: fc.float({ min: 0, max: 100, noNaN: true })
-            })
+              max: fc.float({ min: 0, max: 100, noNaN: true }),
+            }),
           }),
           (role) => {
             const salary = getRoleSalary(role);

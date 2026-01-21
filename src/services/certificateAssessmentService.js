@@ -27,7 +27,9 @@ export async function fetchQuestionsByCertificate(certificateName, courseId = nu
       query = query.eq('course_id', courseId);
     } else if (certificateName && certificateName !== 'General Assessment') {
       // Try to match by certificate name or course name
-      query = query.or(`course_name.ilike.%${certificateName}%,certificate_name.ilike.%${certificateName}%`);
+      query = query.or(
+        `course_name.ilike.%${certificateName}%,certificate_name.ilike.%${certificateName}%`
+      );
     }
 
     const { data, error } = await query;
@@ -64,7 +66,7 @@ function transformQuestion(dbQuestion) {
     category: dbQuestion.category,
     points: dbQuestion.points || 1,
     timeLimit: dbQuestion.time_limit_seconds,
-    explanation: dbQuestion.explanation
+    explanation: dbQuestion.explanation,
   };
 }
 
@@ -84,7 +86,7 @@ function getFallbackQuestions(certificateName) {
         options: ['null', 'undefined', 'object', 'number'],
         correctAnswer: 'object',
         type: 'mcq',
-        difficulty: 'easy'
+        difficulty: 'easy',
       },
       {
         id: 2,
@@ -92,7 +94,7 @@ function getFallbackQuestions(certificateName) {
         options: ['push()', 'pop()', 'shift()', 'unshift()'],
         correctAnswer: 'push()',
         type: 'mcq',
-        difficulty: 'easy'
+        difficulty: 'easy',
       },
       {
         id: 3,
@@ -100,8 +102,8 @@ function getFallbackQuestions(certificateName) {
         options: ['Value only', 'Type only', 'Both value and type', 'Neither'],
         correctAnswer: 'Both value and type',
         type: 'mcq',
-        difficulty: 'medium'
-      }
+        difficulty: 'medium',
+      },
     ];
   }
 
@@ -114,16 +116,16 @@ function getFallbackQuestions(certificateName) {
         options: ['function', 'def', 'func', 'define'],
         correctAnswer: 'def',
         type: 'mcq',
-        difficulty: 'easy'
+        difficulty: 'easy',
       },
       {
         id: 2,
         text: 'What is the output of: print(type([]))?',
-        options: ['<class \'array\'>', '<class \'list\'>', '<class \'tuple\'>', '<class \'dict\'>'],
-        correctAnswer: '<class \'list\'>',
+        options: ["<class 'array'>", "<class 'list'>", "<class 'tuple'>", "<class 'dict'>"],
+        correctAnswer: "<class 'list'>",
         type: 'mcq',
-        difficulty: 'easy'
-      }
+        difficulty: 'easy',
+      },
     ];
   }
 
@@ -136,16 +138,21 @@ function getFallbackQuestions(certificateName) {
         options: ['useEffect', 'useState', 'useContext', 'useReducer'],
         correctAnswer: 'useState',
         type: 'mcq',
-        difficulty: 'easy'
+        difficulty: 'easy',
       },
       {
         id: 2,
         text: 'What is JSX?',
-        options: ['A JavaScript library', 'A syntax extension for JavaScript', 'A CSS framework', 'A database'],
+        options: [
+          'A JavaScript library',
+          'A syntax extension for JavaScript',
+          'A CSS framework',
+          'A database',
+        ],
         correctAnswer: 'A syntax extension for JavaScript',
         type: 'mcq',
-        difficulty: 'medium'
-      }
+        difficulty: 'medium',
+      },
     ];
   }
 
@@ -158,16 +165,21 @@ function getFallbackQuestions(certificateName) {
         options: ['NumPy', 'Pandas', 'Matplotlib', 'Scikit-learn'],
         correctAnswer: 'Pandas',
         type: 'mcq',
-        difficulty: 'easy'
+        difficulty: 'easy',
       },
       {
         id: 2,
         text: 'What does SQL stand for?',
-        options: ['Structured Query Language', 'Simple Query Language', 'Standard Query Language', 'System Query Language'],
+        options: [
+          'Structured Query Language',
+          'Simple Query Language',
+          'Standard Query Language',
+          'System Query Language',
+        ],
         correctAnswer: 'Structured Query Language',
         type: 'mcq',
-        difficulty: 'easy'
-      }
+        difficulty: 'easy',
+      },
     ];
   }
 
@@ -179,7 +191,7 @@ function getFallbackQuestions(certificateName) {
       options: ['To validate skills', 'To get a job', 'To learn basics', 'To network'],
       correctAnswer: 'To validate skills',
       type: 'mcq',
-      difficulty: 'easy'
+      difficulty: 'easy',
     },
     {
       id: 2,
@@ -187,16 +199,21 @@ function getFallbackQuestions(certificateName) {
       options: ['Beginner', 'Intermediate', 'Advanced', 'Expert'],
       correctAnswer: 'Intermediate',
       type: 'mcq',
-      difficulty: 'easy'
+      difficulty: 'easy',
     },
     {
       id: 3,
       text: 'Which best describes your learning approach?',
-      options: ['Hands-on practice', 'Reading documentation', 'Video tutorials', 'All of the above'],
+      options: [
+        'Hands-on practice',
+        'Reading documentation',
+        'Video tutorials',
+        'All of the above',
+      ],
       correctAnswer: 'All of the above',
       type: 'mcq',
-      difficulty: 'easy'
-    }
+      difficulty: 'easy',
+    },
   ];
 }
 
@@ -214,7 +231,7 @@ export async function saveAssessmentAttempt(userId, certificateName, courseId, a
         answers: answers,
         score: score,
         total_questions: answers.length,
-        completed_at: new Date().toISOString()
+        completed_at: new Date().toISOString(),
       })
       .select()
       .single();

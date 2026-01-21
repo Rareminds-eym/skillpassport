@@ -10,9 +10,9 @@ const ANTHROPIC_VERSION = '2023-06-01';
 
 // Available Claude models (ordered by cost, cheapest first)
 export const CLAUDE_MODELS = {
-  HAIKU: 'claude-3-haiku-20240307',      // Cheapest - $0.25/M input, $1.25/M output
-  SONNET: 'claude-3-5-sonnet-20241022',  // Mid-tier - $3/M input, $15/M output
-  OPUS: 'claude-3-opus-20240229'          // Most capable - $15/M input, $75/M output
+  HAIKU: 'claude-3-haiku-20240307', // Cheapest - $0.25/M input, $1.25/M output
+  SONNET: 'claude-3-5-sonnet-20241022', // Mid-tier - $3/M input, $15/M output
+  OPUS: 'claude-3-opus-20240229', // Most capable - $15/M input, $75/M output
 };
 
 // Default model (cheapest)
@@ -39,7 +39,7 @@ const getApiKey = () => {
  * Sleep utility for retry delays
  * @param {number} ms - Milliseconds to sleep
  */
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * Generate cache key from prompt and options
@@ -71,13 +71,15 @@ export async function callClaude(prompt, options = {}) {
     maxTokens = 1000,
     temperature = 0.3,
     useCache = true,
-    cacheKey = null
+    cacheKey = null,
   } = options;
 
   const apiKey = getApiKey();
-  
+
   if (!apiKey) {
-    throw new Error('Claude API key not configured. Please add VITE_CLAUDE_API_KEY to your .env file.');
+    throw new Error(
+      'Claude API key not configured. Please add VITE_CLAUDE_API_KEY to your .env file.'
+    );
   }
 
   // Check cache
@@ -97,7 +99,7 @@ export async function callClaude(prompt, options = {}) {
   const requestBody = {
     model,
     max_tokens: maxTokens,
-    messages
+    messages,
   };
 
   // Add system prompt if provided
@@ -124,9 +126,9 @@ export async function callClaude(prompt, options = {}) {
           'Content-Type': 'application/json',
           'x-api-key': apiKey,
           'anthropic-version': ANTHROPIC_VERSION,
-          'anthropic-dangerous-direct-browser-access': 'true'
+          'anthropic-dangerous-direct-browser-access': 'true',
         },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -159,19 +161,20 @@ export async function callClaude(prompt, options = {}) {
       if (useCache) {
         responseCache.set(finalCacheKey, {
           response: responseText,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         });
       }
 
       return responseText;
-
     } catch (error) {
       lastError = error;
-      
+
       // Don't retry on non-retryable errors
-      if (!error.message.includes('Rate limited') && 
-          !error.message.includes('timeout') &&
-          !error.message.includes('network')) {
+      if (
+        !error.message.includes('Rate limited') &&
+        !error.message.includes('timeout') &&
+        !error.message.includes('network')
+      ) {
         throw error;
       }
 
@@ -194,7 +197,7 @@ export async function callClaude(prompt, options = {}) {
  */
 export async function callClaudeJSON(prompt, options = {}) {
   const response = await callClaude(prompt, options);
-  
+
   try {
     // Try to extract JSON from response
     const jsonMatch = response.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
@@ -202,7 +205,7 @@ export async function callClaudeJSON(prompt, options = {}) {
       console.error('No JSON found in response:', response.slice(0, 500));
       throw new Error('No JSON found in Claude response');
     }
-    
+
     return JSON.parse(jsonMatch[0]);
   } catch (error) {
     console.error('Failed to parse Claude JSON response:', error);
@@ -219,37 +222,42 @@ export async function callClaudeJSON(prompt, options = {}) {
  * @param {Object} options - Configuration options
  * @returns {Promise<string>} AI response text
  */
-export async function callClaudeWithImage(prompt, imageBase64, mediaType = 'image/png', options = {}) {
-  const {
-    model = CLAUDE_MODELS.HAIKU,
-    systemPrompt = null,
-    maxTokens = 1000,
-  } = options;
+export async function callClaudeWithImage(
+  prompt,
+  imageBase64,
+  mediaType = 'image/png',
+  options = {}
+) {
+  const { model = CLAUDE_MODELS.HAIKU, systemPrompt = null, maxTokens = 1000 } = options;
 
   const apiKey = getApiKey();
-  
+
   if (!apiKey) {
-    throw new Error('Claude API key not configured. Please add VITE_CLAUDE_API_KEY to your .env file.');
+    throw new Error(
+      'Claude API key not configured. Please add VITE_CLAUDE_API_KEY to your .env file.'
+    );
   }
 
   // Build messages with image
-  const messages = [{
-    role: 'user',
-    content: [
-      {
-        type: 'image',
-        source: {
-          type: 'base64',
-          media_type: mediaType,
-          data: imageBase64,
+  const messages = [
+    {
+      role: 'user',
+      content: [
+        {
+          type: 'image',
+          source: {
+            type: 'base64',
+            media_type: mediaType,
+            data: imageBase64,
+          },
         },
-      },
-      {
-        type: 'text',
-        text: prompt,
-      },
-    ],
-  }];
+        {
+          type: 'text',
+          text: prompt,
+        },
+      ],
+    },
+  ];
 
   const requestBody = {
     model,
@@ -269,14 +277,16 @@ export async function callClaudeWithImage(prompt, imageBase64, mediaType = 'imag
       'Content-Type': 'application/json',
       'x-api-key': apiKey,
       'anthropic-version': ANTHROPIC_VERSION,
-      'anthropic-dangerous-direct-browser-access': 'true'
+      'anthropic-dangerous-direct-browser-access': 'true',
     },
-    body: JSON.stringify(requestBody)
+    body: JSON.stringify(requestBody),
   });
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(`Claude API error (${response.status}): ${errorData.error?.message || response.statusText}`);
+    throw new Error(
+      `Claude API error (${response.status}): ${errorData.error?.message || response.statusText}`
+    );
   }
 
   const data = await response.json();
@@ -298,9 +308,14 @@ export async function callClaudeWithImage(prompt, imageBase64, mediaType = 'imag
  * @param {Object} options - Same options as callClaudeWithImage
  * @returns {Promise<Object>} Parsed JSON object
  */
-export async function callClaudeVisionJSON(prompt, imageBase64, mediaType = 'image/png', options = {}) {
+export async function callClaudeVisionJSON(
+  prompt,
+  imageBase64,
+  mediaType = 'image/png',
+  options = {}
+) {
   const response = await callClaudeWithImage(prompt, imageBase64, mediaType, options);
-  
+
   try {
     const jsonMatch = response.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
     if (!jsonMatch) {
@@ -338,5 +353,5 @@ export default {
   callClaudeVisionJSON,
   clearCache,
   isClaudeConfigured,
-  CLAUDE_MODELS
+  CLAUDE_MODELS,
 };

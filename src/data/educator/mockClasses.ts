@@ -20,7 +20,7 @@ export const mockClasses: Class[] = [
     studentCount: 28,
     schedule: 'Mon, Wed, Fri 9:00-10:30',
     room: 'Room 205',
-    subject: 'General'
+    subject: 'General',
   },
   {
     id: 'cls-002',
@@ -31,7 +31,7 @@ export const mockClasses: Class[] = [
     studentCount: 25,
     schedule: 'Tue, Thu 9:00-10:30',
     room: 'Room 206',
-    subject: 'General'
+    subject: 'General',
   },
   {
     id: 'cls-003',
@@ -42,7 +42,7 @@ export const mockClasses: Class[] = [
     studentCount: 30,
     schedule: 'Mon, Wed, Fri 11:00-12:30',
     room: 'Room 101',
-    subject: 'General'
+    subject: 'General',
   },
   {
     id: 'cls-004',
@@ -53,7 +53,7 @@ export const mockClasses: Class[] = [
     studentCount: 22,
     schedule: 'Tue, Thu 13:00-14:30',
     room: 'Room 301',
-    subject: 'General'
+    subject: 'General',
   },
   {
     id: 'cls-005',
@@ -64,6 +64,6 @@ export const mockClasses: Class[] = [
     studentCount: 24,
     schedule: 'Mon, Wed 13:00-14:30',
     room: 'Room 302',
-    subject: 'General'
-  }
+    subject: 'General',
+  },
 ];

@@ -1,6 +1,6 @@
 /**
  * InvitationManager Component
- * 
+ *
  * Manages member invitations for organizations.
  * Allows sending, viewing, resending, and cancelling invitations.
  */
@@ -50,8 +50,10 @@ function InvitationManager({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'accepted' | 'expired' | 'cancelled'>('all');
-  
+  const [statusFilter, setStatusFilter] = useState<
+    'all' | 'pending' | 'accepted' | 'expired' | 'cancelled'
+  >('all');
+
   // Invite modal state
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [inviteForm, setInviteForm] = useState({
@@ -62,12 +64,12 @@ function InvitationManager({
     invitationMessage: '',
   });
   const [isSending, setIsSending] = useState(false);
-  
+
   // Cancel confirmation modal state
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [invitationToCancel, setInvitationToCancel] = useState<OrganizationInvitation | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
-  
+
   // Stats
   const [stats, setStats] = useState({
     total: 0,
@@ -80,10 +82,10 @@ function InvitationManager({
 
   const fetchInvitations = useCallback(async () => {
     if (!organizationId) return;
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const [invitationsData, statsData] = await Promise.all([
         memberInvitationService.getAllInvitations(organizationId, {
@@ -92,7 +94,7 @@ function InvitationManager({
         }),
         memberInvitationService.getInvitationStats(organizationId),
       ]);
-      
+
       setInvitations(invitationsData);
       setStats(statsData);
     } catch (err) {
@@ -112,16 +114,16 @@ function InvitationManager({
       toast.error('Please enter an email address');
       return;
     }
-    
+
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(inviteForm.email)) {
       toast.error('Please enter a valid email address');
       return;
     }
-    
+
     setIsSending(true);
-    
+
     try {
       await memberInvitationService.inviteMember({
         organizationId,
@@ -132,7 +134,7 @@ function InvitationManager({
         licensePoolId: inviteForm.autoAssignSubscription ? inviteForm.licensePoolId : undefined,
         invitationMessage: inviteForm.invitationMessage || undefined,
       });
-      
+
       toast.success(`Invitation sent to ${inviteForm.email}`);
       setIsInviteModalOpen(false);
       setInviteForm({
@@ -142,7 +144,7 @@ function InvitationManager({
         licensePoolId: '',
         invitationMessage: '',
       });
-      
+
       await fetchInvitations();
     } catch (err) {
       console.error('Error sending invitation:', err);
@@ -152,16 +154,19 @@ function InvitationManager({
     }
   }, [inviteForm, organizationId, organizationType, fetchInvitations]);
 
-  const handleResendInvitation = useCallback(async (invitationId: string) => {
-    try {
-      await memberInvitationService.resendInvitation(invitationId);
-      toast.success('Invitation resent');
-      await fetchInvitations();
-    } catch (err) {
-      console.error('Error resending invitation:', err);
-      toast.error(err instanceof Error ? err.message : 'Failed to resend invitation');
-    }
-  }, [fetchInvitations]);
+  const handleResendInvitation = useCallback(
+    async (invitationId: string) => {
+      try {
+        await memberInvitationService.resendInvitation(invitationId);
+        toast.success('Invitation resent');
+        await fetchInvitations();
+      } catch (err) {
+        console.error('Error resending invitation:', err);
+        toast.error(err instanceof Error ? err.message : 'Failed to resend invitation');
+      }
+    },
+    [fetchInvitations]
+  );
 
   const openCancelModal = useCallback((invitation: OrganizationInvitation) => {
     setInvitationToCancel(invitation);
@@ -170,7 +175,7 @@ function InvitationManager({
 
   const handleCancelInvitation = useCallback(async () => {
     if (!invitationToCancel) return;
-    
+
     setIsCancelling(true);
     try {
       await memberInvitationService.cancelInvitation(invitationToCancel.id);
@@ -207,33 +212,49 @@ function InvitationManager({
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
-        return <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-700"><Clock className="w-3 h-3" /> Pending</span>;
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-700">
+            <Clock className="w-3 h-3" /> Pending
+          </span>
+        );
       case 'accepted':
-        return <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700"><Check className="w-3 h-3" /> Accepted</span>;
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700">
+            <Check className="w-3 h-3" /> Accepted
+          </span>
+        );
       case 'expired':
-        return <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700"><X className="w-3 h-3" /> Expired</span>;
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700">
+            <X className="w-3 h-3" /> Expired
+          </span>
+        );
       case 'cancelled':
-        return <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-700"><X className="w-3 h-3" /> Cancelled</span>;
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-700">
+            <X className="w-3 h-3" /> Cancelled
+          </span>
+        );
       default:
         return null;
     }
   };
 
   // Filter invitations by search query
-  const filteredInvitations = invitations.filter(inv =>
+  const filteredInvitations = invitations.filter((inv) =>
     inv.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // Get available pools for the selected member type
   const availablePools = licensePools.filter(
-    pool => pool.memberType === inviteForm.memberType && pool.availableSeats > 0
+    (pool) => pool.memberType === inviteForm.memberType && pool.availableSeats > 0
   );
 
   if (isLoading || externalLoading) {
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map(i => (
+          {[1, 2, 3, 4].map((i) => (
             <div key={i} className="bg-white rounded-xl border border-gray-200 p-4 animate-pulse">
               <div className="h-4 bg-gray-200 rounded w-1/2 mb-2" />
               <div className="h-8 bg-gray-200 rounded w-1/3" />
@@ -243,7 +264,7 @@ function InvitationManager({
         <div className="bg-white rounded-xl border border-gray-200 p-6 animate-pulse">
           <div className="h-6 bg-gray-200 rounded w-1/4 mb-4" />
           <div className="space-y-3">
-            {[1, 2, 3].map(i => (
+            {[1, 2, 3].map((i) => (
               <div key={i} className="h-16 bg-gray-200 rounded" />
             ))}
           </div>
@@ -305,7 +326,7 @@ function InvitationManager({
               className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg w-full sm:w-64 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
             />
           </div>
-          
+
           {/* Status Filter */}
           <select
             value={statusFilter}
@@ -333,12 +354,17 @@ function InvitationManager({
       <div className="bg-white rounded-xl border border-gray-200">
         {filteredInvitations.length > 0 ? (
           <div className="divide-y divide-gray-100">
-            {filteredInvitations.map(invitation => (
-              <div key={invitation.id} className="p-4 hover:bg-gray-50 flex items-center justify-between">
+            {filteredInvitations.map((invitation) => (
+              <div
+                key={invitation.id}
+                className="p-4 hover:bg-gray-50 flex items-center justify-between"
+              >
                 <div className="flex items-center gap-4">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    isEducator(invitation.memberType) ? 'bg-blue-100' : 'bg-green-100'
-                  }`}>
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      isEducator(invitation.memberType) ? 'bg-blue-100' : 'bg-green-100'
+                    }`}
+                  >
                     {isEducator(invitation.memberType) ? (
                       <Users className="w-5 h-5 text-blue-600" />
                     ) : (
@@ -360,10 +386,10 @@ function InvitationManager({
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-3">
                   {getStatusBadge(invitation.status)}
-                  
+
                   {invitation.status === 'pending' && (
                     <div className="flex items-center gap-1">
                       <button
@@ -411,8 +437,11 @@ function InvitationManager({
       {/* Invite Modal */}
       {isInviteModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsInviteModalOpen(false)} />
-          
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setIsInviteModalOpen(false)}
+          />
+
           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
             {/* Header */}
             <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-blue-600 to-blue-700">
@@ -425,7 +454,10 @@ function InvitationManager({
                   <p className="text-sm text-blue-100">Send an invitation to join</p>
                 </div>
               </div>
-              <button onClick={() => setIsInviteModalOpen(false)} className="p-2 hover:bg-white/10 rounded-lg">
+              <button
+                onClick={() => setIsInviteModalOpen(false)}
+                className="p-2 hover:bg-white/10 rounded-lg"
+              >
                 <X className="w-5 h-5 text-white" />
               </button>
             </div>
@@ -440,7 +472,7 @@ function InvitationManager({
                 <input
                   type="email"
                   value={inviteForm.email}
-                  onChange={(e) => setInviteForm(prev => ({ ...prev, email: e.target.value }))}
+                  onChange={(e) => setInviteForm((prev) => ({ ...prev, email: e.target.value }))}
                   placeholder="member@example.com"
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                 />
@@ -454,35 +486,59 @@ function InvitationManager({
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
-                    onClick={() => setInviteForm(prev => ({ ...prev, memberType: 'student', licensePoolId: '' }))}
+                    onClick={() =>
+                      setInviteForm((prev) => ({
+                        ...prev,
+                        memberType: 'student',
+                        licensePoolId: '',
+                      }))
+                    }
                     className={`p-3 rounded-xl border-2 transition-all ${
                       inviteForm.memberType === 'student'
                         ? 'border-blue-500 bg-blue-50'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
-                    <UserPlus className={`w-5 h-5 mx-auto mb-1 ${
-                      inviteForm.memberType === 'student' ? 'text-blue-600' : 'text-gray-400'
-                    }`} />
-                    <span className={`text-sm font-medium ${
-                      inviteForm.memberType === 'student' ? 'text-blue-700' : 'text-gray-600'
-                    }`}>Student</span>
+                    <UserPlus
+                      className={`w-5 h-5 mx-auto mb-1 ${
+                        inviteForm.memberType === 'student' ? 'text-blue-600' : 'text-gray-400'
+                      }`}
+                    />
+                    <span
+                      className={`text-sm font-medium ${
+                        inviteForm.memberType === 'student' ? 'text-blue-700' : 'text-gray-600'
+                      }`}
+                    >
+                      Student
+                    </span>
                   </button>
                   <button
                     type="button"
-                    onClick={() => setInviteForm(prev => ({ ...prev, memberType: 'educator', licensePoolId: '' }))}
+                    onClick={() =>
+                      setInviteForm((prev) => ({
+                        ...prev,
+                        memberType: 'educator',
+                        licensePoolId: '',
+                      }))
+                    }
                     className={`p-3 rounded-xl border-2 transition-all ${
                       inviteForm.memberType === 'educator'
                         ? 'border-blue-500 bg-blue-50'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
-                    <Users className={`w-5 h-5 mx-auto mb-1 ${
-                      inviteForm.memberType === 'educator' ? 'text-blue-600' : 'text-gray-400'
-                    }`} />
-                    <span className={`text-sm font-medium ${
-                      inviteForm.memberType === 'educator' ? 'text-blue-700' : 'text-gray-600'
-                    }`}>Educator</span>
+                    <Users
+                      className={`w-5 h-5 mx-auto mb-1 ${
+                        inviteForm.memberType === 'educator' ? 'text-blue-600' : 'text-gray-400'
+                      }`}
+                    />
+                    <span
+                      className={`text-sm font-medium ${
+                        inviteForm.memberType === 'educator' ? 'text-blue-700' : 'text-gray-600'
+                      }`}
+                    >
+                      Educator
+                    </span>
                   </button>
                 </div>
               </div>
@@ -493,11 +549,13 @@ function InvitationManager({
                   <input
                     type="checkbox"
                     checked={inviteForm.autoAssignSubscription}
-                    onChange={(e) => setInviteForm(prev => ({ 
-                      ...prev, 
-                      autoAssignSubscription: e.target.checked,
-                      licensePoolId: e.target.checked ? prev.licensePoolId : ''
-                    }))}
+                    onChange={(e) =>
+                      setInviteForm((prev) => ({
+                        ...prev,
+                        autoAssignSubscription: e.target.checked,
+                        licensePoolId: e.target.checked ? prev.licensePoolId : '',
+                      }))
+                    }
                     className="mt-1 w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
                   <div>
@@ -518,11 +576,13 @@ function InvitationManager({
                     {availablePools.length > 0 ? (
                       <select
                         value={inviteForm.licensePoolId}
-                        onChange={(e) => setInviteForm(prev => ({ ...prev, licensePoolId: e.target.value }))}
+                        onChange={(e) =>
+                          setInviteForm((prev) => ({ ...prev, licensePoolId: e.target.value }))
+                        }
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
                       >
                         <option value="">Select a pool...</option>
-                        {availablePools.map(pool => (
+                        {availablePools.map((pool) => (
                           <option key={pool.id} value={pool.id}>
                             {pool.poolName} ({pool.availableSeats} seats available)
                           </option>
@@ -544,7 +604,9 @@ function InvitationManager({
                 </label>
                 <textarea
                   value={inviteForm.invitationMessage}
-                  onChange={(e) => setInviteForm(prev => ({ ...prev, invitationMessage: e.target.value }))}
+                  onChange={(e) =>
+                    setInviteForm((prev) => ({ ...prev, invitationMessage: e.target.value }))
+                  }
                   placeholder="Add a personal message to the invitation..."
                   rows={3}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
@@ -586,8 +648,11 @@ function InvitationManager({
       {/* Cancel Confirmation Modal */}
       {cancelModalOpen && invitationToCancel && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => !isCancelling && setCancelModalOpen(false)} />
-          
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => !isCancelling && setCancelModalOpen(false)}
+          />
+
           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
             {/* Header */}
             <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-red-500 to-red-600">
@@ -599,8 +664,8 @@ function InvitationManager({
                   <h2 className="text-lg font-semibold text-white">Cancel Invitation</h2>
                 </div>
               </div>
-              <button 
-                onClick={() => !isCancelling && setCancelModalOpen(false)} 
+              <button
+                onClick={() => !isCancelling && setCancelModalOpen(false)}
                 disabled={isCancelling}
                 className="p-2 hover:bg-white/10 rounded-lg disabled:opacity-50"
               >
@@ -616,11 +681,13 @@ function InvitationManager({
               <div className="bg-gray-50 rounded-xl p-4 mb-4">
                 <div className="font-medium text-gray-900">{invitationToCancel.email}</div>
                 <div className="text-sm text-gray-500">
-                  {getMemberTypeDisplay(invitationToCancel.memberType)} • Sent {formatDate(invitationToCancel.createdAt)}
+                  {getMemberTypeDisplay(invitationToCancel.memberType)} • Sent{' '}
+                  {formatDate(invitationToCancel.createdAt)}
                 </div>
               </div>
               <p className="text-sm text-gray-500">
-                This action cannot be undone. The recipient will no longer be able to accept this invitation.
+                This action cannot be undone. The recipient will no longer be able to accept this
+                invitation.
               </p>
             </div>
 

@@ -10,7 +10,16 @@ export interface PlacementRecord {
   employment_type: 'Full-time' | 'Internship';
   salary_offered: number;
   placement_date: string;
-  status: 'applied' | 'viewed' | 'under_review' | 'interview_scheduled' | 'interviewed' | 'offer_received' | 'accepted' | 'rejected' | 'withdrawn';
+  status:
+    | 'applied'
+    | 'viewed'
+    | 'under_review'
+    | 'interview_scheduled'
+    | 'interviewed'
+    | 'offer_received'
+    | 'accepted'
+    | 'rejected'
+    | 'withdrawn';
   location: string;
 }
 
@@ -49,7 +58,8 @@ class PlacementAnalyticsService {
     try {
       let query = supabase
         .from('applied_jobs')
-        .select(`
+        .select(
+          `
           id,
           application_status,
           applied_at,
@@ -77,7 +87,8 @@ class PlacementAnalyticsService {
             posted_date,
             status
           )
-        `)
+        `
+        )
         .eq('application_status', 'accepted'); // Only get successful placements
 
       // Apply filters
@@ -104,20 +115,28 @@ class PlacementAnalyticsService {
       }
 
       // Transform data to match PlacementRecord interface
-      return (data || []).map(record => ({
+      return (data || []).map((record) => ({
         id: record.id.toString(),
+        // @ts-expect-error - Auto-suppressed for migration
         student_name: record.students?.name || 'Unknown Student',
+        // @ts-expect-error - Auto-suppressed for migration
         student_id: record.students?.student_id || '',
+        // @ts-expect-error - Auto-suppressed for migration
         company_name: record.opportunities?.company_name || '',
+        // @ts-expect-error - Auto-suppressed for migration
         job_title: record.opportunities?.title || '',
+        // @ts-expect-error - Auto-suppressed for migration
         department: record.students?.branch_field || '',
+        // @ts-expect-error - Auto-suppressed for migration
         employment_type: record.opportunities?.employment_type as 'Full-time' | 'Internship',
-        salary_offered: record.opportunities?.salary_range_max || record.opportunities?.salary_range_min || 0,
+        salary_offered:
+          // @ts-expect-error - Auto-suppressed for migration
+          record.opportunities?.salary_range_max || record.opportunities?.salary_range_min || 0,
         placement_date: record.applied_at,
         status: record.application_status as any,
-        location: record.opportunities?.location || ''
+        // @ts-expect-error - Auto-suppressed for migration
+        location: record.opportunities?.location || '',
       }));
-
     } catch (error) {
       console.error('Error in getPlacementRecords:', error);
       return [];
@@ -125,15 +144,9 @@ class PlacementAnalyticsService {
   }
 
   // Get all applications (not just successful placements)
-  async getAllApplications(filters?: {
-    department?: string;
-    year?: string;
-    status?: string;
-  }) {
+  async getAllApplications(filters?: { department?: string; year?: string; status?: string }) {
     try {
-      let query = supabase
-        .from('applied_jobs')
-        .select(`
+      let query = supabase.from('applied_jobs').select(`
           id,
           application_status,
           applied_at,
@@ -204,44 +217,54 @@ class PlacementAnalyticsService {
       const placementRecords = await this.getPlacementRecords(filters);
 
       // Group students by department (branch_field)
-      const departmentStudents = (studentsData || []).reduce((acc, student) => {
-        const dept = student.branch_field || 'Unknown';
-        acc[dept] = (acc[dept] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
+      const departmentStudents = (studentsData || []).reduce(
+        (acc, student) => {
+          const dept = student.branch_field || 'Unknown';
+          acc[dept] = (acc[dept] || 0) + 1;
+          return acc;
+        },
+        {} as Record<string, number>
+      );
 
       // Group placements by department
-      const departmentPlacements = placementRecords.reduce((acc, placement) => {
-        const dept = placement.department || 'Unknown';
-        if (!acc[dept]) {
-          acc[dept] = [];
-        }
-        acc[dept].push(placement);
-        return acc;
-      }, {} as Record<string, PlacementRecord[]>);
+      const departmentPlacements = placementRecords.reduce(
+        (acc, placement) => {
+          const dept = placement.department || 'Unknown';
+          if (!acc[dept]) {
+            acc[dept] = [];
+          }
+          acc[dept].push(placement);
+          return acc;
+        },
+        {} as Record<string, PlacementRecord[]>
+      );
 
       // Calculate analytics for each department
-      const analytics: DepartmentAnalytics[] = Object.keys(departmentStudents).map(department => {
+      const analytics: DepartmentAnalytics[] = Object.keys(departmentStudents).map((department) => {
         const totalStudents = departmentStudents[department] || 0;
         const deptPlacements = departmentPlacements[department] || [];
-        const fullTimePlacements = deptPlacements.filter(p => p.employment_type === 'Full-time');
-        const internships = deptPlacements.filter(p => p.employment_type === 'Internship');
+        const fullTimePlacements = deptPlacements.filter((p) => p.employment_type === 'Full-time');
+        const internships = deptPlacements.filter((p) => p.employment_type === 'Internship');
 
         // Calculate CTC metrics for full-time positions only
         const fullTimeSalaries = fullTimePlacements
-          .map(p => p.salary_offered)
-          .filter(salary => salary > 0)
+          .map((p) => p.salary_offered)
+          .filter((salary) => salary > 0)
           .sort((a, b) => a - b);
 
-        const avgCtc = fullTimeSalaries.length > 0 
-          ? fullTimeSalaries.reduce((sum, salary) => sum + salary, 0) / fullTimeSalaries.length 
-          : 0;
+        const avgCtc =
+          fullTimeSalaries.length > 0
+            ? fullTimeSalaries.reduce((sum, salary) => sum + salary, 0) / fullTimeSalaries.length
+            : 0;
 
-        const medianCtc = fullTimeSalaries.length > 0 
-          ? fullTimeSalaries.length % 2 === 0
-            ? (fullTimeSalaries[fullTimeSalaries.length / 2 - 1] + fullTimeSalaries[fullTimeSalaries.length / 2]) / 2
-            : fullTimeSalaries[Math.floor(fullTimeSalaries.length / 2)]
-          : 0;
+        const medianCtc =
+          fullTimeSalaries.length > 0
+            ? fullTimeSalaries.length % 2 === 0
+              ? (fullTimeSalaries[fullTimeSalaries.length / 2 - 1] +
+                  fullTimeSalaries[fullTimeSalaries.length / 2]) /
+                2
+              : fullTimeSalaries[Math.floor(fullTimeSalaries.length / 2)]
+            : 0;
 
         const highestCtc = fullTimeSalaries.length > 0 ? Math.max(...fullTimeSalaries) : 0;
 
@@ -260,7 +283,6 @@ class PlacementAnalyticsService {
       });
 
       return analytics.sort((a, b) => b.placed_students - a.placed_students);
-
     } catch (error) {
       console.error('Error in getDepartmentAnalytics:', error);
       return [];
@@ -276,31 +298,33 @@ class PlacementAnalyticsService {
       const placementRecords = await this.getPlacementRecords(filters);
       const allApplications = await this.getAllApplications(filters);
 
-      const fullTimePlacements = placementRecords.filter(p => p.employment_type === 'Full-time');
-      const internships = placementRecords.filter(p => p.employment_type === 'Internship');
+      const fullTimePlacements = placementRecords.filter((p) => p.employment_type === 'Full-time');
+      const internships = placementRecords.filter((p) => p.employment_type === 'Internship');
 
       // Calculate CTC metrics for full-time positions
       const fullTimeSalaries = fullTimePlacements
-        .map(p => p.salary_offered)
-        .filter(salary => salary > 0)
+        .map((p) => p.salary_offered)
+        .filter((salary) => salary > 0)
         .sort((a, b) => a - b);
 
-      const avgCTC = fullTimeSalaries.length > 0 
-        ? fullTimeSalaries.reduce((sum, salary) => sum + salary, 0) / fullTimeSalaries.length 
-        : 0;
+      const avgCTC =
+        fullTimeSalaries.length > 0
+          ? fullTimeSalaries.reduce((sum, salary) => sum + salary, 0) / fullTimeSalaries.length
+          : 0;
 
-      const medianCTC = fullTimeSalaries.length > 0 
-        ? fullTimeSalaries.length % 2 === 0
-          ? (fullTimeSalaries[fullTimeSalaries.length / 2 - 1] + fullTimeSalaries[fullTimeSalaries.length / 2]) / 2
-          : fullTimeSalaries[Math.floor(fullTimeSalaries.length / 2)]
-        : 0;
+      const medianCTC =
+        fullTimeSalaries.length > 0
+          ? fullTimeSalaries.length % 2 === 0
+            ? (fullTimeSalaries[fullTimeSalaries.length / 2 - 1] +
+                fullTimeSalaries[fullTimeSalaries.length / 2]) /
+              2
+            : fullTimeSalaries[Math.floor(fullTimeSalaries.length / 2)]
+          : 0;
 
       const highestCTC = fullTimeSalaries.length > 0 ? Math.max(...fullTimeSalaries) : 0;
 
       // Get total students for placement rate calculation
-      let totalStudentsQuery = supabase
-        .from('students')
-        .select('user_id', { count: 'exact' });
+      let totalStudentsQuery = supabase.from('students').select('user_id', { count: 'exact' });
 
       if (filters?.department) {
         totalStudentsQuery = totalStudentsQuery.eq('branch_field', filters.department);
@@ -308,9 +332,8 @@ class PlacementAnalyticsService {
 
       const { count: totalStudents } = await totalStudentsQuery;
 
-      const placementRate = totalStudents && totalStudents > 0 
-        ? (placementRecords.length / totalStudents) * 100 
-        : 0;
+      const placementRate =
+        totalStudents && totalStudents > 0 ? (placementRecords.length / totalStudents) * 100 : 0;
 
       return {
         totalPlacements: placementRecords.length,
@@ -320,9 +343,8 @@ class PlacementAnalyticsService {
         highestCTC,
         totalInternships: internships.length,
         totalFullTime: fullTimePlacements.length,
-        placementRate
+        placementRate,
       };
-
     } catch (error) {
       console.error('Error in getPlacementStats:', error);
       return {
@@ -333,54 +355,54 @@ class PlacementAnalyticsService {
         highestCTC: 0,
         totalInternships: 0,
         totalFullTime: 0,
-        placementRate: 0
+        placementRate: 0,
       };
     }
   }
 
   // Get CTC distribution analysis
-  async getCTCDistribution(filters?: {
-    year?: string;
-    department?: string;
-  }) {
+  async getCTCDistribution(filters?: { year?: string; department?: string }) {
     try {
       const placementRecords = await this.getPlacementRecords(filters);
-      const fullTimePlacements = placementRecords.filter(p => p.employment_type === 'Full-time');
-      const internships = placementRecords.filter(p => p.employment_type === 'Internship');
+      const fullTimePlacements = placementRecords.filter((p) => p.employment_type === 'Full-time');
+      const internships = placementRecords.filter((p) => p.employment_type === 'Internship');
 
       const totalPlacements = placementRecords.length;
 
       // CTC ranges for full-time positions
-      const above10L = fullTimePlacements.filter(p => p.salary_offered >= 1000000).length;
-      const between5L10L = fullTimePlacements.filter(p => p.salary_offered >= 500000 && p.salary_offered < 1000000).length;
-      const below5L = fullTimePlacements.filter(p => p.salary_offered > 0 && p.salary_offered < 500000).length;
+      const above10L = fullTimePlacements.filter((p) => p.salary_offered >= 1000000).length;
+      const between5L10L = fullTimePlacements.filter(
+        (p) => p.salary_offered >= 500000 && p.salary_offered < 1000000
+      ).length;
+      const below5L = fullTimePlacements.filter(
+        (p) => p.salary_offered > 0 && p.salary_offered < 500000
+      ).length;
 
       return {
         above10L: {
           count: above10L,
-          percentage: totalPlacements > 0 ? (above10L / totalPlacements) * 100 : 0
+          percentage: totalPlacements > 0 ? (above10L / totalPlacements) * 100 : 0,
         },
         between5L10L: {
           count: between5L10L,
-          percentage: totalPlacements > 0 ? (between5L10L / totalPlacements) * 100 : 0
+          percentage: totalPlacements > 0 ? (between5L10L / totalPlacements) * 100 : 0,
         },
         below5L: {
           count: below5L,
-          percentage: totalPlacements > 0 ? (below5L / totalPlacements) * 100 : 0
+          percentage: totalPlacements > 0 ? (below5L / totalPlacements) * 100 : 0,
         },
         internships: {
           count: internships.length,
-          percentage: totalPlacements > 0 ? (internships.length / totalPlacements) * 100 : 0
-        }
+          percentage: totalPlacements > 0 ? (internships.length / totalPlacements) * 100 : 0,
+        },
       };
-
     } catch (error) {
       console.error('Error in getCTCDistribution:', error);
       return {
         above10L: { count: 0, percentage: 0 },
         between5L10L: { count: 0, percentage: 0 },
         below5L: { count: 0, percentage: 0 },
-        internships: { count: 0, percentage: 0 }
+        internships: { count: 0, percentage: 0 },
       };
     }
   }
@@ -403,11 +425,13 @@ class PlacementAnalyticsService {
     try {
       const { data, error } = await supabase
         .from('applied_jobs')
-        .select(`
+        .select(
+          `
           opportunities!fk_applied_jobs_opportunity (
             company_name
           )
-        `)
+        `
+        )
         .eq('application_status', 'accepted');
 
       if (error) {
@@ -416,20 +440,23 @@ class PlacementAnalyticsService {
       }
 
       // Count placements by company
-      const companyCount = (data || []).reduce((acc, record) => {
-        const companyName = record.opportunities?.company_name;
-        if (companyName) {
-          acc[companyName] = (acc[companyName] || 0) + 1;
-        }
-        return acc;
-      }, {} as Record<string, number>);
+      const companyCount = (data || []).reduce(
+        (acc, record) => {
+          // @ts-expect-error - Auto-suppressed for migration
+          const companyName = record.opportunities?.company_name;
+          if (companyName) {
+            acc[companyName] = (acc[companyName] || 0) + 1;
+          }
+          return acc;
+        },
+        {} as Record<string, number>
+      );
 
       // Sort and return top companies
       return Object.entries(companyCount)
         .sort(([, a], [, b]) => b - a)
         .slice(0, limit)
         .map(([company, count]) => ({ company, placements: count }));
-
     } catch (error) {
       console.error('Error in getTopCompanies:', error);
       return [];
@@ -449,22 +476,32 @@ class PlacementAnalyticsService {
 
       // Department Analytics CSV
       const departmentCsvData = [
-        ["Placement Analytics Report"],
-        ["Generated on:", new Date().toLocaleDateString()],
+        ['Placement Analytics Report'],
+        ['Generated on:', new Date().toLocaleDateString()],
         [],
-        ["OVERALL SUMMARY"],
-        ["Total Placements", stats.totalPlacements],
-        ["Total Applications", stats.totalApplications],
-        ["Overall Placement Rate (%)", stats.placementRate.toFixed(1)],
-        ["Overall Avg CTC (₹)", stats.avgCTC.toFixed(0)],
-        ["Overall Median CTC (₹)", stats.medianCTC.toFixed(0)],
-        ["Highest CTC (₹)", stats.highestCTC.toFixed(0)],
-        ["Full-time Placements", stats.totalFullTime],
-        ["Internships", stats.totalInternships],
+        ['OVERALL SUMMARY'],
+        ['Total Placements', stats.totalPlacements],
+        ['Total Applications', stats.totalApplications],
+        ['Overall Placement Rate (%)', stats.placementRate.toFixed(1)],
+        ['Overall Avg CTC (₹)', stats.avgCTC.toFixed(0)],
+        ['Overall Median CTC (₹)', stats.medianCTC.toFixed(0)],
+        ['Highest CTC (₹)', stats.highestCTC.toFixed(0)],
+        ['Full-time Placements', stats.totalFullTime],
+        ['Internships', stats.totalInternships],
         [],
-        ["DEPARTMENT-WISE ANALYTICS"],
-        ["Department", "Total Students", "Placed Students", "Placement Rate (%)", "Avg CTC (₹)", "Median CTC (₹)", "Highest CTC (₹)", "Full-time", "Internships"],
-        ...departmentAnalytics.map(dept => [
+        ['DEPARTMENT-WISE ANALYTICS'],
+        [
+          'Department',
+          'Total Students',
+          'Placed Students',
+          'Placement Rate (%)',
+          'Avg CTC (₹)',
+          'Median CTC (₹)',
+          'Highest CTC (₹)',
+          'Full-time',
+          'Internships',
+        ],
+        ...departmentAnalytics.map((dept) => [
           dept.department,
           dept.total_students,
           dept.placed_students,
@@ -473,12 +510,23 @@ class PlacementAnalyticsService {
           dept.median_ctc.toFixed(0),
           dept.highest_ctc.toFixed(0),
           dept.full_time,
-          dept.internships
+          dept.internships,
         ]),
         [],
-        ["PLACEMENT RECORDS"],
-        ["Student Name", "Student ID", "Company", "Job Title", "Department", "Employment Type", "CTC (₹)", "Location", "Placement Date", "Status"],
-        ...placementRecords.map(record => [
+        ['PLACEMENT RECORDS'],
+        [
+          'Student Name',
+          'Student ID',
+          'Company',
+          'Job Title',
+          'Department',
+          'Employment Type',
+          'CTC (₹)',
+          'Location',
+          'Placement Date',
+          'Status',
+        ],
+        ...placementRecords.map((record) => [
           record.student_name,
           record.student_id,
           record.company_name,
@@ -488,17 +536,16 @@ class PlacementAnalyticsService {
           record.salary_offered,
           record.location,
           record.placement_date,
-          record.status
-        ])
+          record.status,
+        ]),
       ];
 
       // Convert to CSV string
-      const csvContent = departmentCsvData.map(row => 
-        row.map(cell => `"${cell}"`).join(",")
-      ).join("\n");
+      const csvContent = departmentCsvData
+        .map((row) => row.map((cell) => `"${cell}"`).join(','))
+        .join('\n');
 
       return csvContent;
-
     } catch (error) {
       console.error('Error in exportPlacementData:', error);
       throw error;

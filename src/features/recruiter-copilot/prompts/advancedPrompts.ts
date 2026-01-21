@@ -3,7 +3,7 @@ import { ParsedRecruiterQuery } from '../services/queryParser';
 
 /**
  * Advanced Prompt Engineering for Recruiter AI
- * 
+ *
  * Senior-level prompt engineering with:
  * - Context-aware prompts
  * - Role-specific instructions
@@ -13,7 +13,6 @@ import { ParsedRecruiterQuery } from '../services/queryParser';
  */
 
 export class AdvancedPromptBuilder {
-  
   /**
    * Build master system prompt for recruiter AI with full context
    */
@@ -156,13 +155,15 @@ You are a trusted strategic partner. Be confident but humble. Be helpful but nev
     candidates: any[],
     context: RecruiterContext
   ): string {
-    const skillsSection = parsedQuery.required_skills.length > 0
-      ? `\n**REQUIRED SKILLS:** ${parsedQuery.required_skills.join(', ')}`
-      : '';
-    
-    const preferredSection = parsedQuery.preferred_skills.length > 0
-      ? `\n**PREFERRED SKILLS:** ${parsedQuery.preferred_skills.join(', ')}`
-      : '';
+    const skillsSection =
+      parsedQuery.required_skills.length > 0
+        ? `\n**REQUIRED SKILLS:** ${parsedQuery.required_skills.join(', ')}`
+        : '';
+
+    const preferredSection =
+      parsedQuery.preferred_skills.length > 0
+        ? `\n**PREFERRED SKILLS:** ${parsedQuery.preferred_skills.join(', ')}`
+        : '';
 
     const filtersSection = this.buildFiltersSection(parsedQuery);
 
@@ -199,10 +200,7 @@ Use emojis sparingly for visual hierarchy (🌟 for top matches only).`;
   /**
    * Build opportunity matching prompt
    */
-  static buildOpportunityMatchingPrompt(
-    opportunity: any,
-    candidates: any[]
-  ): string {
+  static buildOpportunityMatchingPrompt(opportunity: any, candidates: any[]): string {
     return `# OPPORTUNITY MATCHING REQUEST
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -233,7 +231,7 @@ ${this.formatCandidatesForPrompt(candidates, {
   intent: 'match_to_job',
   urgency: 'medium',
   original_query: '',
-  confidence_score: 1
+  confidence_score: 1,
 })}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -279,43 +277,60 @@ Perform intelligent matching and provide:
 📈 STAGE BREAKDOWN
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-${pipelineData.stage_metrics.map((stage: any) => `
+${pipelineData.stage_metrics
+  .map(
+    (stage: any) => `
 **${stage.stage.toUpperCase()}**
 • Candidates: ${stage.count}
 • Avg Days: ${stage.avg_days_in_stage}
 • Conversion: ${stage.conversion_rate}%
 • Drop-off: ${stage.drop_off_rate}%
-`).join('\n')}
+`
+  )
+  .join('\n')}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ⚠️ IDENTIFIED BOTTLENECKS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-${pipelineData.bottlenecks.length > 0 
-  ? pipelineData.bottlenecks.map((b: any) => `
+${
+  pipelineData.bottlenecks.length > 0
+    ? pipelineData.bottlenecks
+        .map(
+          (b: any) => `
 **${b.stage.toUpperCase()}** [${b.impact.toUpperCase()} IMPACT]
 Issue: ${b.issue}
 Recommendation: ${b.recommendation}
-`).join('\n')
-  : 'No significant bottlenecks detected - pipeline is healthy!'}
+`
+        )
+        .join('\n')
+    : 'No significant bottlenecks detected - pipeline is healthy!'
+}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🚨 AT-RISK CANDIDATES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-${pipelineData.at_risk_candidates.slice(0, 5).map((c: any) => `
+${pipelineData.at_risk_candidates
+  .slice(0, 5)
+  .map(
+    (c: any) => `
 • **${c.candidate_name}** (${c.current_stage})
   Risk: ${c.risk_level.toUpperCase()} | Days in stage: ${c.days_in_current_stage}
   ${c.recommendation}
-`).join('\n')}
+`
+  )
+  .join('\n')}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ✅ SUCCESS PATTERNS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-${pipelineData.success_patterns.length > 0
-  ? pipelineData.success_patterns.map((p: string) => `• ${p}`).join('\n')
-  : '• Not enough data yet to identify patterns'}
+${
+  pipelineData.success_patterns.length > 0
+    ? pipelineData.success_patterns.map((p: string) => `• ${p}`).join('\n')
+    : '• Not enough data yet to identify patterns'
+}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📝 YOUR TASK
@@ -374,10 +389,12 @@ Analyze the gap between requirements and available talent:
     candidates: any[],
     parsedQuery: ParsedRecruiterQuery
   ): string {
-    return candidates.slice(0, 15).map((c, idx) => {
-      const matchScore = this.calculateQuickMatchScore(c, parsedQuery);
-      
-      return `
+    return candidates
+      .slice(0, 15)
+      .map((c, idx) => {
+        const matchScore = this.calculateQuickMatchScore(c, parsedQuery);
+
+        return `
 ${idx + 1}. **${c.name}** ${matchScore >= 80 ? '🌟' : matchScore >= 65 ? '✅' : ''}
    • Skills: ${c.skills.slice(0, 6).join(', ')}${c.skills.length > 6 ? ` +${c.skills.length - 6} more` : ''}
    • Institution: ${c.institution || 'N/A'}
@@ -386,7 +403,8 @@ ${idx + 1}. **${c.name}** ${matchScore >= 80 ? '🌟' : matchScore >= 65 ? '✅'
    • Location: ${c.location || 'Not specified'}
    • Profile: ${c.profile_completeness || 'N/A'}%
    • Match: ~${matchScore}%`;
-    }).join('\n');
+      })
+      .join('\n');
   }
 
   /**
@@ -394,7 +412,7 @@ ${idx + 1}. **${c.name}** ${matchScore >= 80 ? '🌟' : matchScore >= 65 ? '✅'
    */
   private static buildFiltersSection(query: ParsedRecruiterQuery): string {
     const filters: string[] = [];
-    
+
     if (query.experience_level && query.experience_level !== 'any') {
       filters.push(`Experience: ${query.experience_level}`);
     }
@@ -417,16 +435,13 @@ ${idx + 1}. **${c.name}** ${matchScore >= 80 ? '🌟' : matchScore >= 65 ? '✅'
   /**
    * Helper: Quick match score calculation
    */
-  private static calculateQuickMatchScore(
-    candidate: any,
-    query: ParsedRecruiterQuery
-  ): number {
+  private static calculateQuickMatchScore(candidate: any, query: ParsedRecruiterQuery): number {
     if (query.required_skills.length === 0) return 75;
 
     const candidateSkills = candidate.skills.map((s: string) => s.toLowerCase());
-    const matchedCount = query.required_skills.filter(reqSkill =>
-      candidateSkills.some(cs => 
-        cs.includes(reqSkill.toLowerCase()) || reqSkill.toLowerCase().includes(cs)
+    const matchedCount = query.required_skills.filter((reqSkill) =>
+      candidateSkills.some(
+        (cs) => cs.includes(reqSkill.toLowerCase()) || reqSkill.toLowerCase().includes(cs)
       )
     ).length;
 

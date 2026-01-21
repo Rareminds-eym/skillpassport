@@ -7,10 +7,8 @@ import CareerAssistant from '../../features/career-assistant/components/CareerAs
  */
 export default function CareerAI() {
   return (
-    <FeatureGate 
-      featureKey="career_ai" 
-      showUpgradePrompt={true}
-    >
+    // @ts-expect-error - Auto-suppressed for migration
+    <FeatureGate featureKey="career_ai" showUpgradePrompt={true}>
       <CareerAssistant />
     </FeatureGate>
   );

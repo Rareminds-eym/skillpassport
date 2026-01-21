@@ -1,7 +1,7 @@
 /**
  * Embedding Cache Orchestrator
  * Coordinates memory and database caching for embeddings
- * 
+ *
  * Cache Strategy:
  * 1. Check memory cache (fast, session-based)
  * 2. Check database cache (persistent, cross-session)
@@ -42,7 +42,7 @@ export const getCachedEmbedding = async (text, type, generateFn) => {
 
   // Store in both caches (fire and forget for database)
   memoryCache.set(text, embedding);
-  saveToDatabase(text, embedding, type).catch(err => {
+  saveToDatabase(text, embedding, type).catch((err) => {
     console.warn('Failed to save to database cache:', err.message);
   });
 
@@ -56,11 +56,7 @@ export const getCachedEmbedding = async (text, type, generateFn) => {
  * @returns {Promise<Array<number[]>>} - Array of embedding vectors
  */
 export const getCachedEmbeddingsBatch = async (requests, generateFn) => {
-  return Promise.all(
-    requests.map(({ text, type }) => 
-      getCachedEmbedding(text, type, generateFn)
-    )
-  );
+  return Promise.all(requests.map(({ text, type }) => getCachedEmbedding(text, type, generateFn)));
 };
 
 /**
@@ -77,11 +73,11 @@ export const clearAllCaches = () => {
  */
 export const getCacheStats = async () => {
   const memoryStats = memoryCache.getStats();
-  
+
   // Database stats are expensive, so we skip them in this simple version
   // You can uncomment if needed:
   // const dbStats = await getDatabaseCacheStats();
-  
+
   return {
     memory: memoryStats,
     // database: dbStats
@@ -92,5 +88,5 @@ export default {
   getCachedEmbedding,
   getCachedEmbeddingsBatch,
   clearAllCaches,
-  getCacheStats
+  getCacheStats,
 };

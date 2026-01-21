@@ -58,7 +58,7 @@
 //       console.log('Downloading document:', document.name);
 //       const downloadUrl = getStudentDocumentUrl(document.url, 'download');
 //       console.log('Download URL:', downloadUrl);
-      
+
 //       const link = document.createElement('a');
 //       link.href = downloadUrl;
 //       link.download = document.name;
@@ -66,7 +66,7 @@
 //       document.body.appendChild(link);
 //       link.click();
 //       document.body.removeChild(link);
-      
+
 //       console.log('Download initiated for:', document.name);
 //     } catch (error) {
 //       console.error('Download failed:', error);
@@ -94,37 +94,37 @@
 
 //   const getDocumentTypeConfig = (type: string) => {
 //     const typeConfig = {
-//       resume: { 
-//         icon: '📄', 
-//         label: 'Resume/CV', 
+//       resume: {
+//         icon: '📄',
+//         label: 'Resume/CV',
 //         color: 'text-blue-600',
 //         bgColor: 'bg-blue-50',
 //         borderColor: 'border-blue-200'
 //       },
-//       certificate: { 
-//         icon: '🏆', 
-//         label: 'Certificate', 
+//       certificate: {
+//         icon: '🏆',
+//         label: 'Certificate',
 //         color: 'text-yellow-600',
 //         bgColor: 'bg-yellow-50',
 //         borderColor: 'border-yellow-200'
 //       },
-//       transcript: { 
-//         icon: '📊', 
-//         label: 'Transcript', 
+//       transcript: {
+//         icon: '📊',
+//         label: 'Transcript',
 //         color: 'text-green-600',
 //         bgColor: 'bg-green-50',
 //         borderColor: 'border-green-200'
 //       },
-//       id_proof: { 
-//         icon: '🆔', 
-//         label: 'ID Proof', 
+//       id_proof: {
+//         icon: '🆔',
+//         label: 'ID Proof',
 //         color: 'text-purple-600',
 //         bgColor: 'bg-purple-50',
 //         borderColor: 'border-purple-200'
 //       },
-//       other: { 
-//         icon: '📎', 
-//         label: 'Other', 
+//       other: {
+//         icon: '📎',
+//         label: 'Other',
 //         color: 'text-gray-600',
 //         bgColor: 'bg-gray-50',
 //         borderColor: 'border-gray-200'
@@ -142,7 +142,7 @@
 //       acc[type].push(doc);
 //       return acc;
 //     }, {} as Record<string, Document[]>);
-    
+
 //     return grouped;
 //   };
 
@@ -209,7 +209,7 @@
 //               <div className="w-1/2 border-r border-gray-200 overflow-y-auto">
 //                 <div className="p-4">
 //                   <h4 className="text-sm font-medium text-gray-900 mb-4">Uploaded Documents</h4>
-                  
+
 //                   {Object.entries(groupedDocuments).map(([type, docs]) => {
 //                     const typeConfig = getDocumentTypeConfig(type);
 //                     return (
@@ -284,7 +284,7 @@
 //                         </div>
 //                       </div>
 //                     </div>
-                    
+
 //                     <div className="flex-1 flex items-center justify-center p-8">
 //                       <div className="text-center w-full max-w-xs">
 //                         {/* Blurred Document Preview */}
@@ -306,18 +306,18 @@
 //                               <div className="h-2 bg-gray-300 rounded w-2/3"></div>
 //                             </div>
 //                           </div>
-                          
+
 //                           {/* Blur overlay */}
 //                           <div className="absolute inset-0 backdrop-blur-sm bg-white/30"></div>
-                          
+
 //                           {/* Document icon overlay */}
 //                           <div className="absolute inset-0 flex items-center justify-center">
 //                             <DocumentIcon className="h-8 w-8 text-blue-500" />
 //                           </div>
 //                         </div>
-                        
+
 //                         <p className="text-sm text-gray-600 mb-4">Document Preview</p>
-                        
+
 //                         <div className="flex space-x-2">
 //                           <button
 //                             onClick={() => handleViewDocument(selectedDocument)}
@@ -326,7 +326,7 @@
 //                             <ArrowTopRightOnSquareIcon className="h-4 w-4 mr-2" />
 //                             Open Document
 //                           </button>
-                          
+
 //                           <button
 //                             onClick={() => handleDownloadDocument(selectedDocument)}
 //                             className="flex-1 inline-flex items-center justify-center px-3 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors shadow-sm"
@@ -335,7 +335,7 @@
 //                             Download
 //                           </button>
 //                         </div>
-                        
+
 //                         <div className="mt-4 text-xs text-gray-500 space-y-1 bg-gray-100 rounded-md p-2">
 //                           <p><span className="font-medium">Size:</span> {formatFileSize(selectedDocument.size)}</p>
 //                           <p><span className="font-medium">Uploaded:</span> {formatDate(selectedDocument.uploadedAt)}</p>
@@ -363,8 +363,19 @@
 
 // export default DocumentsModal;
 import React, { useState, useEffect } from 'react';
-import { XMarkIcon, DocumentIcon, EyeIcon, ArrowDownTrayIcon, ArrowTopRightOnSquareIcon, CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
-import { getStudentDocuments, getStudentDocumentUrl } from '../../../../services/studentDocumentService';
+import {
+  XMarkIcon,
+  DocumentIcon,
+  EyeIcon,
+  ArrowDownTrayIcon,
+  ArrowTopRightOnSquareIcon,
+  CheckCircleIcon,
+  ExclamationCircleIcon,
+} from '@heroicons/react/24/outline';
+import {
+  getStudentDocuments,
+  getStudentDocumentUrl,
+} from '../../../../services/studentDocumentService';
 
 interface Document {
   url: string;
@@ -442,11 +453,11 @@ const DocumentsModal: React.FC<DocumentsModalProps> = ({ isOpen, onClose, studen
       setDownloading(document.url);
       setDownloadError(null);
       setDownloadSuccess(null);
-      
+
       console.log('Downloading document:', document.name);
       const downloadUrl = getStudentDocumentUrl(document.url, 'download');
       console.log('Download URL:', downloadUrl);
-      
+
       const link = window.document.createElement('a');
       link.href = downloadUrl;
       link.download = document.name;
@@ -454,9 +465,9 @@ const DocumentsModal: React.FC<DocumentsModalProps> = ({ isOpen, onClose, studen
       window.document.body.appendChild(link);
       link.click();
       window.document.body.removeChild(link);
-      
+
       console.log('Download initiated for:', document.name);
-      
+
       // Set success state
       setDownloadSuccess(document.url);
       setDownloading(null);
@@ -464,7 +475,7 @@ const DocumentsModal: React.FC<DocumentsModalProps> = ({ isOpen, onClose, studen
       console.error('Download failed:', error);
       setDownloadError(document.url);
       setDownloading(null);
-      
+
       // Fallback: open in new tab if download fails
       const viewUrl = getStudentDocumentUrl(document.url, 'inline');
       window.open(viewUrl, '_blank');
@@ -483,61 +494,64 @@ const DocumentsModal: React.FC<DocumentsModalProps> = ({ isOpen, onClose, studen
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
-      day: 'numeric'
+      day: 'numeric',
     });
   };
 
   const getDocumentTypeConfig = (type: string) => {
     const typeConfig = {
-      resume: { 
-        icon: '📄', 
-        label: 'Resume/CV', 
+      resume: {
+        icon: '📄',
+        label: 'Resume/CV',
         color: 'text-blue-600',
         bgColor: 'bg-blue-50',
-        borderColor: 'border-blue-200'
+        borderColor: 'border-blue-200',
       },
-      certificate: { 
-        icon: '🏆', 
-        label: 'Certificate', 
+      certificate: {
+        icon: '🏆',
+        label: 'Certificate',
         color: 'text-yellow-600',
         bgColor: 'bg-yellow-50',
-        borderColor: 'border-yellow-200'
+        borderColor: 'border-yellow-200',
       },
-      transcript: { 
-        icon: '📊', 
-        label: 'Transcript', 
+      transcript: {
+        icon: '📊',
+        label: 'Transcript',
         color: 'text-green-600',
         bgColor: 'bg-green-50',
-        borderColor: 'border-green-200'
+        borderColor: 'border-green-200',
       },
-      id_proof: { 
-        icon: '🆔', 
-        label: 'ID Proof', 
+      id_proof: {
+        icon: '🆔',
+        label: 'ID Proof',
         color: 'text-purple-600',
         bgColor: 'bg-purple-50',
-        borderColor: 'border-purple-200'
+        borderColor: 'border-purple-200',
       },
-      other: { 
-        icon: '📎', 
-        label: 'Other', 
+      other: {
+        icon: '📎',
+        label: 'Other',
         color: 'text-gray-600',
         bgColor: 'bg-gray-50',
-        borderColor: 'border-gray-200'
-      }
+        borderColor: 'border-gray-200',
+      },
     };
     return typeConfig[type] || typeConfig.other;
   };
 
   const groupDocumentsByType = (docs: Document[]) => {
-    const grouped = docs.reduce((acc, doc) => {
-      const type = doc.type;
-      if (!acc[type]) {
-        acc[type] = [];
-      }
-      acc[type].push(doc);
-      return acc;
-    }, {} as Record<string, Document[]>);
-    
+    const grouped = docs.reduce(
+      (acc, doc) => {
+        const type = doc.type;
+        if (!acc[type]) {
+          acc[type] = [];
+        }
+        acc[type].push(doc);
+        return acc;
+      },
+      {} as Record<string, Document[]>
+    );
+
     return grouped;
   };
 
@@ -546,11 +560,21 @@ const DocumentsModal: React.FC<DocumentsModalProps> = ({ isOpen, onClose, studen
   const groupedDocuments = groupDocumentsByType(documents);
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div
+      className="fixed inset-0 z-50 overflow-y-auto"
+      aria-labelledby="modal-title"
+      role="dialog"
+      aria-modal="true"
+    >
       <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        <div
+          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          onClick={onClose}
+        ></div>
 
-        <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">
+          &#8203;
+        </span>
 
         <div className="relative inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-6xl sm:w-full">
           {/* Header */}
@@ -560,9 +584,7 @@ const DocumentsModal: React.FC<DocumentsModalProps> = ({ isOpen, onClose, studen
                 <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
                   {student?.name} - Documents
                 </h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  Teacher document viewer
-                </p>
+                <p className="mt-1 text-sm text-gray-500">Teacher document viewer</p>
               </div>
               <button
                 type="button"
@@ -596,14 +618,16 @@ const DocumentsModal: React.FC<DocumentsModalProps> = ({ isOpen, onClose, studen
             <div className="text-center py-20 px-6">
               <DocumentIcon className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900">No documents found</h3>
-              <p className="mt-1 text-sm text-gray-500">This student hasn't uploaded any documents yet.</p>
+              <p className="mt-1 text-sm text-gray-500">
+                This student hasn't uploaded any documents yet.
+              </p>
             </div>
           ) : (
             /* Document List - Full Width */
             <div className="overflow-y-auto max-h-96">
               <div className="p-4">
                 <h4 className="text-sm font-medium text-gray-900 mb-4">Uploaded Documents</h4>
-                
+
                 {Object.entries(groupedDocuments).map(([type, docs]) => {
                   const typeConfig = getDocumentTypeConfig(type);
                   return (
@@ -626,7 +650,8 @@ const DocumentsModal: React.FC<DocumentsModalProps> = ({ isOpen, onClose, studen
                                   {doc.name}
                                 </p>
                                 <p className="text-xs text-gray-500">
-                                  PDF Document • {formatFileSize(doc.size)} • {formatDate(doc.uploadedAt)}
+                                  PDF Document • {formatFileSize(doc.size)} •{' '}
+                                  {formatDate(doc.uploadedAt)}
                                 </p>
                               </div>
                               <div className="flex space-x-1">
@@ -644,10 +669,10 @@ const DocumentsModal: React.FC<DocumentsModalProps> = ({ isOpen, onClose, studen
                                     downloading === doc.url
                                       ? 'text-gray-400 cursor-not-allowed'
                                       : downloadSuccess === doc.url
-                                      ? 'text-green-600 hover:bg-green-50'
-                                      : downloadError === doc.url
-                                      ? 'text-red-600 hover:bg-red-50'
-                                      : 'text-gray-600 hover:bg-gray-50'
+                                        ? 'text-green-600 hover:bg-green-50'
+                                        : downloadError === doc.url
+                                          ? 'text-red-600 hover:bg-red-50'
+                                          : 'text-gray-600 hover:bg-gray-50'
                                   }`}
                                   title="Download document"
                                 >

@@ -1,16 +1,16 @@
 /**
  * useAddOnCatalog Hook
- * 
+ *
  * Custom hook for fetching and managing add-on catalog data.
  * Provides filtered add-ons and bundles based on user role.
- * 
+ *
  * Features:
  * - Fetches add-ons filtered by user role
  * - Fetches bundles filtered by user role
  * - Marks owned add-ons in response
  * - Calculates bundle savings
  * - Caches results with React Query
- * 
+ *
  * @requirement REQ-4.3 - Add-On Catalog Hook
  */
 
@@ -31,7 +31,7 @@ const CACHE_TIME = 10 * 60 * 1000; // 10 minutes
 
 /**
  * Hook for fetching add-on catalog
- * 
+ *
  * @param {Object} options - Hook options
  * @param {string} options.role - Filter by user role (optional, defaults to current user's role)
  * @param {string} options.category - Filter by category (optional)
@@ -52,19 +52,19 @@ export function useAddOnCatalog(options = {}) {
     data: addOnsData,
     isLoading: isLoadingAddOns,
     error: addOnsError,
-    refetch: refetchAddOns
+    refetch: refetchAddOns,
   } = useQuery({
     queryKey: [ADDON_CATALOG_KEY, userRole, category],
     queryFn: async () => {
       const result = await addOnCatalogService.getAddOns({
         role: userRole,
-        category
+        category,
       });
-      
+
       if (!result.success) {
         throw new Error(result.error);
       }
-      
+
       return result.data;
     },
     staleTime: STALE_TIME,
@@ -76,16 +76,16 @@ export function useAddOnCatalog(options = {}) {
     data: bundlesData,
     isLoading: isLoadingBundles,
     error: bundlesError,
-    refetch: refetchBundles
+    refetch: refetchBundles,
   } = useQuery({
     queryKey: [BUNDLES_KEY, userRole],
     queryFn: async () => {
       const result = await addOnCatalogService.getBundles(userRole);
-      
+
       if (!result.success) {
         throw new Error(result.error);
       }
-      
+
       return result.data;
     },
     staleTime: STALE_TIME,
@@ -95,47 +95,49 @@ export function useAddOnCatalog(options = {}) {
   // Mark owned add-ons (including cancelled but not expired)
   const addOnsWithOwnership = useMemo(() => {
     if (!addOnsData) return [];
-    
+
     const now = new Date();
     const ownedFeatureKeys = new Set(
       (activeEntitlements || [])
-        .filter(ent => {
+        .filter((ent) => {
           // Active or grace period entitlements
           if (ent.status === 'active' || ent.status === 'grace_period') return true;
           // Cancelled entitlements that haven't expired yet
-          if (ent.status === 'cancelled' && ent.end_date && new Date(ent.end_date) >= now) return true;
+          if (ent.status === 'cancelled' && ent.end_date && new Date(ent.end_date) >= now)
+            return true;
           return false;
         })
-        .map(ent => ent.feature_key)
+        .map((ent) => ent.feature_key)
     );
 
-    return addOnsData.map(addOn => ({
+    return addOnsData.map((addOn) => ({
       ...addOn,
       isOwned: ownedFeatureKeys.has(addOn.feature_key),
-      ownershipStatus: ownedFeatureKeys.has(addOn.feature_key) ? 'owned' : 'available'
+      ownershipStatus: ownedFeatureKeys.has(addOn.feature_key) ? 'owned' : 'available',
     }));
   }, [addOnsData, activeEntitlements]);
 
   // Mark owned bundles (owned if all features are owned, including cancelled but not expired)
   const bundlesWithOwnership = useMemo(() => {
     if (!bundlesData) return [];
-    
+
     const now = new Date();
     const ownedFeatureKeys = new Set(
       (activeEntitlements || [])
-        .filter(ent => {
+        .filter((ent) => {
           // Active or grace period entitlements
           if (ent.status === 'active' || ent.status === 'grace_period') return true;
           // Cancelled entitlements that haven't expired yet
-          if (ent.status === 'cancelled' && ent.end_date && new Date(ent.end_date) >= now) return true;
+          if (ent.status === 'cancelled' && ent.end_date && new Date(ent.end_date) >= now)
+            return true;
           return false;
         })
-        .map(ent => ent.feature_key)
+        .map((ent) => ent.feature_key)
     );
 
-    return bundlesData.map(bundle => {
-      const bundleFeatureKeys = bundle.bundle_features?.map(bf => bf.feature_key) || [];
-      const ownedCount = bundleFeatureKeys.filter(key => ownedFeatureKeys.has(key)).length;
+    return bundlesData.map((bundle) => {
+      const bundleFeatureKeys = bundle.bundle_features?.map((bf) => bf.feature_key) || [];
+      const ownedCount = bundleFeatureKeys.filter((key) => ownedFeatureKeys.has(key)).length;
       const isFullyOwned = bundleFeatureKeys.length > 0 && ownedCount === bundleFeatureKeys.length;
       const isPartiallyOwned = ownedCount > 0 && ownedCount < bundleFeatureKeys.length;
 
@@ -145,7 +147,7 @@ export function useAddOnCatalog(options = {}) {
         isPartiallyOwned,
         ownedCount,
         totalFeatures: bundleFeatureKeys.length,
-        ownershipStatus: isFullyOwned ? 'owned' : isPartiallyOwned ? 'partial' : 'available'
+        ownershipStatus: isFullyOwned ? 'owned' : isPartiallyOwned ? 'partial' : 'available',
       };
     });
   }, [bundlesData, activeEntitlements]);
@@ -153,8 +155,8 @@ export function useAddOnCatalog(options = {}) {
   // Group add-ons by category
   const addOnsByCategory = useMemo(() => {
     const grouped = {};
-    
-    addOnsWithOwnership.forEach(addOn => {
+
+    addOnsWithOwnership.forEach((addOn) => {
       const cat = addOn.category || 'other';
       if (!grouped[cat]) {
         grouped[cat] = [];
@@ -167,27 +169,30 @@ export function useAddOnCatalog(options = {}) {
 
   // Get unique categories
   const categories = useMemo(() => {
-    return [...new Set(addOnsWithOwnership.map(a => a.category).filter(Boolean))];
+    return [...new Set(addOnsWithOwnership.map((a) => a.category).filter(Boolean))];
   }, [addOnsWithOwnership]);
 
   // Calculate bundle savings
-  const calculateBundleSavings = useCallback(async (bundleId) => {
-    const cacheKey = [BUNDLE_SAVINGS_KEY, bundleId];
-    
-    // Check cache first
-    const cached = queryClient.getQueryData(cacheKey);
-    if (cached) return cached;
+  const calculateBundleSavings = useCallback(
+    async (bundleId) => {
+      const cacheKey = [BUNDLE_SAVINGS_KEY, bundleId];
 
-    const result = await addOnCatalogService.calculateBundleSavings(bundleId);
-    
-    if (result.success) {
-      // Cache the result
-      queryClient.setQueryData(cacheKey, result.data);
-      return result.data;
-    }
-    
-    return null;
-  }, [queryClient]);
+      // Check cache first
+      const cached = queryClient.getQueryData(cacheKey);
+      if (cached) return cached;
+
+      const result = await addOnCatalogService.calculateBundleSavings(bundleId);
+
+      if (result.success) {
+        // Cache the result
+        queryClient.setQueryData(cacheKey, result.data);
+        return result.data;
+      }
+
+      return null;
+    },
+    [queryClient]
+  );
 
   // Refresh all catalog data
   const refreshCatalog = useCallback(() => {
@@ -196,26 +201,36 @@ export function useAddOnCatalog(options = {}) {
   }, [refetchAddOns, refetchBundles]);
 
   // Get add-on by feature key
-  const getAddOnByKey = useCallback((featureKey) => {
-    return addOnsWithOwnership.find(a => a.feature_key === featureKey) || null;
-  }, [addOnsWithOwnership]);
+  const getAddOnByKey = useCallback(
+    (featureKey) => {
+      return addOnsWithOwnership.find((a) => a.feature_key === featureKey) || null;
+    },
+    [addOnsWithOwnership]
+  );
 
   // Get bundle by ID
-  const getBundleById = useCallback((bundleId) => {
-    return bundlesWithOwnership.find(b => b.id === bundleId) || null;
-  }, [bundlesWithOwnership]);
+  const getBundleById = useCallback(
+    (bundleId) => {
+      return bundlesWithOwnership.find((b) => b.id === bundleId) || null;
+    },
+    [bundlesWithOwnership]
+  );
 
   // Filter add-ons by search term
-  const searchAddOns = useCallback((searchTerm) => {
-    if (!searchTerm) return addOnsWithOwnership;
-    
-    const term = searchTerm.toLowerCase();
-    return addOnsWithOwnership.filter(addOn => 
-      addOn.feature_name?.toLowerCase().includes(term) ||
-      addOn.addon_description?.toLowerCase().includes(term) ||
-      addOn.category?.toLowerCase().includes(term)
-    );
-  }, [addOnsWithOwnership]);
+  const searchAddOns = useCallback(
+    (searchTerm) => {
+      if (!searchTerm) return addOnsWithOwnership;
+
+      const term = searchTerm.toLowerCase();
+      return addOnsWithOwnership.filter(
+        (addOn) =>
+          addOn.feature_name?.toLowerCase().includes(term) ||
+          addOn.addon_description?.toLowerCase().includes(term) ||
+          addOn.category?.toLowerCase().includes(term)
+      );
+    },
+    [addOnsWithOwnership]
+  );
 
   return {
     // Add-ons
@@ -224,32 +239,32 @@ export function useAddOnCatalog(options = {}) {
     categories,
     isLoadingAddOns,
     addOnsError,
-    
+
     // Bundles
     bundles: bundlesWithOwnership,
     isLoadingBundles,
     bundlesError,
-    
+
     // Combined loading state
     isLoading: isLoadingAddOns || isLoadingBundles,
-    
+
     // Helpers
     getAddOnByKey,
     getBundleById,
     calculateBundleSavings,
     searchAddOns,
     refreshCatalog,
-    
+
     // Stats
     totalAddOns: addOnsWithOwnership.length,
-    ownedAddOns: addOnsWithOwnership.filter(a => a.isOwned).length,
-    totalBundles: bundlesWithOwnership.length
+    ownedAddOns: addOnsWithOwnership.filter((a) => a.isOwned).length,
+    totalBundles: bundlesWithOwnership.length,
   };
 }
 
 /**
  * Hook for fetching a single add-on by feature key
- * 
+ *
  * @param {string} featureKey - The feature_key to fetch
  * @returns {Object} Add-on data and loading state
  */
@@ -260,18 +275,18 @@ export function useAddOn(featureKey) {
   const {
     data: addOn,
     isLoading,
-    error
+    error,
   } = useQuery({
     queryKey: [ADDON_CATALOG_KEY, 'single', featureKey],
     queryFn: async () => {
       if (!featureKey) return null;
-      
+
       const result = await addOnCatalogService.getAddOnByFeatureKey(featureKey);
-      
+
       if (!result.success) {
         throw new Error(result.error);
       }
-      
+
       return result.data;
     },
     enabled: !!featureKey,
@@ -282,13 +297,14 @@ export function useAddOn(featureKey) {
   // Check if owned (including cancelled but not expired)
   const isOwned = useMemo(() => {
     if (!addOn || !activeEntitlements) return false;
-    
+
     const now = new Date();
     return activeEntitlements.some(
-      ent => ent.feature_key === featureKey && 
-             (ent.status === 'active' || 
-              ent.status === 'grace_period' ||
-              (ent.status === 'cancelled' && ent.end_date && new Date(ent.end_date) >= now))
+      (ent) =>
+        ent.feature_key === featureKey &&
+        (ent.status === 'active' ||
+          ent.status === 'grace_period' ||
+          (ent.status === 'cancelled' && ent.end_date && new Date(ent.end_date) >= now))
     );
   }, [addOn, activeEntitlements, featureKey]);
 
@@ -296,13 +312,13 @@ export function useAddOn(featureKey) {
     addOn: addOn ? { ...addOn, isOwned } : null,
     isLoading,
     error,
-    isOwned
+    isOwned,
   };
 }
 
 /**
  * Hook for fetching a single bundle by ID
- * 
+ *
  * @param {string} bundleId - The bundle UUID to fetch
  * @returns {Object} Bundle data and loading state
  */
@@ -313,19 +329,19 @@ export function useBundle(bundleId) {
   const {
     data: bundle,
     isLoading,
-    error
+    error,
   } = useQuery({
     queryKey: [BUNDLES_KEY, 'single', bundleId],
     queryFn: async () => {
       if (!bundleId) return null;
-      
+
       const result = await addOnCatalogService.getBundles();
-      
+
       if (!result.success) {
         throw new Error(result.error);
       }
-      
-      return result.data?.find(b => b.id === bundleId) || null;
+
+      return result.data?.find((b) => b.id === bundleId) || null;
     },
     enabled: !!bundleId,
     staleTime: STALE_TIME,
@@ -341,22 +357,23 @@ export function useBundle(bundleId) {
     const now = new Date();
     const ownedFeatureKeys = new Set(
       activeEntitlements
-        .filter(ent => 
-          ent.status === 'active' || 
-          ent.status === 'grace_period' ||
-          (ent.status === 'cancelled' && ent.end_date && new Date(ent.end_date) >= now)
+        .filter(
+          (ent) =>
+            ent.status === 'active' ||
+            ent.status === 'grace_period' ||
+            (ent.status === 'cancelled' && ent.end_date && new Date(ent.end_date) >= now)
         )
-        .map(ent => ent.feature_key)
+        .map((ent) => ent.feature_key)
     );
 
-    const bundleFeatureKeys = bundle.bundle_features?.map(bf => bf.feature_key) || [];
-    const ownedCount = bundleFeatureKeys.filter(key => ownedFeatureKeys.has(key)).length;
+    const bundleFeatureKeys = bundle.bundle_features?.map((bf) => bf.feature_key) || [];
+    const ownedCount = bundleFeatureKeys.filter((key) => ownedFeatureKeys.has(key)).length;
 
     return {
       isOwned: bundleFeatureKeys.length > 0 && ownedCount === bundleFeatureKeys.length,
       isPartiallyOwned: ownedCount > 0 && ownedCount < bundleFeatureKeys.length,
       ownedCount,
-      totalFeatures: bundleFeatureKeys.length
+      totalFeatures: bundleFeatureKeys.length,
     };
   }, [bundle, activeEntitlements]);
 
@@ -364,7 +381,7 @@ export function useBundle(bundleId) {
     bundle: bundle ? { ...bundle, ...ownershipInfo } : null,
     isLoading,
     error,
-    ...ownershipInfo
+    ...ownershipInfo,
   };
 }
 

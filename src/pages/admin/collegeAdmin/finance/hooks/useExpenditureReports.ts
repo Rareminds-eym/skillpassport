@@ -1,11 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
-import { expenditureService, ExpenditureFilters, StudentFeeLedgerDetailed, ExpenditureSummary, DepartmentExpenditure, ProgramExpenditure } from '../services/expenditureService';
+import {
+  expenditureService,
+  ExpenditureFilters,
+  StudentFeeLedgerDetailed,
+  ExpenditureSummary,
+  DepartmentExpenditure,
+  ProgramExpenditure,
+} from '../services/expenditureService';
 import toast from 'react-hot-toast';
 
 export const useExpenditureReports = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Data states
   const [studentLedgerData, setStudentLedgerData] = useState<StudentFeeLedgerDetailed[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -17,7 +24,7 @@ export const useExpenditureReports = () => {
     semesters: [] as string[],
     paymentStatuses: [] as string[],
     departments: [] as string[],
-    programs: [] as string[]
+    programs: [] as string[],
   });
 
   // Filter states
@@ -26,36 +33,39 @@ export const useExpenditureReports = () => {
   const [pageSize, setPageSize] = useState(20);
 
   // Load student ledger data
-  const loadStudentLedger = useCallback(async (newFilters?: ExpenditureFilters, page?: number) => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const currentFilters = newFilters || filters;
-      const currentPage = page || 1;
-      
-      const { data, count } = await expenditureService.getStudentFeeLedger({
-        ...currentFilters,
-        page: currentPage,
-        limit: pageSize
-      });
-      
-      setStudentLedgerData(data);
-      setTotalCount(count || 0);
-      setCurrentPage(currentPage);
-      
-      if (newFilters) {
-        setFilters(newFilters);
+  const loadStudentLedger = useCallback(
+    async (newFilters?: ExpenditureFilters, page?: number) => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const currentFilters = newFilters || filters;
+        const currentPage = page || 1;
+
+        const { data, count } = await expenditureService.getStudentFeeLedger({
+          ...currentFilters,
+          page: currentPage,
+          limit: pageSize,
+        });
+
+        setStudentLedgerData(data);
+        setTotalCount(count || 0);
+        setCurrentPage(currentPage);
+
+        if (newFilters) {
+          setFilters(newFilters);
+        }
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : 'Failed to load student ledger data';
+        setError(errorMessage);
+        toast.error(errorMessage);
+      } finally {
+        setLoading(false);
       }
-      
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load student ledger data';
-      setError(errorMessage);
-      toast.error(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  }, [filters, pageSize]);
+    },
+    [filters, pageSize]
+  );
 
   // Load summary data
   const loadSummary = useCallback(async () => {
@@ -80,17 +90,15 @@ export const useExpenditureReports = () => {
   }, []);
 
   //load program data
-  const loadProgramData= useCallback(async()=>{
-    try{
-        const data = await expenditureService.getProgramExpenditure();
-        setProgramData(data);
-
+  const loadProgramData = useCallback(async () => {
+    try {
+      const data = await expenditureService.getProgramExpenditure();
+      setProgramData(data);
+    } catch (err) {
+      console.error('Error loading Program Expenditure data:', err);
+      toast.error('Failed to load Program expenditure data');
     }
-    catch(err){
-        console.error('Error loading Program Expenditure data:',err);
-        toast.error('Failed to load Program expenditure data')
-    }
-  },[]);
+  }, []);
 
   // Load filter options
   const loadFilterOptions = useCallback(async () => {
@@ -103,37 +111,45 @@ export const useExpenditureReports = () => {
   }, []);
 
   // Export to CSV
-  const exportToCSV = useCallback(async (exportFilters?: ExpenditureFilters) => {
-    try {
-      const loadingToast = toast.loading('Preparing export...');
-      
-      const csvContent = await expenditureService.exportToCSV(exportFilters || filters);
-      
-      // Create and download file
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `expenditure_report_${new Date().toISOString().split('T')[0]}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      toast.dismiss(loadingToast);
-      toast.success('Export completed successfully!');
-      
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to export data';
-      toast.error(errorMessage);
-    }
-  }, [filters]);
+  const exportToCSV = useCallback(
+    async (exportFilters?: ExpenditureFilters) => {
+      try {
+        const loadingToast = toast.loading('Preparing export...');
+
+        const csvContent = await expenditureService.exportToCSV(exportFilters || filters);
+
+        // Create and download file
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute(
+          'download',
+          `expenditure_report_${new Date().toISOString().split('T')[0]}.csv`
+        );
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        toast.dismiss(loadingToast);
+        toast.success('Export completed successfully!');
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to export data';
+        toast.error(errorMessage);
+      }
+    },
+    [filters]
+  );
 
   // Apply filters
-  const applyFilters = useCallback((newFilters: ExpenditureFilters) => {
-    setCurrentPage(1);
-    loadStudentLedger(newFilters, 1);
-  }, [loadStudentLedger]);
+  const applyFilters = useCallback(
+    (newFilters: ExpenditureFilters) => {
+      setCurrentPage(1);
+      loadStudentLedger(newFilters, 1);
+    },
+    [loadStudentLedger]
+  );
 
   // Clear filters
   const clearFilters = useCallback(() => {
@@ -144,16 +160,22 @@ export const useExpenditureReports = () => {
   }, [loadStudentLedger]);
 
   // Change page
-  const changePage = useCallback((page: number) => {
-    loadStudentLedger(filters, page);
-  }, [loadStudentLedger, filters]);
+  const changePage = useCallback(
+    (page: number) => {
+      loadStudentLedger(filters, page);
+    },
+    [loadStudentLedger, filters]
+  );
 
   // Change page size
-  const changePageSize = useCallback((newPageSize: number) => {
-    setPageSize(newPageSize);
-    setCurrentPage(1);
-    loadStudentLedger(filters, 1);
-  }, [loadStudentLedger, filters]);
+  const changePageSize = useCallback(
+    (newPageSize: number) => {
+      setPageSize(newPageSize);
+      setCurrentPage(1);
+      loadStudentLedger(filters, 1);
+    },
+    [loadStudentLedger, filters]
+  );
 
   // Refresh all data
   const refreshData = useCallback(async () => {
@@ -162,7 +184,7 @@ export const useExpenditureReports = () => {
       loadSummary(),
       loadDepartmentData(),
       loadProgramData(),
-      loadFilterOptions()
+      loadFilterOptions(),
     ]);
   }, [loadStudentLedger, loadSummary, loadDepartmentData, loadProgramData, loadFilterOptions]);
 
@@ -183,12 +205,12 @@ export const useExpenditureReports = () => {
     departmentData,
     programData,
     filterOptions,
-    
+
     // State
     loading,
     error,
     filters,
-    
+
     // Pagination
     currentPage,
     pageSize,
@@ -196,7 +218,7 @@ export const useExpenditureReports = () => {
     totalPages,
     startIndex,
     endIndex,
-    
+
     // Actions
     loadStudentLedger,
     applyFilters,
@@ -205,11 +227,11 @@ export const useExpenditureReports = () => {
     changePageSize,
     exportToCSV,
     refreshData,
-    
+
     // Individual loaders
     loadSummary,
     loadDepartmentData,
     loadProgramData,
-    loadFilterOptions
+    loadFilterOptions,
   };
 };

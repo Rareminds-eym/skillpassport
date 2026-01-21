@@ -74,7 +74,8 @@ export const departmentService = {
   async getDepartments(collegeId: string): Promise<DepartmentWithStats[]> {
     const { data, error } = await supabase
       .from('departments')
-      .select(`
+      .select(
+        `
         *,
         department_faculty_assignments (
           id,
@@ -101,25 +102,26 @@ export const departmentService = {
             approval_status
           )
         )
-      `)
+      `
+      )
       .eq('college_id', collegeId)
       .order('name');
 
     if (error) throw error;
 
     // Process departments with HOD information and programs
-    return (data || []).map(dept => {
+    return (data || []).map((dept) => {
       const assignments = dept.department_faculty_assignments || [];
       const activeAssignments = assignments.filter((assignment: any) => assignment.is_active);
       const hodAssignment = activeAssignments.find((assignment: any) => assignment.is_hod);
-      
+
       let hodInfo = null;
       if (hodAssignment && hodAssignment.college_lecturers) {
         const lecturer = hodAssignment.college_lecturers;
         hodInfo = {
           name: `${lecturer.first_name || ''} ${lecturer.last_name || ''}`.trim() || 'Unknown',
           email: lecturer.email || '',
-          designation: lecturer.designation || 'Head of Department'
+          designation: lecturer.designation || 'Head of Department',
         };
       }
 
@@ -132,15 +134,15 @@ export const departmentService = {
           code: program.code,
           degree_level: program.degree_level,
           description: program.description,
-          status: program.status
+          status: program.status,
         }));
 
       // Calculate student count via programs only
       const studentCount = (dept.programs || [])
         .filter((program: any) => program.status === 'active')
         .reduce((total: number, program: any) => {
-          const activeStudents = (program.students || []).filter((student: any) => 
-            !student.is_deleted && student.approval_status !== 'rejected'
+          const activeStudents = (program.students || []).filter(
+            (student: any) => !student.is_deleted && student.approval_status !== 'rejected'
           );
           return total + activeStudents.length;
         }, 0);
@@ -157,8 +159,8 @@ export const departmentService = {
           ...dept.metadata,
           hod: hodInfo?.name || dept.metadata?.hod || 'Not Assigned',
           email: hodInfo?.email || dept.metadata?.email || '',
-          hod_designation: hodInfo?.designation || dept.metadata?.hod_designation || ''
-        }
+          hod_designation: hodInfo?.designation || dept.metadata?.hod_designation || '',
+        },
       };
     });
   },
@@ -167,13 +169,15 @@ export const departmentService = {
   async getDepartment(id: string): Promise<DepartmentWithStats | null> {
     const { data, error } = await supabase
       .from('departments')
-      .select(`
+      .select(
+        `
         *,
         faculty:faculty(count),
         students:students(count),
         programs:programs(count),
         curriculum_courses:curriculum_courses(count)
-      `)
+      `
+      )
       .eq('id', id)
       .single();
 
@@ -190,9 +194,13 @@ export const departmentService = {
   },
 
   // Create new department
-  async createDepartment(department: Omit<DepartmentInsert, 'id' | 'created_at' | 'updated_at'>): Promise<Department> {
-    const { data: { user } } = await supabase.auth.getUser();
-    
+  async createDepartment(
+    department: Omit<DepartmentInsert, 'id' | 'created_at' | 'updated_at'>
+  ): Promise<Department> {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     // Ensure only one of school_id or college_id is set
     // Explicitly check for null/undefined to avoid setting both
     const insertData: any = {
@@ -217,12 +225,8 @@ export const departmentService = {
     }
 
     console.log('Inserting department:', insertData);
-    
-    const { data, error } = await supabase
-      .from('departments')
-      .insert(insertData)
-      .select()
-      .single();
+
+    const { data, error } = await supabase.from('departments').insert(insertData).select().single();
 
     if (error) {
       console.error('Department insert error:', error);
@@ -246,8 +250,10 @@ export const departmentService = {
 
   // Update department
   async updateDepartment(id: string, updates: DepartmentUpdate): Promise<Department> {
-    const { data: { user } } = await supabase.auth.getUser();
-    
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     const { data, error } = await supabase
       .from('departments')
       .update({
@@ -276,7 +282,12 @@ export const departmentService = {
         // Only update if HOD has changed
         if (!currentHOD || currentHOD.lecturer_id !== updates.metadata.hod_id) {
           await this.assignHODToDepartment(id, updates.metadata.hod_id);
-          console.log('HOD assignment updated for department:', id, 'new HOD:', updates.metadata.hod_id);
+          console.log(
+            'HOD assignment updated for department:',
+            id,
+            'new HOD:',
+            updates.metadata.hod_id
+          );
         }
       } catch (hodError) {
         console.error('Error updating HOD assignment:', hodError);
@@ -290,10 +301,7 @@ export const departmentService = {
 
   // Delete department
   async deleteDepartment(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('departments')
-      .delete()
-      .eq('id', id);
+    const { error } = await supabase.from('departments').delete().eq('id', id);
 
     if (error) throw error;
   },
@@ -302,7 +310,8 @@ export const departmentService = {
   async getDepartmentFaculty(departmentId: string): Promise<Faculty[]> {
     const { data, error } = await supabase
       .from('department_faculty_assignments')
-      .select(`
+      .select(
+        `
         lecturer_id,
         is_hod,
         college_lecturers!inner (
@@ -328,7 +337,8 @@ export const departmentService = {
             phone
           )
         )
-      `)
+      `
+      )
       .eq('department_id', departmentId)
       .eq('is_active', true);
 
@@ -336,10 +346,13 @@ export const departmentService = {
 
     return (data || []).map((item: any) => ({
       id: item.college_lecturers.id,
-      name: `${item.college_lecturers.first_name || item.college_lecturers.users?.firstName || ''} ${item.college_lecturers.last_name || item.college_lecturers.users?.lastName || ''}`.trim() || 'Unknown',
+      name:
+        `${item.college_lecturers.first_name || item.college_lecturers.users?.firstName || ''} ${item.college_lecturers.last_name || item.college_lecturers.users?.lastName || ''}`.trim() ||
+        'Unknown',
       email: item.college_lecturers.email || item.college_lecturers.users?.email || '',
-      designation: item.is_hod ? 'Head of Department' : 
-                   item.college_lecturers.designation || 'Faculty',
+      designation: item.is_hod
+        ? 'Head of Department'
+        : item.college_lecturers.designation || 'Faculty',
       specialization: item.college_lecturers.specialization || '',
       employeeId: item.college_lecturers.employeeId,
       qualification: item.college_lecturers.qualification,
@@ -355,7 +368,8 @@ export const departmentService = {
   async getCollegeFaculty(collegeId: string): Promise<Faculty[]> {
     const { data, error } = await supabase
       .from('college_lecturers')
-      .select(`
+      .select(
+        `
         id,
         employeeId,
         specialization,
@@ -377,7 +391,8 @@ export const departmentService = {
           email,
           phone
         )
-      `)
+      `
+      )
       .eq('collegeId', collegeId)
       .eq('accountStatus', 'active');
 
@@ -385,7 +400,9 @@ export const departmentService = {
 
     return (data || []).map((lecturer: any) => ({
       id: lecturer.id,
-      name: `${lecturer.first_name || lecturer.users?.firstName || ''} ${lecturer.last_name || lecturer.users?.lastName || ''}`.trim() || 'Unknown',
+      name:
+        `${lecturer.first_name || lecturer.users?.firstName || ''} ${lecturer.last_name || lecturer.users?.lastName || ''}`.trim() ||
+        'Unknown',
       email: lecturer.email || lecturer.users?.email || '',
       designation: lecturer.designation || 'Faculty',
       specialization: lecturer.specialization || '',
@@ -400,15 +417,12 @@ export const departmentService = {
   },
 
   // Assign HOD to department
-  async assignHODToDepartment(
-    departmentId: string, 
-    lecturerId: string
-  ): Promise<void> {
+  async assignHODToDepartment(departmentId: string, lecturerId: string): Promise<void> {
     // First, reset any existing HOD assignments in this department
     await supabase
       .from('department_faculty_assignments')
-      .update({ 
-        is_hod: false
+      .update({
+        is_hod: false,
         // Remove manual updated_at - let trigger handle it
       })
       .eq('department_id', departmentId)
@@ -427,8 +441,8 @@ export const departmentService = {
       // Update existing assignment to make them HOD
       const { error } = await supabase
         .from('department_faculty_assignments')
-        .update({ 
-          is_hod: true
+        .update({
+          is_hod: true,
           // Remove manual updated_at - let trigger handle it
         })
         .eq('department_id', departmentId)
@@ -438,18 +452,18 @@ export const departmentService = {
       if (error) throw error;
     } else {
       // Create new faculty assignment with HOD role
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      const { error } = await supabase
-        .from('department_faculty_assignments')
-        .insert({
-          department_id: departmentId,
-          lecturer_id: lecturerId,
-          assignment_type: 'faculty',
-          assigned_by: user?.id,
-          is_active: true,
-          is_hod: true,
-        });
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      const { error } = await supabase.from('department_faculty_assignments').insert({
+        department_id: departmentId,
+        lecturer_id: lecturerId,
+        assignment_type: 'faculty',
+        assigned_by: user?.id,
+        is_active: true,
+        is_hod: true,
+      });
 
       if (error) throw error;
     }
@@ -457,22 +471,22 @@ export const departmentService = {
 
   // Assign faculty to department
   async assignFacultyToDepartment(
-    departmentId: string, 
-    lecturerIds: string[], 
+    departmentId: string,
+    lecturerIds: string[],
     assignedBy: string
   ): Promise<void> {
     // First, deactivate existing assignments for this department
     await supabase
       .from('department_faculty_assignments')
-      .update({ 
-        is_active: false
+      .update({
+        is_active: false,
         // Remove manual updated_at - let trigger handle it
       })
       .eq('department_id', departmentId);
 
     // Then create new assignments
     if (lecturerIds.length > 0) {
-      const assignments = lecturerIds.map(lecturerId => ({
+      const assignments = lecturerIds.map((lecturerId) => ({
         department_id: departmentId,
         lecturer_id: lecturerId,
         assignment_type: 'faculty',
@@ -482,12 +496,10 @@ export const departmentService = {
       }));
 
       // Use upsert with the new unique constraint
-      const { error } = await supabase
-        .from('department_faculty_assignments')
-        .upsert(assignments, {
-          onConflict: 'department_id,lecturer_id',
-          ignoreDuplicates: false
-        });
+      const { error } = await supabase.from('department_faculty_assignments').upsert(assignments, {
+        onConflict: 'department_id,lecturer_id',
+        ignoreDuplicates: false,
+      });
 
       if (error) throw error;
     }
@@ -497,7 +509,8 @@ export const departmentService = {
   async getDepartmentStudents(departmentId: string) {
     const { data, error } = await supabase
       .from('students')
-      .select(`
+      .select(
+        `
         id,
         roll_number,
         name,
@@ -512,7 +525,8 @@ export const departmentService = {
           code,
           department_id
         )
-      `)
+      `
+      )
       .eq('program.department_id', departmentId)
       .eq('is_deleted', false)
       .neq('approval_status', 'rejected')
@@ -549,8 +563,10 @@ export const departmentService = {
 
   // Bulk update department status
   async updateDepartmentStatus(ids: string[], status: string): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser();
-    
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     const { error } = await supabase
       .from('departments')
       .update({
@@ -567,20 +583,22 @@ export const departmentService = {
   async searchDepartments(collegeId: string, query: string): Promise<DepartmentWithStats[]> {
     const { data, error } = await supabase
       .from('departments')
-      .select(`
+      .select(
+        `
         *,
         faculty:faculty(count),
         students:students(count),
         programs:programs(count),
         curriculum_courses:curriculum_courses(count)
-      `)
+      `
+      )
       .eq('college_id', collegeId)
       .or(`name.ilike.%${query}%,code.ilike.%${query}%,description.ilike.%${query}%`)
       .order('name');
 
     if (error) throw error;
 
-    return (data || []).map(dept => ({
+    return (data || []).map((dept) => ({
       ...dept,
       faculty_count: dept.faculty?.[0]?.count || 0,
       student_count: dept.students?.[0]?.count || 0,
@@ -590,7 +608,11 @@ export const departmentService = {
   },
 
   // Validate unique department code within college
-  async validateDepartmentCode(collegeId: string, code: string, excludeDepartmentId?: string): Promise<{ isValid: boolean; message?: string }> {
+  async validateDepartmentCode(
+    collegeId: string,
+    code: string,
+    excludeDepartmentId?: string
+  ): Promise<{ isValid: boolean; message?: string }> {
     let query = supabase
       .from('departments')
       .select('id, code, name')
@@ -611,9 +633,9 @@ export const departmentService = {
 
     if (data && data.length > 0) {
       const existingDept = data[0];
-      return { 
-        isValid: false, 
-        message: `Department code "${code.toUpperCase()}" is already used by "${existingDept.name}". Please choose a different code.` 
+      return {
+        isValid: false,
+        message: `Department code "${code.toUpperCase()}" is already used by "${existingDept.name}". Please choose a different code.`,
       };
     }
 
@@ -633,8 +655,10 @@ export const departmentService = {
       program?: string;
     }>
   ): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser();
-    
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     // First, get the department to find the college_id
     const { data: department, error: deptError } = await supabase
       .from('departments')
@@ -645,7 +669,7 @@ export const departmentService = {
     if (deptError) throw deptError;
 
     // Prepare student data for insertion
-    const studentsData = students.map(student => ({
+    const studentsData = students.map((student) => ({
       roll_number: student.rollNumber,
       first_name: student.firstName,
       last_name: student.lastName,
@@ -660,9 +684,7 @@ export const departmentService = {
       updated_by: user?.id,
     }));
 
-    const { error } = await supabase
-      .from('students')
-      .insert(studentsData);
+    const { error } = await supabase.from('students').insert(studentsData);
 
     if (error) throw error;
   },

@@ -1,6 +1,11 @@
-import React from "react";
-import { ChartBarIcon, UsersIcon, CalendarDaysIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
-import { EventAnalytics } from "../hooks/useEventAnalytics";
+import React from 'react';
+import {
+  ChartBarIcon,
+  UsersIcon,
+  CalendarDaysIcon,
+  CheckCircleIcon,
+} from '@heroicons/react/24/outline';
+import { EventAnalytics } from '../hooks/useEventAnalytics';
 
 interface Props {
   analytics: EventAnalytics;
@@ -42,7 +47,9 @@ export const AnalyticsTab: React.FC<Props> = ({ analytics }) => {
               <ChartBarIcon className="h-6 w-6 text-purple-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{analytics.avgRegistrationsPerEvent}</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {analytics.avgRegistrationsPerEvent}
+              </p>
               <p className="text-sm text-gray-500">Avg per Event</p>
             </div>
           </div>
@@ -53,7 +60,9 @@ export const AnalyticsTab: React.FC<Props> = ({ analytics }) => {
               <CheckCircleIcon className="h-6 w-6 text-amber-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{analytics.eventsByStatus.find(s => s.status === "completed")?.count || 0}</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {analytics.eventsByStatus.find((s) => s.status === 'completed')?.count || 0}
+              </p>
               <p className="text-sm text-gray-500">Completed Events</p>
             </div>
           </div>
@@ -71,7 +80,10 @@ export const AnalyticsTab: React.FC<Props> = ({ analytics }) => {
                   <span className="text-sm font-medium text-gray-700 mb-1">{item.count}</span>
                   <div
                     className="w-full max-w-[40px] bg-gradient-to-t from-blue-600 to-blue-400 rounded-t-md transition-all"
-                    style={{ height: `${(item.count / maxMonthCount) * 100}%`, minHeight: item.count > 0 ? "8px" : "0" }}
+                    style={{
+                      height: `${(item.count / maxMonthCount) * 100}%`,
+                      minHeight: item.count > 0 ? '8px' : '0',
+                    }}
                   />
                 </div>
                 <span className="text-xs text-gray-500 mt-2">{item.month}</span>
@@ -124,7 +136,10 @@ export const AnalyticsTab: React.FC<Props> = ({ analytics }) => {
                 {analytics.eventsByType.map((item, idx) => (
                   <div key={idx} className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: item.color }}
+                      />
                       <span className="text-sm text-gray-600 capitalize">{item.type}</span>
                     </div>
                     <span className="text-sm font-medium text-gray-900">{item.count}</span>
@@ -140,7 +155,8 @@ export const AnalyticsTab: React.FC<Props> = ({ analytics }) => {
           <h3 className="font-semibold text-gray-900 mb-4">Events by Status</h3>
           <div className="space-y-3">
             {analytics.eventsByStatus.map((item, idx) => {
-              const percentage = analytics.totalEvents > 0 ? (item.count / analytics.totalEvents) * 100 : 0;
+              const percentage =
+                analytics.totalEvents > 0 ? (item.count / analytics.totalEvents) * 100 : 0;
               return (
                 <div key={idx}>
                   <div className="flex items-center justify-between mb-1">
@@ -163,15 +179,20 @@ export const AnalyticsTab: React.FC<Props> = ({ analytics }) => {
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h3 className="font-semibold text-gray-900 mb-4">Top Events by Registration</h3>
           {analytics.registrationStats.length === 0 ? (
-            <div className="h-48 flex items-center justify-center text-gray-400">No registrations yet</div>
+            <div className="h-48 flex items-center justify-center text-gray-400">
+              No registrations yet
+            </div>
           ) : (
             <div className="space-y-3">
               {analytics.registrationStats.slice(0, 5).map((item, idx) => (
                 <div key={idx}>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm text-gray-600 truncate max-w-[200px]">{item.eventTitle}</span>
+                    <span className="text-sm text-gray-600 truncate max-w-[200px]">
+                      {item.eventTitle}
+                    </span>
                     <span className="text-sm font-medium text-gray-900">
-                      {item.registered}{item.capacity > 0 && `/${item.capacity}`}
+                      {item.registered}
+                      {item.capacity > 0 && `/${item.capacity}`}
                     </span>
                   </div>
                   <div className="h-2 bg-gray-100 rounded-full overflow-hidden">

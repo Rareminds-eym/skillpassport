@@ -36,7 +36,10 @@ export const PipelineStats: React.FC<PipelineStatsProps> = ({ metrics }) => {
   return (
     <div className="flex items-center space-x-4">
       {metrics.map((metric, index) => (
-        <div key={index} className={`flex items-center space-x-3 px-4 py-2 rounded-lg border ${getColorClass(metric.rate)}`}>
+        <div
+          key={index}
+          className={`flex items-center space-x-3 px-4 py-2 rounded-lg border ${getColorClass(metric.rate)}`}
+        >
           <div className="flex-1">
             <div className="flex items-center space-x-2 mb-1">
               <span className="text-xs font-medium">{metric.label}</span>
@@ -69,7 +72,12 @@ interface QuickStatsProps {
   activeStages: number;
 }
 
-export const QuickStats: React.FC<QuickStatsProps> = ({ total, company, daysAging, activeStages }) => {
+export const QuickStats: React.FC<QuickStatsProps> = ({
+  total,
+  company,
+  daysAging,
+  activeStages,
+}) => {
   return (
     <div className="flex items-center space-x-6 text-sm">
       <div className="flex flex-col">
@@ -94,4 +102,3 @@ export const QuickStats: React.FC<QuickStatsProps> = ({ total, company, daysAgin
     </div>
   );
 };
-

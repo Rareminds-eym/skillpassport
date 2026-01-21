@@ -1,7 +1,7 @@
 /**
  * Restriction Screen Component
  * Shows when user cannot take assessment (6-month restriction)
- * 
+ *
  * @module features/assessment/components/RestrictionScreen
  */
 
@@ -21,11 +21,7 @@ import { ASSESSMENT_RESTRICTION } from '../constants/config';
 /**
  * Restriction Screen Component
  */
-export const RestrictionScreen = ({
-  errorMessage,
-  onViewLastReport,
-  onBackToDashboard,
-}) => {
+export const RestrictionScreen = ({ errorMessage, onViewLastReport, onBackToDashboard }) => {
   const navigate = useNavigate();
 
   const handleViewReport = () => {
@@ -52,9 +48,7 @@ export const RestrictionScreen = ({
           <div className="w-14 h-14 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Clock className="w-7 h-7 text-white" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Assessment Not Available
-          </h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Assessment Not Available</h2>
           <p className="text-gray-600 text-sm">
             You need to wait before taking the assessment again
           </p>
@@ -64,9 +58,7 @@ export const RestrictionScreen = ({
         <div className="bg-slate-300 rounded-lg p-4 mb-4 border border-slate-100">
           <div className="flex items-start gap-2.5">
             <AlertCircle className="w-4 h-4 text-slate-600 shrink-0 mt-0.5" />
-            <p className="text-sm text-gray-800 leading-relaxed">
-              {errorMessage}
-            </p>
+            <p className="text-sm text-gray-800 leading-relaxed">{errorMessage}</p>
           </div>
         </div>
 
@@ -79,9 +71,9 @@ export const RestrictionScreen = ({
                 Why the {ASSESSMENT_RESTRICTION.MONTHS_BETWEEN_ATTEMPTS}-month waiting period?
               </p>
               <p className="leading-relaxed">
-                The career assessment is designed to track your growth and development over time. 
-                Taking it too frequently won't provide meaningful insights. 
-                Use this time to work on your skills and gain new experiences!
+                The career assessment is designed to track your growth and development over time.
+                Taking it too frequently won't provide meaningful insights. Use this time to work on
+                your skills and gain new experiences!
               </p>
             </div>
           </div>

@@ -24,32 +24,32 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
 
   // Handle editing extracted data
   const handleFieldEdit = (field, value) => {
-    setExtractedData(prev => ({
+    setExtractedData((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
   const handleArrayItemEdit = (arrayName, index, field, value) => {
-    setExtractedData(prev => ({
+    setExtractedData((prev) => ({
       ...prev,
-      [arrayName]: prev[arrayName].map((item, i) => 
+      [arrayName]: prev[arrayName].map((item, i) =>
         i === index ? { ...item, [field]: value } : item
-      )
+      ),
     }));
   };
 
   const handleArrayItemDelete = (arrayName, index) => {
-    setExtractedData(prev => ({
+    setExtractedData((prev) => ({
       ...prev,
-      [arrayName]: prev[arrayName].filter((_, i) => i !== index)
+      [arrayName]: prev[arrayName].filter((_, i) => i !== index),
     }));
   };
 
   const handleArrayItemAdd = (arrayName, newItem) => {
-    setExtractedData(prev => ({
+    setExtractedData((prev) => ({
       ...prev,
-      [arrayName]: [...(prev[arrayName] || []), newItem]
+      [arrayName]: [...(prev[arrayName] || []), newItem],
     }));
   };
 
@@ -57,7 +57,12 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
     const selectedFile = e.target.files[0];
     if (selectedFile) {
       // Validate file type
-      const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
+      const validTypes = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'text/plain',
+      ];
       if (!validTypes.includes(selectedFile.type)) {
         setError('Please upload a PDF, DOC, DOCX, or TXT file');
         return;
@@ -78,17 +83,17 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
   const extractTextFromFile = async (file) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      
+
       reader.onload = async (e) => {
         try {
           const content = e.target.result;
-          
+
           // For text files, directly use the content
           if (file.type === 'text/plain') {
             resolve(content);
             return;
           }
-          
+
           // For PDF files, use a simple text extraction
           if (file.type === 'application/pdf') {
             // Simple PDF text extraction (basic approach)
@@ -97,7 +102,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
             resolve(text);
             return;
           }
-          
+
           // For DOC/DOCX, we'll need to send to backend or use a library
           // For now, we'll use a simple approach
           resolve(content);
@@ -105,9 +110,9 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
           reject(err);
         }
       };
-      
+
       reader.onerror = () => reject(new Error('Failed to read file'));
-      
+
       if (file.type === 'text/plain') {
         reader.readAsText(file);
       } else {
@@ -118,10 +123,9 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
 
   const extractTextFromPDF = async (arrayBuffer) => {
     try {
-      
       // Create a Uint8Array from the ArrayBuffer
       const uint8Array = new Uint8Array(arrayBuffer);
-      
+
       // Load the PDF document with better error handling
       const loadingTask = pdfjsLib.getDocument({
         data: uint8Array,
@@ -129,50 +133,55 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
         cMapUrl: 'https://unpkg.com/pdfjs-dist@' + pdfjsLib.version + '/cmaps/',
         cMapPacked: true,
       });
-      
+
       const pdf = await loadingTask.promise;
-      
-      
+
       let fullText = '';
-      
+
       // Extract text from each page
       for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
         try {
           const page = await pdf.getPage(pageNum);
           const textContent = await page.getTextContent();
-          
+
           // Combine all text items with proper spacing
           const pageText = textContent.items
-            .map(item => item.str)
-            .filter(str => str.trim().length > 0) // Remove empty strings
+            .map((item) => item.str)
+            .filter((str) => str.trim().length > 0) // Remove empty strings
             .join(' ');
-          
+
           fullText += pageText + '\n\n';
         } catch (pageError) {
           // Continue with other pages
         }
       }
-      
+
       const cleanedText = fullText.trim();
-      
+
       if (cleanedText.length === 0) {
-        throw new Error('No text could be extracted from the PDF. The PDF might be image-based or encrypted.');
+        throw new Error(
+          'No text could be extracted from the PDF. The PDF might be image-based or encrypted.'
+        );
       }
-      
+
       return cleanedText;
     } catch (error) {
       console.error('❌ PDF extraction error:', error);
       console.error('❌ Error details:', error.message);
-      
+
       // Provide more specific error messages
       if (error.message?.includes('Invalid PDF')) {
         throw new Error('Invalid PDF file. Please ensure the file is a valid PDF document.');
       } else if (error.message?.includes('password')) {
         throw new Error('PDF is password protected. Please upload an unprotected PDF.');
       } else if (error.message?.includes('No text')) {
-        throw new Error('No text found in PDF. The PDF might contain only images. Try converting to text first or use a TXT file.');
+        throw new Error(
+          'No text found in PDF. The PDF might contain only images. Try converting to text first or use a TXT file.'
+        );
       } else {
-        throw new Error(`Failed to extract text from PDF: ${error.message}. Try using a TXT file instead.`);
+        throw new Error(
+          `Failed to extract text from PDF: ${error.message}. Try using a TXT file instead.`
+        );
       }
     }
   };
@@ -191,21 +200,20 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
     try {
       // Extract text from file
       const resumeText = await extractTextFromFile(file);
-      
+
       if (!resumeText || resumeText.trim().length === 0) {
         throw new Error('Could not extract text from file');
       }
 
       // Parse resume using AI
       const parsedData = await parseResumeWithAI(resumeText);
-      
+
       if (!parsedData) {
         throw new Error('Failed to parse resume data');
       }
 
       setExtractedData(parsedData);
       setSuccess(true);
-      
     } catch (err) {
       console.error('Resume parsing error:', err);
       setError(err.message || 'Failed to parse resume. Please try again.');
@@ -223,7 +231,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
 
     // Use email from extracted data if userEmail is not available
     const emailToUse = userEmail || extractedData.email;
-    
+
     if (!emailToUse) {
       setError('No email available for saving');
       return;
@@ -240,7 +248,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
 
       // Try to get student ID from passed studentData first
       let studentId = studentData?.id;
-      
+
       // If not available, fetch from database
       if (!studentId) {
         const { data: currentStudent, error: fetchError } = await supabase
@@ -254,7 +262,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
         }
 
         studentId = currentStudent?.id;
-        
+
         // If still not found, try by email as fallback
         if (!studentId && emailToUse) {
           const { data: studentByEmail, error: emailError } = await supabase
@@ -262,7 +270,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
             .select('id, email, name')
             .eq('email', emailToUse)
             .single();
-          
+
           if (!emailError && studentByEmail) {
             studentId = studentByEmail.id;
           }
@@ -273,26 +281,27 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
       if (studentId) {
         // Use the new service to save data to separate tables
         const result = await saveResumeToTables(extractedData, studentId, emailToUse);
-        
+
         if (result.success) {
           const totalSaved = Object.values(result.saved).reduce((sum, count) => sum + count, 0);
-          setSaveResult({ 
-            success: true, 
+          setSaveResult({
+            success: true,
             message: `Successfully saved ${totalSaved} records to database!`,
-            details: result.saved
+            details: result.saved,
           });
         } else {
-          throw new Error(`Error saving data: ${result.errors.map(e => e.error).join(', ')}`);
+          throw new Error(`Error saving data: ${result.errors.map((e) => e.error).join(', ')}`);
         }
       } else {
-        throw new Error('Student record not found. Please ensure your profile is set up correctly.');
+        throw new Error(
+          'Student record not found. Please ensure your profile is set up correctly.'
+        );
       }
-      
+
       // Call parent callback with extracted data
       if (onDataExtracted) {
         onDataExtracted(extractedData);
       }
-
     } catch (err) {
       console.error('❌ Save error:', err);
       setSaveResult({ success: false, message: err.message });
@@ -321,7 +330,8 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
           </div>
 
           <p className="text-gray-600 mb-6">
-            Upload your resume and we'll automatically extract your information to fill your profile.
+            Upload your resume and we'll automatically extract your information to fill your
+            profile.
           </p>
 
           {/* File Upload Area */}
@@ -334,10 +344,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
               className="hidden"
               disabled={parsing}
             />
-            <label
-              htmlFor="resume-upload"
-              className="cursor-pointer flex flex-col items-center"
-            >
+            <label htmlFor="resume-upload" className="cursor-pointer flex flex-col items-center">
               <Upload className="w-12 h-12 text-gray-400 mb-3" />
               <span className="text-lg font-medium text-gray-700 mb-1">
                 {file ? file.name : 'Click to upload your resume'}
@@ -374,14 +381,18 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
 
           {/* Save Result Message */}
           {saveResult && (
-            <div className={`${saveResult.success ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'} border rounded-lg p-4 mb-6 flex items-start gap-3`}>
+            <div
+              className={`${saveResult.success ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'} border rounded-lg p-4 mb-6 flex items-start gap-3`}
+            >
               {saveResult.success ? (
                 <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
               ) : (
                 <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
               )}
               <div className="flex-1">
-                <p className={`${saveResult.success ? 'text-green-800' : 'text-red-800'} font-medium`}>
+                <p
+                  className={`${saveResult.success ? 'text-green-800' : 'text-red-800'} font-medium`}
+                >
                   {saveResult.success ? 'Saved to Database!' : 'Error'}
                 </p>
                 <p className={`${saveResult.success ? 'text-green-600' : 'text-red-600'} text-sm`}>
@@ -391,12 +402,24 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
                   <div className="mt-2 text-xs text-green-700 space-y-1">
                     <p className="font-medium">Records saved:</p>
                     <div className="grid grid-cols-2 gap-1">
-                      {saveResult.details.education > 0 && <span>• Education: {saveResult.details.education}</span>}
-                      {saveResult.details.experience > 0 && <span>• Experience: {saveResult.details.experience}</span>}
-                      {saveResult.details.skills > 0 && <span>• Skills: {saveResult.details.skills}</span>}
-                      {saveResult.details.certificates > 0 && <span>• Certificates: {saveResult.details.certificates}</span>}
-                      {saveResult.details.projects > 0 && <span>• Projects: {saveResult.details.projects}</span>}
-                      {saveResult.details.trainings > 0 && <span>• Trainings: {saveResult.details.trainings}</span>}
+                      {saveResult.details.education > 0 && (
+                        <span>• Education: {saveResult.details.education}</span>
+                      )}
+                      {saveResult.details.experience > 0 && (
+                        <span>• Experience: {saveResult.details.experience}</span>
+                      )}
+                      {saveResult.details.skills > 0 && (
+                        <span>• Skills: {saveResult.details.skills}</span>
+                      )}
+                      {saveResult.details.certificates > 0 && (
+                        <span>• Certificates: {saveResult.details.certificates}</span>
+                      )}
+                      {saveResult.details.projects > 0 && (
+                        <span>• Projects: {saveResult.details.projects}</span>
+                      )}
+                      {saveResult.details.trainings > 0 && (
+                        <span>• Trainings: {saveResult.details.trainings}</span>
+                      )}
                     </div>
                   </div>
                 )}
@@ -408,7 +431,9 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
           {extractedData && (
             <div className="mb-6 bg-gray-50 rounded-lg p-4 max-h-[500px] overflow-y-auto">
               <div className="flex justify-between items-center mb-3">
-                <h3 className="font-semibold text-gray-900">✅ Extracted Data - {editMode ? 'Edit Mode' : 'Review Mode'}:</h3>
+                <h3 className="font-semibold text-gray-900">
+                  ✅ Extracted Data - {editMode ? 'Edit Mode' : 'Review Mode'}:
+                </h3>
                 <Button
                   onClick={() => setEditMode(!editMode)}
                   variant="outline"
@@ -464,19 +489,33 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
                       </>
                     ) : (
                       <>
-                        <p><span className="font-medium">Name:</span> {extractedData.name || '(empty)'}</p>
-                        <p><span className="font-medium">Email:</span> {extractedData.email || '(empty)'}</p>
-                        <p><span className="font-medium">Phone:</span> {extractedData.contact_number || '(empty)'}</p>
-                        <p><span className="font-medium">University:</span> {extractedData.university || '(empty)'}</p>
+                        <p>
+                          <span className="font-medium">Name:</span>{' '}
+                          {extractedData.name || '(empty)'}
+                        </p>
+                        <p>
+                          <span className="font-medium">Email:</span>{' '}
+                          {extractedData.email || '(empty)'}
+                        </p>
+                        <p>
+                          <span className="font-medium">Phone:</span>{' '}
+                          {extractedData.contact_number || '(empty)'}
+                        </p>
+                        <p>
+                          <span className="font-medium">University:</span>{' '}
+                          {extractedData.university || '(empty)'}
+                        </p>
                       </>
                     )}
                   </div>
                 </div>
-                
+
                 {/* Education */}
                 {extractedData.education && extractedData.education.length > 0 && (
                   <div className="bg-white p-3 rounded border">
-                    <h4 className="font-medium text-gray-700 mb-2">Education ({extractedData.education.length}):</h4>
+                    <h4 className="font-medium text-gray-700 mb-2">
+                      Education ({extractedData.education.length}):
+                    </h4>
                     {extractedData.education.map((edu, idx) => (
                       <div key={idx} className="text-xs mb-3 pl-3 border-l-2 border-blue-300">
                         {editMode ? (
@@ -484,14 +523,18 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
                             <input
                               type="text"
                               value={edu.degree || ''}
-                              onChange={(e) => handleArrayItemEdit('education', idx, 'degree', e.target.value)}
+                              onChange={(e) =>
+                                handleArrayItemEdit('education', idx, 'degree', e.target.value)
+                              }
                               className="w-full px-2 py-1 border rounded text-xs font-medium"
                               placeholder="Degree"
                             />
                             <input
                               type="text"
                               value={edu.university || ''}
-                              onChange={(e) => handleArrayItemEdit('education', idx, 'university', e.target.value)}
+                              onChange={(e) =>
+                                handleArrayItemEdit('education', idx, 'university', e.target.value)
+                              }
                               className="w-full px-2 py-1 border rounded text-xs"
                               placeholder="University"
                             />
@@ -499,14 +542,23 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
                               <input
                                 type="text"
                                 value={edu.yearOfPassing || ''}
-                                onChange={(e) => handleArrayItemEdit('education', idx, 'yearOfPassing', e.target.value)}
+                                onChange={(e) =>
+                                  handleArrayItemEdit(
+                                    'education',
+                                    idx,
+                                    'yearOfPassing',
+                                    e.target.value
+                                  )
+                                }
                                 className="flex-1 px-2 py-1 border rounded text-xs"
                                 placeholder="Year"
                               />
                               <input
                                 type="text"
                                 value={edu.cgpa || ''}
-                                onChange={(e) => handleArrayItemEdit('education', idx, 'cgpa', e.target.value)}
+                                onChange={(e) =>
+                                  handleArrayItemEdit('education', idx, 'cgpa', e.target.value)
+                                }
                                 className="flex-1 px-2 py-1 border rounded text-xs"
                                 placeholder="CGPA"
                               />
@@ -522,18 +574,22 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
                           <>
                             <p className="font-medium">{edu.degree || '(no degree)'}</p>
                             <p className="text-gray-600">{edu.university || '(no university)'}</p>
-                            <p className="text-gray-500">{edu.yearOfPassing || '(no year)'} | CGPA: {edu.cgpa || 'N/A'}</p>
+                            <p className="text-gray-500">
+                              {edu.yearOfPassing || '(no year)'} | CGPA: {edu.cgpa || 'N/A'}
+                            </p>
                           </>
                         )}
                       </div>
                     ))}
                   </div>
                 )}
-                
+
                 {/* Experience */}
                 {extractedData.experience && extractedData.experience.length > 0 && (
                   <div className="bg-white p-3 rounded border">
-                    <h4 className="font-medium text-gray-700 mb-2">Experience ({extractedData.experience.length}):</h4>
+                    <h4 className="font-medium text-gray-700 mb-2">
+                      Experience ({extractedData.experience.length}):
+                    </h4>
                     {extractedData.experience.map((exp, idx) => (
                       <div key={idx} className="text-xs mb-3 pl-3 border-l-2 border-green-300">
                         {editMode ? (
@@ -541,14 +597,23 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
                             <input
                               type="text"
                               value={exp.role || ''}
-                              onChange={(e) => handleArrayItemEdit('experience', idx, 'role', e.target.value)}
+                              onChange={(e) =>
+                                handleArrayItemEdit('experience', idx, 'role', e.target.value)
+                              }
                               className="w-full px-2 py-1 border rounded text-xs font-medium"
                               placeholder="Role"
                             />
                             <input
                               type="text"
                               value={exp.organization || ''}
-                              onChange={(e) => handleArrayItemEdit('experience', idx, 'organization', e.target.value)}
+                              onChange={(e) =>
+                                handleArrayItemEdit(
+                                  'experience',
+                                  idx,
+                                  'organization',
+                                  e.target.value
+                                )
+                              }
                               className="w-full px-2 py-1 border rounded text-xs"
                               placeholder="Organization"
                             />
@@ -558,7 +623,14 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
                                 <input
                                   type="month"
                                   value={exp.startDate || ''}
-                                  onChange={(e) => handleArrayItemEdit('experience', idx, 'startDate', e.target.value)}
+                                  onChange={(e) =>
+                                    handleArrayItemEdit(
+                                      'experience',
+                                      idx,
+                                      'startDate',
+                                      e.target.value
+                                    )
+                                  }
                                   className="w-full px-2 py-1 border rounded text-xs"
                                 />
                               </div>
@@ -567,7 +639,14 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
                                 <input
                                   type="month"
                                   value={exp.endDate || ''}
-                                  onChange={(e) => handleArrayItemEdit('experience', idx, 'endDate', e.target.value)}
+                                  onChange={(e) =>
+                                    handleArrayItemEdit(
+                                      'experience',
+                                      idx,
+                                      'endDate',
+                                      e.target.value
+                                    )
+                                  }
                                   className="w-full px-2 py-1 border rounded text-xs"
                                   placeholder="or 'Present'"
                                 />
@@ -583,13 +662,13 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
                         ) : (
                           <>
                             <p className="font-medium">{exp.role || '(no role)'}</p>
-                            <p className="text-gray-600">{exp.organization || '(no organization)'}</p>
+                            <p className="text-gray-600">
+                              {exp.organization || '(no organization)'}
+                            </p>
                             <p className="text-gray-500">
-                              {exp.startDate || exp.endDate ? (
-                                `${exp.startDate ? new Date(exp.startDate + '-01').toLocaleDateString('en-US', {month: 'short', year: 'numeric'}) : '?'} - ${exp.endDate ? new Date(exp.endDate + '-01').toLocaleDateString('en-US', {month: 'short', year: 'numeric'}) : 'Present'}`
-                              ) : (
-                                exp.duration || '(no duration)'
-                              )}
+                              {exp.startDate || exp.endDate
+                                ? `${exp.startDate ? new Date(exp.startDate + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '?'} - ${exp.endDate ? new Date(exp.endDate + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Present'}`
+                                : exp.duration || '(no duration)'}
                             </p>
                           </>
                         )}
@@ -597,11 +676,13 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
                     ))}
                   </div>
                 )}
-                
+
                 {/* Projects */}
                 {extractedData.projects && extractedData.projects.length > 0 && (
                   <div className="bg-white p-3 rounded border">
-                    <h4 className="font-medium text-gray-700 mb-2">Projects ({extractedData.projects.length}):</h4>
+                    <h4 className="font-medium text-gray-700 mb-2">
+                      Projects ({extractedData.projects.length}):
+                    </h4>
                     {extractedData.projects.map((proj, idx) => (
                       <div key={idx} className="text-xs mb-3 pl-3 border-l-2 border-purple-300">
                         {editMode ? (
@@ -609,14 +690,18 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
                             <input
                               type="text"
                               value={proj.title || ''}
-                              onChange={(e) => handleArrayItemEdit('projects', idx, 'title', e.target.value)}
+                              onChange={(e) =>
+                                handleArrayItemEdit('projects', idx, 'title', e.target.value)
+                              }
                               className="w-full px-2 py-1 border rounded text-xs font-medium"
                               placeholder="Project Title"
                             />
                             <input
                               type="text"
                               value={proj.organization || ''}
-                              onChange={(e) => handleArrayItemEdit('projects', idx, 'organization', e.target.value)}
+                              onChange={(e) =>
+                                handleArrayItemEdit('projects', idx, 'organization', e.target.value)
+                              }
                               className="w-full px-2 py-1 border rounded text-xs"
                               placeholder="Organization"
                             />
@@ -626,7 +711,14 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
                                 <input
                                   type="month"
                                   value={proj.startDate || ''}
-                                  onChange={(e) => handleArrayItemEdit('projects', idx, 'startDate', e.target.value)}
+                                  onChange={(e) =>
+                                    handleArrayItemEdit(
+                                      'projects',
+                                      idx,
+                                      'startDate',
+                                      e.target.value
+                                    )
+                                  }
                                   className="w-full px-2 py-1 border rounded text-xs"
                                 />
                               </div>
@@ -635,7 +727,9 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
                                 <input
                                   type="month"
                                   value={proj.endDate || ''}
-                                  onChange={(e) => handleArrayItemEdit('projects', idx, 'endDate', e.target.value)}
+                                  onChange={(e) =>
+                                    handleArrayItemEdit('projects', idx, 'endDate', e.target.value)
+                                  }
                                   className="w-full px-2 py-1 border rounded text-xs"
                                   placeholder="or 'Present'"
                                 />
@@ -643,7 +737,9 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
                             </div>
                             <textarea
                               value={proj.description || ''}
-                              onChange={(e) => handleArrayItemEdit('projects', idx, 'description', e.target.value)}
+                              onChange={(e) =>
+                                handleArrayItemEdit('projects', idx, 'description', e.target.value)
+                              }
                               className="w-full px-2 py-1 border rounded text-xs"
                               placeholder="Project Description"
                               rows="2"
@@ -651,14 +747,26 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
                             <input
                               type="text"
                               value={(proj.technologies || []).join(', ')}
-                              onChange={(e) => handleArrayItemEdit('projects', idx, 'technologies', e.target.value.split(',').map(t => t.trim()).filter(t => t))}
+                              onChange={(e) =>
+                                handleArrayItemEdit(
+                                  'projects',
+                                  idx,
+                                  'technologies',
+                                  e.target.value
+                                    .split(',')
+                                    .map((t) => t.trim())
+                                    .filter((t) => t)
+                                )
+                              }
                               className="w-full px-2 py-1 border rounded text-xs"
                               placeholder="Technologies (comma-separated: React, Node.js, Python)"
                             />
                             <input
                               type="text"
                               value={proj.link || ''}
-                              onChange={(e) => handleArrayItemEdit('projects', idx, 'link', e.target.value)}
+                              onChange={(e) =>
+                                handleArrayItemEdit('projects', idx, 'link', e.target.value)
+                              }
                               className="w-full px-2 py-1 border rounded text-xs"
                               placeholder="Project Link (optional)"
                             />
@@ -672,15 +780,17 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
                         ) : (
                           <>
                             <p className="font-medium">{proj.title || '(no title)'}</p>
-                            {proj.organization && <p className="text-gray-600">{proj.organization}</p>}
+                            {proj.organization && (
+                              <p className="text-gray-600">{proj.organization}</p>
+                            )}
                             <p className="text-gray-600">
-                              {proj.startDate || proj.endDate ? (
-                                `${proj.startDate ? new Date(proj.startDate + '-01').toLocaleDateString('en-US', {month: 'short', year: 'numeric'}) : '?'} - ${proj.endDate ? new Date(proj.endDate + '-01').toLocaleDateString('en-US', {month: 'short', year: 'numeric'}) : 'Present'}`
-                              ) : (
-                                proj.duration || '(no duration)'
-                              )}
+                              {proj.startDate || proj.endDate
+                                ? `${proj.startDate ? new Date(proj.startDate + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '?'} - ${proj.endDate ? new Date(proj.endDate + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Present'}`
+                                : proj.duration || '(no duration)'}
                             </p>
-                            {proj.description && <p className="text-gray-500 mt-1">{proj.description}</p>}
+                            {proj.description && (
+                              <p className="text-gray-500 mt-1">{proj.description}</p>
+                            )}
                             {proj.technologies && proj.technologies.length > 0 ? (
                               <p className="text-gray-500">Tech: {proj.technologies.join(', ')}</p>
                             ) : (
@@ -693,11 +803,13 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
                     ))}
                   </div>
                 )}
-                
+
                 {/* Technical Skills */}
                 {extractedData.technicalSkills && extractedData.technicalSkills.length > 0 && (
                   <div className="bg-white p-3 rounded border">
-                    <h4 className="font-medium text-gray-700 mb-2">Technical Skills ({extractedData.technicalSkills.length}):</h4>
+                    <h4 className="font-medium text-gray-700 mb-2">
+                      Technical Skills ({extractedData.technicalSkills.length}):
+                    </h4>
                     {editMode ? (
                       <div className="space-y-2">
                         {extractedData.technicalSkills.map((skill, idx) => (
@@ -705,20 +817,36 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
                             <input
                               type="text"
                               value={skill.name || ''}
-                              onChange={(e) => handleArrayItemEdit('technicalSkills', idx, 'name', e.target.value)}
+                              onChange={(e) =>
+                                handleArrayItemEdit('technicalSkills', idx, 'name', e.target.value)
+                              }
                               className="flex-1 px-2 py-1 border rounded text-xs"
                               placeholder="Skill Name"
                             />
                             <input
                               type="text"
                               value={skill.category || ''}
-                              onChange={(e) => handleArrayItemEdit('technicalSkills', idx, 'category', e.target.value)}
+                              onChange={(e) =>
+                                handleArrayItemEdit(
+                                  'technicalSkills',
+                                  idx,
+                                  'category',
+                                  e.target.value
+                                )
+                              }
                               className="w-32 px-2 py-1 border rounded text-xs"
                               placeholder="Category"
                             />
                             <select
                               value={skill.level || 3}
-                              onChange={(e) => handleArrayItemEdit('technicalSkills', idx, 'level', parseInt(e.target.value))}
+                              onChange={(e) =>
+                                handleArrayItemEdit(
+                                  'technicalSkills',
+                                  idx,
+                                  'level',
+                                  parseInt(e.target.value)
+                                )
+                              }
                               className="w-20 px-2 py-1 border rounded text-xs"
                             >
                               <option value="1">Beginner</option>
@@ -739,7 +867,10 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
                     ) : (
                       <div className="flex flex-wrap gap-1">
                         {extractedData.technicalSkills.map((skill, idx) => (
-                          <span key={idx} className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                          <span
+                            key={idx}
+                            className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded"
+                          >
                             {skill.name}
                           </span>
                         ))}
@@ -747,11 +878,13 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
                     )}
                   </div>
                 )}
-                
+
                 {/* Soft Skills */}
                 {extractedData.softSkills && extractedData.softSkills.length > 0 && (
                   <div className="bg-white p-3 rounded border">
-                    <h4 className="font-medium text-gray-700 mb-2">Soft Skills ({extractedData.softSkills.length}):</h4>
+                    <h4 className="font-medium text-gray-700 mb-2">
+                      Soft Skills ({extractedData.softSkills.length}):
+                    </h4>
                     {editMode ? (
                       <div className="space-y-2">
                         {extractedData.softSkills.map((skill, idx) => (
@@ -759,20 +892,31 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
                             <input
                               type="text"
                               value={skill.name || ''}
-                              onChange={(e) => handleArrayItemEdit('softSkills', idx, 'name', e.target.value)}
+                              onChange={(e) =>
+                                handleArrayItemEdit('softSkills', idx, 'name', e.target.value)
+                              }
                               className="flex-1 px-2 py-1 border rounded text-xs"
                               placeholder="Skill Name"
                             />
                             <input
                               type="text"
                               value={skill.type || ''}
-                              onChange={(e) => handleArrayItemEdit('softSkills', idx, 'type', e.target.value)}
+                              onChange={(e) =>
+                                handleArrayItemEdit('softSkills', idx, 'type', e.target.value)
+                              }
                               className="w-28 px-2 py-1 border rounded text-xs"
                               placeholder="Type"
                             />
                             <select
                               value={skill.level || 3}
-                              onChange={(e) => handleArrayItemEdit('softSkills', idx, 'level', parseInt(e.target.value))}
+                              onChange={(e) =>
+                                handleArrayItemEdit(
+                                  'softSkills',
+                                  idx,
+                                  'level',
+                                  parseInt(e.target.value)
+                                )
+                              }
                               className="w-20 px-2 py-1 border rounded text-xs"
                             >
                               <option value="1">Beginner</option>
@@ -793,7 +937,10 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
                     ) : (
                       <div className="flex flex-wrap gap-1">
                         {extractedData.softSkills.map((skill, idx) => (
-                          <span key={idx} className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                          <span
+                            key={idx}
+                            className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded"
+                          >
                             {skill.name}
                           </span>
                         ))}
@@ -801,11 +948,13 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
                     )}
                   </div>
                 )}
-                
+
                 {/* Certificates */}
                 {extractedData.certificates && extractedData.certificates.length > 0 && (
                   <div className="bg-white p-3 rounded border">
-                    <h4 className="font-medium text-gray-700 mb-2">Certificates ({extractedData.certificates.length}):</h4>
+                    <h4 className="font-medium text-gray-700 mb-2">
+                      Certificates ({extractedData.certificates.length}):
+                    </h4>
                     {extractedData.certificates.map((cert, idx) => (
                       <div key={idx} className="text-xs mb-3 pl-3 border-l-2 border-yellow-300">
                         {editMode ? (
@@ -813,14 +962,18 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
                             <input
                               type="text"
                               value={cert.title || ''}
-                              onChange={(e) => handleArrayItemEdit('certificates', idx, 'title', e.target.value)}
+                              onChange={(e) =>
+                                handleArrayItemEdit('certificates', idx, 'title', e.target.value)
+                              }
                               className="w-full px-2 py-1 border rounded text-xs font-medium"
                               placeholder="Certificate Title"
                             />
                             <input
                               type="text"
                               value={cert.issuer || ''}
-                              onChange={(e) => handleArrayItemEdit('certificates', idx, 'issuer', e.target.value)}
+                              onChange={(e) =>
+                                handleArrayItemEdit('certificates', idx, 'issuer', e.target.value)
+                              }
                               className="w-full px-2 py-1 border rounded text-xs"
                               placeholder="Issuer/Organization"
                             />
@@ -829,21 +982,37 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
                               <input
                                 type="month"
                                 value={cert.issuedOn || ''}
-                                onChange={(e) => handleArrayItemEdit('certificates', idx, 'issuedOn', e.target.value)}
+                                onChange={(e) =>
+                                  handleArrayItemEdit(
+                                    'certificates',
+                                    idx,
+                                    'issuedOn',
+                                    e.target.value
+                                  )
+                                }
                                 className="w-full px-2 py-1 border rounded text-xs"
                               />
                             </div>
                             <input
                               type="text"
                               value={cert.credentialId || ''}
-                              onChange={(e) => handleArrayItemEdit('certificates', idx, 'credentialId', e.target.value)}
+                              onChange={(e) =>
+                                handleArrayItemEdit(
+                                  'certificates',
+                                  idx,
+                                  'credentialId',
+                                  e.target.value
+                                )
+                              }
                               className="w-full px-2 py-1 border rounded text-xs"
                               placeholder="Credential ID (optional)"
                             />
                             <input
                               type="text"
                               value={cert.link || ''}
-                              onChange={(e) => handleArrayItemEdit('certificates', idx, 'link', e.target.value)}
+                              onChange={(e) =>
+                                handleArrayItemEdit('certificates', idx, 'link', e.target.value)
+                              }
                               className="w-full px-2 py-1 border rounded text-xs"
                               placeholder="Certificate Link (optional)"
                             />
@@ -858,13 +1027,17 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
                           <>
                             <p className="font-medium">{cert.title || '(no title)'}</p>
                             <p className="text-gray-600">
-                              {cert.issuer || '(no issuer)'} | {
-                                cert.issuedOn ? 
-                                  new Date(cert.issuedOn + '-01').toLocaleDateString('en-US', {month: 'short', year: 'numeric'}) : 
-                                  '(no date)'
-                              }
+                              {cert.issuer || '(no issuer)'} |{' '}
+                              {cert.issuedOn
+                                ? new Date(cert.issuedOn + '-01').toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    year: 'numeric',
+                                  })
+                                : '(no date)'}
                             </p>
-                            {cert.credentialId && <p className="text-gray-500">ID: {cert.credentialId}</p>}
+                            {cert.credentialId && (
+                              <p className="text-gray-500">ID: {cert.credentialId}</p>
+                            )}
                             {cert.link && <p className="text-blue-500">🔗 {cert.link}</p>}
                           </>
                         )}
@@ -895,7 +1068,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
                 </>
               )}
             </Button>
-            
+
             {extractedData && (
               <Button
                 onClick={handleSaveToDatabase}
@@ -915,7 +1088,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
                 )}
               </Button>
             )}
-            
+
             {onClose && (
               <Button
                 onClick={onClose}

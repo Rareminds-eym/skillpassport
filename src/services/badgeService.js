@@ -16,8 +16,8 @@ export const BADGE_DEFINITIONS = {
     category: 'education',
     criteriaText: 'Complete a degree program',
     criteria: (userData) => {
-      return userData.education?.some(edu => edu.status === 'completed') || false;
-    }
+      return userData.education?.some((edu) => edu.status === 'completed') || false;
+    },
   },
 
   // Training Badges
@@ -31,7 +31,7 @@ export const BADGE_DEFINITIONS = {
     criteriaText: 'Enroll in 3 or more training courses',
     criteria: (userData) => {
       return (userData.training?.length || 0) >= 3;
-    }
+    },
   },
 
   TRAINING_MASTER: {
@@ -44,7 +44,7 @@ export const BADGE_DEFINITIONS = {
     criteriaText: 'Enroll in 10 or more training courses',
     criteria: (userData) => {
       return (userData.training?.length || 0) >= 10;
-    }
+    },
   },
 
   // Certificate Badges
@@ -58,7 +58,7 @@ export const BADGE_DEFINITIONS = {
     criteriaText: 'Earn 3 or more professional certificates',
     criteria: (userData) => {
       return (userData.certificates?.length || 0) >= 3;
-    }
+    },
   },
 
   CERTIFICATE_CHAMPION: {
@@ -71,7 +71,7 @@ export const BADGE_DEFINITIONS = {
     criteriaText: 'Earn 10 or more professional certificates',
     criteria: (userData) => {
       return (userData.certificates?.length || 0) >= 10;
-    }
+    },
   },
 
   // Project Badges
@@ -85,7 +85,7 @@ export const BADGE_DEFINITIONS = {
     criteriaText: 'Complete your first project',
     criteria: (userData) => {
       return (userData.projects?.length || 0) >= 1;
-    }
+    },
   },
 
   PROJECT_BUILDER: {
@@ -98,7 +98,7 @@ export const BADGE_DEFINITIONS = {
     criteriaText: 'Complete 5 or more projects',
     criteria: (userData) => {
       return (userData.projects?.length || 0) >= 5;
-    }
+    },
   },
 
   PROJECT_ARCHITECT: {
@@ -111,7 +111,7 @@ export const BADGE_DEFINITIONS = {
     criteriaText: 'Complete 10 or more projects',
     criteria: (userData) => {
       return (userData.projects?.length || 0) >= 10;
-    }
+    },
   },
 
   // Experience Badges
@@ -125,7 +125,7 @@ export const BADGE_DEFINITIONS = {
     criteriaText: 'Gain your first work experience',
     criteria: (userData) => {
       return (userData.experience?.length || 0) >= 1;
-    }
+    },
   },
 
   EXPERIENCED_PROFESSIONAL: {
@@ -138,7 +138,7 @@ export const BADGE_DEFINITIONS = {
     criteriaText: 'Gain 3 or more work experiences',
     criteria: (userData) => {
       return (userData.experience?.length || 0) >= 3;
-    }
+    },
   },
 
   // Skills Badges
@@ -152,11 +152,12 @@ export const BADGE_DEFINITIONS = {
     criteriaText: 'Acquire 10 or more technical skills',
     criteria: (userData) => {
       const directSkills = userData.technicalSkills?.length || 0;
-      const trainingSkills = userData.training?.reduce((acc, course) => {
-        return acc + (course.skills?.length || 0);
-      }, 0) || 0;
-      return (directSkills + trainingSkills) >= 10;
-    }
+      const trainingSkills =
+        userData.training?.reduce((acc, course) => {
+          return acc + (course.skills?.length || 0);
+        }, 0) || 0;
+      return directSkills + trainingSkills >= 10;
+    },
   },
 
   SKILL_MASTER: {
@@ -169,11 +170,12 @@ export const BADGE_DEFINITIONS = {
     criteriaText: 'Acquire 20 or more technical skills',
     criteria: (userData) => {
       const directSkills = userData.technicalSkills?.length || 0;
-      const trainingSkills = userData.training?.reduce((acc, course) => {
-        return acc + (course.skills?.length || 0);
-      }, 0) || 0;
-      return (directSkills + trainingSkills) >= 20;
-    }
+      const trainingSkills =
+        userData.training?.reduce((acc, course) => {
+          return acc + (course.skills?.length || 0);
+        }, 0) || 0;
+      return directSkills + trainingSkills >= 20;
+    },
   },
 
   // Application Badges
@@ -188,7 +190,7 @@ export const BADGE_DEFINITIONS = {
     criteria: (userData) => {
       // This would need to be fetched from applied_jobs table
       return false; // Placeholder
-    }
+    },
   },
 
   NETWORKING_PRO: {
@@ -202,7 +204,7 @@ export const BADGE_DEFINITIONS = {
     criteria: (userData) => {
       // This would need conversation/message data
       return false; // Placeholder
-    }
+    },
   },
 
   // Performance Badges
@@ -218,7 +220,7 @@ export const BADGE_DEFINITIONS = {
       // This would need assessment/grade data
       const avgGrade = userData.profile?.averageGrade || 0;
       return avgGrade >= 90;
-    }
+    },
   },
 
   EARLY_BIRD: {
@@ -232,8 +234,8 @@ export const BADGE_DEFINITIONS = {
     criteria: (userData) => {
       // This would need assignment submission data
       return false; // Placeholder
-    }
-  }
+    },
+  },
 };
 
 /**
@@ -244,13 +246,13 @@ export const generateBadges = (userData) => {
 
   const earnedBadges = [];
 
-  Object.values(BADGE_DEFINITIONS).forEach(badge => {
+  Object.values(BADGE_DEFINITIONS).forEach((badge) => {
     try {
       if (badge.criteria(userData)) {
         earnedBadges.push({
           ...badge,
           earnedAt: new Date().toISOString(),
-          isNew: false // Can be used to highlight newly earned badges
+          isNew: false, // Can be used to highlight newly earned badges
         });
       }
     } catch (error) {
@@ -276,14 +278,14 @@ export const getBadgeProgress = (userData) => {
       badge: BADGE_DEFINITIONS.TRAINING_ENTHUSIAST,
       current: totalTraining,
       required: 3,
-      percentage: Math.round((totalTraining / 3) * 100)
+      percentage: Math.round((totalTraining / 3) * 100),
     });
   } else if (totalTraining < 10) {
     progress.push({
       badge: BADGE_DEFINITIONS.TRAINING_MASTER,
       current: totalTraining,
       required: 10,
-      percentage: Math.round((totalTraining / 10) * 100)
+      percentage: Math.round((totalTraining / 10) * 100),
     });
   }
 
@@ -294,14 +296,14 @@ export const getBadgeProgress = (userData) => {
       badge: BADGE_DEFINITIONS.CERTIFIED_PROFESSIONAL,
       current: certificateCount,
       required: 3,
-      percentage: Math.round((certificateCount / 3) * 100)
+      percentage: Math.round((certificateCount / 3) * 100),
     });
   } else if (certificateCount < 10) {
     progress.push({
       badge: BADGE_DEFINITIONS.CERTIFICATE_CHAMPION,
       current: certificateCount,
       required: 10,
-      percentage: Math.round((certificateCount / 10) * 100)
+      percentage: Math.round((certificateCount / 10) * 100),
     });
   }
 
@@ -312,43 +314,44 @@ export const getBadgeProgress = (userData) => {
       badge: BADGE_DEFINITIONS.PROJECT_STARTER,
       current: 0,
       required: 1,
-      percentage: 0
+      percentage: 0,
     });
   } else if (projectCount < 5) {
     progress.push({
       badge: BADGE_DEFINITIONS.PROJECT_BUILDER,
       current: projectCount,
       required: 5,
-      percentage: Math.round((projectCount / 5) * 100)
+      percentage: Math.round((projectCount / 5) * 100),
     });
   } else if (projectCount < 10) {
     progress.push({
       badge: BADGE_DEFINITIONS.PROJECT_ARCHITECT,
       current: projectCount,
       required: 10,
-      percentage: Math.round((projectCount / 10) * 100)
+      percentage: Math.round((projectCount / 10) * 100),
     });
   }
 
   // Skills progress
   const directSkills = userData.technicalSkills?.length || 0;
-  const trainingSkills = userData.training?.reduce((acc, course) => {
-    return acc + (course.skills?.length || 0);
-  }, 0) || 0;
+  const trainingSkills =
+    userData.training?.reduce((acc, course) => {
+      return acc + (course.skills?.length || 0);
+    }, 0) || 0;
   const totalSkills = directSkills + trainingSkills;
   if (totalSkills < 10) {
     progress.push({
       badge: BADGE_DEFINITIONS.SKILL_COLLECTOR,
       current: totalSkills,
       required: 10,
-      percentage: Math.round((totalSkills / 10) * 100)
+      percentage: Math.round((totalSkills / 10) * 100),
     });
   } else if (totalSkills < 20) {
     progress.push({
       badge: BADGE_DEFINITIONS.SKILL_MASTER,
       current: totalSkills,
       required: 20,
-      percentage: Math.round((totalSkills / 20) * 100)
+      percentage: Math.round((totalSkills / 20) * 100),
     });
   }
 
@@ -361,7 +364,7 @@ export const getBadgeProgress = (userData) => {
 export const getBadgesByCategory = (badges) => {
   const categorized = {};
 
-  badges.forEach(badge => {
+  badges.forEach((badge) => {
     if (!categorized[badge.category]) {
       categorized[badge.category] = [];
     }
@@ -381,11 +384,11 @@ export const saveBadgesToDatabase = async (studentId, badges) => {
       .from('students')
       .update({
         metadata: {
-          badges: badges.map(b => ({
+          badges: badges.map((b) => ({
             id: b.id,
-            earnedAt: b.earnedAt
-          }))
-        }
+            earnedAt: b.earnedAt,
+          })),
+        },
       })
       .eq('id', studentId);
 
@@ -402,5 +405,5 @@ export default {
   generateBadges,
   getBadgeProgress,
   getBadgesByCategory,
-  saveBadgesToDatabase
+  saveBadgesToDatabase,
 };

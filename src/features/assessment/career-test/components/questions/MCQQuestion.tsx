@@ -1,9 +1,9 @@
 /**
  * MCQQuestion Component
- * 
+ *
  * Renders a multiple choice question with single selection.
  * Used for Aptitude and Knowledge sections.
- * 
+ *
  * @module features/assessment/career-test/components/questions/MCQQuestion
  */
 
@@ -34,7 +34,7 @@ export const MCQQuestion: React.FC<MCQQuestionProps> = ({
   showCorrectIndicator = false,
   correctAnswer,
   moduleTitle,
-  subtype
+  subtype,
 }) => {
   return (
     <div className="space-y-4">
@@ -55,9 +55,7 @@ export const MCQQuestion: React.FC<MCQQuestionProps> = ({
       )}
 
       {/* Question Text */}
-      <h3 className="text-xl md:text-2xl font-medium text-gray-800 leading-snug">
-        {questionText}
-      </h3>
+      <h3 className="text-xl md:text-2xl font-medium text-gray-800 leading-snug">{questionText}</h3>
 
       {/* Options */}
       <div className="space-y-3 mt-6">
@@ -76,41 +74,48 @@ export const MCQQuestion: React.FC<MCQQuestionProps> = ({
               whileTap={{ scale: 0.99 }}
               className={`
                 w-full border-2 rounded-xl p-4 transition-all text-left
-                ${isSelected && !showCorrectIndicator
-                  ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-500/30'
-                  : isCorrect
-                    ? 'border-green-500 bg-green-50'
-                    : isWrong
-                      ? 'border-red-500 bg-red-50'
-                      : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                ${
+                  isSelected && !showCorrectIndicator
+                    ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-500/30'
+                    : isCorrect
+                      ? 'border-green-500 bg-green-50'
+                      : isWrong
+                        ? 'border-red-500 bg-red-50'
+                        : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
                 }
               `}
             >
               <div className="flex items-start gap-3">
-                <div className={`
+                <div
+                  className={`
                   w-8 h-8 rounded-lg flex items-center justify-center shrink-0 font-bold transition-all
-                  ${isSelected && !showCorrectIndicator
-                    ? 'bg-indigo-500 text-white'
-                    : isCorrect
-                      ? 'bg-green-500 text-white'
-                      : isWrong
-                        ? 'bg-red-500 text-white'
-                        : 'bg-gray-100 text-gray-600'
+                  ${
+                    isSelected && !showCorrectIndicator
+                      ? 'bg-indigo-500 text-white'
+                      : isCorrect
+                        ? 'bg-green-500 text-white'
+                        : isWrong
+                          ? 'bg-red-500 text-white'
+                          : 'bg-gray-100 text-gray-600'
                   }
-                `}>
+                `}
+                >
                   {optionLabel}
                 </div>
-                <p className={`
+                <p
+                  className={`
                   flex-1 font-medium text-lg
-                  ${isSelected && !showCorrectIndicator
-                    ? 'text-indigo-700'
-                    : isCorrect
-                      ? 'text-green-700'
-                      : isWrong
-                        ? 'text-red-700'
-                        : 'text-gray-700'
+                  ${
+                    isSelected && !showCorrectIndicator
+                      ? 'text-indigo-700'
+                      : isCorrect
+                        ? 'text-green-700'
+                        : isWrong
+                          ? 'text-red-700'
+                          : 'text-gray-700'
                   }
-                `}>
+                `}
+                >
                   {option}
                 </p>
               </div>

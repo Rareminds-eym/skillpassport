@@ -55,16 +55,13 @@ export interface Curriculum {
 export const getAssessmentTypes = async (): Promise<AssessmentType[]> => {
   try {
     const schoolId = await getCurrentEducatorSchoolId();
-    
-    let query = supabase
-      .from('assessment_types')
-      .select('*')
-      .eq('is_active', true);
-    
+
+    let query = supabase.from('assessment_types').select('*').eq('is_active', true);
+
     if (schoolId) {
       query = query.eq('institution_id', schoolId).eq('institution_type', 'school');
     }
-    
+
     const { data, error } = await query.order('name');
 
     if (error) throw error;
@@ -79,7 +76,7 @@ export const getAssessmentTypes = async (): Promise<AssessmentType[]> => {
 export const getSubjects = async (): Promise<string[]> => {
   try {
     const schoolId = await getCurrentEducatorSchoolId();
-    
+
     if (!schoolId) {
       // Try to get global subjects as fallback
       const { data: globalData, error: globalError } = await supabase
@@ -90,9 +87,9 @@ export const getSubjects = async (): Promise<string[]> => {
         .order('display_order');
 
       if (globalError) throw globalError;
-      return globalData?.map(s => s.name) || [];
+      return globalData?.map((s) => s.name) || [];
     }
-    
+
     // First, try to get school-specific subjects
     const { data: schoolData, error: schoolError } = await supabase
       .from('curriculum_subjects')
@@ -107,7 +104,7 @@ export const getSubjects = async (): Promise<string[]> => {
 
     // If we have school-specific subjects, return them
     if (schoolData && schoolData.length > 0) {
-      return schoolData.map(s => s.name);
+      return schoolData.map((s) => s.name);
     }
 
     // Otherwise, get global subjects
@@ -119,7 +116,7 @@ export const getSubjects = async (): Promise<string[]> => {
       .order('display_order');
 
     if (globalError) throw globalError;
-    return globalData?.map(s => s.name) || [];
+    return globalData?.map((s) => s.name) || [];
   } catch (error) {
     console.error('Error in getSubjects:', error);
     throw error;
@@ -130,7 +127,7 @@ export const getSubjects = async (): Promise<string[]> => {
 export const getClasses = async (): Promise<string[]> => {
   try {
     const schoolId = await getCurrentEducatorSchoolId();
-    
+
     if (schoolId) {
       // Get unique grades from school_classes for this school
       const { data: schoolClassesData, error: schoolError } = await supabase
@@ -143,7 +140,7 @@ export const getClasses = async (): Promise<string[]> => {
         console.error('Error fetching school classes:', schoolError);
       } else if (schoolClassesData && schoolClassesData.length > 0) {
         // Get unique grades and sort them
-        const uniqueGrades = [...new Set(schoolClassesData.map(c => c.grade))];
+        const uniqueGrades = [...new Set(schoolClassesData.map((c) => c.grade))];
         return uniqueGrades.sort((a, b) => {
           const numA = parseInt(a);
           const numB = parseInt(b);
@@ -153,7 +150,7 @@ export const getClasses = async (): Promise<string[]> => {
           return a.localeCompare(b);
         });
       }
-      
+
       // Fallback 1: Try curriculum_classes for this school
       const { data: schoolCurrData, error: schoolCurrError } = await supabase
         .from('curriculum_classes')
@@ -165,7 +162,7 @@ export const getClasses = async (): Promise<string[]> => {
       if (schoolCurrError) {
         console.error('Error fetching school curriculum classes:', schoolCurrError);
       } else if (schoolCurrData && schoolCurrData.length > 0) {
-        return schoolCurrData.map(c => c.name);
+        return schoolCurrData.map((c) => c.name);
       }
     }
 
@@ -178,7 +175,7 @@ export const getClasses = async (): Promise<string[]> => {
       .order('display_order');
 
     if (globalError) throw globalError;
-    return globalData?.map(c => c.name) || [];
+    return globalData?.map((c) => c.name) || [];
   } catch (error) {
     console.error('Error in getClasses:', error);
     throw error;
@@ -189,7 +186,7 @@ export const getClasses = async (): Promise<string[]> => {
 export const getAcademicYears = async (): Promise<string[]> => {
   try {
     const schoolId = await getCurrentEducatorSchoolId();
-    
+
     if (!schoolId) {
       // Get global years
       const { data: globalData, error: globalError } = await supabase
@@ -200,9 +197,9 @@ export const getAcademicYears = async (): Promise<string[]> => {
         .order('year', { ascending: false });
 
       if (globalError) throw globalError;
-      return globalData?.map(y => y.year) || [];
+      return globalData?.map((y) => y.year) || [];
     }
-    
+
     // First, try to get school-specific academic years
     const { data: schoolData, error: schoolError } = await supabase
       .from('curriculum_academic_years')
@@ -217,7 +214,7 @@ export const getAcademicYears = async (): Promise<string[]> => {
 
     // If we have school-specific years, return them
     if (schoolData && schoolData.length > 0) {
-      return schoolData.map(y => y.year);
+      return schoolData.map((y) => y.year);
     }
 
     // Otherwise, get global years
@@ -229,7 +226,7 @@ export const getAcademicYears = async (): Promise<string[]> => {
       .order('year', { ascending: false });
 
     if (globalError) throw globalError;
-    return globalData?.map(y => y.year) || [];
+    return globalData?.map((y) => y.year) || [];
   } catch (error) {
     console.error('Error in getAcademicYears:', error);
     throw error;
@@ -240,7 +237,7 @@ export const getAcademicYears = async (): Promise<string[]> => {
 export const getCurrentAcademicYear = async (): Promise<string | null> => {
   try {
     const schoolId = await getCurrentEducatorSchoolId();
-    
+
     if (schoolId) {
       // First, try to get school-specific current year
       const { data: schoolData, error: schoolError } = await supabase
@@ -299,8 +296,11 @@ export const getCurrentEducatorSchoolId = async (): Promise<string | null> => {
       }
     }
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
     if (userError || !user) return null;
 
     // First, check if user is a school_educator
@@ -351,7 +351,9 @@ export const getCurrentEducatorSchoolId = async (): Promise<string | null> => {
 
 // Get current educator's ID (returns user_id for curriculum creation)
 export const getCurrentEducatorId = async (): Promise<string | null> => {
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return null;
 
   // Return the user_id directly since curriculums.created_by references users.id
@@ -388,7 +390,7 @@ export const createCurriculum = async (
 ): Promise<Curriculum> => {
   const schoolId = await getCurrentEducatorSchoolId();
   const educatorId = await getCurrentEducatorId();
-  
+
   if (!schoolId || !educatorId) {
     throw new Error('Educator not found');
   }
@@ -417,21 +419,20 @@ export const updateCurriculumStatus = async (
   rejectionReason?: string
 ): Promise<void> => {
   const updates: any = { status };
-  
+
   if (status === 'approved') {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     updates.approved_by = user?.id;
     updates.approval_date = new Date().toISOString();
   }
-  
+
   if (status === 'rejected' && rejectionReason) {
     updates.rejection_reason = rejectionReason;
   }
 
-  const { error } = await supabase
-    .from('curriculums')
-    .update(updates)
-    .eq('id', curriculumId);
+  const { error } = await supabase.from('curriculums').update(updates).eq('id', curriculumId);
 
   if (error) throw error;
 };
@@ -484,10 +485,7 @@ export const updateChapter = async (
 
 // Delete chapter
 export const deleteChapter = async (chapterId: string): Promise<void> => {
-  const { error } = await supabase
-    .from('curriculum_chapters')
-    .delete()
-    .eq('id', chapterId);
+  const { error } = await supabase.from('curriculum_chapters').delete().eq('id', chapterId);
 
   if (error) throw error;
 };
@@ -496,32 +494,37 @@ export const deleteChapter = async (chapterId: string): Promise<void> => {
 export const getLearningOutcomes = async (curriculumId: string): Promise<LearningOutcome[]> => {
   const { data, error } = await supabase
     .from('curriculum_learning_outcomes')
-    .select(`
+    .select(
+      `
       *,
       curriculum_chapters!inner(curriculum_id)
-    `)
+    `
+    )
     .eq('curriculum_chapters.curriculum_id', curriculumId);
 
   if (error) throw error;
-  
+
   // Fetch assessment mappings for each outcome
   const outcomesWithMappings = await Promise.all(
     (data || []).map(async (outcome) => {
       const { data: mappings } = await supabase
         .from('outcome_assessment_mappings')
-        .select(`
+        .select(
+          `
           weightage,
           assessment_types(id, name)
-        `)
+        `
+        )
         .eq('learning_outcome_id', outcome.id);
 
       return {
         ...outcome,
-        assessmentMappings: mappings?.map(m => ({
-          assessmentType: (m.assessment_types as any)?.name || '',
-          assessment_type_id: (m.assessment_types as any)?.id || '',
-          weightage: m.weightage,
-        })) || [],
+        assessmentMappings:
+          mappings?.map((m) => ({
+            assessmentType: (m.assessment_types as any)?.name || '',
+            assessment_type_id: (m.assessment_types as any)?.id || '',
+            weightage: m.weightage,
+          })) || [],
       };
     })
   );
@@ -550,7 +553,7 @@ export const createLearningOutcome = async (
 
   // Create assessment mappings
   if (assessmentMappings && assessmentMappings.length > 0) {
-    const mappingsToInsert = assessmentMappings.map(mapping => ({
+    const mappingsToInsert = assessmentMappings.map((mapping) => ({
       learning_outcome_id: data.id,
       assessment_type_id: mapping.assessment_type_id,
       weightage: mapping.weightage,
@@ -586,14 +589,11 @@ export const updateLearningOutcome = async (
   if (error) throw error;
 
   // Delete existing mappings
-  await supabase
-    .from('outcome_assessment_mappings')
-    .delete()
-    .eq('learning_outcome_id', outcomeId);
+  await supabase.from('outcome_assessment_mappings').delete().eq('learning_outcome_id', outcomeId);
 
   // Create new mappings
   if (assessmentMappings && assessmentMappings.length > 0) {
-    const mappingsToInsert = assessmentMappings.map(mapping => ({
+    const mappingsToInsert = assessmentMappings.map((mapping) => ({
       learning_outcome_id: outcomeId,
       assessment_type_id: mapping.assessment_type_id,
       weightage: mapping.weightage,
@@ -620,13 +620,16 @@ export const deleteLearningOutcome = async (outcomeId: string): Promise<void> =>
 };
 
 // Validate curriculum before submission
-export const validateCurriculum = async (curriculumId: string): Promise<{
+export const validateCurriculum = async (
+  curriculumId: string
+): Promise<{
   isValid: boolean;
   errors: string[];
 }> => {
   try {
-    const { data, error } = await supabase
-      .rpc('validate_curriculum', { p_curriculum_id: curriculumId });
+    const { data, error } = await supabase.rpc('validate_curriculum', {
+      p_curriculum_id: curriculumId,
+    });
 
     if (error) {
       console.error('Validation RPC error:', error);
@@ -642,11 +645,13 @@ export const validateCurriculum = async (curriculumId: string): Promise<{
     } else {
       result = { is_valid: false, validation_errors: [] };
     }
-    
+
     return {
       isValid: result.is_valid || false,
-      errors: Array.isArray(result.validation_errors) 
-        ? result.validation_errors.map((e: any) => typeof e === 'string' ? e : e.message || String(e))
+      errors: Array.isArray(result.validation_errors)
+        ? result.validation_errors.map((e: any) =>
+            typeof e === 'string' ? e : e.message || String(e)
+          )
         : [],
     };
   } catch (error) {
@@ -654,7 +659,9 @@ export const validateCurriculum = async (curriculumId: string): Promise<{
     // Return a basic validation result instead of throwing
     return {
       isValid: false,
-      errors: ['Validation service unavailable. Please ensure you have added chapters and learning outcomes.'],
+      errors: [
+        'Validation service unavailable. Please ensure you have added chapters and learning outcomes.',
+      ],
     };
   }
 };
@@ -668,20 +675,19 @@ export const copyCurriculumTemplate = async (
 ): Promise<string> => {
   const schoolId = await getCurrentEducatorSchoolId();
   const educatorId = await getCurrentEducatorId();
-  
+
   if (!schoolId || !educatorId) {
     throw new Error('Educator not found');
   }
 
-  const { data, error } = await supabase
-    .rpc('copy_curriculum_template', {
-      p_source_curriculum_id: sourceCurriculumId,
-      p_target_school_id: schoolId,
-      p_target_subject: targetSubject,
-      p_target_class: targetClass,
-      p_target_academic_year: targetAcademicYear,
-      p_created_by: educatorId,
-    });
+  const { data, error } = await supabase.rpc('copy_curriculum_template', {
+    p_source_curriculum_id: sourceCurriculumId,
+    p_target_school_id: schoolId,
+    p_target_subject: targetSubject,
+    p_target_class: targetClass,
+    p_target_academic_year: targetAcademicYear,
+    p_created_by: educatorId,
+  });
 
   if (error) throw error;
   return data;

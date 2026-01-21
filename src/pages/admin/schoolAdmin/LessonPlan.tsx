@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   PlusCircleIcon,
   XMarkIcon,
@@ -24,14 +24,19 @@ import {
   AcademicCapIcon,
   VideoCameraIcon,
   PhotoIcon,
-} from "@heroicons/react/24/outline";
-import SearchBar from "../../../components/common/SearchBar";
-import { FileTextIcon } from "lucide-react";
-import { useCurriculum } from "../../../hooks/useLessonPlans";
-import type { LessonPlan as LessonPlanType } from "../../../services/lessonPlansService";
-import { getSubjects, getClasses, getAcademicYears, getCurrentAcademicYear } from "../../../services/curriculumService";
-import { supabase } from "../../../lib/supabaseClient";
-import { uploadFile, validateFile, deleteFile } from "../../../services/fileUploadService";
+} from '@heroicons/react/24/outline';
+import SearchBar from '../../../components/common/SearchBar';
+import { FileTextIcon } from 'lucide-react';
+import { useCurriculum } from '../../../hooks/useLessonPlans';
+import type { LessonPlan as LessonPlanType } from '../../../services/lessonPlansService';
+import {
+  getSubjects,
+  getClasses,
+  getAcademicYears,
+  getCurrentAcademicYear,
+} from '../../../services/curriculumService';
+import { supabase } from '../../../lib/supabaseClient';
+import { uploadFile, validateFile, deleteFile } from '../../../services/fileUploadService';
 
 /* ==============================
    TYPES & INTERFACES
@@ -64,7 +69,7 @@ interface Chapter {
   description: string;
   order: number;
   estimatedDuration?: number;
-  durationUnit?: "hours" | "weeks";
+  durationUnit?: 'hours' | 'weeks';
 }
 
 interface LearningOutcome {
@@ -113,31 +118,27 @@ const StatsCard = ({
   label,
   value,
   icon: Icon,
-  color = "blue",
+  color = 'blue',
 }: {
   label: string;
   value: number | string;
   icon: any;
-  color?: "blue" | "green" | "purple";
+  color?: 'blue' | 'green' | 'purple';
 }) => {
   const colorClasses = {
-    blue: "bg-blue-50 text-blue-600 border-blue-200",
-    green: "bg-green-50 text-green-600 border-green-200",
-    purple: "bg-purple-50 text-purple-600 border-purple-200",
+    blue: 'bg-blue-50 text-blue-600 border-blue-200',
+    green: 'bg-green-50 text-green-600 border-green-200',
+    purple: 'bg-purple-50 text-purple-600 border-purple-200',
   };
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
       <div className="flex items-center justify-between">
         <div className="flex-1">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-            {label}
-          </p>
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">{label}</p>
           <p className="text-2xl font-bold text-gray-900">{value}</p>
         </div>
-        <div
-          className={`p-3 rounded-xl border ${colorClasses[color]} transition-colors`}
-        >
+        <div className={`p-3 rounded-xl border ${colorClasses[color]} transition-colors`}>
           <Icon className="h-5 w-5" />
         </div>
       </div>
@@ -154,21 +155,21 @@ const ModalWrapper = ({
   children,
   isOpen,
   onClose,
-  size = "2xl",
+  size = '2xl',
 }: {
   title: string;
   subtitle?: string;
   children: React.ReactNode;
   isOpen: boolean;
   onClose: () => void;
-  size?: "lg" | "2xl" | "4xl";
+  size?: 'lg' | '2xl' | '4xl';
 }) => {
   if (!isOpen) return null;
 
   const sizeClasses = {
-    lg: "max-w-lg",
-    "2xl": "max-w-2xl",
-    "4xl": "max-w-4xl",
+    lg: 'max-w-lg',
+    '2xl': 'max-w-2xl',
+    '4xl': 'max-w-4xl',
   };
 
   return (
@@ -185,9 +186,7 @@ const ModalWrapper = ({
           <div className="flex items-start justify-between border-b border-gray-100 px-6 py-5">
             <div className="flex-1">
               <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
-              {subtitle && (
-                <p className="mt-1 text-sm text-gray-500">{subtitle}</p>
-              )}
+              {subtitle && <p className="mt-1 text-sm text-gray-500">{subtitle}</p>}
             </div>
             <button
               onClick={onClose}
@@ -223,9 +222,7 @@ const LessonPlanCard = ({
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1 min-w-0">
-          <h3 className="text-base font-semibold text-gray-900 line-clamp-1 mb-2">
-            {plan.title}
-          </h3>
+          <h3 className="text-base font-semibold text-gray-900 line-clamp-1 mb-2">{plan.title}</h3>
           {/* Status Badge on New Row */}
           <div>
             {plan.status === 'approved' ? (
@@ -279,9 +276,7 @@ const LessonPlanCard = ({
         </div>
         <div className="flex items-center gap-2 text-sm text-gray-600">
           <CalendarIcon className="h-4 w-4 flex-shrink-0" />
-          <span className="truncate">
-            {new Date(plan.date).toLocaleDateString()}
-          </span>
+          <span className="truncate">{new Date(plan.date).toLocaleDateString()}</span>
         </div>
         {plan.duration && (
           <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -295,17 +290,11 @@ const LessonPlanCard = ({
       <div className="pt-3 border-t border-gray-100 space-y-2">
         <div>
           <p className="text-xs font-medium text-gray-500 mb-1">Chapter:</p>
-          <p className="text-sm font-semibold text-indigo-700">
-            {plan.chapterName}
-          </p>
+          <p className="text-sm font-semibold text-indigo-700">{plan.chapterName}</p>
         </div>
         <div>
-          <p className="text-xs font-medium text-gray-500 mb-1">
-            Lesson Objectives:
-          </p>
-          <p className="text-sm text-gray-700 line-clamp-2">
-            {plan.learningObjectives}
-          </p>
+          <p className="text-xs font-medium text-gray-500 mb-1">Lesson Objectives:</p>
+          <p className="text-sm text-gray-700 line-clamp-2">{plan.learningObjectives}</p>
         </div>
       </div>
     </div>
@@ -316,18 +305,18 @@ const LessonPlanCard = ({
    HELPER FUNCTIONS
    ============================== */
 const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return "0 Bytes";
+  if (bytes === 0) return '0 Bytes';
   const k = 1024;
-  const sizes = ["Bytes", "KB", "MB", "GB"];
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + " " + sizes[i];
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
 };
 
 const getFileIcon = (fileName: string) => {
   const extension = fileName.split('.').pop()?.toLowerCase();
   const videoExtensions = ['mp4', 'mov', 'avi', 'wmv', 'mkv', 'webm'];
   const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp'];
-  
+
   if (extension && videoExtensions.includes(extension)) {
     return { icon: VideoCameraIcon, color: 'text-purple-600' };
   } else if (extension && imageExtensions.includes(extension)) {
@@ -385,12 +374,8 @@ const ViewLessonPlanModal = ({
         </div>
 
         <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3">
-          <p className="text-xs font-medium text-indigo-600 mb-1">
-            Chapter (from Curriculum)
-          </p>
-          <p className="text-sm font-semibold text-indigo-900">
-            {plan.chapterName}
-          </p>
+          <p className="text-xs font-medium text-indigo-600 mb-1">Chapter (from Curriculum)</p>
+          <p className="text-sm font-semibold text-indigo-900">{plan.chapterName}</p>
         </div>
 
         {/* Content Sections */}
@@ -440,20 +425,17 @@ const ViewLessonPlanModal = ({
                       >
                         <FileIcon className={`h-5 w-5 ${color} flex-shrink-0`} />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">
-                            {file.name}
-                          </p>
+                          <p className="text-sm font-medium text-gray-900 truncate">{file.name}</p>
                           <div className="flex items-center gap-2">
-                            <p className="text-xs text-gray-500">
-                              {formatFileSize(file.size)}
-                            </p>
+                            <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
                           </div>
                         </div>
                         {file.url && (
                           <div className="flex items-center gap-2 flex-shrink-0">
                             <button
                               onClick={() => {
-                                const storageApiUrl = 'https://storage-api.dark-mode-d021.workers.dev';
+                                const storageApiUrl =
+                                  'https://storage-api.dark-mode-d021.workers.dev';
                                 let viewUrl;
                                 // Extract key from lesson-plans URL pattern
                                 if (file.url!.includes('lesson-plans/')) {
@@ -474,10 +456,11 @@ const ViewLessonPlanModal = ({
                             >
                               {/* View */}
                             </button>
-                            
+
                             <button
                               onClick={() => {
-                                const storageApiUrl = 'https://storage-api.dark-mode-d021.workers.dev';
+                                const storageApiUrl =
+                                  'https://storage-api.dark-mode-d021.workers.dev';
                                 let downloadUrl;
                                 // Extract key from lesson-plans URL pattern
                                 if (file.url!.includes('lesson-plans/')) {
@@ -519,9 +502,7 @@ const ViewLessonPlanModal = ({
                     >
                       <LinkIcon className="h-5 w-5 text-blue-600 flex-shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900">
-                          {link.title}
-                        </p>
+                        <p className="text-sm font-medium text-gray-900">{link.title}</p>
                         <a
                           href={link.url}
                           target="_blank"
@@ -538,10 +519,10 @@ const ViewLessonPlanModal = ({
             )}
 
             {!plan.requiredMaterials &&
-             (!plan.resourceFiles || plan.resourceFiles.length === 0) &&
-             (!plan.resourceLinks || plan.resourceLinks.length === 0) && (
-              <p className="text-sm text-gray-500 italic">No materials added</p>
-            )}
+              (!plan.resourceFiles || plan.resourceFiles.length === 0) &&
+              (!plan.resourceLinks || plan.resourceLinks.length === 0) && (
+                <p className="text-sm text-gray-500 italic">No materials added</p>
+              )}
           </div>
 
           <div className="border border-gray-200 rounded-lg p-4">
@@ -579,11 +560,13 @@ const ViewLessonPlanModal = ({
                 <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold text-gray-700">Total</span>
-                    <span className={`text-sm font-bold ${
-                      plan.evaluationItems.reduce((sum, item) => sum + item.percentage, 0) === 100
-                        ? 'text-green-600'
-                        : 'text-amber-600'
-                    }`}>
+                    <span
+                      className={`text-sm font-bold ${
+                        plan.evaluationItems.reduce((sum, item) => sum + item.percentage, 0) === 100
+                          ? 'text-green-600'
+                          : 'text-amber-600'
+                      }`}
+                    >
                       {plan.evaluationItems.reduce((sum, item) => sum + item.percentage, 0)}%
                     </span>
                   </div>
@@ -591,9 +574,10 @@ const ViewLessonPlanModal = ({
               </div>
             )}
 
-            {!plan.evaluationCriteria && (!plan.evaluationItems || plan.evaluationItems.length === 0) && (
-              <p className="text-sm text-gray-500 italic">No evaluation criteria added</p>
-            )}
+            {!plan.evaluationCriteria &&
+              (!plan.evaluationItems || plan.evaluationItems.length === 0) && (
+                <p className="text-sm text-gray-500 italic">No evaluation criteria added</p>
+              )}
           </div>
 
           {/* Optional Fields */}
@@ -631,8 +615,15 @@ const ViewLessonPlanModal = ({
    ============================== */
 interface LessonPlanProps {
   initialLessonPlans?: LessonPlanType[];
-  onCreateLessonPlan?: (formData: any, classId: string | null) => Promise<{ data: any; error: any }>;
-  onUpdateLessonPlan?: (id: string, formData: any, classId: string | null) => Promise<{ data: any; error: any }>;
+  onCreateLessonPlan?: (
+    formData: any,
+    classId: string | null
+  ) => Promise<{ data: any; error: any }>;
+  onUpdateLessonPlan?: (
+    id: string,
+    formData: any,
+    classId: string | null
+  ) => Promise<{ data: any; error: any }>;
   onDeleteLessonPlan?: (id: string) => Promise<{ error: any }>;
   subjects?: string[];
   classes?: any[];
@@ -653,29 +644,29 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
 }) => {
   // State for dynamic data from database
   const [subjects, setSubjects] = useState<string[]>(propSubjects || []);
-  const [classes, setClasses] = useState<string[]>(propClasses?.map(c => c.grade || c) || []);
+  const [classes, setClasses] = useState<string[]>(propClasses?.map((c) => c.grade || c) || []);
   const [academicYears, setAcademicYears] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Convert backend data to UI format
   const convertToUIFormat = (backendPlans: LessonPlanType[]): LessonPlan[] => {
-    return backendPlans.map(plan => ({
+    return backendPlans.map((plan) => ({
       id: plan.id,
       title: plan.title,
       subject: plan.subject,
       class: plan.class_name,
       academicYear: plan.academic_year,
       date: plan.date,
-      chapterId: plan.chapter_id || "",
-      chapterName: plan.chapter_name || "",
-      duration: plan.duration ? `${plan.duration} minutes` : "",
+      chapterId: plan.chapter_id || '',
+      chapterName: plan.chapter_name || '',
+      duration: plan.duration ? `${plan.duration} minutes` : '',
       selectedLearningOutcomes: plan.selected_learning_outcomes || [],
       learningObjectives: plan.learning_objectives,
-      teachingMethodology: plan.teaching_methodology || "",
-      requiredMaterials: plan.required_materials || "",
+      teachingMethodology: plan.teaching_methodology || '',
+      requiredMaterials: plan.required_materials || '',
       resourceFiles: plan.resource_files || [],
       resourceLinks: plan.resource_links || [],
-      evaluationCriteria: plan.evaluation_criteria || "",
+      evaluationCriteria: plan.evaluation_criteria || '',
       evaluationItems: plan.evaluation_items || [],
       homework: plan.homework,
       differentiationNotes: plan.differentiation_notes,
@@ -696,24 +687,24 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
   const [showEditor, setShowEditor] = useState(false);
   const [editingPlan, setEditingPlan] = useState<LessonPlan | null>(null);
   const [viewingPlan, setViewingPlan] = useState<LessonPlan | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [subjectFilter, setSubjectFilter] = useState<string>("");
-  const [gradeFilter, setGradeFilter] = useState<string>("");
-  const [academicYearFilter, setAcademicYearFilter] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState('');
+  const [subjectFilter, setSubjectFilter] = useState<string>('');
+  const [gradeFilter, setGradeFilter] = useState<string>('');
+  const [academicYearFilter, setAcademicYearFilter] = useState<string>('');
 
   const [formData, setFormData] = useState({
-    title: "",
-    subject: "",
-    class: "",
-    academicYear: "",
-    date: "",
-    chapterId: "",
-    learningObjectives: "",
-    teachingMethodology: "",
-    requiredMaterials: "",
-    evaluationCriteria: "",
-    homework: "",
-    differentiationNotes: "",
+    title: '',
+    subject: '',
+    class: '',
+    academicYear: '',
+    date: '',
+    chapterId: '',
+    learningObjectives: '',
+    teachingMethodology: '',
+    requiredMaterials: '',
+    evaluationCriteria: '',
+    homework: '',
+    differentiationNotes: '',
   });
 
   // Load subjects, classes, and academic years from database
@@ -726,14 +717,14 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
           getAcademicYears(),
           getCurrentAcademicYear(),
         ]);
-        
+
         setSubjects(subjectsData);
         setClasses(classesData);
         setAcademicYears(yearsData);
-        
+
         // Set current academic year as default for new lesson plans
         if (currentYear && !formData.academicYear) {
-          setFormData(prev => ({ ...prev, academicYear: currentYear }));
+          setFormData((prev) => ({ ...prev, academicYear: currentYear }));
         }
       } catch (error) {
         console.error('Error loading filter data:', error);
@@ -754,13 +745,13 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
 
   const [resourceFiles, setResourceFiles] = useState<ResourceFile[]>([]);
   const [resourceLinks, setResourceLinks] = useState<ResourceLink[]>([]);
-  const [newLinkTitle, setNewLinkTitle] = useState("");
-  const [newLinkUrl, setNewLinkUrl] = useState("");
+  const [newLinkTitle, setNewLinkTitle] = useState('');
+  const [newLinkUrl, setNewLinkUrl] = useState('');
   const [showAddLink, setShowAddLink] = useState(false);
 
   const [evaluationItems, setEvaluationItems] = useState<EvaluationCriteria[]>([]);
-  const [newCriterion, setNewCriterion] = useState("");
-  const [newPercentage, setNewPercentage] = useState("");
+  const [newCriterion, setNewCriterion] = useState('');
+  const [newPercentage, setNewPercentage] = useState('');
   const [showAddCriterion, setShowAddCriterion] = useState(false);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -769,8 +760,11 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
 
   // Use curriculum hook for backend data
-  const { chapters, learningOutcomes, loadChapters, loadLearningOutcomes } = 
-    useCurriculum(formData.subject, formData.class, formData.academicYear);
+  const { chapters, learningOutcomes, loadChapters, loadLearningOutcomes } = useCurriculum(
+    formData.subject,
+    formData.class,
+    formData.academicYear
+  );
 
   // Load chapters when subject and class are selected
   useEffect(() => {
@@ -791,15 +785,11 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
     const q = searchQuery.toLowerCase();
     return lessonPlans.filter((plan) => {
       const matchesSearch =
-        q === "" ||
-        plan.title.toLowerCase().includes(q) ||
-        plan.subject.toLowerCase().includes(q);
-      const matchesSubject =
-        subjectFilter === "" || plan.subject === subjectFilter;
-      const matchesGrade =
-        gradeFilter === "" || plan.class === gradeFilter;
+        q === '' || plan.title.toLowerCase().includes(q) || plan.subject.toLowerCase().includes(q);
+      const matchesSubject = subjectFilter === '' || plan.subject === subjectFilter;
+      const matchesGrade = gradeFilter === '' || plan.class === gradeFilter;
       const matchesAcademicYear =
-        academicYearFilter === "" || plan.academicYear === academicYearFilter;
+        academicYearFilter === '' || plan.academicYear === academicYearFilter;
       return matchesSearch && matchesSubject && matchesGrade && matchesAcademicYear;
     });
   }, [lessonPlans, searchQuery, subjectFilter, gradeFilter, academicYearFilter]);
@@ -813,10 +803,13 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
       const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
       return planDate >= today && planDate <= weekFromNow;
     }).length,
-    bySubject: subjects.reduce((acc, subject) => {
-      acc[subject] = lessonPlans.filter((p) => p.subject === subject).length;
-      return acc;
-    }, {} as Record<string, number>),
+    bySubject: subjects.reduce(
+      (acc, subject) => {
+        acc[subject] = lessonPlans.filter((p) => p.subject === subject).length;
+        return acc;
+      },
+      {} as Record<string, number>
+    ),
   };
 
   // Get available chapters from curriculum hook
@@ -841,28 +834,28 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
   // Reset form
   const resetForm = () => {
     setFormData({
-      title: "",
-      subject: "",
-      class: "",
-      academicYear: "",
-      date: "",
-      chapterId: "",
-      learningObjectives: "",
-      teachingMethodology: "",
-      requiredMaterials: "",
-      evaluationCriteria: "",
-      homework: "",
-      differentiationNotes: "",
+      title: '',
+      subject: '',
+      class: '',
+      academicYear: '',
+      date: '',
+      chapterId: '',
+      learningObjectives: '',
+      teachingMethodology: '',
+      requiredMaterials: '',
+      evaluationCriteria: '',
+      homework: '',
+      differentiationNotes: '',
     });
     setSelectedLearningOutcomes([]);
     setResourceFiles([]);
     setResourceLinks([]);
-    setNewLinkTitle("");
-    setNewLinkUrl("");
+    setNewLinkTitle('');
+    setNewLinkUrl('');
     setShowAddLink(false);
     setEvaluationItems([]);
-    setNewCriterion("");
-    setNewPercentage("");
+    setNewCriterion('');
+    setNewPercentage('');
     setShowAddCriterion(false);
     setErrors({});
     setEditingPlan(null);
@@ -879,11 +872,27 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        
+
         // Validate file
         const validation = validateFile(file, {
           maxSize: 50, // 50MB max
-          allowedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'jpg', 'jpeg', 'png', 'gif', 'mp4', 'mov', 'avi', 'wmv', 'mkv', 'webm']
+          allowedTypes: [
+            'pdf',
+            'doc',
+            'docx',
+            'ppt',
+            'pptx',
+            'jpg',
+            'jpeg',
+            'png',
+            'gif',
+            'mp4',
+            'mov',
+            'avi',
+            'wmv',
+            'mkv',
+            'webm',
+          ],
         });
 
         if (!validation.valid) {
@@ -893,16 +902,16 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
 
         // Set upload progress
         const fileId = `${Date.now()}_${i}`;
-        setUploadProgress(prev => ({ ...prev, [fileId]: 0 }));
+        setUploadProgress((prev) => ({ ...prev, [fileId]: 0 }));
 
         // Upload file to R2 storage
         const uploadResult = await uploadFile(
           file,
           'lesson-plans', // folder for lesson plan files
           (progress) => {
-            setUploadProgress(prev => ({ 
-              ...prev, 
-              [fileId]: Math.round(progress.percentage) 
+            setUploadProgress((prev) => ({
+              ...prev,
+              [fileId]: Math.round(progress.percentage),
             }));
           }
         );
@@ -921,7 +930,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
         }
 
         // Clear progress for this file
-        setUploadProgress(prev => {
+        setUploadProgress((prev) => {
           const newProgress = { ...prev };
           delete newProgress[fileId];
           return newProgress;
@@ -930,21 +939,20 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
 
       // Add successfully uploaded files to the list
       if (newUploadedFiles.length > 0) {
-        setResourceFiles(prev => [...prev, ...newUploadedFiles]);
+        setResourceFiles((prev) => [...prev, ...newUploadedFiles]);
       }
-
     } catch (error) {
       console.error('File upload error:', error);
       alert('Error uploading files. Please try again.');
     } finally {
       setUploadingFiles(false);
-      e.target.value = ""; // Reset input
+      e.target.value = ''; // Reset input
     }
   };
 
   // Remove file and delete from storage
   const handleRemoveFile = async (fileId: string) => {
-    const fileToRemove = resourceFiles.find(f => f.id === fileId);
+    const fileToRemove = resourceFiles.find((f) => f.id === fileId);
     if (fileToRemove?.url) {
       try {
         // Delete from R2 storage
@@ -966,8 +974,8 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
         url: newLinkUrl.trim(),
       };
       setResourceLinks([...resourceLinks, newLink]);
-      setNewLinkTitle("");
-      setNewLinkUrl("");
+      setNewLinkTitle('');
+      setNewLinkUrl('');
       setShowAddLink(false);
     }
   };
@@ -993,8 +1001,8 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
         percentage: percentage,
       };
       setEvaluationItems([...evaluationItems, newItem]);
-      setNewCriterion("");
-      setNewPercentage("");
+      setNewCriterion('');
+      setNewPercentage('');
       setShowAddCriterion(false);
     }
   };
@@ -1015,41 +1023,45 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
 
     // Basic required fields
     if (!formData.title.trim()) {
-      newErrors.title = "Lesson title is required";
+      newErrors.title = 'Lesson title is required';
     }
     if (!formData.subject) {
-      newErrors.subject = "Please select a subject";
+      newErrors.subject = 'Please select a subject';
     }
     if (!formData.class) {
-      newErrors.class = "Please select a class";
+      newErrors.class = 'Please select a class';
     }
     if (!formData.academicYear) {
-      newErrors.academicYear = "Please select an academic year";
+      newErrors.academicYear = 'Please select an academic year';
     }
     if (!formData.date) {
-      newErrors.date = "Please select a date for the lesson";
+      newErrors.date = 'Please select a date for the lesson';
     }
-    
+
     // Curriculum-linked fields
     if (!formData.chapterId) {
-      newErrors.chapterId = "Please select a chapter from curriculum";
+      newErrors.chapterId = 'Please select a chapter from curriculum';
     }
     if (selectedLearningOutcomes.length === 0) {
-      newErrors.learningOutcomes = "Please select at least one learning outcome";
+      newErrors.learningOutcomes = 'Please select at least one learning outcome';
     }
-    
+
     // Content fields
     if (!formData.learningObjectives.trim()) {
-      newErrors.learningObjectives = "Lesson Objectives are required";
+      newErrors.learningObjectives = 'Lesson Objectives are required';
     }
     if (!formData.teachingMethodology.trim()) {
-      newErrors.teachingMethodology = "Teaching Methodology is required";
+      newErrors.teachingMethodology = 'Teaching Methodology is required';
     }
-    if (!formData.requiredMaterials.trim() && resourceFiles.length === 0 && resourceLinks.length === 0) {
-      newErrors.requiredMaterials = "Please provide at least one material (text, file, or link)";
+    if (
+      !formData.requiredMaterials.trim() &&
+      resourceFiles.length === 0 &&
+      resourceLinks.length === 0
+    ) {
+      newErrors.requiredMaterials = 'Please provide at least one material (text, file, or link)';
     }
     if (!formData.evaluationCriteria.trim() && evaluationItems.length === 0) {
-      newErrors.evaluationCriteria = "Evaluation Criteria are required";
+      newErrors.evaluationCriteria = 'Evaluation Criteria are required';
     }
 
     setErrors(newErrors);
@@ -1067,13 +1079,15 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
     try {
       // Find class ID - need to fetch from school_classes using grade and academic year
       let classId: string | null = null;
-      
+
       if (formData.class && formData.academicYear) {
         // Get school_id from current user if not provided
         let currentSchoolId = schoolId;
         if (!currentSchoolId) {
           // Fetch school_id from current educator
-          const { data: { user } } = await supabase.auth.getUser();
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
           if (user) {
             const { data: educatorData } = await supabase
               .from('school_educators')
@@ -1083,7 +1097,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
             currentSchoolId = educatorData?.school_id || null;
           }
         }
-        
+
         if (currentSchoolId) {
           // Fetch the actual class ID from school_classes table
           // Use limit(1) to handle multiple classes with same grade/year
@@ -1094,19 +1108,19 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
             .eq('grade', formData.class)
             .eq('academic_year', formData.academicYear)
             .limit(1);
-          
+
           if (classError) {
             console.error('Error fetching class:', classError);
           }
-          
+
           const classData = classDataArray?.[0];
           classId = classData?.id || null;
-          
+
           if (!classId) {
             console.warn('No class found for:', {
               school_id: currentSchoolId,
               grade: formData.class,
-              academic_year: formData.academicYear
+              academic_year: formData.academicYear,
             });
           }
         } else {
@@ -1118,25 +1132,26 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
             .eq('grade', formData.class)
             .eq('academic_year', formData.academicYear)
             .limit(1);
-          
+
           const classData = classDataArray?.[0];
-          
+
           if (classError) {
             console.error('Error fetching class (no school filter):', classError);
           }
-          
+
           if (classData) {
             classId = classData.id;
             console.log('Found class:', classData);
           }
         }
       }
-      
+
       // Fallback: try to find from propClasses
       if (!classId && propClasses) {
-        const classObj = propClasses?.find((c: any) => 
-          (c.grade === formData.class || c === formData.class) &&
-          (!formData.academicYear || c.academic_year === formData.academicYear)
+        const classObj = propClasses?.find(
+          (c: any) =>
+            (c.grade === formData.class || c === formData.class) &&
+            (!formData.academicYear || c.academic_year === formData.academicYear)
         );
         classId = classObj?.id || null;
       }
@@ -1155,15 +1170,13 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
         if (onUpdateLessonPlan) {
           const { data, error } = await onUpdateLessonPlan(editingPlan.id, submitData, classId);
           if (error) {
-            alert("Error updating lesson plan: " + error);
+            alert('Error updating lesson plan: ' + error);
             setSubmitting(false);
             return;
           }
           if (data) {
             const converted = convertToUIFormat([data])[0];
-            setLessonPlans((prev) =>
-              prev.map((p) => (p.id === editingPlan.id ? converted : p))
-            );
+            setLessonPlans((prev) => prev.map((p) => (p.id === editingPlan.id ? converted : p)));
           }
         } else {
           // Fallback to local state update
@@ -1177,7 +1190,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                 ? {
                     ...p,
                     ...formData,
-                    chapterName: chapter?.name || "",
+                    chapterName: chapter?.name || '',
                     duration,
                     selectedLearningOutcomes,
                     resourceFiles,
@@ -1194,7 +1207,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
         if (onCreateLessonPlan) {
           const { data, error } = await onCreateLessonPlan(submitData, classId);
           if (error) {
-            alert("Error creating lesson plan: " + error);
+            alert('Error creating lesson plan: ' + error);
             setSubmitting(false);
             return;
           }
@@ -1211,7 +1224,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
           const newPlan: LessonPlan = {
             id: Date.now().toString(),
             ...formData,
-            chapterName: chapter?.name || "",
+            chapterName: chapter?.name || '',
             duration,
             selectedLearningOutcomes,
             resourceFiles,
@@ -1226,8 +1239,8 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
       resetForm();
       setShowEditor(false);
     } catch (error: any) {
-      console.error("Error saving lesson plan:", error);
-      alert("Error: " + (error.message || "Failed to save lesson plan"));
+      console.error('Error saving lesson plan:', error);
+      alert('Error: ' + (error.message || 'Failed to save lesson plan'));
     } finally {
       setSubmitting(false);
     }
@@ -1239,27 +1252,27 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
     if (plan.subject && plan.class) {
       await loadCurriculumData(plan.subject, plan.class);
     }
-    
+
     // If academic year is not set, try to get the current academic year as default
-    let academicYear = plan.academicYear || "";
+    let academicYear = plan.academicYear || '';
     if (!academicYear) {
       const currentYear = await getCurrentAcademicYear();
-      academicYear = currentYear || "";
+      academicYear = currentYear || '';
     }
-    
+
     setFormData({
       title: plan.title,
       subject: plan.subject,
       class: plan.class,
       academicYear: academicYear,
       date: plan.date,
-      chapterId: plan.chapterId || "",
+      chapterId: plan.chapterId || '',
       learningObjectives: plan.learningObjectives,
       teachingMethodology: plan.teachingMethodology,
       requiredMaterials: plan.requiredMaterials,
       evaluationCriteria: plan.evaluationCriteria,
-      homework: plan.homework || "",
-      differentiationNotes: plan.differentiationNotes || "",
+      homework: plan.homework || '',
+      differentiationNotes: plan.differentiationNotes || '',
     });
     setSelectedLearningOutcomes(plan.selectedLearningOutcomes || []);
     setResourceFiles(plan.resourceFiles || []);
@@ -1275,20 +1288,20 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
     if (plan.subject && plan.class) {
       await loadCurriculumData(plan.subject, plan.class);
     }
-    
+
     setFormData({
       title: `${plan.title} (Copy)`,
       subject: plan.subject,
       class: plan.class,
-      academicYear: plan.academicYear || "",
-      date: "",
-      chapterId: plan.chapterId || "",
+      academicYear: plan.academicYear || '',
+      date: '',
+      chapterId: plan.chapterId || '',
       learningObjectives: plan.learningObjectives,
       teachingMethodology: plan.teachingMethodology,
       requiredMaterials: plan.requiredMaterials,
       evaluationCriteria: plan.evaluationCriteria,
-      homework: plan.homework || "",
-      differentiationNotes: plan.differentiationNotes || "",
+      homework: plan.homework || '',
+      differentiationNotes: plan.differentiationNotes || '',
     });
     setSelectedLearningOutcomes(plan.selectedLearningOutcomes || []);
     setResourceFiles(plan.resourceFiles || []);
@@ -1335,7 +1348,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                 // Set current academic year as default for new lesson plans
                 const currentYear = await getCurrentAcademicYear();
                 if (currentYear) {
-                  setFormData(prev => ({ ...prev, academicYear: currentYear }));
+                  setFormData((prev) => ({ ...prev, academicYear: currentYear }));
                 }
                 setShowEditor(true);
               }}
@@ -1352,12 +1365,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
         <>
           {/* Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-            <StatsCard
-              label="Total Plans"
-              value={stats.total}
-              icon={FileTextIcon}
-              color="blue"
-            />
+            <StatsCard label="Total Plans" value={stats.total} icon={FileTextIcon} color="blue" />
             <StatsCard
               label="This Week"
               value={stats.thisWeek}
@@ -1366,7 +1374,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
             />
             <StatsCard
               label="Subjects Covered"
-              value={Object.keys(stats.bySubject).filter(s => stats.bySubject[s] > 0).length}
+              value={Object.keys(stats.bySubject).filter((s) => stats.bySubject[s] > 0).length}
               icon={BookOpenIcon}
               color="green"
             />
@@ -1428,15 +1436,17 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
             {(searchQuery || subjectFilter || gradeFilter || academicYearFilter) && (
               <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
                 <p className="text-sm text-gray-600">
-                  Showing <span className="font-semibold text-gray-900">{filteredPlans.length}</span> of{" "}
-                  <span className="font-semibold text-gray-900">{lessonPlans.length}</span> lesson plans
+                  Showing{' '}
+                  <span className="font-semibold text-gray-900">{filteredPlans.length}</span> of{' '}
+                  <span className="font-semibold text-gray-900">{lessonPlans.length}</span> lesson
+                  plans
                 </p>
                 <button
                   onClick={() => {
-                    setSearchQuery("");
-                    setSubjectFilter("");
-                    setGradeFilter("");
-                    setAcademicYearFilter("");
+                    setSearchQuery('');
+                    setSubjectFilter('');
+                    setGradeFilter('');
+                    setAcademicYearFilter('');
                   }}
                   className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
                 >
@@ -1461,14 +1471,12 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                     <FileTextIcon className="h-12 w-12 text-gray-400" />
                   </div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    {lessonPlans.length === 0
-                      ? "No lesson plans yet"
-                      : "No matching lesson plans"}
+                    {lessonPlans.length === 0 ? 'No lesson plans yet' : 'No matching lesson plans'}
                   </h3>
                   <p className="text-sm text-gray-500 max-w-sm">
                     {lessonPlans.length === 0
-                      ? "Create your first lesson plan to get started with structured teaching"
-                      : "Try adjusting your search or filter criteria"}
+                      ? 'Create your first lesson plan to get started with structured teaching'
+                      : 'Try adjusting your search or filter criteria'}
                   </p>
                   {lessonPlans.length === 0 && (
                     <button
@@ -1506,7 +1514,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-semibold text-gray-900">
-                  {editingPlan ? "Edit Lesson Plan" : "Create New Lesson Plan"}
+                  {editingPlan ? 'Edit Lesson Plan' : 'Create New Lesson Plan'}
                 </h2>
                 <p className="text-sm text-gray-500 mt-1">
                   Fill in all required fields and submit for coordinator approval
@@ -1557,23 +1565,17 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                     <input
                       type="text"
                       value={formData.title}
-                      onChange={(e) =>
-                        setFormData({ ...formData, title: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                       className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
                       placeholder="e.g., Introduction to Algebra"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Subject
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Subject</label>
                     <select
                       value={formData.subject}
-                      onChange={(e) =>
-                        setFormData({ ...formData, subject: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
                       className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
                     >
                       <option value="">Select Subject</option>
@@ -1586,14 +1588,10 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Class
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Class</label>
                     <select
                       value={formData.class}
-                      onChange={(e) =>
-                        setFormData({ ...formData, class: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, class: e.target.value })}
                       className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
                     >
                       <option value="">Select Class</option>
@@ -1612,7 +1610,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                     <select
                       value={formData.academicYear}
                       onChange={(e) => {
-                        setFormData({ ...formData, academicYear: e.target.value, chapterId: "" });
+                        setFormData({ ...formData, academicYear: e.target.value, chapterId: '' });
                         setSelectedLearningOutcomes([]); // Reset when academic year changes
                       }}
                       className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors"
@@ -1641,40 +1639,36 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                       }}
                       disabled={!formData.subject || !formData.class || !formData.academicYear}
                       className={`w-full px-4 py-2.5 rounded-lg border ${
-                        errors.chapterId ? "border-red-300" : "border-gray-300"
+                        errors.chapterId ? 'border-red-300' : 'border-gray-300'
                       } text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed`}
                     >
                       <option value="">
                         {!formData.subject || !formData.class || !formData.academicYear
-                          ? "Select subject, class, and academic year first"
-                          : "Select Chapter from Curriculum"}
+                          ? 'Select subject, class, and academic year first'
+                          : 'Select Chapter from Curriculum'}
                       </option>
                       {availableChapters.map((chapter) => (
                         <option key={chapter.id} value={chapter.id}>
-                          {chapter.code ? `${chapter.code} - ` : ""}
+                          {chapter.code ? `${chapter.code} - ` : ''}
                           {chapter.name}
                           {chapter.estimatedDuration
                             ? ` (${chapter.estimatedDuration} ${chapter.durationUnit})`
-                            : ""}
+                            : ''}
                         </option>
                       ))}
                     </select>
                     {errors.chapterId && (
                       <p className="text-red-500 text-xs mt-1">{errors.chapterId}</p>
                     )}
-                    <p className="text-xs text-gray-500 mt-1">
-                      Chapter from approved curriculum
-                    </p>
+                    <p className="text-xs text-gray-500 mt-1">Chapter from approved curriculum</p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Duration
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Duration</label>
                     <div className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm text-gray-700">
                       {selectedChapter?.estimatedDuration
                         ? `${selectedChapter.estimatedDuration} ${selectedChapter.durationUnit}`
-                        : "Select chapter to see duration"}
+                        : 'Select chapter to see duration'}
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
                       Auto-filled from curriculum chapter
@@ -1688,13 +1682,11 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                     <input
                       type="date"
                       value={formData.date}
-                      onChange={(e) =>
-                        setFormData({ ...formData, date: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                       className={`w-full px-4 py-2.5 rounded-lg border text-sm focus:ring-2 transition-colors ${
                         errors.date
-                          ? "border-red-300 focus:border-red-500 focus:ring-red-500/20"
-                          : "border-gray-300 focus:border-indigo-500 focus:ring-indigo-500/20"
+                          ? 'border-red-300 focus:border-red-500 focus:ring-red-500/20'
+                          : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500/20'
                       }`}
                     />
                     {errors.date && (
@@ -1731,9 +1723,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                               ]);
                             } else {
                               setSelectedLearningOutcomes(
-                                selectedLearningOutcomes.filter(
-                                  (id) => id !== outcome.id
-                                )
+                                selectedLearningOutcomes.filter((id) => id !== outcome.id)
                               );
                             }
                           }}
@@ -1754,15 +1744,13 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                   <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg text-center">
                     <p className="text-sm text-gray-600">
                       {formData.chapterId
-                        ? "No learning outcomes found for this chapter"
-                        : "Select a chapter to see available learning outcomes"}
+                        ? 'No learning outcomes found for this chapter'
+                        : 'Select a chapter to see available learning outcomes'}
                     </p>
                   </div>
                 )}
                 {errors.learningOutcomes && (
-                  <p className="text-red-500 text-xs mt-2">
-                    {errors.learningOutcomes}
-                  </p>
+                  <p className="text-red-500 text-xs mt-2">{errors.learningOutcomes}</p>
                 )}
                 <p className="text-xs text-gray-500 mt-2">
                   Select mapped learning outcomes from curriculum
@@ -1785,14 +1773,12 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                   }
                   rows={4}
                   className={`w-full px-4 py-3 rounded-lg border ${
-                    errors.learningObjectives ? "border-red-300" : "border-gray-300"
+                    errors.learningObjectives ? 'border-red-300' : 'border-gray-300'
                   } text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors resize-none`}
                   placeholder="What should students learn and be able to do after this lesson? Describe specific, measurable learning objectives derived from the selected outcomes above..."
                 />
                 {errors.learningObjectives && (
-                  <p className="text-red-500 text-xs mt-1">
-                    {errors.learningObjectives}
-                  </p>
+                  <p className="text-red-500 text-xs mt-1">{errors.learningObjectives}</p>
                 )}
                 <p className="text-xs text-gray-500 mt-1">
                   Editable text derived from selected learning outcomes
@@ -1812,7 +1798,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                   }
                   rows={5}
                   className={`w-full px-4 py-3 rounded-lg border ${
-                    errors.teachingMethodology ? "border-red-300" : "border-gray-300"
+                    errors.teachingMethodology ? 'border-red-300' : 'border-gray-300'
                   } text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors resize-none`}
                   placeholder="Describe your teaching methodology and activities. Examples: Inquiry-based learning, Lecture + Discussion, Activity-based, etc..."
                 />
@@ -1854,13 +1840,13 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                   </label>
                   <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-indigo-400 transition-colors">
                     <div className="flex items-center justify-center">
-                      <label className={`flex flex-col items-center cursor-pointer ${uploadingFiles ? 'pointer-events-none opacity-50' : ''}`}>
+                      <label
+                        className={`flex flex-col items-center cursor-pointer ${uploadingFiles ? 'pointer-events-none opacity-50' : ''}`}
+                      >
                         {uploadingFiles ? (
                           <>
                             <ArrowPathIcon className="h-8 w-8 text-indigo-600 mb-2 animate-spin" />
-                            <span className="text-sm text-indigo-600 mb-1">
-                              Uploading files...
-                            </span>
+                            <span className="text-sm text-indigo-600 mb-1">Uploading files...</span>
                             <span className="text-xs text-gray-500">
                               Please wait while files are being uploaded
                             </span>
@@ -1905,27 +1891,28 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                                 {file.name}
                               </p>
                               <div className="flex items-center gap-2">
-                                <p className="text-xs text-gray-500">
-                                  {formatFileSize(file.size)}
-                                </p>
+                                <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
                                 {file.url && (
                                   <div className="flex items-center gap-1">
                                     <button
                                       onClick={() => {
-                                        console.log('🔍 VIEW BUTTON CLICKED (MODAL) - DEBUGGING START');
+                                        console.log(
+                                          '🔍 VIEW BUTTON CLICKED (MODAL) - DEBUGGING START'
+                                        );
                                         console.log('📄 File Object (Modal):', file);
                                         console.log('🔗 Original File URL (Modal):', file.url);
                                         console.log('📝 File Name (Modal):', file.name);
                                         console.log('📊 File Size (Modal):', file.size);
                                         console.log('🏷️ File Type (Modal):', file.type);
-                                        
+
                                         // Use the storage API endpoint directly for inline viewing
-                                        const storageApiUrl = 'https://storage-api.dark-mode-d021.workers.dev';
-                                        
+                                        const storageApiUrl =
+                                          'https://storage-api.dark-mode-d021.workers.dev';
+
                                         // Try different URL construction methods
                                         let viewUrl;
                                         let method = 'unknown';
-                                        
+
                                         // Method 1: If the URL contains a key pattern, extract it
                                         if (file.url!.includes('lesson-plans/')) {
                                           const keyMatch = file.url!.match(/lesson-plans\/(.+)$/);
@@ -1935,61 +1922,86 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                                             method = 'key-extraction';
                                             console.log('🔑 Using KEY method (Modal)');
                                             console.log('🔑 Extracted Key (Modal):', extractedKey);
-                                            console.log('🔑 Encoded Key (Modal):', encodeURIComponent(extractedKey));
+                                            console.log(
+                                              '🔑 Encoded Key (Modal):',
+                                              encodeURIComponent(extractedKey)
+                                            );
                                           }
                                         }
-                                        
+
                                         // Method 2: Use the full URL parameter
                                         if (!viewUrl) {
                                           viewUrl = `${storageApiUrl}/document-access?url=${encodeURIComponent(file.url!)}&mode=inline`;
                                           method = 'full-url';
                                           console.log('🌐 Using FULL URL method (Modal)');
-                                          console.log('🌐 Encoded URL (Modal):', encodeURIComponent(file.url!));
+                                          console.log(
+                                            '🌐 Encoded URL (Modal):',
+                                            encodeURIComponent(file.url!)
+                                          );
                                         }
-                                        
+
                                         console.log('⚙️ Method Used (Modal):', method);
                                         console.log('🎯 Final View URL (Modal):', viewUrl);
                                         console.log('📋 URL Length (Modal):', viewUrl.length);
-                                        console.log('🔍 VIEW BUTTON CLICKED (MODAL) - OPENING WINDOW');
-                                        
+                                        console.log(
+                                          '🔍 VIEW BUTTON CLICKED (MODAL) - OPENING WINDOW'
+                                        );
+
                                         // Test the URL construction
                                         try {
                                           const testUrl = new URL(viewUrl);
                                           console.log('✅ URL is valid (Modal)');
                                           console.log('🏠 Host (Modal):', testUrl.host);
                                           console.log('🛤️ Pathname (Modal):', testUrl.pathname);
-                                          console.log('🔍 Search Params (Modal):', testUrl.searchParams.toString());
-                                          console.log('📄 Mode Parameter (Modal):', testUrl.searchParams.get('mode'));
-                                          console.log('🔗 URL Parameter (Modal):', testUrl.searchParams.get('url'));
-                                          console.log('🔑 Key Parameter (Modal):', testUrl.searchParams.get('key'));
+                                          console.log(
+                                            '🔍 Search Params (Modal):',
+                                            testUrl.searchParams.toString()
+                                          );
+                                          console.log(
+                                            '📄 Mode Parameter (Modal):',
+                                            testUrl.searchParams.get('mode')
+                                          );
+                                          console.log(
+                                            '🔗 URL Parameter (Modal):',
+                                            testUrl.searchParams.get('url')
+                                          );
+                                          console.log(
+                                            '🔑 Key Parameter (Modal):',
+                                            testUrl.searchParams.get('key')
+                                          );
                                         } catch (error) {
                                           console.error('❌ Invalid URL (Modal):', error);
                                         }
-                                        
+
                                         window.open(viewUrl, '_blank');
                                         console.log('🚀 Window.open executed (Modal)');
-                                        console.log('🔍 VIEW BUTTON CLICKED (MODAL) - DEBUGGING END');
+                                        console.log(
+                                          '🔍 VIEW BUTTON CLICKED (MODAL) - DEBUGGING END'
+                                        );
                                       }}
                                       className="text-xs text-blue-600 hover:underline"
                                       title="View file inline"
                                     >
                                       {/* View */}
                                     </button>
-                                    
+
                                     <button
                                       onClick={() => {
-                                        console.log('⬇️ DOWNLOAD BUTTON CLICKED (MODAL) - DEBUGGING START');
+                                        console.log(
+                                          '⬇️ DOWNLOAD BUTTON CLICKED (MODAL) - DEBUGGING START'
+                                        );
                                         console.log('📄 File Object (Modal):', file);
                                         console.log('🔗 Original File URL (Modal):', file.url);
                                         console.log('📝 File Name (Modal):', file.name);
-                                        
+
                                         // Use the storage API endpoint directly for download
-                                        const storageApiUrl = 'https://storage-api.dark-mode-d021.workers.dev';
-                                        
+                                        const storageApiUrl =
+                                          'https://storage-api.dark-mode-d021.workers.dev';
+
                                         // Try different URL construction methods
                                         let downloadUrl;
                                         let method = 'unknown';
-                                        
+
                                         // Method 1: If the URL contains a key pattern, extract it
                                         if (file.url!.includes('lesson-plans/')) {
                                           const keyMatch = file.url!.match(/lesson-plans\/(.+)$/);
@@ -2001,21 +2013,27 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                                             console.log('🔑 Extracted Key (Modal):', extractedKey);
                                           }
                                         }
-                                        
+
                                         // Method 2: Use the full URL parameter
                                         if (!downloadUrl) {
                                           downloadUrl = `${storageApiUrl}/document-access?url=${encodeURIComponent(file.url!)}&mode=download`;
                                           method = 'full-url';
-                                          console.log('🌐 Using FULL URL method for download (Modal)');
+                                          console.log(
+                                            '🌐 Using FULL URL method for download (Modal)'
+                                          );
                                         }
-                                        
+
                                         console.log('⚙️ Download Method Used (Modal):', method);
                                         console.log('🎯 Final Download URL (Modal):', downloadUrl);
-                                        console.log('⬇️ DOWNLOAD BUTTON CLICKED (MODAL) - OPENING WINDOW');
-                                        
+                                        console.log(
+                                          '⬇️ DOWNLOAD BUTTON CLICKED (MODAL) - OPENING WINDOW'
+                                        );
+
                                         window.open(downloadUrl, '_blank');
                                         console.log('🚀 Download Window.open executed (Modal)');
-                                        console.log('⬇️ DOWNLOAD BUTTON CLICKED (MODAL) - DEBUGGING END');
+                                        console.log(
+                                          '⬇️ DOWNLOAD BUTTON CLICKED (MODAL) - DEBUGGING END'
+                                        );
                                       }}
                                       className="text-xs text-blue-600 hover:underline"
                                       title="Download file"
@@ -2028,8 +2046,8 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                               {isUploading && (
                                 <div className="mt-1">
                                   <div className="w-full bg-gray-200 rounded-full h-1.5">
-                                    <div 
-                                      className="bg-blue-600 h-1.5 rounded-full transition-all duration-300" 
+                                    <div
+                                      className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
                                       style={{ width: `${uploadProgress[file.id] || 0}%` }}
                                     ></div>
                                   </div>
@@ -2106,8 +2124,8 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                             type="button"
                             onClick={() => {
                               setShowAddLink(false);
-                              setNewLinkTitle("");
-                              setNewLinkUrl("");
+                              setNewLinkTitle('');
+                              setNewLinkUrl('');
                             }}
                             className="flex-1 px-3 py-2 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50"
                           >
@@ -2128,9 +2146,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                         >
                           <LinkIcon className="h-5 w-5 text-blue-600 flex-shrink-0" />
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900">
-                              {link.title}
-                            </p>
+                            <p className="text-sm font-medium text-gray-900">{link.title}</p>
                             <a
                               href={link.url}
                               target="_blank"
@@ -2232,8 +2248,8 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                             type="button"
                             onClick={() => {
                               setShowAddCriterion(false);
-                              setNewCriterion("");
-                              setNewPercentage("");
+                              setNewCriterion('');
+                              setNewPercentage('');
                             }}
                             className="flex-1 px-3 py-2 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50"
                           >
@@ -2274,23 +2290,29 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                       ))}
 
                       {/* Total Percentage Indicator */}
-                      <div className={`p-3 rounded-lg border ${
-                        getTotalPercentage() === 100
-                          ? 'bg-green-50 border-green-200'
-                          : getTotalPercentage() > 100
-                          ? 'bg-red-50 border-red-200'
-                          : 'bg-amber-50 border-amber-200'
-                      }`}>
+                      <div
+                        className={`p-3 rounded-lg border ${
+                          getTotalPercentage() === 100
+                            ? 'bg-green-50 border-green-200'
+                            : getTotalPercentage() > 100
+                              ? 'bg-red-50 border-red-200'
+                              : 'bg-amber-50 border-amber-200'
+                        }`}
+                      >
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-semibold text-gray-700">Total Percentage</span>
+                          <span className="text-sm font-semibold text-gray-700">
+                            Total Percentage
+                          </span>
                           <div className="flex items-center gap-2">
-                            <span className={`text-sm font-bold ${
-                              getTotalPercentage() === 100
-                                ? 'text-green-600'
-                                : getTotalPercentage() > 100
-                                ? 'text-red-600'
-                                : 'text-amber-600'
-                            }`}>
+                            <span
+                              className={`text-sm font-bold ${
+                                getTotalPercentage() === 100
+                                  ? 'text-green-600'
+                                  : getTotalPercentage() > 100
+                                    ? 'text-red-600'
+                                    : 'text-amber-600'
+                              }`}
+                            >
                               {getTotalPercentage()}%
                             </span>
                             {getTotalPercentage() === 100 && (
@@ -2302,13 +2324,14 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                           </div>
                         </div>
                         {getTotalPercentage() !== 100 && (
-                          <p className={`text-xs mt-1 ${
-                            getTotalPercentage() > 100 ? 'text-red-600' : 'text-amber-600'
-                          }`}>
+                          <p
+                            className={`text-xs mt-1 ${
+                              getTotalPercentage() > 100 ? 'text-red-600' : 'text-amber-600'
+                            }`}
+                          >
                             {getTotalPercentage() > 100
                               ? `Exceeds 100% by ${getTotalPercentage() - 100}%`
-                              : `${100 - getTotalPercentage()}% remaining`
-                            }
+                              : `${100 - getTotalPercentage()}% remaining`}
                           </p>
                         )}
                       </div>
@@ -2331,7 +2354,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                     }
                     rows={3}
                     className={`w-full px-4 py-3 rounded-lg border ${
-                      errors.evaluationCriteria ? "border-red-300" : "border-gray-300"
+                      errors.evaluationCriteria ? 'border-red-300' : 'border-gray-300'
                     } text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors resize-none`}
                     placeholder="Describe how learning will be checked. Examples: Exit ticket, Quiz, Observation rubric, etc..."
                   />
@@ -2354,9 +2377,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                     </label>
                     <textarea
                       value={formData.homework}
-                      onChange={(e) =>
-                        setFormData({ ...formData, homework: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, homework: e.target.value })}
                       rows={2}
                       className="w-full px-4 py-3 rounded-lg border border-gray-300 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors resize-none"
                       placeholder="Assignments or follow-up activities for students..."

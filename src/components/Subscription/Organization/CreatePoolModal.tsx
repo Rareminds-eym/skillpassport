@@ -1,6 +1,6 @@
 /**
  * CreatePoolModal Component
- * 
+ *
  * Modal wizard for creating a new license pool.
  * Allows setting pool name, member type, seat allocation, and auto-assign settings.
  */
@@ -45,17 +45,22 @@ function CreatePoolModal({
     autoAssignNewMembers: false,
   });
 
-  const handleInputChange = useCallback((
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value, type } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : 
-               type === 'number' ? parseInt(value) || 0 : value,
-    }));
-    if (error) setError('');
-  }, [error]);
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+      const { name, value, type } = e.target;
+      setFormData((prev) => ({
+        ...prev,
+        [name]:
+          type === 'checkbox'
+            ? (e.target as HTMLInputElement).checked
+            : type === 'number'
+              ? parseInt(value) || 0
+              : value,
+      }));
+      if (error) setError('');
+    },
+    [error]
+  );
 
   const handleNext = useCallback(() => {
     if (step === 1) {
@@ -78,11 +83,11 @@ function CreatePoolModal({
         return;
       }
     }
-    setStep(prev => prev + 1);
+    setStep((prev) => prev + 1);
   }, [step, formData, totalAvailableSeats]);
 
   const handleBack = useCallback(() => {
-    setStep(prev => prev - 1);
+    setStep((prev) => prev - 1);
     setError('');
   }, []);
 
@@ -120,11 +125,8 @@ function CreatePoolModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={handleClose}
-      />
-      
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleClose} />
+
       {/* Modal */}
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
         {/* Header */}
@@ -148,7 +150,7 @@ function CreatePoolModal({
 
         {/* Progress Bar */}
         <div className="h-1 bg-gray-100">
-          <div 
+          <div
             className="h-full bg-blue-600 transition-all duration-300"
             style={{ width: `${(step / 3) * 100}%` }}
           />
@@ -191,35 +193,47 @@ function CreatePoolModal({
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, memberType: 'student' }))}
+                      onClick={() => setFormData((prev) => ({ ...prev, memberType: 'student' }))}
                       className={`p-4 rounded-xl border-2 transition-all ${
                         formData.memberType === 'student'
                           ? 'border-blue-500 bg-blue-50'
                           : 'border-gray-200 hover:border-gray-300'
                       }`}
                     >
-                      <Users className={`w-6 h-6 mx-auto mb-2 ${
-                        formData.memberType === 'student' ? 'text-blue-600' : 'text-gray-400'
-                      }`} />
-                      <span className={`text-sm font-medium ${
-                        formData.memberType === 'student' ? 'text-blue-700' : 'text-gray-600'
-                      }`}>Students</span>
+                      <Users
+                        className={`w-6 h-6 mx-auto mb-2 ${
+                          formData.memberType === 'student' ? 'text-blue-600' : 'text-gray-400'
+                        }`}
+                      />
+                      <span
+                        className={`text-sm font-medium ${
+                          formData.memberType === 'student' ? 'text-blue-700' : 'text-gray-600'
+                        }`}
+                      >
+                        Students
+                      </span>
                     </button>
                     <button
                       type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, memberType: 'educator' }))}
+                      onClick={() => setFormData((prev) => ({ ...prev, memberType: 'educator' }))}
                       className={`p-4 rounded-xl border-2 transition-all ${
                         formData.memberType === 'educator'
                           ? 'border-blue-500 bg-blue-50'
                           : 'border-gray-200 hover:border-gray-300'
                       }`}
                     >
-                      <Users className={`w-6 h-6 mx-auto mb-2 ${
-                        formData.memberType === 'educator' ? 'text-blue-600' : 'text-gray-400'
-                      }`} />
-                      <span className={`text-sm font-medium ${
-                        formData.memberType === 'educator' ? 'text-blue-700' : 'text-gray-600'
-                      }`}>Educators</span>
+                      <Users
+                        className={`w-6 h-6 mx-auto mb-2 ${
+                          formData.memberType === 'educator' ? 'text-blue-600' : 'text-gray-400'
+                        }`}
+                      />
+                      <span
+                        className={`text-sm font-medium ${
+                          formData.memberType === 'educator' ? 'text-blue-700' : 'text-gray-600'
+                        }`}
+                      >
+                        Educators
+                      </span>
                     </button>
                   </div>
                 </div>
@@ -267,23 +281,27 @@ function CreatePoolModal({
 
               {/* Quick allocation buttons */}
               <div className="flex gap-2">
-                {[10, 25, 50, 100].filter(n => n <= totalAvailableSeats).map(num => (
-                  <button
-                    key={num}
-                    type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, allocatedSeats: num }))}
-                    className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
-                      formData.allocatedSeats === num
-                        ? 'bg-blue-100 border-blue-300 text-blue-700'
-                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    {num}
-                  </button>
-                ))}
+                {[10, 25, 50, 100]
+                  .filter((n) => n <= totalAvailableSeats)
+                  .map((num) => (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() => setFormData((prev) => ({ ...prev, allocatedSeats: num }))}
+                      className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+                        formData.allocatedSeats === num
+                          ? 'bg-blue-100 border-blue-300 text-blue-700'
+                          : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      {num}
+                    </button>
+                  ))}
                 <button
                   type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, allocatedSeats: totalAvailableSeats }))}
+                  onClick={() =>
+                    setFormData((prev) => ({ ...prev, allocatedSeats: totalAvailableSeats }))
+                  }
                   className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
                     formData.allocatedSeats === totalAvailableSeats
                       ? 'bg-blue-100 border-blue-300 text-blue-700'
@@ -304,9 +322,7 @@ function CreatePoolModal({
                   <Settings className="w-7 h-7 text-purple-600" />
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900">Auto-assign Settings</h3>
-                <p className="text-sm text-gray-500 mt-1">
-                  Configure automatic license assignment
-                </p>
+                <p className="text-sm text-gray-500 mt-1">Configure automatic license assignment</p>
               </div>
 
               <div className="bg-gray-50 rounded-xl p-4">
@@ -339,7 +355,9 @@ function CreatePoolModal({
                   </div>
                   <div className="flex justify-between">
                     <span className="text-blue-700">Member Type</span>
-                    <span className="font-medium text-blue-900 capitalize">{formData.memberType}s</span>
+                    <span className="font-medium text-blue-900 capitalize">
+                      {formData.memberType}s
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-blue-700">Allocated Seats</span>

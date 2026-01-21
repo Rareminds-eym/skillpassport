@@ -1,6 +1,6 @@
 /**
  * Logging Configuration for Organization Subscription Management
- * 
+ *
  * Provides structured logging with:
  * - Log levels (debug, info, warn, error)
  * - Contextual metadata
@@ -22,9 +22,8 @@ const LOG_LEVEL_PRIORITY: Record<LogLevel, number> = {
 };
 
 // Get minimum log level from environment
-const MIN_LOG_LEVEL: LogLevel = 
-  (import.meta.env.VITE_LOG_LEVEL as LogLevel) || 
-  (import.meta.env.PROD ? 'info' : 'debug');
+const MIN_LOG_LEVEL: LogLevel =
+  (import.meta.env.VITE_LOG_LEVEL as LogLevel) || (import.meta.env.PROD ? 'info' : 'debug');
 
 // ============================================================================
 // LOG ENTRY STRUCTURE
@@ -181,7 +180,7 @@ class Logger {
     metadata?: Record<string, unknown>
   ): T | Promise<T> {
     const start = performance.now();
-    
+
     const logCompletion = (result: T) => {
       const duration = performance.now() - start;
       this.info(`${message} completed`, { ...metadata, duration: `${duration.toFixed(2)}ms` });
@@ -205,7 +204,6 @@ class Logger {
     }
   }
 }
-
 
 // ============================================================================
 // LOGGER FACTORY
@@ -349,7 +347,7 @@ export function setRequestContext(context: {
   userId?: string;
   organizationId?: string;
 }): void {
-  loggers.forEach(logger => {
+  loggers.forEach((logger) => {
     logger.setContext(context);
   });
 }
@@ -358,7 +356,7 @@ export function setRequestContext(context: {
  * Clear request context
  */
 export function clearRequestContext(): void {
-  loggers.forEach(logger => {
+  loggers.forEach((logger) => {
     logger.clearContext();
   });
 }

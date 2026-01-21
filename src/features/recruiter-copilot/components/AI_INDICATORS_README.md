@@ -5,13 +5,16 @@ ChatGPT-style thinking and status indicators for your AI chat interfaces.
 ## Components
 
 ### 1. `AIThinkingBubble`
+
 The main thinking indicator with animated dots and optional status message.
 
 **Props:**
+
 - `status?: string` - Status message to display above the bubble (e.g., "Searching database...")
 - `showStatusPill?: boolean` - Whether to show the status pill (default: true if status provided)
 
 **Usage:**
+
 ```tsx
 import { AIThinkingBubble } from './AIThinkingIndicators';
 
@@ -23,6 +26,7 @@ import { AIThinkingBubble } from './AIThinkingIndicators';
 ```
 
 **Features:**
+
 - Smooth fade-in animation
 - 3 animated dots with staggered bounce
 - Chat bubble shape with tail
@@ -32,13 +36,16 @@ import { AIThinkingBubble } from './AIThinkingIndicators';
 ---
 
 ### 2. `AIStatusPill`
+
 Standalone status pill for showing AI activity without the full thinking bubble.
 
 **Props:**
+
 - `status: string` - The status message to display
 - `variant?: 'default' | 'searching' | 'processing' | 'running'` - Color theme
 
 **Usage:**
+
 ```tsx
 import { AIStatusPill } from './AIThinkingIndicators';
 
@@ -49,6 +56,7 @@ import { AIStatusPill } from './AIThinkingIndicators';
 ```
 
 **Variants:**
+
 - `default` - Blue/purple gradient (general thinking)
 - `searching` - Green gradient (search operations)
 - `processing` - Amber gradient (data processing)
@@ -57,19 +65,23 @@ import { AIStatusPill } from './AIThinkingIndicators';
 ---
 
 ### 3. `AISkeletonMessage`
+
 Skeleton placeholder for long streaming responses.
 
 **Props:**
+
 - `lines?: number` - Number of skeleton lines to show (default: 3)
 
 **Usage:**
+
 ```tsx
 import { AISkeletonMessage } from './AIThinkingIndicators';
 
-<AISkeletonMessage lines={4} />
+<AISkeletonMessage lines={4} />;
 ```
 
 **Features:**
+
 - Animated skeleton lines
 - Progressive appearance (staggered animation)
 - Shimmer effect
@@ -78,13 +90,16 @@ import { AISkeletonMessage } from './AIThinkingIndicators';
 ---
 
 ### 4. `AITypingIndicator`
+
 Minimal typing indicator - just dots, compact and clean.
 
 **Props:**
+
 - `text: string` - Label text (default: "Typing")
 - `variant?: 'bubble' | 'inline'` - Display style
 
 **Usage:**
+
 ```tsx
 import { AITypingIndicator } from './AIThinkingIndicators';
 
@@ -109,10 +124,10 @@ const ChatComponent = () => {
 
   return (
     <div>
-      {messages.map(msg => (
+      {messages.map((msg) => (
         <MessageBubble key={msg.id} message={msg} />
       ))}
-      
+
       {loading && (
         <div className="flex justify-start">
           <AIThinkingBubble />
@@ -132,23 +147,25 @@ const [aiStatus, setAiStatus] = useState('');
 const handleSend = async (query: string) => {
   setLoading(true);
   setAiStatus('Analyzing your request...');
-  
+
   // Update status at different stages
   setTimeout(() => setAiStatus('Searching database...'), 800);
   setTimeout(() => setAiStatus('Processing results...'), 1600);
-  
+
   const response = await processQuery(query);
-  
+
   setLoading(false);
   setAiStatus('');
 };
 
 // Render
-{loading && (
-  <div className="flex justify-start">
-    <AIThinkingBubble status={aiStatus} />
-  </div>
-)}
+{
+  loading && (
+    <div className="flex justify-start">
+      <AIThinkingBubble status={aiStatus} />
+    </div>
+  );
+}
 ```
 
 ### Multi-Stage Progress
@@ -158,7 +175,7 @@ const stages = [
   'Understanding query...',
   'Searching talent database...',
   'Analyzing candidates...',
-  'Generating insights...'
+  'Generating insights...',
 ];
 
 let currentStage = 0;
@@ -172,6 +189,7 @@ setAiStatus(stages[currentStage++]);
 ## Styling Notes
 
 All components use:
+
 - **Framer Motion** for smooth animations
 - **Tailwind CSS** for styling
 - Consistent with your chat bubble design (rounded-2xl, shadows, etc.)
@@ -234,6 +252,7 @@ These indicators follow ChatGPT's UX principles:
 ## Future Enhancements
 
 Possible additions:
+
 - Progress percentage indicator
 - Estimated time remaining
 - Cancel/stop button integration
@@ -244,4 +263,3 @@ Possible additions:
 ---
 
 Need help? Check `AIThinkingIndicators.examples.tsx` for complete working examples!
-

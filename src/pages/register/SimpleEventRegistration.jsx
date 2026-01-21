@@ -1,7 +1,7 @@
 /**
  * SimpleEventRegistration - Professional, minimalistic event registration
  * Route: /register?campaign=xxx
- * 
+ *
  * Design: Clean, modern, professional
  * Colors: White, Blue (accent), Red (errors only)
  */
@@ -18,18 +18,20 @@ import paymentsApiService from '../../services/paymentsApiService';
 const PRICE_PER_STUDENT = 250;
 
 // Email API URL
-const EMAIL_API_URL = import.meta.env.VITE_EMAIL_API_URL || 'https://email-api.dark-mode-d021.workers.dev';
+const EMAIL_API_URL =
+  import.meta.env.VITE_EMAIL_API_URL || 'https://email-api.dark-mode-d021.workers.dev';
 
 // Load Razorpay script
-const loadRazorpay = () => new Promise((resolve, reject) => {
-  if (window.Razorpay) return resolve(true);
-  const script = document.createElement('script');
-  script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-  script.async = true;
-  script.onload = () => resolve(true);
-  script.onerror = () => reject(new Error('Failed to load payment gateway'));
-  document.body.appendChild(script);
-});
+const loadRazorpay = () =>
+  new Promise((resolve, reject) => {
+    if (window.Razorpay) return resolve(true);
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => reject(new Error('Failed to load payment gateway'));
+    document.body.appendChild(script);
+  });
 
 // Form validation
 const validateForm = (form) => {
@@ -59,7 +61,7 @@ const validateForm = (form) => {
 // Send confirmation emails
 const sendConfirmationEmail = async (details) => {
   const { name, email, phone, amount, students, orderId, campaign } = details;
-  
+
   const userHtml = `
 <!DOCTYPE html>
 <html>
@@ -234,9 +236,10 @@ const InputField = ({ label, icon: Icon, error, ...props }) => (
         className={`
           w-full h-12 bg-white border rounded-lg outline-none transition-all
           ${Icon ? 'pl-12' : 'pl-4'} pr-4
-          ${error 
-            ? 'border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100' 
-            : 'border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+          ${
+            error
+              ? 'border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100'
+              : 'border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
           }
           text-gray-900 placeholder:text-gray-400
         `}
@@ -266,11 +269,14 @@ export default function SimpleEventRegistration() {
 
   const totalPrice = form.quantity * PRICE_PER_STUDENT;
 
-  const updateField = useCallback((field, value) => {
-    setForm(prev => ({ ...prev, [field]: value }));
-    if (errors[field]) setErrors(prev => ({ ...prev, [field]: null }));
-    setPaymentError(null);
-  }, [errors]);
+  const updateField = useCallback(
+    (field, value) => {
+      setForm((prev) => ({ ...prev, [field]: value }));
+      if (errors[field]) setErrors((prev) => ({ ...prev, [field]: null }));
+      setPaymentError(null);
+    },
+    [errors]
+  );
 
   const handlePayment = async () => {
     const validationErrors = validateForm(form);
@@ -416,18 +422,21 @@ export default function SimpleEventRegistration() {
                   </div>
                   <div className="flex justify-between py-3">
                     <span className="text-gray-500">Amount Paid</span>
-                    <span className="text-blue-600 font-semibold">₹{orderDetails.amount.toLocaleString()}</span>
+                    <span className="text-blue-600 font-semibold">
+                      ₹{orderDetails.amount.toLocaleString()}
+                    </span>
                   </div>
                 </div>
 
                 <div className="mt-8 p-4 bg-blue-50 rounded-lg">
                   <p className="text-sm text-blue-800 text-center">
-                    Confirmation email sent to <span className="font-medium">{orderDetails.email}</span>
+                    Confirmation email sent to{' '}
+                    <span className="font-medium">{orderDetails.email}</span>
                   </p>
                 </div>
 
                 <button
-                  onClick={() => window.location.href = '/'}
+                  onClick={() => (window.location.href = '/')}
                   className="w-full h-12 mt-6 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
                 >
                   Back to Home
@@ -445,7 +454,7 @@ export default function SimpleEventRegistration() {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Header />
-      
+
       <main className="flex-1 py-12 px-4">
         <div className="max-w-md mx-auto">
           {/* Page Header */}
@@ -485,7 +494,9 @@ export default function SimpleEventRegistration() {
                 icon={Phone}
                 type="tel"
                 value={form.phone}
-                onChange={(e) => updateField('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
+                onChange={(e) =>
+                  updateField('phone', e.target.value.replace(/\D/g, '').slice(0, 10))
+                }
                 placeholder="10-digit mobile number"
                 error={errors.phone}
               />
@@ -517,14 +528,18 @@ export default function SimpleEventRegistration() {
                   />
                   <button
                     type="button"
-                    onClick={() => form.quantity < 100 && updateField('quantity', form.quantity + 1)}
+                    onClick={() =>
+                      form.quantity < 100 && updateField('quantity', form.quantity + 1)
+                    }
                     disabled={form.quantity >= 100}
                     className="w-12 h-12 rounded-lg border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
                     <Plus className="w-5 h-5" />
                   </button>
                 </div>
-                {errors.quantity && <p className="mt-1.5 text-sm text-red-600">{errors.quantity}</p>}
+                {errors.quantity && (
+                  <p className="mt-1.5 text-sm text-red-600">{errors.quantity}</p>
+                )}
               </div>
             </div>
 
@@ -536,7 +551,9 @@ export default function SimpleEventRegistration() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-gray-900 font-medium">Total Amount</span>
-                <span className="text-2xl font-semibold text-blue-600">₹{totalPrice.toLocaleString()}</span>
+                <span className="text-2xl font-semibold text-blue-600">
+                  ₹{totalPrice.toLocaleString()}
+                </span>
               </div>
             </div>
 

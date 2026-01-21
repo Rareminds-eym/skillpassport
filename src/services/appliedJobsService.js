@@ -25,7 +25,7 @@ export class AppliedJobsService {
         return {
           success: false,
           message: 'You have already applied to this job',
-          data: existing
+          data: existing,
         };
       }
 
@@ -40,17 +40,19 @@ export class AppliedJobsService {
       const profile = {
         name: student?.name || '',
         email: student?.email || '',
-        contact_number: student?.contact_number || ''
+        contact_number: student?.contact_number || '',
       };
 
       // Insert application
       const { data, error } = await supabase
         .from('applied_jobs')
-        .insert([{
-          student_id: studentId,
-          opportunity_id: opportunityId,
-          application_status: 'applied'
-        }])
+        .insert([
+          {
+            student_id: studentId,
+            opportunity_id: opportunityId,
+            application_status: 'applied',
+          },
+        ])
         .select()
         .single();
 
@@ -58,9 +60,8 @@ export class AppliedJobsService {
 
       // Automatically add to pipeline as "sourced"
       try {
-        const { error: pipelineError } = await supabase
-          .from('pipeline_candidates')
-          .insert([{
+        const { error: pipelineError } = await supabase.from('pipeline_candidates').insert([
+          {
             opportunity_id: opportunityId,
             student_id: studentId,
             candidate_name: profile.name || 'Unknown',
@@ -70,26 +71,26 @@ export class AppliedJobsService {
             source: 'direct_application',
             status: 'active',
             added_at: new Date().toISOString(),
-            stage_changed_at: new Date().toISOString()
-          }]);
+            stage_changed_at: new Date().toISOString(),
+          },
+        ]);
 
         if (pipelineError) {
           // Don't fail the application if pipeline insert fails
         }
-      } catch (pipelineErr) {
-      }
+      } catch (pipelineErr) {}
 
       return {
         success: true,
         message: 'Application submitted successfully!',
-        data
+        data,
       };
     } catch (error) {
       console.error('Error in applyToJob:', error);
       return {
         success: false,
         message: error.message || 'Failed to submit application',
-        error
+        error,
       };
     }
   }
@@ -126,7 +127,8 @@ export class AppliedJobsService {
     try {
       let query = supabase
         .from('applied_jobs')
-        .select(`
+        .select(
+          `
           *,
           opportunity:opportunities!fk_applied_jobs_opportunity (
             id,
@@ -143,7 +145,8 @@ export class AppliedJobsService {
             recruiter_id,
             experience_level
           )
-        `)
+        `
+        )
         .eq('student_id', studentId)
         .order('applied_at', { ascending: false });
 
@@ -174,24 +177,27 @@ export class AppliedJobsService {
 
       if (error) throw error;
 
-      const stats = data.reduce((acc, app) => {
-        acc.total++;
-        if (acc.hasOwnProperty(app.application_status)) {
-          acc[app.application_status]++;
+      const stats = data.reduce(
+        (acc, app) => {
+          acc.total++;
+          if (acc.hasOwnProperty(app.application_status)) {
+            acc[app.application_status]++;
+          }
+          return acc;
+        },
+        {
+          total: 0,
+          applied: 0,
+          viewed: 0,
+          under_review: 0,
+          interview_scheduled: 0,
+          interviewed: 0,
+          offer_received: 0,
+          accepted: 0,
+          rejected: 0,
+          withdrawn: 0,
         }
-        return acc;
-      }, {
-        total: 0,
-        applied: 0,
-        viewed: 0,
-        under_review: 0,
-        interview_scheduled: 0,
-        interviewed: 0,
-        offer_received: 0,
-        accepted: 0,
-        rejected: 0,
-        withdrawn: 0
-      });
+      );
 
       return stats;
     } catch (error) {
@@ -218,11 +224,13 @@ export class AppliedJobsService {
         .from('applied_jobs')
         .update(updateData)
         .eq('id', applicationId)
-        .select(`
+        .select(
+          `
           *,
           students!inner(email, name),
           opportunities!inner(title, company_name)
-        `)
+        `
+        )
         .single();
 
       if (error) throw error;
@@ -231,14 +239,14 @@ export class AppliedJobsService {
       try {
         if (data?.students?.email) {
           const jobTitle = data?.opportunities?.title || 'Position';
-          const statusText = status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-          
+          const statusText = status.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+
           await notificationHelpers.applicationStatusUpdate(
             data.students.email,
             jobTitle,
             statusText
           );
-          
+
           console.log(`✅ Notification sent for application ${applicationId} status: ${status}`);
         }
       } catch (notifError) {
@@ -265,7 +273,7 @@ export class AppliedJobsService {
         .from('applied_jobs')
         .update({
           application_status: 'withdrawn',
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', applicationId)
         .eq('student_id', studentId)
@@ -314,7 +322,9 @@ export class AppliedJobsService {
 
       const { data, error } = await supabase
         .from('applied_jobs')
-        .select('*, opportunity:opportunities!fk_applied_jobs_opportunity(job_title, company_name, company_logo)')
+        .select(
+          '*, opportunity:opportunities!fk_applied_jobs_opportunity(job_title, company_name, company_logo)'
+        )
         .eq('student_id', studentId)
         .gte('applied_at', thirtyDaysAgo.toISOString())
         .order('applied_at', { ascending: false });
@@ -335,9 +345,7 @@ export class AppliedJobsService {
   static async getAllApplicants(options = {}) {
     try {
       // First, fetch all applied jobs
-      let query = supabase
-        .from('applied_jobs')
-        .select('*');
+      let query = supabase.from('applied_jobs').select('*');
 
       // Apply filters if provided
       if (options.status) {
@@ -368,10 +376,12 @@ export class AppliedJobsService {
 
       // Fetch student details for all applicants
       // Note: applied_jobs.student_id references students.user_id (not students.id)
-      const studentIds = [...new Set(appliedJobs.map(job => job.student_id))];
+      const studentIds = [...new Set(appliedJobs.map((job) => job.student_id))];
       const { data: students, error: studentsError } = await supabase
         .from('students')
-        .select('id, user_id, name, email, contact_number, university, branch_field, course_name, college_school_name, district_name, currentCgpa, expectedGraduationDate, approval_status, profile')
+        .select(
+          'id, user_id, name, email, contact_number, university, branch_field, course_name, college_school_name, district_name, currentCgpa, expectedGraduationDate, approval_status, profile'
+        )
         .in('user_id', studentIds);
 
       if (studentsError) {
@@ -379,7 +389,7 @@ export class AppliedJobsService {
       }
 
       // Fetch opportunity details for all jobs
-      const opportunityIds = [...new Set(appliedJobs.map(job => job.opportunity_id))];
+      const opportunityIds = [...new Set(appliedJobs.map((job) => job.opportunity_id))];
       const { data: opportunities, error: opportunitiesError } = await supabase
         .from('opportunities')
         .select('*')
@@ -397,19 +407,26 @@ export class AppliedJobsService {
           id: student.user_id, // Use user_id as id for consistency with applied_jobs.student_id
           name: student.name || profile.name || 'Unknown',
           email: student.email || profile.email || '',
-          phone: student.contact_number ? String(student.contact_number) : (profile.contact_number ? String(profile.contact_number) : ''),
+          phone: student.contact_number
+            ? String(student.contact_number)
+            : profile.contact_number
+              ? String(profile.contact_number)
+              : '',
           photo: profile.photo || null,
           // Use direct DB columns first, then fallback to profile JSONB
           department: student.branch_field || student.course_name || profile.branch_field || '',
           university: student.university || profile.university || '',
-          college: student.college_school_name || student.university || profile.college_school_name || '',
+          college:
+            student.college_school_name || student.university || profile.college_school_name || '',
           district: student.district_name || profile.district_name || '',
           course: student.course_name || profile.course || '',
           cgpa: student.currentCgpa || profile.cgpa || '',
-          year_of_passing: student.expectedGraduationDate ? student.expectedGraduationDate.split('-')[0] : (profile.year_of_passing || ''),
+          year_of_passing: student.expectedGraduationDate
+            ? student.expectedGraduationDate.split('-')[0]
+            : profile.year_of_passing || '',
           verified: student.approval_status === 'approved' || false,
           employability_score: 0, // Not available in schema, set default
-          skill: profile.skill || ''
+          skill: profile.skill || '',
         };
         return acc;
       }, {});
@@ -420,10 +437,10 @@ export class AppliedJobsService {
       }, {});
 
       // Combine all data
-      const result = appliedJobs.map(job => ({
+      const result = appliedJobs.map((job) => ({
         ...job,
         student: studentMap[job.student_id] || null,
-        opportunity: opportunityMap[job.opportunity_id] || null
+        opportunity: opportunityMap[job.opportunity_id] || null,
       }));
 
       return result;
@@ -439,30 +456,31 @@ export class AppliedJobsService {
    */
   static async getApplicantStats() {
     try {
-      const { data, error } = await supabase
-        .from('applied_jobs')
-        .select('application_status');
+      const { data, error } = await supabase.from('applied_jobs').select('application_status');
 
       if (error) throw error;
 
-      return data.reduce((acc, app) => {
-        acc.total++;
-        if (acc.hasOwnProperty(app.application_status)) {
-          acc[app.application_status]++;
+      return data.reduce(
+        (acc, app) => {
+          acc.total++;
+          if (acc.hasOwnProperty(app.application_status)) {
+            acc[app.application_status]++;
+          }
+          return acc;
+        },
+        {
+          total: 0,
+          applied: 0,
+          viewed: 0,
+          under_review: 0,
+          interview_scheduled: 0,
+          interviewed: 0,
+          offer_received: 0,
+          accepted: 0,
+          rejected: 0,
+          withdrawn: 0,
         }
-        return acc;
-      }, {
-        total: 0,
-        applied: 0,
-        viewed: 0,
-        under_review: 0,
-        interview_scheduled: 0,
-        interviewed: 0,
-        offer_received: 0,
-        accepted: 0,
-        rejected: 0,
-        withdrawn: 0
-      });
+      );
     } catch (error) {
       console.error('Error in getApplicantStats:', error);
       throw error;

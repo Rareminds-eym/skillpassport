@@ -1,7 +1,7 @@
 /**
  * Middle School Assessment (Grades 6-8) - Age-appropriate career exploration
  * Also includes High School (Grades 9-10) and Higher Secondary (Grades 11-12) questions
- * 
+ *
  * @module features/assessment/data/questions/middleSchoolQuestions
  */
 
@@ -44,7 +44,7 @@ export const interestExplorerQuestions: MiddleSchoolQuestion[] = [
       'Solving puzzles or brain games',
       'Helping someone learn or feel better',
       'Organizing a class event or selling something',
-      'Being outdoors / with animals / nature'
+      'Being outdoors / with animals / nature',
     ],
     categoryMapping: {
       'Building/making something with your hands': 'R',
@@ -52,8 +52,8 @@ export const interestExplorerQuestions: MiddleSchoolQuestion[] = [
       'Solving puzzles or brain games': 'I',
       'Helping someone learn or feel better': 'S',
       'Organizing a class event or selling something': 'E',
-      'Being outdoors / with animals / nature': 'R'
-    }
+      'Being outdoors / with animals / nature': 'R',
+    },
   },
   {
     id: 'ms2',
@@ -70,7 +70,7 @@ export const interestExplorerQuestions: MiddleSchoolQuestion[] = [
       'Coding / robotics / tinkering',
       'Community / volunteering',
       'Business fairs / buying-selling projects',
-      'Gardening / environment clubs'
+      'Gardening / environment clubs',
     ],
     categoryMapping: {
       'Science experiments': 'I',
@@ -82,8 +82,8 @@ export const interestExplorerQuestions: MiddleSchoolQuestion[] = [
       'Coding / robotics / tinkering': 'I',
       'Community / volunteering': 'S',
       'Business fairs / buying-selling projects': 'E',
-      'Gardening / environment clubs': 'R'
-    }
+      'Gardening / environment clubs': 'R',
+    },
   },
   {
     id: 'ms3',
@@ -96,7 +96,7 @@ export const interestExplorerQuestions: MiddleSchoolQuestion[] = [
       'Mysteries / problem-solving',
       'People stories / emotions / friendships',
       'Money/business / "how to grow" ideas',
-      'Nature / space / animals / earth'
+      'Nature / space / animals / earth',
     ],
     categoryMapping: {
       'How things work / inventions': 'I',
@@ -104,8 +104,8 @@ export const interestExplorerQuestions: MiddleSchoolQuestion[] = [
       'Mysteries / problem-solving': 'I',
       'People stories / emotions / friendships': 'S',
       'Money/business / "how to grow" ideas': 'E',
-      'Nature / space / animals / earth': 'R'
-    }
+      'Nature / space / animals / earth': 'R',
+    },
   },
   {
     id: 'ms4',
@@ -117,7 +117,7 @@ export const interestExplorerQuestions: MiddleSchoolQuestion[] = [
       'Find facts and explain clearly',
       'Work with friends and share roles',
       'Plan it, lead it, present it',
-      'Connect it to real life / society / environment'
+      'Connect it to real life / society / environment',
     ],
     categoryMapping: {
       'Make a model / build something': 'R',
@@ -125,8 +125,8 @@ export const interestExplorerQuestions: MiddleSchoolQuestion[] = [
       'Find facts and explain clearly': 'I',
       'Work with friends and share roles': 'S',
       'Plan it, lead it, present it': 'E',
-      'Connect it to real life / society / environment': 'S'
-    }
+      'Connect it to real life / society / environment': 'S',
+    },
   },
   {
     id: 'ms5',
@@ -139,7 +139,7 @@ export const interestExplorerQuestions: MiddleSchoolQuestion[] = [
       'Speaking in front of people',
       'Working in groups',
       'Doing neat/design work',
-      'Doing hands-on/building tasks'
+      'Doing hands-on/building tasks',
     ],
     categoryMapping: {
       'Writing long answers': 'A',
@@ -147,9 +147,9 @@ export const interestExplorerQuestions: MiddleSchoolQuestion[] = [
       'Speaking in front of people': 'E',
       'Working in groups': 'S',
       'Doing neat/design work': 'A',
-      'Doing hands-on/building tasks': 'R'
-    }
-  }
+      'Doing hands-on/building tasks': 'R',
+    },
+  },
 ];
 
 // Section 2: Strengths & Character (VIA-style, kid language)
@@ -158,69 +158,69 @@ export const strengthsCharacterQuestions: MiddleSchoolQuestion[] = [
     id: 'ms6',
     text: 'I get curious and ask lots of "why/how" questions.',
     type: 'rating',
-    strengthType: 'Curiosity'
+    strengthType: 'Curiosity',
   },
   {
     id: 'ms7',
     text: 'I keep trying even when something is difficult.',
     type: 'rating',
-    strengthType: 'Perseverance'
+    strengthType: 'Perseverance',
   },
   {
     id: 'ms8',
     text: 'I notice when someone is left out and try to include them.',
     type: 'rating',
-    strengthType: 'Kindness'
+    strengthType: 'Kindness',
   },
   {
     id: 'ms9',
     text: "I'm good at finding new or different ideas.",
     type: 'rating',
-    strengthType: 'Creativity'
+    strengthType: 'Creativity',
   },
   {
     id: 'ms10',
     text: 'I stay calm or help others when things go wrong.',
     type: 'rating',
-    strengthType: 'Leadership'
+    strengthType: 'Leadership',
   },
   {
     id: 'ms11',
     text: 'I like learning new things even without exams.',
     type: 'rating',
-    strengthType: 'Love of Learning'
+    strengthType: 'Love of Learning',
   },
   {
     id: 'ms12',
     text: "People say I'm honest / fair.",
     type: 'rating',
-    strengthType: 'Honesty'
+    strengthType: 'Honesty',
   },
   {
     id: 'ms13',
     text: 'I like helping at home/school without being asked.',
     type: 'rating',
-    strengthType: 'Helpfulness'
+    strengthType: 'Helpfulness',
   },
   {
     id: 'ms14',
     text: "I'm good at making people laugh or feel relaxed.",
     type: 'rating',
-    strengthType: 'Humor'
+    strengthType: 'Humor',
   },
   {
     id: 'ms15',
     text: 'I plan my work and finish on time.',
     type: 'rating',
-    strengthType: 'Self-Discipline'
+    strengthType: 'Self-Discipline',
   },
   {
     id: 'ms16',
     text: 'Write one moment you felt proud of yourself this year. What strength did you use?',
     type: 'text',
     placeholder: 'Share your proud moment here...',
-    strengthType: 'Reflection'
-  }
+    strengthType: 'Reflection',
+  },
 ];
 
 // Section 3: Learning & Work Preferences
@@ -236,19 +236,14 @@ export const learningPreferencesQuestions: MiddleSchoolQuestion[] = [
       'I read and make notes',
       'I try it hands-on',
       'I discuss with a friend',
-      'I teach someone else'
-    ]
+      'I teach someone else',
+    ],
   },
   {
     id: 'ms18',
     text: 'I prefer doing work…',
     type: 'singleselect',
-    options: [
-      'Alone',
-      'With one friend',
-      'In a group',
-      'Depends on the task'
-    ]
+    options: ['Alone', 'With one friend', 'In a group', 'Depends on the task'],
   },
   {
     id: 'ms19',
@@ -260,8 +255,8 @@ export const learningPreferencesQuestions: MiddleSchoolQuestion[] = [
       'Do the research',
       'Make it neat/creative',
       'Keep everyone together',
-      'Prefer a clear role'
-    ]
+      'Prefer a clear role',
+    ],
   },
   {
     id: 'ms20',
@@ -272,9 +267,9 @@ export const learningPreferencesQuestions: MiddleSchoolQuestion[] = [
       'Ask a friend',
       'Ask teacher/parent',
       'Look up a video',
-      'Leave it and return later'
-    ]
-  }
+      'Leave it and return later',
+    ],
+  },
 ];
 
 // Rating scale for Strengths & Character questions
@@ -282,7 +277,7 @@ export const strengthsRatingScale: RatingScaleOption[] = [
   { value: 1, label: 'Not like me' },
   { value: 2, label: 'Sometimes' },
   { value: 3, label: 'Mostly me' },
-  { value: 4, label: 'Very me' }
+  { value: 4, label: 'Very me' },
 ];
 
 // ============================================================================
@@ -302,7 +297,7 @@ export const highSchoolInterestQuestions: MiddleSchoolQuestion[] = [
       'Investigating science, tech, research',
       'Teaching, mentoring, supporting others',
       'Running events, persuading, entrepreneurship',
-      'Working with nature, environment, animals'
+      'Working with nature, environment, animals',
     ],
     categoryMapping: {
       'Repairing/building/engineering things': 'R',
@@ -310,8 +305,8 @@ export const highSchoolInterestQuestions: MiddleSchoolQuestion[] = [
       'Investigating science, tech, research': 'I',
       'Teaching, mentoring, supporting others': 'S',
       'Running events, persuading, entrepreneurship': 'E',
-      'Working with nature, environment, animals': 'R'
-    }
+      'Working with nature, environment, animals': 'R',
+    },
   },
   {
     id: 'hs2',
@@ -328,7 +323,7 @@ export const highSchoolInterestQuestions: MiddleSchoolQuestion[] = [
       'Computer science / AI',
       'Art / design / media',
       'Sports / physical training',
-      'Environmental studies'
+      'Environmental studies',
     ],
     categoryMapping: {
       'Math / statistics': 'I',
@@ -340,8 +335,8 @@ export const highSchoolInterestQuestions: MiddleSchoolQuestion[] = [
       'Computer science / AI': 'I',
       'Art / design / media': 'A',
       'Sports / physical training': 'R',
-      'Environmental studies': 'R'
-    }
+      'Environmental studies': 'R',
+    },
   },
   {
     id: 'hs3',
@@ -354,7 +349,7 @@ export const highSchoolInterestQuestions: MiddleSchoolQuestion[] = [
       '"What\'s the truth behind this data?"',
       '"How do people feel and why do they act this way?"',
       '"How can we grow or market this idea?"',
-      '"How do we protect/improve the planet/life?"'
+      '"How do we protect/improve the planet/life?"',
     ],
     categoryMapping: {
       '"How does this work and how can we improve it?"': 'R',
@@ -362,8 +357,8 @@ export const highSchoolInterestQuestions: MiddleSchoolQuestion[] = [
       '"What\'s the truth behind this data?"': 'I',
       '"How do people feel and why do they act this way?"': 'S',
       '"How can we grow or market this idea?"': 'E',
-      '"How do we protect/improve the planet/life?"': 'R'
-    }
+      '"How do we protect/improve the planet/life?"': 'R',
+    },
   },
   {
     id: 'hs4',
@@ -375,7 +370,7 @@ export const highSchoolInterestQuestions: MiddleSchoolQuestion[] = [
       'Analyst / researcher',
       'Coordinator / mediator',
       'Leader / presenter',
-      'Field-worker / explorer'
+      'Field-worker / explorer',
     ],
     categoryMapping: {
       'Builder / implementer': 'R',
@@ -383,8 +378,8 @@ export const highSchoolInterestQuestions: MiddleSchoolQuestion[] = [
       'Analyst / researcher': 'I',
       'Coordinator / mediator': 'S',
       'Leader / presenter': 'E',
-      'Field-worker / explorer': 'R'
-    }
+      'Field-worker / explorer': 'R',
+    },
   },
   {
     id: 'hs5',
@@ -396,7 +391,7 @@ export const highSchoolInterestQuestions: MiddleSchoolQuestion[] = [
       'Do a research study with data + conclusions',
       'Plan a peer-mentoring or community program',
       'Launch a small business / event / fundraiser',
-      'Work on an environment/nature initiative'
+      'Work on an environment/nature initiative',
     ],
     categoryMapping: {
       'Build a simple app / robot / model': 'R',
@@ -404,9 +399,9 @@ export const highSchoolInterestQuestions: MiddleSchoolQuestion[] = [
       'Do a research study with data + conclusions': 'I',
       'Plan a peer-mentoring or community program': 'S',
       'Launch a small business / event / fundraiser': 'E',
-      'Work on an environment/nature initiative': 'R'
-    }
-  }
+      'Work on an environment/nature initiative': 'R',
+    },
+  },
 ];
 
 // Section 2: Strengths & Character (VIA-style, teen language)
@@ -415,76 +410,76 @@ export const highSchoolStrengthsQuestions: MiddleSchoolQuestion[] = [
     id: 'hs6',
     text: "I'm driven by curiosity — I like getting to the bottom of things.",
     type: 'rating',
-    strengthType: 'Curiosity'
+    strengthType: 'Curiosity',
   },
   {
     id: 'hs7',
     text: 'I stay persistent through long or boring tasks.',
     type: 'rating',
-    strengthType: 'Perseverance'
+    strengthType: 'Perseverance',
   },
   {
     id: 'hs8',
     text: 'People trust me to be fair and honest.',
     type: 'rating',
-    strengthType: 'Honesty'
+    strengthType: 'Honesty',
   },
   {
     id: 'hs9',
     text: 'I generate original ideas or creative angles.',
     type: 'rating',
-    strengthType: 'Creativity'
+    strengthType: 'Creativity',
   },
   {
     id: 'hs10',
     text: 'I handle pressure without falling apart.',
     type: 'rating',
-    strengthType: 'Resilience'
+    strengthType: 'Resilience',
   },
   {
     id: 'hs11',
     text: 'I care about people and notice their needs.',
     type: 'rating',
-    strengthType: 'Kindness'
+    strengthType: 'Kindness',
   },
   {
     id: 'hs12',
     text: "I'm organized and plan ahead.",
     type: 'rating',
-    strengthType: 'Self-Discipline'
+    strengthType: 'Self-Discipline',
   },
   {
     id: 'hs13',
     text: 'I take responsibility even when no one forces me.',
     type: 'rating',
-    strengthType: 'Responsibility'
+    strengthType: 'Responsibility',
   },
   {
     id: 'hs14',
     text: "I'm comfortable speaking up or leading when needed.",
     type: 'rating',
-    strengthType: 'Leadership'
+    strengthType: 'Leadership',
   },
   {
     id: 'hs15',
     text: 'I reflect on myself and try to improve.',
     type: 'rating',
-    strengthType: 'Self-Awareness'
+    strengthType: 'Self-Awareness',
   },
   {
     id: 'hs16',
     text: 'Describe a challenge you overcame. What personal strengths helped you?',
     type: 'text',
     placeholder: 'Describe your challenge and the strengths you used...',
-    strengthType: 'Reflection'
+    strengthType: 'Reflection',
   },
   {
     id: 'hs17',
     text: 'What do people consistently appreciate about you?',
     type: 'text',
     placeholder: 'Share what others appreciate about you...',
-    strengthType: 'Reflection'
-  }
+    strengthType: 'Reflection',
+  },
 ];
 
 // Section 3: Learning & Work Preferences
@@ -500,8 +495,8 @@ export const highSchoolLearningQuestions: MiddleSchoolQuestion[] = [
       'Hands-on practice',
       'Discussions/debates',
       'Solving problems',
-      'Teaching/explaining to others'
-    ]
+      'Teaching/explaining to others',
+    ],
   },
   {
     id: 'hs19',
@@ -514,8 +509,8 @@ export const highSchoolLearningQuestions: MiddleSchoolQuestion[] = [
       'Fast and varied',
       'Deep and focused',
       'Solo',
-      'Collaborative'
-    ]
+      'Collaborative',
+    ],
   },
   {
     id: 'hs20',
@@ -525,8 +520,8 @@ export const highSchoolLearningQuestions: MiddleSchoolQuestion[] = [
       'Plan first, then act',
       'Start acting, then adjust',
       'Need a push, then I flow',
-      'Prefer clear deadlines'
-    ]
+      'Prefer clear deadlines',
+    ],
   },
   {
     id: 'hs21',
@@ -538,9 +533,9 @@ export const highSchoolLearningQuestions: MiddleSchoolQuestion[] = [
       'Analysis / research',
       'People management',
       'Presenting / influencing',
-      'Strategy / planning'
-    ]
-  }
+      'Strategy / planning',
+    ],
+  },
 ];
 
 // Section 4: Aptitude Sampling (mini-tasks + reflection)
@@ -550,74 +545,74 @@ export const highSchoolAptitudeQuestions: MiddleSchoolQuestion[] = [
     text: 'Task A: Analytical reasoning - Rate the EASE of this task',
     type: 'rating',
     taskType: 'Analytical',
-    description: '(e.g., data interpretation, logic grid, basic stats problem)'
+    description: '(e.g., data interpretation, logic grid, basic stats problem)',
   },
   {
     id: 'hs23',
     text: 'Task A: Analytical reasoning - Rate your ENJOYMENT of this task',
     type: 'rating',
-    taskType: 'Analytical'
+    taskType: 'Analytical',
   },
   {
     id: 'hs24',
     text: 'Task B: Creative production - Rate the EASE of this task',
     type: 'rating',
     taskType: 'Creative',
-    description: '(e.g., design a poster, write a pitch/story, create a 1-min reel plan)'
+    description: '(e.g., design a poster, write a pitch/story, create a 1-min reel plan)',
   },
   {
     id: 'hs25',
     text: 'Task B: Creative production - Rate your ENJOYMENT of this task',
     type: 'rating',
-    taskType: 'Creative'
+    taskType: 'Creative',
   },
   {
     id: 'hs26',
     text: 'Task C: Technical/hands-on build - Rate the EASE of this task',
     type: 'rating',
     taskType: 'Technical',
-    description: '(e.g., prototype, coding mini-challenge, mechanical build)'
+    description: '(e.g., prototype, coding mini-challenge, mechanical build)',
   },
   {
     id: 'hs27',
     text: 'Task C: Technical/hands-on build - Rate your ENJOYMENT of this task',
     type: 'rating',
-    taskType: 'Technical'
+    taskType: 'Technical',
   },
   {
     id: 'hs28',
     text: 'Task D: Social/leadership scenario - Rate the EASE of this task',
     type: 'rating',
     taskType: 'Social',
-    description: '(e.g., resolve a conflict, lead a small group plan, mentor a junior)'
+    description: '(e.g., resolve a conflict, lead a small group plan, mentor a junior)',
   },
   {
     id: 'hs29',
     text: 'Task D: Social/leadership scenario - Rate your ENJOYMENT of this task',
     type: 'rating',
-    taskType: 'Social'
+    taskType: 'Social',
   },
   {
     id: 'hs30',
     text: 'Which task gave you energy? What skill was it using?',
     type: 'text',
     placeholder: 'Describe which task energized you and why...',
-    strengthType: 'Reflection'
+    strengthType: 'Reflection',
   },
   {
     id: 'hs31',
     text: 'Which task drained you? Why?',
     type: 'text',
     placeholder: 'Describe which task was draining and why...',
-    strengthType: 'Reflection'
+    strengthType: 'Reflection',
   },
   {
     id: 'hs32',
     text: 'If you could improve one skill this year, what would it be and how will you practice it?',
     type: 'text',
     placeholder: 'Share the skill you want to improve and your practice plan...',
-    strengthType: 'Reflection'
-  }
+    strengthType: 'Reflection',
+  },
 ];
 
 // Rating scale for High School assessments
@@ -625,7 +620,7 @@ export const highSchoolRatingScale: RatingScaleOption[] = [
   { value: 1, label: 'Not me' },
   { value: 2, label: 'A bit' },
   { value: 3, label: 'Mostly' },
-  { value: 4, label: 'Strongly me' }
+  { value: 4, label: 'Strongly me' },
 ];
 
 // Aptitude task rating scale
@@ -633,5 +628,5 @@ export const aptitudeRatingScale: RatingScaleOption[] = [
   { value: 1, label: 'Very difficult / Not enjoyable' },
   { value: 2, label: 'Somewhat difficult / Slightly enjoyable' },
   { value: 3, label: 'Moderately easy / Moderately enjoyable' },
-  { value: 4, label: 'Very easy / Very enjoyable' }
+  { value: 4, label: 'Very easy / Very enjoyable' },
 ];

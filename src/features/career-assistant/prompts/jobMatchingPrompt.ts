@@ -36,16 +36,22 @@ Completed Training: ${studentContext.completed_training.join(', ') || 'None'}
 
 ---
 
-${userQuery ? `**USER'S SPECIFIC REQUEST:**
+${
+  userQuery
+    ? `**USER'S SPECIFIC REQUEST:**
 "${userQuery}"
 
 IMPORTANT: Filter and prioritize jobs that match this specific request. If they ask for "SQL jobs", ONLY show jobs that require SQL.
 
 ---
 
-` : ''}**AVAILABLE OPPORTUNITIES (${opportunities.length} total):**
+`
+    : ''
+}**AVAILABLE OPPORTUNITIES (${opportunities.length} total):**
 
-${opportunities.map(opp => `
+${opportunities
+  .map(
+    (opp) => `
 ${opp.index}. [ID: ${opp.id}] ${opp.title} at ${opp.company}
    Type: ${opp.type} | Location: ${opp.location} | Mode: ${opp.mode || 'Not specified'}
    Experience Required: ${opp.experience || 'Not specified'}
@@ -53,7 +59,9 @@ ${opp.index}. [ID: ${opp.id}] ${opp.title} at ${opp.company}
    Salary/Stipend: ${opp.salary || 'Not disclosed'}
    Deadline: ${opp.deadline ? new Date(opp.deadline).toLocaleDateString() : 'Open'}
    Description: ${opp.description?.substring(0, 150) || 'N/A'}...
-`).join('\n---\n')}
+`
+  )
+  .join('\n---\n')}
 
 ---
 
@@ -119,5 +127,5 @@ Return ONLY valid JSON. Be accurate, honest, and helpful.`;
 /**
  * System prompt for job matching AI
  */
-export const JOB_MATCHING_SYSTEM_PROMPT = 
+export const JOB_MATCHING_SYSTEM_PROMPT =
   'You are an expert career counselor and job matching AI with deep knowledge of the Indian job market, student career development, and skill assessment. You provide accurate, honest, and helpful career guidance.';

@@ -5,12 +5,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { Upload, File, Trash2, Eye, Download, Plus } from 'lucide-react';
-import { 
-  uploadStudentDocument, 
-  getStudentDocuments, 
+import {
+  uploadStudentDocument,
+  getStudentDocuments,
   deleteStudentDocument,
   getStudentDocumentUrl,
-  validateStudentDocument 
+  validateStudentDocument,
 } from '../../../services/studentDocumentService';
 
 const DocumentManager = ({ studentId, className = '' }) => {
@@ -25,7 +25,7 @@ const DocumentManager = ({ studentId, className = '' }) => {
     { value: 'certificate', label: 'Certificate', icon: '🏆' },
     { value: 'transcript', label: 'Transcript', icon: '📊' },
     { value: 'id_proof', label: 'ID Proof', icon: '🆔' },
-    { value: 'other', label: 'Other', icon: '📎' }
+    { value: 'other', label: 'Other', icon: '📎' },
   ];
 
   useEffect(() => {
@@ -60,11 +60,11 @@ const DocumentManager = ({ studentId, className = '' }) => {
 
       // Upload document
       const result = await uploadStudentDocument(studentId, file, documentType);
-      
+
       if (result.success) {
         setSuccess('Document uploaded successfully!');
         await loadDocuments(); // Refresh the list
-        
+
         // Clear success message after 3 seconds
         setTimeout(() => setSuccess(''), 3000);
       } else {
@@ -114,7 +114,7 @@ const DocumentManager = ({ studentId, className = '' }) => {
   };
 
   const getDocumentTypeInfo = (type) => {
-    return documentTypes.find(dt => dt.value === type) || documentTypes[4]; // Default to 'other'
+    return documentTypes.find((dt) => dt.value === type) || documentTypes[4]; // Default to 'other'
   };
 
   const formatFileSize = (bytes) => {
@@ -129,7 +129,7 @@ const DocumentManager = ({ studentId, className = '' }) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
-      day: 'numeric'
+      day: 'numeric',
     });
   };
 
@@ -139,7 +139,7 @@ const DocumentManager = ({ studentId, className = '' }) => {
         <div className="animate-pulse">
           <div className="h-6 bg-gray-200 rounded w-1/4 mb-4"></div>
           <div className="space-y-3">
-            {[1, 2, 3].map(i => (
+            {[1, 2, 3].map((i) => (
               <div key={i} className="h-16 bg-gray-200 rounded"></div>
             ))}
           </div>
@@ -177,19 +177,21 @@ const DocumentManager = ({ studentId, className = '' }) => {
             Upload New Document
           </label>
           <div className="flex gap-3">
-            <select 
+            <select
               id="documentType"
               className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               defaultValue=""
             >
-              <option value="" disabled>Select document type</option>
-              {documentTypes.map(type => (
+              <option value="" disabled>
+                Select document type
+              </option>
+              {documentTypes.map((type) => (
                 <option key={type.value} value={type.value}>
                   {type.icon} {type.label}
                 </option>
               ))}
             </select>
-            
+
             <input
               type="file"
               id="documentFile"
@@ -198,7 +200,7 @@ const DocumentManager = ({ studentId, className = '' }) => {
               onChange={(e) => {
                 const file = e.target.files[0];
                 const documentType = document.getElementById('documentType').value;
-                
+
                 if (file && documentType) {
                   handleFileUpload(file, documentType);
                   e.target.value = ''; // Reset input
@@ -208,7 +210,7 @@ const DocumentManager = ({ studentId, className = '' }) => {
                 }
               }}
             />
-            
+
             <button
               onClick={() => document.getElementById('documentFile').click()}
               disabled={uploading}
@@ -244,7 +246,10 @@ const DocumentManager = ({ studentId, className = '' }) => {
             documents.map((doc, index) => {
               const typeInfo = getDocumentTypeInfo(doc.type);
               return (
-                <div key={index} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
+                <div
+                  key={index}
+                  className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
+                >
                   <div className="flex items-center gap-3">
                     <div className="text-2xl">{typeInfo.icon}</div>
                     <div>
@@ -256,7 +261,7 @@ const DocumentManager = ({ studentId, className = '' }) => {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleViewDocument(doc.url)}
@@ -265,7 +270,7 @@ const DocumentManager = ({ studentId, className = '' }) => {
                     >
                       <Eye className="h-4 w-4" />
                     </button>
-                    
+
                     <button
                       onClick={() => handleDownloadDocument(doc.url, doc.name)}
                       className="p-2 text-green-600 hover:bg-green-50 rounded-md"
@@ -273,7 +278,7 @@ const DocumentManager = ({ studentId, className = '' }) => {
                     >
                       <Download className="h-4 w-4" />
                     </button>
-                    
+
                     <button
                       onClick={() => handleDeleteDocument(doc.url)}
                       className="p-2 text-red-600 hover:bg-red-50 rounded-md"

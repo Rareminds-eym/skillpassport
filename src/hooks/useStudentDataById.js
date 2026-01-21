@@ -1,6 +1,6 @@
 /**
  * Hook to fetch student data from Supabase by student ID
- * 
+ *
  * Works with your actual students table structure (profile JSONB column)
  */
 
@@ -31,9 +31,11 @@ export const useStudentDataById = (studentId, fallbackToMock = true) => {
         } else {
           // Check if it's an RLS error
           const errorMsg = result.error || 'Student not found';
-          if (errorMsg.toLowerCase().includes('row-level security') ||
+          if (
+            errorMsg.toLowerCase().includes('row-level security') ||
             errorMsg.toLowerCase().includes('rls') ||
-            errorMsg.toLowerCase().includes('permission denied')) {
+            errorMsg.toLowerCase().includes('permission denied')
+          ) {
             setError('⚠️ Database access blocked. Please disable RLS in Supabase. See FIX_RLS.md');
             console.error('🔒 RLS is blocking access! Run this in Supabase SQL Editor:');
             console.error('ALTER TABLE students DISABLE ROW LEVEL SECURITY;');

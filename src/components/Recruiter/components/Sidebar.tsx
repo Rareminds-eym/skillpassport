@@ -14,7 +14,7 @@ import {
   ChevronRightIcon,
   EnvelopeIcon,
   SparklesIcon,
-  RocketLaunchIcon
+  RocketLaunchIcon,
 } from '@heroicons/react/24/outline';
 
 const navigationItems = [
@@ -28,18 +28,18 @@ const navigationItems = [
     subItems: [
       { name: 'Job Requisitions', path: '/recruitment/requisition' },
       { name: 'Talent Pool', path: '/recruitment/talent-pool' },
-      { name: 'Applicants List', path: '/recruitment/requisition/applicants' }
-    ]
+      { name: 'Applicants List', path: '/recruitment/requisition/applicants' },
+    ],
   },
   { name: 'Pipelines', path: '/recruitment/pipelines', icon: RectangleStackIcon },
   { name: 'Project Hiring', path: '/recruitment/projects', icon: RocketLaunchIcon },
   { name: 'Shortlists', path: '/recruitment/shortlists', icon: BookmarkIcon },
   { name: 'Interviews', path: '/recruitment/interviews', icon: CalendarDaysIcon },
   { name: 'Offers & Decisions', path: '/recruitment/offers-decisions', icon: DocumentTextIcon },
-  {name: 'Verified Work', path: '/recruitment/verified-work', icon: UsersIcon},
+  { name: 'Verified Work', path: '/recruitment/verified-work', icon: UsersIcon },
   { name: 'Messages', path: '/recruitment/messages', icon: EnvelopeIcon },
   { name: 'Analytics', path: '/recruitment/analytics', icon: ChartBarIcon },
-  { name: 'Settings', path: '/recruitment/settings', icon: CogIcon }
+  { name: 'Settings', path: '/recruitment/settings', icon: CogIcon },
 ];
 
 function classNames(...classes: string[]): string {
@@ -53,15 +53,20 @@ interface SidebarProps {
   unreadMessagesCount?: number;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, showMobileMenu, unreadMessagesCount = 0 }) => {
+const Sidebar: React.FC<SidebarProps> = ({
+  activeTab,
+  setActiveTab,
+  showMobileMenu,
+  unreadMessagesCount = 0,
+}) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [openSubmenus, setOpenSubmenus] = useState<{ [key: string]: boolean }>({});
 
   const toggleSubmenu = (itemName: string) => {
-    setOpenSubmenus(prev => ({
+    setOpenSubmenus((prev) => ({
       ...prev,
-      [itemName]: !prev[itemName]
+      [itemName]: !prev[itemName],
     }));
   };
 
@@ -84,7 +89,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, showMobileMe
                       }
                     }}
                     className={classNames(
-                      location.pathname === item.path || location.pathname.startsWith(item.path + '/')
+                      location.pathname === item.path ||
+                        location.pathname.startsWith(item.path + '/')
                         ? 'bg-primary-50 border-r-2 border-primary-500 text-primary-700'
                         : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
                       'group flex w-full items-center px-2 py-2 text-sm font-medium rounded-l-md'
@@ -92,7 +98,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, showMobileMe
                   >
                     <item.icon
                       className={classNames(
-                        location.pathname === item.path || location.pathname.startsWith(item.path + '/')
+                        location.pathname === item.path ||
+                          location.pathname.startsWith(item.path + '/')
                           ? 'text-primary-500'
                           : 'text-gray-400 group-hover:text-gray-500',
                         'mr-3 flex-shrink-0 h-6 w-6'
@@ -105,13 +112,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, showMobileMe
                         {unreadMessagesCount > 9 ? '9+' : unreadMessagesCount}
                       </span>
                     )}
-                    {item.subItems && (
-                      openSubmenus[item.name] ? (
+                    {item.subItems &&
+                      (openSubmenus[item.name] ? (
                         <ChevronDownIcon className="h-4 w-4" />
                       ) : (
                         <ChevronRightIcon className="h-4 w-4" />
-                      )
-                    )}
+                      ))}
                   </button>
                   {item.subItems && openSubmenus[item.name] && (
                     <div className="ml-11 mt-1 space-y-1">
@@ -162,7 +168,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, showMobileMe
                             }
                           }}
                           className={classNames(
-                            location.pathname === item.path || location.pathname.startsWith(item.path + '/')
+                            location.pathname === item.path ||
+                              location.pathname.startsWith(item.path + '/')
                               ? 'bg-primary-50 border-r-2 border-primary-500 text-primary-700'
                               : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
                             'group flex w-full items-center px-2 py-2 text-sm font-medium rounded-l-md'
@@ -170,7 +177,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, showMobileMe
                         >
                           <item.icon
                             className={classNames(
-                              location.pathname === item.path || location.pathname.startsWith(item.path + '/')
+                              location.pathname === item.path ||
+                                location.pathname.startsWith(item.path + '/')
                                 ? 'text-primary-500'
                                 : 'text-gray-400 group-hover:text-gray-500',
                               'mr-3 flex-shrink-0 h-6 w-6'
@@ -183,13 +191,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, showMobileMe
                               {unreadMessagesCount > 9 ? '9+' : unreadMessagesCount}
                             </span>
                           )}
-                          {item.subItems && (
-                            openSubmenus[item.name] ? (
+                          {item.subItems &&
+                            (openSubmenus[item.name] ? (
                               <ChevronDownIcon className="h-4 w-4" />
                             ) : (
                               <ChevronRightIcon className="h-4 w-4" />
-                            )
-                          )}
+                            ))}
                         </button>
                         {item.subItems && openSubmenus[item.name] && (
                           <div className="ml-11 mt-1 space-y-1">

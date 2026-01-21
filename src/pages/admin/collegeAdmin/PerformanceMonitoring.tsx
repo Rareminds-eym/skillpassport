@@ -1,12 +1,16 @@
-import React from "react";
-import { ChartBarIcon, ArrowTrendingUpIcon, AcademicCapIcon } from "@heroicons/react/24/outline";
+import React from 'react';
+import { ChartBarIcon, ArrowTrendingUpIcon, AcademicCapIcon } from '@heroicons/react/24/outline';
 
 const PerformanceMonitoring: React.FC = () => {
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
       <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 border border-blue-100">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Performance Monitoring</h1>
-        <p className="text-gray-600 text-sm sm:text-base">Track student academic performance and progress</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
+          Performance Monitoring
+        </h1>
+        <p className="text-gray-600 text-sm sm:text-base">
+          Track student academic performance and progress
+        </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -41,7 +45,9 @@ const PerformanceMonitoring: React.FC = () => {
 
       <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Performance Analytics</h2>
-        <p className="text-gray-600">Detailed performance metrics and analytics will be displayed here.</p>
+        <p className="text-gray-600">
+          Detailed performance metrics and analytics will be displayed here.
+        </p>
       </div>
     </div>
   );

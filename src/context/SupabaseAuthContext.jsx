@@ -34,22 +34,22 @@ export const SupabaseAuthProvider = ({ children }) => {
 
     isRefreshing.current = true;
     refreshAttempts.current += 1;
-    
+
     try {
       console.log('SupabaseAuth: Attempting session refresh...');
       const { data, error } = await supabase.auth.refreshSession();
-      
+
       if (error) {
         console.warn('SupabaseAuth: Session refresh failed:', error.message);
         return null;
       }
-      
+
       if (data?.session) {
         console.log('SupabaseAuth: Session refreshed successfully');
         refreshAttempts.current = 0; // Reset on success
         return data.session;
       }
-      
+
       return null;
     } catch (err) {
       console.error('SupabaseAuth: Session refresh error:', err);
@@ -65,16 +65,19 @@ export const SupabaseAuthProvider = ({ children }) => {
     const initializeAuth = async () => {
       try {
         // Get initial session
-        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
-        
+        const {
+          data: { session: initialSession },
+          error,
+        } = await supabase.auth.getSession();
+
         if (error) {
           console.error('SupabaseAuth: Error getting session:', error);
-          
+
           // If 403 error, try to refresh the session
           if (error.status === 403 || error.message?.includes('403')) {
             console.log('SupabaseAuth: Session invalid (403), attempting refresh...');
             const refreshedSession = await attemptSessionRefresh();
-            
+
             if (refreshedSession && mounted) {
               setSession(refreshedSession);
               setUser(refreshedSession.user);
@@ -110,11 +113,11 @@ export const SupabaseAuthProvider = ({ children }) => {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, currentSession) => {
       if (!mounted) return;
-      
+
       console.log('SupabaseAuth state changed:', event);
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
-      
+
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         // Reset refresh attempts on successful auth events
         refreshAttempts.current = 0;
@@ -151,7 +154,7 @@ export const SupabaseAuthProvider = ({ children }) => {
         if (error.code === 'PGRST116') {
           return;
         }
-        
+
         // Handle JWT expiration
         if (isJwtExpiryError(error)) {
           await handleAuthError(error);
@@ -180,15 +183,17 @@ export const SupabaseAuthProvider = ({ children }) => {
   const signUp = async (email, password, studentData = {}) => {
     try {
       // Use the worker API for signup with proper rollback support
-      const USER_API_URL = import.meta.env.VITE_USER_API_URL || 'https://user-api.dark-mode-d021.workers.dev';
-      
+      const USER_API_URL =
+        import.meta.env.VITE_USER_API_URL || 'https://user-api.dark-mode-d021.workers.dev';
+
       const response = await fetch(`${USER_API_URL}/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email,
           password,
-          firstName: studentData.firstName || studentData.name?.split(' ')[0] || email.split('@')[0],
+          firstName:
+            studentData.firstName || studentData.name?.split(' ')[0] || email.split('@')[0],
           lastName: studentData.lastName || studentData.name?.split(' ').slice(1).join(' ') || '',
           role: studentData.role || 'school_student',
           phone: studentData.phone,
@@ -217,15 +222,15 @@ export const SupabaseAuthProvider = ({ children }) => {
       }
 
       // Return in the same format as supabase.auth.signUp
-      return { 
-        data: { 
-          user: { 
-            id: result.data.userId, 
+      return {
+        data: {
+          user: {
+            id: result.data.userId,
             email: result.data.email,
-            session: signInData?.session || null
-          } 
-        }, 
-        error: null 
+            session: signInData?.session || null,
+          },
+        },
+        error: null,
       };
     } catch (error) {
       console.error('❌ Sign up error:', error);
@@ -236,14 +241,12 @@ export const SupabaseAuthProvider = ({ children }) => {
   // Sign in
   const signIn = async (email, password) => {
     try {
-      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) throw error;
-
 
       if (data.user) {
         await loadUserProfile(data.user.id);
@@ -259,14 +262,13 @@ export const SupabaseAuthProvider = ({ children }) => {
   // Sign out
   const signOut = async () => {
     try {
-      
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      
+
       setUserProfile(null);
       // Clear localStorage
       localStorage.removeItem('userEmail');
-      
+
       return { error: null };
     } catch (error) {
       console.error('❌ Sign out error:', error);
@@ -340,11 +342,7 @@ export const SupabaseAuthProvider = ({ children }) => {
     refreshProfile: () => user && loadUserProfile(user.id),
   };
 
-  return (
-    <SupabaseAuthContext.Provider value={value}>
-      {children}
-    </SupabaseAuthContext.Provider>
-  );
+  return <SupabaseAuthContext.Provider value={value}>{children}</SupabaseAuthContext.Provider>;
 };
 
 // Helper HOC for protected routes

@@ -42,9 +42,10 @@ function safeJSONParse(jsonString) {
 export const getStudentByEmail = async (email) => {
   try {
     // Since profile column is removed, we only query by email column
-    let { data, error } = await supabase
+    const { data, error } = await supabase
       .from('students')
-      .select(`
+      .select(
+        `
         *,
         school:organizations!students_school_id_fkey (
           id,
@@ -113,7 +114,8 @@ export const getStudentByEmail = async (email) => {
         skills(*),
         trainings (*),
         education (*) 
-      `)
+      `
+      )
       .eq('email', email)
       .maybeSingle();
 
@@ -139,25 +141,25 @@ export const getStudentByEmail = async (email) => {
       department: data.branch_field,
       college: data.college_school_name,
       registrationNumber: data.registration_number,
-      
+
       // Guardian info
       guardianName: data.guardianName,
       guardianPhone: data.guardianPhone,
       guardianEmail: data.guardianEmail,
       guardianRelation: data.guardianRelation,
-      
+
       // Personal details
       gender: data.gender,
       bloodGroup: data.bloodGroup,
       bio: data.bio,
-      
+
       // Location
       address: data.address,
       city: data.city,
       state: data.state,
       country: data.country,
       pincode: data.pincode,
-      
+
       // Social links
       github_link: data.github_link,
       linkedin_link: data.linkedin_link,
@@ -167,28 +169,28 @@ export const getStudentByEmail = async (email) => {
       portfolio_link: data.portfolio_link,
       youtube_link: data.youtube_link,
       other_social_links: data.other_social_links || [],
-      
+
       // Files
       resumeUrl: data.resumeUrl,
       profilePicture: data.profilePicture,
-      
+
       // School/College specific
       grade: data.grade,
       section: data.section,
       roll_number: data.roll_number,
       admission_number: data.admission_number,
-      
+
       // Additional fields
       hobbies: data.hobbies || [],
       languages: data.languages || [],
       interests: data.interests || [],
-      
+
       // Generate passport ID from registration number
       passportId: data.registration_number ? `SP-${data.registration_number}` : 'SP-0000',
       verified: true,
       employabilityScore: 75,
       cgpa: data.currentCgpa || 'N/A',
-      photo: generateAvatar(data.name)
+      photo: generateAvatar(data.name),
     };
 
     // Transform profile data to consistent format
@@ -196,164 +198,166 @@ export const getStudentByEmail = async (email) => {
 
     // Extract skill_passports data (if exists)
     const passport = data.skill_passports || {};
-  // Format skills from skills table
-const tableSkills = Array.isArray(data?.skills) ? data.skills : [];
-const technicalSkills = tableSkills
-  .filter(skill => skill.type === 'technical')
-  .map(skill => ({
-    id: skill.id,
-    name: skill.name,
-    level: skill.level || 3,
-    description: skill.description || '',
-    verified: skill.verified || false,
-    enabled: skill.enabled ?? true,
-    approval_status: skill.approval_status || 'pending',
-    createdAt: skill.created_at,
-    updatedAt: skill.updated_at,
-  }));
+    // Format skills from skills table
+    const tableSkills = Array.isArray(data?.skills) ? data.skills : [];
+    const technicalSkills = tableSkills
+      .filter((skill) => skill.type === 'technical')
+      .map((skill) => ({
+        id: skill.id,
+        name: skill.name,
+        level: skill.level || 3,
+        description: skill.description || '',
+        verified: skill.verified || false,
+        enabled: skill.enabled ?? true,
+        approval_status: skill.approval_status || 'pending',
+        createdAt: skill.created_at,
+        updatedAt: skill.updated_at,
+      }));
 
-const softSkills = tableSkills
-  .filter(skill => skill.type === 'soft')
-  .map(skill => ({
-    id: skill.id,
-    name: skill.name,
-    level: skill.level || 3,
-    type: skill.name.toLowerCase(), // For UI compatibility
-    description: skill.description || '',
-    verified: skill.verified || false,
-    enabled: skill.enabled ?? true,
-    approval_status: skill.approval_status || 'pending',
-    createdAt: skill.created_at,
-    updatedAt: skill.updated_at,
-  }));
+    const softSkills = tableSkills
+      .filter((skill) => skill.type === 'soft')
+      .map((skill) => ({
+        id: skill.id,
+        name: skill.name,
+        level: skill.level || 3,
+        type: skill.name.toLowerCase(), // For UI compatibility
+        description: skill.description || '',
+        verified: skill.verified || false,
+        enabled: skill.enabled ?? true,
+        approval_status: skill.approval_status || 'pending',
+        createdAt: skill.created_at,
+        updatedAt: skill.updated_at,
+      }));
 
-//   // Format education from education table
-const tableEducation = Array.isArray(data?.education) ? data.education : [];
-const formattedEducation = tableEducation.map((edu) => ({
-  id: edu.id,
-  level: edu.level || "Bachelor's",
-  degree: edu.degree || "",
-  department: edu.department || "",
-  university: edu.university || "",
-  yearOfPassing: edu.year_of_passing || "",
-  cgpa: edu.cgpa || "",
-  status: edu.status || "ongoing",
-  approval_status: edu.approval_status || "pending",
-  verified: edu.approval_status === "approved",
-  processing: edu.approval_status !== "approved",
-  enabled: edu.enabled !== undefined ? edu.enabled : true, // Use actual enabled column
-  createdAt: edu.created_at,
-  updatedAt: edu.updated_at,
-}));
+    //   // Format education from education table
+    const tableEducation = Array.isArray(data?.education) ? data.education : [];
+    const formattedEducation = tableEducation.map((edu) => ({
+      id: edu.id,
+      level: edu.level || "Bachelor's",
+      degree: edu.degree || '',
+      department: edu.department || '',
+      university: edu.university || '',
+      yearOfPassing: edu.year_of_passing || '',
+      cgpa: edu.cgpa || '',
+      status: edu.status || 'ongoing',
+      approval_status: edu.approval_status || 'pending',
+      verified: edu.approval_status === 'approved',
+      processing: edu.approval_status !== 'approved',
+      enabled: edu.enabled !== undefined ? edu.enabled : true, // Use actual enabled column
+      createdAt: edu.created_at,
+      updatedAt: edu.updated_at,
+    }));
 
+    const tableTrainings = Array.isArray(data?.trainings) ? data.trainings : [];
 
-const tableTrainings = Array.isArray(data?.trainings) ? data.trainings : [];
+    // Filter to only approved/verified trainings first
+    const approvedTrainings = tableTrainings.filter(
+      (train) =>
+        train.approval_status === 'approved' ||
+        train.approval_status === 'verified' ||
+        train.approval_status === 'pending' // Show pending too
+    );
 
-// Filter to only approved/verified trainings first
-const approvedTrainings = tableTrainings.filter(
-  (train) => train.approval_status === 'approved' || 
-             train.approval_status === 'verified' ||
-             train.approval_status === 'pending'  // Show pending too
-);
+    // Fetch all training IDs (only from approved trainings)
+    const trainingIds = approvedTrainings.map((t) => t.id).filter(Boolean);
 
-// Fetch all training IDs (only from approved trainings)
-const trainingIds = approvedTrainings.map(t => t.id).filter(Boolean);
+    // Only fetch certificates and skills if there are approved trainings
+    let trainingCertificates = [];
+    let trainingSkills = [];
 
-// Only fetch certificates and skills if there are approved trainings
-let trainingCertificates = [];
-let trainingSkills = [];
+    if (trainingIds.length > 0) {
+      // Fetch all certificates linked to these trainings
+      const { data: certData } = await supabase
+        .from('certificates')
+        .select('training_id, link')
+        .in('training_id', trainingIds);
 
-if (trainingIds.length > 0) {
-  // Fetch all certificates linked to these trainings
-  const { data: certData } = await supabase
-    .from('certificates')
-    .select('training_id, link')
-    .in('training_id', trainingIds);
-  
-  trainingCertificates = certData || [];
+      trainingCertificates = certData || [];
 
-  // Fetch all skills linked to these trainings
-  const { data: skillsData } = await supabase
-    .from('skills')
-    .select('training_id, name')
-    .in('training_id', trainingIds)
-    .eq('type', 'technical');
-  
-  trainingSkills = skillsData || [];
-}
+      // Fetch all skills linked to these trainings
+      const { data: skillsData } = await supabase
+        .from('skills')
+        .select('training_id, name')
+        .in('training_id', trainingIds)
+        .eq('type', 'technical');
 
-const formattedTrainings = approvedTrainings.map((train) => {
-  // Find certificate for this specific training
-  const cert = trainingCertificates.find(c => c.training_id === train.id);
-  
-  // Find skills for this specific training
-  const skills = trainingSkills
-    .filter(s => s.training_id === train.id)
-    .map(s => s.name);
+      trainingSkills = skillsData || [];
+    }
 
-  return {
-    id: train.id,
-    title: train.title || "",
-    course: train.title || "",
-    organization: train.organization || "",
-    provider: train.organization || "",
-    start_date: train.start_date,
-    end_date: train.end_date,
-    startDate: train.start_date,
-    endDate: train.end_date,
-    duration: train.duration || "",
-    description: train.description || "",
-    
-    // From trainings table
-    status: train.status || "ongoing",
-    completedModules: train.completed_modules || 0,
-    totalModules: train.total_modules || 0,
-    hoursSpent: train.hours_spent || 0,
-    
-    // IMPORTANT: Include course_id and source for internal/external detection
-    course_id: train.course_id || null,
-    source: train.source || null,
-    
-    // From certificates table (linked by training_id)
-    certificateUrl: cert?.link || "",
-    
-    // From skills table (linked by training_id)
-    skills: skills,
-    
-    approval_status: train.approval_status,
-    verified: true, // Already filtered, so all are verified
-    processing: false, // Already filtered, so won't be pending
-    enabled: true, // Already filtered, so all are enabled
-    createdAt: train.created_at,
-    updatedAt: train.updated_at,
-  };
-});
+    const formattedTrainings = approvedTrainings.map((train) => {
+      // Find certificate for this specific training
+      const cert = trainingCertificates.find((c) => c.training_id === train.id);
+
+      // Find skills for this specific training
+      const skills = trainingSkills.filter((s) => s.training_id === train.id).map((s) => s.name);
+
+      return {
+        id: train.id,
+        title: train.title || '',
+        course: train.title || '',
+        organization: train.organization || '',
+        provider: train.organization || '',
+        start_date: train.start_date,
+        end_date: train.end_date,
+        startDate: train.start_date,
+        endDate: train.end_date,
+        duration: train.duration || '',
+        description: train.description || '',
+
+        // From trainings table
+        status: train.status || 'ongoing',
+        completedModules: train.completed_modules || 0,
+        totalModules: train.total_modules || 0,
+        hoursSpent: train.hours_spent || 0,
+
+        // IMPORTANT: Include course_id and source for internal/external detection
+        course_id: train.course_id || null,
+        source: train.source || null,
+
+        // From certificates table (linked by training_id)
+        certificateUrl: cert?.link || '',
+
+        // From skills table (linked by training_id)
+        skills: skills,
+
+        approval_status: train.approval_status,
+        verified: true, // Already filtered, so all are verified
+        processing: false, // Already filtered, so won't be pending
+        enabled: true, // Already filtered, so all are enabled
+        createdAt: train.created_at,
+        updatedAt: train.updated_at,
+      };
+    });
 
     const tableCertificates = Array.isArray(data?.certificates) ? data.certificates : [];
     const formattedTableCertificates = tableCertificates.map((certificate) => {
       const issuedOnValue = certificate?.issued_on || certificate?.issuedOn || null;
-      const issuedOnFormatted = issuedOnValue ? new Date(issuedOnValue).toISOString().split("T")[0] : "";
-      const approvalSource = certificate?.approval_status || certificate?.status || "pending";
-      const approvalStatus = typeof approvalSource === "string" ? approvalSource.toLowerCase() : "pending";
-      const statusSource = certificate?.status || (certificate?.enabled === false ? "disabled" : "active");
-      const statusValue = typeof statusSource === "string" ? statusSource.toLowerCase() : "active";
+      const issuedOnFormatted = issuedOnValue
+        ? new Date(issuedOnValue).toISOString().split('T')[0]
+        : '';
+      const approvalSource = certificate?.approval_status || certificate?.status || 'pending';
+      const approvalStatus =
+        typeof approvalSource === 'string' ? approvalSource.toLowerCase() : 'pending';
+      const statusSource =
+        certificate?.status || (certificate?.enabled === false ? 'disabled' : 'active');
+      const statusValue = typeof statusSource === 'string' ? statusSource.toLowerCase() : 'active';
       const documentUrlValue = certificate?.link || null;
       return {
         id: certificate?.id,
-        title: certificate?.title || "",
-        issuer: certificate?.issuer || "",
+        title: certificate?.title || '',
+        issuer: certificate?.issuer || '',
         issuedOn: issuedOnFormatted,
-        level: certificate?.level || "",
-        description: certificate?.description || "",
-        credentialId: certificate?.credential_id || "",
-        link: certificate?.link || "",
+        level: certificate?.level || '',
+        description: certificate?.description || '',
+        credentialId: certificate?.credential_id || '',
+        link: certificate?.link || '',
         status: statusValue,
         approval_status: approvalStatus,
-        verified: approvalStatus === "approved",
-        processing: approvalStatus !== "approved",
-        enabled: statusValue !== "disabled",
+        verified: approvalStatus === 'approved',
+        processing: approvalStatus !== 'approved',
+        enabled: statusValue !== 'disabled',
         document_url: documentUrlValue,
-        documentLink: documentUrlValue || "",
+        documentLink: documentUrlValue || '',
         createdAt: certificate?.created_at,
         updatedAt: certificate?.updated_at,
       };
@@ -361,33 +365,33 @@ const formattedTrainings = approvedTrainings.map((train) => {
 
     const passportCertificates = Array.isArray(passport.certificates)
       ? passport.certificates.map((certificate) => ({
-        ...certificate,
-        verifiedAt:
-          certificate?.verified === true || certificate?.status === 'verified'
-            ? certificate?.verifiedAt || certificate?.updatedAt || certificate?.createdAt
-            : null,
-      }))
+          ...certificate,
+          verifiedAt:
+            certificate?.verified === true || certificate?.status === 'verified'
+              ? certificate?.verifiedAt || certificate?.updatedAt || certificate?.createdAt
+              : null,
+        }))
       : [];
 
-    const mergedCertificates = formattedTableCertificates.length > 0 ? formattedTableCertificates : passportCertificates;
+    const mergedCertificates =
+      formattedTableCertificates.length > 0 ? formattedTableCertificates : passportCertificates;
 
-    
-const tableExperience = Array.isArray(data?.experience) ? data.experience : [];
-const formattedExperience = tableExperience
-  .map((exp) => ({
-    id: exp.id,
-    organization: exp.organization || "",
-    role: exp.role || "",
-    start_date: exp.start_date,
-    end_date: exp.end_date,
-    duration: exp.duration || "",
-    verified: exp.verified || exp.approval_status === 'approved' || exp.approval_status === 'verified',
-    approval_status: exp.approval_status || "pending",
-    processing: exp.approval_status === 'pending',
-    enabled: exp.enabled !== undefined ? exp.enabled : true,
-    createdAt: exp.created_at,
-    updatedAt: exp.updated_at,
-  }));
+    const tableExperience = Array.isArray(data?.experience) ? data.experience : [];
+    const formattedExperience = tableExperience.map((exp) => ({
+      id: exp.id,
+      organization: exp.organization || '',
+      role: exp.role || '',
+      start_date: exp.start_date,
+      end_date: exp.end_date,
+      duration: exp.duration || '',
+      verified:
+        exp.verified || exp.approval_status === 'approved' || exp.approval_status === 'verified',
+      approval_status: exp.approval_status || 'pending',
+      processing: exp.approval_status === 'pending',
+      enabled: exp.enabled !== undefined ? exp.enabled : true,
+      createdAt: exp.created_at,
+      updatedAt: exp.updated_at,
+    }));
 
     // Merge: database fields + profile fields + passport fields
     const mergedData = {
@@ -415,7 +419,7 @@ const formattedExperience = tableExperience
 
       // Legacy flattened access for backward compatibility - BUT individual columns take precedence
       ...transformedProfile,
-      
+
       // CRITICAL FIX: Individual database columns override profile data
       name: data.name || transformedProfile.name,
       approval_status: data.approval_status, // This was getting overwritten!
@@ -436,49 +440,50 @@ const formattedExperience = tableExperience
       // NOW THESE COME FROM projects table:
       projects: Array.isArray(data.projects)
         ? data.projects
-        .filter((project) => 
-        project.approval_status === 'verified' || 
-        project.approval_status === 'approved'
-      )
-        .map((project) => ({
-          ...project,
-          // Map database column names to UI expected names
-          id: project.id,
-          title: project.title,
-          description: project.description,
-          status: project.status,
-          start_date: project.start_date,
-          end_date: project.end_date,
-          duration: project.duration,
-          tech: project.tech_stack, // UI expects 'tech' array
-          tech_stack: project.tech_stack,
-          link: project.demo_link, // UI expects 'link' for demo link
-          demo_link: project.demo_link,
-          organization: project.organization,
-          github: project.github_link, // UI expects 'github'
-          github_link: project.github_link,
-          github_url: project.github_link,
-          certificate_url: project.certificate_url,
-          video_url: project.video_url,
-          ppt_url: project.ppt_url,
-          approval_status: project.approval_status,
-          created_at: project.created_at,
-          updated_at: project.updated_at,
-          enabled: project.enabled ?? true, // Default to enabled for UI
-          verifiedAt:
-            project?.approval_status === 'approved' || project?.status === 'verified'
-              ? project?.updated_at || project?.created_at
-              : null
-        }))
+            .filter(
+              (project) =>
+                project.approval_status === 'verified' || project.approval_status === 'approved'
+            )
+            .map((project) => ({
+              ...project,
+              // Map database column names to UI expected names
+              id: project.id,
+              title: project.title,
+              description: project.description,
+              status: project.status,
+              start_date: project.start_date,
+              end_date: project.end_date,
+              duration: project.duration,
+              tech: project.tech_stack, // UI expects 'tech' array
+              tech_stack: project.tech_stack,
+              link: project.demo_link, // UI expects 'link' for demo link
+              demo_link: project.demo_link,
+              organization: project.organization,
+              github: project.github_link, // UI expects 'github'
+              github_link: project.github_link,
+              github_url: project.github_link,
+              certificate_url: project.certificate_url,
+              video_url: project.video_url,
+              ppt_url: project.ppt_url,
+              approval_status: project.approval_status,
+              created_at: project.created_at,
+              updated_at: project.updated_at,
+              enabled: project.enabled ?? true, // Default to enabled for UI
+              verifiedAt:
+                project?.approval_status === 'approved' || project?.status === 'verified'
+                  ? project?.updated_at || project?.created_at
+                  : null,
+            }))
         : [],
       certificates: mergedCertificates,
       assessments: passport.assessments || [],
-    technicalSkills: technicalSkills.length > 0 ? technicalSkills : transformedProfile.technicalSkills,
-  softSkills: softSkills.length > 0 ? softSkills : transformedProfile.softSkills,
-  training: formattedTrainings.length > 0 ? formattedTrainings : transformedProfile.training,
+      technicalSkills:
+        technicalSkills.length > 0 ? technicalSkills : transformedProfile.technicalSkills,
+      softSkills: softSkills.length > 0 ? softSkills : transformedProfile.softSkills,
+      training: formattedTrainings.length > 0 ? formattedTrainings : transformedProfile.training,
       experience: formattedExperience,
-  // ✅ ADD THIS LINE
-  education: formattedEducation.length > 0 ? formattedEducation : transformedProfile.education,
+      // ✅ ADD THIS LINE
+      education: formattedEducation.length > 0 ? formattedEducation : transformedProfile.education,
 
       // Passport metadata:
       passportId: passport.id,
@@ -488,7 +493,7 @@ const formattedExperience = tableExperience
       passportSkills: passport.skills || [],
 
       // Raw data for debugging
-      rawData: data
+      rawData: data,
     };
 
     return { success: true, data: mergedData };
@@ -507,9 +512,10 @@ export const getStudentById = async (studentId) => {
   try {
     // console.log('🔍 Fetching student data for ID:', studentId);
 
-    let { data, error } = await supabase
+    const { data, error } = await supabase
       .from('students')
-      .select(`
+      .select(
+        `
         *,
         school:organizations!students_school_id_fkey (
           id,
@@ -570,7 +576,8 @@ export const getStudentById = async (studentId) => {
         skills(*),
         trainings (*),
         education (*) 
-      `)
+      `
+      )
       .eq('id', studentId)
       .maybeSingle();
 
@@ -585,7 +592,7 @@ export const getStudentById = async (studentId) => {
 
     // Use the same data processing logic as getStudentByEmail
     const email = data.email;
-    
+
     // Since we no longer have a JSONB profile column, we'll create a profile object from individual columns
     const profileData = {
       name: data.name || 'Student',
@@ -599,25 +606,25 @@ export const getStudentById = async (studentId) => {
       department: data.branch_field,
       college: data.college_school_name,
       registrationNumber: data.registration_number,
-      
+
       // Guardian info
       guardianName: data.guardianName,
       guardianPhone: data.guardianPhone,
       guardianEmail: data.guardianEmail,
       guardianRelation: data.guardianRelation,
-      
+
       // Personal details
       gender: data.gender,
       bloodGroup: data.bloodGroup,
       bio: data.bio,
-      
+
       // Location
       address: data.address,
       city: data.city,
       state: data.state,
       country: data.country,
       pincode: data.pincode,
-      
+
       // Social links
       github_link: data.github_link,
       linkedin_link: data.linkedin_link,
@@ -627,28 +634,28 @@ export const getStudentById = async (studentId) => {
       portfolio_link: data.portfolio_link,
       youtube_link: data.youtube_link,
       other_social_links: data.other_social_links || [],
-      
+
       // Files
       resumeUrl: data.resumeUrl,
       profilePicture: data.profilePicture,
-      
+
       // School/College specific
       grade: data.grade,
       section: data.section,
       roll_number: data.roll_number,
       admission_number: data.admission_number,
-      
+
       // Additional fields
       hobbies: data.hobbies || [],
       languages: data.languages || [],
       interests: data.interests || [],
-      
+
       // Generate passport ID from registration number
       passportId: data.registration_number ? `SP-${data.registration_number}` : 'SP-0000',
       verified: true,
       employabilityScore: 75,
       cgpa: data.currentCgpa || 'N/A',
-      photo: generateAvatar(data.name)
+      photo: generateAvatar(data.name),
     };
 
     // Transform profile data to consistent format
@@ -656,12 +663,12 @@ export const getStudentById = async (studentId) => {
 
     // Extract skill_passports data (if exists)
     const passport = data.skill_passports || {};
-    
+
     // Format skills from skills table
     const tableSkills = Array.isArray(data?.skills) ? data.skills : [];
     const technicalSkills = tableSkills
-      .filter(skill => skill.type === 'technical')
-      .map(skill => ({
+      .filter((skill) => skill.type === 'technical')
+      .map((skill) => ({
         id: skill.id,
         name: skill.name,
         level: skill.level || 3,
@@ -674,8 +681,8 @@ export const getStudentById = async (studentId) => {
       }));
 
     const softSkills = tableSkills
-      .filter(skill => skill.type === 'soft')
-      .map(skill => ({
+      .filter((skill) => skill.type === 'soft')
+      .map((skill) => ({
         id: skill.id,
         name: skill.name,
         level: skill.level || 3,
@@ -693,15 +700,15 @@ export const getStudentById = async (studentId) => {
     const formattedEducation = tableEducation.map((edu) => ({
       id: edu.id,
       level: edu.level || "Bachelor's",
-      degree: edu.degree || "",
-      department: edu.department || "",
-      university: edu.university || "",
-      yearOfPassing: edu.year_of_passing || "",
-      cgpa: edu.cgpa || "",
-      status: edu.status || "ongoing",
-      approval_status: edu.approval_status || "pending",
-      verified: edu.approval_status === "approved",
-      processing: edu.approval_status !== "approved",
+      degree: edu.degree || '',
+      department: edu.department || '',
+      university: edu.university || '',
+      yearOfPassing: edu.year_of_passing || '',
+      cgpa: edu.cgpa || '',
+      status: edu.status || 'ongoing',
+      approval_status: edu.approval_status || 'pending',
+      verified: edu.approval_status === 'approved',
+      processing: edu.approval_status !== 'approved',
       enabled: edu.enabled !== undefined ? edu.enabled : true,
       createdAt: edu.created_at,
       updatedAt: edu.updated_at,
@@ -711,13 +718,14 @@ export const getStudentById = async (studentId) => {
 
     // Filter to only approved/verified trainings first
     const approvedTrainings = tableTrainings.filter(
-      (train) => train.approval_status === 'approved' || 
-                 train.approval_status === 'verified' ||
-                 train.approval_status === 'pending'
+      (train) =>
+        train.approval_status === 'approved' ||
+        train.approval_status === 'verified' ||
+        train.approval_status === 'pending'
     );
 
     // Fetch all training IDs (only from approved trainings)
-    const trainingIds = approvedTrainings.map(t => t.id).filter(Boolean);
+    const trainingIds = approvedTrainings.map((t) => t.id).filter(Boolean);
 
     // Only fetch certificates and skills if there are approved trainings
     let trainingCertificates = [];
@@ -729,7 +737,7 @@ export const getStudentById = async (studentId) => {
         .from('certificates')
         .select('training_id, link')
         .in('training_id', trainingIds);
-      
+
       trainingCertificates = certData || [];
 
       // Fetch all skills linked to these trainings
@@ -738,48 +746,46 @@ export const getStudentById = async (studentId) => {
         .select('training_id, name')
         .in('training_id', trainingIds)
         .eq('type', 'technical');
-      
+
       trainingSkills = skillsData || [];
     }
 
     const formattedTrainings = approvedTrainings.map((train) => {
       // Find certificate for this specific training
-      const cert = trainingCertificates.find(c => c.training_id === train.id);
-      
+      const cert = trainingCertificates.find((c) => c.training_id === train.id);
+
       // Find skills for this specific training
-      const skills = trainingSkills
-        .filter(s => s.training_id === train.id)
-        .map(s => s.name);
+      const skills = trainingSkills.filter((s) => s.training_id === train.id).map((s) => s.name);
 
       return {
         id: train.id,
-        title: train.title || "",
-        course: train.title || "",
-        organization: train.organization || "",
-        provider: train.organization || "",
+        title: train.title || '',
+        course: train.title || '',
+        organization: train.organization || '',
+        provider: train.organization || '',
         start_date: train.start_date,
         end_date: train.end_date,
         startDate: train.start_date,
         endDate: train.end_date,
-        duration: train.duration || "",
-        description: train.description || "",
-        
+        duration: train.duration || '',
+        description: train.description || '',
+
         // From trainings table
-        status: train.status || "ongoing",
+        status: train.status || 'ongoing',
         completedModules: train.completed_modules || 0,
         totalModules: train.total_modules || 0,
         hoursSpent: train.hours_spent || 0,
-        
+
         // IMPORTANT: Include course_id and source for internal/external detection
         course_id: train.course_id || null,
         source: train.source || null,
-        
+
         // From certificates table (linked by training_id)
-        certificateUrl: cert?.link || "",
-        
+        certificateUrl: cert?.link || '',
+
         // From skills table (linked by training_id)
         skills: skills,
-        
+
         approval_status: train.approval_status,
         verified: true, // Already filtered, so all are verified
         processing: false, // Already filtered, so won't be pending
@@ -792,28 +798,32 @@ export const getStudentById = async (studentId) => {
     const tableCertificates = Array.isArray(data?.certificates) ? data.certificates : [];
     const formattedTableCertificates = tableCertificates.map((certificate) => {
       const issuedOnValue = certificate?.issued_on || certificate?.issuedOn || null;
-      const issuedOnFormatted = issuedOnValue ? new Date(issuedOnValue).toISOString().split("T")[0] : "";
-      const approvalSource = certificate?.approval_status || certificate?.status || "pending";
-      const approvalStatus = typeof approvalSource === "string" ? approvalSource.toLowerCase() : "pending";
-      const statusSource = certificate?.status || (certificate?.enabled === false ? "disabled" : "active");
-      const statusValue = typeof statusSource === "string" ? statusSource.toLowerCase() : "active";
+      const issuedOnFormatted = issuedOnValue
+        ? new Date(issuedOnValue).toISOString().split('T')[0]
+        : '';
+      const approvalSource = certificate?.approval_status || certificate?.status || 'pending';
+      const approvalStatus =
+        typeof approvalSource === 'string' ? approvalSource.toLowerCase() : 'pending';
+      const statusSource =
+        certificate?.status || (certificate?.enabled === false ? 'disabled' : 'active');
+      const statusValue = typeof statusSource === 'string' ? statusSource.toLowerCase() : 'active';
       const documentUrlValue = certificate?.link || null;
       return {
         id: certificate?.id,
-        title: certificate?.title || "",
-        issuer: certificate?.issuer || "",
+        title: certificate?.title || '',
+        issuer: certificate?.issuer || '',
         issuedOn: issuedOnFormatted,
-        level: certificate?.level || "",
-        description: certificate?.description || "",
-        credentialId: certificate?.credential_id || "",
-        link: certificate?.link || "",
+        level: certificate?.level || '',
+        description: certificate?.description || '',
+        credentialId: certificate?.credential_id || '',
+        link: certificate?.link || '',
         status: statusValue,
         approval_status: approvalStatus,
-        verified: approvalStatus === "approved",
-        processing: approvalStatus !== "approved",
-        enabled: statusValue !== "disabled",
+        verified: approvalStatus === 'approved',
+        processing: approvalStatus !== 'approved',
+        enabled: statusValue !== 'disabled',
         document_url: documentUrlValue,
-        documentLink: documentUrlValue || "",
+        documentLink: documentUrlValue || '',
         createdAt: certificate?.created_at,
         updatedAt: certificate?.updated_at,
       };
@@ -821,32 +831,33 @@ export const getStudentById = async (studentId) => {
 
     const passportCertificates = Array.isArray(passport.certificates)
       ? passport.certificates.map((certificate) => ({
-        ...certificate,
-        verifiedAt:
-          certificate?.verified === true || certificate?.status === 'verified'
-            ? certificate?.verifiedAt || certificate?.updatedAt || certificate?.createdAt
-            : null,
-      }))
+          ...certificate,
+          verifiedAt:
+            certificate?.verified === true || certificate?.status === 'verified'
+              ? certificate?.verifiedAt || certificate?.updatedAt || certificate?.createdAt
+              : null,
+        }))
       : [];
 
-    const mergedCertificates = formattedTableCertificates.length > 0 ? formattedTableCertificates : passportCertificates;
+    const mergedCertificates =
+      formattedTableCertificates.length > 0 ? formattedTableCertificates : passportCertificates;
 
     const tableExperience = Array.isArray(data?.experience) ? data.experience : [];
-    const formattedExperience = tableExperience
-      .map((exp) => ({
-        id: exp.id,
-        organization: exp.organization || "",
-        role: exp.role || "",
-        start_date: exp.start_date,
-        end_date: exp.end_date,
-        duration: exp.duration || "",
-        verified: exp.verified || exp.approval_status === 'approved' || exp.approval_status === 'verified',
-        approval_status: exp.approval_status || "pending",
-        processing: exp.approval_status === 'pending',
-        enabled: exp.enabled !== undefined ? exp.enabled : true,
-        createdAt: exp.created_at,
-        updatedAt: exp.updated_at,
-      }));
+    const formattedExperience = tableExperience.map((exp) => ({
+      id: exp.id,
+      organization: exp.organization || '',
+      role: exp.role || '',
+      start_date: exp.start_date,
+      end_date: exp.end_date,
+      duration: exp.duration || '',
+      verified:
+        exp.verified || exp.approval_status === 'approved' || exp.approval_status === 'verified',
+      approval_status: exp.approval_status || 'pending',
+      processing: exp.approval_status === 'pending',
+      enabled: exp.enabled !== undefined ? exp.enabled : true,
+      createdAt: exp.created_at,
+      updatedAt: exp.updated_at,
+    }));
 
     // Merge: database fields + profile fields + passport fields
     const mergedData = {
@@ -874,7 +885,7 @@ export const getStudentById = async (studentId) => {
 
       // Legacy flattened access for backward compatibility - BUT individual columns take precedence
       ...transformedProfile,
-      
+
       // CRITICAL FIX: Individual database columns override profile data
       name: data.name || transformedProfile.name,
       approval_status: data.approval_status, // This was getting overwritten!
@@ -895,44 +906,45 @@ export const getStudentById = async (studentId) => {
       // NOW THESE COME FROM projects table:
       projects: Array.isArray(data.projects)
         ? data.projects
-        .filter((project) => 
-        project.approval_status === 'verified' || 
-        project.approval_status === 'approved'
-      )
-        .map((project) => ({
-          ...project,
-          // Map database column names to UI expected names
-          id: project.id,
-          title: project.title,
-          description: project.description,
-          status: project.status,
-          start_date: project.start_date,
-          end_date: project.end_date,
-          duration: project.duration,
-          tech: project.tech_stack, // UI expects 'tech' array
-          tech_stack: project.tech_stack,
-          link: project.demo_link, // UI expects 'link' for demo link
-          demo_link: project.demo_link,
-          organization: project.organization,
-          github: project.github_link, // UI expects 'github'
-          github_link: project.github_link,
-          github_url: project.github_link,
-          certificate_url: project.certificate_url,
-          video_url: project.video_url,
-          ppt_url: project.ppt_url,
-          approval_status: project.approval_status,
-          created_at: project.created_at,
-          updated_at: project.updated_at,
-          enabled: project.enabled ?? true, // Default to enabled for UI
-          verifiedAt:
-            project?.approval_status === 'approved' || project?.status === 'verified'
-              ? project?.updated_at || project?.created_at
-              : null
-        }))
+            .filter(
+              (project) =>
+                project.approval_status === 'verified' || project.approval_status === 'approved'
+            )
+            .map((project) => ({
+              ...project,
+              // Map database column names to UI expected names
+              id: project.id,
+              title: project.title,
+              description: project.description,
+              status: project.status,
+              start_date: project.start_date,
+              end_date: project.end_date,
+              duration: project.duration,
+              tech: project.tech_stack, // UI expects 'tech' array
+              tech_stack: project.tech_stack,
+              link: project.demo_link, // UI expects 'link' for demo link
+              demo_link: project.demo_link,
+              organization: project.organization,
+              github: project.github_link, // UI expects 'github'
+              github_link: project.github_link,
+              github_url: project.github_link,
+              certificate_url: project.certificate_url,
+              video_url: project.video_url,
+              ppt_url: project.ppt_url,
+              approval_status: project.approval_status,
+              created_at: project.created_at,
+              updated_at: project.updated_at,
+              enabled: project.enabled ?? true, // Default to enabled for UI
+              verifiedAt:
+                project?.approval_status === 'approved' || project?.status === 'verified'
+                  ? project?.updated_at || project?.created_at
+                  : null,
+            }))
         : [],
       certificates: mergedCertificates,
       assessments: passport.assessments || [],
-      technicalSkills: technicalSkills.length > 0 ? technicalSkills : transformedProfile.technicalSkills,
+      technicalSkills:
+        technicalSkills.length > 0 ? technicalSkills : transformedProfile.technicalSkills,
       softSkills: softSkills.length > 0 ? softSkills : transformedProfile.softSkills,
       training: formattedTrainings.length > 0 ? formattedTrainings : transformedProfile.training,
       experience: formattedExperience,
@@ -946,7 +958,7 @@ export const getStudentById = async (studentId) => {
       passportSkills: passport.skills || [],
 
       // Raw data for debugging
-      rawData: data
+      rawData: data,
     };
 
     return { success: true, data: mergedData };
@@ -958,12 +970,11 @@ export const getStudentById = async (studentId) => {
 
 /**
  * Transform imported JSONB profile data to UI format
- * 
+ *
  * Input: Raw imported data with fields like registration_number, branch_field, etc.
  * Output: Structured data matching Dashboard expectations
  */
 function transformProfileData(profile, email, studentRecord = null) {
-
   if (!profile && !studentRecord) {
     return null;
   }
@@ -973,10 +984,16 @@ function transformProfileData(profile, email, studentRecord = null) {
   const profileData = profile || {};
 
   // Calculate age from date_of_birth if available (prioritize individual columns)
-  const age = data.age || profileData.age || calculateAge(data.date_of_birth || data.dateOfBirth || profileData.date_of_birth || profileData.dateOfBirth);
+  const age =
+    data.age ||
+    profileData.age ||
+    calculateAge(
+      data.date_of_birth || data.dateOfBirth || profileData.date_of_birth || profileData.dateOfBirth
+    );
 
   // Generate passport ID from registration number (prioritize individual columns)
-  const registrationNumber = data.registration_number || profileData.registration_number || profileData.registrationNumber;
+  const registrationNumber =
+    data.registration_number || profileData.registration_number || profileData.registrationNumber;
   const passportId = registrationNumber ? `SP-${registrationNumber}` : 'SP-0000';
 
   // Format phone number (prioritize individual columns)
@@ -984,7 +1001,9 @@ function transformProfileData(profile, email, studentRecord = null) {
     data.contact_number || data.contactNumber || profileData.contact_number || profileData.phone,
     data.contact_dial_code || profileData.contact_number_dial_code
   );
-  const alternatePhone = formatPhoneNumber(data.alternate_number || profileData.alternate_number || profileData.alternatePhone);
+  const alternatePhone = formatPhoneNumber(
+    data.alternate_number || profileData.alternate_number || profileData.alternatePhone
+  );
 
   const result = {
     // Basic profile info (prioritize individual columns)
@@ -1002,9 +1021,14 @@ function transformProfileData(profile, email, studentRecord = null) {
       phone: phone,
       alternatePhone: alternatePhone,
       age: age,
-      dateOfBirth: data.date_of_birth || data.dateOfBirth || profileData.date_of_birth || profileData.dateOfBirth,
+      dateOfBirth:
+        data.date_of_birth ||
+        data.dateOfBirth ||
+        profileData.date_of_birth ||
+        profileData.dateOfBirth,
       district: data.district_name || profileData.district_name || profileData.district || '',
-      college: data.college_school_name || profileData.college_school_name || profileData.college || '',
+      college:
+        data.college_school_name || profileData.college_school_name || profileData.college || '',
       registrationNumber: registrationNumber,
       classYear: data.class_year || profileData.classYear || '',
       // Social Media Links (prioritize individual columns)
@@ -1023,14 +1047,18 @@ function transformProfileData(profile, email, studentRecord = null) {
 
     // Training - Will be fetched from separate 'training' table
     // Fallback to profile JSONB only if separate table is empty
-    training: profileData.training || (data.course_name || profileData.course ? [{ course: data.course_name || profileData.course }] : []),
+    training:
+      profileData.training ||
+      (data.course_name || profileData.course
+        ? [{ course: data.course_name || profileData.course }]
+        : []),
 
     // Experience - Will be fetched from separate 'experience' table
     experience: profileData.experience || [],
 
     // Technical skills - Will be fetched from separate 'skills' table (type='technical')
     // Fallback to profile JSONB only if separate table is empty
-    technicalSkills: profileData.technicalSkills ||  [],
+    technicalSkills: profileData.technicalSkills || [],
 
     // Soft skills - Will be fetched from separate 'skills' table (type='soft')
     // Fallback to profile JSONB only if separate table is empty
@@ -1057,8 +1085,8 @@ function transformProfileData(profile, email, studentRecord = null) {
         id: 1,
         message: `Enrolled in ${data.course_name || profileData.course || 'course'}`,
         timestamp: data.imported_at || profileData.imported_at || new Date().toISOString(),
-        type: 'achievement'
-      }
+        type: 'achievement',
+      },
     ],
 
     // Suggestions
@@ -1067,14 +1095,14 @@ function transformProfileData(profile, email, studentRecord = null) {
         id: 1,
         message: 'Complete your profile with project details',
         priority: 3,
-        isActive: true
+        isActive: true,
       },
       {
         id: 2,
         message: `Continue your training in ${profileData.skill || 'your field'}`,
         priority: 2,
-        isActive: true
-      }
+        isActive: true,
+      },
     ],
 
     // Opportunities
@@ -1084,9 +1112,9 @@ function transformProfileData(profile, email, studentRecord = null) {
         title: `${profileData.skill || 'Technical'} Specialist`,
         company: 'Industry Partner',
         type: 'internship',
-        deadline: ''
-      }
-    ]
+        deadline: '',
+      },
+    ],
   };
 
   return result;
@@ -1120,7 +1148,11 @@ function formatPhoneNumber(number, dialCode = 91) {
  */
 function generateAvatar(name) {
   if (!name) return 'https://ui-avatars.com/api/?name=Student&background=4F46E5&color=fff';
-  const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2);
+  const initials = name
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .substring(0, 2);
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=4F46E5&color=fff&size=200`;
 }
 
@@ -1129,7 +1161,6 @@ function generateAvatar(name) {
  */
 export async function createStudentProfileByEmail(email, initialData = {}) {
   try {
-
     const defaultProfile = {
       name: initialData.name || 'New Student',
       email: email,
@@ -1153,15 +1184,15 @@ export async function createStudentProfileByEmail(email, initialData = {}) {
           name: 'Communication',
           level: 3,
           type: 'communication',
-          description: 'Effective communication skills'
+          description: 'Effective communication skills',
         },
         {
           id: 2,
           name: 'Teamwork',
           level: 3,
           type: 'collaboration',
-          description: 'Works well in teams'
-        }
+          description: 'Works well in teams',
+        },
       ],
 
       // Additional fields
@@ -1170,26 +1201,28 @@ export async function createStudentProfileByEmail(email, initialData = {}) {
           id: 1,
           message: 'Profile created',
           timestamp: new Date().toISOString(),
-          type: 'profile'
-        }
+          type: 'profile',
+        },
       ],
       suggestions: [
         {
           id: 1,
           message: 'Complete your profile information',
           priority: 3,
-          isActive: true
-        }
+          isActive: true,
+        },
       ],
-      opportunities: []
+      opportunities: [],
     };
 
     const { data, error } = await supabase
       .from('students')
-      .insert([{
-        profile: defaultProfile,
-        universityId: initialData.universityId || null
-      }])
+      .insert([
+        {
+          profile: defaultProfile,
+          universityId: initialData.universityId || null,
+        },
+      ])
       .select()
       .single();
 
@@ -1200,9 +1233,8 @@ export async function createStudentProfileByEmail(email, initialData = {}) {
 
     return {
       success: true,
-      data: transformProfileData(data.profile, email)
+      data: transformProfileData(data.profile, email),
     };
-
   } catch (err) {
     console.error('❌ Unexpected error creating profile:', err);
     return { success: false, error: err.message };
@@ -1223,7 +1255,6 @@ export async function getOrCreateStudentByEmail(email, initialData = {}) {
 
     // If not found, create a new profile
     return await createStudentProfileByEmail(email, initialData);
-
   } catch (err) {
     console.error('❌ Error in getOrCreateStudentByEmail:', err);
     return { success: false, error: err.message };
@@ -1236,7 +1267,6 @@ export async function getOrCreateStudentByEmail(email, initialData = {}) {
  */
 export async function findStudentByEmail(email) {
   try {
-
     // Since profile column is removed, we only need to search by email column
     const { data: studentRecord, error } = await supabase
       .from('students')
@@ -1262,7 +1292,6 @@ export async function findStudentByEmail(email) {
 
 export async function updateStudentByEmail(email, updates) {
   try {
-
     // Find student record using robust method
     const findResult = await findStudentByEmail(email);
     if (!findResult.success) {
@@ -1274,86 +1303,86 @@ export async function updateStudentByEmail(email, updates) {
 
     // Map the updates to the correct column names in the students table
     const columnUpdates = {};
-    
+
     // Map common profile fields to their corresponding columns
     const fieldMapping = {
       // Personal Info
-      'name': 'name',
-      'email': 'email',
-      'age': 'age',
-      'dateOfBirth': 'date_of_birth',
-      'date_of_birth': 'date_of_birth',
-      'phone': 'contact_number',
-      'contactNumber': 'contact_number',
-      'contact_number': 'contact_number',
-      'alternatePhone': 'alternate_number',
-      'alternate_number': 'alternate_number',
-      'contact_number_dial_code': 'contact_dial_code', // Fix: map the form field to correct column
-      'contact_dial_code': 'contact_dial_code',
-      'location': 'address', // Map location to address field
-      'bio': 'bio',
-      
+      name: 'name',
+      email: 'email',
+      age: 'age',
+      dateOfBirth: 'date_of_birth',
+      date_of_birth: 'date_of_birth',
+      phone: 'contact_number',
+      contactNumber: 'contact_number',
+      contact_number: 'contact_number',
+      alternatePhone: 'alternate_number',
+      alternate_number: 'alternate_number',
+      contact_number_dial_code: 'contact_dial_code', // Fix: map the form field to correct column
+      contact_dial_code: 'contact_dial_code',
+      location: 'address', // Map location to address field
+      bio: 'bio',
+
       // Location
-      'district': 'district_name',
-      'district_name': 'district_name',
-      'address': 'address',
-      'city': 'city',
-      'state': 'state',
-      'country': 'country',
-      'pincode': 'pincode',
-      
+      district: 'district_name',
+      district_name: 'district_name',
+      address: 'address',
+      city: 'city',
+      state: 'state',
+      country: 'country',
+      pincode: 'pincode',
+
       // Education
-      'university': 'university',
-      'department': 'branch_field',
-      'branch_field': 'branch_field',
-      'college': 'college_school_name',
-      'college_school_name': 'college_school_name',
-      'registrationNumber': 'registration_number',
-      'registration_number': 'registration_number',
-      'enrollmentNumber': 'enrollmentNumber',
-      'currentCgpa': 'currentCgpa',
-      
+      university: 'university',
+      department: 'branch_field',
+      branch_field: 'branch_field',
+      college: 'college_school_name',
+      college_school_name: 'college_school_name',
+      registrationNumber: 'registration_number',
+      registration_number: 'registration_number',
+      enrollmentNumber: 'enrollmentNumber',
+      currentCgpa: 'currentCgpa',
+
       // Guardian Info
-      'guardianName': 'guardianName',
-      'guardianPhone': 'guardianPhone',
-      'guardianEmail': 'guardianEmail',
-      'guardianRelation': 'guardianRelation',
-      
+      guardianName: 'guardianName',
+      guardianPhone: 'guardianPhone',
+      guardianEmail: 'guardianEmail',
+      guardianRelation: 'guardianRelation',
+
       // Personal Details
-      'gender': 'gender',
-      'bloodGroup': 'bloodGroup',
-      
+      gender: 'gender',
+      bloodGroup: 'bloodGroup',
+
       // Social Links (map form field names to database column names)
-      'linkedinUrl': 'linkedin_link',
-      'githubUrl': 'github_link',
-      'portfolioUrl': 'portfolio_link',
-      'github_link': 'github_link',
-      'linkedin_link': 'linkedin_link',
-      'twitter_link': 'twitter_link',
-      'facebook_link': 'facebook_link',
-      'instagram_link': 'instagram_link',
-      'portfolio_link': 'portfolio_link',
-      'youtube_link': 'youtube_link',
-      
+      linkedinUrl: 'linkedin_link',
+      githubUrl: 'github_link',
+      portfolioUrl: 'portfolio_link',
+      github_link: 'github_link',
+      linkedin_link: 'linkedin_link',
+      twitter_link: 'twitter_link',
+      facebook_link: 'facebook_link',
+      instagram_link: 'instagram_link',
+      portfolio_link: 'portfolio_link',
+      youtube_link: 'youtube_link',
+
       // Files
-      'resumeUrl': 'resumeUrl',
-      'profilePicture': 'profilePicture',
-      
+      resumeUrl: 'resumeUrl',
+      profilePicture: 'profilePicture',
+
       // School/College specific
-      'grade': 'grade',
-      'section': 'section',
-      'roll_number': 'roll_number',
-      'admission_number': 'admission_number'
+      grade: 'grade',
+      section: 'section',
+      roll_number: 'roll_number',
+      admission_number: 'admission_number',
     };
 
     // Apply field mapping
-    Object.keys(updates).forEach(key => {
+    Object.keys(updates).forEach((key) => {
       const columnName = fieldMapping[key] || key;
-      
+
       // Handle nested profile updates (for backward compatibility)
       if (key === 'profile' && typeof updates[key] === 'object') {
         // If someone passes a profile object, extract its fields
-        Object.keys(updates[key]).forEach(profileKey => {
+        Object.keys(updates[key]).forEach((profileKey) => {
           const profileColumnName = fieldMapping[profileKey] || profileKey;
           if (updates[key][profileKey] !== undefined) {
             columnUpdates[profileColumnName] = updates[key][profileKey];
@@ -1381,7 +1410,8 @@ export async function updateStudentByEmail(email, updates) {
       columnUpdates.metadata = updates.metadata;
     }
     if (updates.notification_settings || updates.notificationSettings) {
-      columnUpdates.notification_settings = updates.notification_settings || updates.notificationSettings;
+      columnUpdates.notification_settings =
+        updates.notification_settings || updates.notificationSettings;
     }
 
     // Always update the updated_at timestamp
@@ -1389,32 +1419,95 @@ export async function updateStudentByEmail(email, updates) {
 
     // Filter out any columns that don't exist in the database
     const validColumns = [
-      'id', 'universityId', 'createdAt', 'updatedAt', 'email', 'name', 'age', 'date_of_birth', 
-      'contact_number', 'alternate_number', 'district_name', 'university', 'branch_field', 
-      'college_school_name', 'registration_number', 'github_link', 'linkedin_link', 
-      'twitter_link', 'facebook_link', 'instagram_link', 'portfolio_link', 'other_social_links', 
-      'approval_status', 'created_at', 'updated_at', 'embedding', 'universityCollegeId', 
-      'schoolClassId', 'collegeCourseId', 'universityCourseId', 'enrollmentNumber', 
-      'guardianName', 'guardianPhone', 'guardianEmail', 'guardianRelation', 'dateOfBirth', 
-      'gender', 'bloodGroup', 'enrollmentDate', 'expectedGraduationDate', 'currentCgpa', 
-      'contactNumber', 'address', 'city', 'state', 'country', 'pincode', 'resumeUrl', 
-      'profilePicture', 'metadata', 'university_college_id', 'school_id', 'school_class_id', 
-      'student_type', 'user_id', 'student_id', 'bio', 'university_main', 'imported_at', 
-      'resume_imported_at', 'skill_summary', 'course_name', 'contact_dial_code', 'trainer_name', 
-      'is_deleted', 'deleted_at', 'deleted_by', 'grade', 'section', 'roll_number', 
-      'admission_number', 'college_id', 'hobbies', 'languages', 'interests', 'category', 
-      'quota', 'youtube_link', 'notification_settings'
+      'id',
+      'universityId',
+      'createdAt',
+      'updatedAt',
+      'email',
+      'name',
+      'age',
+      'date_of_birth',
+      'contact_number',
+      'alternate_number',
+      'district_name',
+      'university',
+      'branch_field',
+      'college_school_name',
+      'registration_number',
+      'github_link',
+      'linkedin_link',
+      'twitter_link',
+      'facebook_link',
+      'instagram_link',
+      'portfolio_link',
+      'other_social_links',
+      'approval_status',
+      'created_at',
+      'updated_at',
+      'embedding',
+      'universityCollegeId',
+      'schoolClassId',
+      'collegeCourseId',
+      'universityCourseId',
+      'enrollmentNumber',
+      'guardianName',
+      'guardianPhone',
+      'guardianEmail',
+      'guardianRelation',
+      'dateOfBirth',
+      'gender',
+      'bloodGroup',
+      'enrollmentDate',
+      'expectedGraduationDate',
+      'currentCgpa',
+      'contactNumber',
+      'address',
+      'city',
+      'state',
+      'country',
+      'pincode',
+      'resumeUrl',
+      'profilePicture',
+      'metadata',
+      'university_college_id',
+      'school_id',
+      'school_class_id',
+      'student_type',
+      'user_id',
+      'student_id',
+      'bio',
+      'university_main',
+      'imported_at',
+      'resume_imported_at',
+      'skill_summary',
+      'course_name',
+      'contact_dial_code',
+      'trainer_name',
+      'is_deleted',
+      'deleted_at',
+      'deleted_by',
+      'grade',
+      'section',
+      'roll_number',
+      'admission_number',
+      'college_id',
+      'hobbies',
+      'languages',
+      'interests',
+      'category',
+      'quota',
+      'youtube_link',
+      'notification_settings',
     ];
 
     const filteredUpdates = {};
-    Object.keys(columnUpdates).forEach(key => {
+    Object.keys(columnUpdates).forEach((key) => {
       if (validColumns.includes(key)) {
         filteredUpdates[key] = columnUpdates[key];
       } else {
         console.warn(`⚠️ Skipping unknown column: ${key}`);
       }
     });
-
 
     // Update the student record
     const { data, error } = await supabase
@@ -1429,22 +1522,19 @@ export async function updateStudentByEmail(email, updates) {
       return { success: false, error: error.message };
     }
 
-
     // Return the updated data in the expected format
     // Since we no longer have a profile JSONB, we need to fetch the complete updated record
     const updatedResult = await getStudentByEmail(email);
-    
+
     return {
       success: true,
-      data: updatedResult.success ? updatedResult.data : data
+      data: updatedResult.success ? updatedResult.data : data,
     };
-
   } catch (err) {
     console.error('❌ Unexpected error in updateStudentByEmail:', err);
     return { success: false, error: err.message };
   }
 }
-
 
 export async function updateEducationByEmail(email, educationData = []) {
   try {
@@ -1509,7 +1599,6 @@ export async function updateEducationByEmail(email, educationData = []) {
     // Use studentRecord.id (NOT user_id) because education.student_id FK references students.id
     const studentId = studentRecord.id;
 
-
     // Get existing education records
     const { data: existingEducation, error: existingError } = await supabase
       .from('education')
@@ -1520,7 +1609,6 @@ export async function updateEducationByEmail(email, educationData = []) {
       console.error('❌ Error fetching existing education:', existingError);
       return { success: false, error: existingError.message };
     }
-
 
     const nowIso = new Date().toISOString();
 
@@ -1535,12 +1623,12 @@ export async function updateEducationByEmail(email, educationData = []) {
         const record = {
           student_id: studentId,
           level: edu.level?.trim() || "Bachelor's",
-          degree: (edu.degree || edu.qualification)?.trim() || "",
-          department: edu.department?.trim() || "",
-          university: edu.university?.trim() || "",
-          year_of_passing: (edu.yearOfPassing || edu.year_of_passing)?.toString().trim() || "",
-          cgpa: edu.cgpa?.toString().trim() || "",
-          status: edu.status?.trim() || "ongoing",
+          degree: (edu.degree || edu.qualification)?.trim() || '',
+          department: edu.department?.trim() || '',
+          university: edu.university?.trim() || '',
+          year_of_passing: (edu.yearOfPassing || edu.year_of_passing)?.toString().trim() || '',
+          cgpa: edu.cgpa?.toString().trim() || '',
+          status: edu.status?.trim() || 'ongoing',
           approval_status: edu.approval_status || 'pending',
           enabled: typeof edu.enabled === 'boolean' ? edu.enabled : true, // Handle enabled field
           updated_at: nowIso,
@@ -1557,7 +1645,6 @@ export async function updateEducationByEmail(email, educationData = []) {
         return record;
       });
 
-
     // Determine which records to delete
     const incomingIds = new Set(formatted.map((record) => record.id));
     const toDelete = (existingEducation || [])
@@ -1566,10 +1653,7 @@ export async function updateEducationByEmail(email, educationData = []) {
 
     // Delete removed records
     if (toDelete.length > 0) {
-      const { error: deleteError } = await supabase
-        .from('education')
-        .delete()
-        .in('id', toDelete);
+      const { error: deleteError } = await supabase.from('education').delete().in('id', toDelete);
 
       if (deleteError) {
         console.error('❌ Error deleting education:', deleteError);
@@ -1678,7 +1762,6 @@ export async function updateTrainingByEmail(email, trainingData = []) {
       return { success: false, error: existingError.message };
     }
 
-
     const nowIso = new Date().toISOString();
 
     // Format training data for database
@@ -1691,7 +1774,7 @@ export async function updateTrainingByEmail(email, trainingData = []) {
       .map((train) => {
         // 🔧 FIX: Prioritize 'course' (form field with user edits) over 'title' (old database value)
         const titleValue = train.course || train.title || '';
-        
+
         const record = {
           student_id: studentId,
           title: titleValue.trim(),
@@ -1712,9 +1795,9 @@ export async function updateTrainingByEmail(email, trainingData = []) {
         const rawId = typeof train.id === 'string' ? train.id.trim() : null;
         if (rawId && rawId.length === 36) {
           record.id = rawId;
-          
+
           // 🔥 CRITICAL FIX: Preserve existing approval_status for updates
-          const existingTraining = existingTrainings?.find(t => t.id === rawId);
+          const existingTraining = existingTrainings?.find((t) => t.id === rawId);
           if (existingTraining) {
             // Keep the existing approval status (could be 'approved', 'pending', or 'rejected')
             record.approval_status = existingTraining.approval_status;
@@ -1743,24 +1826,14 @@ export async function updateTrainingByEmail(email, trainingData = []) {
 
     // Delete removed records and their related data
     if (toDelete.length > 0) {
-
       // Delete related certificates
-      await supabase
-        .from('certificates')
-        .delete()
-        .in('training_id', toDelete);
+      await supabase.from('certificates').delete().in('training_id', toDelete);
 
       // Delete related skills
-      await supabase
-        .from('skills')
-        .delete()
-        .in('training_id', toDelete);
+      await supabase.from('skills').delete().in('training_id', toDelete);
 
       // Delete trainings
-      const { error: deleteError } = await supabase
-        .from('trainings')
-        .delete()
-        .in('id', toDelete);
+      const { error: deleteError } = await supabase.from('trainings').delete().in('id', toDelete);
 
       if (deleteError) {
         console.error('❌ Error deleting trainings:', deleteError);
@@ -1782,17 +1855,14 @@ export async function updateTrainingByEmail(email, trainingData = []) {
         return { success: false, error: upsertError.message };
       }
 
-
       // ===== NOW SAVE ONLY CERTIFICATE URL AND SKILLS =====
       for (const record of formatted) {
         const trainingId = record.id;
         const certificateUrl = record._certificateUrl;
         const skills = record._skills;
 
-
         // ===== SAVE ONLY CERTIFICATE URL =====
         if (certificateUrl && certificateUrl.length > 0) {
-
           // Check if certificate already exists for this training
           const { data: existingCert } = await supabase
             .from('certificates')
@@ -1805,9 +1875,9 @@ export async function updateTrainingByEmail(email, trainingData = []) {
             if (existingCert.link !== certificateUrl) {
               const { error: certUpdateError } = await supabase
                 .from('certificates')
-                .update({ 
+                .update({
                   link: certificateUrl,
-                  updated_at: nowIso 
+                  updated_at: nowIso,
                 })
                 .eq('id', existingCert.id);
 
@@ -1858,7 +1928,6 @@ export async function updateTrainingByEmail(email, trainingData = []) {
 
         // ===== SAVE ONLY SKILL NAMES =====
         if (Array.isArray(skills) && skills.length > 0) {
-
           // Get existing skills for this training
           const { data: existingSkills } = await supabase
             .from('skills')
@@ -1867,35 +1936,32 @@ export async function updateTrainingByEmail(email, trainingData = []) {
             .eq('type', 'technical');
 
           const existingSkillNames = new Set(
-            (existingSkills || []).map(s => s.name.toLowerCase().trim())
+            (existingSkills || []).map((s) => s.name.toLowerCase().trim())
           );
 
           const newSkillNames = skills
-            .filter(skill => typeof skill === 'string' && skill.trim().length > 0)
-            .map(skill => skill.trim());
+            .filter((skill) => typeof skill === 'string' && skill.trim().length > 0)
+            .map((skill) => skill.trim());
 
           // Find skills to add (not in existing)
           const skillsToAdd = newSkillNames.filter(
-            skillName => !existingSkillNames.has(skillName.toLowerCase())
+            (skillName) => !existingSkillNames.has(skillName.toLowerCase())
           );
 
           // Find skills to remove (in existing but not in new)
-          const newSkillNamesSet = new Set(newSkillNames.map(s => s.toLowerCase()));
+          const newSkillNamesSet = new Set(newSkillNames.map((s) => s.toLowerCase()));
           const skillIdsToDelete = (existingSkills || [])
-            .filter(s => !newSkillNamesSet.has(s.name.toLowerCase().trim()))
-            .map(s => s.id);
+            .filter((s) => !newSkillNamesSet.has(s.name.toLowerCase().trim()))
+            .map((s) => s.id);
 
           // Delete removed skills
           if (skillIdsToDelete.length > 0) {
-            await supabase
-              .from('skills')
-              .delete()
-              .in('id', skillIdsToDelete);
+            await supabase.from('skills').delete().in('id', skillIdsToDelete);
           }
 
           // ✅ Add new skills with ONLY required fields
           if (skillsToAdd.length > 0) {
-            const skillRecords = skillsToAdd.map(skillName => ({
+            const skillRecords = skillsToAdd.map((skillName) => ({
               id: generateUuid(),
               student_id: studentId,
               training_id: trainingId,
@@ -1905,9 +1971,7 @@ export async function updateTrainingByEmail(email, trainingData = []) {
               updated_at: nowIso,
             }));
 
-            const { error: skillsInsertError } = await supabase
-              .from('skills')
-              .insert(skillRecords);
+            const { error: skillsInsertError } = await supabase.from('skills').insert(skillRecords);
 
             if (skillsInsertError) {
               console.error('  ❌ Error inserting skills:', skillsInsertError);
@@ -1934,19 +1998,13 @@ export async function updateTrainingByEmail(email, trainingData = []) {
     } else if ((existingTrainings || []).length > 0) {
       // Delete all if no training data provided
 
-      const trainingIds = existingTrainings.map(t => t.id);
+      const trainingIds = existingTrainings.map((t) => t.id);
 
       // Delete related certificates
-      await supabase
-        .from('certificates')
-        .delete()
-        .in('training_id', trainingIds);
+      await supabase.from('certificates').delete().in('training_id', trainingIds);
 
       // Delete related skills
-      await supabase
-        .from('skills')
-        .delete()
-        .in('training_id', trainingIds);
+      await supabase.from('skills').delete().in('training_id', trainingIds);
 
       // Delete trainings
       const { error: deleteAllError } = await supabase
@@ -1959,7 +2017,6 @@ export async function updateTrainingByEmail(email, trainingData = []) {
         return { success: false, error: deleteAllError.message };
       }
     }
-
 
     // Return updated student data
     return await getStudentByEmail(email);
@@ -2009,7 +2066,7 @@ export async function updateSingleTrainingById(trainingId, updateData, email) {
     const skills = updateData.skills;
     if (Array.isArray(skills)) {
       const studentId = updatedTraining.student_id;
-      
+
       // Get existing skills for this training
       const { data: existingSkills } = await supabase
         .from('skills')
@@ -2018,35 +2075,32 @@ export async function updateSingleTrainingById(trainingId, updateData, email) {
         .eq('type', 'technical');
 
       const existingSkillNames = new Set(
-        (existingSkills || []).map(s => s.name.toLowerCase().trim())
+        (existingSkills || []).map((s) => s.name.toLowerCase().trim())
       );
 
       const newSkillNames = skills
-        .filter(skill => typeof skill === 'string' && skill.trim().length > 0)
-        .map(skill => skill.trim());
+        .filter((skill) => typeof skill === 'string' && skill.trim().length > 0)
+        .map((skill) => skill.trim());
 
       // Find skills to add
       const skillsToAdd = newSkillNames.filter(
-        skillName => !existingSkillNames.has(skillName.toLowerCase())
+        (skillName) => !existingSkillNames.has(skillName.toLowerCase())
       );
 
       // Find skills to remove
-      const newSkillNamesSet = new Set(newSkillNames.map(s => s.toLowerCase()));
+      const newSkillNamesSet = new Set(newSkillNames.map((s) => s.toLowerCase()));
       const skillIdsToDelete = (existingSkills || [])
-        .filter(s => !newSkillNamesSet.has(s.name.toLowerCase().trim()))
-        .map(s => s.id);
+        .filter((s) => !newSkillNamesSet.has(s.name.toLowerCase().trim()))
+        .map((s) => s.id);
 
       // Delete removed skills
       if (skillIdsToDelete.length > 0) {
-        await supabase
-          .from('skills')
-          .delete()
-          .in('id', skillIdsToDelete);
+        await supabase.from('skills').delete().in('id', skillIdsToDelete);
       }
 
       // Add new skills
       if (skillsToAdd.length > 0) {
-        const skillRecords = skillsToAdd.map(skillName => ({
+        const skillRecords = skillsToAdd.map((skillName) => ({
           id: generateUuid(),
           student_id: studentId,
           training_id: trainingId,
@@ -2056,9 +2110,7 @@ export async function updateSingleTrainingById(trainingId, updateData, email) {
           updated_at: nowIso,
         }));
 
-        const { error: skillsInsertError } = await supabase
-          .from('skills')
-          .insert(skillRecords);
+        const { error: skillsInsertError } = await supabase.from('skills').insert(skillRecords);
 
         if (skillsInsertError) {
           console.error('❌ Error inserting skills:', skillsInsertError);
@@ -2071,7 +2123,7 @@ export async function updateSingleTrainingById(trainingId, updateData, email) {
     // Handle certificate URL update if provided
     if (updateData.certificateUrl !== undefined) {
       const studentId = updatedTraining.student_id;
-      
+
       if (updateData.certificateUrl && updateData.certificateUrl.trim()) {
         // Check if certificate exists
         const { data: existingCert } = await supabase
@@ -2084,16 +2136,15 @@ export async function updateSingleTrainingById(trainingId, updateData, email) {
           // Update existing certificate
           await supabase
             .from('certificates')
-            .update({ 
+            .update({
               link: updateData.certificateUrl.trim(),
-              updated_at: nowIso 
+              updated_at: nowIso,
             })
             .eq('id', existingCert.id);
         } else {
           // Create new certificate
-          await supabase
-            .from('certificates')
-            .insert([{
+          await supabase.from('certificates').insert([
+            {
               id: generateUuid(),
               student_id: studentId,
               training_id: trainingId,
@@ -2104,23 +2155,20 @@ export async function updateSingleTrainingById(trainingId, updateData, email) {
               enabled: true,
               created_at: nowIso,
               updated_at: nowIso,
-            }]);
+            },
+          ]);
         }
       } else {
         // Remove certificate if URL is empty
-        await supabase
-          .from('certificates')
-          .delete()
-          .eq('training_id', trainingId);
+        await supabase.from('certificates').delete().eq('training_id', trainingId);
       }
     }
 
-    
     // Return refreshed student data if email provided
     if (email) {
       return await getStudentByEmail(email);
     }
-    
+
     return { success: true, data: updatedTraining };
   } catch (err) {
     console.error('❌ updateSingleTrainingById exception:', err);
@@ -2207,7 +2255,7 @@ export const updateExperienceByEmail = async (email, experienceData = []) => {
         const record = {
           student_id: studentId,
           organization: exp.organization?.trim() || null,
-          role: exp.role?.trim() || "",
+          role: exp.role?.trim() || '',
           start_date: exp.start_date || null,
           end_date: exp.end_date || null,
           duration: exp.duration?.trim() || null,
@@ -2235,10 +2283,7 @@ export const updateExperienceByEmail = async (email, experienceData = []) => {
 
     // Delete removed records
     if (toDelete.length > 0) {
-      const { error: deleteError } = await supabase
-        .from('experience')
-        .delete()
-        .in('id', toDelete);
+      const { error: deleteError } = await supabase.from('experience').delete().in('id', toDelete);
 
       if (deleteError) {
         return { success: false, error: deleteError.message };
@@ -2339,7 +2384,7 @@ export async function updateTechnicalSkillsByEmail(email, skillsData = []) {
       .from('skills')
       .select('id')
       .eq('student_id', studentId)
-      .is('training_id', null) 
+      .is('training_id', null)
       .eq('type', 'technical');
 
     if (existingError) {
@@ -2383,10 +2428,7 @@ export async function updateTechnicalSkillsByEmail(email, skillsData = []) {
 
     // Delete removed records
     if (toDelete.length > 0) {
-      const { error: deleteError } = await supabase
-        .from('skills')
-        .delete()
-        .in('id', toDelete);
+      const { error: deleteError } = await supabase.from('skills').delete().in('id', toDelete);
 
       if (deleteError) {
         return { success: false, error: deleteError.message };
@@ -2491,7 +2533,7 @@ export async function updateSoftSkillsByEmail(email, skillsData = []) {
       .from('skills')
       .select('id')
       .eq('student_id', studentId)
-      .is('training_id', null) 
+      .is('training_id', null)
       .eq('type', 'soft');
 
     if (existingError) {
@@ -2535,10 +2577,7 @@ export async function updateSoftSkillsByEmail(email, skillsData = []) {
 
     // Delete removed records
     if (toDelete.length > 0) {
-      const { error: deleteError } = await supabase
-        .from('skills')
-        .delete()
-        .in('id', toDelete);
+      const { error: deleteError } = await supabase.from('skills').delete().in('id', toDelete);
 
       if (deleteError) {
         return { success: false, error: deleteError.message };
@@ -2614,9 +2653,7 @@ export const updateProjectsByEmail = async (email, projectsData = []) => {
     }
 
     if (!studentRecord) {
-      const { data: allStudents, error: allError } = await supabase
-        .from('students')
-        .select('*');
+      const { data: allStudents, error: allError } = await supabase.from('students').select('*');
 
       if (allError) {
         return { success: false, error: allError.message };
@@ -2651,7 +2688,9 @@ export const updateProjectsByEmail = async (email, projectsData = []) => {
 
     // Format projects data for database
     const formatted = (projectsData || [])
-      .filter((project) => project && typeof project.title === 'string' && project.title.trim().length > 0)
+      .filter(
+        (project) => project && typeof project.title === 'string' && project.title.trim().length > 0
+      )
       .map((project) => {
         const record = {
           student_id: studentId,
@@ -2692,10 +2731,7 @@ export const updateProjectsByEmail = async (email, projectsData = []) => {
 
     // Delete removed records
     if (toDelete.length > 0) {
-      const { error: deleteError } = await supabase
-        .from('projects')
-        .delete()
-        .in('id', toDelete);
+      const { error: deleteError } = await supabase.from('projects').delete().in('id', toDelete);
 
       if (deleteError) {
         return { success: false, error: deleteError.message };
@@ -2769,9 +2805,7 @@ export const updateCertificatesByEmail = async (email, certificatesData = []) =>
     }
 
     if (!studentRecord) {
-      const { data: allStudents, error: allError } = await supabase
-        .from('students')
-        .select('*');
+      const { data: allStudents, error: allError } = await supabase.from('students').select('*');
 
       if (allError) {
         return { success: false, error: allError.message };
@@ -2818,25 +2852,32 @@ export const updateCertificatesByEmail = async (email, certificatesData = []) =>
       .filter((cert) => cert && typeof cert.title === 'string' && cert.title.trim().length > 0)
       .map((cert) => {
         const titleValue = cert.title.trim();
-        const issuerValue = typeof cert.issuer === 'string' ? cert.issuer.trim() : cert.issuer || null;
+        const issuerValue =
+          typeof cert.issuer === 'string' ? cert.issuer.trim() : cert.issuer || null;
         const levelValue = typeof cert.level === 'string' ? cert.level.trim() : cert.level || null;
         const credentialValue = cert.credentialId || cert.credential_id || null;
-        const credentialTrimmed = typeof credentialValue === 'string' ? credentialValue.trim() : credentialValue;
+        const credentialTrimmed =
+          typeof credentialValue === 'string' ? credentialValue.trim() : credentialValue;
         const linkValue = typeof cert.link === 'string' ? cert.link.trim() : cert.link || null;
-        const descriptionValue = typeof cert.description === 'string' ? cert.description.trim() : cert.description || null;
+        const descriptionValue =
+          typeof cert.description === 'string' ? cert.description.trim() : cert.description || null;
         const approvalSource = cert.approval_status || cert.status || 'pending';
-        const approvalStatus = typeof approvalSource === 'string' ? approvalSource.toLowerCase() : 'pending';
+        const approvalStatus =
+          typeof approvalSource === 'string' ? approvalSource.toLowerCase() : 'pending';
         const statusSource = cert.status || (cert.enabled === false ? 'disabled' : 'active');
-        const statusValue = typeof statusSource === 'string' ? statusSource.trim().toLowerCase() : 'active';
+        const statusValue =
+          typeof statusSource === 'string' ? statusSource.trim().toLowerCase() : 'active';
         const documentValue = cert.document_url || cert.documentLink || null;
-        const documentTrimmed = typeof documentValue === 'string' ? documentValue.trim() : documentValue;
+        const documentTrimmed =
+          typeof documentValue === 'string' ? documentValue.trim() : documentValue;
         const issuedOn = normalizeIssuedOn(cert.issuedOn || cert.issued_on);
         const record = {
           student_id: studentId,
           title: titleValue,
           issuer: issuerValue && issuerValue.length > 0 ? issuerValue : null,
           level: levelValue && levelValue.length > 0 ? levelValue : null,
-          credential_id: credentialTrimmed && credentialTrimmed.length > 0 ? credentialTrimmed : null,
+          credential_id:
+            credentialTrimmed && credentialTrimmed.length > 0 ? credentialTrimmed : null,
           link: linkValue && linkValue.length > 0 ? linkValue : null,
           issued_on: issuedOn,
           description: descriptionValue && descriptionValue.length > 0 ? descriptionValue : null,

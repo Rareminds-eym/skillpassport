@@ -1,25 +1,25 @@
 /**
  * Payments API Cloudflare Worker
  * Complete subscription and payment management backend
- * 
+ *
  * PAYMENT ENDPOINTS:
  * - POST /create-order         - Create Razorpay order for subscription
  * - POST /create-event-order   - Create Razorpay order for events
  * - POST /verify-payment       - Verify payment + create subscription + log transaction
  * - POST /webhook              - Handle Razorpay webhooks
- * 
+ *
  * SUBSCRIPTION ENDPOINTS:
  * - GET  /get-subscription     - Get user's active subscription
  * - POST /cancel-subscription  - Cancel Razorpay recurring subscription
  * - POST /deactivate-subscription - Deactivate/cancel subscription in DB
  * - POST /pause-subscription   - Pause subscription (1-3 months)
  * - POST /resume-subscription  - Resume paused subscription
- * 
+ *
  * SUBSCRIPTION PLANS ENDPOINTS:
  * - GET  /subscription-plans   - Get all active plans
  * - GET  /subscription-plan    - Get single plan by code
  * - GET  /subscription-features - Get features comparison
- * 
+ *
  * ADD-ON ENDPOINTS:
  * - GET  /addon-catalog        - Get available add-ons and bundles
  * - GET  /user-entitlements    - Get user's active entitlements
@@ -29,13 +29,13 @@
  * - POST /verify-bundle-payment - Verify payment AND create bundle entitlements
  * - POST /cancel-addon         - Cancel an add-on subscription
  * - GET  /check-addon-access   - Check if user has access to a feature
- * 
+ *
  * ENTITLEMENT LIFECYCLE ENDPOINTS (CRON):
  * - POST /process-entitlement-lifecycle - Main cron handler (runs all lifecycle tasks)
  * - POST /expire-entitlements    - Mark expired entitlements as 'expired'
  * - POST /send-renewal-reminders - Send reminder emails (7, 3, 1 days before expiry)
  * - POST /process-auto-renewals  - Process auto-renewals for expiring entitlements
- * 
+ *
  * ADMIN/CRON ENDPOINTS:
  * - POST /expire-subscriptions - Auto-expire old subscriptions (cron)
  * - GET  /health               - Health check with config status
@@ -46,51 +46,55 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
 // Import modular handlers
 import {
-    handleCancelAddon,
-    handleCheckAddonAccess,
-    handleCreateAddonOrder,
-    handleCreateBundleOrder,
-    handleGetAddonCatalog,
-    handleGetUserEntitlements,
-    handleVerifyAddonPayment,
-    handleVerifyBundlePayment
+  handleCancelAddon,
+  handleCheckAddonAccess,
+  handleCreateAddonOrder,
+  handleCreateBundleOrder,
+  handleGetAddonCatalog,
+  handleGetUserEntitlements,
+  handleVerifyAddonPayment,
+  handleVerifyBundlePayment,
 } from './handlers/addons';
 import {
-    handleExpireEntitlements,
-    handleProcessAutoRenewals,
-    handleProcessEntitlementLifecycle,
-    handleSendRenewalReminders
+  handleExpireEntitlements,
+  handleProcessAutoRenewals,
+  handleProcessEntitlementLifecycle,
+  handleSendRenewalReminders,
 } from './handlers/entitlementLifecycle';
 import {
-    handleAcceptInvitation,
-    handleAssignLicense,
-    handleBulkAssignLicenses,
-    handleBulkInviteMembers,
-    handleCalculateOrgPricing,
-    handleCalculateSeatAdditionCost,
-    handleCancelInvitation,
-    handleConfigureAutoAssignment,
-    handleCreateLicensePool,
-    handleDownloadInvoice,
-    // Billing handlers
-    handleGetBillingDashboard,
-    handleGetCostProjection,
-    handleGetInvitations,
-    handleGetInvitationStats,
-    handleGetInvoiceHistory,
-    handleGetLicensePools,
-    handleGetOrgSubscriptions,
-    handleGetUserAssignments,
-    // Invitation handlers
-    handleInviteMember,
-    handlePurchaseOrgSubscription,
-    handleResendInvitation,
-    handleTransferLicense,
-    handleUnassignLicense,
-    handleUpdatePoolAllocation,
-    handleUpdateSeatCount
+  handleAcceptInvitation,
+  handleAssignLicense,
+  handleBulkAssignLicenses,
+  handleBulkInviteMembers,
+  handleCalculateOrgPricing,
+  handleCalculateSeatAdditionCost,
+  handleCancelInvitation,
+  handleConfigureAutoAssignment,
+  handleCreateLicensePool,
+  handleDownloadInvoice,
+  // Billing handlers
+  handleGetBillingDashboard,
+  handleGetCostProjection,
+  handleGetInvitations,
+  handleGetInvitationStats,
+  handleGetInvoiceHistory,
+  handleGetLicensePools,
+  handleGetOrgSubscriptions,
+  handleGetUserAssignments,
+  // Invitation handlers
+  handleInviteMember,
+  handlePurchaseOrgSubscription,
+  handleResendInvitation,
+  handleTransferLicense,
+  handleUnassignLicense,
+  handleUpdatePoolAllocation,
+  handleUpdateSeatCount,
 } from './handlers/organization';
-import { handleGetSubscriptionFeatures, handleGetSubscriptionPlan, handleGetSubscriptionPlans } from './handlers/plans';
+import {
+  handleGetSubscriptionFeatures,
+  handleGetSubscriptionPlan,
+  handleGetSubscriptionPlans,
+} from './handlers/plans';
 
 // Re-export Env type for use in other modules
 export interface Env {
@@ -122,7 +126,8 @@ export interface Env {
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-razorpay-signature',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type, x-razorpay-signature',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
 
@@ -144,10 +149,14 @@ function isValidHttpUrl(str: string): boolean {
 function getSupabaseUrl(env: Env): string {
   const url = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
   if (!url) {
-    throw new Error('SUPABASE_URL is not configured. Set it as a Cloudflare secret via: wrangler secret put SUPABASE_URL');
+    throw new Error(
+      'SUPABASE_URL is not configured. Set it as a Cloudflare secret via: wrangler secret put SUPABASE_URL'
+    );
   }
   if (!isValidHttpUrl(url)) {
-    throw new Error(`Invalid supabaseUrl: Must be a valid HTTP or HTTPS URL. Got: "${url.substring(0, 50)}...". Ensure SUPABASE_URL is set correctly as a Cloudflare secret.`);
+    throw new Error(
+      `Invalid supabaseUrl: Must be a valid HTTP or HTTPS URL. Got: "${url.substring(0, 50)}...". Ensure SUPABASE_URL is set correctly as a Cloudflare secret.`
+    );
   }
   return url;
 }
@@ -156,7 +165,9 @@ function getSupabaseUrl(env: Env): string {
 function getSupabaseAnonKey(env: Env): string {
   const key = env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY;
   if (!key) {
-    throw new Error('SUPABASE_ANON_KEY is not configured. Set it as a Cloudflare secret via: wrangler secret put SUPABASE_ANON_KEY');
+    throw new Error(
+      'SUPABASE_ANON_KEY is not configured. Set it as a Cloudflare secret via: wrangler secret put SUPABASE_ANON_KEY'
+    );
   }
   return key;
 }
@@ -165,7 +176,9 @@ function getSupabaseAnonKey(env: Env): string {
 function getRazorpayKeyId(env: Env): string {
   const key = env.RAZORPAY_KEY_ID || env.VITE_RAZORPAY_KEY_ID;
   if (!key) {
-    throw new Error('RAZORPAY_KEY_ID is not configured. Set it as a Cloudflare secret via: wrangler secret put RAZORPAY_KEY_ID');
+    throw new Error(
+      'RAZORPAY_KEY_ID is not configured. Set it as a Cloudflare secret via: wrangler secret put RAZORPAY_KEY_ID'
+    );
   }
   return key;
 }
@@ -177,15 +190,21 @@ function jsonResponse(data: any, status = 200) {
   });
 }
 
-async function authenticateUser(request: Request, env: Env): Promise<{ user: any; supabase: SupabaseClient } | null> {
+async function authenticateUser(
+  request: Request,
+  env: Env
+): Promise<{ user: any; supabase: SupabaseClient } | null> {
   const authHeader = request.headers.get('Authorization');
   if (!authHeader) return null;
 
   const token = authHeader.replace('Bearer ', '');
   const supabaseUrl = getSupabaseUrl(env);
   const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
-  
-  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+
+  const {
+    data: { user },
+    error,
+  } = await supabaseAdmin.auth.getUser(token);
   if (error || !user) return null;
 
   const supabase = createClient(supabaseUrl, getSupabaseAnonKey(env), {
@@ -211,12 +230,15 @@ function isProductionRequest(request: Request): boolean {
  * - Production (skillpassport.rareminds.in): Uses LIVE keys
  * - Everything else (localhost, netlify, dev): Uses TEST keys
  */
-function getRazorpayCredentialsForRequest(request: Request, env: Env): { keyId: string; keySecret: string; isProduction: boolean } {
+function getRazorpayCredentialsForRequest(
+  request: Request,
+  env: Env
+): { keyId: string; keySecret: string; isProduction: boolean } {
   const isProduction = isProductionRequest(request);
-  
+
   let keyId: string;
   let keySecret: string;
-  
+
   if (isProduction) {
     // Production: Use LIVE credentials
     keyId = getRazorpayKeyId(env);
@@ -228,11 +250,11 @@ function getRazorpayCredentialsForRequest(request: Request, env: Env): { keyId: 
     keySecret = env.TEST_RAZORPAY_KEY_SECRET || env.RAZORPAY_KEY_SECRET;
     console.log('[RAZORPAY] Using TEST credentials for development');
   }
-  
+
   if (!keySecret) {
     throw new Error('RAZORPAY_KEY_SECRET is not configured');
   }
-  
+
   return { keyId, keySecret, isProduction };
 }
 
@@ -249,7 +271,12 @@ function getRazorpayCredentials(env: Env) {
   return { keyId, keySecret };
 }
 
-async function verifySignature(orderId: string, paymentId: string, signature: string, secret: string): Promise<boolean> {
+async function verifySignature(
+  orderId: string,
+  paymentId: string,
+  signature: string,
+  secret: string
+): Promise<boolean> {
   const text = `${orderId}|${paymentId}`;
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
@@ -261,12 +288,16 @@ async function verifySignature(orderId: string, paymentId: string, signature: st
   );
   const signatureBuffer = await crypto.subtle.sign('HMAC', key, encoder.encode(text));
   const generatedSignature = Array.from(new Uint8Array(signatureBuffer))
-    .map(b => b.toString(16).padStart(2, '0'))
+    .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
   return generatedSignature === signature;
 }
 
-async function verifyWebhookSignature(payload: string, signature: string, secret: string): Promise<boolean> {
+async function verifyWebhookSignature(
+  payload: string,
+  signature: string,
+  secret: string
+): Promise<boolean> {
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
     'raw',
@@ -277,7 +308,7 @@ async function verifyWebhookSignature(payload: string, signature: string, secret
   );
   const signatureBuffer = await crypto.subtle.sign('HMAC', key, encoder.encode(payload));
   const generatedSignature = Array.from(new Uint8Array(signatureBuffer))
-    .map(b => b.toString(16).padStart(2, '0'))
+    .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
   return generatedSignature === signature;
 }
@@ -301,7 +332,7 @@ async function sendEmailViaWorker(
   console.log(`[EMAIL] Starting email send to: ${to}`);
   console.log(`[EMAIL] Subject: ${subject}`);
   console.log(`[EMAIL] From: ${fromName} <${from}>`);
-  
+
   try {
     const requestBody = JSON.stringify({
       to,
@@ -310,11 +341,11 @@ async function sendEmailViaWorker(
       from,
       fromName,
     });
-    
+
     console.log(`[EMAIL] Request body length: ${requestBody.length} chars`);
-    
+
     let response: Response;
-    
+
     // Use Service Binding if available (more reliable for worker-to-worker)
     if (env.EMAIL_SERVICE) {
       console.log(`[EMAIL] Using Service Binding to email-api`);
@@ -338,14 +369,14 @@ async function sendEmailViaWorker(
     }
 
     console.log(`[EMAIL] Response status: ${response.status}`);
-    
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`[EMAIL] Failed with status ${response.status}: ${errorText}`);
       return false;
     }
 
-    const result = await response.json() as { success?: boolean; message?: string };
+    const result = (await response.json()) as { success?: boolean; message?: string };
     console.log(`[EMAIL] Success response:`, JSON.stringify(result));
     return result.success === true;
   } catch (error) {
@@ -379,30 +410,35 @@ async function sendPaymentConfirmationEmail(
     return false;
   }
 
-  const { paymentId, orderId, amount, planName, billingCycle, subscriptionEndDate, receiptUrl } = paymentDetails;
-  
+  const { paymentId, orderId, amount, planName, billingCycle, subscriptionEndDate, receiptUrl } =
+    paymentDetails;
+
   console.log(`[EMAIL] receiptUrl received: ${receiptUrl || 'NOT PROVIDED'}`);
   console.log(`[EMAIL] Will include receipt button: ${receiptUrl ? 'YES' : 'NO'}`);
-  
-  const formatAmount = (a: number) => new Intl.NumberFormat('en-IN', { 
-    style: 'currency', 
-    currency: 'INR', 
-    minimumFractionDigits: 0 
-  }).format(a);
 
-  const formatDate = (d: string) => new Date(d).toLocaleDateString('en-US', { 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
-  });
+  const formatAmount = (a: number) =>
+    new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+    }).format(a);
+
+  const formatDate = (d: string) =>
+    new Date(d).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
 
   // Receipt download button HTML (only if receiptUrl is provided)
-  const receiptButtonHtml = receiptUrl ? `
+  const receiptButtonHtml = receiptUrl
+    ? `
               <!-- Download Receipt Button -->
               <div style="text-align: center; margin: 24px 0;">
                 <a href="${receiptUrl}" style="display: inline-block; background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-size: 14px; font-weight: 600;">📄 Download Receipt</a>
               </div>
-  ` : '';
+  `
+    : '';
 
   const htmlContent = `
 <!DOCTYPE html>
@@ -501,7 +537,7 @@ async function sendPaymentConfirmationEmail(
   if (success) {
     console.log(`Payment confirmation email sent to ${email}`);
   }
-  
+
   return success;
 }
 
@@ -526,11 +562,22 @@ async function generateReceiptPdfBase64(receiptData: {
   paymentMethod: string;
   paymentDate: string;
 }): Promise<string> {
-  const { paymentId, orderId, amount, planName, billingCycle, subscriptionEndDate, userName, userEmail, paymentMethod, paymentDate } = receiptData;
-  
+  const {
+    paymentId,
+    orderId,
+    amount,
+    planName,
+    billingCycle,
+    subscriptionEndDate,
+    userName,
+    userEmail,
+    paymentMethod,
+    paymentDate,
+  } = receiptData;
+
   console.log(`[PDF-GEN] ========== STARTING PDF GENERATION ==========`);
   console.log(`[PDF-GEN] Payment ID: ${paymentId}`);
-  
+
   const formatAmount = (a: number) => `Rs. ${a.toLocaleString('en-IN')}`;
 
   try {
@@ -538,83 +585,161 @@ async function generateReceiptPdfBase64(receiptData: {
     console.log(`[PDF-GEN] Step 1: Creating PDF document...`);
     const pdfDoc = await PDFDocument.create();
     console.log(`[PDF-GEN] Step 1: Done`);
-    
+
     // Embed font
     console.log(`[PDF-GEN] Step 2: Embedding font...`);
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
     console.log(`[PDF-GEN] Step 2: Done`);
-    
+
     // Add a page
     console.log(`[PDF-GEN] Step 3: Adding page...`);
     const page = pdfDoc.addPage([595, 842]); // A4
     const { height } = page.getSize();
     console.log(`[PDF-GEN] Step 3: Done`);
-    
+
     // Simple text drawing
     console.log(`[PDF-GEN] Step 4: Drawing text...`);
     let y = height - 50;
-    
+
     // Title
-    page.drawText('PAYMENT RECEIPT', { x: 50, y, size: 24, font: boldFont, color: rgb(0.15, 0.39, 0.92) });
+    page.drawText('PAYMENT RECEIPT', {
+      x: 50,
+      y,
+      size: 24,
+      font: boldFont,
+      color: rgb(0.15, 0.39, 0.92),
+    });
     y -= 40;
-    
-    page.drawText('RareMinds - Skill Passport', { x: 50, y, size: 12, font, color: rgb(0.4, 0.4, 0.4) });
+
+    page.drawText('RareMinds - Skill Passport', {
+      x: 50,
+      y,
+      size: 12,
+      font,
+      color: rgb(0.4, 0.4, 0.4),
+    });
     y -= 50;
-    
+
     // Transaction Details
-    page.drawText('Transaction Details', { x: 50, y, size: 14, font: boldFont, color: rgb(0.1, 0.1, 0.1) });
+    page.drawText('Transaction Details', {
+      x: 50,
+      y,
+      size: 14,
+      font: boldFont,
+      color: rgb(0.1, 0.1, 0.1),
+    });
     y -= 25;
-    
-    page.drawText(`Reference: ${paymentId}`, { x: 50, y, size: 10, font, color: rgb(0.2, 0.2, 0.2) });
+
+    page.drawText(`Reference: ${paymentId}`, {
+      x: 50,
+      y,
+      size: 10,
+      font,
+      color: rgb(0.2, 0.2, 0.2),
+    });
     y -= 18;
     page.drawText(`Order ID: ${orderId}`, { x: 50, y, size: 10, font, color: rgb(0.2, 0.2, 0.2) });
     y -= 18;
     page.drawText(`Date: ${paymentDate}`, { x: 50, y, size: 10, font, color: rgb(0.2, 0.2, 0.2) });
     y -= 18;
-    page.drawText(`Payment Method: ${paymentMethod}`, { x: 50, y, size: 10, font, color: rgb(0.2, 0.2, 0.2) });
+    page.drawText(`Payment Method: ${paymentMethod}`, {
+      x: 50,
+      y,
+      size: 10,
+      font,
+      color: rgb(0.2, 0.2, 0.2),
+    });
     y -= 18;
     page.drawText(`Status: Success`, { x: 50, y, size: 10, font, color: rgb(0.13, 0.77, 0.37) });
     y -= 40;
-    
+
     // Amount
     page.drawText('Amount Paid', { x: 50, y, size: 14, font: boldFont, color: rgb(0.1, 0.1, 0.1) });
     y -= 25;
-    page.drawText(formatAmount(amount), { x: 50, y, size: 20, font: boldFont, color: rgb(0.15, 0.39, 0.92) });
+    page.drawText(formatAmount(amount), {
+      x: 50,
+      y,
+      size: 20,
+      font: boldFont,
+      color: rgb(0.15, 0.39, 0.92),
+    });
     y -= 50;
-    
+
     // Customer Details
-    page.drawText('Customer Details', { x: 50, y, size: 14, font: boldFont, color: rgb(0.1, 0.1, 0.1) });
+    page.drawText('Customer Details', {
+      x: 50,
+      y,
+      size: 14,
+      font: boldFont,
+      color: rgb(0.1, 0.1, 0.1),
+    });
     y -= 25;
     page.drawText(`Name: ${userName}`, { x: 50, y, size: 10, font, color: rgb(0.2, 0.2, 0.2) });
     y -= 18;
     page.drawText(`Email: ${userEmail}`, { x: 50, y, size: 10, font, color: rgb(0.2, 0.2, 0.2) });
     y -= 40;
-    
+
     // Subscription Details
-    page.drawText('Subscription Details', { x: 50, y, size: 14, font: boldFont, color: rgb(0.1, 0.1, 0.1) });
+    page.drawText('Subscription Details', {
+      x: 50,
+      y,
+      size: 14,
+      font: boldFont,
+      color: rgb(0.1, 0.1, 0.1),
+    });
     y -= 25;
     page.drawText(`Plan: ${planName}`, { x: 50, y, size: 10, font, color: rgb(0.2, 0.2, 0.2) });
     y -= 18;
-    page.drawText(`Billing Cycle: ${billingCycle}`, { x: 50, y, size: 10, font, color: rgb(0.2, 0.2, 0.2) });
+    page.drawText(`Billing Cycle: ${billingCycle}`, {
+      x: 50,
+      y,
+      size: 10,
+      font,
+      color: rgb(0.2, 0.2, 0.2),
+    });
     y -= 18;
-    page.drawText(`Valid Until: ${subscriptionEndDate}`, { x: 50, y, size: 10, font, color: rgb(0.2, 0.2, 0.2) });
+    page.drawText(`Valid Until: ${subscriptionEndDate}`, {
+      x: 50,
+      y,
+      size: 10,
+      font,
+      color: rgb(0.2, 0.2, 0.2),
+    });
     y -= 50;
-    
+
     // Footer
-    page.drawText('Thank you for your payment!', { x: 50, y, size: 12, font: boldFont, color: rgb(0.15, 0.39, 0.92) });
+    page.drawText('Thank you for your payment!', {
+      x: 50,
+      y,
+      size: 12,
+      font: boldFont,
+      color: rgb(0.15, 0.39, 0.92),
+    });
     y -= 20;
-    page.drawText('For support: marketing@rareminds.in', { x: 50, y, size: 9, font, color: rgb(0.5, 0.5, 0.5) });
+    page.drawText('For support: marketing@rareminds.in', {
+      x: 50,
+      y,
+      size: 9,
+      font,
+      color: rgb(0.5, 0.5, 0.5),
+    });
     y -= 15;
-    page.drawText(`Generated: ${new Date().toLocaleString()}`, { x: 50, y, size: 8, font, color: rgb(0.6, 0.6, 0.6) });
-    
+    page.drawText(`Generated: ${new Date().toLocaleString()}`, {
+      x: 50,
+      y,
+      size: 8,
+      font,
+      color: rgb(0.6, 0.6, 0.6),
+    });
+
     console.log(`[PDF-GEN] Step 4: Done`);
-    
+
     // Save PDF
     console.log(`[PDF-GEN] Step 5: Saving PDF...`);
     const pdfBytes = await pdfDoc.save();
     console.log(`[PDF-GEN] Step 5: Done - ${pdfBytes.length} bytes`);
-    
+
     // Convert to base64
     console.log(`[PDF-GEN] Step 6: Converting to base64...`);
     let binary = '';
@@ -623,7 +748,7 @@ async function generateReceiptPdfBase64(receiptData: {
     }
     const base64 = btoa(binary);
     console.log(`[PDF-GEN] Step 6: Done - ${base64.length} chars`);
-    
+
     console.log(`[PDF-GEN] ========== PDF GENERATION SUCCESS ==========`);
     return base64;
   } catch (error) {
@@ -655,7 +780,7 @@ async function uploadReceiptToR2(
   console.log(`[RECEIPT] Filename: ${filename}`);
   console.log(`[RECEIPT] Base64 length: ${pdfBase64.length} chars`);
   console.log(`[RECEIPT] STORAGE_SERVICE binding available: ${!!env.STORAGE_SERVICE}`);
-  
+
   try {
     const requestBody = JSON.stringify({
       pdfBase64,
@@ -664,12 +789,12 @@ async function uploadReceiptToR2(
       userName,
       filename,
     });
-    
+
     console.log(`[RECEIPT] Request body size: ${requestBody.length} bytes`);
-    
+
     let response: Response;
     const startTime = Date.now();
-    
+
     // Use Service Binding if available (required for worker-to-worker communication)
     if (env.STORAGE_SERVICE) {
       console.log(`[RECEIPT] Using Service Binding to storage-api`);
@@ -685,8 +810,10 @@ async function uploadReceiptToR2(
       const storageUrl = env.STORAGE_API_URL || STORAGE_API_URL;
       const uploadEndpoint = `${storageUrl}/upload-payment-receipt`;
       console.log(`[RECEIPT] Using HTTP fetch to: ${uploadEndpoint}`);
-      console.warn(`[RECEIPT] WARNING: HTTP fetch may fail with error 1042 for same-account workers`);
-      
+      console.warn(
+        `[RECEIPT] WARNING: HTTP fetch may fail with error 1042 for same-account workers`
+      );
+
       response = await fetch(uploadEndpoint, {
         method: 'POST',
         headers: {
@@ -695,7 +822,7 @@ async function uploadReceiptToR2(
         body: requestBody,
       });
     }
-    
+
     const duration = Date.now() - startTime;
     console.log(`[RECEIPT] Response received in ${duration}ms`);
     console.log(`[RECEIPT] Response status: ${response.status} ${response.statusText}`);
@@ -715,17 +842,19 @@ async function uploadReceiptToR2(
       console.error(`[RECEIPT] Failed to parse response JSON: ${parseError}`);
       return { success: false, error: `Invalid JSON response: ${responseText.substring(0, 100)}` };
     }
-    
+
     console.log(`[RECEIPT] Parsed result:`, JSON.stringify(result));
-    
+
     if (result.success && result.fileKey) {
       console.log(`[RECEIPT] ========== RECEIPT UPLOAD SUCCESS ==========`);
       console.log(`[RECEIPT] File Key: ${result.fileKey}`);
       console.log(`[RECEIPT] URL: ${result.url}`);
     } else {
-      console.warn(`[RECEIPT] Upload returned success=${result.success}, fileKey=${result.fileKey}`);
+      console.warn(
+        `[RECEIPT] Upload returned success=${result.success}, fileKey=${result.fileKey}`
+      );
     }
-    
+
     return result;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -745,7 +874,6 @@ function getReceiptDownloadUrl(env: Env, fileKey: string): string {
   return `${storageUrl}/payment-receipt?key=${encodeURIComponent(fileKey)}&mode=download`;
 }
 
-
 // ==================== CREATE ORDER ====================
 
 async function handleCreateOrder(request: Request, env: Env): Promise<Response> {
@@ -753,12 +881,12 @@ async function handleCreateOrder(request: Request, env: Env): Promise<Response> 
   if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
 
   const { user, supabase } = auth;
-  
+
   // Get credentials based on request origin (production vs development)
   const { keyId, keySecret, isProduction } = getRazorpayCredentialsForRequest(request, env);
   console.log(`[CREATE-ORDER] Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
 
-  const body = await request.json() as {
+  const body = (await request.json()) as {
     amount?: number;
     currency?: string;
     planId?: string;
@@ -771,7 +899,10 @@ async function handleCreateOrder(request: Request, env: Env): Promise<Response> 
 
   // Validate required fields
   if (!amount || !currency || !userEmail || !planId || !planName) {
-    return jsonResponse({ error: 'Missing required fields: amount, currency, userEmail, planId, planName' }, 400);
+    return jsonResponse(
+      { error: 'Missing required fields: amount, currency, userEmail, planId, planName' },
+      400
+    );
   }
 
   // Validate amount
@@ -794,7 +925,7 @@ async function handleCreateOrder(request: Request, env: Env): Promise<Response> 
   // This prevents users from paying when they already have valid subscription access
   const supabaseUrl = getSupabaseUrl(env);
   const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
-  
+
   // Check for active subscriptions
   const { data: existingSubscription, error: subCheckError } = await supabaseAdmin
     .from('subscriptions')
@@ -806,25 +937,32 @@ async function handleCreateOrder(request: Request, env: Env): Promise<Response> 
 
   if (existingSubscription) {
     // User already has a valid subscription (active or cancelled but not expired)
-    const message = existingSubscription.status === 'cancelled'
-      ? `You have a cancelled subscription that is still active until ${new Date(existingSubscription.subscription_end_date).toLocaleDateString()}`
-      : 'You already have an active subscription';
-    
-    console.log(`[CREATE-ORDER] Blocked: User ${user.id} already has ${existingSubscription.status} ${existingSubscription.plan_type} subscription`);
-    
-    return jsonResponse({
-      error: message,
-      code: 'SUBSCRIPTION_EXISTS',
-      existing_subscription: {
-        id: existingSubscription.id,
-        plan_type: existingSubscription.plan_type,
-        status: existingSubscription.status,
-        end_date: existingSubscription.subscription_end_date,
+    const message =
+      existingSubscription.status === 'cancelled'
+        ? `You have a cancelled subscription that is still active until ${new Date(existingSubscription.subscription_end_date).toLocaleDateString()}`
+        : 'You already have an active subscription';
+
+    console.log(
+      `[CREATE-ORDER] Blocked: User ${user.id} already has ${existingSubscription.status} ${existingSubscription.plan_type} subscription`
+    );
+
+    return jsonResponse(
+      {
+        error: message,
+        code: 'SUBSCRIPTION_EXISTS',
+        existing_subscription: {
+          id: existingSubscription.id,
+          plan_type: existingSubscription.plan_type,
+          status: existingSubscription.status,
+          end_date: existingSubscription.subscription_end_date,
+        },
+        suggestion:
+          existingSubscription.status === 'cancelled'
+            ? 'Your subscription access continues until the end date. You can purchase a new plan after it expires.'
+            : 'Please manage your existing subscription from your account settings, or wait for it to expire before purchasing a new plan.',
       },
-      suggestion: existingSubscription.status === 'cancelled'
-        ? 'Your subscription access continues until the end date. You can purchase a new plan after it expires.'
-        : 'Please manage your existing subscription from your account settings, or wait for it to expire before purchasing a new plan.'
-    }, 409); // 409 Conflict
+      409
+    ); // 409 Conflict
   }
 
   // Rate limiting check
@@ -846,7 +984,7 @@ async function handleCreateOrder(request: Request, env: Env): Promise<Response> 
   const razorpayResponse = await fetch('https://api.razorpay.com/v1/orders', {
     method: 'POST',
     headers: {
-      'Authorization': `Basic ${razorpayAuth}`,
+      Authorization: `Basic ${razorpayAuth}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -866,14 +1004,17 @@ async function handleCreateOrder(request: Request, env: Env): Promise<Response> 
   if (!razorpayResponse.ok) {
     const errorText = await razorpayResponse.text();
     console.error('Razorpay API Error:', razorpayResponse.status, errorText);
-    return jsonResponse({ 
-      error: 'Unable to create payment order',
-      razorpay_status: razorpayResponse.status,
-      razorpay_error: errorText
-    }, 500);
+    return jsonResponse(
+      {
+        error: 'Unable to create payment order',
+        razorpay_status: razorpayResponse.status,
+        razorpay_error: errorText,
+      },
+      500
+    );
   }
 
-  const order = await razorpayResponse.json() as any;
+  const order = (await razorpayResponse.json()) as any;
 
   // Save order to database
   const { error: dbError } = await supabase.from('razorpay_orders').insert({
@@ -909,12 +1050,12 @@ async function handleCreateOrder(request: Request, env: Env): Promise<Response> 
 async function handleCreateOrgOrder(request: Request, env: Env, user: any): Promise<Response> {
   const supabaseUrl = getSupabaseUrl(env);
   const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
-  
+
   // Get credentials based on request origin
   const { keyId, keySecret, isProduction } = getRazorpayCredentialsForRequest(request, env);
   console.log(`[CREATE-ORG-ORDER] Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
 
-  const body = await request.json() as {
+  const body = (await request.json()) as {
     amount?: number;
     currency?: string;
     organizationId?: string;
@@ -928,15 +1069,36 @@ async function handleCreateOrgOrder(request: Request, env: Env, user: any): Prom
     billingName?: string;
   };
 
-  const { amount, currency = 'INR', organizationId, organizationType, planId, planName, seatCount, targetMemberType, billingCycle, billingEmail, billingName } = body;
+  const {
+    amount,
+    currency = 'INR',
+    organizationId,
+    organizationType,
+    planId,
+    planName,
+    seatCount,
+    targetMemberType,
+    billingCycle,
+    billingEmail,
+    billingName,
+  } = body;
 
   // Validate required fields
-  if (!amount || !organizationId || !organizationType || !planId || !planName || !seatCount || !billingEmail) {
+  if (
+    !amount ||
+    !organizationId ||
+    !organizationType ||
+    !planId ||
+    !planName ||
+    !seatCount ||
+    !billingEmail
+  ) {
     return jsonResponse({ error: 'Missing required fields' }, 400);
   }
 
   // Validate amount
-  if (amount < 100 || amount > 100000000) { // 1 rupee to 10 lakh rupees in paise
+  if (amount < 100 || amount > 100000000) {
+    // 1 rupee to 10 lakh rupees in paise
     return jsonResponse({ error: 'Invalid amount' }, 400);
   }
 
@@ -959,7 +1121,7 @@ async function handleCreateOrgOrder(request: Request, env: Env, user: any): Prom
   const razorpayResponse = await fetch('https://api.razorpay.com/v1/orders', {
     method: 'POST',
     headers: {
-      'Authorization': `Basic ${razorpayAuth}`,
+      Authorization: `Basic ${razorpayAuth}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -985,14 +1147,17 @@ async function handleCreateOrgOrder(request: Request, env: Env, user: any): Prom
   if (!razorpayResponse.ok) {
     const errorText = await razorpayResponse.text();
     console.error('[CREATE-ORG-ORDER] Razorpay API Error:', razorpayResponse.status, errorText);
-    return jsonResponse({ 
-      error: 'Unable to create payment order',
-      razorpay_status: razorpayResponse.status,
-      razorpay_error: errorText
-    }, 500);
+    return jsonResponse(
+      {
+        error: 'Unable to create payment order',
+        razorpay_status: razorpayResponse.status,
+        razorpay_error: errorText,
+      },
+      500
+    );
   }
 
-  const order = await razorpayResponse.json() as any;
+  const order = (await razorpayResponse.json()) as any;
 
   // Save order to database
   const { error: dbError } = await supabaseAdmin.from('razorpay_orders').insert({
@@ -1028,15 +1193,20 @@ async function handleCreateOrgOrder(request: Request, env: Env, user: any): Prom
 
 // ==================== VERIFY ORGANIZATION PAYMENT ====================
 
-async function handleVerifyOrgPayment(request: Request, env: Env, supabase: SupabaseClient, user: any): Promise<Response> {
+async function handleVerifyOrgPayment(
+  request: Request,
+  env: Env,
+  supabase: SupabaseClient,
+  user: any
+): Promise<Response> {
   const supabaseUrl = getSupabaseUrl(env);
   const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
-  
+
   // Get credentials based on request origin
   const { keyId, keySecret, isProduction } = getRazorpayCredentialsForRequest(request, env);
   console.log(`[VERIFY-ORG-PAYMENT] Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
 
-  const body = await request.json() as {
+  const body = (await request.json()) as {
     razorpay_order_id?: string;
     razorpay_payment_id?: string;
     razorpay_signature?: string;
@@ -1074,7 +1244,12 @@ async function handleVerifyOrgPayment(request: Request, env: Env, supabase: Supa
   }
 
   // Verify signature
-  const isValid = await verifySignature(razorpay_order_id, razorpay_payment_id, razorpay_signature, keySecret);
+  const isValid = await verifySignature(
+    razorpay_order_id,
+    razorpay_payment_id,
+    razorpay_signature,
+    keySecret
+  );
   if (!isValid) {
     console.error('[VERIFY-ORG-PAYMENT] Invalid signature');
     return jsonResponse({ error: 'Invalid payment signature' }, 400);
@@ -1094,17 +1269,20 @@ async function handleVerifyOrgPayment(request: Request, env: Env, supabase: Supa
 
   // Verify payment with Razorpay
   const razorpayAuth = btoa(`${keyId}:${keySecret}`);
-  const paymentResponse = await fetch(`https://api.razorpay.com/v1/payments/${razorpay_payment_id}`, {
-    headers: { 'Authorization': `Basic ${razorpayAuth}` },
-  });
+  const paymentResponse = await fetch(
+    `https://api.razorpay.com/v1/payments/${razorpay_payment_id}`,
+    {
+      headers: { Authorization: `Basic ${razorpayAuth}` },
+    }
+  );
 
   if (!paymentResponse.ok) {
     console.error('[VERIFY-ORG-PAYMENT] Failed to verify payment with Razorpay');
     return jsonResponse({ error: 'Failed to verify payment' }, 500);
   }
 
-  const paymentDetails = await paymentResponse.json() as any;
-  
+  const paymentDetails = (await paymentResponse.json()) as any;
+
   if (paymentDetails.status !== 'captured' && paymentDetails.status !== 'authorized') {
     console.error('[VERIFY-ORG-PAYMENT] Payment not completed:', paymentDetails.status);
     return jsonResponse({ error: 'Payment not completed' }, 400);
@@ -1120,7 +1298,7 @@ async function handleVerifyOrgPayment(request: Request, env: Env, supabase: Supa
   // The frontend passes plan codes like 'basic', 'professional', 'enterprise'
   // but the database expects a UUID
   let subscriptionPlanId = purchaseData.planId;
-  
+
   // Check if planId is not a UUID (i.e., it's a plan code)
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (!uuidRegex.test(purchaseData.planId)) {
@@ -1131,12 +1309,12 @@ async function handleVerifyOrgPayment(request: Request, env: Env, supabase: Supa
       .eq('plan_code', purchaseData.planId)
       .eq('is_active', true)
       .single();
-    
+
     if (planError || !planData) {
       console.error('[VERIFY-ORG-PAYMENT] Plan not found:', planError);
       return jsonResponse({ error: `Subscription plan '${purchaseData.planId}' not found` }, 400);
     }
-    
+
     subscriptionPlanId = planData.id;
     console.log(`[VERIFY-ORG-PAYMENT] Found plan UUID: ${subscriptionPlanId}`);
   }
@@ -1182,20 +1360,19 @@ async function handleVerifyOrgPayment(request: Request, env: Env, supabase: Supa
 
   // Create license pool if needed
   if (purchaseData.assignmentMode === 'create-pool' && purchaseData.poolName) {
-    const { error: poolError } = await supabaseAdmin
-      .from('license_pools')
-      .insert({
-        organization_id: purchaseData.organizationId,
-        organization_type: purchaseData.organizationType,
-        organization_subscription_id: subscription.id,
-        pool_name: purchaseData.poolName,
-        member_type: purchaseData.targetMemberType === 'both' ? 'student' : purchaseData.targetMemberType,
-        allocated_seats: purchaseData.seatCount,
-        assigned_seats: 0,
-        auto_assign_new_members: purchaseData.autoAssignNewMembers,
-        is_active: true,
-        created_by: user.id,
-      });
+    const { error: poolError } = await supabaseAdmin.from('license_pools').insert({
+      organization_id: purchaseData.organizationId,
+      organization_type: purchaseData.organizationType,
+      organization_subscription_id: subscription.id,
+      pool_name: purchaseData.poolName,
+      member_type:
+        purchaseData.targetMemberType === 'both' ? 'student' : purchaseData.targetMemberType,
+      allocated_seats: purchaseData.seatCount,
+      assigned_seats: 0,
+      auto_assign_new_members: purchaseData.autoAssignNewMembers,
+      is_active: true,
+      created_by: user.id,
+    });
 
     if (poolError) {
       console.error('[VERIFY-ORG-PAYMENT] Error creating license pool:', poolError);
@@ -1204,26 +1381,26 @@ async function handleVerifyOrgPayment(request: Request, env: Env, supabase: Supa
   }
 
   // Log the transaction
-  await supabaseAdmin
-    .from('payment_transactions')
-    .insert({
-      user_id: user.id,
-      razorpay_order_id: razorpay_order_id,
-      razorpay_payment_id: razorpay_payment_id,
-      amount: order.amount,
-      currency: order.currency,
-      status: 'success',
-      payment_method: paymentDetails.method || 'unknown',
-      transaction_type: 'organization_subscription',
-      metadata: {
-        organization_id: purchaseData.organizationId,
-        organization_type: purchaseData.organizationType,
-        seat_count: purchaseData.seatCount,
-        subscription_id: subscription.id,
-      },
-    });
+  await supabaseAdmin.from('payment_transactions').insert({
+    user_id: user.id,
+    razorpay_order_id: razorpay_order_id,
+    razorpay_payment_id: razorpay_payment_id,
+    amount: order.amount,
+    currency: order.currency,
+    status: 'success',
+    payment_method: paymentDetails.method || 'unknown',
+    transaction_type: 'organization_subscription',
+    metadata: {
+      organization_id: purchaseData.organizationId,
+      organization_type: purchaseData.organizationType,
+      seat_count: purchaseData.seatCount,
+      subscription_id: subscription.id,
+    },
+  });
 
-  console.log(`[VERIFY-ORG-PAYMENT] Subscription created: ${subscription.id} for org ${purchaseData.organizationId}`);
+  console.log(
+    `[VERIFY-ORG-PAYMENT] Subscription created: ${subscription.id} for org ${purchaseData.organizationId}`
+  );
 
   return jsonResponse({
     success: true,
@@ -1249,18 +1426,18 @@ function calculateSubscriptionEndDate(billingCycle: string): string {
 async function handleVerifyPayment(request: Request, env: Env): Promise<Response> {
   const supabaseUrl = getSupabaseUrl(env);
   const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
-  
+
   // Get credentials based on request origin (production vs development)
   const { keyId, keySecret, isProduction } = getRazorpayCredentialsForRequest(request, env);
   console.log(`[VERIFY-PAYMENT] Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
 
-  const body = await request.json() as {
+  const body = (await request.json()) as {
     razorpay_order_id?: string;
     razorpay_payment_id?: string;
     razorpay_signature?: string;
     // Optional: plan details for subscription creation
     plan?: {
-      id?: string;      // plan_id from subscription_plans table
+      id?: string; // plan_id from subscription_plans table
       name?: string;
       price?: number;
       duration?: string;
@@ -1316,7 +1493,12 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
   }
 
   // Verify signature
-  const isValid = await verifySignature(razorpay_order_id, razorpay_payment_id, razorpay_signature, keySecret);
+  const isValid = await verifySignature(
+    razorpay_order_id,
+    razorpay_payment_id,
+    razorpay_signature,
+    keySecret
+  );
   if (!isValid) {
     return jsonResponse({ error: 'Invalid payment signature' }, 400);
   }
@@ -1327,12 +1509,15 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
 
   try {
     const razorpayAuth = btoa(`${keyId}:${keySecret}`);
-    const paymentResponse = await fetch(`https://api.razorpay.com/v1/payments/${razorpay_payment_id}`, {
-      headers: { 'Authorization': `Basic ${razorpayAuth}` },
-    });
+    const paymentResponse = await fetch(
+      `https://api.razorpay.com/v1/payments/${razorpay_payment_id}`,
+      {
+        headers: { Authorization: `Basic ${razorpayAuth}` },
+      }
+    );
 
     if (paymentResponse.ok) {
-      const paymentDetails = await paymentResponse.json() as any;
+      const paymentDetails = (await paymentResponse.json()) as any;
       paymentMethod = paymentDetails.method || 'unknown';
       paymentAmount = paymentDetails.amount || order.amount;
 
@@ -1361,8 +1546,8 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
     .eq('id', order.user_id)
     .maybeSingle();
 
-  const fullName = userData 
-    ? `${userData.firstName || ''} ${userData.lastName || ''}`.trim() 
+  const fullName = userData
+    ? `${userData.firstName || ''} ${userData.lastName || ''}`.trim()
     : order.user_name || 'User';
   const userEmail = userData?.email || order.user_email || '';
   const userPhone = userData?.phone || null;
@@ -1375,7 +1560,7 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
   } else if (order.plan_name?.toLowerCase().includes('year')) {
     billingCycle = 'year';
   }
-  const planAmount = (plan?.price || paymentAmount / 100); // Convert paise to rupees if needed
+  const planAmount = plan?.price || paymentAmount / 100; // Convert paise to rupees if needed
   const planType = plan?.name || order.plan_name || 'Standard Plan';
 
   // Check if user already has an active subscription of the same plan type
@@ -1390,14 +1575,15 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
   if (existingActiveSubscription) {
     // User already has active subscription
     // Check if this is the same plan type - if so, treat as renewal/extension
-    const isSamePlan = existingActiveSubscription.plan_type?.toLowerCase() === planType?.toLowerCase();
+    const isSamePlan =
+      existingActiveSubscription.plan_type?.toLowerCase() === planType?.toLowerCase();
     const renewalTimestamp = new Date().toISOString();
-    
+
     if (isSamePlan) {
       // Same plan - extend the subscription end date and update payment info
       const currentEndDate = new Date(existingActiveSubscription.subscription_end_date);
       const extensionDate = new Date(Math.max(currentEndDate.getTime(), Date.now()));
-      
+
       // Add billing cycle duration to the later of current end date or now
       if (billingCycle.toLowerCase().includes('year')) {
         extensionDate.setFullYear(extensionDate.getFullYear() + 1);
@@ -1422,9 +1608,8 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
       }
 
       // Log the renewal transaction
-      await supabaseAdmin
-        .from('payment_transactions')
-        .insert([{
+      await supabaseAdmin.from('payment_transactions').insert([
+        {
           subscription_id: existingActiveSubscription.id,
           user_id: order.user_id,
           razorpay_payment_id: razorpay_payment_id,
@@ -1434,7 +1619,8 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
           status: 'success',
           payment_method: paymentMethod,
           created_at: renewalTimestamp,
-        }]);
+        },
+      ]);
 
       // UPDATE razorpay_orders with renewal payment result
       await supabaseAdmin
@@ -1447,7 +1633,9 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
         })
         .eq('order_id', razorpay_order_id);
 
-      console.log(`[VERIFY-PAYMENT] Renewed subscription for user ${order.user_id}, extended to ${extensionDate.toISOString()}`);
+      console.log(
+        `[VERIFY-PAYMENT] Renewed subscription for user ${order.user_id}, extended to ${extensionDate.toISOString()}`
+      );
 
       return jsonResponse({
         success: true,
@@ -1467,8 +1655,10 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
     } else {
       // Different plan type - user is trying to subscribe to a different plan
       // Return existing subscription info without creating duplicate
-      console.log(`[VERIFY-PAYMENT] User ${order.user_id} has active ${existingActiveSubscription.plan_type}, tried to get ${planType}`);
-      
+      console.log(
+        `[VERIFY-PAYMENT] User ${order.user_id} has active ${existingActiveSubscription.plan_type}, tried to get ${planType}`
+      );
+
       return jsonResponse({
         success: true,
         verified: true,
@@ -1492,12 +1682,12 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
   // First try to use plan.id if provided (this is plan_code from frontend), otherwise lookup by plan name
   let planId: string | null = null;
   const planCode = plan?.id; // Frontend sends plan_code as 'id' (e.g., 'basic', 'professional')
-  
+
   if (planCode) {
     // Map frontend plan codes to database plan_codes
     // Frontend uses 'professional', database uses 'pro'
     const dbPlanCode = planCode === 'professional' ? 'pro' : planCode;
-    
+
     // Lookup plan_id from subscription_plans by plan_code
     const { data: planRecord } = await supabaseAdmin
       .from('subscription_plans')
@@ -1506,7 +1696,7 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
       .eq('role_type', 'student')
       .eq('business_type', 'b2c')
       .maybeSingle();
-    
+
     if (planRecord) {
       planId = planRecord.id;
       console.log(`[VERIFY-PAYMENT] Resolved plan_id ${planId} from plan_code "${dbPlanCode}"`);
@@ -1514,7 +1704,7 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
       console.warn(`[VERIFY-PAYMENT] Could not resolve plan_id for plan_code "${dbPlanCode}"`);
     }
   }
-  
+
   // Fallback: lookup by plan name if plan_code lookup failed
   if (!planId && planType) {
     const { data: planRecord } = await supabaseAdmin
@@ -1524,10 +1714,12 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
       .eq('role_type', 'student')
       .eq('business_type', 'b2c')
       .maybeSingle();
-    
+
     if (planRecord) {
       planId = planRecord.id;
-      console.log(`[VERIFY-PAYMENT] Resolved plan_id ${planId} from plan_type "${planType}" (fallback)`);
+      console.log(
+        `[VERIFY-PAYMENT] Resolved plan_id ${planId} from plan_type "${planType}" (fallback)`
+      );
     } else {
       console.warn(`[VERIFY-PAYMENT] Could not resolve plan_id for plan_type "${planType}"`);
     }
@@ -1540,7 +1732,7 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
     full_name: fullName,
     email: userEmail,
     phone: userPhone,
-    plan_id: planId,  // NEW: Foreign key to subscription_plans
+    plan_id: planId, // NEW: Foreign key to subscription_plans
     plan_type: planType,
     plan_amount: planAmount,
     billing_cycle: billingCycle,
@@ -1618,14 +1810,15 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
   console.log(`[VERIFY-PAYMENT] Subscription ID: ${subscription.id}`);
   console.log(`[VERIFY-PAYMENT] Payment ID: ${razorpay_payment_id}`);
   console.log(`[VERIFY-PAYMENT] User ID: ${order.user_id}`);
-  
+
   try {
-    const formatDate = (d: string) => new Date(d).toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    });
-    
+    const formatDate = (d: string) =>
+      new Date(d).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+
     console.log(`[VERIFY-PAYMENT] Generating receipt PDF base64...`);
     const receiptPdfBase64 = await generateReceiptPdfBase64({
       paymentId: razorpay_payment_id,
@@ -1639,27 +1832,39 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
       paymentMethod: paymentMethod,
       paymentDate: formatDate(now),
     });
-    console.log(`[VERIFY-PAYMENT] Receipt PDF base64 generated, length: ${receiptPdfBase64.length}`);
-    
+    console.log(
+      `[VERIFY-PAYMENT] Receipt PDF base64 generated, length: ${receiptPdfBase64.length}`
+    );
+
     const filename = `Receipt-${razorpay_payment_id.slice(-8)}-${new Date().toISOString().split('T')[0]}.pdf`;
     console.log(`[VERIFY-PAYMENT] Calling uploadReceiptToR2 with filename: ${filename}`);
-    
-    const uploadResult = await uploadReceiptToR2(env, receiptPdfBase64, razorpay_payment_id, order.user_id, filename, fullName);
+
+    const uploadResult = await uploadReceiptToR2(
+      env,
+      receiptPdfBase64,
+      razorpay_payment_id,
+      order.user_id,
+      filename,
+      fullName
+    );
     console.log(`[VERIFY-PAYMENT] Upload result:`, JSON.stringify(uploadResult));
-    
+
     if (uploadResult.success && uploadResult.fileKey) {
       receiptUrl = getReceiptDownloadUrl(env, uploadResult.fileKey);
       console.log(`[VERIFY-PAYMENT] Receipt URL generated: ${receiptUrl}`);
-      
+
       // Store receipt URL in subscription record
       console.log(`[VERIFY-PAYMENT] Updating subscription ${subscription.id} with receipt_url...`);
       const { error: updateError } = await supabaseAdmin
         .from('subscriptions')
         .update({ receipt_url: receiptUrl })
         .eq('id', subscription.id);
-      
+
       if (updateError) {
-        console.error(`[VERIFY-PAYMENT] Failed to update subscription with receipt_url:`, updateError);
+        console.error(
+          `[VERIFY-PAYMENT] Failed to update subscription with receipt_url:`,
+          updateError
+        );
         receiptUploadError = `DB update failed: ${updateError.message}`;
       } else {
         console.log(`[VERIFY-PAYMENT] ========== RECEIPT SAVED SUCCESSFULLY ==========`);
@@ -1695,7 +1900,9 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
   });
 
   if (!emailSent) {
-    console.warn(`Failed to send confirmation email to ${userEmail} for payment ${razorpay_payment_id}`);
+    console.warn(
+      `Failed to send confirmation email to ${userEmail} for payment ${razorpay_payment_id}`
+    );
   } else {
     console.log(`Confirmation email sent successfully to ${userEmail}`);
   }
@@ -1718,7 +1925,6 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
   });
 }
 
-
 // ==================== WEBHOOK ====================
 
 async function handleWebhook(request: Request, env: Env): Promise<Response> {
@@ -1728,7 +1934,7 @@ async function handleWebhook(request: Request, env: Env): Promise<Response> {
   }
 
   const rawBody = await request.text();
-  
+
   // Only verify signature if webhook secret is configured
   if (env.RAZORPAY_WEBHOOK_SECRET) {
     const isValid = await verifyWebhookSignature(rawBody, signature, env.RAZORPAY_WEBHOOK_SECRET);
@@ -1792,6 +1998,7 @@ async function handleWebhook(request: Request, env: Env): Promise<Response> {
         .eq('razorpay_subscription_id', payload.subscription.entity.id);
       break;
 
+    // eslint-disable-next-line no-case-declarations
     case 'subscription.charged':
       const payment = payload.payment.entity;
       await supabaseAdmin.from('payment_transactions').insert({
@@ -1818,7 +2025,10 @@ async function handleCancelSubscription(request: Request, env: Env): Promise<Res
   const { user, supabase } = auth;
   const { keyId, keySecret } = getRazorpayCredentials(env);
 
-  const body = await request.json() as { subscription_id?: string; cancel_at_cycle_end?: boolean };
+  const body = (await request.json()) as {
+    subscription_id?: string;
+    cancel_at_cycle_end?: boolean;
+  };
   const { subscription_id, cancel_at_cycle_end = false } = body;
 
   if (!subscription_id) {
@@ -1831,7 +2041,7 @@ async function handleCancelSubscription(request: Request, env: Env): Promise<Res
     {
       method: 'POST',
       headers: {
-        'Authorization': `Basic ${razorpayAuth}`,
+        Authorization: `Basic ${razorpayAuth}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ cancel_at_cycle_end }),
@@ -1850,7 +2060,7 @@ async function handleCancelSubscription(request: Request, env: Env): Promise<Res
     return jsonResponse({ error: 'Failed to cancel subscription' }, 500);
   }
 
-  const cancelledSubscription = await razorpayResponse.json() as any;
+  const cancelledSubscription = (await razorpayResponse.json()) as any;
 
   await supabase
     .from('subscriptions')
@@ -1879,7 +2089,7 @@ async function handleDeactivateSubscription(request: Request, env: Env): Promise
 
   const { user, supabase } = auth;
 
-  const body = await request.json() as {
+  const body = (await request.json()) as {
     subscription_id?: string;
     cancellation_reason?: string;
   };
@@ -1919,7 +2129,10 @@ async function handleDeactivateSubscription(request: Request, env: Env): Promise
   }
 
   if (!['active', 'paused'].includes(subscription.status)) {
-    return jsonResponse({ error: `Cannot cancel subscription with status '${subscription.status}'` }, 400);
+    return jsonResponse(
+      { error: `Cannot cancel subscription with status '${subscription.status}'` },
+      400
+    );
   }
 
   const now = new Date().toISOString();
@@ -1945,13 +2158,15 @@ async function handleDeactivateSubscription(request: Request, env: Env): Promise
   // Log cancellation for analytics
   await supabase
     .from('subscription_cancellations')
-    .insert([{
-      subscription_id,
-      user_id: user.id,
-      cancellation_reason,
-      cancelled_at: now,
-      access_until: subscription.subscription_end_date,
-    }])
+    .insert([
+      {
+        subscription_id,
+        user_id: user.id,
+        cancellation_reason,
+        cancelled_at: now,
+        access_until: subscription.subscription_end_date,
+      },
+    ])
     .select()
     .maybeSingle();
 
@@ -1970,7 +2185,7 @@ async function handlePauseSubscription(request: Request, env: Env): Promise<Resp
 
   const { user, supabase } = auth;
 
-  const body = await request.json() as {
+  const body = (await request.json()) as {
     subscription_id?: string;
     pause_months?: number;
   };
@@ -2010,7 +2225,10 @@ async function handlePauseSubscription(request: Request, env: Env): Promise<Resp
   }
 
   if (subscription.status !== 'active') {
-    return jsonResponse({ error: `Cannot pause subscription with status '${subscription.status}'` }, 400);
+    return jsonResponse(
+      { error: `Cannot pause subscription with status '${subscription.status}'` },
+      400
+    );
   }
 
   const now = new Date();
@@ -2055,7 +2273,7 @@ async function handleResumeSubscription(request: Request, env: Env): Promise<Res
 
   const { user, supabase } = auth;
 
-  const body = await request.json() as {
+  const body = (await request.json()) as {
     subscription_id?: string;
   };
   const { subscription_id } = body;
@@ -2089,7 +2307,10 @@ async function handleResumeSubscription(request: Request, env: Env): Promise<Res
   }
 
   if (subscription.status !== 'paused') {
-    return jsonResponse({ error: `Cannot resume subscription with status '${subscription.status}'` }, 400);
+    return jsonResponse(
+      { error: `Cannot resume subscription with status '${subscription.status}'` },
+      400
+    );
   }
 
   const now = new Date().toISOString();
@@ -2184,14 +2405,17 @@ interface SubscriptionAccessResponse {
 async function handleCheckSubscriptionAccess(request: Request, env: Env): Promise<Response> {
   const auth = await authenticateUser(request, env);
   if (!auth) {
-    return jsonResponse({ 
-      success: false,
-      hasAccess: false,
-      accessReason: 'no_subscription',
-      subscription: null,
-      showWarning: false,
-      error: 'Unauthorized'
-    }, 401);
+    return jsonResponse(
+      {
+        success: false,
+        hasAccess: false,
+        accessReason: 'no_subscription',
+        subscription: null,
+        showWarning: false,
+        error: 'Unauthorized',
+      },
+      401
+    );
   }
 
   const { user, supabase } = auth;
@@ -2205,7 +2429,8 @@ async function handleCheckSubscriptionAccess(request: Request, env: Env): Promis
   // ============================================================================
   const { data: licenseAssignment, error: licenseError } = await supabase
     .from('license_assignments')
-    .select(`
+    .select(
+      `
       id,
       status,
       expires_at,
@@ -2226,33 +2451,39 @@ async function handleCheckSubscriptionAccess(request: Request, env: Env): Promis
           plan_code
         )
       )
-    `)
+    `
+    )
     .eq('user_id', user.id)
     .eq('status', 'active')
     .maybeSingle();
 
-  console.log(`[CheckAccess] Active license check result:`, { 
-    found: !!licenseAssignment, 
+  console.log(`[CheckAccess] Active license check result:`, {
+    found: !!licenseAssignment,
     error: licenseError?.message,
-    status: licenseAssignment?.status 
+    status: licenseAssignment?.status,
   });
 
   if (!licenseError && licenseAssignment) {
     const orgSub = licenseAssignment.organization_subscriptions as any;
-    
+
     // Check if organization subscription is active and not expired
     if (orgSub && orgSub.status === 'active') {
       const orgEndDate = new Date(orgSub.end_date);
-      
+
       if (orgEndDate > now) {
         // Check if license assignment has its own expiry
-        const licenseExpiry = licenseAssignment.expires_at ? new Date(licenseAssignment.expires_at) : null;
-        const effectiveEndDate = licenseExpiry && licenseExpiry < orgEndDate ? licenseExpiry : orgEndDate;
-        
+        const licenseExpiry = licenseAssignment.expires_at
+          ? new Date(licenseAssignment.expires_at)
+          : null;
+        const effectiveEndDate =
+          licenseExpiry && licenseExpiry < orgEndDate ? licenseExpiry : orgEndDate;
+
         if (effectiveEndDate > now) {
-          const daysUntilExpiry = Math.ceil((effectiveEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          const daysUntilExpiry = Math.ceil(
+            (effectiveEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+          );
           const showExpiringWarning = daysUntilExpiry <= 7;
-          
+
           // Build a subscription-like object for the response
           const orgSubscriptionInfo = {
             id: orgSub.id,
@@ -2275,14 +2506,16 @@ async function handleCheckSubscriptionAccess(request: Request, env: Env): Promis
             subscription: orgSubscriptionInfo,
             showWarning: showExpiringWarning,
             warningType: showExpiringWarning ? 'expiring_soon' : undefined,
-            warningMessage: showExpiringWarning 
+            warningMessage: showExpiringWarning
               ? `Your organization license expires in ${daysUntilExpiry} day${daysUntilExpiry !== 1 ? 's' : ''}`
               : undefined,
             daysUntilExpiry,
             expiresAt: effectiveEndDate.toISOString(),
           };
 
-          console.log(`[CheckAccess] User ${user.id} has active organization license from org ${orgSub.organization_id}`);
+          console.log(
+            `[CheckAccess] User ${user.id} has active organization license from org ${orgSub.organization_id}`
+          );
           return jsonResponse(response);
         }
       }
@@ -2295,7 +2528,8 @@ async function handleCheckSubscriptionAccess(request: Request, env: Env): Promis
   // ============================================================================
   const { data: revokedLicense, error: revokedError } = await supabase
     .from('license_assignments')
-    .select(`
+    .select(
+      `
       id,
       status,
       revoked_at,
@@ -2305,17 +2539,18 @@ async function handleCheckSubscriptionAccess(request: Request, env: Env): Promis
           plan_code
         )
       )
-    `)
+    `
+    )
     .eq('user_id', user.id)
     .eq('status', 'revoked')
     .order('revoked_at', { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  console.log(`[CheckAccess] Revoked license check result:`, { 
-    found: !!revokedLicense, 
+  console.log(`[CheckAccess] Revoked license check result:`, {
+    found: !!revokedLicense,
     error: revokedError?.message,
-    revokedAt: revokedLicense?.revoked_at 
+    revokedAt: revokedLicense?.revoked_at,
   });
 
   // ============================================================================
@@ -2339,14 +2574,17 @@ async function handleCheckSubscriptionAccess(request: Request, env: Env): Promis
 
   if (error) {
     console.error('Subscription access check error:', error);
-    return jsonResponse({ 
-      success: false,
-      hasAccess: false,
-      accessReason: 'no_subscription',
-      subscription: null,
-      showWarning: false,
-      error: 'Failed to check subscription'
-    }, 500);
+    return jsonResponse(
+      {
+        success: false,
+        hasAccess: false,
+        accessReason: 'no_subscription',
+        subscription: null,
+        showWarning: false,
+        error: 'Failed to check subscription',
+      },
+      500
+    );
   }
 
   // No subscription found
@@ -2431,7 +2669,7 @@ async function handleCheckSubscriptionAccess(request: Request, env: Env): Promis
   // Case 3: Active and not expired
   if (endDate > now) {
     const showExpiringWarning = daysUntilExpiry <= 7;
-    
+
     const response: SubscriptionAccessResponse = {
       success: true,
       hasAccess: true,
@@ -2439,7 +2677,7 @@ async function handleCheckSubscriptionAccess(request: Request, env: Env): Promis
       subscription,
       showWarning: showExpiringWarning,
       warningType: showExpiringWarning ? 'expiring_soon' : undefined,
-      warningMessage: showExpiringWarning 
+      warningMessage: showExpiringWarning
         ? `Your subscription expires in ${daysUntilExpiry} day${daysUntilExpiry !== 1 ? 's' : ''}`
         : undefined,
       daysUntilExpiry,
@@ -2452,7 +2690,7 @@ async function handleCheckSubscriptionAccess(request: Request, env: Env): Promis
   if (daysUntilExpiry >= -GRACE_PERIOD_DAYS) {
     const daysIntoGrace = Math.abs(daysUntilExpiry);
     const daysLeftInGrace = GRACE_PERIOD_DAYS - daysIntoGrace;
-    
+
     const response: SubscriptionAccessResponse = {
       success: true,
       hasAccess: true,
@@ -2486,7 +2724,7 @@ const MAX_EVENT_AMOUNT_RUPEES = 10000000; // ₹1 crore max
 const TEST_MODE_MAX_AMOUNT = 5000000; // ₹50,000 in paise for test mode
 
 async function handleCreateEventOrder(request: Request, env: Env): Promise<Response> {
-  const body = await request.json() as {
+  const body = (await request.json()) as {
     amount?: number;
     currency?: string;
     registrationId?: string;
@@ -2496,7 +2734,15 @@ async function handleCreateEventOrder(request: Request, env: Env): Promise<Respo
     origin?: string;
   };
 
-  const { amount: originalAmount, currency, registrationId, planName, userEmail, userName, origin: bodyOrigin } = body;
+  const {
+    amount: originalAmount,
+    currency,
+    registrationId,
+    planName,
+    userEmail,
+    userName,
+    origin: bodyOrigin,
+  } = body;
 
   // Validate required fields
   if (!originalAmount || !currency || !registrationId || !userEmail) {
@@ -2509,7 +2755,10 @@ async function handleCreateEventOrder(request: Request, env: Env): Promise<Respo
 
   const amountInRupees = originalAmount / 100;
   if (amountInRupees > MAX_EVENT_AMOUNT_RUPEES) {
-    return jsonResponse({ error: `Amount exceeds maximum limit of ₹${MAX_EVENT_AMOUNT_RUPEES.toLocaleString()}` }, 400);
+    return jsonResponse(
+      { error: `Amount exceeds maximum limit of ₹${MAX_EVENT_AMOUNT_RUPEES.toLocaleString()}` },
+      400
+    );
   }
 
   if (currency !== 'INR') {
@@ -2525,7 +2774,8 @@ async function handleCreateEventOrder(request: Request, env: Env): Promise<Respo
   // Detect if request is from production site
   const headerOrigin = request.headers.get('origin') || request.headers.get('referer') || '';
   const requestOrigin = bodyOrigin || headerOrigin;
-  const isProductionSite = requestOrigin.includes('skillpassport.rareminds.in') && !requestOrigin.includes('dev-');
+  const isProductionSite =
+    requestOrigin.includes('skillpassport.rareminds.in') && !requestOrigin.includes('dev-');
 
   // Determine credentials and amount based on site
   let keyId: string;
@@ -2540,7 +2790,9 @@ async function handleCreateEventOrder(request: Request, env: Env): Promise<Respo
     keySecret = env.TEST_RAZORPAY_KEY_SECRET || env.RAZORPAY_KEY_SECRET;
     // Cap amount at test limit for non-production sites
     if (amount > TEST_MODE_MAX_AMOUNT) {
-      console.log(`TEST MODE: Capping amount from ₹${amount / 100} to ₹${TEST_MODE_MAX_AMOUNT / 100}`);
+      console.log(
+        `TEST MODE: Capping amount from ₹${amount / 100} to ₹${TEST_MODE_MAX_AMOUNT / 100}`
+      );
       amount = TEST_MODE_MAX_AMOUNT;
     }
   }
@@ -2570,7 +2822,7 @@ async function handleCreateEventOrder(request: Request, env: Env): Promise<Respo
   const razorpayResponse = await fetch('https://api.razorpay.com/v1/orders', {
     method: 'POST',
     headers: {
-      'Authorization': `Basic ${razorpayAuth}`,
+      Authorization: `Basic ${razorpayAuth}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -2589,7 +2841,7 @@ async function handleCreateEventOrder(request: Request, env: Env): Promise<Respo
   if (!razorpayResponse.ok) {
     const errorData = await razorpayResponse.text();
     console.error('Razorpay API Error:', razorpayResponse.status, errorData);
-    
+
     let errorMessage = 'Unable to create payment order. Please try again.';
     try {
       const parsedError = JSON.parse(errorData);
@@ -2597,11 +2849,11 @@ async function handleCreateEventOrder(request: Request, env: Env): Promise<Respo
         errorMessage = parsedError.error.description;
       }
     } catch {}
-    
+
     return jsonResponse({ error: errorMessage }, 500);
   }
 
-  const order = await razorpayResponse.json() as any;
+  const order = (await razorpayResponse.json()) as any;
   console.log(`Event order created: ${order.id} for registration: ${registrationId}`);
 
   // Update registration with order ID
@@ -2666,7 +2918,7 @@ export default {
           return await handleVerifyPayment(request, env);
         case '/webhook':
           return await handleWebhook(request, env);
-        
+
         // Subscription management endpoints
         case '/get-subscription':
           return await handleGetSubscription(request, env);
@@ -2680,11 +2932,11 @@ export default {
           return await handlePauseSubscription(request, env);
         case '/resume-subscription':
           return await handleResumeSubscription(request, env);
-        
+
         // Cron/Admin endpoints
         case '/expire-subscriptions':
           return await handleExpireSubscriptions(env);
-        
+
         // Subscription Plans endpoints (public)
         case '/subscription-plans':
           return await handleGetSubscriptionPlans(request, env);
@@ -2692,7 +2944,7 @@ export default {
           return await handleGetSubscriptionPlan(request, env);
         case '/subscription-features':
           return await handleGetSubscriptionFeatures(request, env);
-        
+
         // Add-On endpoints
         case '/addon-catalog':
           return await handleGetAddonCatalog(request, env);
@@ -2710,7 +2962,7 @@ export default {
           return await handleCancelAddon(request, env);
         case '/check-addon-access':
           return await handleCheckAddonAccess(request, env);
-        
+
         // Organization Subscription endpoints
         // Organization Order endpoints (Razorpay integration)
         case '/create-org-order':
@@ -2720,7 +2972,7 @@ export default {
             return await handleCreateOrgOrder(request, env, auth.user);
           }
           break;
-        
+
         case '/verify-org-payment':
           if (request.method === 'POST') {
             const auth = await authenticateUser(request, env);
@@ -2728,7 +2980,7 @@ export default {
             return await handleVerifyOrgPayment(request, env, auth.supabase, auth.user);
           }
           break;
-        
+
         case '/org-subscriptions/calculate-pricing':
           if (request.method === 'POST') {
             const auth = await authenticateUser(request, env);
@@ -2736,7 +2988,7 @@ export default {
             return await handleCalculateOrgPricing(request, env, auth.supabase, auth.user.id);
           }
           break;
-        
+
         case '/org-subscriptions/purchase':
           if (request.method === 'POST') {
             const auth = await authenticateUser(request, env);
@@ -2744,7 +2996,7 @@ export default {
             return await handlePurchaseOrgSubscription(request, env, auth.supabase, auth.user.id);
           }
           break;
-        
+
         case '/org-subscriptions':
           if (request.method === 'GET') {
             const auth = await authenticateUser(request, env);
@@ -2752,29 +3004,31 @@ export default {
             return await handleGetOrgSubscriptions(request, env, auth.supabase, auth.user.id);
           }
           break;
-        
+
         // License Pool endpoints
-        case '/license-pools':
+        case '/license-pools': {
           const authPool = await authenticateUser(request, env);
           if (!authPool) return jsonResponse({ error: 'Unauthorized' }, 401);
-          
+
           if (request.method === 'POST') {
             return await handleCreateLicensePool(request, env, authPool.supabase, authPool.user.id);
           } else if (request.method === 'GET') {
             return await handleGetLicensePools(request, env, authPool.supabase, authPool.user.id);
           }
           break;
-        
+        }
+
         // License Assignment endpoints
-        case '/license-assignments':
+        case '/license-assignments': {
           const authAssign = await authenticateUser(request, env);
           if (!authAssign) return jsonResponse({ error: 'Unauthorized' }, 401);
-          
+
           if (request.method === 'POST') {
             return await handleAssignLicense(request, env, authAssign.supabase, authAssign.user.id);
           }
           break;
-        
+        }
+
         case '/license-assignments/bulk':
           if (request.method === 'POST') {
             const auth = await authenticateUser(request, env);
@@ -2782,7 +3036,7 @@ export default {
             return await handleBulkAssignLicenses(request, env, auth.supabase, auth.user.id);
           }
           break;
-        
+
         case '/license-assignments/transfer':
           if (request.method === 'POST') {
             const auth = await authenticateUser(request, env);
@@ -2790,7 +3044,7 @@ export default {
             return await handleTransferLicense(request, env, auth.supabase, auth.user.id);
           }
           break;
-        
+
         // Organization Billing endpoints
         case '/org-billing/dashboard':
           if (request.method === 'GET') {
@@ -2799,7 +3053,7 @@ export default {
             return await handleGetBillingDashboard(request, env, auth.supabase, auth.user.id);
           }
           break;
-        
+
         case '/org-billing/invoices':
           if (request.method === 'GET') {
             const auth = await authenticateUser(request, env);
@@ -2807,7 +3061,7 @@ export default {
             return await handleGetInvoiceHistory(request, env, auth.supabase, auth.user.id);
           }
           break;
-        
+
         case '/org-billing/cost-projection':
           if (request.method === 'GET') {
             const auth = await authenticateUser(request, env);
@@ -2815,7 +3069,7 @@ export default {
             return await handleGetCostProjection(request, env, auth.supabase, auth.user.id);
           }
           break;
-        
+
         case '/org-billing/calculate-seat-addition':
           if (request.method === 'POST') {
             const auth = await authenticateUser(request, env);
@@ -2823,19 +3077,20 @@ export default {
             return await handleCalculateSeatAdditionCost(request, env, auth.supabase, auth.user.id);
           }
           break;
-        
+
         // Organization Invitation endpoints
-        case '/org-invitations':
+        case '/org-invitations': {
           const authInv = await authenticateUser(request, env);
           if (!authInv) return jsonResponse({ error: 'Unauthorized' }, 401);
-          
+
           if (request.method === 'POST') {
             return await handleInviteMember(request, env, authInv.supabase, authInv.user.id);
           } else if (request.method === 'GET') {
             return await handleGetInvitations(request, env, authInv.supabase, authInv.user.id);
           }
           break;
-        
+        }
+
         case '/org-invitations/bulk':
           if (request.method === 'POST') {
             const auth = await authenticateUser(request, env);
@@ -2843,7 +3098,7 @@ export default {
             return await handleBulkInviteMembers(request, env, auth.supabase, auth.user.id);
           }
           break;
-        
+
         case '/org-invitations/accept':
           if (request.method === 'POST') {
             const auth = await authenticateUser(request, env);
@@ -2851,7 +3106,7 @@ export default {
             return await handleAcceptInvitation(request, env, auth.supabase, auth.user.id);
           }
           break;
-        
+
         case '/org-invitations/stats':
           if (request.method === 'GET') {
             const auth = await authenticateUser(request, env);
@@ -2859,7 +3114,7 @@ export default {
             return await handleGetInvitationStats(request, env, auth.supabase, auth.user.id);
           }
           break;
-        
+
         // Entitlement lifecycle endpoints (for cron jobs)
         case '/process-entitlement-lifecycle':
           return await handleProcessEntitlementLifecycle(request, env);
@@ -2869,9 +3124,9 @@ export default {
           return await handleSendRenewalReminders(request, env);
         case '/process-auto-renewals':
           return await handleProcessAutoRenewals(request, env);
-        
+
         // Health check
-        case '/health':
+        case '/health': {
           const configStatus = {
             supabase_url: !!(env.SUPABASE_URL || env.VITE_SUPABASE_URL),
             supabase_anon_key: !!(env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY),
@@ -2949,9 +3204,10 @@ export default {
             email_note: 'Email sending uses Cloudflare Worker (email-api) with SMTP.',
             storage_api_url: env.STORAGE_API_URL || STORAGE_API_URL,
           });
+        }
         
         // Debug endpoint to test storage connection
-        case '/debug-storage':
+        case '/debug-storage': {
           const storageUrl = env.STORAGE_API_URL || STORAGE_API_URL;
           console.log(`[DEBUG-STORAGE] Testing storage API`);
           console.log(`[DEBUG-STORAGE] STORAGE_SERVICE binding available: ${!!env.STORAGE_SERVICE}`);
@@ -3055,23 +3311,104 @@ export default {
               default_storage_url: STORAGE_API_URL,
             }, 500);
           }
-        
+        }
+
+            console.log(`[DEBUG-STORAGE] Health response status: ${healthResponse.status}`);
+            const healthText = await healthResponse.text();
+            console.log(`[DEBUG-STORAGE] Health response body: ${healthText}`);
+
+            let healthData;
+            try {
+              healthData = JSON.parse(healthText);
+            } catch {
+              healthData = { raw: healthText };
+            }
+
+            // Test a simple upload
+            const testBase64 = btoa('Test receipt content for debugging');
+            const testPaymentId = `debug_${Date.now()}`;
+            const testUserId = 'debug_user';
+
+            console.log(`[DEBUG-STORAGE] Attempting test upload...`);
+
+            if (env.STORAGE_SERVICE) {
+              uploadResponse = await env.STORAGE_SERVICE.fetch(
+                'https://storage-api/upload-payment-receipt',
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    pdfBase64: testBase64,
+                    paymentId: testPaymentId,
+                    userId: testUserId,
+                    filename: 'debug-test.pdf',
+                  }),
+                }
+              );
+            } else {
+              uploadResponse = await fetch(`${storageUrl}/upload-payment-receipt`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'User-Agent': 'payments-api-worker',
+                },
+                body: JSON.stringify({
+                  pdfBase64: testBase64,
+                  paymentId: testPaymentId,
+                  userId: testUserId,
+                  filename: 'debug-test.pdf',
+                }),
+              });
+            }
+
+            const uploadStatus = uploadResponse.status;
+            const uploadText = await uploadResponse.text();
+            console.log(`[DEBUG-STORAGE] Upload response status: ${uploadStatus}`);
+            console.log(`[DEBUG-STORAGE] Upload response body: ${uploadText}`);
+
+            let uploadData;
+            try {
+              uploadData = JSON.parse(uploadText);
+            } catch {
+              uploadData = { raw: uploadText };
+            }
+
+            return jsonResponse({
+              storage_service_binding: !!env.STORAGE_SERVICE,
+              storage_api_url: storageUrl,
+              storage_health: {
+                status: healthResponse.status,
+                data: healthData,
+              },
+              test_upload: {
+                status: uploadStatus,
+                response: uploadData,
+              },
+              env_storage_url: env.STORAGE_API_URL || 'not set (using default)',
+              default_storage_url: STORAGE_API_URL,
+            });
+        }
+        break;
+
         // Debug endpoint to test Razorpay connectivity
         case '/debug-razorpay':
           try {
-            const { keyId, keySecret, isProduction } = getRazorpayCredentialsForRequest(request, env);
+            const { keyId, keySecret, isProduction } = getRazorpayCredentialsForRequest(
+              request,
+              env
+            );
             const razorpayAuth = btoa(`${keyId}:${keySecret}`);
-            
+
             // Test Razorpay API by fetching account details
             const testResponse = await fetch('https://api.razorpay.com/v1/payments?count=1', {
               headers: {
-                'Authorization': `Basic ${razorpayAuth}`,
+                Authorization: `Basic ${razorpayAuth}`,
               },
             });
-            
+
             const testStatus = testResponse.status;
             const testBody = await testResponse.text();
-            
+
             return jsonResponse({
               success: testResponse.ok,
               environment: isProduction ? 'PRODUCTION' : 'DEVELOPMENT',
@@ -3081,12 +3418,15 @@ export default {
               api_response: testBody.substring(0, 500),
             });
           } catch (err) {
-            return jsonResponse({
-              success: false,
-              error: err instanceof Error ? err.message : String(err),
-            }, 500);
+            return jsonResponse(
+              {
+                success: false,
+                error: err instanceof Error ? err.message : String(err),
+              },
+              500
+            );
           }
-        
+
         default:
           // Handle dynamic routes for organization endpoints
           if (path.startsWith('/org-subscriptions/') && path.includes('/seats')) {
@@ -3094,95 +3434,148 @@ export default {
               const auth = await authenticateUser(request, env);
               if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
               const subscriptionId = path.split('/')[2];
-              return await handleUpdateSeatCount(request, env, auth.supabase, auth.user.id, subscriptionId);
+              return await handleUpdateSeatCount(
+                request,
+                env,
+                auth.supabase,
+                auth.user.id,
+                subscriptionId
+              );
             }
           }
-          
+
           if (path.startsWith('/license-assignments/') && !path.includes('/bulk')) {
             const auth = await authenticateUser(request, env);
             if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
-            
+
             const parts = path.split('/');
             if (parts[2] === 'user' && parts[3]) {
               // GET /license-assignments/user/:userId
               if (request.method === 'GET') {
-                return await handleGetUserAssignments(request, env, auth.supabase, auth.user.id, parts[3]);
+                return await handleGetUserAssignments(
+                  request,
+                  env,
+                  auth.supabase,
+                  auth.user.id,
+                  parts[3]
+                );
               }
             } else if (parts[2]) {
               // DELETE /license-assignments/:id
               if (request.method === 'DELETE') {
-                return await handleUnassignLicense(request, env, auth.supabase, auth.user.id, parts[2]);
+                return await handleUnassignLicense(
+                  request,
+                  env,
+                  auth.supabase,
+                  auth.user.id,
+                  parts[2]
+                );
               }
             }
           }
-          
+
           // Handle dynamic routes for invitation endpoints
-          if (path.startsWith('/org-invitations/') && !path.includes('/bulk') && !path.includes('/accept') && !path.includes('/stats')) {
+          if (
+            path.startsWith('/org-invitations/') &&
+            !path.includes('/bulk') &&
+            !path.includes('/accept') &&
+            !path.includes('/stats')
+          ) {
             const auth = await authenticateUser(request, env);
             if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
-            
+
             const parts = path.split('/');
             const invitationId = parts[2];
             const action = parts[3];
-            
+
             if (invitationId && action === 'resend') {
               // PUT /org-invitations/:id/resend
               if (request.method === 'PUT') {
-                return await handleResendInvitation(request, env, auth.supabase, auth.user.id, invitationId);
+                return await handleResendInvitation(
+                  request,
+                  env,
+                  auth.supabase,
+                  auth.user.id,
+                  invitationId
+                );
               }
             } else if (invitationId && !action) {
               // DELETE /org-invitations/:id
               if (request.method === 'DELETE') {
-                return await handleCancelInvitation(request, env, auth.supabase, auth.user.id, invitationId);
+                return await handleCancelInvitation(
+                  request,
+                  env,
+                  auth.supabase,
+                  auth.user.id,
+                  invitationId
+                );
               }
             }
           }
-          
+
           // Handle dynamic routes for license pool endpoints
           if (path.startsWith('/license-pools/') && path.includes('/allocation')) {
             const auth = await authenticateUser(request, env);
             if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
-            
+
             const parts = path.split('/');
             const poolId = parts[2];
-            
+
             // PUT /license-pools/:id/allocation
             if (request.method === 'PUT' && poolId) {
-              return await handleUpdatePoolAllocation(request, env, auth.supabase, auth.user.id, poolId);
+              return await handleUpdatePoolAllocation(
+                request,
+                env,
+                auth.supabase,
+                auth.user.id,
+                poolId
+              );
             }
           }
-          
+
           // Handle dynamic routes for license pool auto-assignment
           if (path.startsWith('/license-pools/') && path.includes('/auto-assignment')) {
             const auth = await authenticateUser(request, env);
             if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
-            
+
             const parts = path.split('/');
             const poolId = parts[2];
-            
+
             // POST /license-pools/:id/auto-assignment
             if (request.method === 'POST' && poolId) {
-              return await handleConfigureAutoAssignment(request, env, auth.supabase, auth.user.id, poolId);
+              return await handleConfigureAutoAssignment(
+                request,
+                env,
+                auth.supabase,
+                auth.user.id,
+                poolId
+              );
             }
           }
-          
+
           // Handle dynamic routes for invoice download
           if (path.startsWith('/org-billing/invoice/') && path.includes('/download')) {
             const auth = await authenticateUser(request, env);
             if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
-            
+
             const parts = path.split('/');
             const invoiceId = parts[3];
-            
+
             // GET /org-billing/invoice/:id/download
             if (request.method === 'GET' && invoiceId) {
-              return await handleDownloadInvoice(request, env, auth.supabase, auth.user.id, invoiceId);
+              return await handleDownloadInvoice(
+                request,
+                env,
+                auth.supabase,
+                auth.user.id,
+                invoiceId
+              );
             }
           }
-          
+
           return jsonResponse({ error: 'Not found' }, 404);
       }
-      
+
       // If we reach here, the method was not allowed for the matched route
       return jsonResponse({ error: 'Method not allowed' }, 405);
     } catch (error) {
@@ -3194,16 +3587,16 @@ export default {
   // Scheduled handler for cron triggers
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
     console.log('[CRON] Scheduled event triggered at:', new Date().toISOString());
-    
+
     try {
       // Create a mock request for the lifecycle handler
       const request = new Request('https://payments-api/process-entitlement-lifecycle', {
         method: 'POST',
       });
-      
+
       const response = await handleProcessEntitlementLifecycle(request, env);
       const result = await response.json();
-      
+
       console.log('[CRON] Entitlement lifecycle processing result:', JSON.stringify(result));
     } catch (error) {
       console.error('[CRON] Error in scheduled handler:', error);

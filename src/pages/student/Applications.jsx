@@ -20,7 +20,7 @@ import {
   Video,
   Award,
   Bell,
-  FileText
+  FileText,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
@@ -55,7 +55,7 @@ const Applications = () => {
   useMessageNotifications({
     userId: studentId,
     userType: 'student',
-    enabled: !!studentId
+    enabled: !!studentId,
   });
 
   // Fetch applications with pipeline status
@@ -83,12 +83,13 @@ const Applications = () => {
         const interviewsData = await StudentPipelineService.getStudentInterviews(studentId);
         setInterviews(interviewsData);
 
-        const transformedApplications = applicationsData.map(app => {
-          const recruiterId = app.opportunity?.recruiter_id || 
-                             app.pipeline_recruiter_id || 
-                             app.pipeline_status?.assigned_to || 
-                             null;
-          
+        const transformedApplications = applicationsData.map((app) => {
+          const recruiterId =
+            app.opportunity?.recruiter_id ||
+            app.pipeline_recruiter_id ||
+            app.pipeline_status?.assigned_to ||
+            null;
+
           // Debug logging for Message button issue
           console.log('Application recruiter data:', {
             jobTitle: app.opportunity?.job_title,
@@ -96,18 +97,19 @@ const Applications = () => {
             pipelineRecruiterId: app.pipeline_recruiter_id,
             assignedTo: app.pipeline_status?.assigned_to,
             finalRecruiterId: recruiterId,
-            studentId: app.student_id
+            studentId: app.student_id,
           });
-          
+
           return {
             id: app.id,
             studentId: app.student_id,
             jobTitle: app.opportunity?.job_title || app.opportunity?.title || 'N/A',
             company: app.opportunity?.company_name || 'N/A',
             location: app.opportunity?.location || 'N/A',
-            salary: app.opportunity?.salary_range_min && app.opportunity?.salary_range_max
-              ? `₹${(app.opportunity.salary_range_min / 1000).toFixed(0)}k - ₹${(app.opportunity.salary_range_max / 1000).toFixed(0)}k`
-              : 'Not specified',
+            salary:
+              app.opportunity?.salary_range_min && app.opportunity?.salary_range_max
+                ? `₹${(app.opportunity.salary_range_min / 1000).toFixed(0)}k - ₹${(app.opportunity.salary_range_max / 1000).toFixed(0)}k`
+                : 'Not specified',
             appliedDate: app.applied_at?.split('T')[0] || new Date().toISOString().split('T')[0],
             status: app.application_status,
             logo: app.opportunity?.company_logo,
@@ -116,7 +118,7 @@ const Applications = () => {
             lastUpdate: formatLastUpdate(app.updated_at || app.applied_at),
             opportunityId: app.opportunity_id,
             recruiterId: recruiterId,
-            
+
             // Pipeline data
             pipelineStatus: app.pipeline_status,
             hasPipelineStatus: app.has_pipeline_status,
@@ -125,10 +127,9 @@ const Applications = () => {
             rejectionReason: app.rejection_reason,
             nextAction: app.next_action,
             nextActionDate: app.next_action_date,
-            interviews: app.interviews || []
+            interviews: app.interviews || [],
           };
         });
-
 
         setApplications(transformedApplications);
         setFilteredApplications(transformedApplications);
@@ -147,13 +148,10 @@ const Applications = () => {
   useEffect(() => {
     if (!studentId) return;
 
-    const channel = StudentPipelineService.subscribeToPipelineUpdates(
-      studentId,
-      (payload) => {
-        // Refresh applications when pipeline updates
-        window.location.reload(); // Simple refresh, can be optimized
-      }
-    );
+    const channel = StudentPipelineService.subscribeToPipelineUpdates(studentId, (payload) => {
+      // Refresh applications when pipeline updates
+      window.location.reload(); // Simple refresh, can be optimized
+    });
 
     return () => {
       StudentPipelineService.unsubscribeFromPipelineUpdates(channel);
@@ -177,13 +175,14 @@ const Applications = () => {
     let filtered = applications;
 
     if (statusFilter !== 'all') {
-      filtered = filtered.filter(app => app.status === statusFilter);
+      filtered = filtered.filter((app) => app.status === statusFilter);
     }
 
     if (searchQuery) {
-      filtered = filtered.filter(app =>
-        app.jobTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        app.company.toLowerCase().includes(searchQuery.toLowerCase())
+      filtered = filtered.filter(
+        (app) =>
+          app.jobTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          app.company.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
@@ -197,64 +196,64 @@ const Applications = () => {
         icon: Clock,
         color: 'text-blue-700',
         bg: 'bg-blue-50',
-        border: 'border-blue-300'
+        border: 'border-blue-300',
       },
       viewed: {
         label: 'Viewed',
         icon: Eye,
         color: 'text-purple-700',
         bg: 'bg-purple-50',
-        border: 'border-purple-300'
+        border: 'border-purple-300',
       },
       under_review: {
         label: 'Under Review',
         icon: Clock,
         color: 'text-slate-700',
         bg: 'bg-slate-50',
-        border: 'border-slate-300'
+        border: 'border-slate-300',
       },
       interview_scheduled: {
         label: 'Interview Scheduled',
         icon: Calendar,
         color: 'text-indigo-700',
         bg: 'bg-indigo-50',
-        border: 'border-indigo-200'
+        border: 'border-indigo-200',
       },
       interviewed: {
         label: 'Interviewed',
         icon: CheckCircle2,
         color: 'text-cyan-700',
         bg: 'bg-cyan-50',
-        border: 'border-cyan-200'
+        border: 'border-cyan-200',
       },
       offer_received: {
         label: 'Offer Received',
         icon: TrendingUp,
         color: 'text-green-700',
         bg: 'bg-green-50',
-        border: 'border-green-200'
+        border: 'border-green-200',
       },
       accepted: {
         label: 'Accepted',
         icon: CheckCircle2,
         color: 'text-emerald-700',
         bg: 'bg-emerald-50',
-        border: 'border-emerald-200'
+        border: 'border-emerald-200',
       },
       rejected: {
         label: 'Rejected',
         icon: XCircle,
         color: 'text-gray-600',
         bg: 'bg-gray-50',
-        border: 'border-gray-300'
+        border: 'border-gray-300',
       },
       withdrawn: {
         label: 'Withdrawn',
         icon: XCircle,
         color: 'text-orange-600',
         bg: 'bg-orange-50',
-        border: 'border-orange-300'
-      }
+        border: 'border-orange-300',
+      },
     };
     return configs[status] || configs.applied;
   };
@@ -272,10 +271,10 @@ const Applications = () => {
         nextSteps: [
           'Keep your profile updated with latest skills and experience',
           'Be available for recruiter communication',
-          'Ensure your contact details are current'
+          'Ensure your contact details are current',
         ],
         waitTime: 'Usually moves to screening within 3-5 business days',
-        studentAction: 'No action required - Wait for recruiter to review your profile'
+        studentAction: 'No action required - Wait for recruiter to review your profile',
       },
       screened: {
         label: 'Screened',
@@ -287,10 +286,10 @@ const Applications = () => {
         nextSteps: [
           'Review the job description thoroughly',
           'Prepare for potential screening call',
-          'Update your availability for interviews'
+          'Update your availability for interviews',
         ],
         waitTime: 'Interview scheduling typically within 5-7 business days',
-        studentAction: 'Be ready to respond to interview invitations quickly'
+        studentAction: 'Be ready to respond to interview invitations quickly',
       },
       interview_1: {
         label: 'Interview Round 1',
@@ -303,10 +302,10 @@ const Applications = () => {
           'Research the company and role thoroughly',
           'Prepare answers to common interview questions',
           'Test your video/audio setup if virtual',
-          'Prepare questions to ask the interviewer'
+          'Prepare questions to ask the interviewer',
         ],
         waitTime: 'Results usually shared within 2-3 business days',
-        studentAction: 'Prepare well and attend your scheduled interview'
+        studentAction: 'Prepare well and attend your scheduled interview',
       },
       interview_2: {
         label: 'Interview Round 2',
@@ -319,10 +318,10 @@ const Applications = () => {
           'Review feedback from first interview if shared',
           'Prepare for more technical/behavioral questions',
           'Be ready to discuss salary expectations',
-          'Prepare portfolio or work samples if applicable'
+          'Prepare portfolio or work samples if applicable',
         ],
         waitTime: 'Final decision typically within 3-5 business days',
-        studentAction: 'Attend interview and follow up with thank you note'
+        studentAction: 'Attend interview and follow up with thank you note',
       },
       offer: {
         label: 'Offer Stage',
@@ -335,10 +334,10 @@ const Applications = () => {
           'Review offer details carefully when received',
           'Consider salary, benefits, and work culture',
           'Ask questions if anything is unclear',
-          'Negotiate if needed before accepting'
+          'Negotiate if needed before accepting',
         ],
         waitTime: 'Offer letter usually sent within 2-3 business days',
-        studentAction: 'Wait for formal offer letter and review terms'
+        studentAction: 'Wait for formal offer letter and review terms',
       },
       hired: {
         label: 'Hired',
@@ -346,15 +345,15 @@ const Applications = () => {
         color: 'text-emerald-700',
         bg: 'bg-emerald-100',
         order: 6,
-        description: 'You\'re hired! Welcome to the team! 🎊',
+        description: "You're hired! Welcome to the team! 🎊",
         nextSteps: [
           'Complete onboarding documentation',
           'Prepare for your first day',
           'Connect with your team members',
-          'Review company policies and guidelines'
+          'Review company policies and guidelines',
         ],
         waitTime: 'Onboarding details will be shared shortly',
-        studentAction: 'Prepare for your start date and complete all paperwork'
+        studentAction: 'Prepare for your start date and complete all paperwork',
       },
       rejected: {
         label: 'Not Selected',
@@ -362,34 +361,56 @@ const Applications = () => {
         color: 'text-red-700',
         bg: 'bg-red-100',
         order: 7,
-        description: 'This position didn\'t work out, but don\'t give up!',
+        description: "This position didn't work out, but don't give up!",
         nextSteps: [
           'Review feedback to improve future applications',
           'Apply to similar positions',
           'Update your skills based on feedback',
-          'Stay connected - new opportunities may arise'
+          'Stay connected - new opportunities may arise',
         ],
         waitTime: 'Keep applying to other opportunities',
-        studentAction: 'Learn from the experience and continue your job search'
-      }
+        studentAction: 'Learn from the experience and continue your job search',
+      },
     };
     return configs[stage] || configs.sourced;
   };
 
   // Toggle function for pipeline status visibility
   const togglePipelineStatus = (applicationId) => {
-    setShowPipelineStatus(prev => ({
+    setShowPipelineStatus((prev) => ({
       ...prev,
-      [applicationId]: !prev[applicationId]
+      [applicationId]: !prev[applicationId],
     }));
   };
 
   const stats = [
     { label: 'Total Applied', value: applications.length, icon: Briefcase, color: 'bg-slate-700' },
-    { label: 'Under Review', value: applications.filter(a => a.status === 'under_review').length, icon: Eye, color: 'bg-slate-600' },
-    { label: 'Interviews', value: applications.filter(a => a.status === 'interview_scheduled' || a.interviews?.length > 0).length, icon: Calendar, color: 'bg-slate-600' },
-    { label: 'In Pipeline', value: applications.filter(a => a.hasPipelineStatus).length, icon: TrendingUp, color: 'bg-slate-700' },
-    { label: 'Accepted', value: applications.filter(a => a.status === 'accepted').length, icon: CheckCircle2, color: 'bg-slate-700' }
+    {
+      label: 'Under Review',
+      value: applications.filter((a) => a.status === 'under_review').length,
+      icon: Eye,
+      color: 'bg-slate-600',
+    },
+    {
+      label: 'Interviews',
+      value: applications.filter(
+        (a) => a.status === 'interview_scheduled' || a.interviews?.length > 0
+      ).length,
+      icon: Calendar,
+      color: 'bg-slate-600',
+    },
+    {
+      label: 'In Pipeline',
+      value: applications.filter((a) => a.hasPipelineStatus).length,
+      icon: TrendingUp,
+      color: 'bg-slate-700',
+    },
+    {
+      label: 'Accepted',
+      value: applications.filter((a) => a.status === 'accepted').length,
+      icon: CheckCircle2,
+      color: 'bg-slate-700',
+    },
   ];
 
   if (loading) {
@@ -519,7 +540,6 @@ const Applications = () => {
                 >
                   <div className="p-6">
                     <div className="flex flex-col lg:flex-row lg:items-center gap-6">
-
                       {/* Job Details */}
                       <div className="flex-1 space-y-3">
                         <div className="flex items-start justify-between gap-4">
@@ -529,7 +549,9 @@ const Applications = () => {
                             </h3>
                             <p className="text-gray-600 font-medium mt-1">{app.company}</p>
                           </div>
-                          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${statusConfig.bg} ${statusConfig.border} border`}>
+                          <div
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${statusConfig.bg} ${statusConfig.border} border`}
+                          >
                             <StatusIcon className={`w-4 h-4 ${statusConfig.color}`} />
                             <span className={`text-sm font-semibold ${statusConfig.color}`}>
                               {statusConfig.label}
@@ -572,15 +594,26 @@ const Applications = () => {
                                 <div className="p-2 bg-white rounded-lg shadow-sm">
                                   <Users className="w-5 h-5 text-slate-700" />
                                 </div>
-                                <h4 className="font-bold text-slate-900">Recruitment Pipeline Status</h4>
+                                <h4 className="font-bold text-slate-900">
+                                  Recruitment Pipeline Status
+                                </h4>
                               </div>
                               <button
                                 onClick={() => togglePipelineStatus(app.id)}
                                 className="p-2 hover:bg-white hover:shadow-sm rounded-lg transition-all duration-200 group"
-                                title={showPipelineStatus[app.id] ? "Hide pipeline details" : "Show pipeline details"}
+                                title={
+                                  showPipelineStatus[app.id]
+                                    ? 'Hide pipeline details'
+                                    : 'Show pipeline details'
+                                }
                               >
-                                <FileText className={`w-5 h-5 transition-colors duration-200 ${showPipelineStatus[app.id] ? 'text-slate-700' : 'text-slate-400 group-hover:text-slate-600'
-                                  }`} />
+                                <FileText
+                                  className={`w-5 h-5 transition-colors duration-200 ${
+                                    showPipelineStatus[app.id]
+                                      ? 'text-slate-700'
+                                      : 'text-slate-400 group-hover:text-slate-600'
+                                  }`}
+                                />
                               </button>
                             </div>
 
@@ -588,12 +621,21 @@ const Applications = () => {
                             {!showPipelineStatus[app.id] && app.pipelineStage && (
                               <div className="bg-white rounded-lg p-3 shadow-sm border border-slate-200">
                                 <div className="flex items-center justify-between">
-                                  <span className="text-sm font-medium text-gray-600">Current Stage:</span>
-                                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${getPipelineStageConfig(app.pipelineStage).bg} border-2 ${getPipelineStageConfig(app.pipelineStage).bg.replace('bg-', 'border-')}`}>
-                                    {React.createElement(getPipelineStageConfig(app.pipelineStage).icon, {
-                                      className: `w-4 h-4 ${getPipelineStageConfig(app.pipelineStage).color}`
-                                    })}
-                                    <span className={`text-sm font-bold ${getPipelineStageConfig(app.pipelineStage).color}`}>
+                                  <span className="text-sm font-medium text-gray-600">
+                                    Current Stage:
+                                  </span>
+                                  <div
+                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${getPipelineStageConfig(app.pipelineStage).bg} border-2 ${getPipelineStageConfig(app.pipelineStage).bg.replace('bg-', 'border-')}`}
+                                  >
+                                    {React.createElement(
+                                      getPipelineStageConfig(app.pipelineStage).icon,
+                                      {
+                                        className: `w-4 h-4 ${getPipelineStageConfig(app.pipelineStage).color}`,
+                                      }
+                                    )}
+                                    <span
+                                      className={`text-sm font-bold ${getPipelineStageConfig(app.pipelineStage).color}`}
+                                    >
                                       {getPipelineStageConfig(app.pipelineStage).label}
                                     </span>
                                   </div>
@@ -612,12 +654,21 @@ const Applications = () => {
                                   <>
                                     <div className="bg-white rounded-lg p-3 shadow-sm border border-slate-200">
                                       <div className="flex items-center justify-between mb-2">
-                                        <span className="text-sm font-medium text-gray-600">Current Stage:</span>
-                                        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${getPipelineStageConfig(app.pipelineStage).bg} border-2 ${getPipelineStageConfig(app.pipelineStage).bg.replace('bg-', 'border-')}`}>
-                                          {React.createElement(getPipelineStageConfig(app.pipelineStage).icon, {
-                                            className: `w-4 h-4 ${getPipelineStageConfig(app.pipelineStage).color}`
-                                          })}
-                                          <span className={`text-sm font-bold ${getPipelineStageConfig(app.pipelineStage).color}`}>
+                                        <span className="text-sm font-medium text-gray-600">
+                                          Current Stage:
+                                        </span>
+                                        <div
+                                          className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${getPipelineStageConfig(app.pipelineStage).bg} border-2 ${getPipelineStageConfig(app.pipelineStage).bg.replace('bg-', 'border-')}`}
+                                        >
+                                          {React.createElement(
+                                            getPipelineStageConfig(app.pipelineStage).icon,
+                                            {
+                                              className: `w-4 h-4 ${getPipelineStageConfig(app.pipelineStage).color}`,
+                                            }
+                                          )}
+                                          <span
+                                            className={`text-sm font-bold ${getPipelineStageConfig(app.pipelineStage).color}`}
+                                          >
                                             {getPipelineStageConfig(app.pipelineStage).label}
                                           </span>
                                         </div>
@@ -632,9 +683,14 @@ const Applications = () => {
                                       <div className="flex items-start gap-2 mb-3">
                                         <CheckCircle2 className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
                                         <div className="flex-1">
-                                          <h5 className="text-sm font-bold text-gray-900 mb-1">What You Need to Do:</h5>
+                                          <h5 className="text-sm font-bold text-gray-900 mb-1">
+                                            What You Need to Do:
+                                          </h5>
                                           <p className="text-sm text-blue-700 font-semibold bg-blue-50 px-3 py-2 rounded-lg">
-                                            {getPipelineStageConfig(app.pipelineStage).studentAction}
+                                            {
+                                              getPipelineStageConfig(app.pipelineStage)
+                                                .studentAction
+                                            }
                                           </p>
                                         </div>
                                       </div>
@@ -647,14 +703,21 @@ const Applications = () => {
                                         Recommended Next Steps:
                                       </h5>
                                       <ul className="space-y-2">
-                                        {getPipelineStageConfig(app.pipelineStage).nextSteps.map((step, idx) => (
-                                          <li key={idx} className="flex items-start gap-2 text-sm text-gray-700">
-                                            <div className="w-5 h-5 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                              <span className="text-xs font-bold text-indigo-700">{idx + 1}</span>
-                                            </div>
-                                            <span>{step}</span>
-                                          </li>
-                                        ))}
+                                        {getPipelineStageConfig(app.pipelineStage).nextSteps.map(
+                                          (step, idx) => (
+                                            <li
+                                              key={idx}
+                                              className="flex items-start gap-2 text-sm text-gray-700"
+                                            >
+                                              <div className="w-5 h-5 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                                <span className="text-xs font-bold text-indigo-700">
+                                                  {idx + 1}
+                                                </span>
+                                              </div>
+                                              <span>{step}</span>
+                                            </li>
+                                          )
+                                        )}
                                       </ul>
                                     </div>
 
@@ -663,7 +726,9 @@ const Applications = () => {
                                       <div className="flex items-start gap-2">
                                         <Clock className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
                                         <div className="flex-1">
-                                          <p className="text-xs font-medium text-amber-900">Expected Timeline:</p>
+                                          <p className="text-xs font-medium text-amber-900">
+                                            Expected Timeline:
+                                          </p>
                                           <p className="text-xs text-amber-700 mt-1">
                                             {getPipelineStageConfig(app.pipelineStage).waitTime}
                                           </p>
@@ -677,7 +742,12 @@ const Applications = () => {
                                 {app.pipelineStageChangedAt && (
                                   <div className="flex items-center justify-between text-xs text-gray-500 pt-2 border-t border-gray-200">
                                     <span>Last stage update:</span>
-                                    <span className="font-medium">{new Date(app.pipelineStageChangedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                    <span className="font-medium">
+                                      {new Date(app.pipelineStageChangedAt).toLocaleDateString(
+                                        'en-US',
+                                        { month: 'short', day: 'numeric', year: 'numeric' }
+                                      )}
+                                    </span>
                                   </div>
                                 )}
 
@@ -686,12 +756,17 @@ const Applications = () => {
                                   <div className="flex items-start gap-2 p-3 bg-blue-100 rounded-lg border-2 border-blue-300">
                                     <Bell className="w-5 h-5 text-blue-700 mt-0.5 flex-shrink-0 animate-pulse" />
                                     <div className="flex-1">
-                                      <p className="text-xs font-bold text-blue-900 uppercase tracking-wide">Upcoming Action:</p>
-                                      <p className="text-sm font-semibold text-blue-800 mt-1">{app.nextAction.replace(/_/g, ' ').toUpperCase()}</p>
+                                      <p className="text-xs font-bold text-blue-900 uppercase tracking-wide">
+                                        Upcoming Action:
+                                      </p>
+                                      <p className="text-sm font-semibold text-blue-800 mt-1">
+                                        {app.nextAction.replace(/_/g, ' ').toUpperCase()}
+                                      </p>
                                       {app.nextActionDate && (
                                         <p className="text-xs text-blue-700 mt-1 flex items-center gap-1">
                                           <Calendar className="w-3 h-3" />
-                                          Scheduled: {new Date(app.nextActionDate).toLocaleDateString()}
+                                          Scheduled:{' '}
+                                          {new Date(app.nextActionDate).toLocaleDateString()}
                                         </p>
                                       )}
                                     </div>
@@ -703,8 +778,12 @@ const Applications = () => {
                                   <div className="flex items-start gap-2 p-3 bg-red-50 rounded-lg border-2 border-red-200">
                                     <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
                                     <div className="flex-1">
-                                      <p className="text-xs font-bold text-red-900 uppercase tracking-wide">Feedback from Recruiter:</p>
-                                      <p className="text-sm text-red-700 mt-1">{app.rejectionReason}</p>
+                                      <p className="text-xs font-bold text-red-900 uppercase tracking-wide">
+                                        Feedback from Recruiter:
+                                      </p>
+                                      <p className="text-sm text-red-700 mt-1">
+                                        {app.rejectionReason}
+                                      </p>
                                     </div>
                                   </div>
                                 )}
@@ -718,10 +797,17 @@ const Applications = () => {
                                     </h5>
                                     <div className="space-y-2">
                                       {app.interviews.map((interview, idx) => (
-                                        <div key={idx} className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg border border-indigo-200 hover:bg-indigo-100 transition-colors">
+                                        <div
+                                          key={idx}
+                                          className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg border border-indigo-200 hover:bg-indigo-100 transition-colors"
+                                        >
                                           <div className="flex-1">
-                                            <p className="font-semibold text-gray-900">{interview.type} Interview</p>
-                                            <p className="text-sm text-gray-600 mt-0.5">with {interview.interviewer}</p>
+                                            <p className="font-semibold text-gray-900">
+                                              {interview.type} Interview
+                                            </p>
+                                            <p className="text-sm text-gray-600 mt-0.5">
+                                              with {interview.interviewer}
+                                            </p>
                                             {interview.meeting_link && (
                                               <a
                                                 href={interview.meeting_link}
@@ -735,10 +821,16 @@ const Applications = () => {
                                           </div>
                                           <div className="text-right ml-4">
                                             <p className="font-bold text-indigo-700">
-                                              {new Date(interview.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                              {new Date(interview.date).toLocaleDateString(
+                                                'en-US',
+                                                { month: 'short', day: 'numeric' }
+                                              )}
                                             </p>
                                             <p className="text-sm text-gray-600">
-                                              {new Date(interview.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                              {new Date(interview.date).toLocaleTimeString([], {
+                                                hour: '2-digit',
+                                                minute: '2-digit',
+                                              })}
                                             </p>
                                           </div>
                                         </div>
@@ -752,7 +844,6 @@ const Applications = () => {
                         )}
                       </div>
 
-
                       {/* Actions */}
                       <div className="flex-shrink-0 flex lg:flex-col gap-2">
                         {/* Company Logo */}
@@ -760,10 +851,19 @@ const Applications = () => {
                           <button
                             onClick={() => togglePipelineStatus(app.id)}
                             className="w-16 h-16 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center overflow-hidden transition-all duration-200 group"
-                            title={showPipelineStatus[app.id] ? "Hide pipeline details" : "Show pipeline details"}
+                            title={
+                              showPipelineStatus[app.id]
+                                ? 'Hide pipeline details'
+                                : 'Show pipeline details'
+                            }
                           >
-                            <Building2 className={`w-8 h-8 transition-colors duration-200 ${showPipelineStatus[app.id] ? 'text-slate-700' : 'text-slate-600 group-hover:text-slate-700'
-                              }`} />
+                            <Building2
+                              className={`w-8 h-8 transition-colors duration-200 ${
+                                showPipelineStatus[app.id]
+                                  ? 'text-slate-700'
+                                  : 'text-slate-600 group-hover:text-slate-700'
+                              }`}
+                            />
                           </button>
                         </div>
 
@@ -780,21 +880,23 @@ const Applications = () => {
                         <button
                           onClick={async () => {
                             if (!app.recruiterId) {
-                              alert('This job posting does not have a recruiter assigned yet. Please contact support or wait for a recruiter to be assigned.');
+                              alert(
+                                'This job posting does not have a recruiter assigned yet. Please contact support or wait for a recruiter to be assigned.'
+                              );
                               return;
                             }
-                            
+
                             // Set loading state
                             setMessagingApplicationId(app.id);
-                            
+
                             try {
                               console.log('🚀 Creating/getting conversation for:', {
                                 studentId: app.studentId,
                                 recruiterId: app.recruiterId,
                                 applicationId: app.id,
-                                jobTitle: app.jobTitle
+                                jobTitle: app.jobTitle,
                               });
-                              
+
                               // Get or create conversation
                               const conversation = await MessageService.getOrCreateConversation(
                                 app.studentId,
@@ -803,19 +905,25 @@ const Applications = () => {
                                 app.opportunityId,
                                 `Application: ${app.jobTitle}`
                               );
-                              
+
                               console.log('✅ Conversation ready:', conversation.id);
-                              
+
                               // OPTIMIZATION: Immediately update React Query cache with the new conversation
                               // This makes it instantly available when Messages page loads
-                              const cachedConversations = queryClient.getQueryData(['student-conversations', app.studentId]) || [];
-                              
+                              const cachedConversations =
+                                queryClient.getQueryData([
+                                  'student-conversations',
+                                  app.studentId,
+                                ]) || [];
+
                               // Check if conversation already exists in cache
-                              const conversationExists = cachedConversations.some(c => c.id === conversation.id);
-                              
+                              const conversationExists = cachedConversations.some(
+                                (c) => c.id === conversation.id
+                              );
+
                               if (!conversationExists) {
                                 console.log('💾 Adding conversation to cache optimistically');
-                                
+
                                 // Fetch recruiter data to display name and email properly
                                 let recruiterData = null;
                                 try {
@@ -824,29 +932,38 @@ const Applications = () => {
                                     .select('id, email, name, phone')
                                     .eq('id', app.recruiterId)
                                     .single();
-                                  
+
                                   recruiterData = recruiter;
-                                  console.log('✅ Recruiter data fetched:', recruiter?.name || recruiter?.email);
+                                  console.log(
+                                    '✅ Recruiter data fetched:',
+                                    recruiter?.name || recruiter?.email
+                                  );
                                 } catch (err) {
                                   console.warn('⚠️ Could not fetch recruiter data:', err);
                                 }
-                                
+
                                 // Add the new conversation to cache with recruiter data
-                                queryClient.setQueryData(['student-conversations', app.studentId], [...cachedConversations, {
-                                  ...conversation,
-                                  last_message_at: new Date().toISOString(),
-                                  last_message_preview: 'Start a conversation...',
-                                  student_unread_count: 0,
-                                  recruiter_unread_count: 0,
-                                  // Include recruiter data for proper display
-                                  recruiter: recruiterData,
-                                  student: null
-                                }]);
+                                queryClient.setQueryData(
+                                  ['student-conversations', app.studentId],
+                                  [
+                                    ...cachedConversations,
+                                    {
+                                      ...conversation,
+                                      last_message_at: new Date().toISOString(),
+                                      last_message_preview: 'Start a conversation...',
+                                      student_unread_count: 0,
+                                      recruiter_unread_count: 0,
+                                      // Include recruiter data for proper display
+                                      recruiter: recruiterData,
+                                      student: null,
+                                    },
+                                  ]
+                                );
                               }
-                              
+
                               // Reduced delay since cache is now pre-populated
-                              await new Promise(resolve => setTimeout(resolve, 300));
-                              
+                              await new Promise((resolve) => setTimeout(resolve, 300));
+
                               // Navigate to messages with pre-selected conversation
                               // The Messages page will handle auto-selection and force refetch if needed
                               navigate(`/student/messages?conversation=${conversation.id}`);
@@ -857,9 +974,15 @@ const Applications = () => {
                               setMessagingApplicationId(null);
                             }
                           }}
-                          disabled={!app.studentId || !app.recruiterId || messagingApplicationId === app.id}
+                          disabled={
+                            !app.studentId || !app.recruiterId || messagingApplicationId === app.id
+                          }
                           className="flex-1 lg:flex-none px-4 py-2 bg-white border-2 border-gray-300 hover:border-slate-700 text-gray-700 hover:text-slate-700 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-md"
-                          title={!app.recruiterId ? 'No recruiter assigned to this job' : 'Message recruiter about this application'}
+                          title={
+                            !app.recruiterId
+                              ? 'No recruiter assigned to this job'
+                              : 'Message recruiter about this application'
+                          }
                         >
                           {messagingApplicationId === app.id ? (
                             <>
@@ -873,7 +996,6 @@ const Applications = () => {
                             </>
                           )}
                         </button>
-
                       </div>
                     </div>
                   </div>
@@ -895,7 +1017,9 @@ const Applications = () => {
             setDetailsApplication(null);
           }}
           application={detailsApplication}
-          interviews={interviews.filter(i => i.requisition_id === detailsApplication.opportunityId)}
+          interviews={interviews.filter(
+            (i) => i.requisition_id === detailsApplication.opportunityId
+          )}
         />
       )}
     </div>
@@ -911,7 +1035,7 @@ const ApplicationDetailsModal = ({ isOpen, onClose, application, interviews }) =
     hasPipelineStatus: application.hasPipelineStatus,
     pipelineStage: application.pipelineStage,
     pipelineStatus: application.pipelineStatus,
-    fullApplication: application
+    fullApplication: application,
   });
 
   // Helper function to get stage order
@@ -923,7 +1047,7 @@ const ApplicationDetailsModal = ({ isOpen, onClose, application, interviews }) =
       interview_2: 4,
       offer: 5,
       hired: 6,
-      rejected: -1
+      rejected: -1,
     };
     return stageOrder[stage] || 0;
   };
@@ -935,12 +1059,13 @@ const ApplicationDetailsModal = ({ isOpen, onClose, application, interviews }) =
     interview_2: { label: 'Interview 2', color: 'bg-pink-100 text-pink-800', icon: Video },
     offer: { label: 'Offer', color: 'bg-green-100 text-green-800', icon: Award },
     hired: { label: 'Hired', color: 'bg-emerald-100 text-emerald-800', icon: CheckCircle2 },
-    rejected: { label: 'Rejected', color: 'bg-red-100 text-red-800', icon: XCircle }
+    rejected: { label: 'Rejected', color: 'bg-red-100 text-red-800', icon: XCircle },
   };
 
-  const currentStageConfig = application.pipelineStage ? stageConfig[application.pipelineStage] : null;
+  const currentStageConfig = application.pipelineStage
+    ? stageConfig[application.pipelineStage]
+    : null;
   const StageIcon = currentStageConfig?.icon || Briefcase;
-
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -977,11 +1102,17 @@ const ApplicationDetailsModal = ({ isOpen, onClose, application, interviews }) =
             <div className="bg-gray-50 p-4 rounded-lg">
               <div className="text-sm text-gray-600 mb-1">Application Status</div>
               <div className="flex items-center gap-2">
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${application.status === 'accepted' ? 'bg-green-100 text-green-800' :
-                    application.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                      application.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                        'bg-gray-100 text-gray-800'
-                  }`}>
+                <span
+                  className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    application.status === 'accepted'
+                      ? 'bg-green-100 text-green-800'
+                      : application.status === 'pending'
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : application.status === 'rejected'
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-gray-100 text-gray-800'
+                  }`}
+                >
                   {application.status?.charAt(0).toUpperCase() + application.status?.slice(1)}
                 </span>
               </div>
@@ -1029,9 +1160,10 @@ const ApplicationDetailsModal = ({ isOpen, onClose, application, interviews }) =
                       interview_1: 'Interview 1',
                       interview_2: 'Interview 2',
                       offer: 'Offer',
-                      hired: 'Hired'
+                      hired: 'Hired',
                     }).map(([stageKey, stageLabel], index, array) => {
-                      const isCompleted = getStageOrder(application.pipelineStage) > getStageOrder(stageKey);
+                      const isCompleted =
+                        getStageOrder(application.pipelineStage) > getStageOrder(stageKey);
                       const isCurrent = application.pipelineStage === stageKey;
                       const isRejected = application.pipelineStage === 'rejected';
 
@@ -1041,44 +1173,48 @@ const ApplicationDetailsModal = ({ isOpen, onClose, application, interviews }) =
                         isCurrent,
                         currentStage: application.pipelineStage,
                         stageKey,
-                        equal: application.pipelineStage === stageKey
+                        equal: application.pipelineStage === stageKey,
                       });
 
                       return (
                         <div key={stageKey} className="flex flex-col items-center flex-1 relative">
                           {/* Stage Number Circle */}
                           <div className="relative z-10 mb-2">
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${isCompleted
-                                ? 'bg-green-500 text-white shadow-lg shadow-green-200'
-                                : isCurrent
-                                  ? 'bg-blue-500 text-white shadow-lg shadow-blue-200 ring-4 ring-blue-200 animate-pulse'
-                                  : isRejected && index > getStageOrder('sourced')
-                                    ? 'bg-gray-200 text-gray-400'
-                                    : 'bg-white text-gray-400 border-2 border-gray-300'
-                              }`}>
-                              {isCompleted ? (
-                                <CheckCircle2 className="w-6 h-6" />
-                              ) : (
-                                index + 1
-                              )}
+                            <div
+                              className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${
+                                isCompleted
+                                  ? 'bg-green-500 text-white shadow-lg shadow-green-200'
+                                  : isCurrent
+                                    ? 'bg-blue-500 text-white shadow-lg shadow-blue-200 ring-4 ring-blue-200 animate-pulse'
+                                    : isRejected && index > getStageOrder('sourced')
+                                      ? 'bg-gray-200 text-gray-400'
+                                      : 'bg-white text-gray-400 border-2 border-gray-300'
+                              }`}
+                            >
+                              {isCompleted ? <CheckCircle2 className="w-6 h-6" /> : index + 1}
                             </div>
                           </div>
 
                           {/* Connecting Line */}
                           {index < array.length - 1 && (
-                            <div className={`absolute top-5 left-1/2 w-full h-0.5 -z-0 transition-all ${isCompleted
-                                ? 'bg-green-500'
-                                : 'bg-gray-300'
-                              }`} style={{ transform: 'translateY(-50%)' }} />
+                            <div
+                              className={`absolute top-5 left-1/2 w-full h-0.5 -z-0 transition-all ${
+                                isCompleted ? 'bg-green-500' : 'bg-gray-300'
+                              }`}
+                              style={{ transform: 'translateY(-50%)' }}
+                            />
                           )}
 
                           {/* Stage Label */}
-                          <div className={`text-xs font-medium text-center px-1 transition-all ${isCurrent
-                              ? 'text-blue-700 font-bold'
-                              : isCompleted
-                                ? 'text-green-700'
-                                : 'text-gray-500'
-                            }`}>
+                          <div
+                            className={`text-xs font-medium text-center px-1 transition-all ${
+                              isCurrent
+                                ? 'text-blue-700 font-bold'
+                                : isCompleted
+                                  ? 'text-green-700'
+                                  : 'text-gray-500'
+                            }`}
+                          >
                             {stageLabel}
                           </div>
                         </div>
@@ -1090,21 +1226,28 @@ const ApplicationDetailsModal = ({ isOpen, onClose, application, interviews }) =
                 {/* Current Status Info */}
                 <div className="bg-white p-4 rounded-lg border border-blue-200 shadow-sm">
                   <div className="flex items-center gap-3">
-                    <div className={`p-3 rounded-lg ${currentStageConfig?.color || 'bg-gray-100 text-gray-800'}`}>
+                    <div
+                      className={`p-3 rounded-lg ${currentStageConfig?.color || 'bg-gray-100 text-gray-800'}`}
+                    >
                       <StageIcon className="w-6 h-6" />
                     </div>
                     <div className="flex-1">
                       <div className="text-sm text-gray-600">Current Stage</div>
-                      <div className="text-lg font-bold text-gray-900">{currentStageConfig?.label || application.pipelineStage}</div>
+                      <div className="text-lg font-bold text-gray-900">
+                        {currentStageConfig?.label || application.pipelineStage}
+                      </div>
                       {application.pipelineStageChangedAt && (
                         <div className="text-xs text-gray-500 mt-1">
                           <Clock className="w-3 h-3 inline mr-1" />
-                          Updated {new Date(application.pipelineStageChangedAt).toLocaleDateString()}
+                          Updated{' '}
+                          {new Date(application.pipelineStageChangedAt).toLocaleDateString()}
                         </div>
                       )}
                     </div>
                     <div className="text-right">
-                      <div className={`px-4 py-2 rounded-lg font-semibold ${currentStageConfig?.color || 'bg-gray-100 text-gray-800'}`}>
+                      <div
+                        className={`px-4 py-2 rounded-lg font-semibold ${currentStageConfig?.color || 'bg-gray-100 text-gray-800'}`}
+                      >
                         Stage {getStageOrder(application.pipelineStage)} of 6
                       </div>
                     </div>
@@ -1114,19 +1257,19 @@ const ApplicationDetailsModal = ({ isOpen, onClose, application, interviews }) =
                   <div className="mt-3 pt-3 border-t border-gray-100">
                     <p className="text-sm text-gray-700">
                       {application.pipelineStage === 'sourced' &&
-                        "🎯 Your application has been added to the recruitment pipeline and is being reviewed by the hiring team."}
+                        '🎯 Your application has been added to the recruitment pipeline and is being reviewed by the hiring team.'}
                       {application.pipelineStage === 'screened' &&
-                        "✅ Your application passed initial screening. The team is evaluating your qualifications."}
+                        '✅ Your application passed initial screening. The team is evaluating your qualifications.'}
                       {application.pipelineStage === 'interview_1' &&
                         "📞 You're scheduled for the first round of interviews. Good luck!"}
                       {application.pipelineStage === 'interview_2' &&
                         "🌟 Great progress! You're in the second round of interviews."}
                       {application.pipelineStage === 'offer' &&
-                        "🎉 Congratulations! An offer is being prepared for you."}
+                        '🎉 Congratulations! An offer is being prepared for you.'}
                       {application.pipelineStage === 'hired' &&
                         "✨ Welcome aboard! You've been successfully hired."}
                       {application.pipelineStage === 'rejected' &&
-                        "We appreciate your interest. Please see the rejection reason below."}
+                        'We appreciate your interest. Please see the rejection reason below.'}
                     </p>
                   </div>
                 </div>
@@ -1174,7 +1317,9 @@ const ApplicationDetailsModal = ({ isOpen, onClose, application, interviews }) =
                   <div key={idx} className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <div className="font-medium text-blue-900">{interview.round || 'Interview'}</div>
+                        <div className="font-medium text-blue-900">
+                          {interview.round || 'Interview'}
+                        </div>
                         <div className="text-sm text-blue-700 mt-1">
                           <Calendar className="w-4 h-4 inline mr-1" />
                           {new Date(interview.scheduled_date).toLocaleString()}
@@ -1189,10 +1334,15 @@ const ApplicationDetailsModal = ({ isOpen, onClose, application, interviews }) =
                           <div className="text-sm text-gray-600 mt-2">{interview.notes}</div>
                         )}
                       </div>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${interview.status === 'completed' ? 'bg-green-100 text-green-800' :
-                          interview.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                            'bg-yellow-100 text-yellow-800'
-                        }`}>
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          interview.status === 'completed'
+                            ? 'bg-green-100 text-green-800'
+                            : interview.status === 'cancelled'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-yellow-100 text-yellow-800'
+                        }`}
+                      >
                         {interview.status?.charAt(0).toUpperCase() + interview.status?.slice(1)}
                       </span>
                     </div>
@@ -1221,7 +1371,7 @@ const ApplicationDetailsModal = ({ isOpen, onClose, application, interviews }) =
                       interview_1: 'Interview 1',
                       interview_2: 'Interview 2',
                       offer: 'Offer',
-                      hired: 'Hired'
+                      hired: 'Hired',
                     }).map(([stageKey, stageLabel], index, array) => {
                       return (
                         <div key={stageKey} className="flex flex-col items-center flex-1 relative">
@@ -1234,7 +1384,10 @@ const ApplicationDetailsModal = ({ isOpen, onClose, application, interviews }) =
 
                           {/* Connecting Line */}
                           {index < array.length - 1 && (
-                            <div className="absolute top-5 left-1/2 w-full h-0.5 bg-gray-300 -z-0" style={{ transform: 'translateY(-50%)' }} />
+                            <div
+                              className="absolute top-5 left-1/2 w-full h-0.5 bg-gray-300 -z-0"
+                              style={{ transform: 'translateY(-50%)' }}
+                            />
                           )}
 
                           {/* Stage Label */}
@@ -1254,7 +1407,8 @@ const ApplicationDetailsModal = ({ isOpen, onClose, application, interviews }) =
                     <div className="text-lg font-bold text-gray-900">Application Under Review</div>
                   </div>
                   <p className="text-gray-600 text-sm">
-                    Your application is being reviewed. You'll be notified once it's added to the recruitment pipeline and progresses through the stages above.
+                    Your application is being reviewed. You'll be notified once it's added to the
+                    recruitment pipeline and progresses through the stages above.
                   </p>
                 </div>
               </div>
@@ -1277,4 +1431,3 @@ const ApplicationDetailsModal = ({ isOpen, onClose, application, interviews }) =
 };
 
 export default Applications;
-

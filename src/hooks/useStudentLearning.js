@@ -32,7 +32,7 @@ export const useStudentLearning = (studentId, enabled = true) => {
 
       if (fetchError) throw fetchError;
 
-      let result = [];
+      const result = [];
 
       for (const item of trainings) {
         const trainingId = item.id;
@@ -51,7 +51,7 @@ export const useStudentLearning = (studentId, enabled = true) => {
           .eq('training_id', trainingId)
           .eq('enabled', true)
           .limit(1);
-          
+
         let progressValue = 0;
         const statusLower = (item.status || '').toLowerCase();
         if (statusLower === 'completed') {
@@ -71,7 +71,7 @@ export const useStudentLearning = (studentId, enabled = true) => {
           total_modules: item.total_modules,
           completed_modules: item.completed_modules,
           hours_spent: item.hours_spent,
-          skills: skillRows?.map(s => s.name) || [],
+          skills: skillRows?.map((s) => s.name) || [],
           certificateUrl: certificateRows?.[0]?.link || null,
           progress: progressValue,
           status: item.status,
@@ -81,7 +81,7 @@ export const useStudentLearning = (studentId, enabled = true) => {
           enabled: item.enabled !== false,
           source: item.source, // Add source to identify internal vs external courses
           createdAt: item.created_at,
-          updatedAt: item.updated_at
+          updatedAt: item.updated_at,
         });
       }
 

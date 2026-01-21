@@ -1,7 +1,7 @@
-import React from "react";
-import { Coffee, Filter, Plus, Pencil, X, Building2 } from "lucide-react";
-import { Department, Faculty, CollegeClass, Break } from "../types";
-import { BREAK_CARD_COLORS, BREAK_TYPE_LABELS } from "../constants";
+import React from 'react';
+import { Coffee, Filter, Plus, Pencil, X, Building2 } from 'lucide-react';
+import { Department, Faculty, CollegeClass, Break } from '../types';
+import { BREAK_CARD_COLORS, BREAK_TYPE_LABELS } from '../constants';
 
 interface SidebarProps {
   departments: Department[];
@@ -38,11 +38,11 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   // Filter faculty and classes by department
   const filteredFaculty = selectedDepartmentFilter
-    ? faculty.filter(f => f.department_id === selectedDepartmentFilter)
+    ? faculty.filter((f) => f.department_id === selectedDepartmentFilter)
     : faculty;
-  
+
   const filteredClasses = selectedDepartmentFilter
-    ? classes.filter(c => c.department_id === selectedDepartmentFilter)
+    ? classes.filter((c) => c.department_id === selectedDepartmentFilter)
     : classes;
 
   return (
@@ -89,7 +89,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               <option value="">All Faculty</option>
               {filteredFaculty.map((f) => (
                 <option key={f.id} value={f.id}>
-                  {f.first_name} {f.last_name} {f.is_hod ? "(HOD)" : ""}
+                  {f.first_name} {f.last_name} {f.is_hod ? '(HOD)' : ''}
                 </option>
               ))}
             </select>
@@ -142,7 +142,8 @@ const Sidebar: React.FC<SidebarProps> = ({
               key={b.id}
               onClick={() => onEditBreak(b)}
               className={`p-2 border rounded-lg text-xs group cursor-pointer transition-colors ${
-                BREAK_CARD_COLORS[b.break_type] || "bg-gray-50 border-gray-200 text-gray-800 hover:bg-gray-100"
+                BREAK_CARD_COLORS[b.break_type] ||
+                'bg-gray-50 border-gray-200 text-gray-800 hover:bg-gray-100'
               }`}
             >
               <div className="flex items-center justify-between">
@@ -199,7 +200,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               className="w-4 h-4 bg-gray-200 rounded"
               style={{
                 backgroundImage:
-                  "repeating-linear-gradient(45deg, #ccc, #ccc 2px, transparent 2px, transparent 4px)",
+                  'repeating-linear-gradient(45deg, #ccc, #ccc 2px, transparent 2px, transparent 4px)',
               }}
             ></div>
             <span className="text-gray-600">Break</span>

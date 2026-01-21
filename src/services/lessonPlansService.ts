@@ -1,4 +1,4 @@
-import { supabase } from "../lib/supabaseClient";
+import { supabase } from '../lib/supabaseClient';
 
 export interface LessonPlanFormData {
   title: string;
@@ -80,14 +80,16 @@ export interface LessonPlan {
  */
 export async function getCurrentEducatorId(): Promise<string | null> {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return null;
 
     // First check if user is an educator
     const { data: educator } = await supabase
-      .from("school_educators")
-      .select("id")
-      .eq("user_id", user.id)
+      .from('school_educators')
+      .select('id')
+      .eq('user_id', user.id)
       .maybeSingle();
 
     if (educator?.id) {
@@ -113,21 +115,23 @@ export async function getCurrentEducatorId(): Promise<string | null> {
 
     // Check organizations table for school admin
     const { data: org } = await supabase
-      .from("organizations")
-      .select("id")
-      .eq("organization_type", "school")
+      .from('organizations')
+      .select('id')
+      .eq('organization_type', 'school')
       .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
       .maybeSingle();
 
     if (org?.id) {
       // User is a school admin
-      console.log('[LessonPlansService] User is school admin (from organizations), not an educator');
+      console.log(
+        '[LessonPlansService] User is school admin (from organizations), not an educator'
+      );
       return null;
     }
 
     return null;
   } catch (error) {
-    console.error("Error getting educator ID:", error);
+    console.error('Error getting educator ID:', error);
     return null;
   }
 }
@@ -138,29 +142,33 @@ export async function getCurrentEducatorId(): Promise<string | null> {
 export async function getLessonPlans(): Promise<{ data: LessonPlan[] | null; error: any }> {
   try {
     const educatorId = await getCurrentEducatorId();
-    
+
     // Check if user is a school admin (can view all lesson plans for their school)
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) {
-      return { data: null, error: new Error("Not authenticated") };
+      return { data: null, error: new Error('Not authenticated') };
     }
 
     let query = supabase
-      .from("lesson_plans")
-      .select(`
+      .from('lesson_plans')
+      .select(
+        `
         *,
         school_classes(academic_year)
-      `)
-      .order("date", { ascending: false });
+      `
+      )
+      .order('date', { ascending: false });
 
     if (educatorId) {
       // Educator - get their own lesson plans
-      query = query.eq("educator_id", educatorId);
+      query = query.eq('educator_id', educatorId);
     } else {
       // Check if school admin - get all lesson plans for their school
       const storedUser = localStorage.getItem('user');
       let schoolId: string | null = null;
-      
+
       if (storedUser) {
         try {
           const userData = JSON.parse(storedUser);
@@ -175,44 +183,44 @@ export async function getLessonPlans(): Promise<{ data: LessonPlan[] | null; err
       if (!schoolId) {
         // Try organizations table
         const { data: org } = await supabase
-          .from("organizations")
-          .select("id")
-          .eq("organization_type", "school")
+          .from('organizations')
+          .select('id')
+          .eq('organization_type', 'school')
           .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
           .maybeSingle();
-        
+
         schoolId = org?.id || null;
       }
 
       if (schoolId) {
         // School admin - get all lesson plans for educators in their school
         const { data: educators } = await supabase
-          .from("school_educators")
-          .select("id")
-          .eq("school_id", schoolId);
-        
-        const educatorIds = educators?.map(e => e.id) || [];
+          .from('school_educators')
+          .select('id')
+          .eq('school_id', schoolId);
+
+        const educatorIds = educators?.map((e) => e.id) || [];
         if (educatorIds.length > 0) {
-          query = query.in("educator_id", educatorIds);
+          query = query.in('educator_id', educatorIds);
         } else {
           // No educators found, return empty
           return { data: [], error: null };
         }
       } else {
         // Not an educator and not a school admin
-        return { data: null, error: new Error("Educator not found") };
+        return { data: null, error: new Error('Educator not found') };
       }
     }
 
     const { data, error } = await query;
 
     if (error) {
-      console.error("Error fetching lesson plans:", error);
+      console.error('Error fetching lesson plans:', error);
       return { data: null, error };
     }
 
     // Flatten the data to include academic_year at the top level
-    const flattenedData = data?.map(plan => ({
+    const flattenedData = data?.map((plan) => ({
       ...plan,
       academic_year: (plan as any).school_classes?.academic_year || null,
       school_classes: undefined, // Remove nested object
@@ -220,7 +228,7 @@ export async function getLessonPlans(): Promise<{ data: LessonPlan[] | null; err
 
     return { data: flattenedData as LessonPlan[], error: null };
   } catch (error) {
-    console.error("Error fetching lesson plans:", error);
+    console.error('Error fetching lesson plans:', error);
     return { data: null, error };
   }
 }
@@ -231,14 +239,14 @@ export async function getLessonPlans(): Promise<{ data: LessonPlan[] | null; err
 export async function getLessonPlan(id: string): Promise<{ data: LessonPlan | null; error: any }> {
   try {
     const { data, error } = await supabase
-      .from("lesson_plans")
-      .select("*")
-      .eq("id", id)
+      .from('lesson_plans')
+      .select('*')
+      .eq('id', id)
       .maybeSingle();
 
     return { data, error };
   } catch (error) {
-    console.error("Error fetching lesson plan:", error);
+    console.error('Error fetching lesson plan:', error);
     return { data: null, error };
   }
 }
@@ -253,20 +261,20 @@ export async function createLessonPlan(
   try {
     const educatorId = await getCurrentEducatorId();
     if (!educatorId) {
-      return { data: null, error: new Error("Educator not found") };
+      return { data: null, error: new Error('Educator not found') };
     }
 
     // Get chapter details for duration
     const { data: chapter } = await supabase
-      .from("curriculum_chapters")
-      .select("estimated_duration, duration_unit")
-      .eq("id", formData.chapterId)
+      .from('curriculum_chapters')
+      .select('estimated_duration, duration_unit')
+      .eq('id', formData.chapterId)
       .maybeSingle();
 
     const duration = chapter?.estimated_duration || 60; // Default to 60 minutes
 
     const { data, error } = await supabase
-      .from("lesson_plans")
+      .from('lesson_plans')
       .insert({
         educator_id: educatorId,
         class_id: classId || null,
@@ -287,7 +295,7 @@ export async function createLessonPlan(
         evaluation_items: formData.evaluationItems,
         homework: formData.homework || null,
         differentiation_notes: formData.differentiationNotes || null,
-        status: formData.status || "draft",
+        status: formData.status || 'draft',
         activities: [],
         resources: [],
       })
@@ -296,7 +304,7 @@ export async function createLessonPlan(
 
     return { data, error };
   } catch (error) {
-    console.error("Error creating lesson plan:", error);
+    console.error('Error creating lesson plan:', error);
     return { data: null, error };
   }
 }
@@ -312,15 +320,15 @@ export async function updateLessonPlan(
   try {
     // Get chapter details for duration
     const { data: chapter } = await supabase
-      .from("curriculum_chapters")
-      .select("estimated_duration, duration_unit")
-      .eq("id", formData.chapterId)
+      .from('curriculum_chapters')
+      .select('estimated_duration, duration_unit')
+      .eq('id', formData.chapterId)
       .maybeSingle();
 
     const duration = chapter?.estimated_duration || 60;
 
     const { data, error } = await supabase
-      .from("lesson_plans")
+      .from('lesson_plans')
       .update({
         class_id: classId || null,
         title: formData.title,
@@ -339,15 +347,15 @@ export async function updateLessonPlan(
         evaluation_items: formData.evaluationItems,
         homework: formData.homework || null,
         differentiation_notes: formData.differentiationNotes || null,
-        status: formData.status || "draft",
+        status: formData.status || 'draft',
       })
-      .eq("id", id)
+      .eq('id', id)
       .select()
       .single();
 
     return { data, error };
   } catch (error) {
-    console.error("Error updating lesson plan:", error);
+    console.error('Error updating lesson plan:', error);
     return { data: null, error };
   }
 }
@@ -357,14 +365,11 @@ export async function updateLessonPlan(
  */
 export async function deleteLessonPlan(id: string): Promise<{ error: any }> {
   try {
-    const { error } = await supabase
-      .from("lesson_plans")
-      .delete()
-      .eq("id", id);
+    const { error } = await supabase.from('lesson_plans').delete().eq('id', id);
 
     return { error };
   } catch (error) {
-    console.error("Error deleting lesson plan:", error);
+    console.error('Error deleting lesson plan:', error);
     return { error };
   }
 }
@@ -372,21 +377,23 @@ export async function deleteLessonPlan(id: string): Promise<{ error: any }> {
 /**
  * Submit a lesson plan for review
  */
-export async function submitLessonPlan(id: string): Promise<{ data: LessonPlan | null; error: any }> {
+export async function submitLessonPlan(
+  id: string
+): Promise<{ data: LessonPlan | null; error: any }> {
   try {
     const { data, error } = await supabase
-      .from("lesson_plans")
+      .from('lesson_plans')
       .update({
-        status: "submitted",
+        status: 'submitted',
         submitted_at: new Date().toISOString(),
       })
-      .eq("id", id)
+      .eq('id', id)
       .select()
       .single();
 
     return { data, error };
   } catch (error) {
-    console.error("Error submitting lesson plan:", error);
+    console.error('Error submitting lesson plan:', error);
     return { data: null, error };
   }
 }
@@ -397,22 +404,24 @@ export async function submitLessonPlan(id: string): Promise<{ data: LessonPlan |
 export async function getCurriculums(subject: string, className: string) {
   try {
     const { data, error } = await supabase
-      .from("curriculums")
-      .select(`
+      .from('curriculums')
+      .select(
+        `
         id,
         subject,
         class,
         academic_year,
         status
-      `)
-      .eq("subject", subject)
-      .eq("class", className)
-      .eq("status", "approved")
-      .order("academic_year", { ascending: false });
+      `
+      )
+      .eq('subject', subject)
+      .eq('class', className)
+      .eq('status', 'approved')
+      .order('academic_year', { ascending: false });
 
     return { data, error };
   } catch (error) {
-    console.error("Error fetching curriculums:", error);
+    console.error('Error fetching curriculums:', error);
     return { data: null, error };
   }
 }
@@ -423,10 +432,10 @@ export async function getCurriculums(subject: string, className: string) {
 export async function getChapters(curriculumId: string) {
   try {
     const { data, error } = await supabase
-      .from("curriculum_chapters")
-      .select("*")
-      .eq("curriculum_id", curriculumId)
-      .order("order_number", { ascending: true });
+      .from('curriculum_chapters')
+      .select('*')
+      .eq('curriculum_id', curriculumId)
+      .order('order_number', { ascending: true });
 
     // Transform snake_case to camelCase for frontend compatibility
     const transformedData = data?.map((chapter: any) => ({
@@ -444,7 +453,7 @@ export async function getChapters(curriculumId: string) {
 
     return { data: transformedData, error };
   } catch (error) {
-    console.error("Error fetching chapters:", error);
+    console.error('Error fetching chapters:', error);
     return { data: null, error };
   }
 }
@@ -455,9 +464,9 @@ export async function getChapters(curriculumId: string) {
 export async function getLearningOutcomes(chapterId: string) {
   try {
     const { data, error } = await supabase
-      .from("curriculum_learning_outcomes")
-      .select("*")
-      .eq("chapter_id", chapterId);
+      .from('curriculum_learning_outcomes')
+      .select('*')
+      .eq('chapter_id', chapterId);
 
     // Transform snake_case to camelCase for frontend compatibility
     const transformedData = data?.map((outcome: any) => ({
@@ -469,7 +478,7 @@ export async function getLearningOutcomes(chapterId: string) {
 
     return { data: transformedData, error };
   } catch (error) {
-    console.error("Error fetching learning outcomes:", error);
+    console.error('Error fetching learning outcomes:', error);
     return { data: null, error };
   }
 }
@@ -481,24 +490,24 @@ export async function getSubjects(schoolId?: string) {
   try {
     // Build query - if schoolId is provided, filter by it; otherwise just get global subjects
     let query = supabase
-      .from("curriculum_subjects")
-      .select("*")
-      .eq("is_active", true)
-      .order("display_order", { ascending: true });
+      .from('curriculum_subjects')
+      .select('*')
+      .eq('is_active', true)
+      .order('display_order', { ascending: true });
 
     // Only add school_id filter if we have a valid schoolId
     if (schoolId) {
       query = query.or(`school_id.is.null,school_id.eq.${schoolId}`);
     } else {
       // If no schoolId, just get global subjects (where school_id is null)
-      query = query.is("school_id", null);
+      query = query.is('school_id', null);
     }
 
     const { data, error } = await query;
 
     return { data, error };
   } catch (error) {
-    console.error("Error fetching subjects:", error);
+    console.error('Error fetching subjects:', error);
     return { data: null, error };
   }
 }
@@ -509,15 +518,15 @@ export async function getSubjects(schoolId?: string) {
 export async function getClasses(schoolId: string) {
   try {
     const { data, error } = await supabase
-      .from("school_classes")
-      .select("id, name, grade, section, academic_year")
-      .eq("school_id", schoolId)
-      .eq("account_status", "active")
-      .order("grade", { ascending: true });
+      .from('school_classes')
+      .select('id, name, grade, section, academic_year')
+      .eq('school_id', schoolId)
+      .eq('account_status', 'active')
+      .order('grade', { ascending: true });
 
     return { data, error };
   } catch (error) {
-    console.error("Error fetching classes:", error);
+    console.error('Error fetching classes:', error);
     return { data: null, error };
   }
 }

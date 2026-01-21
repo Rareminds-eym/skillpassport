@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import ReactApexChart from "react-apexcharts";
+import React, { useState } from 'react';
+import ReactApexChart from 'react-apexcharts';
 import {
   ClipboardCheck,
   TrendingUp,
@@ -19,18 +19,18 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-} from "lucide-react";
-import KPICard from "../../../components/admin/KPICard";
+} from 'lucide-react';
+import KPICard from '../../../components/admin/KPICard';
 
 // TypeScript Interfaces
 interface AssessmentCriteria {
   id: string;
   name: string;
-  type: "Quiz" | "Assignment" | "Project" | "Mid-term" | "Final" | "Lab" | "Attendance";
+  type: 'Quiz' | 'Assignment' | 'Project' | 'Mid-term' | 'Final' | 'Lab' | 'Attendance';
   weightage: number;
   totalMarks: number;
   deadline?: string;
-  status: "upcoming" | "ongoing" | "completed";
+  status: 'upcoming' | 'ongoing' | 'completed';
 }
 
 interface StudentProgress {
@@ -44,132 +44,171 @@ interface StudentProgress {
   projectScore: number;
   midtermScore: number;
   attendance: number;
-  status: "excellent" | "good" | "average" | "at-risk";
-  trend: "up" | "down" | "stable";
+  status: 'excellent' | 'good' | 'average' | 'at-risk';
+  trend: 'up' | 'down' | 'stable';
 }
 
 const ContinuousAssessment: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"overview" | "configure" | "students" | "analytics">("overview");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedFilter, setSelectedFilter] = useState<string>("all");
+  const [activeTab, setActiveTab] = useState<'overview' | 'configure' | 'students' | 'analytics'>(
+    'overview'
+  );
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedFilter, setSelectedFilter] = useState<string>('all');
 
   // ===== Mock Data: Assessment Criteria =====
   const assessmentCriteria: AssessmentCriteria[] = [
-    { id: "1", name: "Weekly Quizzes", type: "Quiz", weightage: 15, totalMarks: 100, status: "ongoing" },
-    { id: "2", name: "Assignments", type: "Assignment", weightage: 20, totalMarks: 100, status: "ongoing" },
-    { id: "3", name: "Class Projects", type: "Project", weightage: 25, totalMarks: 100, deadline: "2025-12-15", status: "ongoing" },
-    { id: "4", name: "Mid-term Exam", type: "Mid-term", weightage: 20, totalMarks: 100, deadline: "2025-11-30", status: "upcoming" },
-    { id: "5", name: "Lab Work", type: "Lab", weightage: 10, totalMarks: 100, status: "ongoing" },
-    { id: "6", name: "Attendance", type: "Attendance", weightage: 10, totalMarks: 100, status: "ongoing" },
+    {
+      id: '1',
+      name: 'Weekly Quizzes',
+      type: 'Quiz',
+      weightage: 15,
+      totalMarks: 100,
+      status: 'ongoing',
+    },
+    {
+      id: '2',
+      name: 'Assignments',
+      type: 'Assignment',
+      weightage: 20,
+      totalMarks: 100,
+      status: 'ongoing',
+    },
+    {
+      id: '3',
+      name: 'Class Projects',
+      type: 'Project',
+      weightage: 25,
+      totalMarks: 100,
+      deadline: '2025-12-15',
+      status: 'ongoing',
+    },
+    {
+      id: '4',
+      name: 'Mid-term Exam',
+      type: 'Mid-term',
+      weightage: 20,
+      totalMarks: 100,
+      deadline: '2025-11-30',
+      status: 'upcoming',
+    },
+    { id: '5', name: 'Lab Work', type: 'Lab', weightage: 10, totalMarks: 100, status: 'ongoing' },
+    {
+      id: '6',
+      name: 'Attendance',
+      type: 'Attendance',
+      weightage: 10,
+      totalMarks: 100,
+      status: 'ongoing',
+    },
   ];
 
   // ===== Mock Data: Student Progress =====
   const studentProgress: StudentProgress[] = [
     {
-      id: "1",
-      name: "Priya Sharma",
-      rollNumber: "CS2021001",
-      email: "priya.sharma@university.edu",
+      id: '1',
+      name: 'Priya Sharma',
+      rollNumber: 'CS2021001',
+      email: 'priya.sharma@university.edu',
       overallScore: 89,
       quizScore: 92,
       assignmentScore: 88,
       projectScore: 90,
       midtermScore: 85,
       attendance: 95,
-      status: "excellent",
-      trend: "up",
+      status: 'excellent',
+      trend: 'up',
     },
     {
-      id: "2",
-      name: "Rahul Kumar",
-      rollNumber: "CS2021002",
-      email: "rahul.kumar@university.edu",
+      id: '2',
+      name: 'Rahul Kumar',
+      rollNumber: 'CS2021002',
+      email: 'rahul.kumar@university.edu',
       overallScore: 76,
       quizScore: 78,
       assignmentScore: 75,
       projectScore: 80,
       midtermScore: 72,
       attendance: 88,
-      status: "good",
-      trend: "stable",
+      status: 'good',
+      trend: 'stable',
     },
     {
-      id: "3",
-      name: "Anjali Patel",
-      rollNumber: "CS2021003",
-      email: "anjali.patel@university.edu",
+      id: '3',
+      name: 'Anjali Patel',
+      rollNumber: 'CS2021003',
+      email: 'anjali.patel@university.edu',
       overallScore: 65,
       quizScore: 68,
       assignmentScore: 62,
       projectScore: 70,
       midtermScore: 60,
       attendance: 82,
-      status: "average",
-      trend: "up",
+      status: 'average',
+      trend: 'up',
     },
     {
-      id: "4",
-      name: "Vikram Singh",
-      rollNumber: "CS2021004",
-      email: "vikram.singh@university.edu",
+      id: '4',
+      name: 'Vikram Singh',
+      rollNumber: 'CS2021004',
+      email: 'vikram.singh@university.edu',
       overallScore: 52,
       quizScore: 55,
       assignmentScore: 50,
       projectScore: 58,
       midtermScore: 48,
       attendance: 70,
-      status: "at-risk",
-      trend: "down",
+      status: 'at-risk',
+      trend: 'down',
     },
     {
-      id: "5",
-      name: "Meera Reddy",
-      rollNumber: "CS2021005",
-      email: "meera.reddy@university.edu",
+      id: '5',
+      name: 'Meera Reddy',
+      rollNumber: 'CS2021005',
+      email: 'meera.reddy@university.edu',
       overallScore: 82,
       quizScore: 85,
       assignmentScore: 80,
       projectScore: 84,
       midtermScore: 78,
       attendance: 92,
-      status: "good",
-      trend: "up",
+      status: 'good',
+      trend: 'up',
     },
   ];
 
   // ===== KPI Data =====
   const kpiData = [
     {
-      title: "Average Score",
-      value: "72.8%",
+      title: 'Average Score',
+      value: '72.8%',
       change: 5.2,
-      changeLabel: "from last month",
+      changeLabel: 'from last month',
       icon: <Target className="h-6 w-6" />,
-      color: "blue" as const,
+      color: 'blue' as const,
     },
     {
-      title: "Total Students",
-      value: "248",
+      title: 'Total Students',
+      value: '248',
       change: 0,
-      changeLabel: "enrolled students",
+      changeLabel: 'enrolled students',
       icon: <Users className="h-6 w-6" />,
-      color: "purple" as const,
+      color: 'purple' as const,
     },
     {
-      title: "Completion Rate",
-      value: "86.5%",
+      title: 'Completion Rate',
+      value: '86.5%',
       change: 3.8,
-      changeLabel: "assessment completion",
+      changeLabel: 'assessment completion',
       icon: <ClipboardCheck className="h-6 w-6" />,
-      color: "green" as const,
+      color: 'green' as const,
     },
     {
-      title: "At-Risk Students",
-      value: "18",
+      title: 'At-Risk Students',
+      value: '18',
       change: -2.1,
-      changeLabel: "fewer than last month",
+      changeLabel: 'fewer than last month',
       icon: <AlertTriangle className="h-6 w-6" />,
-      color: "yellow" as const,
+      color: 'yellow' as const,
     },
   ];
 
@@ -177,61 +216,70 @@ const ContinuousAssessment: React.FC = () => {
   const performanceTrendChart = {
     series: [
       {
-        name: "Average Score",
+        name: 'Average Score',
         data: [68, 70, 69, 72, 74, 71, 73, 72.8],
       },
     ],
     options: {
-      chart: { type: "area", toolbar: { show: false }, height: 300 },
-      stroke: { curve: "smooth", width: 3 },
+      chart: { type: 'area', toolbar: { show: false }, height: 300 },
+      stroke: { curve: 'smooth', width: 3 },
       fill: {
-        type: "gradient",
+        type: 'gradient',
         gradient: { shadeIntensity: 1, opacityFrom: 0.5, opacityTo: 0.1 },
       },
-      colors: ["#3b82f6"],
+      colors: ['#3b82f6'],
       dataLabels: { enabled: false },
       xaxis: {
-        categories: ["Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6", "Week 7", "Week 8"],
-        labels: { style: { colors: "#6b7280" } },
+        categories: [
+          'Week 1',
+          'Week 2',
+          'Week 3',
+          'Week 4',
+          'Week 5',
+          'Week 6',
+          'Week 7',
+          'Week 8',
+        ],
+        labels: { style: { colors: '#6b7280' } },
       },
       yaxis: {
         labels: {
-          style: { colors: "#6b7280" },
+          style: { colors: '#6b7280' },
           formatter: (val: number) => `${val}%`,
         },
         min: 0,
         max: 100,
       },
       tooltip: {
-        theme: "light",
+        theme: 'light',
         y: {
           formatter: (val: number) => `${val}%`,
         },
       },
-      grid: { borderColor: "#f1f5f9" },
+      grid: { borderColor: '#f1f5f9' },
     },
   };
 
   const assessmentDistributionChart = {
     series: [15, 20, 25, 20, 10, 10],
     options: {
-      chart: { type: "donut" },
-      labels: ["Quizzes", "Assignments", "Projects", "Mid-term", "Lab", "Attendance"],
-      colors: ["#3b82f6", "#8b5cf6", "#06b6d4", "#f59e0b", "#10b981", "#ec4899"],
+      chart: { type: 'donut' },
+      labels: ['Quizzes', 'Assignments', 'Projects', 'Mid-term', 'Lab', 'Attendance'],
+      colors: ['#3b82f6', '#8b5cf6', '#06b6d4', '#f59e0b', '#10b981', '#ec4899'],
       dataLabels: { enabled: true },
-      legend: { position: "bottom" },
+      legend: { position: 'bottom' },
       plotOptions: {
         pie: {
           donut: {
-            size: "70%",
+            size: '70%',
             labels: {
               show: true,
               name: { show: true },
               value: { show: true, formatter: (val: string) => `${val}%` },
               total: {
                 show: true,
-                label: "Total Weightage",
-                formatter: () => "100%",
+                label: 'Total Weightage',
+                formatter: () => '100%',
               },
             },
           },
@@ -243,82 +291,87 @@ const ContinuousAssessment: React.FC = () => {
   const performanceDistributionChart = {
     series: [
       {
-        name: "Students",
+        name: 'Students',
         data: [8, 15, 28, 35, 42],
       },
     ],
     options: {
-      chart: { type: "bar", toolbar: { show: false } },
+      chart: { type: 'bar', toolbar: { show: false } },
       plotOptions: {
         bar: {
           horizontal: false,
-          columnWidth: "60%",
+          columnWidth: '60%',
           borderRadius: 8,
           distributed: true,
         },
       },
-      colors: ["#ef4444", "#f59e0b", "#eab308", "#22c55e", "#10b981"],
+      colors: ['#ef4444', '#f59e0b', '#eab308', '#22c55e', '#10b981'],
       dataLabels: { enabled: false },
       xaxis: {
-        categories: ["0-20%", "21-40%", "41-60%", "61-80%", "81-100%"],
-        labels: { style: { colors: "#6b7280" } },
+        categories: ['0-20%', '21-40%', '41-60%', '61-80%', '81-100%'],
+        labels: { style: { colors: '#6b7280' } },
       },
       yaxis: {
         labels: {
-          style: { colors: "#6b7280" },
+          style: { colors: '#6b7280' },
         },
         title: {
-          text: "Number of Students",
-          style: { color: "#6b7280" },
+          text: 'Number of Students',
+          style: { color: '#6b7280' },
         },
       },
       legend: { show: false },
-      grid: { borderColor: "#f1f5f9" },
+      grid: { borderColor: '#f1f5f9' },
     },
   };
 
   // ===== Helper Functions =====
-  const getStatusColor = (status: StudentProgress["status"]) => {
+  const getStatusColor = (status: StudentProgress['status']) => {
     switch (status) {
-      case "excellent":
-        return "bg-green-100 text-green-700 border-green-200";
-      case "good":
-        return "bg-blue-100 text-blue-700 border-blue-200";
-      case "average":
-        return "bg-yellow-100 text-yellow-700 border-yellow-200";
-      case "at-risk":
-        return "bg-red-100 text-red-700 border-red-200";
+      case 'excellent':
+        return 'bg-green-100 text-green-700 border-green-200';
+      case 'good':
+        return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'average':
+        return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+      case 'at-risk':
+        return 'bg-red-100 text-red-700 border-red-200';
       default:
-        return "bg-gray-100 text-gray-700 border-gray-200";
+        return 'bg-gray-100 text-gray-700 border-gray-200';
     }
   };
 
-  const getTrendIcon = (trend: StudentProgress["trend"]) => {
+  const getTrendIcon = (trend: StudentProgress['trend']) => {
     switch (trend) {
-      case "up":
+      case 'up':
         return <TrendingUp className="h-4 w-4 text-green-600" />;
-      case "down":
+      case 'down':
         return <TrendingUp className="h-4 w-4 text-red-600 rotate-180" />;
-      case "stable":
-        return <div className="h-4 w-4 flex items-center"><div className="h-0.5 w-4 bg-gray-400" /></div>;
+      case 'stable':
+        return (
+          <div className="h-4 w-4 flex items-center">
+            <div className="h-0.5 w-4 bg-gray-400" />
+          </div>
+        );
     }
   };
 
-  const getStatusBadgeColor = (status: AssessmentCriteria["status"]) => {
+  const getStatusBadgeColor = (status: AssessmentCriteria['status']) => {
     switch (status) {
-      case "upcoming":
-        return "bg-blue-100 text-blue-700";
-      case "ongoing":
-        return "bg-green-100 text-green-700";
-      case "completed":
-        return "bg-gray-100 text-gray-700";
+      case 'upcoming':
+        return 'bg-blue-100 text-blue-700';
+      case 'ongoing':
+        return 'bg-green-100 text-green-700';
+      case 'completed':
+        return 'bg-gray-100 text-gray-700';
     }
   };
 
   const filteredStudents = studentProgress.filter((student) => {
-    const matchesSearch = student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    const matchesSearch =
+      student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       student.rollNumber.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = selectedFilter === "all" || student.status === selectedFilter;
+    const matchesFilter = selectedFilter === 'all' || student.status === selectedFilter;
     return matchesSearch && matchesFilter;
   });
 
@@ -347,18 +400,18 @@ const ContinuousAssessment: React.FC = () => {
       <div className="bg-white rounded-2xl border border-gray-200 p-2 shadow-sm">
         <div className="flex flex-wrap gap-2">
           {[
-            { key: "overview", label: "Overview", icon: BarChart3 },
-            { key: "configure", label: "Configure Assessment", icon: ClipboardCheck },
-            { key: "students", label: "Student Progress", icon: Users },
-            { key: "analytics", label: "Analytics", icon: TrendingUp },
+            { key: 'overview', label: 'Overview', icon: BarChart3 },
+            { key: 'configure', label: 'Configure Assessment', icon: ClipboardCheck },
+            { key: 'students', label: 'Student Progress', icon: Users },
+            { key: 'analytics', label: 'Analytics', icon: TrendingUp },
           ].map(({ key, label, icon: Icon }) => (
             <button
               key={key}
               onClick={() => setActiveTab(key as any)}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all duration-200 ${
                 activeTab === key
-                  ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md"
-                  : "text-gray-600 hover:bg-gray-100"
+                  ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md'
+                  : 'text-gray-600 hover:bg-gray-100'
               }`}
             >
               <Icon className="h-4 w-4" />
@@ -376,7 +429,7 @@ const ContinuousAssessment: React.FC = () => {
       </div>
 
       {/* Tab Content */}
-      {activeTab === "overview" && (
+      {activeTab === 'overview' && (
         <div className="space-y-6">
           {/* Charts Section */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -385,6 +438,7 @@ const ContinuousAssessment: React.FC = () => {
                 Performance Trend Over Time
               </h2>
               <ReactApexChart
+                // @ts-expect-error - Auto-suppressed for migration
                 options={performanceTrendChart.options}
                 series={performanceTrendChart.series}
                 type="area"
@@ -397,6 +451,7 @@ const ContinuousAssessment: React.FC = () => {
                 Assessment Weightage Distribution
               </h2>
               <ReactApexChart
+                // @ts-expect-error - Auto-suppressed for migration
                 options={assessmentDistributionChart.options}
                 series={assessmentDistributionChart.series}
                 type="donut"
@@ -411,6 +466,7 @@ const ContinuousAssessment: React.FC = () => {
               Student Performance Distribution
             </h2>
             <ReactApexChart
+              // @ts-expect-error - Auto-suppressed for migration
               options={performanceDistributionChart.options}
               series={performanceDistributionChart.series}
               type="bar"
@@ -425,12 +481,10 @@ const ContinuousAssessment: React.FC = () => {
                 <AlertTriangle className="h-6 w-6 text-red-600" />
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-bold text-gray-900 mb-2">
-                  At-Risk Students Detected
-                </h3>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">At-Risk Students Detected</h3>
                 <p className="text-gray-700 mb-4">
-                  18 students are currently scoring below 60% and may need additional support.
-                  Early intervention can help them improve.
+                  18 students are currently scoring below 60% and may need additional support. Early
+                  intervention can help them improve.
                 </p>
                 <button className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium">
                   View At-Risk Students
@@ -442,7 +496,7 @@ const ContinuousAssessment: React.FC = () => {
         </div>
       )}
 
-      {activeTab === "configure" && (
+      {activeTab === 'configure' && (
         <div className="space-y-6">
           {/* Add New Assessment Button */}
           <div className="flex justify-between items-center">
@@ -475,7 +529,9 @@ const ContinuousAssessment: React.FC = () => {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">Weightage:</span>
-                    <span className="font-semibold text-indigo-600 text-lg">{criteria.weightage}%</span>
+                    <span className="font-semibold text-indigo-600 text-lg">
+                      {criteria.weightage}%
+                    </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">Total Marks:</span>
@@ -493,10 +549,12 @@ const ContinuousAssessment: React.FC = () => {
                 </div>
 
                 <div className="mt-4 pt-4 border-t border-gray-100">
-                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(criteria.status)}`}>
-                    {criteria.status === "ongoing" && <Clock className="h-3 w-3 mr-1" />}
-                    {criteria.status === "upcoming" && <Calendar className="h-3 w-3 mr-1" />}
-                    {criteria.status === "completed" && <CheckCircle className="h-3 w-3 mr-1" />}
+                  <span
+                    className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(criteria.status)}`}
+                  >
+                    {criteria.status === 'ongoing' && <Clock className="h-3 w-3 mr-1" />}
+                    {criteria.status === 'upcoming' && <Calendar className="h-3 w-3 mr-1" />}
+                    {criteria.status === 'completed' && <CheckCircle className="h-3 w-3 mr-1" />}
                     {criteria.status.charAt(0).toUpperCase() + criteria.status.slice(1)}
                   </span>
                 </div>
@@ -505,7 +563,9 @@ const ContinuousAssessment: React.FC = () => {
                 <div className="mt-4">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-xs text-gray-600">Contribution to Final</span>
-                    <span className="text-xs font-semibold text-gray-900">{criteria.weightage}%</span>
+                    <span className="text-xs font-semibold text-gray-900">
+                      {criteria.weightage}%
+                    </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div
@@ -546,7 +606,7 @@ const ContinuousAssessment: React.FC = () => {
         </div>
       )}
 
-      {activeTab === "students" && (
+      {activeTab === 'students' && (
         <div className="space-y-6">
           {/* Search and Filter Bar */}
           <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm">
@@ -588,12 +648,20 @@ const ContinuousAssessment: React.FC = () => {
                 <thead>
                   <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
                     <th className="text-left p-4 font-semibold text-gray-700 text-sm">Student</th>
-                    <th className="text-left p-4 font-semibold text-gray-700 text-sm">Roll Number</th>
+                    <th className="text-left p-4 font-semibold text-gray-700 text-sm">
+                      Roll Number
+                    </th>
                     <th className="text-center p-4 font-semibold text-gray-700 text-sm">Overall</th>
                     <th className="text-center p-4 font-semibold text-gray-700 text-sm">Quizzes</th>
-                    <th className="text-center p-4 font-semibold text-gray-700 text-sm">Assignments</th>
-                    <th className="text-center p-4 font-semibold text-gray-700 text-sm">Projects</th>
-                    <th className="text-center p-4 font-semibold text-gray-700 text-sm">Attendance</th>
+                    <th className="text-center p-4 font-semibold text-gray-700 text-sm">
+                      Assignments
+                    </th>
+                    <th className="text-center p-4 font-semibold text-gray-700 text-sm">
+                      Projects
+                    </th>
+                    <th className="text-center p-4 font-semibold text-gray-700 text-sm">
+                      Attendance
+                    </th>
                     <th className="text-center p-4 font-semibold text-gray-700 text-sm">Status</th>
                     <th className="text-center p-4 font-semibold text-gray-700 text-sm">Trend</th>
                   </tr>
@@ -611,19 +679,23 @@ const ContinuousAssessment: React.FC = () => {
                         </div>
                       </td>
                       <td className="p-4">
-                        <span className="font-mono text-sm text-gray-700">{student.rollNumber}</span>
+                        <span className="font-mono text-sm text-gray-700">
+                          {student.rollNumber}
+                        </span>
                       </td>
                       <td className="p-4">
                         <div className="flex flex-col items-center gap-2">
-                          <span className="font-bold text-lg text-gray-900">{student.overallScore}%</span>
+                          <span className="font-bold text-lg text-gray-900">
+                            {student.overallScore}%
+                          </span>
                           <div className="w-full bg-gray-200 rounded-full h-2">
                             <div
                               className={`h-2 rounded-full transition-all duration-500 ${
                                 student.overallScore >= 80
-                                  ? "bg-gradient-to-r from-green-500 to-green-600"
+                                  ? 'bg-gradient-to-r from-green-500 to-green-600'
                                   : student.overallScore >= 60
-                                  ? "bg-gradient-to-r from-blue-500 to-blue-600"
-                                  : "bg-gradient-to-r from-red-500 to-red-600"
+                                    ? 'bg-gradient-to-r from-blue-500 to-blue-600'
+                                    : 'bg-gradient-to-r from-red-500 to-red-600'
                               }`}
                               style={{ width: `${student.overallScore}%` }}
                             />
@@ -634,7 +706,9 @@ const ContinuousAssessment: React.FC = () => {
                         <span className="font-semibold text-gray-900">{student.quizScore}%</span>
                       </td>
                       <td className="p-4 text-center">
-                        <span className="font-semibold text-gray-900">{student.assignmentScore}%</span>
+                        <span className="font-semibold text-gray-900">
+                          {student.assignmentScore}%
+                        </span>
                       </td>
                       <td className="p-4 text-center">
                         <span className="font-semibold text-gray-900">{student.projectScore}%</span>
@@ -644,15 +718,16 @@ const ContinuousAssessment: React.FC = () => {
                       </td>
                       <td className="p-4">
                         <div className="flex justify-center">
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(student.status)}`}>
-                            {student.status.charAt(0).toUpperCase() + student.status.slice(1).replace("-", " ")}
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(student.status)}`}
+                          >
+                            {student.status.charAt(0).toUpperCase() +
+                              student.status.slice(1).replace('-', ' ')}
                           </span>
                         </div>
                       </td>
                       <td className="p-4">
-                        <div className="flex justify-center">
-                          {getTrendIcon(student.trend)}
-                        </div>
+                        <div className="flex justify-center">{getTrendIcon(student.trend)}</div>
                       </td>
                     </tr>
                   ))}
@@ -670,7 +745,7 @@ const ContinuousAssessment: React.FC = () => {
         </div>
       )}
 
-      {activeTab === "analytics" && (
+      {activeTab === 'analytics' && (
         <div className="space-y-6">
           {/* Analytics Overview Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -725,11 +800,11 @@ const ContinuousAssessment: React.FC = () => {
               <h3 className="text-lg font-bold text-gray-900 mb-4">Assessment Type Performance</h3>
               <div className="space-y-4">
                 {[
-                  { name: "Quizzes", avg: 78, color: "bg-blue-500" },
-                  { name: "Assignments", avg: 72, color: "bg-purple-500" },
-                  { name: "Projects", avg: 82, color: "bg-cyan-500" },
-                  { name: "Mid-terms", avg: 68, color: "bg-orange-500" },
-                  { name: "Lab Work", avg: 85, color: "bg-green-500" },
+                  { name: 'Quizzes', avg: 78, color: 'bg-blue-500' },
+                  { name: 'Assignments', avg: 72, color: 'bg-purple-500' },
+                  { name: 'Projects', avg: 82, color: 'bg-cyan-500' },
+                  { name: 'Mid-terms', avg: 68, color: 'bg-orange-500' },
+                  { name: 'Lab Work', avg: 85, color: 'bg-green-500' },
                 ].map((item) => (
                   <div key={item.name}>
                     <div className="flex justify-between items-center mb-2">
@@ -754,21 +829,29 @@ const ContinuousAssessment: React.FC = () => {
                   <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="font-semibold text-gray-900 mb-1">Strong Lab Performance</p>
-                    <p className="text-sm text-gray-600">Students showing 85% average in practical work</p>
+                    <p className="text-sm text-gray-600">
+                      Students showing 85% average in practical work
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3 p-4 bg-yellow-50 rounded-xl border border-yellow-200">
                   <AlertTriangle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-semibold text-gray-900 mb-1">Mid-term Scores Need Attention</p>
-                    <p className="text-sm text-gray-600">68% average suggests need for additional support</p>
+                    <p className="font-semibold text-gray-900 mb-1">
+                      Mid-term Scores Need Attention
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      68% average suggests need for additional support
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-xl border border-blue-200">
                   <TrendingUp className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="font-semibold text-gray-900 mb-1">Positive Trend</p>
-                    <p className="text-sm text-gray-600">Overall scores improving by 5.2% over 8 weeks</p>
+                    <p className="text-sm text-gray-600">
+                      Overall scores improving by 5.2% over 8 weeks
+                    </p>
                   </div>
                 </div>
               </div>
@@ -781,4 +864,3 @@ const ContinuousAssessment: React.FC = () => {
 };
 
 export default ContinuousAssessment;
-

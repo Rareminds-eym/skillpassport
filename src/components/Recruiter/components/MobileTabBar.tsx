@@ -6,7 +6,7 @@ import {
   RectangleStackIcon,
   CalendarDaysIcon,
   EllipsisHorizontalIcon,
-  SparklesIcon
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 
 const mobileNavItems = [
@@ -23,27 +23,27 @@ function classNames(...classes) {
 
 const MobileTabBar = ({ activeTab, setActiveTab, onMoreMenuToggle }) => {
   const navigate = useNavigate();
-  
+
   const handleNavigation = (key) => {
     const routes = {
-      'overview': '/recruitment/overview',
-      'ai_copilot': '/recruitment/talent-scout',
-      'talent_pool': '/recruitment/talent-pool',
-      'interviews': '/recruitment/interviews'
+      overview: '/recruitment/overview',
+      ai_copilot: '/recruitment/talent-scout',
+      talent_pool: '/recruitment/talent-pool',
+      interviews: '/recruitment/interviews',
     };
-    
+
     if (routes[key]) {
       navigate(routes[key]);
       setActiveTab(key);
     }
   };
-  
+
   return (
     <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
       <nav className="flex">
         {mobileNavItems.map((item) => {
           const isActive = activeTab === item.key;
-          
+
           return (
             <button
               key={item.name}
@@ -68,10 +68,12 @@ const MobileTabBar = ({ activeTab, setActiveTab, onMoreMenuToggle }) => {
                 )}
                 aria-hidden="true"
               />
-              <span className={classNames(
-                'font-medium',
-                isActive ? 'text-primary-600' : 'text-gray-500'
-              )}>
+              <span
+                className={classNames(
+                  'font-medium',
+                  isActive ? 'text-primary-600' : 'text-gray-500'
+                )}
+              >
                 {item.name}
               </span>
             </button>

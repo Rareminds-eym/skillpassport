@@ -10,7 +10,7 @@ export const usePromotionalEvent = () => {
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+
   // Modal dismissed state - persisted in sessionStorage
   const [isModalDismissed, setIsModalDismissed] = useState(() => {
     for (let i = 0; i < sessionStorage.length; i++) {
@@ -21,11 +21,11 @@ export const usePromotionalEvent = () => {
     }
     return false;
   });
-  
+
   // Banner dismissed state - NOT persisted, only in memory
   // This ensures banner shows after modal close but NOT after refresh
   const [isBannerDismissed, setIsBannerDismissed] = useState(true); // Start as true (hidden)
-  
+
   // Track if modal was just dismissed in this session to show banner
   const [showBannerAfterModal, setShowBannerAfterModal] = useState(false);
 
@@ -34,7 +34,7 @@ export const usePromotionalEvent = () => {
     const fetchEvent = async () => {
       try {
         const now = new Date().toISOString();
-        
+
         const { data, error: fetchError } = await supabase
           .from('promotional_events')
           .select('*')
@@ -85,24 +85,24 @@ export const usePromotionalEvent = () => {
   // Calculate time remaining
   const getTimeRemaining = useCallback(() => {
     if (!event?.end_date) return null;
-    
+
     const end = new Date(event.end_date);
     const now = new Date();
     const diff = end - now;
-    
+
     if (diff <= 0) return null;
-    
+
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
     const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-    
+
     return { days, hours, minutes, seconds, total: diff };
   }, [event]);
 
   // Show modal if event exists and not dismissed
   const showModal = event && !isModalDismissed;
-  
+
   // Show banner only if modal was dismissed AND banner not dismissed (in current session only)
   const showBanner = event && isModalDismissed && showBannerAfterModal && !isBannerDismissed;
 

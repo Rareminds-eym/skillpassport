@@ -1,6 +1,6 @@
 /**
  * useFeatureGate Hook
- * 
+ *
  * Custom hook for checking feature access based on subscription plan and add-on entitlements.
  * Provides a unified interface for feature gating across the application.
  */
@@ -26,18 +26,14 @@ const clearExpiredCache = () => {
 accessCache.clear();
 
 export function useFeatureGate(featureKey) {
-  const { 
-    user, 
-    hasAddOnAccessSync, 
-    activeEntitlements
-  } = useSubscriptionContext();
-  
+  const { user, hasAddOnAccessSync, activeEntitlements } = useSubscriptionContext();
+
   const [isLoading, setIsLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [accessSource, setAccessSource] = useState(null);
   const [requiredAddOn, setRequiredAddOn] = useState(null);
   const [error, setError] = useState(null);
-  
+
   const checkInProgress = useRef(false);
   const userId = user?.id;
 
@@ -58,7 +54,7 @@ export function useFeatureGate(featureKey) {
 
       const cacheKey = `${userId || 'anonymous'}-${featureKey}`;
       const cached = accessCache.get(cacheKey);
-      
+
       if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
         setHasAccess(cached.hasAccess);
         setAccessSource(cached.accessSource);
@@ -71,20 +67,20 @@ export function useFeatureGate(featureKey) {
       setIsLoading(true);
 
       if (hasAddOnAccessSync && hasAddOnAccessSync(featureKey)) {
-        const entitlement = activeEntitlements?.find(e => e.feature_key === featureKey);
+        const entitlement = activeEntitlements?.find((e) => e.feature_key === featureKey);
         const source = entitlement?.bundle_id ? 'bundle' : 'addon';
-        
+
         setHasAccess(true);
         setAccessSource(source);
         setRequiredAddOn(null);
-        
+
         accessCache.set(cacheKey, {
           hasAccess: true,
           accessSource: source,
           requiredAddOn: null,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         });
-        
+
         setIsLoading(false);
         checkInProgress.current = false;
         return;
@@ -102,25 +98,25 @@ export function useFeatureGate(featureKey) {
 
       if (userId) {
         const result = await entitlementService.hasFeatureAccess(userId, featureKey);
-        
+
         if (result.success) {
           const { hasAccess: access, accessSource: source } = result.data;
-          
+
           setHasAccess(access);
           setAccessSource(source);
-          
+
           if (!access) {
             setRequiredAddOn(fetchedAddOn);
           } else {
             setRequiredAddOn(null);
             fetchedAddOn = null;
           }
-          
+
           accessCache.set(cacheKey, {
             hasAccess: access,
             accessSource: source,
             requiredAddOn: access ? null : fetchedAddOn,
-            timestamp: Date.now()
+            timestamp: Date.now(),
           });
         } else {
           setError(result.error);
@@ -132,12 +128,12 @@ export function useFeatureGate(featureKey) {
         setHasAccess(false);
         setAccessSource(null);
         setRequiredAddOn(fetchedAddOn);
-        
+
         accessCache.set(cacheKey, {
           hasAccess: false,
           accessSource: null,
           requiredAddOn: fetchedAddOn,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         });
       }
     } catch (err) {
@@ -183,26 +179,31 @@ export function useFeatureGate(featureKey) {
   const showUpgradePrompt = useCallback(() => {
     if (requiredAddOn) {
       const event = new CustomEvent('showUpgradePrompt', {
-        detail: { featureKey, addOn: requiredAddOn }
+        detail: { featureKey, addOn: requiredAddOn },
       });
       window.dispatchEvent(event);
     }
   }, [featureKey, requiredAddOn]);
 
-  return useMemo(() => ({
-    hasAccess,
-    isLoading,
-    accessSource,
-    requiredAddOn,
-    error,
-    showUpgradePrompt,
-    invalidateCache,
-    canUpgrade: !hasAccess && !!requiredAddOn,
-    upgradePrice: requiredAddOn ? {
-      monthly: requiredAddOn.addon_price_monthly,
-      annual: requiredAddOn.addon_price_annual
-    } : null
-  }), [hasAccess, isLoading, accessSource, requiredAddOn, error, showUpgradePrompt, invalidateCache]);
+  return useMemo(
+    () => ({
+      hasAccess,
+      isLoading,
+      accessSource,
+      requiredAddOn,
+      error,
+      showUpgradePrompt,
+      invalidateCache,
+      canUpgrade: !hasAccess && !!requiredAddOn,
+      upgradePrice: requiredAddOn
+        ? {
+            monthly: requiredAddOn.addon_price_monthly,
+            annual: requiredAddOn.addon_price_annual,
+          }
+        : null,
+    }),
+    [hasAccess, isLoading, accessSource, requiredAddOn, error, showUpgradePrompt, invalidateCache]
+  );
 }
 
 export function useMultipleFeatureGates(featureKeys) {
@@ -223,10 +224,10 @@ export function useMultipleFeatureGates(featureKeys) {
 
       for (const featureKey of featureKeys) {
         if (hasAddOnAccessSync && hasAddOnAccessSync(featureKey)) {
-          const entitlement = activeEntitlements?.find(e => e.feature_key === featureKey);
+          const entitlement = activeEntitlements?.find((e) => e.feature_key === featureKey);
           newResults[featureKey] = {
             hasAccess: true,
-            accessSource: entitlement?.bundle_id ? 'bundle' : 'addon'
+            accessSource: entitlement?.bundle_id ? 'bundle' : 'addon',
           };
           continue;
         }

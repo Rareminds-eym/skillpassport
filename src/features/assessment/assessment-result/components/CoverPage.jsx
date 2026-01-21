@@ -26,7 +26,7 @@ const BRANDING = {
   subTagline: 'Discover Strengths. Explore Careers. Build Your Future.',
   statistics: '2,50,000+ Career Profiles. 300+ Partner Schools. 45+ Industry Domains.',
   engineText: 'The Career Discovery Engine.',
-  email: 'ieducators@rareminds.in'
+  email: 'ieducators@rareminds.in',
 };
 
 // Illustration theme labels with positions
@@ -34,7 +34,7 @@ const ILLUSTRATION_THEMES = [
   { label: 'Career Counselling', position: 'bottom-left' },
   { label: 'University Network', position: 'bottom-center' },
   { label: 'Government Collaborations', position: 'right' },
-  { label: 'Industries and Firms', position: 'top-right' }
+  { label: 'Industries and Firms', position: 'top-right' },
 ];
 
 /**
@@ -50,7 +50,7 @@ const BrandingHeader = () => {
         flexDirection: 'column',
         alignItems: 'center',
         textAlign: 'center',
-        marginBottom: '20px'
+        marginBottom: '20px',
       }}
     >
       {/* Rareminds Logo - centered at top */}
@@ -60,10 +60,10 @@ const BrandingHeader = () => {
         style={{
           width: '240px',
           height: 'auto',
-          marginBottom: '15px'
+          marginBottom: '15px',
         }}
       />
-      
+
       {/* Main Tagline with highlighted "AI Career Assessment Report" */}
       <h1
         style={{
@@ -71,7 +71,7 @@ const BrandingHeader = () => {
           fontWeight: 'bold',
           color: '#1e3a5f',
           margin: '0 0 8px 0',
-          lineHeight: '1.3'
+          lineHeight: '1.3',
         }}
       >
         {BRANDING.taglinePrefix}
@@ -80,49 +80,49 @@ const BrandingHeader = () => {
             color: '#4f46e5',
             backgroundColor: '#eef2ff',
             padding: '2px 8px',
-            borderRadius: '4px'
+            borderRadius: '4px',
           }}
         >
           {BRANDING.taglineHighlight}
         </span>
       </h1>
-      
+
       {/* Sub-tagline */}
       <p
         style={{
           fontSize: '12px',
           color: '#4a5568',
           margin: '0 0 8px 0',
-          fontStyle: 'italic'
+          fontStyle: 'italic',
         }}
       >
         {BRANDING.subTagline}
       </p>
-      
+
       {/* Statistics */}
       <p
         style={{
           fontSize: '11px',
           color: '#2d3748',
           margin: '0 0 8px 0',
-          fontWeight: '600'
+          fontWeight: '600',
         }}
       >
         {BRANDING.statistics}
       </p>
-      
+
       {/* The Early Learning Engine text */}
       <p
         style={{
           fontSize: '13px',
           color: '#1e3a5f',
           margin: '0 0 10px 0',
-          fontWeight: 'bold'
+          fontWeight: 'bold',
         }}
       >
         {BRANDING.engineText}
       </p>
-      
+
       {/* Contact email with envelope icon */}
       <div
         style={{
@@ -131,7 +131,7 @@ const BrandingHeader = () => {
           justifyContent: 'center',
           gap: '6px',
           fontSize: '11px',
-          color: '#4a5568'
+          color: '#4a5568',
         }}
       >
         {/* Envelope icon (SVG) */}
@@ -170,7 +170,7 @@ const IllustrationContainer = () => {
         justifyContent: 'center',
         alignItems: 'center',
         marginTop: '30px',
-        marginBottom: '20px'
+        marginBottom: '20px',
       }}
     >
       {/* Rectangular illustration container with Hero background */}
@@ -179,7 +179,7 @@ const IllustrationContainer = () => {
           position: 'relative',
           width: '100%',
           maxWidth: '640px',
-          height: '100%'
+          height: '100%',
         }}
       >
         {/* Rectangle container with Hero-bg.jpg image */}
@@ -190,7 +190,7 @@ const IllustrationContainer = () => {
             borderRadius: '12px',
             overflow: 'hidden',
             border: '3px solid #1e3a5f',
-            boxShadow: '0 4px 15px rgba(30, 58, 95, 0.2)'
+            boxShadow: '0 4px 15px rgba(30, 58, 95, 0.2)',
           }}
         >
           <img
@@ -200,7 +200,7 @@ const IllustrationContainer = () => {
               width: '100%',
               height: '100%',
               objectFit: 'cover',
-              objectPosition: 'center'
+              objectPosition: 'center',
             }}
           />
         </div>
@@ -232,11 +232,12 @@ const NotebookLabel = ({ studentInfo, description }) => {
     college: studentInfo?.college && studentInfo.college.trim() ? studentInfo.college : '—',
     stream: studentInfo?.stream && studentInfo.stream.trim() ? studentInfo.stream : '—',
     grade: studentInfo?.grade && studentInfo.grade.toString().trim() ? studentInfo.grade : '—',
-    school: studentInfo?.school && studentInfo.school.trim() ? studentInfo.school : '—'
+    school: studentInfo?.school && studentInfo.school.trim() ? studentInfo.school : '—',
   };
-  
+
   // Default description about transforming education
-  const displayDescription = description || 
+  const displayDescription =
+    description ||
     'Transforming education through innovative learning solutions that inspire creativity and build future-ready skills.';
 
   // Style for detail labels
@@ -246,14 +247,14 @@ const NotebookLabel = ({ studentInfo, description }) => {
     textTransform: 'uppercase',
     letterSpacing: '0.5px',
     display: 'block',
-    marginBottom: '2px'
+    marginBottom: '2px',
   };
 
   // Style for detail values
   const valueStyle = {
     fontSize: '12px',
     fontWeight: '600',
-    color: '#1e293b'
+    color: '#1e293b',
   };
 
   return (
@@ -263,14 +264,14 @@ const NotebookLabel = ({ studentInfo, description }) => {
         bottom: '160px',
         left: '50%',
         transform: 'translateX(-50%)',
-        width: '160mm' // Double width - spans most of the page
+        width: '160mm', // Double width - spans most of the page
       }}
     >
       {/* Intro text above notebook label */}
       <div
         style={{
           textAlign: 'center',
-          marginBottom: '24px'
+          marginBottom: '24px',
         }}
       >
         <p
@@ -278,19 +279,23 @@ const NotebookLabel = ({ studentInfo, description }) => {
             fontSize: '14px',
             color: '#1e3a5f',
             margin: '2px 0 6px 0',
-            fontWeight: '600'
+            fontWeight: '600',
           }}
         >
-          Congratulations, <span style={{ color: '#000000ff' }}>{safeInfo.name}</span>! Your career journey starts here.
+          Congratulations, <span style={{ color: '#000000ff' }}>{safeInfo.name}</span>! Your career
+          journey starts here.
         </p>
         <p
           style={{
             fontSize: '11px',
             color: '#4a5568',
-            margin: '0 0 24px 0'
+            margin: '0 0 24px 0',
           }}
         >
-          Inside: <span style={{ color: '#258ed2', fontWeight: '500' }}>Interest Profile</span> • <span style={{ color: '#258ed2', fontWeight: '500' }}>Skill Analysis</span> • <span style={{ color: '#258ed2', fontWeight: '500' }}>Career Matches</span> • <span style={{ color: '#258ed2', fontWeight: '500' }}>Development Roadmap</span>
+          Inside: <span style={{ color: '#258ed2', fontWeight: '500' }}>Interest Profile</span> •{' '}
+          <span style={{ color: '#258ed2', fontWeight: '500' }}>Skill Analysis</span> •{' '}
+          <span style={{ color: '#258ed2', fontWeight: '500' }}>Career Matches</span> •{' '}
+          <span style={{ color: '#258ed2', fontWeight: '500' }}>Development Roadmap</span>
         </p>
       </div>
 
@@ -303,16 +308,16 @@ const NotebookLabel = ({ studentInfo, description }) => {
           padding: '16px 24px',
           backgroundColor: 'white',
           position: 'relative',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+          boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
         }}
       >
         {/* Student Details - 3x2 Grid Layout (3 columns, 2 rows) */}
-        <div 
-          style={{ 
+        <div
+          style={{
             display: 'grid',
             gridTemplateColumns: '1fr 1fr 1fr',
             gap: '12px 20px',
-            marginBottom: '14px'
+            marginBottom: '14px',
           }}
         >
           {/* Row 1, Col 1: Student Name */}
@@ -320,38 +325,38 @@ const NotebookLabel = ({ studentInfo, description }) => {
             <span style={labelStyle}>Student Name</span>
             <span style={valueStyle}>{safeInfo.name}</span>
           </div>
-          
+
           {/* Row 1, Col 2: Registration Number */}
           <div>
             <span style={labelStyle}>Registration No.</span>
             <span style={valueStyle}>{safeInfo.regNo}</span>
           </div>
-          
+
           {/* Row 1, Col 3: Programme/Stream */}
           <div>
             <span style={labelStyle}>Programme/Stream</span>
             <span style={valueStyle}>{safeInfo.stream}</span>
           </div>
-          
+
           {/* Row 2, Col 1: Grade */}
           <div>
             <span style={labelStyle}>Grade</span>
             <span style={valueStyle}>{safeInfo.grade}</span>
           </div>
-          
+
           {/* Row 2, Col 2: School */}
           <div>
             <span style={labelStyle}>School</span>
             <span style={valueStyle}>{safeInfo.school}</span>
           </div>
-          
+
           {/* Row 2, Col 3: Assessment Date */}
           <div>
             <span style={labelStyle}>Assessment Date</span>
             <span style={valueStyle}>{new Date().toLocaleDateString()}</span>
           </div>
         </div>
-        
+
         {/* Description text */}
         <p
           style={{
@@ -362,7 +367,7 @@ const NotebookLabel = ({ studentInfo, description }) => {
             borderTop: '1px solid #e2e8f0',
             paddingTop: '10px',
             fontStyle: 'italic',
-            textAlign: 'center'
+            textAlign: 'center',
           }}
         >
           {displayDescription}
@@ -384,7 +389,7 @@ const CoverPage = ({ studentInfo }) => {
   console.log('CoverPage - grade value:', studentInfo?.grade);
   console.log('CoverPage - school value:', studentInfo?.school);
   console.log('CoverPage - college value:', studentInfo?.college);
-  
+
   // Safe student info with fallback values and better handling
   const safeStudentInfo = {
     name: studentInfo?.name || '—',
@@ -394,14 +399,19 @@ const CoverPage = ({ studentInfo }) => {
     // Try multiple possible field names for grade
     grade: studentInfo?.grade?.toString() || studentInfo?.class || studentInfo?.gradeLevel || '—',
     // Try multiple possible field names for school
-    school: studentInfo?.school || studentInfo?.college || studentInfo?.schoolName || studentInfo?.institution || '—'
+    school:
+      studentInfo?.school ||
+      studentInfo?.college ||
+      studentInfo?.schoolName ||
+      studentInfo?.institution ||
+      '—',
   };
-  
+
   // Debug: Log safeStudentInfo
   console.log('CoverPage - safeStudentInfo created:', safeStudentInfo);
 
   return (
-    <div 
+    <div
       className="cover-page"
       style={{
         width: '210mm',
@@ -412,17 +422,17 @@ const CoverPage = ({ studentInfo }) => {
         position: 'relative',
         pageBreakAfter: 'always',
         pageBreakInside: 'avoid',
-        background: 'white'
+        background: 'white',
       }}
     >
       {/* Page content */}
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
         {/* BrandingHeader - Task 2 */}
         <BrandingHeader />
-        
+
         {/* IllustrationContainer - Task 3 */}
         <IllustrationContainer />
-        
+
         {/* NotebookLabel - Task 4 - Now displays all student profile details */}
         <NotebookLabel studentInfo={safeStudentInfo} />
       </div>

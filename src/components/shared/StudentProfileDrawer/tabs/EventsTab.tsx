@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { CalendarIcon, MapPinIcon, ClockIcon, UserGroupIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import {
+  CalendarIcon,
+  MapPinIcon,
+  ClockIcon,
+  UserGroupIcon,
+  CheckCircleIcon,
+} from '@heroicons/react/24/outline';
 import { supabase } from '../../../../lib/supabaseClient';
 
 interface Event {
@@ -31,13 +37,14 @@ const EventsTab: React.FC<EventsTabProps> = ({ student, loading: externalLoading
   useEffect(() => {
     const fetchStudentEvents = async () => {
       if (!student?.id) return;
-      
+
       setLoading(true);
       try {
         // Fetch ONLY events the student has registered for
         const { data: registrations, error: regError } = await supabase
           .from('event_registrations')
-          .select(`
+          .select(
+            `
             event_id,
             registered_at,
             status,
@@ -54,9 +61,10 @@ const EventsTab: React.FC<EventsTabProps> = ({ student, loading: externalLoading
               max_participants,
               created_at
             )
-          `)
+          `
+          )
           .eq('student_id', student.id);
-        
+
         if (regError) {
           console.error('Error fetching student events:', regError);
           // Fallback: try direct query if join fails
@@ -64,35 +72,35 @@ const EventsTab: React.FC<EventsTabProps> = ({ student, loading: externalLoading
             .from('event_registrations')
             .select('event_id')
             .eq('student_id', student.id);
-          
+
           if (directRegs && directRegs.length > 0) {
-            const eventIds = directRegs.map(r => r.event_id);
+            const eventIds = directRegs.map((r) => r.event_id);
             const { data: eventsData } = await supabase
               .from('college_events')
               .select('*')
               .in('id', eventIds)
               .order('start_date', { ascending: false });
-            
-            setEvents((eventsData || []).map(e => ({ ...e, is_registered: true })));
+
+            setEvents((eventsData || []).map((e) => ({ ...e, is_registered: true })));
           } else {
             setEvents([]);
           }
         } else {
           // Extract events from registrations
           const studentEvents = (registrations || [])
-            .filter(r => r.college_events)
-            .map(r => ({
+            .filter((r) => r.college_events)
+            .map((r) => ({
               ...(r.college_events as any),
               is_registered: true,
               registration_status: r.status,
-              registered_at: r.registered_at
+              registered_at: r.registered_at,
             }))
             .sort((a, b) => {
               const dateA = a.start_date ? new Date(a.start_date).getTime() : 0;
               const dateB = b.start_date ? new Date(b.start_date).getTime() : 0;
               return dateB - dateA;
             });
-          
+
           setEvents(studentEvents);
         }
       } catch (err) {
@@ -106,10 +114,10 @@ const EventsTab: React.FC<EventsTabProps> = ({ student, loading: externalLoading
     fetchStudentEvents();
   }, [student?.id]);
 
-  const filteredEvents = events.filter(event => {
+  const filteredEvents = events.filter((event) => {
     const now = new Date();
     const eventDate = event.start_date ? new Date(event.start_date) : null;
-    
+
     switch (filter) {
       case 'upcoming':
         return eventDate && eventDate >= now;
@@ -122,23 +130,35 @@ const EventsTab: React.FC<EventsTabProps> = ({ student, loading: externalLoading
 
   const getEventTypeColor = (type?: string) => {
     switch (type?.toLowerCase()) {
-      case 'workshop': return 'bg-blue-100 text-blue-800';
-      case 'seminar': return 'bg-purple-100 text-purple-800';
-      case 'competition': return 'bg-orange-100 text-orange-800';
-      case 'cultural': return 'bg-pink-100 text-pink-800';
-      case 'sports': return 'bg-green-100 text-green-800';
-      case 'technical': return 'bg-indigo-100 text-indigo-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'workshop':
+        return 'bg-blue-100 text-blue-800';
+      case 'seminar':
+        return 'bg-purple-100 text-purple-800';
+      case 'competition':
+        return 'bg-orange-100 text-orange-800';
+      case 'cultural':
+        return 'bg-pink-100 text-pink-800';
+      case 'sports':
+        return 'bg-green-100 text-green-800';
+      case 'technical':
+        return 'bg-indigo-100 text-indigo-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getStatusColor = (status?: string) => {
     switch (status?.toLowerCase()) {
-      case 'upcoming': return 'bg-blue-100 text-blue-800';
-      case 'ongoing': return 'bg-green-100 text-green-800';
-      case 'completed': return 'bg-gray-100 text-gray-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'upcoming':
+        return 'bg-blue-100 text-blue-800';
+      case 'ongoing':
+        return 'bg-green-100 text-green-800';
+      case 'completed':
+        return 'bg-gray-100 text-gray-800';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -147,7 +167,7 @@ const EventsTab: React.FC<EventsTabProps> = ({ student, loading: externalLoading
     return new Date(dateStr).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
-      year: 'numeric'
+      year: 'numeric',
     });
   };
 
@@ -155,7 +175,7 @@ const EventsTab: React.FC<EventsTabProps> = ({ student, loading: externalLoading
     return (
       <div className="p-6">
         <div className="animate-pulse space-y-4">
-          {[1, 2, 3].map(i => (
+          {[1, 2, 3].map((i) => (
             <div key={i} className="bg-gray-100 h-32 rounded-lg"></div>
           ))}
         </div>
@@ -170,12 +190,13 @@ const EventsTab: React.FC<EventsTabProps> = ({ student, loading: externalLoading
         <div>
           <h3 className="text-lg font-semibold text-gray-900">Registered Events</h3>
           <p className="text-sm text-gray-500">
-            {filteredEvents.length} event{filteredEvents.length !== 1 ? 's' : ''} {filter !== 'all' ? `(${filter})` : ''}
+            {filteredEvents.length} event{filteredEvents.length !== 1 ? 's' : ''}{' '}
+            {filter !== 'all' ? `(${filter})` : ''}
           </p>
         </div>
-        
+
         <div className="flex gap-2">
-          {(['all', 'upcoming', 'past'] as const).map(f => (
+          {(['all', 'upcoming', 'past'] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
@@ -202,7 +223,7 @@ const EventsTab: React.FC<EventsTabProps> = ({ student, loading: externalLoading
         </div>
       ) : (
         <div className="space-y-4">
-          {filteredEvents.map(event => (
+          {filteredEvents.map((event) => (
             <div
               key={event.id}
               className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
@@ -218,26 +239,28 @@ const EventsTab: React.FC<EventsTabProps> = ({ student, loading: externalLoading
                       </span>
                     )}
                   </div>
-                  
+
                   <div className="flex flex-wrap gap-2 mb-3">
                     {event.event_type && (
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getEventTypeColor(event.event_type)}`}>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-xs font-medium ${getEventTypeColor(event.event_type)}`}
+                      >
                         {event.event_type}
                       </span>
                     )}
                     {event.status && (
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(event.status)}`}>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(event.status)}`}
+                      >
                         {event.status}
                       </span>
                     )}
                   </div>
-                  
+
                   {event.description && (
-                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                      {event.description}
-                    </p>
+                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">{event.description}</p>
                   )}
-                  
+
                   <div className="flex flex-wrap gap-4 text-sm text-gray-500">
                     <div className="flex items-center">
                       <CalendarIcon className="h-4 w-4 mr-1" />
@@ -246,14 +269,14 @@ const EventsTab: React.FC<EventsTabProps> = ({ student, loading: externalLoading
                         <span> - {formatDate(event.end_date)}</span>
                       )}
                     </div>
-                    
+
                     {event.location && (
                       <div className="flex items-center">
                         <MapPinIcon className="h-4 w-4 mr-1" />
                         {event.location}
                       </div>
                     )}
-                    
+
                     {event.max_participants && (
                       <div className="flex items-center">
                         <UserGroupIcon className="h-4 w-4 mr-1" />
@@ -262,13 +285,13 @@ const EventsTab: React.FC<EventsTabProps> = ({ student, loading: externalLoading
                     )}
                   </div>
                 </div>
-                
+
                 <div className="ml-4 text-right">
                   <div className="text-2xl font-bold text-primary-600">
                     {event.start_date ? new Date(event.start_date).getDate() : '--'}
                   </div>
                   <div className="text-xs text-gray-500 uppercase">
-                    {event.start_date 
+                    {event.start_date
                       ? new Date(event.start_date).toLocaleDateString('en-US', { month: 'short' })
                       : '---'}
                   </div>

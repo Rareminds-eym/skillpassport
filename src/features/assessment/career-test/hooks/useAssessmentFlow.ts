@@ -1,9 +1,9 @@
 /**
  * useAssessmentFlow Hook
- * 
+ *
  * Main state machine for the career assessment flow.
  * Manages navigation, answers, timers, and flow state.
- * 
+ *
  * @module features/assessment/career-test/hooks/useAssessmentFlow
  */
 
@@ -117,7 +117,7 @@ interface UseAssessmentFlowResult {
 export const useAssessmentFlow = ({
   sections,
   onSectionComplete,
-  onAnswerChange
+  onAnswerChange,
 }: UseAssessmentFlowOptions): UseAssessmentFlowResult => {
   // Flow state
   const [currentScreen, setCurrentScreen] = useState<FlowScreen>('loading');
@@ -153,9 +153,8 @@ export const useAssessmentFlow = ({
   const currentQuestion = currentSection?.questions?.[currentQuestionIndex] || null;
 
   // Question ID
-  const questionId = currentSection && currentQuestion
-    ? `${currentSection.id}_${currentQuestion.id}`
-    : '';
+  const questionId =
+    currentSection && currentQuestion ? `${currentSection.id}_${currentQuestion.id}` : '';
 
   // Computed values
   const isLastSection = currentSectionIndex === sections.length - 1;
@@ -195,37 +194,41 @@ export const useAssessmentFlow = ({
   }, [questionId, currentQuestion, answers]);
 
   // Actions
-  const setAnswer = useCallback((qId: string, value: any) => {
-    setAnswers(prev => {
-      if (value === undefined || (typeof value === 'object' && Object.keys(value).length === 0)) {
-        const { [qId]: removed, ...rest } = prev;
-        return rest;
-      }
-      return { ...prev, [qId]: value };
-    });
-    onAnswerChange?.(qId, value);
-  }, [onAnswerChange]);
+  const setAnswer = useCallback(
+    (qId: string, value: any) => {
+      setAnswers((prev) => {
+        if (value === undefined || (typeof value === 'object' && Object.keys(value).length === 0)) {
+          const { [qId]: removed, ...rest } = prev;
+          return rest;
+        }
+        return { ...prev, [qId]: value };
+      });
+      onAnswerChange?.(qId, value);
+    },
+    [onAnswerChange]
+  );
 
   const goToNextQuestion = useCallback(() => {
     if (!currentSection) return;
 
     if (currentQuestionIndex < (currentSection.questions?.length || 0) - 1) {
-      setCurrentQuestionIndex(prev => prev + 1);
+      setCurrentQuestionIndex((prev) => prev + 1);
     } else {
       // End of section - save timing and show complete screen
       // Calculate time spent on this section
       // For aptitude/knowledge sections, always use elapsedTime (they use per-question timers)
       // For other timed sections, use timeLimit - timeRemaining
-      const timeSpent = (currentSection.isAptitude || currentSection.isKnowledge)
-        ? elapsedTime
-        : currentSection.isTimed
-          ? (currentSection.timeLimit || 0) - (timeRemaining || 0)
-          : elapsedTime;
+      const timeSpent =
+        currentSection.isAptitude || currentSection.isKnowledge
+          ? elapsedTime
+          : currentSection.isTimed
+            ? (currentSection.timeLimit || 0) - (timeRemaining || 0)
+            : elapsedTime;
 
       // Save section timing
-      setSectionTimings(prev => ({
+      setSectionTimings((prev) => ({
         ...prev,
-        [currentSection.id]: timeSpent
+        [currentSection.id]: timeSpent,
       }));
 
       // Notify parent component
@@ -238,7 +241,7 @@ export const useAssessmentFlow = ({
 
   const goToPreviousQuestion = useCallback(() => {
     if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(prev => prev - 1);
+      setCurrentQuestionIndex((prev) => prev - 1);
     }
   }, [currentQuestionIndex]);
 
@@ -248,7 +251,7 @@ export const useAssessmentFlow = ({
       showSectionIntro,
       showSectionComplete,
       currentSectionIndex,
-      elapsedTime
+      elapsedTime,
     });
     setShowSectionIntro(false);
     setShowSectionComplete(false);
@@ -264,37 +267,45 @@ export const useAssessmentFlow = ({
       isLastSection: currentSectionIndex === sections.length - 1,
       isTimed: currentSection?.isTimed,
       timeRemaining,
-      elapsedTime
+      elapsedTime,
     });
 
     if (currentSection) {
       // Calculate time spent on this section
       // For aptitude/knowledge sections, always use elapsedTime (they use per-question timers)
       // For other timed sections, use timeLimit - timeRemaining
-      const timeSpent = (currentSection.isAptitude || currentSection.isKnowledge)
-        ? elapsedTime
-        : currentSection.isTimed
-          ? (currentSection.timeLimit || 0) - (timeRemaining || 0)
-          : elapsedTime;
+      const timeSpent =
+        currentSection.isAptitude || currentSection.isKnowledge
+          ? elapsedTime
+          : currentSection.isTimed
+            ? (currentSection.timeLimit || 0) - (timeRemaining || 0)
+            : elapsedTime;
 
       console.log('⏱️ Section time spent:', timeSpent);
 
-      setSectionTimings(prev => ({
+      setSectionTimings((prev) => ({
         ...prev,
-        [currentSection.id]: timeSpent
+        [currentSection.id]: timeSpent,
       }));
 
       onSectionComplete?.(currentSection.id, timeSpent);
     }
     console.log('✅ Setting showSectionComplete to true');
     setShowSectionComplete(true);
-  }, [currentSection, timeRemaining, elapsedTime, onSectionComplete, currentSectionIndex, sections.length]);
+  }, [
+    currentSection,
+    timeRemaining,
+    elapsedTime,
+    onSectionComplete,
+    currentSectionIndex,
+    sections.length,
+  ]);
 
   const goToNextSection = useCallback(() => {
     setShowSectionComplete(false);
 
     if (currentSectionIndex < sections.length - 1) {
-      setCurrentSectionIndex(prev => prev + 1);
+      setCurrentSectionIndex((prev) => prev + 1);
       setCurrentQuestionIndex(0);
       setTimeRemaining(null);
       setElapsedTime(0);
@@ -302,29 +313,38 @@ export const useAssessmentFlow = ({
     }
   }, [currentSectionIndex, sections.length]);
 
-  const jumpToSection = useCallback((sectionIndex: number) => {
-    console.log(`🎯 jumpToSection called: sectionIndex=${sectionIndex}, sections.length=${sections.length}`);
-    if (sectionIndex >= 0 && sectionIndex < sections.length) {
-      console.log(`✅ Jumping to section ${sectionIndex}: ${sections[sectionIndex]?.title || 'unknown'}`);
-      console.log('📊 jumpToSection - Setting state:', {
-        currentSectionIndex: sectionIndex,
-        currentQuestionIndex: 0,
-        timeRemaining: null,
-        elapsedTime: 0,
-        showSectionIntro: true,
-        showSectionComplete: false
-      });
-      setCurrentSectionIndex(sectionIndex);
-      setCurrentQuestionIndex(0);
-      setTimeRemaining(null);
-      setElapsedTime(0);
-      setShowSectionIntro(true);
-      setShowSectionComplete(false);
-      console.log('✅ jumpToSection state updates queued');
-    } else {
-      console.warn(`❌ Cannot jump to section ${sectionIndex}: sections.length=${sections.length}`);
-    }
-  }, [sections]);
+  const jumpToSection = useCallback(
+    (sectionIndex: number) => {
+      console.log(
+        `🎯 jumpToSection called: sectionIndex=${sectionIndex}, sections.length=${sections.length}`
+      );
+      if (sectionIndex >= 0 && sectionIndex < sections.length) {
+        console.log(
+          `✅ Jumping to section ${sectionIndex}: ${sections[sectionIndex]?.title || 'unknown'}`
+        );
+        console.log('📊 jumpToSection - Setting state:', {
+          currentSectionIndex: sectionIndex,
+          currentQuestionIndex: 0,
+          timeRemaining: null,
+          elapsedTime: 0,
+          showSectionIntro: true,
+          showSectionComplete: false,
+        });
+        setCurrentSectionIndex(sectionIndex);
+        setCurrentQuestionIndex(0);
+        setTimeRemaining(null);
+        setElapsedTime(0);
+        setShowSectionIntro(true);
+        setShowSectionComplete(false);
+        console.log('✅ jumpToSection state updates queued');
+      } else {
+        console.warn(
+          `❌ Cannot jump to section ${sectionIndex}: sections.length=${sections.length}`
+        );
+      }
+    },
+    [sections]
+  );
 
   const resetFlow = useCallback(() => {
     setCurrentScreen('loading');
@@ -406,7 +426,7 @@ export const useAssessmentFlow = ({
     isLastSection,
     isLastQuestion,
     isCurrentQuestionAnswered,
-    questionId
+    questionId,
   };
 };
 

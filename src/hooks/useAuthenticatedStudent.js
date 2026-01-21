@@ -31,7 +31,6 @@ export const useAuthenticatedStudent = () => {
         setLoading(true);
         setError(null);
 
-
         // Use userProfile from auth context if available
         if (userProfile) {
           setStudentData(userProfile);
@@ -57,7 +56,6 @@ export const useAuthenticatedStudent = () => {
           setError('Student profile not found');
           setStudentData(null);
         }
-
       } catch (err) {
         console.error('❌ Error in useAuthenticatedStudent:', err);
         setError(err.message);
@@ -77,7 +75,6 @@ export const useAuthenticatedStudent = () => {
     }
 
     try {
-
       const { data, error } = await supabase
         .from('students')
         .update(updates)
@@ -92,7 +89,6 @@ export const useAuthenticatedStudent = () => {
 
       setStudentData(data);
       return { success: true, data };
-
     } catch (err) {
       console.error('❌ Error in updateStudentData:', err);
       return { success: false, error: err.message };
@@ -135,6 +131,6 @@ export const useAuthenticatedStudent = () => {
     user,
     isAuthenticated: !!user,
     updateStudentData,
-    refreshStudentData
+    refreshStudentData,
   };
 };

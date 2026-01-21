@@ -1,15 +1,15 @@
 import {
-    AcademicCapIcon,
-    ChartBarIcon,
-    ChevronDownIcon,
-    ClipboardDocumentListIcon,
-    EyeIcon,
-    FunnelIcon,
-    SparklesIcon,
-    Squares2X2Icon,
-    TableCellsIcon,
-    UserIcon,
-    XMarkIcon,
+  AcademicCapIcon,
+  ChartBarIcon,
+  ChevronDownIcon,
+  ClipboardDocumentListIcon,
+  EyeIcon,
+  FunnelIcon,
+  SparklesIcon,
+  Squares2X2Icon,
+  TableCellsIcon,
+  UserIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -118,7 +118,9 @@ const ReadinessBadge = ({ readiness }: { readiness: string | null }) => {
   };
 
   return (
-    <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getReadinessStyle(readiness)}`}>
+    <span
+      className={`px-2 py-1 rounded-full text-xs font-medium border ${getReadinessStyle(readiness)}`}
+    >
       {readiness || 'N/A'}
     </span>
   );
@@ -127,7 +129,7 @@ const ReadinessBadge = ({ readiness }: { readiness: string | null }) => {
 // Assessment Card Component
 const AssessmentCard = ({ result, onView }: { result: AssessmentResult; onView: () => void }) => {
   return (
-    <div 
+    <div
       className="bg-white border border-gray-200 rounded-lg p-5 hover:shadow-md transition-all duration-200 cursor-pointer group"
       onClick={onView}
     >
@@ -150,9 +152,13 @@ const AssessmentCard = ({ result, onView }: { result: AssessmentResult; onView: 
           <span className="text-xs font-medium px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full">
             {result.stream_id?.toUpperCase() || 'N/A'}
           </span>
-          <span className={`text-xs px-2 py-0.5 rounded ${
-            result.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-          }`}>
+          <span
+            className={`text-xs px-2 py-0.5 rounded ${
+              result.status === 'completed'
+                ? 'bg-green-100 text-green-700'
+                : 'bg-yellow-100 text-yellow-700'
+            }`}
+          >
             {result.status}
           </span>
         </div>
@@ -166,14 +172,17 @@ const AssessmentCard = ({ result, onView }: { result: AssessmentResult; onView: 
             <span className="text-xs font-medium text-gray-700">RIASEC Code</span>
           </div>
           <div className="flex gap-1">
-            {result.riasec_code.split('').slice(0, 6).map((letter, idx) => (
-              <span
-                key={idx}
-                className="w-7 h-7 flex items-center justify-center bg-indigo-50 text-indigo-700 font-bold text-sm rounded"
-              >
-                {letter}
-              </span>
-            ))}
+            {result.riasec_code
+              .split('')
+              .slice(0, 6)
+              .map((letter, idx) => (
+                <span
+                  key={idx}
+                  className="w-7 h-7 flex items-center justify-center bg-indigo-50 text-indigo-700 font-bold text-sm rounded"
+                >
+                  {letter}
+                </span>
+              ))}
           </div>
         </div>
       )}
@@ -193,7 +202,7 @@ const AssessmentCard = ({ result, onView }: { result: AssessmentResult; onView: 
           {new Date(result.created_at).toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'short',
-            day: 'numeric'
+            day: 'numeric',
           })}
         </span>
         <button
@@ -211,16 +220,15 @@ const AssessmentCard = ({ result, onView }: { result: AssessmentResult; onView: 
   );
 };
 
-
 // Detail Modal Component
-const AssessmentDetailModal = ({ 
-  result, 
-  isOpen, 
+const AssessmentDetailModal = ({
+  result,
+  isOpen,
   onClose,
-  navigate
-}: { 
-  result: AssessmentResult | null; 
-  isOpen: boolean; 
+  navigate,
+}: {
+  result: AssessmentResult | null;
+  isOpen: boolean;
   onClose: () => void;
   navigate: any;
 }) => {
@@ -233,8 +241,11 @@ const AssessmentDetailModal = ({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose} />
-        
+        <div
+          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          onClick={onClose}
+        />
+
         <div className="relative bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:max-w-4xl sm:w-full">
           {/* Header */}
           <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-5">
@@ -244,7 +255,9 @@ const AssessmentDetailModal = ({
                   <UserIcon className="h-7 w-7 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-white">{result.student_name || 'Unknown Student'}</h3>
+                  <h3 className="text-xl font-bold text-white">
+                    {result.student_name || 'Unknown Student'}
+                  </h3>
                   <p className="text-indigo-100 text-sm">{result.student_email}</p>
                   <p className="text-indigo-200 text-xs">{result.college_name || 'No College'}</p>
                 </div>
@@ -264,13 +277,19 @@ const AssessmentDetailModal = ({
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <div className="bg-gray-50 rounded-lg p-4 text-center">
                 <p className="text-xs text-gray-500 mb-1">Stream</p>
-                <p className="font-semibold text-indigo-600">{result.stream_id?.toUpperCase() || 'N/A'}</p>
+                <p className="font-semibold text-indigo-600">
+                  {result.stream_id?.toUpperCase() || 'N/A'}
+                </p>
               </div>
               <div className="bg-gray-50 rounded-lg p-4 text-center">
                 <p className="text-xs text-gray-500 mb-1">Status</p>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  result.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                }`}>
+                <span
+                  className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    result.status === 'completed'
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-yellow-100 text-yellow-700'
+                  }`}
+                >
                   {result.status}
                 </span>
               </div>
@@ -282,7 +301,9 @@ const AssessmentDetailModal = ({
               </div>
               <div className="bg-gray-50 rounded-lg p-4 text-center">
                 <p className="text-xs text-gray-500 mb-1">RIASEC Code</p>
-                <p className="font-bold text-indigo-600 tracking-wider">{result.riasec_code || 'N/A'}</p>
+                <p className="font-bold text-indigo-600 tracking-wider">
+                  {result.riasec_code || 'N/A'}
+                </p>
               </div>
             </div>
 
@@ -326,11 +347,13 @@ const AssessmentDetailModal = ({
                     <div key={idx} className="bg-gray-50 rounded-lg p-4">
                       <div className="flex items-center justify-between mb-2">
                         <span className="font-medium text-gray-900">{cluster.title}</span>
-                        <span className="text-sm font-semibold text-indigo-600">{cluster.matchScore}% Match</span>
+                        <span className="text-sm font-semibold text-indigo-600">
+                          {cluster.matchScore}% Match
+                        </span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-indigo-500 h-2 rounded-full" 
+                        <div
+                          className="bg-indigo-500 h-2 rounded-full"
                           style={{ width: `${cluster.matchScore}%` }}
                         />
                       </div>
@@ -378,7 +401,7 @@ const AssessmentDetailModal = ({
                   <AcademicCapIcon className="h-5 w-5 text-indigo-500" />
                   Recommended Courses
                 </h4>
-                
+
                 {/* Technical Courses */}
                 {gemini.coursesByType.technical && gemini.coursesByType.technical.length > 0 && (
                   <div className="mb-4">
@@ -387,28 +410,46 @@ const AssessmentDetailModal = ({
                       Technical Skills ({gemini.coursesByType.technical.length})
                     </h5>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {gemini.coursesByType.technical.slice(0, 4).map((course: any, idx: number) => (
-                        <div key={idx} onClick={(e) => { e.stopPropagation(); navigate(`/university-admin/browse-courses?search=${encodeURIComponent(course.title)}`); }} className="bg-blue-50 border border-blue-100 rounded-lg p-3 cursor-pointer hover:shadow-md hover:border-blue-200 hover:bg-blue-100 transition-all duration-200">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-gray-900 text-sm truncate">{course.title}</p>
-                              <p className="text-xs text-gray-500 mt-0.5">{course.code} • {course.duration}</p>
+                      {gemini.coursesByType.technical
+                        .slice(0, 4)
+                        .map((course: any, idx: number) => (
+                          <div
+                            key={idx}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(
+                                `/university-admin/browse-courses?search=${encodeURIComponent(course.title)}`
+                              );
+                            }}
+                            className="bg-blue-50 border border-blue-100 rounded-lg p-3 cursor-pointer hover:shadow-md hover:border-blue-200 hover:bg-blue-100 transition-all duration-200"
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-gray-900 text-sm truncate">
+                                  {course.title}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                  {course.code} • {course.duration}
+                                </p>
+                              </div>
+                              <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
+                                {course.relevance_score}%
+                              </span>
                             </div>
-                            <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
-                              {course.relevance_score}%
-                            </span>
+                            {course.skills && course.skills.length > 0 && (
+                              <div className="mt-2 flex flex-wrap gap-1">
+                                {course.skills.slice(0, 3).map((skill: string, sIdx: number) => (
+                                  <span
+                                    key={sIdx}
+                                    className="px-1.5 py-0.5 bg-white text-gray-600 text-xs rounded"
+                                  >
+                                    {skill}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
-                          {course.skills && course.skills.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-1">
-                              {course.skills.slice(0, 3).map((skill: string, sIdx: number) => (
-                                <span key={sIdx} className="px-1.5 py-0.5 bg-white text-gray-600 text-xs rounded">
-                                  {skill}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                        ))}
                     </div>
                   </div>
                 )}
@@ -422,11 +463,24 @@ const AssessmentDetailModal = ({
                     </h5>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {gemini.coursesByType.soft.slice(0, 4).map((course: any, idx: number) => (
-                        <div key={idx} onClick={(e) => { e.stopPropagation(); navigate(`/university-admin/browse-courses?search=${encodeURIComponent(course.title)}`); }} className="bg-green-50 border border-green-100 rounded-lg p-3 cursor-pointer hover:shadow-md hover:border-green-200 hover:bg-green-100 transition-all duration-200">
+                        <div
+                          key={idx}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(
+                              `/university-admin/browse-courses?search=${encodeURIComponent(course.title)}`
+                            );
+                          }}
+                          className="bg-green-50 border border-green-100 rounded-lg p-3 cursor-pointer hover:shadow-md hover:border-green-200 hover:bg-green-100 transition-all duration-200"
+                        >
                           <div className="flex items-start justify-between">
                             <div className="flex-1 min-w-0">
-                              <p className="font-medium text-gray-900 text-sm truncate">{course.title}</p>
-                              <p className="text-xs text-gray-500 mt-0.5">{course.code} • {course.duration}</p>
+                              <p className="font-medium text-gray-900 text-sm truncate">
+                                {course.title}
+                              </p>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                {course.code} • {course.duration}
+                              </p>
                             </div>
                             <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
                               {course.relevance_score}%
@@ -435,7 +489,10 @@ const AssessmentDetailModal = ({
                           {course.skills && course.skills.length > 0 && (
                             <div className="mt-2 flex flex-wrap gap-1">
                               {course.skills.slice(0, 3).map((skill: string, sIdx: number) => (
-                                <span key={sIdx} className="px-1.5 py-0.5 bg-white text-gray-600 text-xs rounded">
+                                <span
+                                  key={sIdx}
+                                  className="px-1.5 py-0.5 bg-white text-gray-600 text-xs rounded"
+                                >
                                   {skill}
                                 </span>
                               ))}
@@ -465,7 +522,6 @@ const AssessmentDetailModal = ({
   );
 };
 
-
 // Main Component
 const UniversityAdminAssessmentResults: React.FC = () => {
   const navigate = useNavigate();
@@ -474,17 +530,17 @@ const UniversityAdminAssessmentResults: React.FC = () => {
   const [_colleges, setColleges] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(24);
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState('date');
-  
+
   const [selectedResult, setSelectedResult] = useState<AssessmentResult | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  
+
   const [filters, setFilters] = useState({
     colleges: [] as string[],
     streams: [] as string[],
@@ -500,7 +556,8 @@ const UniversityAdminAssessmentResults: React.FC = () => {
 
       const { data, error: fetchError } = await supabase
         .from('personal_assessment_results')
-        .select(`
+        .select(
+          `
           id,
           student_id,
           stream_id,
@@ -513,15 +570,16 @@ const UniversityAdminAssessmentResults: React.FC = () => {
           career_fit,
           skill_gap,
           gemini_results
-        `)
+        `
+        )
         .order('created_at', { ascending: false });
 
       if (fetchError) throw fetchError;
 
       // Fetch student info for each result
       if (data && data.length > 0) {
-        const studentIds = [...new Set(data.map(r => r.student_id))];
-        
+        const studentIds = [...new Set(data.map((r) => r.student_id))];
+
         const { data: studentsData } = await supabase
           .from('students')
           .select('user_id, name, email, college_id')
@@ -533,10 +591,10 @@ const UniversityAdminAssessmentResults: React.FC = () => {
           .select('id, name')
           .eq('organization_type', 'college');
 
-        const studentMap = new Map(studentsData?.map(s => [s.user_id, s]) || []);
-        const collegeMap = new Map(collegesData?.map(c => [c.id, c.name]) || []);
+        const studentMap = new Map(studentsData?.map((s) => [s.user_id, s]) || []);
+        const collegeMap = new Map(collegesData?.map((c) => [c.id, c.name]) || []);
 
-        const enrichedResults = data.map(r => {
+        const enrichedResults = data.map((r) => {
           const student = studentMap.get(r.student_id);
           return {
             ...r,
@@ -548,7 +606,9 @@ const UniversityAdminAssessmentResults: React.FC = () => {
         });
 
         // Filter to only show students from affiliated colleges (exclude students without college)
-        const filteredResults = enrichedResults.filter(r => r.college_id !== null && r.college_name !== null);
+        const filteredResults = enrichedResults.filter(
+          (r) => r.college_id !== null && r.college_name !== null
+        );
 
         setResults(filteredResults);
       } else {
@@ -570,7 +630,7 @@ const UniversityAdminAssessmentResults: React.FC = () => {
         .select('id, name')
         .eq('organization_type', 'college')
         .order('name');
-      
+
       if (!error && data) {
         setColleges(data);
       }
@@ -591,7 +651,7 @@ const UniversityAdminAssessmentResults: React.FC = () => {
   // Generate filter options from data
   const streamOptions = useMemo(() => {
     const streamCounts: Record<string, number> = {};
-    results.forEach(r => {
+    results.forEach((r) => {
       if (r.stream_id) {
         const normalized = r.stream_id.toLowerCase();
         streamCounts[normalized] = (streamCounts[normalized] || 0) + 1;
@@ -601,14 +661,14 @@ const UniversityAdminAssessmentResults: React.FC = () => {
       .map(([stream, count]) => ({
         value: stream,
         label: stream.toUpperCase(),
-        count
+        count,
       }))
       .sort((a, b) => b.count - a.count);
   }, [results]);
 
   const collegeOptions = useMemo(() => {
     const collegeCounts: Record<string, number> = {};
-    results.forEach(r => {
+    results.forEach((r) => {
       if (r.college_name) {
         collegeCounts[r.college_name] = (collegeCounts[r.college_name] || 0) + 1;
       }
@@ -617,39 +677,38 @@ const UniversityAdminAssessmentResults: React.FC = () => {
       .map(([college, count]) => ({
         value: college,
         label: college,
-        count
+        count,
       }))
       .sort((a, b) => b.count - a.count);
   }, [results]);
 
   const statusOptions = useMemo(() => {
     const statusCounts: Record<string, number> = {};
-    results.forEach(r => {
+    results.forEach((r) => {
       if (r.status) {
         statusCounts[r.status] = (statusCounts[r.status] || 0) + 1;
       }
     });
-    return Object.entries(statusCounts)
-      .map(([status, count]) => ({
-        value: status,
-        label: status.charAt(0).toUpperCase() + status.slice(1),
-        count
-      }));
+    return Object.entries(statusCounts).map(([status, count]) => ({
+      value: status,
+      label: status.charAt(0).toUpperCase() + status.slice(1),
+      count,
+    }));
   }, [results]);
 
   const readinessOptions = useMemo(() => {
     const readinessCounts: Record<string, number> = {};
-    results.forEach(r => {
+    results.forEach((r) => {
       if (r.employability_readiness) {
-        readinessCounts[r.employability_readiness] = (readinessCounts[r.employability_readiness] || 0) + 1;
+        readinessCounts[r.employability_readiness] =
+          (readinessCounts[r.employability_readiness] || 0) + 1;
       }
     });
-    return Object.entries(readinessCounts)
-      .map(([readiness, count]) => ({
-        value: readiness,
-        label: readiness,
-        count
-      }));
+    return Object.entries(readinessCounts).map(([readiness, count]) => ({
+      value: readiness,
+      label: readiness,
+      count,
+    }));
   }, [results]);
 
   // Apply filters and sorting
@@ -659,40 +718,39 @@ const UniversityAdminAssessmentResults: React.FC = () => {
     // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(r =>
-        r.student_name?.toLowerCase().includes(query) ||
-        r.student_email?.toLowerCase().includes(query) ||
-        r.college_name?.toLowerCase().includes(query) ||
-        r.stream_id?.toLowerCase().includes(query) ||
-        r.riasec_code?.toLowerCase().includes(query)
+      filtered = filtered.filter(
+        (r) =>
+          r.student_name?.toLowerCase().includes(query) ||
+          r.student_email?.toLowerCase().includes(query) ||
+          r.college_name?.toLowerCase().includes(query) ||
+          r.stream_id?.toLowerCase().includes(query) ||
+          r.riasec_code?.toLowerCase().includes(query)
       );
     }
 
     // College filter
     if (filters.colleges.length > 0) {
-      filtered = filtered.filter(r =>
-        r.college_name && filters.colleges.includes(r.college_name)
+      filtered = filtered.filter(
+        (r) => r.college_name && filters.colleges.includes(r.college_name)
       );
     }
 
     // Stream filter
     if (filters.streams.length > 0) {
-      filtered = filtered.filter(r =>
-        r.stream_id && filters.streams.includes(r.stream_id.toLowerCase())
+      filtered = filtered.filter(
+        (r) => r.stream_id && filters.streams.includes(r.stream_id.toLowerCase())
       );
     }
 
     // Status filter
     if (filters.statuses.length > 0) {
-      filtered = filtered.filter(r =>
-        r.status && filters.statuses.includes(r.status)
-      );
+      filtered = filtered.filter((r) => r.status && filters.statuses.includes(r.status));
     }
 
     // Readiness filter
     if (filters.readiness.length > 0) {
-      filtered = filtered.filter(r =>
-        r.employability_readiness && filters.readiness.includes(r.employability_readiness)
+      filtered = filtered.filter(
+        (r) => r.employability_readiness && filters.readiness.includes(r.employability_readiness)
       );
     }
 
@@ -738,18 +796,25 @@ const UniversityAdminAssessmentResults: React.FC = () => {
     });
   };
 
-  const activeFilterCount = filters.colleges.length + filters.streams.length + 
-    filters.statuses.length + filters.readiness.length;
+  const activeFilterCount =
+    filters.colleges.length +
+    filters.streams.length +
+    filters.statuses.length +
+    filters.readiness.length;
 
   // Stats
   const stats = useMemo(() => {
-    const completed = results.filter(r => r.status === 'completed').length;
-    const avgAptitude = results.length > 0 
-      ? Math.round(results.reduce((sum, r) => sum + (r.aptitude_overall || 0), 0) / results.length)
-      : 0;
-    const avgKnowledge = results.length > 0
-      ? Math.round(results.reduce((sum, r) => sum + (r.knowledge_score || 0), 0) / results.length)
-      : 0;
+    const completed = results.filter((r) => r.status === 'completed').length;
+    const avgAptitude =
+      results.length > 0
+        ? Math.round(
+            results.reduce((sum, r) => sum + (r.aptitude_overall || 0), 0) / results.length
+          )
+        : 0;
+    const avgKnowledge =
+      results.length > 0
+        ? Math.round(results.reduce((sum, r) => sum + (r.knowledge_score || 0), 0) / results.length)
+        : 0;
     return { total: results.length, completed, avgAptitude, avgKnowledge };
   }, [results]);
 
@@ -807,7 +872,7 @@ const UniversityAdminAssessmentResults: React.FC = () => {
               size="md"
             />
           </div>
-          
+
           <button
             onClick={() => setShowFilters(!showFilters)}
             className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
@@ -916,7 +981,9 @@ const UniversityAdminAssessmentResults: React.FC = () => {
           ) : paginatedResults.length === 0 ? (
             <div className="text-center py-12">
               <ClipboardDocumentListIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No assessment results found</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                No assessment results found
+              </h3>
               <p className="text-sm text-gray-500 mb-4">
                 {searchQuery || activeFilterCount > 0
                   ? 'Try adjusting your search or filters'
@@ -934,7 +1001,8 @@ const UniversityAdminAssessmentResults: React.FC = () => {
           ) : (
             <>
               <div className="mb-4 text-sm text-gray-600">
-                Showing {startIndex + 1}-{Math.min(endIndex, filteredResults.length)} of {filteredResults.length} results
+                Showing {startIndex + 1}-{Math.min(endIndex, filteredResults.length)} of{' '}
+                {filteredResults.length} results
               </div>
 
               {viewMode === 'grid' ? (
@@ -952,15 +1020,33 @@ const UniversityAdminAssessmentResults: React.FC = () => {
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">College</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stream</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">RIASEC</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aptitude</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Knowledge</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Readiness</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Student
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          College
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Stream
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          RIASEC
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Aptitude
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Knowledge
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Readiness
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Date
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Actions
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -974,7 +1060,9 @@ const UniversityAdminAssessmentResults: React.FC = () => {
                                 </span>
                               </div>
                               <div className="ml-4">
-                                <div className="text-sm font-medium text-gray-900">{result.student_name || 'Unknown'}</div>
+                                <div className="text-sm font-medium text-gray-900">
+                                  {result.student_name || 'Unknown'}
+                                </div>
                                 <div className="text-sm text-gray-500">{result.student_email}</div>
                               </div>
                             </div>
@@ -1021,7 +1109,7 @@ const UniversityAdminAssessmentResults: React.FC = () => {
               {totalPages > 1 && (
                 <div className="mt-6 flex items-center justify-center gap-2">
                   <button
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
                     className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50"
                   >
@@ -1031,7 +1119,7 @@ const UniversityAdminAssessmentResults: React.FC = () => {
                     Page {currentPage} of {totalPages}
                   </span>
                   <button
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages}
                     className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50"
                   >

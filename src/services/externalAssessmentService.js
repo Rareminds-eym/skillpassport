@@ -36,12 +36,12 @@ export async function checkAssessmentStatus(studentId, courseName) {
       current_question_index: data.current_question_index,
       time_remaining: data.time_remaining,
       last_activity_at: data.last_activity_at,
-      answeredCount: data.student_answers?.filter(a => a.selected_answer !== null).length
+      answeredCount: data.student_answers?.filter((a) => a.selected_answer !== null).length,
     });
 
     return {
       status: data.status, // 'in_progress' or 'completed'
-      attempt: data
+      attempt: data,
     };
   } catch (error) {
     console.error('Error checking assessment status:', error);
@@ -56,20 +56,14 @@ export async function checkAssessmentStatus(studentId, courseName) {
  */
 export async function createAssessmentAttempt(attemptData) {
   try {
-    const {
-      studentId,
-      courseName,
-      courseId,
-      assessmentLevel,
-      questions
-    } = attemptData;
+    const { studentId, courseName, courseId, assessmentLevel, questions } = attemptData;
 
     // Initialize empty answers array
     const emptyAnswers = questions.map((q, idx) => ({
       question_id: q.id,
       selected_answer: null,
       is_correct: null,
-      time_taken: 0
+      time_taken: 0,
     }));
 
     const { data, error } = await supabase
@@ -85,7 +79,7 @@ export async function createAssessmentAttempt(attemptData) {
         current_question_index: 0,
         status: 'in_progress',
         time_remaining: 900, // 15 minutes
-        started_at: new Date().toISOString()
+        started_at: new Date().toISOString(),
       })
       .select()
       .single();
@@ -95,7 +89,7 @@ export async function createAssessmentAttempt(attemptData) {
         return {
           success: false,
           data: null,
-          error: 'Assessment already exists for this course'
+          error: 'Assessment already exists for this course',
         };
       }
       throw error;
@@ -104,14 +98,14 @@ export async function createAssessmentAttempt(attemptData) {
     return {
       success: true,
       data: data,
-      error: null
+      error: null,
     };
   } catch (error) {
     console.error('Error creating assessment attempt:', error);
     return {
       success: false,
       data: null,
-      error: error.message || 'Failed to create assessment attempt'
+      error: error.message || 'Failed to create assessment attempt',
     };
   }
 }
@@ -125,15 +119,21 @@ export async function createAssessmentAttempt(attemptData) {
  * @param {number} resumeFromIndex - Index to resume from (optional, defaults to questionIndex + 1)
  * @returns {Promise<{success: boolean}>}
  */
-export async function updateAssessmentProgress(attemptId, questionIndex, answer, timeRemaining, resumeFromIndex = null) {
+export async function updateAssessmentProgress(
+  attemptId,
+  questionIndex,
+  answer,
+  timeRemaining,
+  resumeFromIndex = null
+) {
   const resumeIndex = resumeFromIndex !== null ? resumeFromIndex : questionIndex + 1;
-  
+
   console.log('📡 updateAssessmentProgress called:', {
     attemptId,
     questionIndex,
     answer,
     timeRemaining,
-    resumeFromIndex: resumeIndex
+    resumeFromIndex: resumeIndex,
   });
 
   try {
@@ -152,28 +152,28 @@ export async function updateAssessmentProgress(attemptId, questionIndex, answer,
 
     console.log('✅ Current attempt fetched:', {
       answersCount: currentAttempt.student_answers?.length,
-      questionsCount: currentAttempt.questions?.length
+      questionsCount: currentAttempt.questions?.length,
     });
 
     // Update the answer for the question at questionIndex
     const updatedAnswers = [...currentAttempt.student_answers];
     const question = currentAttempt.questions[questionIndex];
-    
+
     // Check correct answer - handle both formats
     const correctAnswer = question.correct_answer || question.correctAnswer;
-    
+
     updatedAnswers[questionIndex] = {
       question_id: question.id,
       selected_answer: answer,
       is_correct: answer === correctAnswer,
-      time_taken: updatedAnswers[questionIndex]?.time_taken || 0
+      time_taken: updatedAnswers[questionIndex]?.time_taken || 0,
     };
 
     console.log('💾 Saving to database...', {
       updatingAnswerAt: questionIndex,
-      resumeFromIndex: resumeIndex
+      resumeFromIndex: resumeIndex,
     });
-    
+
     // Update database - save where user should resume from
     const { error: updateError } = await supabase
       .from('external_assessment_attempts')
@@ -181,7 +181,7 @@ export async function updateAssessmentProgress(attemptId, questionIndex, answer,
         student_answers: updatedAnswers,
         current_question_index: resumeIndex, // Save where to resume from
         time_remaining: timeRemaining,
-        last_activity_at: new Date().toISOString()
+        last_activity_at: new Date().toISOString(),
       })
       .eq('id', attemptId);
 
@@ -192,7 +192,7 @@ export async function updateAssessmentProgress(attemptId, questionIndex, answer,
 
     console.log('✅ Database updated successfully!', {
       answeredQuestionIndex: questionIndex,
-      savedResumeIndex: resumeIndex
+      savedResumeIndex: resumeIndex,
     });
     return { success: true };
   } catch (error) {
@@ -219,14 +219,14 @@ export async function completeAssessment(attemptId, timeTaken) {
     if (fetchError) throw fetchError;
 
     // Calculate score
-    const correctCount = attempt.student_answers.filter(a => a.is_correct).length;
+    const correctCount = attempt.student_answers.filter((a) => a.is_correct).length;
     const score = Math.round((correctCount / attempt.total_questions) * 100);
 
     // Calculate difficulty breakdown
     const breakdown = {
       easy: { total: 0, correct: 0, percentage: 0 },
       medium: { total: 0, correct: 0, percentage: 0 },
-      hard: { total: 0, correct: 0, percentage: 0 }
+      hard: { total: 0, correct: 0, percentage: 0 },
     };
 
     attempt.questions.forEach((q, idx) => {
@@ -240,7 +240,7 @@ export async function completeAssessment(attemptId, timeTaken) {
     });
 
     // Calculate percentages
-    Object.keys(breakdown).forEach(key => {
+    Object.keys(breakdown).forEach((key) => {
       if (breakdown[key].total > 0) {
         breakdown[key].percentage = Math.round(
           (breakdown[key].correct / breakdown[key].total) * 100
@@ -257,7 +257,7 @@ export async function completeAssessment(attemptId, timeTaken) {
         correct_answers: correctCount,
         time_taken: timeTaken,
         difficulty_breakdown: breakdown,
-        completed_at: new Date().toISOString()
+        completed_at: new Date().toISOString(),
       })
       .eq('id', attemptId);
 
@@ -289,7 +289,7 @@ export async function saveAssessmentAttempt(attemptData) {
       timeTaken,
       difficultyBreakdown,
       startedAt,
-      completedAt
+      completedAt,
     } = attemptData;
 
     const { data, error } = await supabase
@@ -307,7 +307,7 @@ export async function saveAssessmentAttempt(attemptData) {
         time_taken: timeTaken,
         difficulty_breakdown: difficultyBreakdown,
         started_at: startedAt,
-        completed_at: completedAt
+        completed_at: completedAt,
       })
       .select()
       .single();
@@ -318,7 +318,7 @@ export async function saveAssessmentAttempt(attemptData) {
         return {
           success: false,
           data: null,
-          error: 'You have already completed this assessment'
+          error: 'You have already completed this assessment',
         };
       }
       throw error;
@@ -327,14 +327,14 @@ export async function saveAssessmentAttempt(attemptData) {
     return {
       success: true,
       data: data,
-      error: null
+      error: null,
     };
   } catch (error) {
     console.error('Error saving assessment attempt:', error);
     return {
       success: false,
       data: null,
-      error: error.message || 'Failed to save assessment attempt'
+      error: error.message || 'Failed to save assessment attempt',
     };
   }
 }

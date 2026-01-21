@@ -1,9 +1,9 @@
 /**
  * TextQuestion Component
- * 
+ *
  * Renders a text input question for open-ended responses.
  * Used for reflection questions in middle school and high school assessments.
- * 
+ *
  * @module features/assessment/career-test/components/questions/TextQuestion
  */
 
@@ -29,7 +29,7 @@ export const TextQuestion: React.FC<TextQuestionProps> = ({
   placeholder = 'Type your answer here...',
   value = '',
   onAnswer,
-  minLength = 10
+  minLength = 10,
 }) => {
   const charCount = value?.length || 0;
   const isValid = charCount >= minLength;
@@ -37,9 +37,7 @@ export const TextQuestion: React.FC<TextQuestionProps> = ({
   return (
     <div className="space-y-6">
       {/* Question Text */}
-      <h3 className="text-xl md:text-2xl font-medium text-gray-800 leading-snug">
-        {questionText}
-      </h3>
+      <h3 className="text-xl md:text-2xl font-medium text-gray-800 leading-snug">{questionText}</h3>
 
       {/* Text Area */}
       <motion.div
@@ -65,13 +63,14 @@ export const TextQuestion: React.FC<TextQuestionProps> = ({
             resize-none
             transition-all duration-200
             focus:outline-none focus:ring-2 focus:ring-offset-2
-            ${isValid 
-              ? 'border-green-300 focus:border-green-500 focus:ring-green-500/20' 
-              : 'border-gray-200 focus:border-indigo-500 focus:ring-indigo-500/20'
+            ${
+              isValid
+                ? 'border-green-300 focus:border-green-500 focus:ring-green-500/20'
+                : 'border-gray-200 focus:border-indigo-500 focus:ring-indigo-500/20'
             }
           `}
         />
-        
+
         {/* Character Count */}
         <div className="flex justify-between items-center mt-2 px-1">
           <span className={`text-sm ${isValid ? 'text-green-600' : 'text-gray-500'}`}>

@@ -1,11 +1,6 @@
 // University AI Types
 
-export type CounsellingTopic = 
-  | 'academic'
-  | 'career'
-  | 'performance'
-  | 'wellbeing'
-  | 'general';
+export type CounsellingTopic = 'academic' | 'career' | 'performance' | 'wellbeing' | 'general';
 
 export interface Message {
   id: string;

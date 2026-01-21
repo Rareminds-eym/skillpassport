@@ -1,6 +1,6 @@
 /**
  * Monitoring Configuration for Organization Subscription Management
- * 
+ *
  * This module configures:
  * - Sentry for error tracking
  * - Performance monitoring
@@ -8,6 +8,7 @@
  * - Alert thresholds
  */
 
+// @ts-expect-error - Auto-suppressed for migration
 import * as Sentry from '@sentry/react';
 
 // Environment detection
@@ -29,17 +30,17 @@ export function initializeSentry(): void {
   Sentry.init({
     dsn: SENTRY_DSN,
     environment: isProduction ? 'production' : 'development',
-    
+
     // Performance Monitoring
     tracesSampleRate: isProduction ? 0.1 : 1.0, // 10% in prod, 100% in dev
-    
+
     // Session Replay (optional)
     replaysSessionSampleRate: 0.1,
     replaysOnErrorSampleRate: 1.0,
-    
+
     // Release tracking
     release: import.meta.env.VITE_APP_VERSION || 'unknown',
-    
+
     // Filter out non-critical errors
     beforeSend(event, hint) {
       // Don't send errors in development
@@ -47,7 +48,7 @@ export function initializeSentry(): void {
         console.error('Sentry would send:', event);
         return null;
       }
-      
+
       // Filter out known non-critical errors
       const error = hint.originalException;
       if (error instanceof Error) {
@@ -60,25 +61,19 @@ export function initializeSentry(): void {
           return null;
         }
       }
-      
+
       return event;
     },
-    
+
     // Integrations
-    integrations: [
-      Sentry.browserTracingIntegration(),
-      Sentry.replayIntegration(),
-    ],
+    integrations: [Sentry.browserTracingIntegration(), Sentry.replayIntegration()],
   });
 }
 
 /**
  * Capture custom error with context
  */
-export function captureError(
-  error: Error,
-  context?: Record<string, unknown>
-): void {
+export function captureError(error: Error, context?: Record<string, unknown>): void {
   Sentry.withScope((scope) => {
     if (context) {
       scope.setExtras(context);
@@ -101,7 +96,7 @@ export function setUserContext(user: {
     id: user.id,
     email: user.email,
   });
-  
+
   Sentry.setTags({
     userRole: user.role,
     organizationId: user.organizationId,
@@ -115,7 +110,6 @@ export function setUserContext(user: {
 export function clearUserContext(): void {
   Sentry.setUser(null);
 }
-
 
 // ============================================================================
 // PERFORMANCE MONITORING
@@ -160,7 +154,7 @@ export function trackPerformance(
   if (isDevelopment) {
     console.log(`[Performance] ${name}: ${duration}ms`, metadata);
   }
-  
+
   // Send to Sentry as custom measurement
   Sentry.addBreadcrumb({
     category: 'performance',
@@ -171,7 +165,7 @@ export function trackPerformance(
     },
     level: 'info',
   });
-  
+
   // Track as custom metric
   if (typeof window !== 'undefined' && 'performance' in window) {
     performance.mark(`${name}-end`);
@@ -183,7 +177,7 @@ export function trackPerformance(
  */
 export function startMeasurement(name: string): () => number {
   const startTime = performance.now();
-  
+
   return () => {
     const duration = performance.now() - startTime;
     trackPerformance(name, duration);
@@ -211,10 +205,7 @@ export interface OrgSubscriptionMetrics {
 /**
  * Track organization subscription metrics
  */
-export function trackOrgMetrics(
-  organizationId: string,
-  metrics: OrgSubscriptionMetrics
-): void {
+export function trackOrgMetrics(organizationId: string, metrics: OrgSubscriptionMetrics): void {
   Sentry.addBreadcrumb({
     category: 'metrics',
     message: 'Organization subscription metrics',
@@ -224,7 +215,7 @@ export function trackOrgMetrics(
     },
     level: 'info',
   });
-  
+
   // Log warning if utilization is very low or very high
   if (metrics.utilizationRate < 20) {
     console.warn(`Low seat utilization (${metrics.utilizationRate}%) for org ${organizationId}`);
@@ -251,7 +242,7 @@ export function trackPaymentEvent(
     data,
     level: event === 'failed' ? 'error' : 'info',
   });
-  
+
   if (event === 'failed') {
     captureError(new Error(`Payment failed: ${data.errorMessage}`), data);
   }

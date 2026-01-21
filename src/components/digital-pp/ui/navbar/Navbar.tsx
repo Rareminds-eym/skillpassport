@@ -1,7 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, User, BookOpen, ArrowRight, Palette, Layout, Download, Share2, Video } from 'lucide-react';
+import {
+  Menu,
+  X,
+  User,
+  BookOpen,
+  ArrowRight,
+  Palette,
+  Layout,
+  Download,
+  Share2,
+  Video,
+} from 'lucide-react';
 import ThemeToggle from '../../../../components/digital-pp/ThemeToggle';
 
 const Navbar: React.FC = () => {
@@ -22,26 +33,30 @@ const Navbar: React.FC = () => {
       {/* Navbar - Folds on Scroll */}
       <motion.nav
         initial={{ y: 0 }}
-        animate={{ 
+        animate={{
           y: 0,
-          height: isScrolled ? '48px' : '80px'
+          height: isScrolled ? '48px' : '80px',
         }}
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          isScrolled 
-            ? 'bg-white/98 dark:bg-transparent backdrop-blur-md shadow-lg' 
+          isScrolled
+            ? 'bg-white/98 dark:bg-transparent backdrop-blur-md shadow-lg'
             : 'bg-white/80 dark:bg-transparent backdrop-blur-sm'
         }`}
       >
-        <div className={`max-w-7xl mx-auto h-full flex items-center justify-between transition-all duration-300 ${
-          isScrolled ? 'px-1' : 'px-3'
-        }`}>
-          
+        <div
+          className={`max-w-7xl mx-auto h-full flex items-center justify-between transition-all duration-300 ${
+            isScrolled ? 'px-1' : 'px-3'
+          }`}
+        >
           {/* Company Logo - Left */}
-          <Link to="/" className={`flex items-center group transition-all duration-300 ${
-            isScrolled ? 'space-x-1.5' : 'space-x-2'
-          }`}>
+          <Link
+            to="/"
+            className={`flex items-center group transition-all duration-300 ${
+              isScrolled ? 'space-x-1.5' : 'space-x-2'
+            }`}
+          >
             <motion.img
-              src="/RareMinds.webp" 
+              src="/RareMinds.webp"
               alt="Rareminds Logo"
               whileHover={{ scale: 1.06 }}
               transition={{ duration: 0.6 }}
@@ -59,11 +74,11 @@ const Navbar: React.FC = () => {
           {/* Right Side - Theme Toggle and Menu */}
           <div className="flex items-center space-x-4">
             {/* Theme Toggle - Visible on desktop */}
-            <motion.div 
+            <motion.div
               className="hidden md:block"
-              animate={{ 
+              animate={{
                 scale: isScrolled ? 0.85 : 1,
-                opacity: isScrolled ? 0.8 : 1
+                opacity: isScrolled ? 0.8 : 1,
               }}
               transition={{ duration: 0.3 }}
             >
@@ -78,13 +93,17 @@ const Navbar: React.FC = () => {
               }`}
             >
               {isMobileMenuOpen ? (
-                <X className={`text-gray-700 dark:text-gray-300 transition-all duration-300 ${
-                  isScrolled ? 'w-5 h-5' : 'w-6 h-6'
-                }`} />
+                <X
+                  className={`text-gray-700 dark:text-gray-300 transition-all duration-300 ${
+                    isScrolled ? 'w-5 h-5' : 'w-6 h-6'
+                  }`}
+                />
               ) : (
-                <Menu className={`text-gray-700 dark:text-gray-300 transition-all duration-300 ${
-                  isScrolled ? 'w-5 h-5' : 'w-6 h-6'
-                }`} />
+                <Menu
+                  className={`text-gray-700 dark:text-gray-300 transition-all duration-300 ${
+                    isScrolled ? 'w-5 h-5' : 'w-6 h-6'
+                  }`}
+                />
               )}
             </button>
           </div>

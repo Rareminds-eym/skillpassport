@@ -25,7 +25,10 @@ interface GlobalPresenceProviderProps {
   userType: 'student' | 'recruiter' | 'educator';
 }
 
-export const GlobalPresenceProvider: React.FC<GlobalPresenceProviderProps> = ({ children, userType }) => {
+export const GlobalPresenceProvider: React.FC<GlobalPresenceProviderProps> = ({
+  children,
+  userType,
+}) => {
   const { user } = useAuth();
   const [userId, setUserId] = useState<string | null>(null);
   const [userName, setUserName] = useState<string>('User');
@@ -34,7 +37,10 @@ export const GlobalPresenceProvider: React.FC<GlobalPresenceProviderProps> = ({ 
   useEffect(() => {
     if (user?.id) {
       setUserId(user.id);
-      setUserName(user.name || (userType === 'student' ? 'Student' : userType === 'recruiter' ? 'Recruiter' : 'Educator'));
+      setUserName(
+        user.name ||
+          (userType === 'student' ? 'Student' : userType === 'recruiter' ? 'Recruiter' : 'Educator')
+      );
     }
   }, [user, userType]);
 
@@ -46,9 +52,9 @@ export const GlobalPresenceProvider: React.FC<GlobalPresenceProviderProps> = ({ 
       userName: userName,
       userType: userType,
       status: 'online',
-      lastSeen: new Date().toISOString()
+      lastSeen: new Date().toISOString(),
     },
-    enabled: !!userId
+    enabled: !!userId,
   });
 
   // Debug logging
@@ -59,9 +65,7 @@ export const GlobalPresenceProvider: React.FC<GlobalPresenceProviderProps> = ({ 
   }, [userId, userName, userType, presenceData.onlineUsers]);
 
   return (
-    <GlobalPresenceContext.Provider value={presenceData}>
-      {children}
-    </GlobalPresenceContext.Provider>
+    <GlobalPresenceContext.Provider value={presenceData}>{children}</GlobalPresenceContext.Provider>
   );
 };
 
@@ -70,7 +74,7 @@ export const GlobalPresenceProvider: React.FC<GlobalPresenceProviderProps> = ({ 
  */
 export const useGlobalPresence = (): GlobalPresenceContextType => {
   const context = useContext(GlobalPresenceContext);
-  
+
   if (!context) {
     // Return safe defaults
     return {
@@ -79,10 +83,10 @@ export const useGlobalPresence = (): GlobalPresenceContextType => {
       getUserStatus: () => 'offline',
       updateStatus: async () => {},
       isConnected: false,
-      onlineCount: 0
+      onlineCount: 0,
     };
   }
-  
+
   return context;
 };
 

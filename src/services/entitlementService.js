@@ -1,6 +1,6 @@
 /**
  * EntitlementService
- * 
+ *
  * Service for managing user entitlements for add-on subscriptions including:
  * - Getting user entitlements
  * - Checking feature access (plan OR add-on entitlement)
@@ -8,7 +8,7 @@
  * - Cancelling add-ons
  * - Managing auto-renewal
  * - Calculating total costs
- * 
+ *
  * @requirement REQ-3.2 - Entitlement Service
  */
 
@@ -17,7 +17,7 @@ import { supabase } from '../lib/supabaseClient';
 class EntitlementService {
   /**
    * Get all entitlements for a user
-   * 
+   *
    * @param {string} userId - The user's UUID
    * @returns {Promise<{success: boolean, data?: Array, error?: string}>}
    */
@@ -50,9 +50,9 @@ class EntitlementService {
    * Access is granted if:
    * 1. User's subscription plan includes the feature (is_included = true), OR
    * 2. User has an active entitlement for that feature_key
-   * 
+   *
    * Note: Cancelled subscriptions still grant access until subscription_end_date
-   * 
+   *
    * @param {string} userId - The user's UUID
    * @param {string} featureKey - The feature_key to check
    * @returns {Promise<{success: boolean, data?: {hasAccess: boolean, accessSource: 'plan'|'addon'|'bundle'|null}, error?: string}>}
@@ -95,13 +95,18 @@ class EntitlementService {
               .eq('feature_key', featureKey)
               .single();
 
-            console.log(`[EntitlementService] Plan feature check (cancelled):`, { planFeature, featureError });
+            console.log(`[EntitlementService] Plan feature check (cancelled):`, {
+              planFeature,
+              featureError,
+            });
 
             if (!featureError && planFeature?.is_included) {
-              console.log(`[EntitlementService] Access granted via cancelled plan (until ${subscription.subscription_end_date}) for ${featureKey}`);
+              console.log(
+                `[EntitlementService] Access granted via cancelled plan (until ${subscription.subscription_end_date}) for ${featureKey}`
+              );
               return {
                 success: true,
-                data: { hasAccess: true, accessSource: 'plan' }
+                data: { hasAccess: true, accessSource: 'plan' },
               };
             }
           }
@@ -120,7 +125,7 @@ class EntitlementService {
             console.log(`[EntitlementService] Access granted via plan for ${featureKey}`);
             return {
               success: true,
-              data: { hasAccess: true, accessSource: 'plan' }
+              data: { hasAccess: true, accessSource: 'plan' },
             };
           }
         }
@@ -143,14 +148,14 @@ class EntitlementService {
         console.log(`[EntitlementService] Access granted via ${accessSource} for ${featureKey}`);
         return {
           success: true,
-          data: { hasAccess: true, accessSource }
+          data: { hasAccess: true, accessSource },
         };
       }
 
       console.log(`[EntitlementService] No access for ${featureKey}`);
       return {
         success: true,
-        data: { hasAccess: false, accessSource: null }
+        data: { hasAccess: false, accessSource: null },
       };
     } catch (error) {
       console.error('Error in hasFeatureAccess:', error);
@@ -158,11 +163,10 @@ class EntitlementService {
     }
   }
 
-
   /**
    * Activate an add-on for a user
    * Creates a new entitlement record
-   * 
+   *
    * @param {string} userId - The user's UUID
    * @param {string} featureKey - The feature_key to activate
    * @param {'monthly'|'annual'} billingPeriod - The billing period
@@ -200,9 +204,8 @@ class EntitlementService {
       }
 
       // Get the price based on billing period
-      const price = billingPeriod === 'monthly' 
-        ? addOn.addon_price_monthly 
-        : addOn.addon_price_annual;
+      const price =
+        billingPeriod === 'monthly' ? addOn.addon_price_monthly : addOn.addon_price_annual;
 
       // Create the entitlement
       const { data: entitlement, error: insertError } = await supabase
@@ -215,7 +218,7 @@ class EntitlementService {
           start_date: startDate.toISOString(),
           end_date: endDate.toISOString(),
           auto_renew: true,
-          price_at_purchase: price
+          price_at_purchase: price,
         })
         .select()
         .single();
@@ -235,7 +238,7 @@ class EntitlementService {
   /**
    * Activate a bundle for a user
    * Creates entitlements for all features in the bundle
-   * 
+   *
    * @param {string} userId - The user's UUID
    * @param {string} bundleId - The bundle UUID
    * @param {'monthly'|'annual'} billingPeriod - The billing period
@@ -263,8 +266,8 @@ class EntitlementService {
         return { success: false, error: 'BUNDLE_NOT_FOUND' };
       }
 
-      const featureKeys = bundle.bundle_features?.map(bf => bf.feature_key) || [];
-      
+      const featureKeys = bundle.bundle_features?.map((bf) => bf.feature_key) || [];
+
       if (featureKeys.length === 0) {
         return { success: false, error: 'Bundle has no features' };
       }
@@ -279,15 +282,13 @@ class EntitlementService {
       }
 
       // Get the bundle price based on billing period
-      const bundlePrice = billingPeriod === 'monthly' 
-        ? bundle.monthly_price 
-        : bundle.annual_price;
+      const bundlePrice = billingPeriod === 'monthly' ? bundle.monthly_price : bundle.annual_price;
 
       // Calculate price per feature (distribute bundle price across features)
       const pricePerFeature = bundlePrice / featureKeys.length;
 
       // Create entitlements for all features in the bundle
-      const entitlements = featureKeys.map(featureKey => ({
+      const entitlements = featureKeys.map((featureKey) => ({
         user_id: userId,
         feature_key: featureKey,
         bundle_id: bundleId,
@@ -296,7 +297,7 @@ class EntitlementService {
         start_date: startDate.toISOString(),
         end_date: endDate.toISOString(),
         auto_renew: true,
-        price_at_purchase: pricePerFeature
+        price_at_purchase: pricePerFeature,
       }));
 
       const { data: createdEntitlements, error: insertError } = await supabase
@@ -316,12 +317,11 @@ class EntitlementService {
     }
   }
 
-
   /**
    * Cancel an add-on entitlement
    * Sets status to 'cancelled' and records cancellation time
    * Access is maintained until end_date
-   * 
+   *
    * @param {string} entitlementId - The entitlement UUID
    * @returns {Promise<{success: boolean, data?: Object, error?: string}>}
    */
@@ -337,7 +337,7 @@ class EntitlementService {
           status: 'cancelled',
           auto_renew: false,
           cancelled_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', entitlementId)
         .select()
@@ -360,7 +360,7 @@ class EntitlementService {
 
   /**
    * Toggle auto-renewal for an entitlement
-   * 
+   *
    * @param {string} entitlementId - The entitlement UUID
    * @param {boolean} autoRenew - Whether to enable auto-renewal
    * @returns {Promise<{success: boolean, data?: Object, error?: string}>}
@@ -379,7 +379,7 @@ class EntitlementService {
         .from('user_entitlements')
         .update({
           auto_renew: autoRenew,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', entitlementId)
         .select()
@@ -403,7 +403,7 @@ class EntitlementService {
   /**
    * Calculate total cost of all active entitlements for a user
    * Returns both monthly and annual equivalent costs
-   * 
+   *
    * @param {string} userId - The user's UUID
    * @returns {Promise<{success: boolean, data?: {monthly: number, annual: number}, error?: string}>}
    */
@@ -428,9 +428,9 @@ class EntitlementService {
       let monthlyTotal = 0;
       let annualTotal = 0;
 
-      (entitlements || []).forEach(ent => {
+      (entitlements || []).forEach((ent) => {
         const price = parseFloat(ent.price_at_purchase) || 0;
-        
+
         if (ent.billing_period === 'monthly') {
           monthlyTotal += price;
           annualTotal += price * 12;
@@ -444,8 +444,8 @@ class EntitlementService {
         success: true,
         data: {
           monthly: Math.round(monthlyTotal * 100) / 100,
-          annual: Math.round(annualTotal * 100) / 100
-        }
+          annual: Math.round(annualTotal * 100) / 100,
+        },
       };
     } catch (error) {
       console.error('Error in calculateTotalCost:', error);
@@ -456,7 +456,7 @@ class EntitlementService {
   /**
    * Apply grace period to an entitlement (for failed renewals)
    * Extends access by 7 days with 'grace_period' status
-   * 
+   *
    * @param {string} entitlementId - The entitlement UUID
    * @returns {Promise<{success: boolean, data?: Object, error?: string}>}
    */
@@ -486,7 +486,7 @@ class EntitlementService {
         .update({
           status: 'grace_period',
           end_date: newEndDate.toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', entitlementId)
         .select()
@@ -507,7 +507,7 @@ class EntitlementService {
   /**
    * Get entitlements expiring within a specified number of days
    * Useful for sending renewal reminders
-   * 
+   *
    * @param {number} daysUntilExpiry - Number of days until expiry
    * @returns {Promise<{success: boolean, data?: Array, error?: string}>}
    */
@@ -544,7 +544,7 @@ class EntitlementService {
   /**
    * Check if user has access to a feature (simplified boolean return)
    * Used by FeatureGate component
-   * 
+   *
    * @param {string} userId - The user's UUID
    * @param {string} featureKey - The feature_key to check
    * @returns {Promise<boolean>} - Whether user has access
@@ -557,7 +557,7 @@ class EntitlementService {
   /**
    * Get add-on details by feature key
    * Used by FeatureGate component to display pricing
-   * 
+   *
    * @param {string} featureKey - The feature_key to look up
    * @returns {Promise<Object|null>} - Add-on details or null
    */
@@ -565,7 +565,9 @@ class EntitlementService {
     try {
       const { data, error } = await supabase
         .from('subscription_plan_features')
-        .select('id, feature_key, feature_name, category, addon_price_monthly, addon_price_annual, addon_description, icon_url')
+        .select(
+          'id, feature_key, feature_name, category, addon_price_monthly, addon_price_annual, addon_description, icon_url'
+        )
         .eq('feature_key', featureKey)
         .eq('is_addon', true)
         .limit(1)
@@ -597,7 +599,7 @@ class EntitlementService {
 
   /**
    * Get all available add-ons
-   * 
+   *
    * @param {Object} filters - Optional filters
    * @param {string} filters.category - Filter by category
    * @param {string} filters.role - Filter by target role
@@ -607,7 +609,9 @@ class EntitlementService {
     try {
       let query = supabase
         .from('subscription_plan_features')
-        .select('id, feature_key, feature_name, category, addon_price_monthly, addon_price_annual, addon_description, target_roles, icon_url, sort_order_addon')
+        .select(
+          'id, feature_key, feature_name, category, addon_price_monthly, addon_price_annual, addon_description, target_roles, icon_url, sort_order_addon'
+        )
         .eq('is_addon', true)
         .order('sort_order_addon', { ascending: true });
 
@@ -628,7 +632,7 @@ class EntitlementService {
 
       // Transform to expected format and deduplicate by feature_key
       const uniqueAddons = new Map();
-      (data || []).forEach(addon => {
+      (data || []).forEach((addon) => {
         if (!uniqueAddons.has(addon.feature_key)) {
           uniqueAddons.set(addon.feature_key, {
             id: addon.id,
@@ -658,4 +662,3 @@ export default entitlementService;
 
 // Also export the class for testing purposes
 export { EntitlementService };
-

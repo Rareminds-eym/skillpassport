@@ -1,6 +1,6 @@
 /**
  * MemberSubscriptionPage
- * 
+ *
  * Wrapper page component for MemberSubscriptionView.
  * Shows members their organization-provided subscription and personal add-ons.
  */
@@ -44,17 +44,17 @@ const AVAILABLE_ADDONS = [
 function MemberSubscriptionPage() {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
-  
+
   // Check if user has organization subscription
   const hasOrganizationSubscription = useMemo(() => {
     // In production, check user's subscription status
     return !!(user?.school_id || user?.college_id || user?.university_id);
   }, [user]);
-  
+
   // Organization info
   const organization = useMemo(() => {
     if (!hasOrganizationSubscription) return undefined;
-    
+
     const type = user?.school_id ? 'school' : user?.college_id ? 'college' : 'university';
     return {
       id: user?.school_id || user?.college_id || user?.university_id || '',
@@ -64,15 +64,15 @@ function MemberSubscriptionPage() {
       adminEmail: 'admin@organization.com',
     };
   }, [hasOrganizationSubscription, user]);
-  
+
   // Subscription info - in production, fetch from service
   const subscription = useMemo(() => {
     if (!hasOrganizationSubscription) return undefined;
-    
+
     const now = new Date();
     const endDate = new Date(now);
     endDate.setMonth(endDate.getMonth() + 6);
-    
+
     return {
       planName: 'Professional Plan',
       startDate: now,
@@ -81,44 +81,70 @@ function MemberSubscriptionPage() {
       autoRenew: true,
     };
   }, [hasOrganizationSubscription]);
-  
+
   // Organization features - in production, fetch from service
-  const organizationFeatures = useMemo(() => [
-    { id: '1', name: 'Skill Assessments', description: 'Access to all skill assessments', isActive: true },
-    { id: '2', name: 'Learning Courses', description: 'Full course library access', isActive: true },
-    { id: '3', name: 'Digital Portfolio', description: 'Create and share your portfolio', isActive: true },
-    { id: '4', name: 'Career Guidance', description: 'Basic career guidance tools', isActive: true },
-  ], []);
-  
+  const organizationFeatures = useMemo(
+    () => [
+      {
+        id: '1',
+        name: 'Skill Assessments',
+        description: 'Access to all skill assessments',
+        isActive: true,
+      },
+      {
+        id: '2',
+        name: 'Learning Courses',
+        description: 'Full course library access',
+        isActive: true,
+      },
+      {
+        id: '3',
+        name: 'Digital Portfolio',
+        description: 'Create and share your portfolio',
+        isActive: true,
+      },
+      {
+        id: '4',
+        name: 'Career Guidance',
+        description: 'Basic career guidance tools',
+        isActive: true,
+      },
+    ],
+    []
+  );
+
   // Purchased add-ons - in production, fetch from service
   const purchasedAddOns = useMemo(() => [], []);
-  
+
   // Handlers
-  const handlePurchaseAddOn = useCallback((addOnId: string) => {
-    const addOn = AVAILABLE_ADDONS.find(a => a.id === addOnId);
-    if (addOn) {
-      navigate('/subscription/payment', {
-        state: {
-          plan: addOn,
-          isAddOn: true,
-        },
-      });
-    }
-  }, [navigate]);
-  
+  const handlePurchaseAddOn = useCallback(
+    (addOnId: string) => {
+      const addOn = AVAILABLE_ADDONS.find((a) => a.id === addOnId);
+      if (addOn) {
+        navigate('/subscription/payment', {
+          state: {
+            plan: addOn,
+            isAddOn: true,
+          },
+        });
+      }
+    },
+    [navigate]
+  );
+
   const handleManageAddOn = useCallback((_addOnId: string) => {
     toast.success('Opening add-on management...');
   }, []);
-  
+
   const handleContactAdmin = useCallback(() => {
     toast.success('Opening contact form...');
     // In production, open a contact modal or navigate to messaging
   }, []);
-  
+
   const handleDismissWarning = useCallback(() => {
     // In production, save dismissal preference
   }, []);
-  
+
   // Check if user is authenticated
   if (!isAuthenticated || !user) {
     return (
@@ -136,14 +162,14 @@ function MemberSubscriptionPage() {
       </div>
     );
   }
-  
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">My Subscription</h1>
         <p className="text-gray-500 mt-1">View your subscription benefits and available add-ons</p>
       </div>
-      
+
       <MemberSubscriptionView
         hasOrganizationSubscription={hasOrganizationSubscription}
         organization={organization}

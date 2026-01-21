@@ -47,31 +47,31 @@ const extractAIResponse = (response: unknown): string => {
   if (typeof response === 'string') {
     return response;
   }
-  
+
   // Handle null/undefined
   if (response == null) {
     return 'No response received';
   }
-  
+
   // Handle object responses
   if (typeof response === 'object') {
     const obj = response as Record<string, unknown>;
-    
+
     // Handle {text: string} format
     if (typeof obj.text === 'string') {
       return obj.text;
     }
-    
+
     // Handle {message: {content: string}} format
     if (obj.message && typeof (obj.message as Record<string, unknown>).content === 'string') {
       return (obj.message as Record<string, unknown>).content as string;
     }
-    
+
     // Handle {content: string} format
     if (typeof obj.content === 'string') {
       return obj.content;
     }
-    
+
     // Handle toString method
     if (typeof obj.toString === 'function' && obj.toString !== Object.prototype.toString) {
       const str = obj.toString();
@@ -79,24 +79,24 @@ const extractAIResponse = (response: unknown): string => {
         return str;
       }
     }
-    
+
     // Fallback to JSON
     return JSON.stringify(response);
   }
-  
+
   return String(response);
 };
 
 // Progress stages for image generation
 const PROGRESS_STAGES = [
-  { threshold: 5, message: "Initializing AI model...", emoji: "🚀" },
-  { threshold: 15, message: "Analyzing your prompt...", emoji: "🔍" },
-  { threshold: 30, message: "Understanding composition...", emoji: "🎨" },
-  { threshold: 50, message: "Generating base image...", emoji: "✨" },
-  { threshold: 70, message: "Adding details and textures...", emoji: "🖌️" },
-  { threshold: 85, message: "Enhancing colors and lighting...", emoji: "💡" },
-  { threshold: 95, message: "Finalizing your masterpiece...", emoji: "🎯" },
-  { threshold: 100, message: "Complete!", emoji: "✅" },
+  { threshold: 5, message: 'Initializing AI model...', emoji: '🚀' },
+  { threshold: 15, message: 'Analyzing your prompt...', emoji: '🔍' },
+  { threshold: 30, message: 'Understanding composition...', emoji: '🎨' },
+  { threshold: 50, message: 'Generating base image...', emoji: '✨' },
+  { threshold: 70, message: 'Adding details and textures...', emoji: '🖌️' },
+  { threshold: 85, message: 'Enhancing colors and lighting...', emoji: '💡' },
+  { threshold: 95, message: 'Finalizing your masterpiece...', emoji: '🎯' },
+  { threshold: 100, message: 'Complete!', emoji: '✅' },
 ];
 
 // Get current stage based on progress
@@ -226,12 +226,66 @@ const PROMPT_QUALITY_TAGS = [
 ];
 
 const PROMPT_PRESETS = [
-  { name: '📸 Portrait Photo', subject: 'beautiful portrait of a person', style: 'photorealistic', lighting: 'studio lighting', camera: 'portrait shot', mood: '', colors: '', quality: ['highly detailed', 'sharp focus', 'professional'] },
-  { name: '🎌 Anime Character', subject: 'anime character', style: 'anime', lighting: 'soft light', camera: 'portrait shot', mood: 'cheerful', colors: 'vibrant colors', quality: ['highly detailed'] },
-  { name: '🏔️ Epic Landscape', subject: 'majestic mountain landscape', style: 'digital art', lighting: 'golden hour', camera: 'panoramic view', mood: 'epic', colors: 'vibrant colors', quality: ['8K resolution', 'highly detailed'] },
-  { name: '🐉 Fantasy Scene', subject: 'dragon flying over castle', style: 'fantasy art', lighting: 'dramatic lighting', camera: 'wide angle shot', mood: 'epic', colors: 'vibrant colors', quality: ['masterpiece', 'highly detailed'] },
-  { name: '🤖 Cyberpunk City', subject: 'futuristic cyberpunk city street', style: 'cyberpunk', lighting: 'neon lighting', camera: 'wide angle shot', mood: 'mysterious', colors: 'neon colors', quality: ['8K resolution', 'highly detailed'] },
-  { name: '🖼️ Classic Painting', subject: 'serene countryside scene', style: 'oil painting', lighting: 'natural lighting', camera: 'wide angle shot', mood: 'peaceful', colors: 'warm tones', quality: ['masterpiece'] },
+  {
+    name: '📸 Portrait Photo',
+    subject: 'beautiful portrait of a person',
+    style: 'photorealistic',
+    lighting: 'studio lighting',
+    camera: 'portrait shot',
+    mood: '',
+    colors: '',
+    quality: ['highly detailed', 'sharp focus', 'professional'],
+  },
+  {
+    name: '🎌 Anime Character',
+    subject: 'anime character',
+    style: 'anime',
+    lighting: 'soft light',
+    camera: 'portrait shot',
+    mood: 'cheerful',
+    colors: 'vibrant colors',
+    quality: ['highly detailed'],
+  },
+  {
+    name: '🏔️ Epic Landscape',
+    subject: 'majestic mountain landscape',
+    style: 'digital art',
+    lighting: 'golden hour',
+    camera: 'panoramic view',
+    mood: 'epic',
+    colors: 'vibrant colors',
+    quality: ['8K resolution', 'highly detailed'],
+  },
+  {
+    name: '🐉 Fantasy Scene',
+    subject: 'dragon flying over castle',
+    style: 'fantasy art',
+    lighting: 'dramatic lighting',
+    camera: 'wide angle shot',
+    mood: 'epic',
+    colors: 'vibrant colors',
+    quality: ['masterpiece', 'highly detailed'],
+  },
+  {
+    name: '🤖 Cyberpunk City',
+    subject: 'futuristic cyberpunk city street',
+    style: 'cyberpunk',
+    lighting: 'neon lighting',
+    camera: 'wide angle shot',
+    mood: 'mysterious',
+    colors: 'neon colors',
+    quality: ['8K resolution', 'highly detailed'],
+  },
+  {
+    name: '🖼️ Classic Painting',
+    subject: 'serene countryside scene',
+    style: 'oil painting',
+    lighting: 'natural lighting',
+    camera: 'wide angle shot',
+    mood: 'peaceful',
+    colors: 'warm tones',
+    quality: ['masterpiece'],
+  },
 ];
 
 interface Message {
@@ -262,11 +316,13 @@ const renderMessageContent = (content: unknown): string => {
     }
     // Handle array of objects like [{type, text}]
     if (Array.isArray(content)) {
-      return content.map(item => {
-        if (typeof item === 'string') return item;
-        if (typeof item?.text === 'string') return item.text;
-        return JSON.stringify(item);
-      }).join('\n');
+      return content
+        .map((item) => {
+          if (typeof item === 'string') return item;
+          if (typeof item?.text === 'string') return item.text;
+          return JSON.stringify(item);
+        })
+        .join('\n');
     }
     return JSON.stringify(content);
   }
@@ -285,17 +341,17 @@ const PuterDemo = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  
+
   // Puter state
   const [puterLoaded, setPuterLoaded] = useState(false);
   const [puterUser, setPuterUser] = useState<PuterUser | null>(null);
   const [authLoading, setAuthLoading] = useState(false);
   const [puterUsage, setPuterUsage] = useState<Record<string, unknown> | null>(null);
-  
+
   // Database state
   const [tables, setTables] = useState<TableData[]>([]);
   const [loadingTables, setLoadingTables] = useState(true);
-  
+
   // Image generation state
   const [imagePrompt, setImagePrompt] = useState('');
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
@@ -304,12 +360,12 @@ const PuterDemo = () => {
   const [selectedQuality, setSelectedQuality] = useState('hd');
   const [imageHistory, setImageHistory] = useState<{ prompt: string; src: string }[]>([]);
   const [imageError, setImageError] = useState<string | null>(null);
-  
+
   // Progress tracking state
   const [imageProgress, setImageProgress] = useState(0);
   const [generationStartTime, setGenerationStartTime] = useState<number | null>(null);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  
+
   // Prompt Builder state
   const [usePromptBuilder, setUsePromptBuilder] = useState(true);
   const [promptSubject, setPromptSubject] = useState('');
@@ -320,12 +376,12 @@ const PuterDemo = () => {
   const [promptColors, setPromptColors] = useState('');
   const [promptQualityTags, setPromptQualityTags] = useState<string[]>(['highly detailed']);
   const [negativePrompt, setNegativePrompt] = useState('');
-  
+
   // Download options state
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
   const [downloadQuality, setDownloadQuality] = useState(0.9);
   const [isDownloading, setIsDownloading] = useState(false);
-  
+
   // UI state
   const [activeTab, setActiveTab] = useState<'chat' | 'database' | 'image'>('chat');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -338,7 +394,7 @@ const PuterDemo = () => {
         setShowDownloadMenu(false);
       }
     };
-    
+
     if (showDownloadMenu) {
       document.addEventListener('mousedown', handleClickOutside);
     }
@@ -441,9 +497,27 @@ const PuterDemo = () => {
       setLoadingTables(true);
       try {
         const tablesToFetch = [
-          { name: 'students', query: supabase.from('students').select('id, name, email, college_school_name, grade').limit(5) },
-          { name: 'courses', query: supabase.from('courses').select('course_id, title, code, status, duration').limit(5) },
-          { name: 'opportunities', query: supabase.from('opportunities').select('id, title, company_name, employment_type, location').limit(5) },
+          {
+            name: 'students',
+            query: supabase
+              .from('students')
+              .select('id, name, email, college_school_name, grade')
+              .limit(5),
+          },
+          {
+            name: 'courses',
+            query: supabase
+              .from('courses')
+              .select('course_id, title, code, status, duration')
+              .limit(5),
+          },
+          {
+            name: 'opportunities',
+            query: supabase
+              .from('opportunities')
+              .select('id, title, company_name, employment_type, location')
+              .limit(5),
+          },
         ];
 
         const results: TableData[] = [];
@@ -478,30 +552,46 @@ const PuterDemo = () => {
     if (!puterUser) {
       const errorMessage: Message = {
         role: 'assistant',
-        content: '🔐 Please sign in with your Puter account to use AI chat. Puter accounts are free!',
+        content:
+          '🔐 Please sign in with your Puter account to use AI chat. Puter accounts are free!',
         timestamp: new Date(),
       };
-      setMessages(prev => [...prev, { role: 'user', content: input, timestamp: new Date() }, errorMessage]);
+      setMessages((prev) => [
+        ...prev,
+        { role: 'user', content: input, timestamp: new Date() },
+        errorMessage,
+      ]);
       setInput('');
       return;
     }
 
     const userMessage: Message = { role: 'user', content: input, timestamp: new Date() };
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setLoading(true);
 
     try {
-      const dbContext = tables.length > 0 
-        ? `\n\nDatabase Context:\n${tables.map(t => `- ${t.name}: [${t.columns.join(', ')}]`).join('\n')}`
-        : '';
+      const dbContext =
+        tables.length > 0
+          ? `\n\nDatabase Context:\n${tables.map((t) => `- ${t.name}: [${t.columns.join(', ')}]`).join('\n')}`
+          : '';
       const prompt = `You are a helpful AI assistant. ${dbContext}\n\nUser: ${input}`;
       const response = await window.puter.ai.chat(prompt, { model: 'gpt-4o-mini' });
       const responseText = extractAIResponse(response);
-      setMessages(prev => [...prev, { role: 'assistant', content: responseText, timestamp: new Date() }]);
+      setMessages((prev) => [
+        ...prev,
+        { role: 'assistant', content: responseText, timestamp: new Date() },
+      ]);
     } catch (error) {
       console.error('Puter AI error:', error);
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, an error occurred. Please try again.', timestamp: new Date() }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: 'Sorry, an error occurred. Please try again.',
+          timestamp: new Date(),
+        },
+      ]);
     } finally {
       setLoading(false);
     }
@@ -510,7 +600,7 @@ const PuterDemo = () => {
   // Generate prompt from builder
   const generateBuiltPrompt = (): string => {
     const parts: string[] = [];
-    
+
     if (promptSubject.trim()) {
       parts.push(promptSubject.trim());
     }
@@ -532,12 +622,12 @@ const PuterDemo = () => {
     if (promptQualityTags.length > 0) {
       parts.push(promptQualityTags.join(', '));
     }
-    
+
     return parts.join(', ');
   };
 
   // Apply preset to prompt builder
-  const applyPreset = (preset: typeof PROMPT_PRESETS[0]) => {
+  const applyPreset = (preset: (typeof PROMPT_PRESETS)[0]) => {
     setPromptSubject(preset.subject);
     setPromptStyle(preset.style);
     setPromptLighting(preset.lighting);
@@ -549,10 +639,8 @@ const PuterDemo = () => {
 
   // Toggle quality tag
   const toggleQualityTag = (tag: string) => {
-    setPromptQualityTags(prev => 
-      prev.includes(tag) 
-        ? prev.filter(t => t !== tag)
-        : [...prev, tag]
+    setPromptQualityTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
     );
   };
 
@@ -568,24 +656,30 @@ const PuterDemo = () => {
   const startProgressSimulation = () => {
     setImageProgress(0);
     setGenerationStartTime(Date.now());
-    
+
     // Clear any existing interval
     if (progressIntervalRef.current) {
       clearInterval(progressIntervalRef.current);
     }
-    
+
     // Simulate progress with variable speed
     let currentProgress = 0;
     progressIntervalRef.current = setInterval(() => {
       // Progress slows down as it approaches 95%
-      const increment = currentProgress < 30 ? 2 : 
-                       currentProgress < 60 ? 1.5 : 
-                       currentProgress < 80 ? 1 : 
-                       currentProgress < 95 ? 0.5 : 0;
-      
+      const increment =
+        currentProgress < 30
+          ? 2
+          : currentProgress < 60
+            ? 1.5
+            : currentProgress < 80
+              ? 1
+              : currentProgress < 95
+                ? 0.5
+                : 0;
+
       currentProgress = Math.min(95, currentProgress + increment);
       setImageProgress(currentProgress);
-      
+
       // Stop at 95% and wait for actual completion
       if (currentProgress >= 95) {
         if (progressIntervalRef.current) {
@@ -601,7 +695,7 @@ const PuterDemo = () => {
       clearInterval(progressIntervalRef.current);
       progressIntervalRef.current = null;
     }
-    
+
     if (success) {
       // Animate to 100%
       setImageProgress(100);
@@ -640,15 +734,19 @@ const PuterDemo = () => {
 
       console.log('Generating image with options:', options, 'prompt:', fullPrompt);
       const result = await window.puter.ai.txt2img(fullPrompt, options);
-      
+
       // Handle different response formats
       let imageSrc: string | null = null;
-      
+
       if (result instanceof HTMLImageElement) {
         imageSrc = result.src;
       } else if (typeof result === 'object' && result !== null) {
         // Check for error response
-        const resultObj = result as { success?: boolean; error?: { message?: string }; src?: string };
+        const resultObj = result as {
+          success?: boolean;
+          error?: { message?: string };
+          src?: string;
+        };
         if (resultObj.success === false) {
           throw new Error(resultObj.error?.message || 'Image generation failed');
         }
@@ -662,14 +760,14 @@ const PuterDemo = () => {
       if (!imageSrc) {
         throw new Error('No image was returned from the API');
       }
-      
+
       stopProgressSimulation(true);
       setGeneratedImage(imageSrc);
-      setImageHistory(prev => [{ prompt: finalPrompt, src: imageSrc! }, ...prev.slice(0, 4)]);
+      setImageHistory((prev) => [{ prompt: finalPrompt, src: imageSrc! }, ...prev.slice(0, 4)]);
     } catch (error: unknown) {
       console.error('Image generation error:', error);
       stopProgressSimulation(false);
-      
+
       // Extract error message - ensure it's always a string
       let errorMessage = 'Failed to generate image. ';
       try {
@@ -680,10 +778,11 @@ const PuterDemo = () => {
         } else if (typeof error === 'object' && error !== null) {
           const errObj = error as Record<string, unknown>;
           // Try to extract message from various possible structures
-          const msg = errObj.message || 
-                     (errObj.error as Record<string, unknown>)?.message ||
-                     (errObj.error as Record<string, unknown>)?.code ||
-                     JSON.stringify(error);
+          const msg =
+            errObj.message ||
+            (errObj.error as Record<string, unknown>)?.message ||
+            (errObj.error as Record<string, unknown>)?.code ||
+            JSON.stringify(error);
           errorMessage += typeof msg === 'string' ? msg : JSON.stringify(msg);
         } else {
           errorMessage += 'Unknown error occurred.';
@@ -691,7 +790,7 @@ const PuterDemo = () => {
       } catch {
         errorMessage += 'An unexpected error occurred.';
       }
-      
+
       setImageError(String(errorMessage));
     } finally {
       setImageLoading(false);
@@ -705,21 +804,24 @@ const PuterDemo = () => {
   };
 
   // Download generated image in various formats
-  const downloadImage = async (format: 'png' | 'jpg' | 'webp' | 'svg' | 'eps' = 'png', quality = downloadQuality) => {
+  const downloadImage = async (
+    format: 'png' | 'jpg' | 'webp' | 'svg' | 'eps' = 'png',
+    quality = downloadQuality
+  ) => {
     if (!generatedImage) return;
-    
+
     setIsDownloading(true);
     try {
       // Create image element
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.src = generatedImage;
-      
+
       await new Promise((resolve, reject) => {
         img.onload = resolve;
         img.onerror = reject;
       });
-      
+
       // Create canvas
       const canvas = document.createElement('canvas');
       canvas.width = img.width || 1024;
@@ -727,17 +829,17 @@ const PuterDemo = () => {
       const ctx = canvas.getContext('2d');
       if (!ctx) throw new Error('Could not get canvas context');
       ctx.drawImage(img, 0, 0);
-      
+
       let dataUrl: string;
       let filename: string;
       const timestamp = Date.now();
-      
+
       switch (format) {
         case 'png':
           dataUrl = canvas.toDataURL('image/png');
           filename = `puter-ai-${timestamp}.png`;
           break;
-        case 'jpg':
+        case 'jpg': {
           // Fill white background for JPG (no transparency)
           const jpgCanvas = document.createElement('canvas');
           jpgCanvas.width = canvas.width;
@@ -751,11 +853,12 @@ const PuterDemo = () => {
           dataUrl = jpgCanvas.toDataURL('image/jpeg', quality);
           filename = `puter-ai-${timestamp}.jpg`;
           break;
+        }
         case 'webp':
           dataUrl = canvas.toDataURL('image/webp', quality);
           filename = `puter-ai-${timestamp}.webp`;
           break;
-        case 'svg':
+        case 'svg': {
           // Create SVG with embedded image
           const base64Image = canvas.toDataURL('image/png');
           const svgContent = `<?xml version="1.0" encoding="UTF-8"?>
@@ -767,7 +870,8 @@ const PuterDemo = () => {
           dataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgContent);
           filename = `puter-ai-${timestamp}.svg`;
           break;
-        case 'eps':
+        }
+        case 'eps': {
           // Create EPS (Encapsulated PostScript) with embedded image for Adobe compatibility
           const epsBase64 = canvas.toDataURL('image/jpeg', 0.95).split(',')[1];
           const epsWidth = canvas.width;
@@ -813,7 +917,7 @@ showpage
           const epsBlob = new Blob([epsContent], { type: 'application/postscript' });
           dataUrl = URL.createObjectURL(epsBlob);
           filename = `puter-ai-${timestamp}.eps`;
-          
+
           // Download EPS blob
           const epsLink = document.createElement('a');
           epsLink.href = dataUrl;
@@ -825,11 +929,12 @@ showpage
           setShowDownloadMenu(false);
           setIsDownloading(false);
           return; // Early return for EPS
+        }
         default:
           dataUrl = canvas.toDataURL('image/png');
           filename = `puter-ai-${timestamp}.png`;
       }
-      
+
       // Download
       const link = document.createElement('a');
       link.href = dataUrl;
@@ -837,7 +942,7 @@ showpage
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       setShowDownloadMenu(false);
     } catch (error) {
       console.error('Download error:', error);
@@ -883,24 +988,32 @@ showpage
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-white mb-2">🚀 Puter.js AI Demo</h1>
           <p className="text-gray-300">AI Chat, Image Generation & Database Integration</p>
-          
+
           <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
-            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm ${
-              puterLoaded ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
-            }`}>
+            <span
+              className={`inline-flex items-center px-3 py-1 rounded-full text-sm ${
+                puterLoaded ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
+              }`}
+            >
               {puterLoaded ? '✓ Puter.js Ready' : '⏳ Loading...'}
             </span>
-            
-            {puterLoaded && (
-              puterUser ? (
+
+            {puterLoaded &&
+              (puterUser ? (
                 <div className="flex items-center gap-2">
                   <span className="px-3 py-1 rounded-full text-sm bg-blue-500/20 text-blue-400">
                     👤 {puterUser.username}
                   </span>
-                  <button onClick={fetchUsage} className="px-3 py-1 rounded-full text-sm bg-purple-500/20 text-purple-400 hover:bg-purple-500/30">
+                  <button
+                    onClick={fetchUsage}
+                    className="px-3 py-1 rounded-full text-sm bg-purple-500/20 text-purple-400 hover:bg-purple-500/30"
+                  >
                     📊 Usage
                   </button>
-                  <button onClick={handleSignOut} className="px-3 py-1 rounded-full text-sm bg-red-500/20 text-red-400 hover:bg-red-500/30">
+                  <button
+                    onClick={handleSignOut}
+                    className="px-3 py-1 rounded-full text-sm bg-red-500/20 text-red-400 hover:bg-red-500/30"
+                  >
                     Sign Out
                   </button>
                 </div>
@@ -912,12 +1025,13 @@ showpage
                 >
                   {authLoading ? '⏳ Signing in...' : '🔐 Sign in with Puter (Free)'}
                 </button>
-              )
-            )}
+              ))}
           </div>
-          
+
           {!puterUser && puterLoaded && (
-            <p className="text-yellow-400/80 text-sm mt-2">⚠️ Sign in required for AI features - Puter accounts are free!</p>
+            <p className="text-yellow-400/80 text-sm mt-2">
+              ⚠️ Sign in required for AI features - Puter accounts are free!
+            </p>
           )}
 
           {/* Usage Data Display */}
@@ -927,8 +1041,8 @@ showpage
                 <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                   📊 Your Puter Usage
                 </h3>
-                <button 
-                  onClick={fetchUsage} 
+                <button
+                  onClick={fetchUsage}
                   className="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1"
                 >
                   🔄 Refresh
@@ -936,28 +1050,66 @@ showpage
               </div>
 
               {/* Allowance Progress Bar */}
-              {(puterUsage as { allowanceInfo?: { remaining?: number; monthUsageAllowance?: number } }).allowanceInfo && (
+              {(
+                puterUsage as {
+                  allowanceInfo?: { remaining?: number; monthUsageAllowance?: number };
+                }
+              ).allowanceInfo && (
                 <div className="mb-4">
                   <div className="flex justify-between text-sm mb-2">
                     <span className="text-gray-400">Monthly Allowance</span>
                     <span className="text-white font-medium">
-                      {(((puterUsage as { allowanceInfo: { remaining: number; monthUsageAllowance: number } }).allowanceInfo.remaining / 
-                        (puterUsage as { allowanceInfo: { monthUsageAllowance: number } }).allowanceInfo.monthUsageAllowance) * 100).toFixed(2)}% remaining
+                      {(
+                        ((
+                          puterUsage as {
+                            allowanceInfo: { remaining: number; monthUsageAllowance: number };
+                          }
+                        ).allowanceInfo.remaining /
+                          (puterUsage as { allowanceInfo: { monthUsageAllowance: number } })
+                            .allowanceInfo.monthUsageAllowance) *
+                        100
+                      ).toFixed(2)}
+                      % remaining
                     </span>
                   </div>
                   <div className="h-3 bg-gray-700 rounded-full overflow-hidden">
-                    <div 
+                    <div
                       className="h-full bg-gradient-to-r from-green-500 to-emerald-400 rounded-full transition-all"
-                      style={{ 
-                        width: `${((puterUsage as { allowanceInfo: { remaining: number; monthUsageAllowance: number } }).allowanceInfo.remaining / 
-                          (puterUsage as { allowanceInfo: { monthUsageAllowance: number } }).allowanceInfo.monthUsageAllowance) * 100}%` 
+                      style={{
+                        width: `${
+                          ((
+                            puterUsage as {
+                              allowanceInfo: { remaining: number; monthUsageAllowance: number };
+                            }
+                          ).allowanceInfo.remaining /
+                            (puterUsage as { allowanceInfo: { monthUsageAllowance: number } })
+                              .allowanceInfo.monthUsageAllowance) *
+                          100
+                        }%`,
                       }}
                     />
                   </div>
                   <div className="flex justify-between text-xs mt-1 text-gray-500">
-                    <span>Used: {((puterUsage as { allowanceInfo: { monthUsageAllowance: number; remaining: number } }).allowanceInfo.monthUsageAllowance - 
-                      (puterUsage as { allowanceInfo: { remaining: number } }).allowanceInfo.remaining).toLocaleString()} credits</span>
-                    <span>Total: {(puterUsage as { allowanceInfo: { monthUsageAllowance: number } }).allowanceInfo.monthUsageAllowance.toLocaleString()} credits</span>
+                    <span>
+                      Used:{' '}
+                      {(
+                        (
+                          puterUsage as {
+                            allowanceInfo: { monthUsageAllowance: number; remaining: number };
+                          }
+                        ).allowanceInfo.monthUsageAllowance -
+                        (puterUsage as { allowanceInfo: { remaining: number } }).allowanceInfo
+                          .remaining
+                      ).toLocaleString()}{' '}
+                      credits
+                    </span>
+                    <span>
+                      Total:{' '}
+                      {(
+                        puterUsage as { allowanceInfo: { monthUsageAllowance: number } }
+                      ).allowanceInfo.monthUsageAllowance.toLocaleString()}{' '}
+                      credits
+                    </span>
                   </div>
                 </div>
               )}
@@ -975,21 +1127,42 @@ showpage
               )}
 
               {/* Usage Breakdown */}
-              {(puterUsage as { usage?: Record<string, { cost: number; count: number; units: number }> }).usage && (
+              {(
+                puterUsage as {
+                  usage?: Record<string, { cost: number; count: number; units: number }>;
+                }
+              ).usage && (
                 <div className="mb-4">
                   <h4 className="text-sm font-medium text-gray-300 mb-2">📈 Usage Breakdown</h4>
                   <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {Object.entries((puterUsage as { usage: Record<string, { cost: number; count: number; units: number }> }).usage).map(([key, value]) => (
-                      <div key={key} className="bg-gray-700/50 rounded-lg p-2 flex items-center justify-between">
+                    {Object.entries(
+                      (
+                        puterUsage as {
+                          usage: Record<string, { cost: number; count: number; units: number }>;
+                        }
+                      ).usage
+                    ).map(([key, value]) => (
+                      <div
+                        key={key}
+                        className="bg-gray-700/50 rounded-lg p-2 flex items-center justify-between"
+                      >
                         <div className="flex-1 min-w-0">
                           <p className="text-xs text-gray-400 truncate">
-                            {key.includes('openai') ? '🤖 ' : key.includes('filesystem') ? '📁 ' : key.includes('kv') ? '💾 ' : '⚡ '}
+                            {key.includes('openai')
+                              ? '🤖 '
+                              : key.includes('filesystem')
+                                ? '📁 '
+                                : key.includes('kv')
+                                  ? '💾 '
+                                  : '⚡ '}
                             {key.split(':').slice(-2).join(' → ')}
                           </p>
                         </div>
                         <div className="flex items-center gap-3 text-xs">
                           <span className="text-gray-500">{value.count}x</span>
-                          <span className="text-purple-400 font-medium">{Math.round(value.cost)} credits</span>
+                          <span className="text-purple-400 font-medium">
+                            {Math.round(value.cost)} credits
+                          </span>
                         </div>
                       </div>
                     ))}
@@ -998,14 +1171,25 @@ showpage
               )}
 
               {/* App Totals */}
-              {(puterUsage as { appTotals?: Record<string, { count: number; total: number }> }).appTotals && (
+              {(puterUsage as { appTotals?: Record<string, { count: number; total: number }> })
+                .appTotals && (
                 <div>
                   <h4 className="text-sm font-medium text-gray-300 mb-2">📱 By Application</h4>
                   <div className="grid grid-cols-2 gap-2">
-                    {Object.entries((puterUsage as { appTotals: Record<string, { count: number; total: number }> }).appTotals).map(([key, value]) => (
+                    {Object.entries(
+                      (
+                        puterUsage as {
+                          appTotals: Record<string, { count: number; total: number }>;
+                        }
+                      ).appTotals
+                    ).map(([key, value]) => (
                       <div key={key} className="bg-gray-700/50 rounded-lg p-2">
-                        <p className="text-xs text-gray-400 truncate">{key === 'others' ? '🌐 Other Apps' : '📱 App'}</p>
-                        <p className="text-white font-medium text-sm">{Math.round(value.total).toLocaleString()} credits</p>
+                        <p className="text-xs text-gray-400 truncate">
+                          {key === 'others' ? '🌐 Other Apps' : '📱 App'}
+                        </p>
+                        <p className="text-white font-medium text-sm">
+                          {Math.round(value.total).toLocaleString()} credits
+                        </p>
                         <p className="text-xs text-gray-500">{value.count} requests</p>
                       </div>
                     ))}
@@ -1025,7 +1209,9 @@ showpage
           <button
             onClick={() => setActiveTab('chat')}
             className={`px-4 py-2 rounded-lg font-medium transition-all ${
-              activeTab === 'chat' ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+              activeTab === 'chat'
+                ? 'bg-purple-600 text-white'
+                : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
             }`}
           >
             💬 AI Chat
@@ -1033,7 +1219,9 @@ showpage
           <button
             onClick={() => setActiveTab('image')}
             className={`px-4 py-2 rounded-lg font-medium transition-all ${
-              activeTab === 'image' ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+              activeTab === 'image'
+                ? 'bg-purple-600 text-white'
+                : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
             }`}
           >
             🎨 Image Generation
@@ -1041,7 +1229,9 @@ showpage
           <button
             onClick={() => setActiveTab('database')}
             className={`px-4 py-2 rounded-lg font-medium transition-all ${
-              activeTab === 'database' ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+              activeTab === 'database'
+                ? 'bg-purple-600 text-white'
+                : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
             }`}
           >
             🗄️ Database
@@ -1064,10 +1254,15 @@ showpage
                 </div>
               )}
               {messages.map((msg, idx) => (
-                <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-                    msg.role === 'user' ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-100'
-                  }`}>
+                <div
+                  key={idx}
+                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                      msg.role === 'user' ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-100'
+                    }`}
+                  >
                     <p className="whitespace-pre-wrap">{renderMessageContent(msg.content)}</p>
                     <p className="text-xs opacity-60 mt-1">{msg.timestamp.toLocaleTimeString()}</p>
                   </div>
@@ -1078,8 +1273,14 @@ showpage
                   <div className="bg-gray-700 rounded-2xl px-4 py-3">
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" />
-                      <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                      <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                      <div
+                        className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"
+                        style={{ animationDelay: '0.1s' }}
+                      />
+                      <div
+                        className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"
+                        style={{ animationDelay: '0.2s' }}
+                      />
                     </div>
                   </div>
                 </div>
@@ -1094,7 +1295,7 @@ showpage
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder={puterUser ? "Ask me anything..." : "Sign in to chat..."}
+                  placeholder={puterUser ? 'Ask me anything...' : 'Sign in to chat...'}
                   disabled={!puterLoaded || loading}
                   className="flex-1 bg-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
                 />
@@ -1123,7 +1324,9 @@ showpage
                   <button
                     onClick={() => setUsePromptBuilder(true)}
                     className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                      usePromptBuilder ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                      usePromptBuilder
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
                     }`}
                   >
                     🛠️ Builder
@@ -1131,7 +1334,9 @@ showpage
                   <button
                     onClick={() => setUsePromptBuilder(false)}
                     className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                      !usePromptBuilder ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                      !usePromptBuilder
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
                     }`}
                   >
                     ✏️ Manual
@@ -1144,7 +1349,9 @@ showpage
                   <>
                     {/* Quick Presets */}
                     <div>
-                      <label className="block text-gray-300 text-sm font-medium mb-2">⚡ Quick Presets</label>
+                      <label className="block text-gray-300 text-sm font-medium mb-2">
+                        ⚡ Quick Presets
+                      </label>
                       <div className="flex flex-wrap gap-2">
                         {PROMPT_PRESETS.map((preset) => (
                           <button
@@ -1161,7 +1368,9 @@ showpage
 
                     {/* Subject Input */}
                     <div>
-                      <label className="block text-gray-300 text-sm font-medium mb-2">🎯 Subject (Main Focus)</label>
+                      <label className="block text-gray-300 text-sm font-medium mb-2">
+                        🎯 Subject (Main Focus)
+                      </label>
                       <input
                         type="text"
                         value={promptSubject}
@@ -1175,7 +1384,9 @@ showpage
                     {/* Style & Lighting Row */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-gray-300 text-sm font-medium mb-2">🎨 Art Style</label>
+                        <label className="block text-gray-300 text-sm font-medium mb-2">
+                          🎨 Art Style
+                        </label>
                         <select
                           value={promptStyle}
                           onChange={(e) => setPromptStyle(e.target.value)}
@@ -1183,12 +1394,16 @@ showpage
                           className="w-full bg-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
                         >
                           {PROMPT_STYLES.map((style) => (
-                            <option key={style.id} value={style.id}>{style.name}</option>
+                            <option key={style.id} value={style.id}>
+                              {style.name}
+                            </option>
                           ))}
                         </select>
                       </div>
                       <div>
-                        <label className="block text-gray-300 text-sm font-medium mb-2">💡 Lighting</label>
+                        <label className="block text-gray-300 text-sm font-medium mb-2">
+                          💡 Lighting
+                        </label>
                         <select
                           value={promptLighting}
                           onChange={(e) => setPromptLighting(e.target.value)}
@@ -1196,7 +1411,9 @@ showpage
                           className="w-full bg-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
                         >
                           {PROMPT_LIGHTING.map((light) => (
-                            <option key={light.id} value={light.id}>{light.name}</option>
+                            <option key={light.id} value={light.id}>
+                              {light.name}
+                            </option>
                           ))}
                         </select>
                       </div>
@@ -1205,7 +1422,9 @@ showpage
                     {/* Camera & Mood Row */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-gray-300 text-sm font-medium mb-2">📷 Camera/Shot</label>
+                        <label className="block text-gray-300 text-sm font-medium mb-2">
+                          📷 Camera/Shot
+                        </label>
                         <select
                           value={promptCamera}
                           onChange={(e) => setPromptCamera(e.target.value)}
@@ -1213,12 +1432,16 @@ showpage
                           className="w-full bg-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
                         >
                           {PROMPT_CAMERA.map((cam) => (
-                            <option key={cam.id} value={cam.id}>{cam.name}</option>
+                            <option key={cam.id} value={cam.id}>
+                              {cam.name}
+                            </option>
                           ))}
                         </select>
                       </div>
                       <div>
-                        <label className="block text-gray-300 text-sm font-medium mb-2">🎭 Mood</label>
+                        <label className="block text-gray-300 text-sm font-medium mb-2">
+                          🎭 Mood
+                        </label>
                         <select
                           value={promptMood}
                           onChange={(e) => setPromptMood(e.target.value)}
@@ -1226,7 +1449,9 @@ showpage
                           className="w-full bg-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
                         >
                           {PROMPT_MOOD.map((mood) => (
-                            <option key={mood.id} value={mood.id}>{mood.name}</option>
+                            <option key={mood.id} value={mood.id}>
+                              {mood.name}
+                            </option>
                           ))}
                         </select>
                       </div>
@@ -1234,7 +1459,9 @@ showpage
 
                     {/* Colors */}
                     <div>
-                      <label className="block text-gray-300 text-sm font-medium mb-2">🌈 Color Palette</label>
+                      <label className="block text-gray-300 text-sm font-medium mb-2">
+                        🌈 Color Palette
+                      </label>
                       <select
                         value={promptColors}
                         onChange={(e) => setPromptColors(e.target.value)}
@@ -1242,14 +1469,18 @@ showpage
                         className="w-full bg-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
                       >
                         {PROMPT_COLORS.map((color) => (
-                          <option key={color.id} value={color.id}>{color.name}</option>
+                          <option key={color.id} value={color.id}>
+                            {color.name}
+                          </option>
                         ))}
                       </select>
                     </div>
 
                     {/* Quality Tags */}
                     <div>
-                      <label className="block text-gray-300 text-sm font-medium mb-2">✨ Quality Modifiers</label>
+                      <label className="block text-gray-300 text-sm font-medium mb-2">
+                        ✨ Quality Modifiers
+                      </label>
                       <div className="flex flex-wrap gap-2">
                         {PROMPT_QUALITY_TAGS.map((tag) => (
                           <button
@@ -1270,7 +1501,9 @@ showpage
 
                     {/* Negative Prompt */}
                     <div>
-                      <label className="block text-gray-300 text-sm font-medium mb-2">🚫 Negative Prompt (Optional)</label>
+                      <label className="block text-gray-300 text-sm font-medium mb-2">
+                        🚫 Negative Prompt (Optional)
+                      </label>
                       <input
                         type="text"
                         value={negativePrompt}
@@ -1284,7 +1517,9 @@ showpage
                     {/* Generated Prompt Preview */}
                     <div className="bg-gray-900/50 rounded-xl p-4 border border-gray-600">
                       <div className="flex items-center justify-between mb-2">
-                        <label className="text-gray-300 text-sm font-medium">📝 Generated Prompt</label>
+                        <label className="text-gray-300 text-sm font-medium">
+                          📝 Generated Prompt
+                        </label>
                         <button
                           onClick={() => navigator.clipboard.writeText(generateBuiltPrompt())}
                           className="text-xs text-purple-400 hover:text-purple-300"
@@ -1293,14 +1528,20 @@ showpage
                         </button>
                       </div>
                       <p className="text-gray-200 text-sm leading-relaxed">
-                        {generateBuiltPrompt() || <span className="text-gray-500 italic">Enter a subject to see your prompt...</span>}
+                        {generateBuiltPrompt() || (
+                          <span className="text-gray-500 italic">
+                            Enter a subject to see your prompt...
+                          </span>
+                        )}
                       </p>
                     </div>
                   </>
                 ) : (
                   /* Manual Prompt Input */
                   <div>
-                    <label className="block text-gray-300 text-sm font-medium mb-2">Describe your image</label>
+                    <label className="block text-gray-300 text-sm font-medium mb-2">
+                      Describe your image
+                    </label>
                     <textarea
                       value={imagePrompt}
                       onChange={(e) => setImagePrompt(e.target.value)}
@@ -1316,7 +1557,9 @@ showpage
                 {/* Model & Quality Selection */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-gray-300 text-sm font-medium mb-2">🤖 AI Model</label>
+                    <label className="block text-gray-300 text-sm font-medium mb-2">
+                      🤖 AI Model
+                    </label>
                     <select
                       value={selectedModel}
                       onChange={(e) => setSelectedModel(e.target.value)}
@@ -1331,7 +1574,9 @@ showpage
                     </select>
                   </div>
                   <div>
-                    <label className="block text-gray-300 text-sm font-medium mb-2">⚙️ Quality</label>
+                    <label className="block text-gray-300 text-sm font-medium mb-2">
+                      ⚙️ Quality
+                    </label>
                     <select
                       value={selectedQuality}
                       onChange={(e) => setSelectedQuality(e.target.value)}
@@ -1350,7 +1595,12 @@ showpage
                 {/* Generate Button */}
                 <button
                   onClick={generateImage}
-                  disabled={!puterLoaded || imageLoading || (!usePromptBuilder ? !imagePrompt.trim() : !promptSubject.trim()) || !puterUser}
+                  disabled={
+                    !puterLoaded ||
+                    imageLoading ||
+                    (!usePromptBuilder ? !imagePrompt.trim() : !promptSubject.trim()) ||
+                    !puterUser
+                  }
                   className="w-full bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-4 rounded-xl font-medium transition-all text-lg"
                 >
                   {imageLoading ? (
@@ -1364,7 +1614,9 @@ showpage
                 </button>
 
                 {!puterUser && puterLoaded && (
-                  <p className="text-yellow-400/80 text-sm text-center">Sign in with Puter to generate images</p>
+                  <p className="text-yellow-400/80 text-sm text-center">
+                    Sign in with Puter to generate images
+                  </p>
                 )}
 
                 {/* Error Display */}
@@ -1375,7 +1627,7 @@ showpage
                       <div>
                         <p className="font-medium">Generation Failed</p>
                         <p className="text-sm mt-1 text-red-400">{String(imageError)}</p>
-                        <button 
+                        <button
                           onClick={() => setImageError(null)}
                           className="text-sm mt-2 text-red-300 hover:text-red-200 underline"
                         >
@@ -1408,20 +1660,30 @@ showpage
                         ) : (
                           <>
                             ⬇️ Download
-                            <svg className={`w-4 h-4 transition-transform ${showDownloadMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            <svg
+                              className={`w-4 h-4 transition-transform ${showDownloadMenu ? 'rotate-180' : ''}`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 9l-7 7-7-7"
+                              />
                             </svg>
                           </>
                         )}
                       </button>
-                      
+
                       {/* Download Format Menu */}
                       {showDownloadMenu && (
                         <div className="absolute right-0 top-full mt-2 w-72 bg-gray-800 border border-gray-600 rounded-xl shadow-2xl z-50 overflow-hidden">
                           <div className="p-3 border-b border-gray-700">
                             <p className="text-white font-medium text-sm">📥 Download Format</p>
                           </div>
-                          
+
                           {/* Format Options */}
                           <div className="p-2 space-y-1">
                             <button
@@ -1435,7 +1697,7 @@ showpage
                               </div>
                               <span className="text-green-400 text-xs">Recommended</span>
                             </button>
-                            
+
                             <button
                               onClick={() => downloadImage('jpg', downloadQuality)}
                               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-700 transition-colors text-left"
@@ -1446,7 +1708,7 @@ showpage
                                 <p className="text-gray-400 text-xs">Compressed, smaller file</p>
                               </div>
                             </button>
-                            
+
                             <button
                               onClick={() => downloadImage('webp', downloadQuality)}
                               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-700 transition-colors text-left"
@@ -1454,10 +1716,12 @@ showpage
                               <span className="text-2xl">🌐</span>
                               <div className="flex-1">
                                 <p className="text-white font-medium text-sm">WebP</p>
-                                <p className="text-gray-400 text-xs">Modern format, best compression</p>
+                                <p className="text-gray-400 text-xs">
+                                  Modern format, best compression
+                                </p>
                               </div>
                             </button>
-                            
+
                             <button
                               onClick={() => downloadImage('svg')}
                               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-700 transition-colors text-left"
@@ -1468,7 +1732,7 @@ showpage
                                 <p className="text-gray-400 text-xs">Vector wrapper, scalable</p>
                               </div>
                             </button>
-                            
+
                             <button
                               onClick={() => downloadImage('eps')}
                               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-700 transition-colors text-left"
@@ -1476,17 +1740,21 @@ showpage
                               <span className="text-2xl">🎨</span>
                               <div className="flex-1">
                                 <p className="text-white font-medium text-sm">EPS</p>
-                                <p className="text-gray-400 text-xs">Adobe Illustrator compatible</p>
+                                <p className="text-gray-400 text-xs">
+                                  Adobe Illustrator compatible
+                                </p>
                               </div>
                               <span className="text-purple-400 text-xs">Adobe</span>
                             </button>
                           </div>
-                          
+
                           {/* Quality Slider for JPG/WebP */}
                           <div className="p-3 border-t border-gray-700">
                             <div className="flex items-center justify-between mb-2">
                               <span className="text-gray-400 text-xs">JPG/WebP Quality</span>
-                              <span className="text-white text-xs font-medium">{Math.round(downloadQuality * 100)}%</span>
+                              <span className="text-white text-xs font-medium">
+                                {Math.round(downloadQuality * 100)}%
+                              </span>
                             </div>
                             <input
                               type="range"
@@ -1513,9 +1781,11 @@ showpage
                       {/* Progress Container */}
                       <div className="bg-gray-700/50 rounded-2xl p-6 relative overflow-hidden">
                         {/* Animated Background Shimmer */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-pulse" 
-                             style={{ animation: 'shimmer 2s infinite' }} />
-                        
+                        <div
+                          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-pulse"
+                          style={{ animation: 'shimmer 2s infinite' }}
+                        />
+
                         {/* Circular Progress */}
                         <div className="flex justify-center mb-6">
                           <div className="relative w-32 h-32">
@@ -1544,7 +1814,13 @@ showpage
                                 className="transition-all duration-300 ease-out"
                               />
                               <defs>
-                                <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <linearGradient
+                                  id="progressGradient"
+                                  x1="0%"
+                                  y1="0%"
+                                  x2="100%"
+                                  y2="0%"
+                                >
                                   <stop offset="0%" stopColor="#ec4899" />
                                   <stop offset="50%" stopColor="#8b5cf6" />
                                   <stop offset="100%" stopColor="#06b6d4" />
@@ -1553,7 +1829,9 @@ showpage
                             </svg>
                             {/* Percentage Text */}
                             <div className="absolute inset-0 flex items-center justify-center">
-                              <span className="text-3xl font-bold text-white">{Math.round(imageProgress)}%</span>
+                              <span className="text-3xl font-bold text-white">
+                                {Math.round(imageProgress)}%
+                              </span>
                             </div>
                           </div>
                         </div>
@@ -1561,19 +1839,23 @@ showpage
                         {/* Stage Message */}
                         <div className="text-center mb-4">
                           <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-800/50 rounded-full">
-                            <span className="text-2xl">{getProgressStage(imageProgress).emoji}</span>
-                            <span className="text-white font-medium">{getProgressStage(imageProgress).message}</span>
+                            <span className="text-2xl">
+                              {getProgressStage(imageProgress).emoji}
+                            </span>
+                            <span className="text-white font-medium">
+                              {getProgressStage(imageProgress).message}
+                            </span>
                           </div>
                         </div>
 
                         {/* Linear Progress Bar */}
                         <div className="relative h-2 bg-gray-600 rounded-full overflow-hidden mb-4">
-                          <div 
+                          <div
                             className="absolute inset-y-0 left-0 bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 rounded-full transition-all duration-300 ease-out"
                             style={{ width: `${imageProgress}%` }}
                           />
                           {/* Animated Glow */}
-                          <div 
+                          <div
                             className="absolute inset-y-0 left-0 bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 rounded-full blur-sm opacity-50 transition-all duration-300"
                             style={{ width: `${imageProgress}%` }}
                           />
@@ -1582,7 +1864,7 @@ showpage
                         {/* Time & Model Info */}
                         <div className="flex justify-between text-sm text-gray-400">
                           <span>⏱️ {getElapsedTime()}s elapsed</span>
-                          <span>🤖 {IMAGE_MODELS.find(m => m.id === selectedModel)?.name}</span>
+                          <span>🤖 {IMAGE_MODELS.find((m) => m.id === selectedModel)?.name}</span>
                         </div>
 
                         {/* Prompt Preview */}
@@ -1595,11 +1877,11 @@ showpage
                       {/* Progress Steps */}
                       <div className="mt-4 grid grid-cols-4 gap-2">
                         {PROGRESS_STAGES.slice(0, 4).map((stage, idx) => (
-                          <div 
+                          <div
                             key={idx}
                             className={`text-center p-2 rounded-lg transition-all ${
-                              imageProgress >= stage.threshold 
-                                ? 'bg-purple-500/20 text-purple-300' 
+                              imageProgress >= stage.threshold
+                                ? 'bg-purple-500/20 text-purple-300'
                                 : 'bg-gray-700/30 text-gray-500'
                             }`}
                           >
@@ -1632,11 +1914,11 @@ showpage
                 <h3 className="text-lg font-semibold text-white mb-3">💡 Inspiration Ideas</h3>
                 <div className="flex flex-wrap gap-2">
                   {[
-                    "A magical forest with glowing mushrooms at night, fantasy art, volumetric lighting, 8K",
-                    "Cyberpunk samurai in neon-lit Tokyo, cinematic, dramatic lighting, highly detailed",
-                    "Cute robot playing with a kitten, 3D render, soft lighting, pastel colors",
-                    "Underwater city with bioluminescent creatures, digital art, ethereal mood",
-                    "Steampunk airship flying over mountains, oil painting style, golden hour",
+                    'A magical forest with glowing mushrooms at night, fantasy art, volumetric lighting, 8K',
+                    'Cyberpunk samurai in neon-lit Tokyo, cinematic, dramatic lighting, highly detailed',
+                    'Cute robot playing with a kitten, 3D render, soft lighting, pastel colors',
+                    'Underwater city with bioluminescent creatures, digital art, ethereal mood',
+                    'Steampunk airship flying over mountains, oil painting style, golden hour',
                   ].map((prompt) => (
                     <button
                       key={prompt}
@@ -1699,18 +1981,27 @@ showpage
                 tables.map((table) => (
                   <div key={table.name} className="bg-gray-700/50 rounded-xl p-4">
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-lg font-semibold text-white capitalize">📊 {table.name}</h3>
+                      <h3 className="text-lg font-semibold text-white capitalize">
+                        📊 {table.name}
+                      </h3>
                       <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded-full">
                         {table.count} rows
                       </span>
                     </div>
-                    <div className="text-xs text-gray-400 mb-2">Columns: {table.columns.join(', ')}</div>
+                    <div className="text-xs text-gray-400 mb-2">
+                      Columns: {table.columns.join(', ')}
+                    </div>
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b border-gray-600">
                             {table.columns.slice(0, 4).map((col) => (
-                              <th key={col} className="text-left py-2 px-2 text-gray-300 font-medium">{col}</th>
+                              <th
+                                key={col}
+                                className="text-left py-2 px-2 text-gray-300 font-medium"
+                              >
+                                {col}
+                              </th>
                             ))}
                           </tr>
                         </thead>
@@ -1718,7 +2009,10 @@ showpage
                           {table.sample.map((row, idx) => (
                             <tr key={idx} className="border-b border-gray-600/50">
                               {table.columns.slice(0, 4).map((col) => (
-                                <td key={col} className="py-2 px-2 text-gray-400 truncate max-w-[150px]">
+                                <td
+                                  key={col}
+                                  className="py-2 px-2 text-gray-400 truncate max-w-[150px]"
+                                >
                                   {String(row[col] || '-').substring(0, 30)}
                                 </td>
                               ))}
@@ -1736,7 +2030,10 @@ showpage
 
         {/* Footer */}
         <div className="mt-6 text-center text-gray-500 text-sm">
-          <p>Powered by <span className="text-purple-400">Puter.js</span> AI + <span className="text-green-400">Supabase</span></p>
+          <p>
+            Powered by <span className="text-purple-400">Puter.js</span> AI +{' '}
+            <span className="text-green-400">Supabase</span>
+          </p>
           <p className="mt-1 text-xs">Free AI access with a Puter account</p>
         </div>
       </div>

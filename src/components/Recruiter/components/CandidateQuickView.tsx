@@ -1,5 +1,14 @@
 import React, { useEffect } from 'react';
-import { XMarkIcon, EnvelopeIcon, PhoneIcon, MapPinIcon, AcademicCapIcon, BriefcaseIcon, StarIcon, ClockIcon } from '@heroicons/react/24/outline';
+import {
+  XMarkIcon,
+  EnvelopeIcon,
+  PhoneIcon,
+  MapPinIcon,
+  AcademicCapIcon,
+  BriefcaseIcon,
+  StarIcon,
+  ClockIcon,
+} from '@heroicons/react/24/outline';
 
 interface CandidateQuickViewProps {
   isOpen: boolean;
@@ -18,7 +27,7 @@ export const CandidateQuickView: React.FC<CandidateQuickViewProps> = ({
   onFullView,
   onSendEmail,
   onScheduleCall,
-  onNextAction
+  onNextAction,
 }) => {
   // Close on ESC key
   useEffect(() => {
@@ -36,7 +45,7 @@ export const CandidateQuickView: React.FC<CandidateQuickViewProps> = ({
   const getInitials = (name: string) => {
     return name
       .split(' ')
-      .map(n => n[0])
+      .map((n) => n[0])
       .join('')
       .toUpperCase()
       .slice(0, 2);
@@ -45,23 +54,22 @@ export const CandidateQuickView: React.FC<CandidateQuickViewProps> = ({
   return (
     <>
       {/* Backdrop */}
-      <div 
+      <div
         className="fixed inset-0 bg-black bg-opacity-30 z-40 transition-opacity"
         onClick={onClose}
       />
 
       {/* Slide-out Panel */}
-      <div className={`fixed right-0 top-0 bottom-0 w-full max-w-2xl bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${
-        isOpen ? 'translate-x-0' : 'translate-x-full'
-      }`}>
+      <div
+        className={`fixed right-0 top-0 bottom-0 w-full max-w-2xl bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${
+          isOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
         <div className="h-full flex flex-col">
           {/* Header */}
           <div className="bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-5 flex items-center justify-between">
             <h2 className="text-xl font-semibold text-white">Candidate Profile</h2>
-            <button
-              onClick={onClose}
-              className="text-white hover:text-gray-200 transition-colors"
-            >
+            <button onClick={onClose} className="text-white hover:text-gray-200 transition-colors">
               <XMarkIcon className="h-6 w-6" />
             </button>
           </div>
@@ -76,7 +84,7 @@ export const CandidateQuickView: React.FC<CandidateQuickViewProps> = ({
                   {getInitials(candidate.name || 'NA')}
                 </div>
               </div>
-              
+
               {/* Basic Info */}
               <div className="flex-1">
                 <h3 className="text-2xl font-bold text-gray-900 mb-1">{candidate.name}</h3>
@@ -101,7 +109,9 @@ export const CandidateQuickView: React.FC<CandidateQuickViewProps> = ({
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-yellow-50 border-2 border-yellow-400">
                   <div className="text-center">
                     <StarIcon className="h-5 w-5 text-yellow-400 fill-current mx-auto mb-0.5" />
-                    <span className="text-lg font-bold text-yellow-700">{candidate.ai_score_overall || 0}</span>
+                    <span className="text-lg font-bold text-yellow-700">
+                      {candidate.ai_score_overall || 0}
+                    </span>
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">AI Score</p>
@@ -150,7 +160,9 @@ export const CandidateQuickView: React.FC<CandidateQuickViewProps> = ({
                   <div className="flex-shrink-0 w-2 h-2 rounded-full bg-primary-500 mt-2 mr-3"></div>
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-900">Current Stage</p>
-                    <p className="text-xs text-gray-500 capitalize">{candidate.stage?.replace('_', ' ')}</p>
+                    <p className="text-xs text-gray-500 capitalize">
+                      {candidate.stage?.replace('_', ' ')}
+                    </p>
                   </div>
                 </div>
                 {candidate.last_updated && (
@@ -164,7 +176,7 @@ export const CandidateQuickView: React.FC<CandidateQuickViewProps> = ({
                           month: 'long',
                           day: 'numeric',
                           hour: '2-digit',
-                          minute: '2-digit'
+                          minute: '2-digit',
                         })}
                       </p>
                     </div>
@@ -175,7 +187,9 @@ export const CandidateQuickView: React.FC<CandidateQuickViewProps> = ({
                     <div className="flex-shrink-0 w-2 h-2 rounded-full bg-gray-300 mt-2 mr-3"></div>
                     <div className="flex-1">
                       <p className="text-sm font-medium text-gray-900">Source</p>
-                      <p className="text-xs text-gray-500 capitalize">{candidate.source.replace('_', ' ')}</p>
+                      <p className="text-xs text-gray-500 capitalize">
+                        {candidate.source.replace('_', ' ')}
+                      </p>
                     </div>
                   </div>
                 )}
@@ -239,4 +253,3 @@ export const CandidateQuickView: React.FC<CandidateQuickViewProps> = ({
     </>
   );
 };
-

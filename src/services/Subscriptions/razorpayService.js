@@ -1,13 +1,13 @@
 /**
  * Razorpay Service
- * 
+ *
  * Handles Razorpay browser SDK integration for payment checkout.
  * This service MUST run in the browser (loads Razorpay script, opens checkout modal).
- * 
+ *
  * BROWSER-ONLY FUNCTIONS:
  * - loadRazorpayScript()      - Load Razorpay checkout.js
  * - initiateRazorpayPayment() - Open Razorpay checkout modal
- * 
+ *
  * API CALLS (via paymentsApiService → Worker):
  * - createRazorpayOrder()     - Create order via Worker
  * - verifyPayment()           - Verify payment via Worker
@@ -47,7 +47,9 @@ export const createRazorpayOrder = async (orderData) => {
     console.log('📦 Creating Razorpay order:', orderData);
 
     // Get auth token
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     const token = session?.access_token;
 
     if (!token) {
@@ -55,20 +57,23 @@ export const createRazorpayOrder = async (orderData) => {
     }
 
     // Call Worker via paymentsApiService
-    const result = await paymentsApiService.createOrder({
-      amount: orderData.amount,
-      currency: orderData.currency,
-      planId: orderData.planId,
-      planName: orderData.planName,
-      userEmail: orderData.userEmail,
-      userName: orderData.userName,
-    }, token);
+    const result = await paymentsApiService.createOrder(
+      {
+        amount: orderData.amount,
+        currency: orderData.currency,
+        planId: orderData.planId,
+        planName: orderData.planName,
+        userEmail: orderData.userEmail,
+        userName: orderData.userName,
+      },
+      token
+    );
 
     console.log('✅ Order created:', result.id);
     return result;
   } catch (error) {
     console.error('❌ Error creating order:', error);
-    
+
     // Check if this is a "subscription exists" error (409 Conflict)
     if (error.message?.includes('already have an active subscription')) {
       // Create a custom error with additional info
@@ -77,7 +82,7 @@ export const createRazorpayOrder = async (orderData) => {
       subscriptionExistsError.isSubscriptionExists = true;
       throw subscriptionExistsError;
     }
-    
+
     throw error;
   }
 };
@@ -91,16 +96,21 @@ export const createRazorpayOrder = async (orderData) => {
 export const verifyPayment = async (paymentData) => {
   try {
     // Get auth token
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     const token = session?.access_token;
 
     // Call Worker via paymentsApiService
-    return await paymentsApiService.verifyPayment({
-      razorpay_order_id: paymentData.razorpay_order_id,
-      razorpay_payment_id: paymentData.razorpay_payment_id,
-      razorpay_signature: paymentData.razorpay_signature,
-      plan: paymentData.plan,
-    }, token);
+    return await paymentsApiService.verifyPayment(
+      {
+        razorpay_order_id: paymentData.razorpay_order_id,
+        razorpay_payment_id: paymentData.razorpay_payment_id,
+        razorpay_signature: paymentData.razorpay_signature,
+        plan: paymentData.plan,
+      },
+      token
+    );
   } catch (error) {
     console.error('❌ Error verifying payment:', error);
     throw error;
@@ -110,7 +120,7 @@ export const verifyPayment = async (paymentData) => {
 /**
  * Initialize Razorpay payment checkout
  * Opens Razorpay modal and handles payment flow with redirect
- * 
+ *
  * @param {Object} params - Payment parameters
  * @param {Object} params.plan - Selected subscription plan
  * @param {Object} params.userDetails - User information
@@ -118,10 +128,13 @@ export const verifyPayment = async (paymentData) => {
 export const initiateRazorpayPayment = async ({ plan, userDetails }) => {
   try {
     // Store plan details in localStorage for success page
-    localStorage.setItem('payment_plan_details', JSON.stringify({
-      ...plan,
-      studentType: userDetails.studentType
-    }));
+    localStorage.setItem(
+      'payment_plan_details',
+      JSON.stringify({
+        ...plan,
+        studentType: userDetails.studentType,
+      })
+    );
 
     // Load Razorpay script
     const scriptLoaded = await loadRazorpayScript();
@@ -195,7 +208,10 @@ export const initiateRazorpayPayment = async ({ plan, userDetails }) => {
       failureUrl.searchParams.set('razorpay_order_id', orderData.id);
       failureUrl.searchParams.set('razorpay_payment_id', response.error.metadata?.payment_id || '');
       failureUrl.searchParams.set('error_code', response.error.code || 'PAYMENT_FAILED');
-      failureUrl.searchParams.set('error_description', response.error.description || 'Payment failed');
+      failureUrl.searchParams.set(
+        'error_description',
+        response.error.description || 'Payment failed'
+      );
       failureUrl.searchParams.set('error_reason', response.error.reason || '');
       window.location.href = failureUrl.toString();
     });
@@ -216,7 +232,7 @@ export const initiateRazorpayPayment = async ({ plan, userDetails }) => {
       else if (pathname.startsWith('/college-admin')) basePath = '/college-admin';
       else if (pathname.startsWith('/school-admin')) basePath = '/school-admin';
       else if (pathname.startsWith('/university-admin')) basePath = '/university-admin';
-      
+
       // Redirect to manage subscription page instead of failure page
       const manageUrl = new URL(`${basePath}/subscription/manage`, origin);
       manageUrl.searchParams.set('message', 'You already have an active subscription');
@@ -228,7 +244,10 @@ export const initiateRazorpayPayment = async ({ plan, userDetails }) => {
     const origin = window.location.origin;
     const failureUrl = new URL('/subscription/payment/failure', origin);
     failureUrl.searchParams.set('error_code', 'INITIALIZATION_ERROR');
-    failureUrl.searchParams.set('error_description', error.message || 'Failed to initialize payment');
+    failureUrl.searchParams.set(
+      'error_description',
+      error.message || 'Failed to initialize payment'
+    );
     window.location.href = failureUrl.toString();
   }
 };

@@ -111,7 +111,7 @@ export const formatDate = (dateString, locale = 'en-US') => {
   return new Date(dateString).toLocaleDateString(locale, {
     year: 'numeric',
     month: 'long',
-    day: 'numeric'
+    day: 'numeric',
   });
 };
 
@@ -132,7 +132,7 @@ export const getSubscriptionStatusChecks = (subscriptionData, daysRemaining) => 
       isCancelled: false,
       isActiveOrPaused: false,
       isManageable: false,
-      urgencyLevel: 'normal'
+      urgencyLevel: 'normal',
     };
   }
 
@@ -145,9 +145,8 @@ export const getSubscriptionStatusChecks = (subscriptionData, daysRemaining) => 
     isCancelled: status === 'cancelled',
     isActiveOrPaused: isActiveOrPaused(status),
     isManageable: isManageable(status),
-    urgencyLevel: getUrgencyLevel(daysRemaining)
+    urgencyLevel: getUrgencyLevel(daysRemaining),
   };
 
   return checks;
 };
-

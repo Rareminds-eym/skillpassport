@@ -1,37 +1,46 @@
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from '@/hooks/use-toast';
 import {
-    Award, Calendar,
-    Clock,
-    Eye, EyeOff,
-    Loader2,
-    PenSquare,
-    Plus,
-    Save,
-    Trash2,
-    Briefcase
-} from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-import { Badge } from "../ui/badge";
-import { Button } from "../ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
-import { Input } from "../ui/input";
-import { Label } from "../ui/label";
-import { Progress } from "../ui/progress";
-import { Textarea } from "../ui/textarea";
-import { FIELD_CONFIGS } from "./fieldConfigs";
-import { calculateDuration, calculateProgress, generateUuid, isValidUrl, parsePositiveNumber, parseSkills } from "./utils";
+  Award,
+  Calendar,
+  Clock,
+  Eye,
+  EyeOff,
+  Loader2,
+  PenSquare,
+  Plus,
+  Save,
+  Trash2,
+  Briefcase,
+} from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { Progress } from '../ui/progress';
+import { Textarea } from '../ui/textarea';
+import { FIELD_CONFIGS } from './fieldConfigs';
+import {
+  calculateDuration,
+  calculateProgress,
+  generateUuid,
+  isValidUrl,
+  parsePositiveNumber,
+  parseSkills,
+} from './utils';
 
-const UnifiedProfileEditModal = ({ 
-  isOpen, 
-  onClose, 
-  type, 
-  data, 
+const UnifiedProfileEditModal = ({
+  isOpen,
+  onClose,
+  type,
+  data,
   onSave,
-  singleEditMode = false 
+  singleEditMode = false,
 }) => {
   const config = FIELD_CONFIGS[type];
   const { toast } = useToast();
-  
+
   const [items, setItems] = useState([]);
   const [formData, setFormData] = useState(config?.getDefaultValues?.() || {});
   const [editingIndex, setEditingIndex] = useState(singleEditMode ? 0 : null);
@@ -41,16 +50,16 @@ const UnifiedProfileEditModal = ({
   useEffect(() => {
     if (data) {
       const normalizedData = Array.isArray(data) ? data : [data];
-      
+
       setItems(normalizedData);
-      
+
       if (singleEditMode && normalizedData.length > 0) {
         // In singleEditMode, populate form with existing data
         const item = normalizedData[0];
         const editData = { ...config.getDefaultValues() };
-        
+
         // Copy all fields from the item, including id
-        Object.keys(item).forEach(key => {
+        Object.keys(item).forEach((key) => {
           if (item[key] !== undefined) {
             if (key === 'skills') {
               // Handle skills - support both array and string formats
@@ -58,28 +67,29 @@ const UnifiedProfileEditModal = ({
               if (Array.isArray(item[key])) {
                 skillsArray = item[key];
               } else if (typeof item[key] === 'string' && item[key].trim()) {
-                skillsArray = item[key].split(',').map(s => s.trim()).filter(s => s);
+                skillsArray = item[key]
+                  .split(',')
+                  .map((s) => s.trim())
+                  .filter((s) => s);
               }
-              
+
               // Remove duplicates and convert to skillsList for the form
               const uniqueSkills = [...new Set(skillsArray)]; // Remove duplicates
-              editData.skillsList = uniqueSkills.map(skillName => ({
+              editData.skillsList = uniqueSkills.map((skillName) => ({
                 name: skillName,
                 type: 'soft', // Default type
                 level: 3, // Default level
                 description: '',
                 verified: true,
                 enabled: true,
-                approval_status: 'approved'
+                approval_status: 'approved',
               }));
             } else {
-              editData[key] = Array.isArray(item[key]) 
-                ? item[key].join(", ") 
-                : item[key];
+              editData[key] = Array.isArray(item[key]) ? item[key].join(', ') : item[key];
             }
           }
         });
-        
+
         setFormData(editData);
         setEditingIndex(0);
         setIsFormOpen(true);
@@ -89,19 +99,15 @@ const UnifiedProfileEditModal = ({
     }
   }, [data, isOpen, singleEditMode, config]);
 
-  if (!config) {
-    console.error(`Unknown profile type: ${type}`);
-    return null;
-  }
-
-  const Icon = config.icon;
+  const Icon = config?.icon;
 
   const handleInputChange = (field) => (e) => {
     const value = e.target.value;
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const resetForm = () => {
+    if (!config) return;
     setFormData(config.getDefaultValues());
     setEditingIndex(null);
     setIsFormOpen(false);
@@ -112,20 +118,20 @@ const UnifiedProfileEditModal = ({
     const skillName = formData.newSkillName?.trim();
     if (!skillName) {
       toast({
-        title: "Validation Error",
-        description: "Please enter a skill name.",
-        variant: "destructive",
+        title: 'Validation Error',
+        description: 'Please enter a skill name.',
+        variant: 'destructive',
       });
       return;
     }
 
     // Check for duplicate skills
     const existingSkills = formData.skillsList || [];
-    if (existingSkills.some(skill => skill.name.toLowerCase() === skillName.toLowerCase())) {
+    if (existingSkills.some((skill) => skill.name.toLowerCase() === skillName.toLowerCase())) {
       toast({
-        title: "Duplicate Skill",
-        description: "This skill has already been added.",
-        variant: "destructive",
+        title: 'Duplicate Skill',
+        description: 'This skill has already been added.',
+        variant: 'destructive',
       });
       return;
     }
@@ -137,130 +143,132 @@ const UnifiedProfileEditModal = ({
       description: formData.newSkillDescription?.trim() || '',
       verified: true,
       enabled: true,
-      approval_status: 'approved'
+      approval_status: 'approved',
     };
 
-    setFormData(prev => {
+    setFormData((prev) => {
       const newSkillsList = [...(prev.skillsList || []), newSkill];
-      
+
       return {
         ...prev,
         skillsList: newSkillsList,
         newSkillName: '',
         newSkillType: 'soft',
         newSkillLevel: '3',
-        newSkillDescription: ''
+        newSkillDescription: '',
       };
     });
 
     toast({
-      title: "Skill Added",
+      title: 'Skill Added',
       description: `${skillName} has been added to your skills.`,
     });
   };
 
   const removeSkill = (index) => {
     const skillToRemove = formData.skillsList?.[index];
-    
-    setFormData(prev => {
+
+    setFormData((prev) => {
       const newSkillsList = prev.skillsList?.filter((_, i) => i !== index) || [];
       return {
         ...prev,
-        skillsList: newSkillsList
+        skillsList: newSkillsList,
       };
     });
 
     // Show toast notification
     if (skillToRemove) {
       toast({
-        title: "Skill Removed",
+        title: 'Skill Removed',
         description: `${skillToRemove.name} has been removed from your skills.`,
       });
     }
   };
 
   const startAdding = () => {
+    if (!config) return;
     setFormData(config.getDefaultValues());
     setEditingIndex(null);
     setIsFormOpen(true);
   };
 
   const startEditing = (index) => {
+    if (!config) return;
     const item = items[index];
     if (!item) return;
-    
+
     const editData = { ...config.getDefaultValues() };
-    
+
     // Copy all fields from the item, including id and other metadata
-    Object.keys(item).forEach(key => {
+    Object.keys(item).forEach((key) => {
       if (item[key] !== undefined) {
-        editData[key] = Array.isArray(item[key]) 
-          ? item[key].join(", ") 
-          : item[key];
+        editData[key] = Array.isArray(item[key]) ? item[key].join(', ') : item[key];
       }
     });
-    
+
     setFormData(editData);
     setEditingIndex(index);
     setIsFormOpen(true);
   };
 
   const validateForm = () => {
+    if (!config) return false;
     // Check required fields
-    const requiredFields = config.fields.filter(f => f.required);
+    const requiredFields = config.fields.filter((f) => f.required);
     for (const field of requiredFields) {
       if (!formData[field.name]?.toString().trim()) {
         toast({
-          title: "Validation Error",
-          description: `${field.label.replace(" *", "")} is required.`,
-          variant: "destructive",
+          title: 'Validation Error',
+          description: `${field.label.replace(' *', '')} is required.`,
+          variant: 'destructive',
         });
         return false;
       }
     }
-    
+
     // Validate URL fields
-    const urlFields = config.fields.filter(f => f.type === "url");
+    const urlFields = config.fields.filter((f) => f.type === 'url');
     for (const field of urlFields) {
       const value = formData[field.name];
       if (value && !isValidUrl(value)) {
         toast({
-          title: "Validation Error",
+          title: 'Validation Error',
           description: `${field.label} must be a valid URL (e.g., https://example.com)`,
-          variant: "destructive",
+          variant: 'destructive',
         });
         return false;
       }
     }
-    
+
     return true;
   };
 
   // Process form data and return the processed item
   const processFormData = useCallback(() => {
+    if (!config) return {};
     const processedData = { ...formData };
-    
+
     // Process special field types
-    config.fields.forEach(field => {
-      if (field.type === "tags" && typeof processedData[field.name] === "string") {
+    config.fields.forEach((field) => {
+      if (field.type === 'tags' && typeof processedData[field.name] === 'string') {
         processedData[field.name] = parseSkills(processedData[field.name]);
       }
-      if (field.type === "skills_manager") {
+      if (field.type === 'skills_manager') {
         // Convert skillsList to skills array for compatibility
-        const skillsArray = processedData.skillsList?.map(skill => skill.name) || [];
+        const skillsArray = processedData.skillsList?.map((skill) => skill.name) || [];
         processedData.skills = skillsArray;
-        
+
         // Keep skillsList for detailed skill data
         processedData.skillsData = processedData.skillsList || [];
-        
+
         // IMPORTANT: Set the field name to the skills array for database storage
         // The field name is 'skills' in the config, so we need to set that
         processedData[field.name] = skillsArray;
-        
+
         // Also ensure backward compatibility
         processedData.skills = skillsArray;
       }
-      if (field.type === "number") {
+      if (field.type === 'number') {
         processedData[field.name] = parsePositiveNumber(processedData[field.name]);
       }
     });
@@ -279,16 +287,21 @@ const UnifiedProfileEditModal = ({
       const completed = parsePositiveNumber(processedData.completedModules);
       const total = parsePositiveNumber(processedData.totalModules);
       processedData.progress = total > 0 ? calculateProgress(completed, total) : 0;
-      
+
       // Auto-determine status based on modules
       if (total > 0 && completed >= total) {
-        processedData.status = "completed";
+        processedData.status = 'completed';
         processedData.progress = 100;
       }
     }
 
     return processedData;
   }, [formData, config]);
+
+  if (!config) {
+    console.error(`Unknown profile type: ${type}`);
+    return null;
+  }
 
   const saveItem = () => {
     if (!validateForm()) return;
@@ -298,12 +311,22 @@ const UnifiedProfileEditModal = ({
     if (editingIndex !== null) {
       // Update existing item
       const existingItem = items[editingIndex];
-      setItems(prev => prev.map((item, idx) => 
-        idx === editingIndex 
-          ? { ...existingItem, ...processedData, processing: true, updated_at: new Date().toISOString() }
-          : item
-      ));
-      toast({ title: "Updated", description: "Changes applied. Click 'Save All Changes' to save to database." });
+      setItems((prev) =>
+        prev.map((item, idx) =>
+          idx === editingIndex
+            ? {
+                ...existingItem,
+                ...processedData,
+                processing: true,
+                updated_at: new Date().toISOString(),
+              }
+            : item
+        )
+      );
+      toast({
+        title: 'Updated',
+        description: "Changes applied. Click 'Save All Changes' to save to database.",
+      });
     } else {
       // Add new item
       const newItem = {
@@ -314,8 +337,11 @@ const UnifiedProfileEditModal = ({
         processing: true,
         created_at: new Date().toISOString(),
       };
-      setItems(prev => [...prev, newItem]);
-      toast({ title: "Added", description: "Item added. Click 'Save All Changes' to save to database." });
+      setItems((prev) => [...prev, newItem]);
+      toast({
+        title: 'Added',
+        description: "Item added. Click 'Save All Changes' to save to database.",
+      });
     }
 
     resetForm();
@@ -331,15 +357,15 @@ const UnifiedProfileEditModal = ({
     try {
       // Get the existing item to preserve its id and other fields
       const existingItem = items[editingIndex] || {};
-      
+
       // Ensure id is preserved - use existingItem.id or formData.id as fallback
       const itemId = existingItem.id || formData.id || processedData.id;
-      
-      const updatedItem = { 
-        ...existingItem, 
+
+      const updatedItem = {
+        ...existingItem,
         ...processedData,
         id: itemId, // Explicitly ensure id is set
-        updated_at: new Date().toISOString() 
+        updated_at: new Date().toISOString(),
       };
 
       if (!updatedItem.id) {
@@ -352,37 +378,45 @@ const UnifiedProfileEditModal = ({
 
       // Save directly to database
       await onSave([updatedItem]);
-      toast({ title: "Saved!", description: `${config.title} saved successfully.` });
+      toast({ title: 'Saved!', description: `${config.title} saved successfully.` });
       onClose();
     } catch (error) {
-      console.error("Error saving:", error);
-      toast({ title: "Error", description: "Failed to save. Please try again.", variant: "destructive" });
+      console.error('Error saving:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to save. Please try again.',
+        variant: 'destructive',
+      });
     } finally {
       setIsSaving(false);
     }
   };
 
   const deleteItem = (index) => {
-    setItems(prev => prev.filter((_, idx) => idx !== index));
+    setItems((prev) => prev.filter((_, idx) => idx !== index));
     if (editingIndex === index) resetForm();
-    toast({ title: "Removed", description: "Item has been removed." });
+    toast({ title: 'Removed', description: 'Item has been removed.' });
   };
 
   const toggleEnabled = (index) => {
-    setItems(prev => prev.map((item, idx) => 
-      idx === index ? { ...item, enabled: !item.enabled } : item
-    ));
+    setItems((prev) =>
+      prev.map((item, idx) => (idx === index ? { ...item, enabled: !item.enabled } : item))
+    );
   };
 
   const handleSubmit = async () => {
     setIsSaving(true);
     try {
       await onSave(items);
-      toast({ title: "Saved!", description: `${config.title} saved successfully.` });
+      toast({ title: 'Saved!', description: `${config.title} saved successfully.` });
       onClose();
     } catch (error) {
-      console.error("Error saving:", error);
-      toast({ title: "Error", description: "Failed to save. Please try again.", variant: "destructive" });
+      console.error('Error saving:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to save. Please try again.',
+        variant: 'destructive',
+      });
     } finally {
       setIsSaving(false);
     }
@@ -399,33 +433,38 @@ const UnifiedProfileEditModal = ({
 
     const commonProps = {
       id: field.name,
-      value: formData[field.name] || "",
+      value: formData[field.name] || '',
       onChange: handleInputChange(field.name),
       placeholder: field.placeholder,
       disabled: field.disabled,
-      className: "bg-white",
+      className: 'bg-white',
     };
 
     switch (field.type) {
-      case "textarea":
+      case 'textarea':
         return <Textarea {...commonProps} rows={3} />;
-      case "select":
+      case 'select':
         return (
-          <select {...commonProps} className="flex h-9 w-full rounded-md border border-input bg-white px-3 py-1 text-sm">
-            {field.options.map(opt => (
-              <option key={opt} value={opt}>{opt.charAt(0).toUpperCase() + opt.slice(1)}</option>
+          <select
+            {...commonProps}
+            className="flex h-9 w-full rounded-md border border-input bg-white px-3 py-1 text-sm"
+          >
+            {field.options.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt.charAt(0).toUpperCase() + opt.slice(1)}
+              </option>
             ))}
           </select>
         );
-      case "date":
+      case 'date':
         return <Input {...commonProps} type="date" />;
-      case "number":
+      case 'number':
         return <Input {...commonProps} type="number" min="0" />;
-      case "url":
+      case 'url':
         return <Input {...commonProps} type="url" />;
-      case "tags":
+      case 'tags':
         return <Textarea {...commonProps} rows={2} />;
-      case "skills_manager":
+      case 'skills_manager':
         return (
           <div className="space-y-4">
             {/* Current Skills Display */}
@@ -439,15 +478,20 @@ const UnifiedProfileEditModal = ({
                 </div>
                 <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto">
                   {formData.skillsList.map((skill, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg hover:shadow-sm transition-all">
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg hover:shadow-sm transition-all"
+                    >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-sm font-semibold text-blue-900">{skill.name}</span>
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                            skill.type === 'technical' 
-                              ? 'bg-purple-100 text-purple-700' 
-                              : 'bg-green-100 text-green-700'
-                          }`}>
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                              skill.type === 'technical'
+                                ? 'bg-purple-100 text-purple-700'
+                                : 'bg-green-100 text-green-700'
+                            }`}
+                          >
                             {skill.type === 'technical' ? 'Technical' : 'Soft Skill'}
                           </span>
                         </div>
@@ -455,13 +499,11 @@ const UnifiedProfileEditModal = ({
                           <div className="flex items-center gap-1">
                             <span>Level:</span>
                             <div className="flex gap-0.5">
-                              {[1, 2, 3, 4, 5].map(level => (
+                              {[1, 2, 3, 4, 5].map((level) => (
                                 <div
                                   key={level}
                                   className={`w-2 h-2 rounded-full ${
-                                    level <= (skill.level || 3) 
-                                      ? 'bg-blue-500' 
-                                      : 'bg-gray-200'
+                                    level <= (skill.level || 3) ? 'bg-blue-500' : 'bg-gray-200'
                                   }`}
                                 />
                               ))}
@@ -470,7 +512,9 @@ const UnifiedProfileEditModal = ({
                           </div>
                         </div>
                         {skill.description && (
-                          <p className="text-xs text-gray-600 mt-1 line-clamp-1">{skill.description}</p>
+                          <p className="text-xs text-gray-600 mt-1 line-clamp-1">
+                            {skill.description}
+                          </p>
                         )}
                       </div>
                       <button
@@ -486,46 +530,56 @@ const UnifiedProfileEditModal = ({
                 </div>
               </div>
             )}
-            
+
             {/* Add New Skill Form */}
             <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 bg-gray-50/50 hover:bg-gray-50 transition-colors">
               <div className="flex items-center gap-2 mb-3">
                 <Plus className="w-4 h-4 text-gray-600" />
                 <div className="text-sm font-semibold text-gray-800">Add New Skill</div>
               </div>
-              
+
               <div className="space-y-3">
                 {/* Skill Name */}
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Skill Name *</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Skill Name *
+                  </label>
                   <input
                     type="text"
                     placeholder="e.g., JavaScript, Communication, Project Management"
-                    value={formData.newSkillName || ""}
-                    onChange={(e) => setFormData(prev => ({ ...prev, newSkillName: e.target.value }))}
+                    value={formData.newSkillName || ''}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, newSkillName: e.target.value }))
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   />
                 </div>
-                
+
                 {/* Type and Level Row */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
                     <select
-                      value={formData.newSkillType || "soft"}
-                      onChange={(e) => setFormData(prev => ({ ...prev, newSkillType: e.target.value }))}
+                      value={formData.newSkillType || 'soft'}
+                      onChange={(e) =>
+                        setFormData((prev) => ({ ...prev, newSkillType: e.target.value }))
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                     >
                       <option value="soft">Soft Skill</option>
                       <option value="technical">Technical</option>
                     </select>
                   </div>
-                  
+
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Proficiency Level</label>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Proficiency Level
+                    </label>
                     <select
-                      value={formData.newSkillLevel || "3"}
-                      onChange={(e) => setFormData(prev => ({ ...prev, newSkillLevel: e.target.value }))}
+                      value={formData.newSkillLevel || '3'}
+                      onChange={(e) =>
+                        setFormData((prev) => ({ ...prev, newSkillLevel: e.target.value }))
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                     >
                       <option value="1">Level 1 - Beginner</option>
@@ -536,19 +590,23 @@ const UnifiedProfileEditModal = ({
                     </select>
                   </div>
                 </div>
-                
+
                 {/* Description */}
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Description (Optional)</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Description (Optional)
+                  </label>
                   <input
                     type="text"
                     placeholder="Brief description of your experience with this skill"
-                    value={formData.newSkillDescription || ""}
-                    onChange={(e) => setFormData(prev => ({ ...prev, newSkillDescription: e.target.value }))}
+                    value={formData.newSkillDescription || ''}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, newSkillDescription: e.target.value }))
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   />
                 </div>
-                
+
                 {/* Add Button */}
                 <button
                   type="button"
@@ -565,7 +623,7 @@ const UnifiedProfileEditModal = ({
                 </button>
               </div>
             </div>
-            
+
             {/* Empty State */}
             {(!formData.skillsList || formData.skillsList.length === 0) && (
               <div className="text-center py-6 text-gray-500">
@@ -585,7 +643,11 @@ const UnifiedProfileEditModal = ({
   const renderForm = () => {
     if (!isFormOpen) {
       return (
-        <Button onClick={startAdding} variant="outline" className="w-full border-dashed bg-blue-50 text-blue-600 hover:bg-blue-100">
+        <Button
+          onClick={startAdding}
+          variant="outline"
+          className="w-full border-dashed bg-blue-50 text-blue-600 hover:bg-blue-100"
+        >
           <Plus className="w-4 h-4 mr-2" />
           {config.addButtonText}
         </Button>
@@ -597,14 +659,23 @@ const UnifiedProfileEditModal = ({
         <h4 className="font-semibold text-blue-700">
           {editingIndex !== null ? `Edit ${config.title}` : `Add ${config.title}`}
         </h4>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {config.fields.map(field => {
+          {config.fields.map((field) => {
             const renderedField = renderField(field);
             if (!renderedField) return null;
-            
+
             return (
-              <div key={field.name} className={field.type === "textarea" || field.type === "tags" || field.type === "skills_manager" ? "md:col-span-2" : ""}>
+              <div
+                key={field.name}
+                className={
+                  field.type === 'textarea' ||
+                  field.type === 'tags' ||
+                  field.type === 'skills_manager'
+                    ? 'md:col-span-2'
+                    : ''
+                }
+              >
                 <Label htmlFor={field.name}>{field.label}</Label>
                 {renderedField}
               </div>
@@ -614,19 +685,24 @@ const UnifiedProfileEditModal = ({
 
         {config.hasProgress && (
           <div className="space-y-1">
-            <Progress value={calculateProgress(
-              parsePositiveNumber(formData.completedModules),
-              parsePositiveNumber(formData.totalModules)
-            )} className="h-2" />
+            <Progress
+              value={calculateProgress(
+                parsePositiveNumber(formData.completedModules),
+                parsePositiveNumber(formData.totalModules)
+              )}
+              className="h-2"
+            />
             <p className="text-xs text-gray-500">Progress calculated from modules</p>
           </div>
         )}
 
         <div className="flex gap-2">
           <Button onClick={saveItem} className="bg-blue-600 hover:bg-blue-700 text-white">
-            {editingIndex !== null ? "Apply Changes" : "Add Item"}
+            {editingIndex !== null ? 'Apply Changes' : 'Add Item'}
           </Button>
-          <Button variant="outline" onClick={resetForm}>Cancel</Button>
+          <Button variant="outline" onClick={resetForm}>
+            Cancel
+          </Button>
         </div>
       </div>
     );
@@ -636,7 +712,7 @@ const UnifiedProfileEditModal = ({
     <div
       key={item.id || index}
       className={`p-4 border rounded-lg shadow-sm hover:shadow-md transition-shadow ${
-        item.enabled === false ? "opacity-50 bg-gray-50" : "bg-white"
+        item.enabled === false ? 'opacity-50 bg-gray-50' : 'bg-white'
       }`}
     >
       <div className="flex justify-between items-start gap-4">
@@ -644,7 +720,13 @@ const UnifiedProfileEditModal = ({
           <div className="flex items-center gap-2">
             <h4 className="font-semibold text-gray-900">{config.getDisplayTitle(item)}</h4>
             {item.status && (
-              <Badge className={item.status === "completed" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}>
+              <Badge
+                className={
+                  item.status === 'completed'
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-blue-100 text-blue-700'
+                }
+              >
                 {item.status}
               </Badge>
             )}
@@ -655,7 +737,12 @@ const UnifiedProfileEditModal = ({
             )}
           </div>
           <p className="text-sm text-gray-600">{config.getDisplaySubtitle(item)}</p>
-          {item.duration && <p className="text-xs text-gray-500 mt-1"><Calendar className="w-3 h-3 inline mr-1" />{item.duration}</p>}
+          {item.duration && (
+            <p className="text-xs text-gray-500 mt-1">
+              <Calendar className="w-3 h-3 inline mr-1" />
+              {item.duration}
+            </p>
+          )}
 
           {/* Description */}
           {item.description && (
@@ -675,17 +762,20 @@ const UnifiedProfileEditModal = ({
                       : Array.isArray(item.skills)
                         ? item.skills
                         : typeof item.skills === 'string' && item.skills.trim()
-                          ? item.skills.split(',').map(t => t.trim())
+                          ? item.skills.split(',').map((t) => t.trim())
                           : typeof item.technologies === 'string' && item.technologies.trim()
-                            ? item.technologies.split(',').map(t => t.trim())
+                            ? item.technologies.split(',').map((t) => t.trim())
                             : typeof item.tech === 'string' && item.tech.trim()
-                              ? item.tech.split(',').map(t => t.trim())
+                              ? item.tech.split(',').map((t) => t.trim())
                               : typeof item.tech_stack === 'string' && item.tech_stack.trim()
-                                ? item.tech_stack.split(',').map(t => t.trim())
+                                ? item.tech_stack.split(',').map((t) => t.trim())
                                 : [];
 
                 return techArray.map((tech, i) => (
-                  <Badge key={i} className="bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 border border-blue-200 text-xs font-medium shadow-sm">
+                  <Badge
+                    key={i}
+                    className="bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 border border-blue-200 text-xs font-medium shadow-sm"
+                  >
                     {tech}
                   </Badge>
                 ));
@@ -695,13 +785,28 @@ const UnifiedProfileEditModal = ({
         </div>
 
         <div className="flex gap-1">
-          <Button variant="ghost" size="sm" onClick={() => startEditing(index)} className="text-blue-600 hover:bg-blue-50">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => startEditing(index)}
+            className="text-blue-600 hover:bg-blue-50"
+          >
             <PenSquare className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => deleteItem(index)} className="text-red-500 hover:bg-red-50">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => deleteItem(index)}
+            className="text-red-500 hover:bg-red-50"
+          >
             <Trash2 className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => toggleEnabled(index)} className={item.enabled === false ? "text-gray-500" : "text-green-600"}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => toggleEnabled(index)}
+            className={item.enabled === false ? 'text-gray-500' : 'text-green-600'}
+          >
             {item.enabled === false ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </Button>
         </div>
@@ -714,13 +819,21 @@ const UnifiedProfileEditModal = ({
             <span className="text-blue-600 font-medium">{item.progress}%</span>
           </div>
           <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-            <div className="h-full bg-blue-600 rounded-full" style={{ width: `${item.progress}%` }} />
+            <div
+              className="h-full bg-blue-600 rounded-full"
+              style={{ width: `${item.progress}%` }}
+            />
           </div>
         </div>
       )}
 
       {item.certificateUrl && (
-        <Button variant="outline" size="sm" className="mt-3 w-full" onClick={() => window.open(getCertificateProxyUrl(item.certificateUrl), "_blank")}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-3 w-full"
+          onClick={() => window.open(getCertificateProxyUrl(item.certificateUrl), '_blank')}
+        >
           <Award className="w-4 h-4 mr-2" /> View Certificate
         </Button>
       )}
@@ -744,13 +857,25 @@ const UnifiedProfileEditModal = ({
             <div className="space-y-5 pt-2">
               {/* Form Fields */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {config.fields.map(field => {
+                {config.fields.map((field) => {
                   const renderedField = renderField(field);
                   if (!renderedField) return null;
-                  
+
                   return (
-                    <div key={field.name} className={field.type === "textarea" || field.type === "tags" || field.type === "skills_manager" ? "md:col-span-2" : ""}>
-                      <Label htmlFor={field.name} className="text-sm font-medium text-gray-700 mb-1.5 block">
+                    <div
+                      key={field.name}
+                      className={
+                        field.type === 'textarea' ||
+                        field.type === 'tags' ||
+                        field.type === 'skills_manager'
+                          ? 'md:col-span-2'
+                          : ''
+                      }
+                    >
+                      <Label
+                        htmlFor={field.name}
+                        className="text-sm font-medium text-gray-700 mb-1.5 block"
+                      >
                         {field.label}
                       </Label>
                       {renderedField}
@@ -768,14 +893,20 @@ const UnifiedProfileEditModal = ({
                       {calculateProgress(
                         parsePositiveNumber(formData.completedModules),
                         parsePositiveNumber(formData.totalModules)
-                      )}%
+                      )}
+                      %
                     </span>
                   </div>
-                  <Progress value={calculateProgress(
-                    parsePositiveNumber(formData.completedModules),
-                    parsePositiveNumber(formData.totalModules)
-                  )} className="h-2" />
-                  <p className="text-xs text-gray-500">Progress is calculated from completed/total modules</p>
+                  <Progress
+                    value={calculateProgress(
+                      parsePositiveNumber(formData.completedModules),
+                      parsePositiveNumber(formData.totalModules)
+                    )}
+                    className="h-2"
+                  />
+                  <p className="text-xs text-gray-500">
+                    Progress is calculated from completed/total modules
+                  </p>
                 </div>
               )}
             </div>
@@ -783,8 +914,8 @@ const UnifiedProfileEditModal = ({
 
           {/* Fixed Action Buttons at Bottom */}
           <div className="flex-shrink-0 flex gap-3 pt-4 border-t border-gray-200 bg-white">
-            <Button 
-              onClick={saveAndClose} 
+            <Button
+              onClick={saveAndClose}
               disabled={isSaving}
               className="flex-1 bg-blue-600 hover:bg-blue-700 text-white h-11"
             >
@@ -800,12 +931,7 @@ const UnifiedProfileEditModal = ({
                 </>
               )}
             </Button>
-            <Button 
-              variant="outline" 
-              onClick={onClose} 
-              disabled={isSaving}
-              className="px-6 h-11"
-            >
+            <Button variant="outline" onClick={onClose} disabled={isSaving} className="px-6 h-11">
               Cancel
             </Button>
           </div>
@@ -847,8 +973,8 @@ const UnifiedProfileEditModal = ({
           <Button variant="outline" onClick={onClose} disabled={isSaving}>
             Cancel
           </Button>
-          <Button 
-            onClick={handleSubmit} 
+          <Button
+            onClick={handleSubmit}
             disabled={isSaving}
             className="bg-blue-600 hover:bg-blue-700 text-white"
           >

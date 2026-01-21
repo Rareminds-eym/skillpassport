@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { 
-  UsersIcon, 
+import {
+  UsersIcon,
   ClipboardDocumentCheckIcon,
   AcademicCapIcon,
   BanknotesIcon,
@@ -8,7 +8,7 @@ import {
   BookOpenIcon,
   ClockIcon,
   ArrowPathIcon,
-  FunnelIcon
+  FunnelIcon,
 } from '@heroicons/react/24/outline';
 import KPICard from './KPICard';
 import { supabase } from '../../lib/supabaseClient';
@@ -40,11 +40,11 @@ interface KPIDashboardAdvancedProps {
   enableDrilldown?: boolean;
 }
 
-const KPIDashboardAdvanced: React.FC<KPIDashboardAdvancedProps> = ({ 
+const KPIDashboardAdvanced: React.FC<KPIDashboardAdvancedProps> = ({
   schoolId,
   refreshInterval = 15 * 60 * 1000,
   onKPIClick,
-  enableDrilldown = true
+  enableDrilldown = true,
 }) => {
   const [kpiData, setKpiData] = useState<KPIData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -52,14 +52,14 @@ const KPIDashboardAdvanced: React.FC<KPIDashboardAdvancedProps> = ({
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [filters, setFilters] = useState<FilterOptions>({
-    dateRange: 'daily'
+    dateRange: 'daily',
   });
   const [showFilters, setShowFilters] = useState(false);
 
   const fetchKPIData = async () => {
     try {
       setError(null);
-      
+
       // Build base query with filters
       let studentsQuery = supabase
         .from('students')
@@ -75,9 +75,7 @@ const KPIDashboardAdvanced: React.FC<KPIDashboardAdvancedProps> = ({
 
       // Fetch Attendance Today with real-time calculation
       const today = new Date().toISOString().split('T')[0];
-      let attendanceQuery = supabase
-        .from('attendance_records')
-        .select('status, student_id');
+      let attendanceQuery = supabase.from('attendance_records').select('status, student_id');
 
       if (schoolId) attendanceQuery = attendanceQuery.eq('school_id', schoolId);
       attendanceQuery = attendanceQuery.eq('date', today);
@@ -85,7 +83,7 @@ const KPIDashboardAdvanced: React.FC<KPIDashboardAdvancedProps> = ({
       const { data: attendanceData, error: attendanceError } = await attendanceQuery;
       if (attendanceError) throw attendanceError;
 
-      const presentCount = attendanceData?.filter(a => a.status === 'present').length || 0;
+      const presentCount = attendanceData?.filter((a) => a.status === 'present').length || 0;
       const totalAttendance = attendanceData?.length || 1;
       const attendancePercentage = Math.round((presentCount / totalAttendance) * 100);
 
@@ -118,7 +116,7 @@ const KPIDashboardAdvanced: React.FC<KPIDashboardAdvancedProps> = ({
       const getFeeData = async (daysBack: number) => {
         const dateFrom = new Date();
         dateFrom.setDate(dateFrom.getDate() - daysBack);
-        
+
         const feeQuery = supabase
           .from('fee_payments')
           .select('amount')
@@ -129,7 +127,7 @@ const KPIDashboardAdvanced: React.FC<KPIDashboardAdvancedProps> = ({
 
         const { data, error } = await feeQuery;
         if (error) console.warn('Fee query error:', error.message);
-        
+
         return data?.reduce((sum, fee) => sum + (fee.amount || 0), 0) || 0;
       };
 
@@ -140,7 +138,9 @@ const KPIDashboardAdvanced: React.FC<KPIDashboardAdvancedProps> = ({
       // Fetch Career Readiness Index (AI-driven average)
       // Note: career_recommendations table doesn't exist, using placeholder
       const avgCareerReadiness = 0;
-      console.log('Career readiness: using placeholder (career_recommendations table not available)');
+      console.log(
+        'Career readiness: using placeholder (career_recommendations table not available)'
+      );
 
       // Fetch Library Overdue Items
       // Using library_book_issues_school table instead of non-existent 'book_issue' table
@@ -244,12 +244,10 @@ const KPIDashboardAdvanced: React.FC<KPIDashboardAdvancedProps> = ({
               <span>Last updated: {lastUpdated.toLocaleTimeString()}</span>
             </div>
           )}
-          
+
           <button
             onClick={() => setAutoRefresh(!autoRefresh)}
-            className={`text-sm font-medium ${
-              autoRefresh ? 'text-green-600' : 'text-gray-400'
-            }`}
+            className={`text-sm font-medium ${autoRefresh ? 'text-green-600' : 'text-gray-400'}`}
           >
             {autoRefresh ? 'Auto-refresh ON' : 'Auto-refresh OFF'}
           </button>
@@ -280,9 +278,7 @@ const KPIDashboardAdvanced: React.FC<KPIDashboardAdvancedProps> = ({
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Grade
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Grade</label>
               <select
                 value={filters.grade || ''}
                 onChange={(e) => setFilters({ ...filters, grade: e.target.value || undefined })}
@@ -290,15 +286,15 @@ const KPIDashboardAdvanced: React.FC<KPIDashboardAdvancedProps> = ({
               >
                 <option value="">All Grades</option>
                 {[...Array(12)].map((_, i) => (
-                  <option key={i + 1} value={i + 1}>Grade {i + 1}</option>
+                  <option key={i + 1} value={i + 1}>
+                    Grade {i + 1}
+                  </option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Section
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Section</label>
               <select
                 value={filters.section || ''}
                 onChange={(e) => setFilters({ ...filters, section: e.target.value || undefined })}
@@ -306,15 +302,15 @@ const KPIDashboardAdvanced: React.FC<KPIDashboardAdvancedProps> = ({
               >
                 <option value="">All Sections</option>
                 {['A', 'B', 'C', 'D'].map((section) => (
-                  <option key={section} value={section}>Section {section}</option>
+                  <option key={section} value={section}>
+                    Section {section}
+                  </option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Fee Period
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Fee Period</label>
               <select
                 value={filters.dateRange || 'daily'}
                 onChange={(e) => setFilters({ ...filters, dateRange: e.target.value as any })}
@@ -380,9 +376,11 @@ const KPIDashboardAdvanced: React.FC<KPIDashboardAdvancedProps> = ({
           <KPICard
             title={`Fee Collection (${filters.dateRange || 'Daily'})`}
             value={formatCurrency(
-              filters.dateRange === 'monthly' ? kpiData?.feeCollection.monthly || 0 :
-              filters.dateRange === 'weekly' ? kpiData?.feeCollection.weekly || 0 :
-              kpiData?.feeCollection.daily || 0
+              filters.dateRange === 'monthly'
+                ? kpiData?.feeCollection.monthly || 0
+                : filters.dateRange === 'weekly'
+                  ? kpiData?.feeCollection.weekly || 0
+                  : kpiData?.feeCollection.daily || 0
             )}
             icon={<BanknotesIcon className="h-6 w-6" />}
             color="green"

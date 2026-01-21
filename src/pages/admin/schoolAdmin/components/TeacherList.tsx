@@ -1,9 +1,22 @@
-import { CheckCircle, Clock, Eye, Filter, Grid3X3, List, Mail, Phone, Search, UserCheck, Users, XCircle } from "lucide-react";
-import React, { useEffect, useState } from "react";
-import KPICard from "../../../../components/admin/KPICard";
-import DocumentViewerModal from "../../../../components/admin/modals/DocumentViewerModal";
-import { useAuth } from "../../../../context/AuthContext";
-import { supabase } from "../../../../lib/supabaseClient";
+import {
+  CheckCircle,
+  Clock,
+  Eye,
+  Filter,
+  Grid3X3,
+  List,
+  Mail,
+  Phone,
+  Search,
+  UserCheck,
+  Users,
+  XCircle,
+} from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import KPICard from '../../../../components/admin/KPICard';
+import DocumentViewerModal from '../../../../components/admin/modals/DocumentViewerModal';
+import { useAuth } from '../../../../context/AuthContext';
+import { supabase } from '../../../../lib/supabaseClient';
 
 interface Teacher {
   id: string;
@@ -31,12 +44,12 @@ const TeacherListPage: React.FC = () => {
   const { user } = useAuth();
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [filteredTeachers, setFilteredTeachers] = useState<Teacher[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [roleFilter, setRoleFilter] = useState("all");
-  const [subjectFilter, setSubjectFilter] = useState("all");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [subjectFilter, setSubjectFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
@@ -120,10 +133,10 @@ const TeacherListPage: React.FC = () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from("school_educators")
-        .select("*")
-        .eq("school_id", schoolId)
-        .order("created_at", { ascending: false });
+        .from('school_educators')
+        .select('*')
+        .eq('school_id', schoolId)
+        .order('created_at', { ascending: false });
 
       if (error) {
         console.error('Error loading teachers:', error);
@@ -151,17 +164,17 @@ const TeacherListPage: React.FC = () => {
       );
     }
 
-    if (statusFilter !== "all") {
+    if (statusFilter !== 'all') {
       filtered = filtered.filter((t) => t.onboarding_status === statusFilter);
     }
 
-    if (roleFilter !== "all") {
+    if (roleFilter !== 'all') {
       filtered = filtered.filter((t) => t.role === roleFilter);
     }
 
-    if (subjectFilter !== "all") {
-      filtered = filtered.filter((t) => 
-        t.subject_expertise?.some((subject: any) => 
+    if (subjectFilter !== 'all') {
+      filtered = filtered.filter((t) =>
+        t.subject_expertise?.some((subject: any) =>
           subject.name?.toLowerCase().includes(subjectFilter.toLowerCase())
         )
       );
@@ -172,15 +185,15 @@ const TeacherListPage: React.FC = () => {
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { color: string; icon: any; label: string }> = {
-      pending: { color: "bg-yellow-100 text-yellow-800", icon: Clock, label: "Pending" },
+      pending: { color: 'bg-yellow-100 text-yellow-800', icon: Clock, label: 'Pending' },
       documents_uploaded: {
-        color: "bg-blue-100 text-blue-800",
+        color: 'bg-blue-100 text-blue-800',
         icon: CheckCircle,
-        label: "Documents Uploaded",
+        label: 'Documents Uploaded',
       },
-      verified: { color: "bg-green-100 text-green-800", icon: CheckCircle, label: "Verified" },
-      active: { color: "bg-green-100 text-green-800", icon: CheckCircle, label: "Active" },
-      inactive: { color: "bg-gray-100 text-gray-800", icon: XCircle, label: "Inactive" },
+      verified: { color: 'bg-green-100 text-green-800', icon: CheckCircle, label: 'Verified' },
+      active: { color: 'bg-green-100 text-green-800', icon: CheckCircle, label: 'Active' },
+      inactive: { color: 'bg-gray-100 text-gray-800', icon: XCircle, label: 'Inactive' },
     };
 
     const config = statusConfig[status] || statusConfig.pending;
@@ -198,9 +211,9 @@ const TeacherListPage: React.FC = () => {
 
   const updateTeacherStatus = async (teacherId: string, newStatus: string) => {
     const { error } = await supabase
-      .from("school_educators")
+      .from('school_educators')
       .update({ onboarding_status: newStatus })
-      .eq("id", teacherId);
+      .eq('id', teacherId);
 
     if (!error) {
       loadTeachers();
@@ -216,19 +229,23 @@ const TeacherListPage: React.FC = () => {
   };
 
   const hasDocuments = (teacher: Teacher) => {
-    return teacher.degree_certificate_url || teacher.id_proof_url || (teacher.experience_letters_url && teacher.experience_letters_url.length > 0);
+    return (
+      teacher.degree_certificate_url ||
+      teacher.id_proof_url ||
+      (teacher.experience_letters_url && teacher.experience_letters_url.length > 0)
+    );
   };
 
   // KPI calculations
   const totalTeachers = teachers.length;
-  const activeTeachers = teachers.filter(t => t.onboarding_status === 'active').length;
-  const pendingTeachers = teachers.filter(t => t.onboarding_status === 'pending').length;
-  const verifiedTeachers = teachers.filter(t => t.onboarding_status === 'verified').length;
+  const activeTeachers = teachers.filter((t) => t.onboarding_status === 'active').length;
+  const pendingTeachers = teachers.filter((t) => t.onboarding_status === 'pending').length;
+  const verifiedTeachers = teachers.filter((t) => t.onboarding_status === 'verified').length;
 
   // Get unique subjects for filter
   const uniqueSubjects = React.useMemo(() => {
     const subjects = new Set<string>();
-    teachers.forEach(teacher => {
+    teachers.forEach((teacher) => {
       teacher.subject_expertise?.forEach((subject: any) => {
         if (subject.name) {
           subjects.add(subject.name);
@@ -266,13 +283,13 @@ const TeacherListPage: React.FC = () => {
                 {teacher.first_name} {teacher.last_name}
               </h3>
               <p className="text-sm text-gray-600">
-                {teacher.teacher_id || <span className="text-gray-400 italic">ID not assigned</span>}
+                {teacher.teacher_id || (
+                  <span className="text-gray-400 italic">ID not assigned</span>
+                )}
               </p>
             </div>
           </div>
-          <div className="text-right">
-            {getStatusBadge(teacher.onboarding_status)}
-          </div>
+          <div className="text-right">{getStatusBadge(teacher.onboarding_status)}</div>
         </div>
       </div>
 
@@ -301,18 +318,28 @@ const TeacherListPage: React.FC = () => {
             {/* Role */}
             <div>
               <div className="text-xs font-medium text-gray-700 mb-2">Role</div>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                teacher.role === 'school_admin' ? 'bg-indigo-100 text-indigo-800' :
-                teacher.role === 'principal' ? 'bg-purple-100 text-purple-800' :
-                teacher.role === 'it_admin' ? 'bg-blue-100 text-blue-800' :
-                teacher.role === 'class_teacher' ? 'bg-green-100 text-green-800' :
-                'bg-gray-100 text-gray-800'
-              }`}>
-                {teacher.role === 'school_admin' ? 'School Admin' :
-                 teacher.role === 'principal' ? 'Principal' :
-                 teacher.role === 'it_admin' ? 'IT Admin' :
-                 teacher.role === 'class_teacher' ? 'Class Teacher' :
-                 'Subject Teacher'}
+              <span
+                className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  teacher.role === 'school_admin'
+                    ? 'bg-indigo-100 text-indigo-800'
+                    : teacher.role === 'principal'
+                      ? 'bg-purple-100 text-purple-800'
+                      : teacher.role === 'it_admin'
+                        ? 'bg-blue-100 text-blue-800'
+                        : teacher.role === 'class_teacher'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-gray-100 text-gray-800'
+                }`}
+              >
+                {teacher.role === 'school_admin'
+                  ? 'School Admin'
+                  : teacher.role === 'principal'
+                    ? 'Principal'
+                    : teacher.role === 'it_admin'
+                      ? 'IT Admin'
+                      : teacher.role === 'class_teacher'
+                        ? 'Class Teacher'
+                        : 'Subject Teacher'}
               </span>
             </div>
           </div>
@@ -346,10 +373,10 @@ const TeacherListPage: React.FC = () => {
             <div>
               <div className="text-xs font-medium text-gray-700 mb-2">Joined</div>
               <div className="text-xs text-gray-600">
-                {new Date(teacher.created_at).toLocaleDateString('en-US', { 
-                  year: 'numeric', 
-                  month: 'short', 
-                  day: 'numeric' 
+                {new Date(teacher.created_at).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
                 })}
               </div>
             </div>
@@ -372,7 +399,12 @@ const TeacherListPage: React.FC = () => {
                 className="flex items-center justify-center gap-2 flex-1 text-sm px-3 py-2 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 transition-colors"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
                 </svg>
                 Docs
               </button>
@@ -428,16 +460,17 @@ const TeacherListPage: React.FC = () => {
           />
         </div>
         <div className="flex items-center justify-between mb-7">
-            <h2 className="text-2xl font-bold text-gray-900 ">Teachers List</h2>
-          </div>
+          <h2 className="text-2xl font-bold text-gray-900 ">Teachers List</h2>
+        </div>
         {/* Enhanced Search and Filter Bar */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-          
-
           <div className="flex items-center gap-4">
             {/* Search */}
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+              <Search
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                size={20}
+              />
               <input
                 type="text"
                 placeholder="Search teachers by name, ID, or email..."
@@ -455,13 +488,18 @@ const TeacherListPage: React.FC = () => {
               >
                 <Filter size={18} className="text-gray-600" />
                 <span className="text-gray-700 font-medium">Filters</span>
-                <svg 
-                  className={`w-4 h-4 text-gray-600 transition-transform ${showFilters ? 'rotate-180' : ''}`} 
-                  fill="none" 
-                  stroke="currentColor" 
+                <svg
+                  className={`w-4 h-4 text-gray-600 transition-transform ${showFilters ? 'rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
                   viewBox="0 0 24 24"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
                 </svg>
               </button>
 
@@ -472,7 +510,9 @@ const TeacherListPage: React.FC = () => {
                     <div className="space-y-4">
                       {/* Status Filter */}
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Status
+                        </label>
                         <select
                           value={statusFilter}
                           onChange={(e) => setStatusFilter(e.target.value)}
@@ -506,7 +546,9 @@ const TeacherListPage: React.FC = () => {
 
                       {/* Subject Filter */}
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Subject Expertise</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Subject Expertise
+                        </label>
                         <select
                           value={subjectFilter}
                           onChange={(e) => setSubjectFilter(e.target.value)}
@@ -522,14 +564,17 @@ const TeacherListPage: React.FC = () => {
                       </div>
 
                       {/* Clear Filters Button */}
-                      {(searchTerm || statusFilter !== "all" || roleFilter !== "all" || subjectFilter !== "all") && (
+                      {(searchTerm ||
+                        statusFilter !== 'all' ||
+                        roleFilter !== 'all' ||
+                        subjectFilter !== 'all') && (
                         <div className="pt-2 border-t border-gray-200">
                           <button
                             onClick={() => {
-                              setSearchTerm("");
-                              setStatusFilter("all");
-                              setRoleFilter("all");
-                              setSubjectFilter("all");
+                              setSearchTerm('');
+                              setStatusFilter('all');
+                              setRoleFilter('all');
+                              setSubjectFilter('all');
                               setShowFilters(false);
                             }}
                             className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
@@ -547,22 +592,22 @@ const TeacherListPage: React.FC = () => {
             {/* View Toggle */}
             <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
               <button
-                onClick={() => setViewMode("grid")}
+                onClick={() => setViewMode('grid')}
                 className={`p-2 rounded-md transition-colors ${
-                  viewMode === "grid" 
-                    ? "bg-white text-blue-600 shadow-sm" 
-                    : "text-gray-600 hover:text-gray-900"
+                  viewMode === 'grid'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
                 }`}
                 title="Grid View"
               >
                 <Grid3X3 size={18} />
               </button>
               <button
-                onClick={() => setViewMode("list")}
+                onClick={() => setViewMode('list')}
                 className={`p-2 rounded-md transition-colors ${
-                  viewMode === "list" 
-                    ? "bg-white text-blue-600 shadow-sm" 
-                    : "text-gray-600 hover:text-gray-900"
+                  viewMode === 'list'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
                 }`}
                 title="List View"
               >
@@ -573,8 +618,10 @@ const TeacherListPage: React.FC = () => {
 
           {/* Results Summary */}
           <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
-            
-            {(searchTerm || statusFilter !== "all" || roleFilter !== "all" || subjectFilter !== "all") && (
+            {(searchTerm ||
+              statusFilter !== 'all' ||
+              roleFilter !== 'all' ||
+              subjectFilter !== 'all') && (
               <div className="flex items-center gap-2">
                 <span className="text-blue-600">Filters applied:</span>
                 <div className="flex items-center gap-1">
@@ -583,17 +630,17 @@ const TeacherListPage: React.FC = () => {
                       Search: "{searchTerm}"
                     </span>
                   )}
-                  {statusFilter !== "all" && (
+                  {statusFilter !== 'all' && (
                     <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
-                      Status: {statusFilter.replace(/_/g, " ")}
+                      Status: {statusFilter.replace(/_/g, ' ')}
                     </span>
                   )}
-                  {roleFilter !== "all" && (
+                  {roleFilter !== 'all' && (
                     <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
-                      Role: {roleFilter.replace(/_/g, " ")}
+                      Role: {roleFilter.replace(/_/g, ' ')}
                     </span>
                   )}
-                  {subjectFilter !== "all" && (
+                  {subjectFilter !== 'all' && (
                     <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
                       Subject: {subjectFilter}
                     </span>
@@ -613,8 +660,18 @@ const TeacherListPage: React.FC = () => {
         ) : !schoolId ? (
           <div className="text-center py-12">
             <div className="text-yellow-600 mb-4">
-              <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              <svg
+                className="mx-auto h-12 w-12"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
               </svg>
             </div>
             <p className="text-gray-900 font-semibold">No School Found</p>
@@ -630,15 +687,15 @@ const TeacherListPage: React.FC = () => {
             <Users size={48} className="text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No teachers found</h3>
             <p className="text-gray-500 mb-4">
-              {searchTerm || statusFilter !== "all" || roleFilter !== "all" 
-                ? "Try adjusting your search or filters" 
-                : "No teachers have been added to this school yet"}
+              {searchTerm || statusFilter !== 'all' || roleFilter !== 'all'
+                ? 'Try adjusting your search or filters'
+                : 'No teachers have been added to this school yet'}
             </p>
           </div>
         ) : (
           <>
             {/* Grid View */}
-            {viewMode === "grid" && (
+            {viewMode === 'grid' && (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {paginatedTeachers.map((teacher) => (
                   <TeacherCard key={teacher.id} teacher={teacher} />
@@ -647,7 +704,7 @@ const TeacherListPage: React.FC = () => {
             )}
 
             {/* List View */}
-            {viewMode === "list" && (
+            {viewMode === 'list' && (
               <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full">
@@ -680,7 +737,9 @@ const TeacherListPage: React.FC = () => {
                       {paginatedTeachers.map((teacher) => (
                         <tr key={teacher.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {teacher.teacher_id || <span className="text-gray-400 italic">Not assigned</span>}
+                            {teacher.teacher_id || (
+                              <span className="text-gray-400 italic">Not assigned</span>
+                            )}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {teacher.first_name} {teacher.last_name}
@@ -689,30 +748,42 @@ const TeacherListPage: React.FC = () => {
                             {teacher.email}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              teacher.role === 'school_admin' ? 'bg-indigo-100 text-indigo-800' :
-                              teacher.role === 'principal' ? 'bg-purple-100 text-purple-800' :
-                              teacher.role === 'it_admin' ? 'bg-blue-100 text-blue-800' :
-                              teacher.role === 'class_teacher' ? 'bg-green-100 text-green-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {teacher.role === 'school_admin' ? 'School Admin' :
-                               teacher.role === 'principal' ? 'Principal' :
-                               teacher.role === 'it_admin' ? 'IT Admin' :
-                               teacher.role === 'class_teacher' ? 'Class Teacher' :
-                               'Subject Teacher'}
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                teacher.role === 'school_admin'
+                                  ? 'bg-indigo-100 text-indigo-800'
+                                  : teacher.role === 'principal'
+                                    ? 'bg-purple-100 text-purple-800'
+                                    : teacher.role === 'it_admin'
+                                      ? 'bg-blue-100 text-blue-800'
+                                      : teacher.role === 'class_teacher'
+                                        ? 'bg-green-100 text-green-800'
+                                        : 'bg-gray-100 text-gray-800'
+                              }`}
+                            >
+                              {teacher.role === 'school_admin'
+                                ? 'School Admin'
+                                : teacher.role === 'principal'
+                                  ? 'Principal'
+                                  : teacher.role === 'it_admin'
+                                    ? 'IT Admin'
+                                    : teacher.role === 'class_teacher'
+                                      ? 'Class Teacher'
+                                      : 'Subject Teacher'}
                             </span>
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-600">
                             <div className="flex flex-wrap gap-1">
-                              {teacher.subject_expertise?.slice(0, 2).map((subject: any, idx: number) => (
-                                <span
-                                  key={idx}
-                                  className="px-2 py-1 bg-indigo-100 text-indigo-800 rounded text-xs"
-                                >
-                                  {subject.name}
-                                </span>
-                              ))}
+                              {teacher.subject_expertise
+                                ?.slice(0, 2)
+                                .map((subject: any, idx: number) => (
+                                  <span
+                                    key={idx}
+                                    className="px-2 py-1 bg-indigo-100 text-indigo-800 rounded text-xs"
+                                  >
+                                    {subject.name}
+                                  </span>
+                                ))}
                               {teacher.subject_expertise?.length > 2 && (
                                 <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
                                   +{teacher.subject_expertise.length - 2}
@@ -738,8 +809,18 @@ const TeacherListPage: React.FC = () => {
                                   className="text-green-600 hover:text-green-900 flex items-center gap-1 ml-2"
                                   title="View Documents"
                                 >
-                                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                  <svg
+                                    className="h-4 w-4"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                    />
                                   </svg>
                                   Docs
                                 </button>
@@ -764,7 +845,7 @@ const TeacherListPage: React.FC = () => {
                 >
                   ← Previous
                 </button>
-                
+
                 <div className="flex items-center gap-4">
                   <span className="text-sm text-gray-600">
                     Page {currentPage} of {totalPages}
@@ -773,7 +854,7 @@ const TeacherListPage: React.FC = () => {
                     {filteredTeachers.length} total teachers
                   </span>
                 </div>
-                
+
                 <button
                   onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                   disabled={currentPage === totalPages}
@@ -797,7 +878,9 @@ const TeacherListPage: React.FC = () => {
                       {selectedTeacher.first_name} {selectedTeacher.last_name}
                     </h3>
                     <p className="text-sm text-gray-600">
-                      {selectedTeacher.teacher_id || <span className="text-gray-400 italic">ID not assigned</span>}
+                      {selectedTeacher.teacher_id || (
+                        <span className="text-gray-400 italic">ID not assigned</span>
+                      )}
                     </p>
                   </div>
                   <button
@@ -815,41 +898,56 @@ const TeacherListPage: React.FC = () => {
                   <h4 className="font-semibold text-gray-900 mb-3">Contact Information</h4>
                   <div className="space-y-2 text-sm">
                     <p>
-                      <span className="text-gray-600">Email:</span>{" "}
+                      <span className="text-gray-600">Email:</span>{' '}
                       <span className="text-gray-900">{selectedTeacher.email}</span>
                     </p>
                     <p>
-                      <span className="text-gray-600">Phone:</span>{" "}
-                      <span className="text-gray-900">{selectedTeacher.phone_number || "N/A"}</span>
+                      <span className="text-gray-600">Phone:</span>{' '}
+                      <span className="text-gray-900">{selectedTeacher.phone_number || 'N/A'}</span>
                     </p>
                   </div>
                 </div>
 
                 {/* Login Credentials */}
-                {selectedTeacher.metadata && (selectedTeacher.metadata as any).temporary_password && (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                    <h4 className="font-semibold text-yellow-900 mb-3 flex items-center gap-2">
-                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                      </svg>
-                      Login Credentials
-                    </h4>
-                    <div className="space-y-2 text-sm">
-                      <p>
-                        <span className="text-yellow-700 font-medium">Temporary Password:</span>{" "}
-                        <code className="bg-yellow-100 px-2 py-1 rounded text-yellow-900 font-mono">
-                          {(selectedTeacher.metadata as any).temporary_password}
-                        </code>
-                      </p>
-                      <p className="text-yellow-600 text-xs">
-                        Created: {new Date((selectedTeacher.metadata as any).password_created_at).toLocaleString()}
-                      </p>
-                      <p className="text-yellow-600 text-xs mt-2">
-                        ⚠️ Please share this password securely with the teacher. They should change it after first login.
-                      </p>
+                {selectedTeacher.metadata &&
+                  (selectedTeacher.metadata as any).temporary_password && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                      <h4 className="font-semibold text-yellow-900 mb-3 flex items-center gap-2">
+                        <svg
+                          className="h-5 w-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                          />
+                        </svg>
+                        Login Credentials
+                      </h4>
+                      <div className="space-y-2 text-sm">
+                        <p>
+                          <span className="text-yellow-700 font-medium">Temporary Password:</span>{' '}
+                          <code className="bg-yellow-100 px-2 py-1 rounded text-yellow-900 font-mono">
+                            {(selectedTeacher.metadata as any).temporary_password}
+                          </code>
+                        </p>
+                        <p className="text-yellow-600 text-xs">
+                          Created:{' '}
+                          {new Date(
+                            (selectedTeacher.metadata as any).password_created_at
+                          ).toLocaleString()}
+                        </p>
+                        <p className="text-yellow-600 text-xs mt-2">
+                          ⚠️ Please share this password securely with the teacher. They should
+                          change it after first login.
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
                 {/* Subject Expertise */}
                 <div>
@@ -874,14 +972,14 @@ const TeacherListPage: React.FC = () => {
                 <div>
                   <h4 className="font-semibold text-gray-900 mb-3">Update Status</h4>
                   <div className="flex gap-2">
-                    {["verified", "active", "inactive"].map((status) => (
+                    {['verified', 'active', 'inactive'].map((status) => (
                       <button
                         key={status}
                         onClick={() => updateTeacherStatus(selectedTeacher.id, status)}
                         className={`px-4 py-2 rounded-lg font-medium transition ${
                           selectedTeacher.onboarding_status === status
-                            ? "bg-indigo-600 text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            ? 'bg-indigo-600 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                         }`}
                       >
                         {status.charAt(0).toUpperCase() + status.slice(1)}

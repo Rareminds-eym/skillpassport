@@ -1,20 +1,20 @@
 import { supabase } from '../lib/supabaseClient';
 import {
-    AUTH_ERROR_CODES,
-    buildErrorResponse,
-    generateCorrelationId,
-    handleAuthError,
-    logAuthEvent,
-    mapSupabaseError,
-    validateCredentials,
-    withRetry,
-    withTimeout,
+  AUTH_ERROR_CODES,
+  buildErrorResponse,
+  generateCorrelationId,
+  handleAuthError,
+  logAuthEvent,
+  mapSupabaseError,
+  validateCredentials,
+  withRetry,
+  withTimeout,
 } from '../utils/authErrorHandler';
 
 /**
  * Admin Authentication Service
  * Industrial-grade authentication for school/college/university admins
- * 
+ *
  * Features:
  * - Multi-entity support (schools, colleges, universities)
  * - Approval status verification
@@ -42,17 +42,20 @@ const DB_QUERY_TIMEOUT_MS = 15000;
  */
 export const loginAdmin = async (email, password) => {
   const correlationId = generateCorrelationId();
-  
+
   try {
     // Validate inputs
     const validation = validateCredentials(email, password);
     if (!validation.valid) {
-      logAuthEvent('warn', 'Admin login validation failed', { correlationId, field: validation.field });
+      logAuthEvent('warn', 'Admin login validation failed', {
+        correlationId,
+        field: validation.field,
+      });
       const response = buildErrorResponse(validation.code);
-      return { 
-        success: false, 
-        admin: null, 
-        session: null, 
+      return {
+        success: false,
+        admin: null,
+        session: null,
         error: response.error,
         errorCode: response.errorCode,
         correlationId,
@@ -91,7 +94,7 @@ export const loginAdmin = async (email, password) => {
     } catch (authError) {
       const errorCode = mapSupabaseError(authError);
       logAuthEvent('error', 'Admin auth failed', { correlationId, errorCode });
-      
+
       if (errorCode === AUTH_ERROR_CODES.INVALID_CREDENTIALS) {
         return {
           success: false,
@@ -102,8 +105,11 @@ export const loginAdmin = async (email, password) => {
           correlationId,
         };
       }
-      
-      if (errorCode === AUTH_ERROR_CODES.RATE_LIMITED || errorCode === AUTH_ERROR_CODES.TOO_MANY_ATTEMPTS) {
+
+      if (
+        errorCode === AUTH_ERROR_CODES.RATE_LIMITED ||
+        errorCode === AUTH_ERROR_CODES.TOO_MANY_ATTEMPTS
+      ) {
         return {
           success: false,
           admin: null,
@@ -113,12 +119,12 @@ export const loginAdmin = async (email, password) => {
           correlationId,
         };
       }
-      
+
       const response = handleAuthError(authError, { correlationId, operation: 'adminLogin' });
-      return { 
-        success: false, 
-        admin: null, 
-        session: null, 
+      return {
+        success: false,
+        admin: null,
+        session: null,
         error: response.error,
         errorCode: response.errorCode,
         correlationId,
@@ -127,10 +133,10 @@ export const loginAdmin = async (email, password) => {
 
     if (!authData.user) {
       logAuthEvent('error', 'Admin auth returned no user', { correlationId });
-      return { 
-        success: false, 
-        admin: null, 
-        session: null, 
+      return {
+        success: false,
+        admin: null,
+        session: null,
         error: 'Authentication failed. Please try again.',
         errorCode: AUTH_ERROR_CODES.UNEXPECTED_ERROR,
         correlationId,
@@ -144,14 +150,10 @@ export const loginAdmin = async (email, password) => {
     let userData = null;
     try {
       const { data, error } = await withTimeout(
-        supabase
-          .from('users')
-          .select('*')
-          .eq('id', authData.user.id)
-          .maybeSingle(),
+        supabase.from('users').select('*').eq('id', authData.user.id).maybeSingle(),
         DB_QUERY_TIMEOUT_MS
       );
-      
+
       if (!error) {
         userData = data;
       }
@@ -174,8 +176,11 @@ export const loginAdmin = async (email, password) => {
           correlationId,
         };
       }
-      
-      logAuthEvent('info', 'School admin login successful', { correlationId, adminId: schoolResult.admin.id });
+
+      logAuthEvent('info', 'School admin login successful', {
+        correlationId,
+        adminId: schoolResult.admin.id,
+      });
       return {
         success: true,
         admin: schoolResult.admin,
@@ -187,7 +192,10 @@ export const loginAdmin = async (email, password) => {
     // Step 5: Check colleges table
     const collegeResult = await checkCollegeAdmin(authData.user, correlationId);
     if (collegeResult.found) {
-      logAuthEvent('info', 'College admin login successful', { correlationId, adminId: collegeResult.admin.id });
+      logAuthEvent('info', 'College admin login successful', {
+        correlationId,
+        adminId: collegeResult.admin.id,
+      });
       return {
         success: true,
         admin: collegeResult.admin,
@@ -199,7 +207,10 @@ export const loginAdmin = async (email, password) => {
     // Step 6: Check universities table
     const universityResult = await checkUniversityAdmin(authData.user, correlationId);
     if (universityResult.found) {
-      logAuthEvent('info', 'University admin login successful', { correlationId, adminId: universityResult.admin.id });
+      logAuthEvent('info', 'University admin login successful', {
+        correlationId,
+        adminId: universityResult.admin.id,
+      });
       return {
         success: true,
         admin: universityResult.admin,
@@ -216,8 +227,8 @@ export const loginAdmin = async (email, password) => {
         admin: {
           id: authData.user.id,
           user_id: authData.user.id,
-          name: userData?.firstName 
-            ? `${userData.firstName} ${userData.lastName || ''}`.trim() 
+          name: userData?.firstName
+            ? `${userData.firstName} ${userData.lastName || ''}`.trim()
             : authData.user.email,
           email: authData.user.email,
           role: userRole,
@@ -230,23 +241,25 @@ export const loginAdmin = async (email, password) => {
     // No admin profile found
     logAuthEvent('warn', 'No admin profile found', { correlationId, userId: authData.user.id });
     await safeSignOut();
-    
-    return { 
-      success: false, 
-      admin: null, 
-      session: null, 
+
+    return {
+      success: false,
+      admin: null,
+      session: null,
       error: 'No admin account found. Please check if you are using the correct login portal.',
       errorCode: AUTH_ERROR_CODES.WRONG_PORTAL,
       correlationId,
     };
-
   } catch (err) {
-    logAuthEvent('error', 'Unexpected admin login error', { correlationId, errorCode: mapSupabaseError(err) });
+    logAuthEvent('error', 'Unexpected admin login error', {
+      correlationId,
+      errorCode: mapSupabaseError(err),
+    });
     const response = handleAuthError(err, { correlationId, operation: 'adminLogin' });
-    return { 
-      success: false, 
-      admin: null, 
-      session: null, 
+    return {
+      success: false,
+      admin: null,
+      session: null,
       error: response.error,
       errorCode: response.errorCode,
       correlationId,
@@ -285,9 +298,10 @@ const checkSchoolAdmin = async (user, correlationId) => {
     // Check approval status
     if (org.approval_status !== 'approved') {
       let statusMessage;
-      
+
       if (org.approval_status === 'pending') {
-        statusMessage = 'Your school registration is pending approval. Please contact RareMinds admin.';
+        statusMessage =
+          'Your school registration is pending approval. Please contact RareMinds admin.';
       } else if (org.approval_status === 'rejected') {
         statusMessage = org.rejection_reason
           ? `Your school registration was rejected: ${org.rejection_reason}. Please contact RareMinds admin.`
@@ -300,9 +314,10 @@ const checkSchoolAdmin = async (user, correlationId) => {
         found: true,
         success: false,
         error: statusMessage,
-        errorCode: org.approval_status === 'pending' 
-          ? AUTH_ERROR_CODES.ACCOUNT_PENDING_APPROVAL 
-          : AUTH_ERROR_CODES.ACCOUNT_REJECTED,
+        errorCode:
+          org.approval_status === 'pending'
+            ? AUTH_ERROR_CODES.ACCOUNT_PENDING_APPROVAL
+            : AUTH_ERROR_CODES.ACCOUNT_REJECTED,
       };
     }
 
@@ -434,17 +449,17 @@ const checkUniversityAdmin = async (user, correlationId) => {
  */
 export const getCurrentAdmin = async () => {
   const correlationId = generateCorrelationId();
-  
+
   try {
-    const { data: { user }, error: authError } = await withTimeout(
-      supabase.auth.getUser(),
-      AUTH_TIMEOUT_MS
-    );
+    const {
+      data: { user },
+      error: authError,
+    } = await withTimeout(supabase.auth.getUser(), AUTH_TIMEOUT_MS);
 
     if (authError || !user) {
-      return { 
-        success: false, 
-        admin: null, 
+      return {
+        success: false,
+        admin: null,
         error: 'Not authenticated',
         errorCode: AUTH_ERROR_CODES.SESSION_EXPIRED,
       };
@@ -480,18 +495,17 @@ export const getCurrentAdmin = async () => {
       };
     }
 
-    return { 
-      success: false, 
-      admin: null, 
+    return {
+      success: false,
+      admin: null,
       error: 'Admin profile not found',
       errorCode: AUTH_ERROR_CODES.PROFILE_NOT_FOUND,
     };
-
   } catch (error) {
     logAuthEvent('error', 'Get current admin failed', { correlationId });
-    return { 
-      success: false, 
-      admin: null, 
+    return {
+      success: false,
+      admin: null,
       error: 'Unable to load admin profile',
       errorCode: mapSupabaseError(error),
     };
@@ -508,16 +522,16 @@ export const getCurrentAdmin = async () => {
  */
 export const logoutAdmin = async () => {
   const correlationId = generateCorrelationId();
-  
+
   try {
     logAuthEvent('info', 'Admin logout', { correlationId });
     const { error } = await supabase.auth.signOut();
-    
+
     if (error) {
       logAuthEvent('warn', 'Admin logout error', { correlationId });
       // Still return success as local session should be cleared
     }
-    
+
     return { success: true, error: null };
   } catch {
     return { success: true, error: null };

@@ -24,7 +24,10 @@ import type {
 /**
  * Get faculty info from either school_educators or college_lecturers
  */
-const getFacultyInfo = async (facultyId: string, isCollegeEducator: boolean): Promise<FacultyInfo | null> => {
+const getFacultyInfo = async (
+  facultyId: string,
+  isCollegeEducator: boolean
+): Promise<FacultyInfo | null> => {
   try {
     if (isCollegeEducator) {
       const { data, error } = await supabase
@@ -32,7 +35,7 @@ const getFacultyInfo = async (facultyId: string, isCollegeEducator: boolean): Pr
         .select('id, first_name, last_name, email')
         .eq('id', facultyId)
         .single();
-      
+
       if (error) throw error;
       return data;
     } else {
@@ -41,7 +44,7 @@ const getFacultyInfo = async (facultyId: string, isCollegeEducator: boolean): Pr
         .select('id, first_name, last_name, email')
         .eq('id', facultyId)
         .single();
-      
+
       if (error) throw error;
       return data;
     }
@@ -54,12 +57,16 @@ const getFacultyInfo = async (facultyId: string, isCollegeEducator: boolean): Pr
 /**
  * Get slot info from either timetable_slots or college_timetable_slots
  */
-const getSlotInfo = async (slotId: string, isCollegeEducator: boolean): Promise<SlotInfo | null> => {
+const getSlotInfo = async (
+  slotId: string,
+  isCollegeEducator: boolean
+): Promise<SlotInfo | null> => {
   try {
     if (isCollegeEducator) {
       const { data, error } = await supabase
         .from('college_timetable_slots')
-        .select(`
+        .select(
+          `
           id,
           subject_name,
           room_number,
@@ -68,12 +75,13 @@ const getSlotInfo = async (slotId: string, isCollegeEducator: boolean): Promise<
           start_time,
           end_time,
           college_classes!college_timetable_slots_class_id_fkey(name)
-        `)
+        `
+        )
         .eq('id', slotId)
         .single();
-      
+
       if (error) throw error;
-      
+
       return {
         ...data,
         class_name: (data as any).college_classes?.name || 'N/A',
@@ -81,7 +89,8 @@ const getSlotInfo = async (slotId: string, isCollegeEducator: boolean): Promise<
     } else {
       const { data, error } = await supabase
         .from('timetable_slots')
-        .select(`
+        .select(
+          `
           id,
           subject_name,
           room_number,
@@ -90,18 +99,20 @@ const getSlotInfo = async (slotId: string, isCollegeEducator: boolean): Promise<
           start_time,
           end_time,
           school_classes!timetable_slots_class_id_fkey(name, grade, section)
-        `)
+        `
+        )
         .eq('id', slotId)
         .single();
-      
+
       if (error) throw error;
-      
+
       const schoolClass = (data as any).school_classes;
       return {
         ...data,
-        class_name: schoolClass?.name || 
-          (schoolClass?.grade && schoolClass?.section 
-            ? `${schoolClass.grade}-${schoolClass.section}` 
+        class_name:
+          schoolClass?.name ||
+          (schoolClass?.grade && schoolClass?.section
+            ? `${schoolClass.grade}-${schoolClass.section}`
             : 'N/A'),
       };
     }
@@ -126,22 +137,22 @@ export const createSwapRequest = async (
     if (payload.request_type === 'one_time' && !payload.swap_date) {
       throw new Error('Swap date is required for one-time swaps');
     }
-    
+
     if (payload.request_type === 'permanent' && payload.swap_date) {
       throw new Error('Swap date should not be provided for permanent swaps');
     }
-    
+
     // Check for conflicts
     const conflictCheck = await checkSwapConflicts(
       payload.requester_slot_id,
       payload.target_slot_id,
       payload.swap_date
     );
-    
+
     if (conflictCheck.has_conflict) {
       throw new Error(`Conflict detected: ${conflictCheck.conflict_reason}`);
     }
-    
+
     // Create the swap request
     const { data, error } = await supabase
       .from('class_swap_requests')
@@ -158,9 +169,9 @@ export const createSwapRequest = async (
       })
       .select()
       .single();
-    
+
     if (error) throw error;
-    
+
     return { data, error: null };
   } catch (error) {
     console.error('Error creating swap request:', error);
@@ -181,28 +192,28 @@ export const getSwapRequests = async (
       .select('*')
       .or(`requester_faculty_id.eq.${facultyId},target_faculty_id.eq.${facultyId}`)
       .order('created_at', { ascending: false });
-    
+
     // Apply filters
     if (filters?.status) {
       query = query.eq('status', filters.status);
     }
-    
+
     if (filters?.request_type) {
       query = query.eq('request_type', filters.request_type);
     }
-    
+
     if (filters?.date_from) {
       query = query.gte('created_at', filters.date_from);
     }
-    
+
     if (filters?.date_to) {
       query = query.lte('created_at', filters.date_to);
     }
-    
+
     const { data, error } = await query;
-    
+
     if (error) throw error;
-    
+
     return { data, error: null };
   } catch (error) {
     console.error('Error fetching swap requests:', error);
@@ -224,16 +235,16 @@ export const getSwapRequestDetails = async (
       .select('*')
       .eq('id', requestId)
       .single();
-    
+
     if (requestError) throw requestError;
-    
+
     // Get history
     const { data: history } = await supabase
       .from('class_swap_history')
       .select('*')
       .eq('swap_request_id', requestId)
       .order('created_at', { ascending: true });
-    
+
     // Get faculty and slot info
     const [requesterFaculty, targetFaculty, requesterSlot, targetSlot] = await Promise.all([
       getFacultyInfo(request.requester_faculty_id, isCollegeEducator),
@@ -241,13 +252,13 @@ export const getSwapRequestDetails = async (
       getSlotInfo(request.requester_slot_id, isCollegeEducator),
       getSlotInfo(request.target_slot_id, isCollegeEducator),
     ]);
-    
+
     // Get admin info if exists
     let admin = null;
     if (request.admin_id) {
       admin = await getFacultyInfo(request.admin_id, isCollegeEducator);
     }
-    
+
     const detailedRequest: ClassSwapRequestWithDetails = {
       ...request,
       requester_faculty: requesterFaculty || undefined,
@@ -257,7 +268,7 @@ export const getSwapRequestDetails = async (
       admin: admin || undefined,
       history: history || undefined,
     };
-    
+
     return { data: detailedRequest, error: null };
   } catch (error) {
     console.error('Error fetching swap request details:', error);
@@ -285,9 +296,9 @@ export const respondToSwapRequest = async (
       .eq('id', requestId)
       .select()
       .single();
-    
+
     if (error) throw error;
-    
+
     return { data, error: null };
   } catch (error) {
     console.error('Error responding to swap request:', error);
@@ -310,9 +321,9 @@ export const cancelSwapRequest = async (
       .eq('id', requestId)
       .select()
       .single();
-    
+
     if (error) throw error;
-    
+
     return { data, error: null };
   } catch (error) {
     console.error('Error cancelling swap request:', error);
@@ -343,9 +354,9 @@ export const adminApproveSwapRequest = async (
       .eq('id', requestId)
       .select()
       .single();
-    
+
     if (error) throw error;
-    
+
     return { data, error: null };
   } catch (error) {
     console.error('Error processing admin approval:', error);
@@ -367,9 +378,9 @@ export const checkSwapConflicts = async (
       p_target_slot_id: targetSlotId,
       p_swap_date: swapDate || null,
     });
-    
+
     if (error) throw error;
-    
+
     return data[0] || { has_conflict: false, conflict_reason: 'No conflicts detected' };
   } catch (error) {
     console.error('Error checking swap conflicts:', error);
@@ -385,9 +396,9 @@ export const getPendingSwapCount = async (facultyId: string): Promise<number> =>
     const { data, error } = await supabase.rpc('get_pending_swap_count', {
       p_faculty_id: facultyId,
     });
-    
+
     if (error) throw error;
-    
+
     return data || 0;
   } catch (error) {
     console.error('Error getting pending swap count:', error);
@@ -404,18 +415,18 @@ export const getSwapStatistics = async (facultyId: string): Promise<SwapStatisti
       .from('class_swap_requests')
       .select('status, admin_approval_status')
       .or(`requester_faculty_id.eq.${facultyId},target_faculty_id.eq.${facultyId}`);
-    
+
     if (error) throw error;
-    
+
     const stats: SwapStatistics = {
       total_requests: data.length,
-      pending_requests: data.filter(r => r.status === 'pending').length,
-      accepted_requests: data.filter(r => r.status === 'accepted').length,
-      rejected_requests: data.filter(r => r.status === 'rejected').length,
-      completed_swaps: data.filter(r => r.status === 'completed').length,
-      pending_admin_approval: data.filter(r => r.admin_approval_status === 'pending').length,
+      pending_requests: data.filter((r) => r.status === 'pending').length,
+      accepted_requests: data.filter((r) => r.status === 'accepted').length,
+      rejected_requests: data.filter((r) => r.status === 'rejected').length,
+      completed_swaps: data.filter((r) => r.status === 'completed').length,
+      pending_admin_approval: data.filter((r) => r.admin_approval_status === 'pending').length,
     };
-    
+
     return stats;
   } catch (error) {
     console.error('Error getting swap statistics:', error);
@@ -443,43 +454,45 @@ export const getCollegeSwapRequests = async (
       .from('college_lecturers')
       .select('id')
       .eq('collegeId', collegeId);
-    
+
     if (facultyError) throw facultyError;
-    
-    const facultyIds = facultyData.map(f => f.id);
-    
+
+    const facultyIds = facultyData.map((f) => f.id);
+
     if (facultyIds.length === 0) {
       return { data: [], error: null };
     }
-    
+
     // Get all swap requests involving these faculty members
     let query = supabase
       .from('class_swap_requests')
       .select('*')
-      .or(`requester_faculty_id.in.(${facultyIds.join(',')}),target_faculty_id.in.(${facultyIds.join(',')})`)
+      .or(
+        `requester_faculty_id.in.(${facultyIds.join(',')}),target_faculty_id.in.(${facultyIds.join(',')})`
+      )
       .order('created_at', { ascending: false });
-    
+
     // Apply filters
     if (filters?.status) {
       query = query.eq('status', filters.status);
     }
-    
+
     if (filters?.request_type) {
       query = query.eq('request_type', filters.request_type);
     }
-    
+
     if (filters?.date_from) {
       query = query.gte('created_at', filters.date_from);
     }
-    
+
     if (filters?.date_to) {
       query = query.lte('created_at', filters.date_to);
     }
-    
+
     const { data, error } = await query;
-    
+
     if (error) throw error;
-    
+
     return { data, error: null };
   } catch (error) {
     console.error('Error fetching college swap requests:', error);
@@ -495,33 +508,37 @@ export const getCollegeSwapRequestsWithDetails = async (
   filters?: SwapRequestFilters
 ): Promise<{ data: ClassSwapRequestWithDetails[] | null; error: Error | null }> => {
   try {
-    const { data: requests, error: requestsError } = await getCollegeSwapRequests(collegeId, filters);
-    
+    const { data: requests, error: requestsError } = await getCollegeSwapRequests(
+      collegeId,
+      filters
+    );
+
     if (requestsError || !requests) {
       return { data: null, error: requestsError };
     }
-    
+
     // Enrich each request with details
     const detailedRequests = await Promise.all(
       requests.map(async (request) => {
-        const [requesterFaculty, targetFaculty, requesterSlot, targetSlot, history] = await Promise.all([
-          getFacultyInfo(request.requester_faculty_id, true),
-          getFacultyInfo(request.target_faculty_id, true),
-          getSlotInfo(request.requester_slot_id, true),
-          getSlotInfo(request.target_slot_id, true),
-          supabase
-            .from('class_swap_history')
-            .select('*')
-            .eq('swap_request_id', request.id)
-            .order('created_at', { ascending: true })
-            .then(({ data }) => data || []),
-        ]);
-        
+        const [requesterFaculty, targetFaculty, requesterSlot, targetSlot, history] =
+          await Promise.all([
+            getFacultyInfo(request.requester_faculty_id, true),
+            getFacultyInfo(request.target_faculty_id, true),
+            getSlotInfo(request.requester_slot_id, true),
+            getSlotInfo(request.target_slot_id, true),
+            supabase
+              .from('class_swap_history')
+              .select('*')
+              .eq('swap_request_id', request.id)
+              .order('created_at', { ascending: true })
+              .then(({ data }) => data || []),
+          ]);
+
         let admin = null;
         if (request.admin_id) {
           admin = await getFacultyInfo(request.admin_id, true);
         }
-        
+
         return {
           ...request,
           requester_faculty: requesterFaculty || undefined,
@@ -533,7 +550,7 @@ export const getCollegeSwapRequestsWithDetails = async (
         } as ClassSwapRequestWithDetails;
       })
     );
-    
+
     return { data: detailedRequests, error: null };
   } catch (error) {
     console.error('Error fetching college swap requests with details:', error);
@@ -547,7 +564,7 @@ export const getCollegeSwapRequestsWithDetails = async (
 export const getCollegeSwapStatistics = async (collegeId: string): Promise<SwapStatistics> => {
   try {
     const { data: requests } = await getCollegeSwapRequests(collegeId);
-    
+
     if (!requests) {
       return {
         total_requests: 0,
@@ -558,16 +575,16 @@ export const getCollegeSwapStatistics = async (collegeId: string): Promise<SwapS
         pending_admin_approval: 0,
       };
     }
-    
+
     const stats: SwapStatistics = {
       total_requests: requests.length,
-      pending_requests: requests.filter(r => r.status === 'pending').length,
-      accepted_requests: requests.filter(r => r.status === 'accepted').length,
-      rejected_requests: requests.filter(r => r.status === 'rejected').length,
-      completed_swaps: requests.filter(r => r.status === 'completed').length,
-      pending_admin_approval: requests.filter(r => r.admin_approval_status === 'pending').length,
+      pending_requests: requests.filter((r) => r.status === 'pending').length,
+      accepted_requests: requests.filter((r) => r.status === 'accepted').length,
+      rejected_requests: requests.filter((r) => r.status === 'rejected').length,
+      completed_swaps: requests.filter((r) => r.status === 'completed').length,
+      pending_admin_approval: requests.filter((r) => r.admin_approval_status === 'pending').length,
     };
-    
+
     return stats;
   } catch (error) {
     console.error('Error getting college swap statistics:', error);
@@ -598,17 +615,18 @@ export const getAvailableSlotsForSwap = async (
       .select('timetable_id, class_id')
       .eq('id', currentSlotId)
       .single();
-    
+
     if (!currentSlotData) {
       throw new Error('Could not find current slot');
     }
-    
+
     // CRITICAL: Get all slots from the same timetable AND same class
     // This ensures students don't have schedule conflicts
     if (isCollegeEducator) {
       const { data, error } = await supabase
         .from('college_timetable_slots')
-        .select(`
+        .select(
+          `
           id,
           subject_name,
           room_number,
@@ -619,16 +637,17 @@ export const getAvailableSlotsForSwap = async (
           educator_id,
           class_id,
           college_classes!college_timetable_slots_class_id_fkey(name)
-        `)
+        `
+        )
         .eq('timetable_id', currentSlotData.timetable_id)
-        .eq('class_id', currentSlotData.class_id)  // SAME CLASS ONLY
+        .eq('class_id', currentSlotData.class_id) // SAME CLASS ONLY
         .neq('educator_id', currentFacultyId)
-        .neq('id', currentSlotId)  // Exclude current slot
+        .neq('id', currentSlotId) // Exclude current slot
         .order('day_of_week')
         .order('period_number');
-      
+
       if (error) throw error;
-      
+
       const slots: SlotInfo[] = (data || []).map((slot: any) => ({
         id: slot.id,
         subject_name: slot.subject_name,
@@ -640,12 +659,13 @@ export const getAvailableSlotsForSwap = async (
         end_time: slot.end_time,
         educator_id: slot.educator_id, // Include educator_id for swap requests
       }));
-      
+
       return { data: slots, error: null };
     } else {
       const { data, error } = await supabase
         .from('timetable_slots')
-        .select(`
+        .select(
+          `
           id,
           subject_name,
           room_number,
@@ -656,24 +676,26 @@ export const getAvailableSlotsForSwap = async (
           educator_id,
           class_id,
           school_classes!timetable_slots_class_id_fkey(name, grade, section)
-        `)
+        `
+        )
         .eq('timetable_id', currentSlotData.timetable_id)
-        .eq('class_id', currentSlotData.class_id)  // SAME CLASS ONLY
+        .eq('class_id', currentSlotData.class_id) // SAME CLASS ONLY
         .neq('educator_id', currentFacultyId)
-        .neq('id', currentSlotId)  // Exclude current slot
+        .neq('id', currentSlotId) // Exclude current slot
         .order('day_of_week')
         .order('period_number');
-      
+
       if (error) throw error;
-      
+
       const slots: SlotInfo[] = (data || []).map((slot: any) => {
         const schoolClass = slot.school_classes;
         return {
           id: slot.id,
           subject_name: slot.subject_name,
-          class_name: schoolClass?.name || 
-            (schoolClass?.grade && schoolClass?.section 
-              ? `${schoolClass.grade}-${schoolClass.section}` 
+          class_name:
+            schoolClass?.name ||
+            (schoolClass?.grade && schoolClass?.section
+              ? `${schoolClass.grade}-${schoolClass.section}`
               : 'N/A'),
           room_number: slot.room_number,
           day_of_week: slot.day_of_week,
@@ -683,7 +705,7 @@ export const getAvailableSlotsForSwap = async (
           educator_id: slot.educator_id, // Include educator_id for swap requests
         };
       });
-      
+
       return { data: slots, error: null };
     }
   } catch (error) {

@@ -28,7 +28,7 @@ export const validateAssessmentResults = (results: AssessmentResults | null): st
   } else {
     const riasecKeys = ['R', 'I', 'A', 'S', 'E', 'C'];
     const hasAnyRiasec = riasecKeys.some(
-      key => results.riasec?.scores?.[key as keyof RIASECScores] !== undefined
+      (key) => results.riasec?.scores?.[key as keyof RIASECScores] !== undefined
     );
     if (!hasAnyRiasec) {
       missingFields.push('RIASEC scores (all empty)');
@@ -68,9 +68,7 @@ export const validateCourseRecommendation = (course: any): course is CourseRecom
 /**
  * Validate array of course recommendations
  */
-export const validateCourseRecommendations = (
-  courses: any[]
-): CourseRecommendation[] => {
+export const validateCourseRecommendations = (courses: any[]): CourseRecommendation[] => {
   if (!Array.isArray(courses)) return [];
   return courses.filter(validateCourseRecommendation);
 };
@@ -82,7 +80,7 @@ export const validateRIASECScores = (scores: any): scores is RIASECScores => {
   if (!scores || typeof scores !== 'object') return false;
 
   const validKeys = ['R', 'I', 'A', 'S', 'E', 'C'];
-  const hasValidKey = Object.keys(scores).some(key => validKeys.includes(key));
+  const hasValidKey = Object.keys(scores).some((key) => validKeys.includes(key));
 
   return hasValidKey;
 };
@@ -104,9 +102,7 @@ export const validateCareerFit = (careerFit: any): careerFit is CareerFitResult 
 /**
  * Validate stream recommendation
  */
-export const validateStreamRecommendation = (
-  streamRec: any
-): streamRec is StreamRecommendation => {
+export const validateStreamRecommendation = (streamRec: any): streamRec is StreamRecommendation => {
   if (!streamRec || typeof streamRec !== 'object') return false;
 
   // Must have recommended stream
@@ -118,10 +114,7 @@ export const validateStreamRecommendation = (
 /**
  * Safe parse JSON with fallback
  */
-export const safeParseJSON = <T>(
-  jsonString: string | null,
-  fallback: T
-): T => {
+export const safeParseJSON = <T>(jsonString: string | null, fallback: T): T => {
   if (!jsonString) return fallback;
 
   try {
@@ -135,9 +128,7 @@ export const safeParseJSON = <T>(
 /**
  * Validate and sanitize assessment results from AI
  */
-export const sanitizeAssessmentResults = (
-  rawResults: any
-): AssessmentResults | null => {
+export const sanitizeAssessmentResults = (rawResults: any): AssessmentResults | null => {
   if (!rawResults || typeof rawResults !== 'object') {
     return null;
   }
@@ -151,7 +142,7 @@ export const sanitizeAssessmentResults = (
       topThree: rawResults.riasec.topThree || [],
     };
 
-    ['R', 'I', 'A', 'S', 'E', 'C'].forEach(key => {
+    ['R', 'I', 'A', 'S', 'E', 'C'].forEach((key) => {
       const value = rawResults.riasec.scores[key];
       if (typeof value === 'number' && !isNaN(value)) {
         sanitized.riasec!.scores[key as keyof RIASECScores] = Math.max(0, Math.min(100, value));
@@ -171,9 +162,8 @@ export const sanitizeAssessmentResults = (
       if (value && typeof value === 'object') {
         sanitized.aptitude!.scores![key] = {
           score: typeof value.score === 'number' ? value.score : 0,
-          percentage: typeof value.percentage === 'number' 
-            ? Math.max(0, Math.min(100, value.percentage)) 
-            : 0,
+          percentage:
+            typeof value.percentage === 'number' ? Math.max(0, Math.min(100, value.percentage)) : 0,
           adaptiveAccuracy: value.adaptiveAccuracy,
         };
       }
@@ -183,7 +173,7 @@ export const sanitizeAssessmentResults = (
   // Sanitize Big Five
   if (rawResults.bigFive) {
     sanitized.bigFive = {};
-    ['O', 'C', 'E', 'A', 'N'].forEach(key => {
+    ['O', 'C', 'E', 'A', 'N'].forEach((key) => {
       const value = rawResults.bigFive[key];
       if (typeof value === 'number' && !isNaN(value)) {
         sanitized.bigFive![key as keyof typeof sanitized.bigFive] = Math.max(0, Math.min(5, value));

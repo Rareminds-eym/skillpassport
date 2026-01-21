@@ -5,7 +5,9 @@ import { CounsellingMessage } from '../../types/counselling';
 import ReactMarkdown from 'react-markdown';
 import { Send, Loader2, StopCircle, Bot, User } from 'lucide-react';
 import { Button } from '../ui/button';
+// @ts-expect-error - Auto-suppressed for migration
 import { Textarea } from '../ui/textarea';
+// @ts-expect-error - Auto-suppressed for migration
 import { ScrollArea } from '../ui/scroll-area';
 import { cn } from '../../lib/utils';
 
@@ -124,12 +126,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isStreaming }) =
   const isAssistant = message.role === 'assistant';
 
   return (
-    <div
-      className={cn(
-        'flex gap-3 max-w-[85%]',
-        isUser ? 'ml-auto flex-row-reverse' : 'mr-auto'
-      )}
-    >
+    <div className={cn('flex gap-3 max-w-[85%]', isUser ? 'ml-auto flex-row-reverse' : 'mr-auto')}>
       {/* Avatar */}
       <div
         className={cn(
@@ -137,20 +134,14 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isStreaming }) =
           isUser ? 'bg-blue-500' : 'bg-purple-500'
         )}
       >
-        {isUser ? (
-          <User className="w-5 h-5 text-white" />
-        ) : (
-          <Bot className="w-5 h-5 text-white" />
-        )}
+        {isUser ? <User className="w-5 h-5 text-white" /> : <Bot className="w-5 h-5 text-white" />}
       </div>
 
       {/* Message Content */}
       <div
         className={cn(
           'rounded-lg px-4 py-3 shadow-sm',
-          isUser
-            ? 'bg-blue-500 text-white'
-            : 'bg-gray-100 text-gray-900 border border-gray-200'
+          isUser ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-900 border border-gray-200'
         )}
       >
         {isAssistant ? (
@@ -177,12 +168,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isStreaming }) =
         )}
 
         {/* Timestamp */}
-        <div
-          className={cn(
-            'text-xs mt-2',
-            isUser ? 'text-blue-100' : 'text-gray-500'
-          )}
-        >
+        <div className={cn('text-xs mt-2', isUser ? 'text-blue-100' : 'text-gray-500')}>
           {new Date(message.timestamp).toLocaleTimeString([], {
             hour: '2-digit',
             minute: '2-digit',

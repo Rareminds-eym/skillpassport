@@ -8,7 +8,7 @@ import SkillsAnalyticsService from '../../../services/skillsAnalyticsService';
  * Top Skills in Demand Component
  * Dynamically analyzes opportunities to show the most demanded skills
  */
-const TopSkillsInDemand = ({ limit = 5, showHeader = true, className = "" }) => {
+const TopSkillsInDemand = ({ limit = 5, showHeader = true, className = '' }) => {
   const [skillsData, setSkillsData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -30,21 +30,21 @@ const TopSkillsInDemand = ({ limit = 5, showHeader = true, className = "" }) => 
       debugLog('Starting fetchTopSkills...');
       setLoading(true);
       setError(null);
-      
+
       // Debug the opportunities table first
       await SkillsAnalyticsService.debugOpportunitiesTable();
-      
+
       const analysis = await SkillsAnalyticsService.getSkillsDemandAnalysis(limit);
-      
+
       debugLog('Received analysis:', analysis);
-      
+
       setSkillsData(analysis.topSkills);
       setLastUpdated(analysis.lastUpdated);
       setDebugInfo({
         totalOpportunities: analysis.totalOpportunities,
         skillsCount: analysis.topSkills.length,
         mostDemanded: analysis.analysis.mostDemandedSkill,
-        averageDemand: analysis.analysis.averageDemand
+        averageDemand: analysis.analysis.averageDemand,
       });
 
       debugLog('State updated with skills data:', analysis.topSkills);
@@ -164,32 +164,32 @@ const TopSkillsInDemand = ({ limit = 5, showHeader = true, className = "" }) => 
                   const radius = 80;
                   const centerX = 100;
                   const centerY = 100;
-                  
+
                   return skillsData.map((skill, index) => {
                     const percentage = skill.percentage;
                     const startAngle = (cumulativePercentage / 100) * 360;
                     const endAngle = ((cumulativePercentage + percentage) / 100) * 360;
-                    
+
                     // Calculate path for pie slice
                     const startAngleRad = (startAngle * Math.PI) / 180;
                     const endAngleRad = (endAngle * Math.PI) / 180;
-                    
+
                     const x1 = centerX + radius * Math.cos(startAngleRad);
                     const y1 = centerY + radius * Math.sin(startAngleRad);
                     const x2 = centerX + radius * Math.cos(endAngleRad);
                     const y2 = centerY + radius * Math.sin(endAngleRad);
-                    
+
                     const largeArcFlag = percentage > 50 ? 1 : 0;
-                    
+
                     const pathData = [
                       `M ${centerX} ${centerY}`,
                       `L ${x1} ${y1}`,
                       `A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2}`,
-                      'Z'
+                      'Z',
                     ].join(' ');
-                    
+
                     cumulativePercentage += percentage;
-                    
+
                     // Color based on rank
                     const colors = [
                       '#2563eb', // blue-600 for rank 1
@@ -198,7 +198,7 @@ const TopSkillsInDemand = ({ limit = 5, showHeader = true, className = "" }) => 
                       '#93c5fd', // blue-300 for rank 4
                       '#bfdbfe', // blue-200 for rank 5+
                     ];
-                    
+
                     return (
                       <path
                         key={skill.skill}
@@ -212,7 +212,7 @@ const TopSkillsInDemand = ({ limit = 5, showHeader = true, className = "" }) => 
                   });
                 })()}
               </svg>
-              
+
               {/* Center Circle with Total */}
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="bg-white rounded-full w-20 h-20 flex flex-col items-center justify-center shadow-lg border-2 border-blue-100">
@@ -223,7 +223,7 @@ const TopSkillsInDemand = ({ limit = 5, showHeader = true, className = "" }) => 
                 </div>
               </div>
             </div>
-            
+
             {/* Legend */}
             <div className="flex-1 space-y-2 ml-2">
               {skillsData.map((skill, index) => {
@@ -234,24 +234,33 @@ const TopSkillsInDemand = ({ limit = 5, showHeader = true, className = "" }) => 
                   'bg-blue-300', // rank 4
                   'bg-blue-200', // rank 5+
                 ];
-                
+
                 return (
                   <div key={skill.skill} className="flex items-center justify-between group">
                     <div className="flex items-center gap-3">
                       {/* Color Indicator */}
-                      <div className={`w-4 h-4 rounded-full ${colors[Math.min(index, colors.length - 1)]}`} />
-                      
+                      <div
+                        className={`w-4 h-4 rounded-full ${colors[Math.min(index, colors.length - 1)]}`}
+                      />
+
                       {/* Rank Badge */}
-                      <div className={`
+                      <div
+                        className={`
                         w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold
-                        ${index === 0 ? 'bg-blue-200 text-blue-900' : 
-                          index === 1 ? 'bg-blue-100 text-blue-800' :
-                          index === 2 ? 'bg-blue-100 text-blue-700' :
-                          'bg-blue-50 text-blue-600'}
-                      `}>
+                        ${
+                          index === 0
+                            ? 'bg-blue-200 text-blue-900'
+                            : index === 1
+                              ? 'bg-blue-100 text-blue-800'
+                              : index === 2
+                                ? 'bg-blue-100 text-blue-700'
+                                : 'bg-blue-50 text-blue-600'
+                        }
+                      `}
+                      >
                         {index + 1}
                       </div>
-                      
+
                       {/* Skill Info */}
                       <div className="flex items-center gap-2">
                         <h4 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors duration-200">
@@ -261,20 +270,24 @@ const TopSkillsInDemand = ({ limit = 5, showHeader = true, className = "" }) => 
                           {skill.count} {skill.count === 1 ? 'opportunity' : 'opportunities'}
                         </span>
                       </div>
-                      
+
                       {/* Trending Icon for top 3 */}
-                      {index < 3 && (
-                        <TrendingUp className="w-4 h-4 text-blue-500" />
-                      )}
+                      {index < 3 && <TrendingUp className="w-4 h-4 text-blue-500" />}
                     </div>
-                    
+
                     {/* Percentage Badge - positioned at the far right */}
-                    <div className={`
+                    <div
+                      className={`
                       px-3 py-1 rounded-full text-xs font-semibold
-                      ${index === 0 ? 'bg-blue-600 text-white' : 
-                        index < 3 ? 'bg-blue-500 text-white' :
-                        'bg-blue-400 text-white'}
-                    `}>
+                      ${
+                        index === 0
+                          ? 'bg-blue-600 text-white'
+                          : index < 3
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-blue-400 text-white'
+                      }
+                    `}
+                    >
                       {skill.percentage}%
                     </div>
                   </div>
@@ -282,41 +295,42 @@ const TopSkillsInDemand = ({ limit = 5, showHeader = true, className = "" }) => 
               })}
             </div>
           </div>
-          
+
           {/* Chart Statistics - Takes 1 column */}
           <div className="lg:col-span-1">
             <div className="grid grid-cols-2 gap-3 text-center">
               <div className="bg-blue-50 rounded-lg p-3 min-w-[100px]">
-                <div className="text-lg font-bold text-blue-600">
-                  {skillsData.length}
-                </div>
+                <div className="text-lg font-bold text-blue-600">{skillsData.length}</div>
                 <div className="text-xs text-gray-600">Top Skills</div>
               </div>
-              
+
               <div className="bg-blue-50 rounded-lg p-3 min-w-[100px]">
                 <div className="text-lg font-bold text-blue-600">
                   {skillsData.reduce((sum, skill) => sum + skill.count, 0)}
                 </div>
                 <div className="text-xs text-gray-600">Total Opportunities</div>
               </div>
-              
+
               <div className="bg-blue-50 rounded-lg p-3 min-w-[100px]">
                 <div className="text-lg font-bold text-blue-600">
                   {skillsData[0]?.percentage || 0}%
                 </div>
                 <div className="text-xs text-gray-600">Highest Demand</div>
               </div>
-              
+
               <div className="bg-blue-50 rounded-lg p-3 min-w-[100px]">
                 <div className="text-lg font-bold text-blue-600">
-                  {Math.round(skillsData.reduce((sum, skill) => sum + skill.percentage, 0) / skillsData.length) || 0}%
+                  {Math.round(
+                    skillsData.reduce((sum, skill) => sum + skill.percentage, 0) / skillsData.length
+                  ) || 0}
+                  %
                 </div>
                 <div className="text-xs text-gray-600">Average Demand</div>
               </div>
             </div>
           </div>
         </div>
-        
+
         {/* Footer */}
         {lastUpdated && (
           <div className="mt-6 pt-4 border-t border-gray-100">

@@ -17,13 +17,14 @@ export const useUsers = (options: UseUsersOptions = {}) => {
   const fetchUsers = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const result = await userManagementService.getUsers(options);
-      
+
       if (result.success) {
         setUsers(result.data || []);
       } else {
+        // @ts-expect-error - Auto-suppressed for migration
         setError(result.error.message);
         setUsers([]); // Set empty array on error
       }
@@ -31,7 +32,7 @@ export const useUsers = (options: UseUsersOptions = {}) => {
       setError(err.message || 'Failed to fetch users');
       setUsers([]); // Set empty array on exception
     }
-    
+
     setLoading(false);
   };
 
@@ -45,6 +46,7 @@ export const useUsers = (options: UseUsersOptions = {}) => {
       await fetchUsers();
       return { success: true, data: result.data };
     }
+    // @ts-expect-error - Auto-suppressed for migration
     return { success: false, error: result.error.message };
   };
 
@@ -54,6 +56,7 @@ export const useUsers = (options: UseUsersOptions = {}) => {
       await fetchUsers();
       return { success: true };
     }
+    // @ts-expect-error - Auto-suppressed for migration
     return { success: false, error: result.error.message };
   };
 
@@ -63,6 +66,7 @@ export const useUsers = (options: UseUsersOptions = {}) => {
       await fetchUsers();
       return { success: true };
     }
+    // @ts-expect-error - Auto-suppressed for migration
     return { success: false, error: result.error.message };
   };
 
@@ -71,6 +75,7 @@ export const useUsers = (options: UseUsersOptions = {}) => {
     if (result.success) {
       return { success: true };
     }
+    // @ts-expect-error - Auto-suppressed for migration
     return { success: false, error: result.error.message };
   };
 

@@ -24,7 +24,7 @@ const AssignEducatorModal: React.FC<AssignEducatorModalProps> = ({
   onAssign,
   currentEducatorId,
   currentEducatorName,
-  schoolId
+  schoolId,
 }) => {
   const [educators, setEducators] = useState<Educator[]>([]);
   const [loading, setLoading] = useState(false);
@@ -55,7 +55,7 @@ const AssignEducatorModal: React.FC<AssignEducatorModalProps> = ({
     }
   };
 
-  const filteredEducators = educators.filter(educator => {
+  const filteredEducators = educators.filter((educator) => {
     const fullName = `${educator.first_name} ${educator.last_name}`.toLowerCase();
     const email = educator.email.toLowerCase();
     const query = searchQuery.toLowerCase();
@@ -63,7 +63,7 @@ const AssignEducatorModal: React.FC<AssignEducatorModalProps> = ({
   });
 
   const handleAssign = () => {
-    const selectedEducator = educators.find(e => e.user_id === selectedEducatorId);
+    const selectedEducator = educators.find((e) => e.user_id === selectedEducatorId);
     if (selectedEducator) {
       const educatorName = `${selectedEducator.first_name} ${selectedEducator.last_name}`.trim();
       onAssign(selectedEducatorId, educatorName);
@@ -79,10 +79,7 @@ const AssignEducatorModal: React.FC<AssignEducatorModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-xl font-bold text-gray-900">Assign Educator</h2>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
             <XMarkIcon className="h-5 w-5 text-gray-500" />
           </button>
         </div>
@@ -122,7 +119,7 @@ const AssignEducatorModal: React.FC<AssignEducatorModalProps> = ({
               {filteredEducators.map((educator) => {
                 const fullName = `${educator.first_name} ${educator.last_name}`.trim();
                 const isSelected = educator.user_id === selectedEducatorId;
-                
+
                 return (
                   <button
                     key={educator.user_id}
@@ -134,23 +131,37 @@ const AssignEducatorModal: React.FC<AssignEducatorModalProps> = ({
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold ${
-                        isSelected ? 'bg-indigo-600' : 'bg-gray-400'
-                      }`}>
+                      <div
+                        className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold ${
+                          isSelected ? 'bg-indigo-600' : 'bg-gray-400'
+                        }`}
+                      >
                         {educator.first_name.charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1">
-                        <p className={`font-medium ${isSelected ? 'text-indigo-900' : 'text-gray-900'}`}>
+                        <p
+                          className={`font-medium ${isSelected ? 'text-indigo-900' : 'text-gray-900'}`}
+                        >
                           {fullName}
                         </p>
-                        <p className={`text-sm ${isSelected ? 'text-indigo-600' : 'text-gray-500'}`}>
+                        <p
+                          className={`text-sm ${isSelected ? 'text-indigo-600' : 'text-gray-500'}`}
+                        >
                           {educator.email}
                         </p>
                       </div>
                       {isSelected && (
                         <div className="w-5 h-5 bg-indigo-600 rounded-full flex items-center justify-center">
-                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          <svg
+                            className="w-3 h-3 text-white"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                              clipRule="evenodd"
+                            />
                           </svg>
                         </div>
                       )}

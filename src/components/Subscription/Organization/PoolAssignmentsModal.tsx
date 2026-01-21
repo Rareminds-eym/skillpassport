@@ -1,6 +1,6 @@
 /**
  * PoolAssignmentsModal Component
- * 
+ *
  * Modal to view and manage members assigned to a license pool.
  */
 
@@ -48,20 +48,23 @@ function PoolAssignmentsModal({
     if (!searchQuery.trim()) return assignedMembers;
     const query = searchQuery.toLowerCase();
     return assignedMembers.filter(
-      m => m.name.toLowerCase().includes(query) || m.email.toLowerCase().includes(query)
+      (m) => m.name.toLowerCase().includes(query) || m.email.toLowerCase().includes(query)
     );
   }, [assignedMembers, searchQuery]);
 
-  const handleUnassign = useCallback(async (member: AssignedMember) => {
-    if (!member.licenseAssignmentId) return;
-    
-    setUnassigningId(member.id);
-    try {
-      await onUnassign(member.id, member.licenseAssignmentId);
-    } finally {
-      setUnassigningId(null);
-    }
-  }, [onUnassign]);
+  const handleUnassign = useCallback(
+    async (member: AssignedMember) => {
+      if (!member.licenseAssignmentId) return;
+
+      setUnassigningId(member.id);
+      try {
+        await onUnassign(member.id, member.licenseAssignmentId);
+      } finally {
+        setUnassigningId(null);
+      }
+    },
+    [onUnassign]
+  );
 
   const handleClose = useCallback(() => {
     setSearchQuery('');
@@ -73,7 +76,7 @@ function PoolAssignmentsModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleClose} />
-      
+
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden max-h-[80vh] flex flex-col">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
@@ -123,7 +126,7 @@ function PoolAssignmentsModal({
                 {searchQuery ? 'No matching members' : 'No assignments yet'}
               </h4>
               <p className="text-sm text-gray-500">
-                {searchQuery 
+                {searchQuery
                   ? 'Try a different search term'
                   : 'Assign members to this pool from the Members tab'}
               </p>
@@ -144,7 +147,7 @@ function PoolAssignmentsModal({
                       <p className="text-sm text-gray-500">{member.email}</p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-gray-400">
                       Assigned {new Date(member.assignedAt).toLocaleDateString()}

@@ -1,12 +1,12 @@
-import React from "react";
-import { ChevronLeft, ChevronRight, Calendar, Settings, Send, Download } from "lucide-react";
-import { formatDate } from "../utils";
+import React from 'react';
+import { ChevronLeft, ChevronRight, Calendar, Settings, Send, Download } from 'lucide-react';
+import { formatDate } from '../utils';
 
 interface HeaderProps {
-  publishStatus: "draft" | "published";
+  publishStatus: 'draft' | 'published';
   weekDates: Date[];
   loading: boolean;
-  onNavigateWeek: (direction: "prev" | "next") => void;
+  onNavigateWeek: (direction: 'prev' | 'next') => void;
   onGoToToday: () => void;
   onOpenPeriodsModal: () => void;
   onOpenExportModal: () => void;
@@ -40,12 +40,12 @@ const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center gap-3">
           <span
             className={`px-3 py-1.5 rounded-full text-xs font-medium ${
-              publishStatus === "published"
-                ? "bg-green-100 text-green-800"
-                : "bg-yellow-100 text-yellow-800"
+              publishStatus === 'published'
+                ? 'bg-green-100 text-green-800'
+                : 'bg-yellow-100 text-yellow-800'
             }`}
           >
-            {publishStatus === "published" ? "Published" : "Draft"}
+            {publishStatus === 'published' ? 'Published' : 'Draft'}
           </span>
 
           <button
@@ -66,7 +66,7 @@ const Header: React.FC<HeaderProps> = ({
 
           <button
             onClick={onPublish}
-            disabled={loading || publishStatus === "published"}
+            disabled={loading || publishStatus === 'published'}
             className="flex items-center gap-2 px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 transition"
           >
             <Send className="h-4 w-4" />
@@ -78,7 +78,7 @@ const Header: React.FC<HeaderProps> = ({
       {/* Week Navigation */}
       <div className="flex items-center justify-center gap-4 mt-4">
         <button
-          onClick={() => onNavigateWeek("prev")}
+          onClick={() => onNavigateWeek('prev')}
           className="p-2 hover:bg-gray-100 rounded-lg transition"
         >
           <ChevronLeft className="h-5 w-5 text-gray-600" />
@@ -90,7 +90,7 @@ const Header: React.FC<HeaderProps> = ({
         </div>
 
         <button
-          onClick={() => onNavigateWeek("next")}
+          onClick={() => onNavigateWeek('next')}
           className="p-2 hover:bg-gray-100 rounded-lg transition"
         >
           <ChevronRight className="h-5 w-5 text-gray-600" />

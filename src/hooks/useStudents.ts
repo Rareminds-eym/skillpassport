@@ -1,312 +1,324 @@
-import { useEffect, useMemo, useState } from 'react'
-import { supabase } from '../lib/supabaseClient'
-import { getProgramSectionStudents } from '../services/programService'
+import { useEffect, useMemo, useState } from 'react';
+import { supabase } from '../lib/supabaseClient';
+import { getProgramSectionStudents } from '../services/programService';
 
 // Skill from skills table
 interface Skill {
-  id: string
-  student_id: string
-  name: string
-  type?: string
-  level?: number
-  description?: string
-  verified?: boolean
-  enabled?: boolean
-  approval_status?: string
-  created_at?: string
-  updated_at?: string
+  id: string;
+  student_id: string;
+  name: string;
+  type?: string;
+  level?: number;
+  description?: string;
+  verified?: boolean;
+  enabled?: boolean;
+  approval_status?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 // Project from projects table
 interface Project {
-  id: string
-  student_id: string
-  title: string
-  description?: string
-  status?: string
-  start_date?: string
-  end_date?: string
-  duration?: string
-  tech_stack?: string[]
-  demo_link?: string
-  github_link?: string
-  approval_status?: string
-  certificate_url?: string
-  video_url?: string
-  ppt_url?: string
-  organization?: string
-  enabled?: boolean
-  created_at?: string
-  updated_at?: string
+  id: string;
+  student_id: string;
+  title: string;
+  description?: string;
+  status?: string;
+  start_date?: string;
+  end_date?: string;
+  duration?: string;
+  tech_stack?: string[];
+  demo_link?: string;
+  github_link?: string;
+  approval_status?: string;
+  certificate_url?: string;
+  video_url?: string;
+  ppt_url?: string;
+  organization?: string;
+  enabled?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 // Certificate from certificates table
 interface Certificate {
-  id: string
-  student_id: string
-  title: string
-  issuer?: string
-  level?: string
-  credential_id?: string
-  link?: string
-  issued_on?: string
-  description?: string
-  status?: string
-  approval_status?: string
-  document_url?: string
-  enabled?: boolean
-  created_at?: string
-  updated_at?: string
+  id: string;
+  student_id: string;
+  title: string;
+  issuer?: string;
+  level?: string;
+  credential_id?: string;
+  link?: string;
+  issued_on?: string;
+  description?: string;
+  status?: string;
+  approval_status?: string;
+  document_url?: string;
+  enabled?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 // Experience from experience table
 interface Experience {
-  id: string
-  student_id: string
-  organization?: string
-  role?: string
-  start_date?: string
-  end_date?: string
-  duration?: string
-  verified?: boolean
-  approval_status?: string
-  created_at?: string
-  updated_at?: string
+  id: string;
+  student_id: string;
+  organization?: string;
+  role?: string;
+  start_date?: string;
+  end_date?: string;
+  duration?: string;
+  verified?: boolean;
+  approval_status?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 // Training from trainings table
 interface Training {
-  id: string
-  student_id: string
-  title: string
-  organization?: string
-  start_date?: string
-  end_date?: string
-  duration?: string
-  description?: string
-  approval_status?: string
-  created_at?: string
-  updated_at?: string
+  id: string;
+  student_id: string;
+  title: string;
+  organization?: string;
+  start_date?: string;
+  end_date?: string;
+  duration?: string;
+  description?: string;
+  approval_status?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 // Raw DB row type (based on actual students table schema)
 interface StudentRow {
-  id: string
-  user_id?: string
-  student_id?: string // new system-generated student identifier (replaces legacy nm_id column)
-  name?: string
-  email?: string
-  contact_number?: string
-  alternate_number?: string
-  contact_dial_code?: string
-  date_of_birth?: string
-  age?: number
-  gender?: string
-  bloodGroup?: string
-  district_name?: string
-  university?: string
-  university_main?: string
-  branch_field?: string
-  college_school_name?: string
-  course_name?: string
-  registration_number?: string
-  enrollmentNumber?: string
-  enrollment_number?: string
-  github_link?: string
-  linkedin_link?: string
-  twitter_link?: string
-  facebook_link?: string
-  instagram_link?: string
-  portfolio_link?: string
-  youtube_link?: string
-  other_social_links?: Record<string, unknown>
-  approval_status?: string
-  trainer_name?: string
-  bio?: string
-  address?: string
-  city?: string
-  state?: string
-  country?: string
-  pincode?: string
-  resume_url?: string
-  resumeUrl?: string
-  profile_picture?: string
-  profilePicture?: string
-  contactNumber?: string
-  created_at?: string
-  createdAt?: string
-  updated_at?: string
-  updatedAt?: string
-  imported_at?: string
-  school_id?: string
-  college_id?: string
-  schools?: {
-    id: string
-    name: string
-    code: string
-    city?: string
-    state?: string
-    country?: string
-  } | {
-    id: string
-    name: string
-    code: string
-    city?: string
-    state?: string
-    country?: string
-  }[]
-  colleges?: {
-    id: string
-    name: string
-    code?: string
-    city?: string
-    state?: string
-    country?: string
-  } | {
-    id: string
-    name: string
-    code?: string
-    city?: string
-    state?: string
-    country?: string
-  }[]
-  grade?: string
-  section?: string
-  roll_number?: string
-  admission_number?: string
-  currentCgpa?: number
-  guardianName?: string
-  guardianPhone?: string
-  guardianEmail?: string
-  guardianRelation?: string
-  enrollmentDate?: string
-  expectedGraduationDate?: string
-  student_type?: string
-  hobbies?: string[]
-  languages?: string[]
-  interests?: string[]
-  category?: string
-  quota?: string
-  metadata?: Record<string, unknown>
-  notification_settings?: Record<string, unknown>
+  id: string;
+  user_id?: string;
+  student_id?: string; // new system-generated student identifier (replaces legacy nm_id column)
+  name?: string;
+  email?: string;
+  contact_number?: string;
+  alternate_number?: string;
+  contact_dial_code?: string;
+  date_of_birth?: string;
+  age?: number;
+  gender?: string;
+  bloodGroup?: string;
+  district_name?: string;
+  university?: string;
+  university_main?: string;
+  branch_field?: string;
+  college_school_name?: string;
+  course_name?: string;
+  registration_number?: string;
+  enrollmentNumber?: string;
+  enrollment_number?: string;
+  github_link?: string;
+  linkedin_link?: string;
+  twitter_link?: string;
+  facebook_link?: string;
+  instagram_link?: string;
+  portfolio_link?: string;
+  youtube_link?: string;
+  other_social_links?: Record<string, unknown>;
+  approval_status?: string;
+  trainer_name?: string;
+  bio?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  pincode?: string;
+  resume_url?: string;
+  resumeUrl?: string;
+  profile_picture?: string;
+  profilePicture?: string;
+  contactNumber?: string;
+  created_at?: string;
+  createdAt?: string;
+  updated_at?: string;
+  updatedAt?: string;
+  imported_at?: string;
+  school_id?: string;
+  college_id?: string;
+  schools?:
+    | {
+        id: string;
+        name: string;
+        code: string;
+        city?: string;
+        state?: string;
+        country?: string;
+      }
+    | {
+        id: string;
+        name: string;
+        code: string;
+        city?: string;
+        state?: string;
+        country?: string;
+      }[];
+  colleges?:
+    | {
+        id: string;
+        name: string;
+        code?: string;
+        city?: string;
+        state?: string;
+        country?: string;
+      }
+    | {
+        id: string;
+        name: string;
+        code?: string;
+        city?: string;
+        state?: string;
+        country?: string;
+      }[];
+  grade?: string;
+  section?: string;
+  roll_number?: string;
+  admission_number?: string;
+  currentCgpa?: number;
+  guardianName?: string;
+  guardianPhone?: string;
+  guardianEmail?: string;
+  guardianRelation?: string;
+  enrollmentDate?: string;
+  expectedGraduationDate?: string;
+  student_type?: string;
+  hobbies?: string[];
+  languages?: string[];
+  interests?: string[];
+  category?: string;
+  quota?: string;
+  metadata?: Record<string, unknown>;
+  notification_settings?: Record<string, unknown>;
   // Related data from joins
-  skills?: Skill[]
-  projects?: Project[]
-  certificates?: Certificate[]
-  experience?: Experience[]
-  trainings?: Training[]
+  skills?: Skill[];
+  projects?: Project[];
+  certificates?: Certificate[];
+  experience?: Experience[];
+  trainings?: Training[];
 }
 
 export interface UICandidate {
-  id: string
-  user_id?: string
-  name: string
-  email?: string
-  phone?: string
-  location?: string
-  college?: string
-  dept?: string
-  university?: string
-  registration_number?: string
-  skills: Skill[]
-  projects: Project[]
-  certificates: Certificate[]
-  experience: Experience[]
-  trainings: Training[]
-  badges: string[]
-  ai_score_overall: number
-  last_updated?: string
+  id: string;
+  user_id?: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  location?: string;
+  college?: string;
+  dept?: string;
+  university?: string;
+  registration_number?: string;
+  skills: Skill[];
+  projects: Project[];
+  certificates: Certificate[];
+  experience: Experience[];
+  trainings: Training[];
+  badges: string[];
+  ai_score_overall: number;
+  last_updated?: string;
   // Social links
-  github_link?: string
-  linkedin_link?: string
-  twitter_link?: string
-  facebook_link?: string
-  instagram_link?: string
-  portfolio_link?: string
-  youtube_link?: string
-  other_social_links?: Record<string, unknown>
+  github_link?: string;
+  linkedin_link?: string;
+  twitter_link?: string;
+  facebook_link?: string;
+  instagram_link?: string;
+  portfolio_link?: string;
+  youtube_link?: string;
+  other_social_links?: Record<string, unknown>;
   // Personal details
-  age?: number
-  gender?: string
-  bloodGroup?: string
-  date_of_birth?: string
-  bio?: string
-  address?: string
-  city?: string
-  state?: string
-  country?: string
-  pincode?: string
+  age?: number;
+  gender?: string;
+  bloodGroup?: string;
+  date_of_birth?: string;
+  bio?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  pincode?: string;
   // Academic details
-  grade?: string
-  section?: string
-  roll_number?: string
-  admission_number?: string
-  currentCgpa?: number
-  enrollmentDate?: string
-  expectedGraduationDate?: string
-  student_type?: string
+  grade?: string;
+  section?: string;
+  roll_number?: string;
+  admission_number?: string;
+  currentCgpa?: number;
+  enrollmentDate?: string;
+  expectedGraduationDate?: string;
+  student_type?: string;
   // Guardian details
-  guardianName?: string
-  guardianPhone?: string
-  guardianEmail?: string
-  guardianRelation?: string
+  guardianName?: string;
+  guardianPhone?: string;
+  guardianEmail?: string;
+  guardianRelation?: string;
   // Additional fields
-  nm_id?: string
-  trainer_name?: string
-  district_name?: string
-  branch_field?: string
-  course_name?: string
-  contact_number?: string
-  alternate_number?: string
-  contact_dial_code?: string
-  imported_at?: string
-  updated_at?: string
-  school_id?: string
-  college_id?: string
-  college_school_name?: string // Original field
-  school_name?: string // Proper school name from join
-  approval_status?: string // Add this field
-  hobbies?: string[]
-  languages?: string[]
-  interests?: string[]
-  category?: string
-  quota?: string
-  metadata?: Record<string, unknown>
-  notification_settings?: Record<string, unknown>
-  resumeUrl?: string
-  profilePicture?: string
+  nm_id?: string;
+  trainer_name?: string;
+  district_name?: string;
+  branch_field?: string;
+  course_name?: string;
+  contact_number?: string;
+  alternate_number?: string;
+  contact_dial_code?: string;
+  imported_at?: string;
+  updated_at?: string;
+  school_id?: string;
+  college_id?: string;
+  college_school_name?: string; // Original field
+  school_name?: string; // Proper school name from join
+  approval_status?: string; // Add this field
+  hobbies?: string[];
+  languages?: string[];
+  interests?: string[];
+  category?: string;
+  quota?: string;
+  metadata?: Record<string, unknown>;
+  notification_settings?: Record<string, unknown>;
+  resumeUrl?: string;
+  profilePicture?: string;
 }
 
 function mapToUICandidate(row: StudentRow): UICandidate {
   // Format phone number - handle both camelCase and snake_case
-  const dial = row.contact_dial_code ? String(row.contact_dial_code).replace(/\.0$/, '') : ''
-  const phoneNum = (row.contactNumber || row.contact_number) ? String(row.contactNumber || row.contact_number).replace(/\.0$/, '') : ''
-  const altNum = row.alternate_number ? String(row.alternate_number).replace(/\.0$/, '') : ''
-  const phone = phoneNum || altNum ? `${dial ? '+' + dial + ' ' : ''}${phoneNum || altNum}` : undefined
+  const dial = row.contact_dial_code ? String(row.contact_dial_code).replace(/\.0$/, '') : '';
+  const phoneNum =
+    row.contactNumber || row.contact_number
+      ? String(row.contactNumber || row.contact_number).replace(/\.0$/, '')
+      : '';
+  const altNum = row.alternate_number ? String(row.alternate_number).replace(/\.0$/, '') : '';
+  const phone =
+    phoneNum || altNum ? `${dial ? '+' + dial + ' ' : ''}${phoneNum || altNum}` : undefined;
 
   // Get school name from joined data or fallback to college_school_name
-  const schoolData = Array.isArray(row.schools) ? row.schools[0] : row.schools
-  const collegeData = Array.isArray(row.colleges) ? row.colleges[0] : row.colleges
-  const schoolName = schoolData?.name || row.college_school_name
-  const collegeName = collegeData?.name || row.college_school_name || row.university
+  const schoolData = Array.isArray(row.schools) ? row.schools[0] : row.schools;
+  const collegeData = Array.isArray(row.colleges) ? row.colleges[0] : row.colleges;
+  const schoolName = schoolData?.name || row.college_school_name;
+  const collegeName = collegeData?.name || row.college_school_name || row.university;
 
-  const dept = row.branch_field || row.course_name
-  const location = row.district_name || row.city
+  const dept = row.branch_field || row.course_name;
+  const location = row.district_name || row.city;
 
   // Use skills from the skills table (already fetched via join)
-  const skills = Array.isArray(row.skills) ? row.skills.filter(s => s.enabled !== false) : []
-  
+  const skills = Array.isArray(row.skills) ? row.skills.filter((s) => s.enabled !== false) : [];
+
   // Use projects from the projects table
-  const projects = Array.isArray(row.projects) ? row.projects.filter(p => p.enabled !== false) : []
-  
+  const projects = Array.isArray(row.projects)
+    ? row.projects.filter((p) => p.enabled !== false)
+    : [];
+
   // Use certificates from the certificates table
-  const certificates = Array.isArray(row.certificates) ? row.certificates.filter(c => c.enabled !== false) : []
-  
+  const certificates = Array.isArray(row.certificates)
+    ? row.certificates.filter((c) => c.enabled !== false)
+    : [];
+
   // Use experience from the experience table
-  const experience = Array.isArray(row.experience) ? row.experience : []
-  
+  const experience = Array.isArray(row.experience) ? row.experience : [];
+
   // Use trainings from the trainings table
-  const trainings = Array.isArray(row.trainings) ? row.trainings : []
+  const trainings = Array.isArray(row.trainings) ? row.trainings : [];
 
   return {
     id: row.id,
@@ -326,7 +338,8 @@ function mapToUICandidate(row: StudentRow): UICandidate {
     trainings,
     badges: ['institution_verified'],
     ai_score_overall: 0,
-    last_updated: row.updatedAt || row.updated_at || row.imported_at || row.createdAt || row.created_at,
+    last_updated:
+      row.updatedAt || row.updated_at || row.imported_at || row.createdAt || row.created_at,
     // Social links
     github_link: row.github_link,
     linkedin_link: row.linkedin_link,
@@ -386,7 +399,7 @@ function mapToUICandidate(row: StudentRow): UICandidate {
     notification_settings: row.notification_settings,
     resumeUrl: row.resumeUrl,
     profilePicture: row.profilePicture,
-  }
+  };
 }
 
 interface UseStudentsOptions {
@@ -398,32 +411,33 @@ interface UseStudentsOptions {
 }
 
 export function useStudents(options?: UseStudentsOptions) {
-  const [data, setData] = useState<UICandidate[]>([])
-  const [loading, setLoading] = useState<boolean>(false)
-  const [error, setError] = useState<string | null>(null)
-  const schoolId = options?.schoolId
-  const collegeId = options?.collegeId
-  const classIds = options?.classIds
-  const educatorType = options?.educatorType
-  const userId = options?.userId
+  const [data, setData] = useState<UICandidate[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const schoolId = options?.schoolId;
+  const collegeId = options?.collegeId;
+  const classIds = options?.classIds;
+  const educatorType = options?.educatorType;
+  const userId = options?.userId;
 
   const fetchStudents = async () => {
-    setLoading(true)
-    setError(null)
-    
+    setLoading(true);
+    setError(null);
+
     try {
       // For college lecturers, use program-based student fetching
       if (educatorType === 'college' && userId) {
-        const { data: programStudents, error: programError } = await getProgramSectionStudents(userId)
-        
+        const { data: programStudents, error: programError } =
+          await getProgramSectionStudents(userId);
+
         if (programError) {
-          throw new Error(programError)
+          throw new Error(programError);
         }
 
         // The programStudents now contains full rich data, so map it directly using mapToUICandidate
-        const mapped = (programStudents || []).map(mapToUICandidate)
-        setData(mapped)
-        return
+        const mapped = (programStudents || []).map(mapToUICandidate);
+        setData(mapped);
+        return;
       }
 
       // Check if educator has no class assignments (and is not admin)
@@ -435,7 +449,8 @@ export function useStudents(options?: UseStudentsOptions) {
 
       let query = supabase
         .from('students')
-        .select(`
+        .select(
+          `
           id,
           user_id,
           student_id,
@@ -573,59 +588,63 @@ export function useStudents(options?: UseStudentsOptions) {
             created_at,
             updated_at
           )
-        `)
-        .eq('is_deleted', false)
+        `
+        )
+        .eq('is_deleted', false);
 
       // Apply filtering logic based on educator type
       if (classIds && classIds.length > 0) {
         if (educatorType === 'school') {
           // For school educators: filter by assigned school class IDs
-          query = query.in('school_class_id', classIds)
+          query = query.in('school_class_id', classIds);
         } else if (educatorType === 'college') {
           // For college educators: filter by assigned college class IDs
-          query = query.in('college_class_id', classIds)
+          query = query.in('college_class_id', classIds);
         }
       } else if (schoolId) {
         // Fallback: filter by school ID (for admins or when no class assignments check)
-        query = query.eq('school_id', schoolId)
+        query = query.eq('school_id', schoolId);
       } else if (collegeId) {
         // For college educators: filter by college ID
-        query = query.eq('college_id', collegeId)
+        query = query.eq('college_id', collegeId);
       }
 
-      const { data, error } = await query
-        .order('updated_at', { ascending: false })
-        .limit(500)
+      const { data, error } = await query.order('updated_at', { ascending: false }).limit(500);
 
-      if (error) throw error
-      
-      const mapped = (data as StudentRow[]).map(mapToUICandidate)
-      setData(mapped)
+      if (error) throw error;
+
+      const mapped = (data as StudentRow[]).map(mapToUICandidate);
+      setData(mapped);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load students')
+      setError(e instanceof Error ? e.message : 'Failed to load students');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    let isMounted = true
+    let isMounted = true;
     const wrappedFetch = async () => {
-      if (!isMounted) return
+      if (!isMounted) return;
       // Only fetch if we have filtering criteria
-      if (options !== undefined && !schoolId && !collegeId && (!classIds || classIds.length === 0)) {
-        return
+      if (
+        options !== undefined &&
+        !schoolId &&
+        !collegeId &&
+        (!classIds || classIds.length === 0)
+      ) {
+        return;
       }
-      await fetchStudents()
-    }
-    wrappedFetch()
+      await fetchStudents();
+    };
+    wrappedFetch();
     return () => {
-      isMounted = false
-    }
+      isMounted = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [schoolId, collegeId, classIds, educatorType, userId])
+  }, [schoolId, collegeId, classIds, educatorType, userId]);
 
-  const stats = useMemo(() => ({ count: data.length }), [data])
+  const stats = useMemo(() => ({ count: data.length }), [data]);
 
-  return { students: data, loading, error, stats, refetch: fetchStudents }
+  return { students: data, loading, error, stats, refetch: fetchStudents };
 }

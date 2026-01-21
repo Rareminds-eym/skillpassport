@@ -1,15 +1,17 @@
 import { City, Country, State } from 'country-state-city';
 import {
-    AlertCircle,
-    CheckCircle,
-    Eye, EyeOff,
-    Gift,
-    Globe, Languages,
-    Lock,
-    Mail,
-    MapPin,
-    Phone,
-    User
+  AlertCircle,
+  CheckCircle,
+  Eye,
+  EyeOff,
+  Gift,
+  Globe,
+  Languages,
+  Lock,
+  Mail,
+  MapPin,
+  Phone,
+  User,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import DatePicker from './DatePicker';
@@ -89,7 +91,7 @@ export default function SignupFormFields({
   useEffect(() => {
     if (formData.state && formData.country) {
       setLoadingCities(true);
-      const stateObj = states.find(s => s.name === formData.state);
+      const stateObj = states.find((s) => s.name === formData.state);
       if (stateObj) {
         const cityList = City.getCitiesOfState(formData.country, stateObj.isoCode);
         setCities(cityList || []);
@@ -107,21 +109,21 @@ export default function SignupFormFields({
     onChange({
       target: {
         name: 'country',
-        value: selectedCountry
-      }
+        value: selectedCountry,
+      },
     });
     // Reset state and city when country changes
     onChange({
       target: {
         name: 'state',
-        value: ''
-      }
+        value: '',
+      },
     });
     onChange({
       target: {
         name: 'city',
-        value: ''
-      }
+        value: '',
+      },
     });
   };
 
@@ -130,15 +132,15 @@ export default function SignupFormFields({
     onChange({
       target: {
         name: 'state',
-        value: selectedState
-      }
+        value: selectedState,
+      },
     });
     // Reset city when state changes
     onChange({
       target: {
         name: 'city',
-        value: ''
-      }
+        value: '',
+      },
     });
   };
 
@@ -370,9 +372,7 @@ export default function SignupFormFields({
             {errors.password}
           </p>
         )}
-        <p className="mt-1 text-xs text-gray-500">
-          Must contain uppercase, lowercase, and number
-        </p>
+        <p className="mt-1 text-xs text-gray-500">Must contain uppercase, lowercase, and number</p>
       </div>
 
       {/* Confirm Password */}
@@ -424,7 +424,7 @@ export default function SignupFormFields({
             }`}
           >
             <option value="">Select Country</option>
-            {ALL_COUNTRIES.map(country => (
+            {ALL_COUNTRIES.map((country) => (
               <option key={country.isoCode} value={country.isoCode}>
                 {country.name}
               </option>
@@ -456,9 +456,13 @@ export default function SignupFormFields({
             }`}
           >
             <option value="">
-              {loadingStates ? 'Loading...' : !formData.country ? 'Select country first' : 'Select State / Province'}
+              {loadingStates
+                ? 'Loading...'
+                : !formData.country
+                  ? 'Select country first'
+                  : 'Select State / Province'}
             </option>
-            {states.map(state => (
+            {states.map((state) => (
               <option key={state.isoCode} value={state.name}>
                 {state.name}
               </option>
@@ -490,9 +494,13 @@ export default function SignupFormFields({
             }`}
           >
             <option value="">
-              {loadingCities ? 'Loading cities...' : !formData.state ? 'Select state first' : 'Select City / District'}
+              {loadingCities
+                ? 'Loading cities...'
+                : !formData.state
+                  ? 'Select state first'
+                  : 'Select City / District'}
             </option>
-            {cities.map(city => (
+            {cities.map((city) => (
               <option key={city.name} value={city.name}>
                 {city.name}
               </option>
@@ -509,9 +517,7 @@ export default function SignupFormFields({
 
       {/* Preferred Language */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Preferred Language
-        </label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Preferred Language</label>
         <div className="relative">
           <Languages className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
           <select
@@ -520,7 +526,7 @@ export default function SignupFormFields({
             onChange={onChange}
             className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all appearance-none bg-white"
           >
-            {LANGUAGES.map(lang => (
+            {LANGUAGES.map((lang) => (
               <option key={lang.code} value={lang.code}>
                 {lang.name}
               </option>
@@ -588,4 +594,3 @@ export default function SignupFormFields({
 
 // Export constants for use in other components
 export { ALL_COUNTRIES, LANGUAGES };
-

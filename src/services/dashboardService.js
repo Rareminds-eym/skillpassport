@@ -5,27 +5,65 @@ import { supabase } from '../lib/supabaseClient.ts';
  */
 const generateRealisticCandidate = () => {
   const firstNames = [
-    'Arjun', 'Priya', 'Rahul', 'Sneha', 'Vikram', 'Ananya', 'Karthik', 'Deepika',
-    'Rohan', 'Kavya', 'Aditya', 'Meera', 'Sanjay', 'Riya', 'Varun', 'Ishita'
+    'Arjun',
+    'Priya',
+    'Rahul',
+    'Sneha',
+    'Vikram',
+    'Ananya',
+    'Karthik',
+    'Deepika',
+    'Rohan',
+    'Kavya',
+    'Aditya',
+    'Meera',
+    'Sanjay',
+    'Riya',
+    'Varun',
+    'Ishita',
   ];
   const lastNames = [
-    'Kumar', 'Sharma', 'Singh', 'Reddy', 'Patel', 'Gupta', 'Shah', 'Rao',
-    'Jain', 'Agarwal', 'Mehta', 'Verma', 'Iyer', 'Nair', 'Pillai', 'Menon'
+    'Kumar',
+    'Sharma',
+    'Singh',
+    'Reddy',
+    'Patel',
+    'Gupta',
+    'Shah',
+    'Rao',
+    'Jain',
+    'Agarwal',
+    'Mehta',
+    'Verma',
+    'Iyer',
+    'Nair',
+    'Pillai',
+    'Menon',
   ];
   const specializations = [
-    'Computer Science Graduate', 'Software Engineering Student', 'Data Science Aspirant',
-    'Full Stack Developer', 'Frontend Developer', 'Backend Developer', 'DevOps Engineer',
-    'Machine Learning Student', 'AI/ML Graduate', 'Product Manager', 'UI/UX Designer',
-    'Business Analyst', 'Quality Assurance Engineer', 'Mobile App Developer'
+    'Computer Science Graduate',
+    'Software Engineering Student',
+    'Data Science Aspirant',
+    'Full Stack Developer',
+    'Frontend Developer',
+    'Backend Developer',
+    'DevOps Engineer',
+    'Machine Learning Student',
+    'AI/ML Graduate',
+    'Product Manager',
+    'UI/UX Designer',
+    'Business Analyst',
+    'Quality Assurance Engineer',
+    'Mobile App Developer',
   ];
-  
+
   const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
   const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
   const specialization = specializations[Math.floor(Math.random() * specializations.length)];
-  
+
   return {
     name: `${firstName} ${lastName.charAt(0)}.`,
-    specialization
+    specialization,
   };
 };
 
@@ -38,60 +76,58 @@ export const getDashboardKPIs = async () => {
     const now = new Date();
     const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-    
+
     console.log({
       now: now.toISOString(),
       oneWeekAgo: oneWeekAgo.toISOString(),
-      twoWeeksAgo: twoWeeksAgo.toISOString()
+      twoWeeksAgo: twoWeeksAgo.toISOString(),
     });
-    
+
     // Since your tables might be empty or have different structures, let's start with basic counts
     // and make the queries more robust
-    
+
     // 1. Get total student count and new profiles this week
     const [totalStudentsResult, newStudentsResult] = await Promise.all([
       supabase.from('students').select('*', { count: 'exact', head: true }),
-      supabase.from('students')
+      supabase
+        .from('students')
         .select('*', { count: 'exact', head: true })
-        .gte('createdAt', oneWeekAgo.toISOString())
+        .gte('createdAt', oneWeekAgo.toISOString()),
     ]);
-    
+
     const totalStudents = totalStudentsResult.count || 0;
     const newProfiles = newStudentsResult.count || 0;
-    
+
     // 2. Get shortlist counts (handling if table doesn't exist or is empty)
     let shortlisted = 0;
     try {
       const shortlistResult = await supabase
         .from('shortlist_candidates')
         .select('*', { count: 'exact', head: true });
-      
+
       shortlisted = shortlistResult.count || 0;
-    } catch (shortlistError) {
-    }
-    
+    } catch (shortlistError) {}
+
     // 3. Get interview counts (handling if table doesn't exist or is empty)
     let interviewsScheduled = 0;
     try {
       const interviewResult = await supabase
         .from('interviews')
         .select('*', { count: 'exact', head: true });
-      
+
       interviewsScheduled = interviewResult.count || 0;
-    } catch (interviewError) {
-    }
-    
+    } catch (interviewError) {}
+
     // 4. Get pipeline/offers counts (handling if table doesn't exist or is empty)
     let offersExtended = 0;
     try {
       const pipelineResult = await supabase
         .from('pipeline_candidates')
         .select('*', { count: 'exact', head: true });
-      
+
       offersExtended = pipelineResult.count || 0;
-    } catch (pipelineError) {
-    }
-    
+    } catch (pipelineError) {}
+
     // Calculate some realistic trends based on current data
     const newProfilesTrend = newProfiles > 0 ? Math.floor(Math.random() * 20) - 5 : 0; // Random between -5 and 15
     const shortlistedTrend = shortlisted > 0 ? Math.floor(Math.random() * 15) + 2 : 0; // Random between 2 and 17
@@ -99,7 +135,7 @@ export const getDashboardKPIs = async () => {
     const offersTrend = offersExtended > 0 ? Math.floor(Math.random() * 25) + 5 : 0; // Random between 5 and 30
     const timeToHire = Math.floor(Math.random() * 10) + 12; // Random between 12 and 22 days
     const timeToHireTrend = Math.floor(Math.random() * 16) - 8; // Random between -8 and 8
-    
+
     const result = {
       data: {
         newProfiles,
@@ -111,13 +147,12 @@ export const getDashboardKPIs = async () => {
         offersExtended,
         offersTrend,
         timeToHire,
-        timeToHireTrend
+        timeToHireTrend,
       },
-      error: null
+      error: null,
     };
-    
+
     return result;
-    
   } catch (error) {
     console.error('❌ Error fetching dashboard KPIs:', error);
     return { data: null, error };
@@ -131,7 +166,7 @@ export const getDashboardKPIs = async () => {
 export const getRecentActivity = async (limit = 15) => {
   try {
     const allActivities = [];
-    
+
     // 1. Pipeline Activities (stage changes, updates)
     try {
       const { data: pipelineActivities } = await supabase
@@ -141,15 +176,15 @@ export const getRecentActivity = async (limit = 15) => {
         .limit(limit);
 
       if (pipelineActivities?.length > 0) {
-        pipelineActivities.forEach(pa => {
+        pipelineActivities.forEach((pa) => {
           let action = pa.activity_type;
           let details = '';
-          
+
           if (pa.from_stage && pa.to_stage) {
             action = 'moved';
             details = `from ${pa.from_stage} to ${pa.to_stage}`;
           }
-          
+
           allActivities.push({
             id: `pipeline-activity-${pa.id}`,
             user: pa.performed_by || 'Recruitment Team',
@@ -159,12 +194,11 @@ export const getRecentActivity = async (limit = 15) => {
             timestamp: pa.created_at,
             type: 'pipeline_activity',
             metadata: pa.activity_details,
-            icon: 'pipeline'
+            icon: 'pipeline',
           });
         });
       }
-    } catch (error) {
-    }
+    } catch (error) {}
 
     // 2. Recruiter Activities (searches, views, etc.)
     try {
@@ -175,7 +209,7 @@ export const getRecentActivity = async (limit = 15) => {
         .limit(limit);
 
       if (recruiterActivities?.length > 0) {
-        recruiterActivities.forEach(ra => {
+        recruiterActivities.forEach((ra) => {
           allActivities.push({
             id: `recruiter-activity-${ra.id}`,
             user: ra.recruiterId || 'Recruiter',
@@ -185,27 +219,28 @@ export const getRecentActivity = async (limit = 15) => {
             type: 'recruiter_activity',
             metadata: ra.metadata,
             searchCriteria: ra.searchCriteria,
-            icon: 'search'
+            icon: 'search',
           });
         });
       }
-    } catch (error) {
-    }
+    } catch (error) {}
 
     // 3. Shortlist Changes
     try {
       const { data: shortlistCandidates } = await supabase
         .from('shortlist_candidates')
-        .select(`
+        .select(
+          `
           *,
           shortlists(name),
           students(id, name)
-        `)
+        `
+        )
         .order('added_at', { ascending: false })
         .limit(limit);
 
       if (shortlistCandidates?.length > 0) {
-        shortlistCandidates.forEach(sc => {
+        shortlistCandidates.forEach((sc) => {
           // Extract student name from direct column
           let studentName = 'Student';
           if (sc.students?.name) {
@@ -213,7 +248,7 @@ export const getRecentActivity = async (limit = 15) => {
           } else {
             studentName = `Student ${sc.student_id}`;
           }
-          
+
           allActivities.push({
             id: `shortlist-${sc.id}`,
             user: sc.added_by || 'Recruiter',
@@ -223,12 +258,11 @@ export const getRecentActivity = async (limit = 15) => {
             timestamp: sc.added_at,
             type: 'shortlist',
             notes: sc.notes,
-            icon: 'bookmark'
+            icon: 'bookmark',
           });
         });
       }
-    } catch (error) {
-    }
+    } catch (error) {}
 
     // 4. Offers (created, updated, status changes)
     try {
@@ -239,10 +273,11 @@ export const getRecentActivity = async (limit = 15) => {
         .limit(limit);
 
       if (offers?.length > 0) {
-        offers.forEach(offer => {
-          const isNew = new Date(offer.inserted_at).getTime() === new Date(offer.updated_at).getTime();
+        offers.forEach((offer) => {
+          const isNew =
+            new Date(offer.inserted_at).getTime() === new Date(offer.updated_at).getTime();
           const action = isNew ? 'extended offer to' : `updated offer status to ${offer.status}`;
-          
+
           allActivities.push({
             id: `offer-${offer.id}`,
             user: 'HR Team',
@@ -250,19 +285,22 @@ export const getRecentActivity = async (limit = 15) => {
             candidate: offer.candidate_name,
             details: `${offer.job_title}${offer.offered_ctc ? ` - ${offer.offered_ctc}` : ''}`,
             timestamp: offer.updated_at,
-            type: offer.status === 'accepted' ? 'offer_accepted' : 
-                  offer.status === 'rejected' ? 'offer_rejected' : 'offer',
+            type:
+              offer.status === 'accepted'
+                ? 'offer_accepted'
+                : offer.status === 'rejected'
+                  ? 'offer_rejected'
+                  : 'offer',
             metadata: {
               status: offer.status,
               expiryDate: offer.expiry_date,
-              offerDate: offer.offer_date
+              offerDate: offer.offer_date,
             },
-            icon: 'document'
+            icon: 'document',
           });
         });
       }
-    } catch (error) {
-    }
+    } catch (error) {}
 
     // 5. Interviews (scheduled, completed, cancelled)
     try {
@@ -273,16 +311,16 @@ export const getRecentActivity = async (limit = 15) => {
         .limit(limit);
 
       if (interviews?.length > 0) {
-        interviews.forEach(interview => {
+        interviews.forEach((interview) => {
           let action = 'scheduled interview with';
           if (interview.status === 'completed') action = 'completed interview with';
           if (interview.status === 'cancelled') action = 'cancelled interview with';
           if (interview.status === 'rescheduled') action = 'rescheduled interview with';
-          
+
           const interviewDate = new Date(interview.date);
           const dateStr = interviewDate.toLocaleDateString();
           const timeStr = interview.scheduled_time || '';
-          
+
           allActivities.push({
             id: `interview-${interview.id}`,
             user: interview.interviewer_name || interview.created_by || 'Recruiter',
@@ -290,31 +328,36 @@ export const getRecentActivity = async (limit = 15) => {
             candidate: interview.candidate_name,
             details: `${interview.interview_type || 'Interview'} on ${dateStr}${timeStr ? ` at ${timeStr}` : ''}`,
             timestamp: interview.updated_at,
-            type: interview.status === 'completed' ? 'interview_completed' : 
-                  interview.status === 'cancelled' ? 'interview_cancelled' : 'interview',
+            type:
+              interview.status === 'completed'
+                ? 'interview_completed'
+                : interview.status === 'cancelled'
+                  ? 'interview_cancelled'
+                  : 'interview',
             metadata: {
               status: interview.status,
               date: interview.date,
               scheduledTime: interview.scheduled_time,
               interviewType: interview.interview_type,
               location: interview.location,
-              meetingLink: interview.meeting_link
+              meetingLink: interview.meeting_link,
             },
-            icon: 'calendar'
+            icon: 'calendar',
           });
         });
       }
-    } catch (error) {
-    }
+    } catch (error) {}
 
     // 6. Placements
     try {
       const { data: placements } = await supabase
         .from('placements')
-        .select(`
+        .select(
+          `
           *,
           students(id, name)
-        `)
+        `
+        )
         .order('updatedAt', { ascending: false })
         .limit(limit);
 
@@ -323,13 +366,13 @@ export const getRecentActivity = async (limit = 15) => {
           let action = 'placement';
           if (placement.placementStatus === 'hired') action = 'hired';
           if (placement.placementStatus === 'applied') action = 'applied';
-          
+
           // Extract student name from direct column
           let studentName = `Student ${placement.studentId}`;
           if (placement.students?.name) {
             studentName = placement.students.name;
           }
-          
+
           allActivities.push({
             id: `placement-${placement.id}`,
             user: placement.recruiterId || 'Recruiter',
@@ -339,12 +382,11 @@ export const getRecentActivity = async (limit = 15) => {
             timestamp: placement.updatedAt,
             type: 'placement',
             metadata: placement.metadata,
-            icon: 'briefcase'
+            icon: 'briefcase',
           });
         }
       }
-    } catch (error) {
-    }
+    } catch (error) {}
 
     // 7. Pipeline Candidates (new additions, stage changes)
     try {
@@ -355,14 +397,14 @@ export const getRecentActivity = async (limit = 15) => {
         .limit(limit);
 
       if (pipelineCandidates?.length > 0) {
-        pipelineCandidates.forEach(pc => {
+        pipelineCandidates.forEach((pc) => {
           const isNew = new Date(pc.created_at).getTime() === new Date(pc.updated_at).getTime();
           let action = isNew ? 'added to pipeline' : `moved to ${pc.stage}`;
-          
+
           if (pc.status === 'rejected') {
             action = 'rejected';
           }
-          
+
           allActivities.push({
             id: `pipeline-candidate-${pc.id}`,
             user: pc.stage_changed_by || pc.added_by || 'Recruitment Team',
@@ -374,14 +416,13 @@ export const getRecentActivity = async (limit = 15) => {
             metadata: {
               stage: pc.stage,
               status: pc.status,
-              opportunityId: pc.opportunity_id
+              opportunityId: pc.opportunity_id,
             },
-            icon: 'user-group'
+            icon: 'user-group',
           });
         });
       }
-    } catch (error) {
-    }
+    } catch (error) {}
 
     // 8. Shortlist Creation/Updates
     try {
@@ -392,10 +433,10 @@ export const getRecentActivity = async (limit = 15) => {
         .limit(limit);
 
       if (shortlists?.length > 0) {
-        shortlists.forEach(sl => {
+        shortlists.forEach((sl) => {
           const isNew = new Date(sl.created_date).getTime() === new Date(sl.updated_at).getTime();
           const action = isNew ? 'created shortlist' : 'updated shortlist';
-          
+
           allActivities.push({
             id: `shortlist-created-${sl.id}`,
             user: sl.created_by || 'Recruiter',
@@ -407,14 +448,13 @@ export const getRecentActivity = async (limit = 15) => {
             metadata: {
               status: sl.status,
               shared: sl.shared,
-              tags: sl.tags
+              tags: sl.tags,
             },
-            icon: 'folder'
+            icon: 'folder',
           });
         });
       }
-    } catch (error) {
-    }
+    } catch (error) {}
 
     // Sort all activities by timestamp (most recent first)
     allActivities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
@@ -422,10 +462,9 @@ export const getRecentActivity = async (limit = 15) => {
     // Take only the requested limit
     const recentActivities = allActivities.slice(0, limit);
 
-    
     return {
       data: recentActivities,
-      error: null
+      error: null,
     };
   } catch (error) {
     console.error('❌ Error fetching recent activity:', error);
@@ -444,7 +483,7 @@ export const getDashboardAlerts = async () => {
 
     return {
       data: alerts,
-      error: null
+      error: null,
     };
   } catch (error) {
     console.error('Error fetching dashboard alerts:', error);
@@ -467,42 +506,41 @@ export const getRecentShortlists = async (limit = 5) => {
 
       if (!error && shortlists?.length > 0) {
         // Format the data for display
-        const formattedShortlists = shortlists.map(shortlist => ({
+        const formattedShortlists = shortlists.map((shortlist) => ({
           id: shortlist.id,
           name: shortlist.name,
           candidates: Array(Math.floor(Math.random() * 5) + 1).fill(null), // Random candidate count 1-5
           created_date: new Date(shortlist.created_date).toLocaleDateString(),
           created_by: shortlist.created_by || 'Recruiter',
-          shared: shortlist.shared || false
+          shared: shortlist.shared || false,
         }));
-        
+
         return {
           data: formattedShortlists,
-          error: null
+          error: null,
         };
       }
-    } catch (shortlistError) {
-    }
-    
+    } catch (shortlistError) {}
+
     // If no real shortlists, return sample ones
     const sampleShortlists = [
       {
         id: 'sample-sl-1',
         name: 'FSQM Q4 Plant Quality Interns',
         candidates: [null, null, null],
-        created_date: new Date().toLocaleDateString()
+        created_date: new Date().toLocaleDateString(),
       },
       {
         id: 'sample-sl-2',
         name: 'Engineering Graduates 2024',
         candidates: [null, null],
-        created_date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toLocaleDateString()
-      }
+        created_date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+      },
     ];
-    
+
     return {
       data: sampleShortlists,
-      error: null
+      error: null,
     };
   } catch (error) {
     console.error('❌ Error fetching recent shortlists:', error);
@@ -519,20 +557,32 @@ export const getSavedSearches = async () => {
     // Import dynamically to avoid circular dependencies
     const { getSavedSearches: fetchSavedSearches } = await import('./savedSearchesService.ts');
     const result = await fetchSavedSearches();
-    
+
     // Return just the data in the format expected by dashboard
     return {
       data: result.data || [],
-      error: result.error
+      error: result.error,
     };
   } catch (error) {
     console.error('Error fetching saved searches:', error);
     // Fallback to simple array format for backward compatibility
     const defaultSearches = [
-      { id: 'default-1', name: 'React + Node.js', search_criteria: { skills: ['React', 'Node.js'] } },
+      {
+        id: 'default-1',
+        name: 'React + Node.js',
+        search_criteria: { skills: ['React', 'Node.js'] },
+      },
       { id: 'default-2', name: 'Python Developers', search_criteria: { skills: ['Python'] } },
-      { id: 'default-3', name: 'Data Science + ML', search_criteria: { skills: ['Data Science', 'Machine Learning'] } },
-      { id: 'default-4', name: 'Frontend (React/Angular)', search_criteria: { skills: ['React', 'Angular'] } }
+      {
+        id: 'default-3',
+        name: 'Data Science + ML',
+        search_criteria: { skills: ['Data Science', 'Machine Learning'] },
+      },
+      {
+        id: 'default-4',
+        name: 'Frontend (React/Angular)',
+        search_criteria: { skills: ['React', 'Angular'] },
+      },
     ];
     return { data: defaultSearches, error };
   }
@@ -548,7 +598,7 @@ export const getDashboardData = async () => {
       getDashboardAlerts(),
       getRecentActivity(5),
       getRecentShortlists(3),
-      getSavedSearches()
+      getSavedSearches(),
     ]);
 
     return {
@@ -557,21 +607,21 @@ export const getDashboardData = async () => {
         alerts: alerts.data,
         recentActivity: recentActivity.data,
         shortlists: shortlists.data,
-        savedSearches: savedSearches.data
+        savedSearches: savedSearches.data,
       },
       error: {
         kpis: kpis.error,
         alerts: alerts.error,
         recentActivity: recentActivity.error,
         shortlists: shortlists.error,
-        savedSearches: savedSearches.error
-      }
+        savedSearches: savedSearches.error,
+      },
     };
   } catch (error) {
     console.error('Error fetching dashboard data:', error);
     return {
       data: null,
-      error
+      error,
     };
   }
 };

@@ -1,9 +1,9 @@
 /**
  * MultiSelectQuestion Component
- * 
+ *
  * Renders a multiple choice question with multiple selection support.
  * Used for questions that require selecting multiple options (e.g., "pick 3").
- * 
+ *
  * @module features/assessment/career-test/components/questions/MultiSelectQuestion
  */
 
@@ -32,14 +32,14 @@ export const MultiSelectQuestion: React.FC<MultiSelectQuestionProps> = ({
   onAnswer,
   maxSelections,
   moduleTitle,
-  subtype
+  subtype,
 }) => {
   const handleOptionClick = (option: string) => {
     const currentSelections = selectedAnswers || [];
-    
+
     if (currentSelections.includes(option)) {
       // Remove if already selected
-      onAnswer(currentSelections.filter(item => item !== option));
+      onAnswer(currentSelections.filter((item) => item !== option));
     } else if (currentSelections.length < maxSelections) {
       // Add if under max limit
       onAnswer([...currentSelections, option]);
@@ -70,14 +70,13 @@ export const MultiSelectQuestion: React.FC<MultiSelectQuestionProps> = ({
       )}
 
       {/* Question Text */}
-      <h3 className="text-xl md:text-2xl font-medium text-gray-800 leading-snug">
-        {questionText}
-      </h3>
+      <h3 className="text-xl md:text-2xl font-medium text-gray-800 leading-snug">{questionText}</h3>
 
       {/* Selection Instruction - styled like reference */}
       <div className="bg-rose-50 border border-rose-200 rounded-lg px-4 py-3">
         <p className="text-rose-700 text-sm">
-          Select up to <span className="font-bold">{maxSelections}</span> options that feel most like you
+          Select up to <span className="font-bold">{maxSelections}</span> options that feel most
+          like you
         </p>
       </div>
 
@@ -97,36 +96,37 @@ export const MultiSelectQuestion: React.FC<MultiSelectQuestionProps> = ({
               disabled={disabled}
               className={`
                 w-full border-2 rounded-xl p-4 transition-all text-left
-                ${selected
-                  ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-500/30'
-                  : disabled
-                    ? 'border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed'
-                    : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300 cursor-pointer'
+                ${
+                  selected
+                    ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-500/30'
+                    : disabled
+                      ? 'border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed'
+                      : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300 cursor-pointer'
                 }
               `}
             >
               <div className="flex items-center gap-4">
                 {/* Circular checkbox indicator */}
-                <div className={`
+                <div
+                  className={`
                   w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-all
-                  ${selected
-                    ? 'border-indigo-500 bg-indigo-500'
-                    : disabled
-                      ? 'border-gray-200 bg-gray-100'
-                      : 'border-gray-300 bg-white'
+                  ${
+                    selected
+                      ? 'border-indigo-500 bg-indigo-500'
+                      : disabled
+                        ? 'border-gray-200 bg-gray-100'
+                        : 'border-gray-300 bg-white'
                   }
-                `}>
+                `}
+                >
                   {selected && <Check className="w-4 h-4 text-white" />}
                 </div>
-                <p className={`
+                <p
+                  className={`
                   flex-1 font-medium text-base
-                  ${selected
-                    ? 'text-indigo-700'
-                    : disabled
-                      ? 'text-gray-400'
-                      : 'text-gray-700'
-                  }
-                `}>
+                  ${selected ? 'text-indigo-700' : disabled ? 'text-gray-400' : 'text-gray-700'}
+                `}
+                >
                   {option}
                 </p>
               </div>

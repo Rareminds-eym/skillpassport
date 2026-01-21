@@ -17,11 +17,12 @@ export default function LearningCoursesSection({ studentId }) {
   const fetchLearning = async () => {
     try {
       setLoading(true);
-      
+
       // Fetch learning records with associated certificates
       const { data: learningData, error: learningError } = await supabase
         .from('trainings')
-        .select(`
+        .select(
+          `
           *,
           certificates (
             id,
@@ -30,7 +31,8 @@ export default function LearningCoursesSection({ studentId }) {
             link,
             issued_on
           )
-        `)
+        `
+        )
         .eq('student_id', studentId)
         .order('created_at', { ascending: false });
 
@@ -57,16 +59,18 @@ export default function LearningCoursesSection({ studentId }) {
 
   const getLevelBadge = (level) => {
     if (!level) return null;
-    
+
     const colors = {
-      'Beginner': 'bg-yellow-100 text-yellow-800',
-      'Intermediate': 'bg-blue-100 text-blue-800',
-      'Advanced': 'bg-purple-100 text-purple-800',
-      'Expert': 'bg-red-100 text-red-800'
+      Beginner: 'bg-yellow-100 text-yellow-800',
+      Intermediate: 'bg-blue-100 text-blue-800',
+      Advanced: 'bg-purple-100 text-purple-800',
+      Expert: 'bg-red-100 text-red-800',
     };
 
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colors[level] || 'bg-gray-100 text-gray-800'}`}>
+      <span
+        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colors[level] || 'bg-gray-100 text-gray-800'}`}
+      >
         <Award size={12} className="mr-1" />
         {level}
       </span>
@@ -118,9 +122,7 @@ export default function LearningCoursesSection({ studentId }) {
           {learning.length === 0 ? (
             <div className="text-center py-12">
               <BookOpen size={48} className="mx-auto text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No learning courses yet
-              </h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No learning courses yet</h3>
               <p className="text-gray-600 mb-4">
                 Start adding your learning courses and certifications to showcase your skills
               </p>
@@ -145,15 +147,13 @@ export default function LearningCoursesSection({ studentId }) {
                   >
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                          {record.title}
-                        </h3>
-                        <p className="text-sm text-gray-600">
-                          {record.organization}
-                        </p>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-1">{record.title}</h3>
+                        <p className="text-sm text-gray-600">{record.organization}</p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(record.status)}`}>
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(record.status)}`}
+                        >
                           {record.status === 'completed' ? 'Completed' : 'Ongoing'}
                         </span>
                         {certificate && getLevelBadge(certificate.level)}
@@ -161,9 +161,7 @@ export default function LearningCoursesSection({ studentId }) {
                     </div>
 
                     {record.description && (
-                      <p className="text-sm text-gray-700 mb-3">
-                        {record.description}
-                      </p>
+                      <p className="text-sm text-gray-700 mb-3">{record.description}</p>
                     )}
 
                     <div className="grid grid-cols-3 gap-4 mb-3">
@@ -183,8 +181,10 @@ export default function LearningCoursesSection({ studentId }) {
                       )}
                       {record.start_date && (
                         <div className="text-sm text-gray-600">
-                          {new Date(record.start_date).toLocaleDateString()} - 
-                          {record.end_date ? new Date(record.end_date).toLocaleDateString() : ' Present'}
+                          {new Date(record.start_date).toLocaleDateString()} -
+                          {record.end_date
+                            ? new Date(record.end_date).toLocaleDateString()
+                            : ' Present'}
                         </div>
                       )}
                     </div>

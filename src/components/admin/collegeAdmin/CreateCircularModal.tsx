@@ -6,7 +6,11 @@ import {
   CalendarIcon,
   UserGroupIcon,
 } from '@heroicons/react/24/outline';
-import { circularService, type Circular, type CreateCircularData } from '@/services/circularService';
+import {
+  circularService,
+  type Circular,
+  type CreateCircularData,
+} from '@/services/circularService';
 import toast from 'react-hot-toast';
 
 interface CreateCircularModalProps {
@@ -50,12 +54,12 @@ const CreateCircularModal: React.FC<CreateCircularModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.title.trim()) {
       toast.error('Please enter a title');
       return;
     }
-    
+
     if (!formData.message.trim()) {
       toast.error('Please enter a message');
       return;
@@ -86,7 +90,7 @@ const CreateCircularModal: React.FC<CreateCircularModalProps> = ({
     try {
       setUploadingFile(true);
       const file = files[0];
-      
+
       // For now, just add to attachments array
       // In production, upload to storage first
       const newAttachment = {
@@ -100,7 +104,7 @@ const CreateCircularModal: React.FC<CreateCircularModalProps> = ({
         ...prev,
         attachments: [...(prev.attachments || []), newAttachment],
       }));
-      
+
       toast.success('File attached successfully');
     } catch (error) {
       console.error('Error uploading file:', error);
@@ -127,7 +131,7 @@ const CreateCircularModal: React.FC<CreateCircularModalProps> = ({
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose} />
-        
+
         <div className="relative w-full max-w-3xl bg-white rounded-2xl shadow-2xl">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-gray-200 px-6 py-5">
@@ -167,9 +171,7 @@ const CreateCircularModal: React.FC<CreateCircularModalProps> = ({
             {/* Priority & Audience Type */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Priority
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
                 <select
                   value={formData.priority}
                   onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
@@ -183,12 +185,12 @@ const CreateCircularModal: React.FC<CreateCircularModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Audience
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Audience</label>
                 <select
                   value={formData.audience_type}
-                  onChange={(e) => setFormData({ ...formData, audience_type: e.target.value as any })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, audience_type: e.target.value as any })
+                  }
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 >
                   <option value="all">All Users</option>
@@ -251,9 +253,7 @@ const CreateCircularModal: React.FC<CreateCircularModalProps> = ({
 
             {/* Attachments */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Attachments
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Attachments</label>
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
                 <input
                   type="file"
@@ -283,12 +283,8 @@ const CreateCircularModal: React.FC<CreateCircularModalProps> = ({
                       <div className="flex items-center gap-3 flex-1 min-w-0">
                         <PaperClipIcon className="h-5 w-5 text-gray-400 flex-shrink-0" />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">
-                            {file.name}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {formatFileSize(file.size)}
-                          </p>
+                          <p className="text-sm font-medium text-gray-900 truncate">{file.name}</p>
+                          <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
                         </div>
                       </div>
                       <button

@@ -1,9 +1,9 @@
 /**
  * Tab Visibility Hook
- * 
+ *
  * Detects when user switches tabs or minimizes the browser.
  * Useful for proctoring and warning users during assessments.
- * 
+ *
  * @module features/assessment/hooks/useTabVisibility
  */
 
@@ -65,21 +65,21 @@ export function useTabVisibility(options: UseTabVisibilityOptions = {}): UseTabV
 
       if (!visible && wasVisibleRef.current) {
         // Tab became hidden
-        setSwitchCount(prev => prev + 1);
-        
-        setWarningCount(prev => {
+        setSwitchCount((prev) => prev + 1);
+
+        setWarningCount((prev) => {
           const newCount = prev + 1;
-          
+
           if (newCount > maxWarnings) {
             setMaxWarningsExceeded(true);
             onMaxWarningsExceeded?.(switchCount + 1);
           } else {
             onWarning?.(newCount);
           }
-          
+
           return newCount;
         });
-        
+
         onHidden?.();
       } else if (visible && !wasVisibleRef.current) {
         // Tab became visible

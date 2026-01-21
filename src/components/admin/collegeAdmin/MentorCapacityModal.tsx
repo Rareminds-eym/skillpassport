@@ -32,11 +32,14 @@ interface MentorCapacityModalProps {
   mentor: Mentor;
   allocation: MentorAllocation; // Specific allocation to configure
   onClose: () => void;
-  onSave: (allocationId: number, config: {
-    capacity: number;
-    officeLocation: string;
-    availableHours: string;
-  }) => void;
+  onSave: (
+    allocationId: number,
+    config: {
+      capacity: number;
+      officeLocation: string;
+      availableHours: string;
+    }
+  ) => void;
 }
 
 const MentorCapacityModal: React.FC<MentorCapacityModalProps> = ({
@@ -48,10 +51,10 @@ const MentorCapacityModal: React.FC<MentorCapacityModalProps> = ({
   const [capacity, setCapacity] = useState(allocation.capacity);
   const [officeLocation, setOfficeLocation] = useState(allocation.officeLocation);
   const [availableHours, setAvailableHours] = useState(allocation.availableHours);
-  const [errors, setErrors] = useState<{[key: string]: string}>({});
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   const validateForm = () => {
-    const newErrors: {[key: string]: string} = {};
+    const newErrors: { [key: string]: string } = {};
 
     if (capacity < 1) {
       newErrors.capacity = 'Capacity must be at least 1';
@@ -91,13 +94,12 @@ const MentorCapacityModal: React.FC<MentorCapacityModalProps> = ({
             </div>
             <div>
               <h2 className="text-lg font-semibold text-gray-900">Configure Allocation</h2>
-              <p className="text-sm text-gray-600">{allocation.allocationPeriod.startDate} to {allocation.allocationPeriod.endDate}</p>
+              <p className="text-sm text-gray-600">
+                {allocation.allocationPeriod.startDate} to {allocation.allocationPeriod.endDate}
+              </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
             <XMarkIcon className="h-5 w-5 text-gray-500" />
           </button>
         </div>
@@ -109,7 +111,9 @@ const MentorCapacityModal: React.FC<MentorCapacityModalProps> = ({
             <div className="grid grid-cols-1 gap-4 text-sm">
               <div>
                 <span className="text-gray-600">Mentor:</span>
-                <p className="font-medium text-gray-900">{mentor.name} ({mentor.designation})</p>
+                <p className="font-medium text-gray-900">
+                  {mentor.name} ({mentor.designation})
+                </p>
               </div>
               <div>
                 <span className="text-gray-600">Department:</span>
@@ -117,11 +121,15 @@ const MentorCapacityModal: React.FC<MentorCapacityModalProps> = ({
               </div>
               <div>
                 <span className="text-gray-600">Allocation Period:</span>
-                <p className="font-medium text-gray-900">{allocation.allocationPeriod.startDate} to {allocation.allocationPeriod.endDate}</p>
+                <p className="font-medium text-gray-900">
+                  {allocation.allocationPeriod.startDate} to {allocation.allocationPeriod.endDate}
+                </p>
               </div>
               <div>
                 <span className="text-gray-600">Academic Year:</span>
-                <p className="font-medium text-gray-900">{allocation.academicYear} • {allocation.semester}</p>
+                <p className="font-medium text-gray-900">
+                  {allocation.academicYear} • {allocation.semester}
+                </p>
               </div>
               <div>
                 <span className="text-gray-600">Current Students:</span>
@@ -148,9 +156,7 @@ const MentorCapacityModal: React.FC<MentorCapacityModalProps> = ({
                 }`}
                 placeholder="Enter maximum number of students"
               />
-              {errors.capacity && (
-                <p className="mt-1 text-sm text-red-600">{errors.capacity}</p>
-              )}
+              {errors.capacity && <p className="mt-1 text-sm text-red-600">{errors.capacity}</p>}
               <p className="mt-1 text-xs text-gray-500">
                 Current students in this allocation: {allocation.students.length}
               </p>

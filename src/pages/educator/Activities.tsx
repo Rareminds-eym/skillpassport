@@ -14,7 +14,7 @@ import {
   LinkIcon,
   AcademicCapIcon,
   BriefcaseIcon,
-  ClipboardDocumentCheckIcon
+  ClipboardDocumentCheckIcon,
 } from '@heroicons/react/24/outline';
 import { createClient } from '@supabase/supabase-js';
 import { useEducatorSchool } from '../../hooks/useEducatorSchool';
@@ -23,7 +23,7 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://your-project.s
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'your-anon-key';
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: { persistSession: false }
+  auth: { persistSession: false },
 });
 
 interface Activity {
@@ -56,7 +56,7 @@ interface Activity {
 
 const FilterSection = ({ title, children, defaultOpen = false }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
-  
+
   return (
     <div className="border-b border-gray-200 py-4">
       <button
@@ -83,15 +83,13 @@ const CheckboxGroup = ({ options, selectedValues, onChange }) => {
               if (e.target.checked) {
                 onChange([...selectedValues, option.value]);
               } else {
-                onChange(selectedValues.filter(v => v !== option.value));
+                onChange(selectedValues.filter((v) => v !== option.value));
               }
             }}
             className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
           />
           <span className="ml-2 text-sm text-gray-700">{option.label}</span>
-          {option.count && (
-            <span className="ml-auto text-xs text-gray-500">({option.count})</span>
-          )}
+          {option.count && <span className="ml-auto text-xs text-gray-500">({option.count})</span>}
         </label>
       ))}
     </div>
@@ -113,11 +111,11 @@ const ActivityDetailModal = ({ isOpen, onClose, activity, onVerify, onReject }) 
       alert('Please provide remarks before taking action');
       return;
     }
-    
+
     setLoading(true);
     try {
       // Simulate loading for 1 second
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       await onVerify(activity.id, remark);
     } finally {
       setLoading(false);
@@ -129,11 +127,11 @@ const ActivityDetailModal = ({ isOpen, onClose, activity, onVerify, onReject }) 
       alert('Please provide remarks before taking action');
       return;
     }
-    
+
     setLoading(true);
     try {
       // Simulate loading for 1 second
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       await onReject(activity.id, remark);
     } finally {
       setLoading(false);
@@ -144,16 +142,22 @@ const ActivityDetailModal = ({ isOpen, onClose, activity, onVerify, onReject }) 
 
   const getTypeIcon = () => {
     switch (activity.type) {
-      case 'Project': return <BriefcaseIcon className="h-5 w-5" />;
-      case 'Training': return <AcademicCapIcon className="h-5 w-5" />;
-      case 'Certificate': return <ClipboardDocumentCheckIcon className="h-5 w-5" />;
+      case 'Project':
+        return <BriefcaseIcon className="h-5 w-5" />;
+      case 'Training':
+        return <AcademicCapIcon className="h-5 w-5" />;
+      case 'Certificate':
+        return <ClipboardDocumentCheckIcon className="h-5 w-5" />;
     }
   };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        <div
+          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          onClick={onClose}
+        ></div>
 
         <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full">
           <div className="bg-white px-4 pt-5 pb-4 sm:p-6">
@@ -180,7 +184,9 @@ const ActivityDetailModal = ({ isOpen, onClose, activity, onVerify, onReject }) 
 
               {activity.description && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Description
+                  </label>
                   <p className="text-sm text-gray-600">{activity.description}</p>
                 </div>
               )}
@@ -189,32 +195,47 @@ const ActivityDetailModal = ({ isOpen, onClose, activity, onVerify, onReject }) 
                 <>
                   {activity.organization && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Organization</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Organization
+                      </label>
                       <p className="text-sm text-gray-900">{activity.organization}</p>
                     </div>
                   )}
-                  
+
                   <div className="grid grid-cols-2 gap-4">
                     {activity.start_date && (
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-                        <p className="text-sm text-gray-900">{new Date(activity.start_date).toLocaleDateString()}</p>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Start Date
+                        </label>
+                        <p className="text-sm text-gray-900">
+                          {new Date(activity.start_date).toLocaleDateString()}
+                        </p>
                       </div>
                     )}
                     {activity.end_date && (
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                        <p className="text-sm text-gray-900">{new Date(activity.end_date).toLocaleDateString()}</p>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          End Date
+                        </label>
+                        <p className="text-sm text-gray-900">
+                          {new Date(activity.end_date).toLocaleDateString()}
+                        </p>
                       </div>
                     )}
                   </div>
 
                   {activity.tech_stack && activity.tech_stack.length > 0 && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Tech Stack</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Tech Stack
+                      </label>
                       <div className="flex flex-wrap gap-2">
                         {activity.tech_stack.map((tech, idx) => (
-                          <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium">
+                          <span
+                            key={idx}
+                            className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium"
+                          >
                             {tech}
                           </span>
                         ))}
@@ -226,8 +247,15 @@ const ActivityDetailModal = ({ isOpen, onClose, activity, onVerify, onReject }) 
                     <div className="space-y-2">
                       {activity.demo_link && (
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Demo Link</label>
-                          <a href={activity.demo_link} target="_blank" rel="noopener noreferrer" className="text-sm text-primary-600 hover:underline flex items-center gap-1">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Demo Link
+                          </label>
+                          <a
+                            href={activity.demo_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-primary-600 hover:underline flex items-center gap-1"
+                          >
                             <LinkIcon className="h-4 w-4" />
                             {activity.demo_link}
                           </a>
@@ -235,8 +263,15 @@ const ActivityDetailModal = ({ isOpen, onClose, activity, onVerify, onReject }) 
                       )}
                       {activity.github_link && (
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">GitHub Link</label>
-                          <a href={activity.github_link} target="_blank" rel="noopener noreferrer" className="text-sm text-primary-600 hover:underline flex items-center gap-1">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            GitHub Link
+                          </label>
+                          <a
+                            href={activity.github_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-primary-600 hover:underline flex items-center gap-1"
+                          >
                             <LinkIcon className="h-4 w-4" />
                             {activity.github_link}
                           </a>
@@ -247,22 +282,39 @@ const ActivityDetailModal = ({ isOpen, onClose, activity, onVerify, onReject }) 
 
                   {(activity.certificate_url || activity.video_url || activity.ppt_url) && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Attachments</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Attachments
+                      </label>
                       <div className="space-y-2">
                         {activity.certificate_url && (
-                          <a href={activity.certificate_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary-600 hover:underline">
+                          <a
+                            href={activity.certificate_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 text-sm text-primary-600 hover:underline"
+                          >
                             <DocumentIcon className="h-4 w-4" />
                             Certificate
                           </a>
                         )}
                         {activity.video_url && (
-                          <a href={activity.video_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary-600 hover:underline">
+                          <a
+                            href={activity.video_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 text-sm text-primary-600 hover:underline"
+                          >
                             <VideoCameraIcon className="h-4 w-4" />
                             Video
                           </a>
                         )}
                         {activity.ppt_url && (
-                          <a href={activity.ppt_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary-600 hover:underline">
+                          <a
+                            href={activity.ppt_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 text-sm text-primary-600 hover:underline"
+                          >
                             <DocumentIcon className="h-4 w-4" />
                             Presentation
                           </a>
@@ -277,27 +329,39 @@ const ActivityDetailModal = ({ isOpen, onClose, activity, onVerify, onReject }) 
                 <>
                   {activity.organization && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Organization</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Organization
+                      </label>
                       <p className="text-sm text-gray-900">{activity.organization}</p>
                     </div>
                   )}
                   <div className="grid grid-cols-2 gap-4">
                     {activity.start_date && (
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-                        <p className="text-sm text-gray-900">{new Date(activity.start_date).toLocaleDateString()}</p>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Start Date
+                        </label>
+                        <p className="text-sm text-gray-900">
+                          {new Date(activity.start_date).toLocaleDateString()}
+                        </p>
                       </div>
                     )}
                     {activity.end_date && (
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                        <p className="text-sm text-gray-900">{new Date(activity.end_date).toLocaleDateString()}</p>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          End Date
+                        </label>
+                        <p className="text-sm text-gray-900">
+                          {new Date(activity.end_date).toLocaleDateString()}
+                        </p>
                       </div>
                     )}
                   </div>
                   {activity.duration && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Duration</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Duration
+                      </label>
                       <p className="text-sm text-gray-900">{activity.duration}</p>
                     </div>
                   )}
@@ -315,27 +379,44 @@ const ActivityDetailModal = ({ isOpen, onClose, activity, onVerify, onReject }) 
                   <div className="grid grid-cols-2 gap-4">
                     {activity.level && (
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Level</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Level
+                        </label>
                         <p className="text-sm text-gray-900">{activity.level}</p>
                       </div>
                     )}
                     {activity.issued_on && (
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Issued On</label>
-                        <p className="text-sm text-gray-900">{new Date(activity.issued_on).toLocaleDateString()}</p>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Issued On
+                        </label>
+                        <p className="text-sm text-gray-900">
+                          {new Date(activity.issued_on).toLocaleDateString()}
+                        </p>
                       </div>
                     )}
                   </div>
                   {activity.credential_id && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Credential ID</label>
-                      <p className="text-sm text-gray-900 font-mono bg-gray-50 p-2 rounded">{activity.credential_id}</p>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Credential ID
+                      </label>
+                      <p className="text-sm text-gray-900 font-mono bg-gray-50 p-2 rounded">
+                        {activity.credential_id}
+                      </p>
                     </div>
                   )}
                   {activity.link && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Verification Link</label>
-                      <a href={activity.link} target="_blank" rel="noopener noreferrer" className="text-sm text-primary-600 hover:underline flex items-center gap-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Verification Link
+                      </label>
+                      <a
+                        href={activity.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-primary-600 hover:underline flex items-center gap-1"
+                      >
                         <LinkIcon className="h-4 w-4" />
                         {activity.link}
                       </a>
@@ -343,8 +424,15 @@ const ActivityDetailModal = ({ isOpen, onClose, activity, onVerify, onReject }) 
                   )}
                   {activity.document_url && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Document</label>
-                      <a href={activity.document_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary-600 hover:underline">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Document
+                      </label>
+                      <a
+                        href={activity.document_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-sm text-primary-600 hover:underline"
+                      >
                         <DocumentIcon className="h-4 w-4" />
                         View Certificate Document
                       </a>
@@ -355,7 +443,8 @@ const ActivityDetailModal = ({ isOpen, onClose, activity, onVerify, onReject }) 
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Educator Remarks {activity.status === 'pending' && <span className="text-red-500">*</span>}
+                  Educator Remarks{' '}
+                  {activity.status === 'pending' && <span className="text-red-500">*</span>}
                 </label>
                 <textarea
                   value={remark}
@@ -369,7 +458,9 @@ const ActivityDetailModal = ({ isOpen, onClose, activity, onVerify, onReject }) 
 
               {activity.remarks && activity.status !== 'pending' && (
                 <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
-                  <label className="block text-sm font-medium text-blue-900 mb-1">Previous Remarks</label>
+                  <label className="block text-sm font-medium text-blue-900 mb-1">
+                    Previous Remarks
+                  </label>
                   <p className="text-sm text-blue-800">{activity.remarks}</p>
                 </div>
               )}
@@ -392,9 +483,25 @@ const ActivityDetailModal = ({ isOpen, onClose, activity, onVerify, onReject }) 
               >
                 {loading ? (
                   <>
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <svg
+                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
                     </svg>
                     Rejecting...
                   </>
@@ -412,9 +519,25 @@ const ActivityDetailModal = ({ isOpen, onClose, activity, onVerify, onReject }) 
               >
                 {loading ? (
                   <>
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <svg
+                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
                     </svg>
                     Verifying...
                   </>
@@ -438,27 +561,38 @@ const ActivityCard = ({ activity, onViewDetails, onVerify, onReject, isSelected,
 
   const getTypeColor = () => {
     switch (activity.type) {
-      case 'Project': return 'bg-blue-100 text-blue-800';
-      case 'Training': return 'bg-purple-100 text-purple-800';
-      case 'Certificate': return 'bg-green-100 text-green-800';
+      case 'Project':
+        return 'bg-blue-100 text-blue-800';
+      case 'Training':
+        return 'bg-purple-100 text-purple-800';
+      case 'Certificate':
+        return 'bg-green-100 text-green-800';
     }
   };
 
   const getStatusColor = () => {
     switch (activity.status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
-      case 'sent_to_admin': return 'bg-blue-100 text-blue-800 border-blue-300';
-      case 'approved': return 'bg-green-100 text-green-800 border-green-300';
-      case 'rejected': return 'bg-red-100 text-red-800 border-red-300';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+      case 'sent_to_admin':
+        return 'bg-blue-100 text-blue-800 border-blue-300';
+      case 'approved':
+        return 'bg-green-100 text-green-800 border-green-300';
+      case 'rejected':
+        return 'bg-red-100 text-red-800 border-red-300';
     }
   };
 
   const getStatusLabel = () => {
     switch (activity.status) {
-      case 'pending': return 'Pending';
-      case 'sent_to_admin': return 'Sent to Admin';
-      case 'approved': return 'Approved';
-      case 'rejected': return 'Rejected';
+      case 'pending':
+        return 'Pending';
+      case 'sent_to_admin':
+        return 'Sent to Admin';
+      case 'approved':
+        return 'Approved';
+      case 'rejected':
+        return 'Rejected';
     }
   };
 
@@ -466,7 +600,7 @@ const ActivityCard = ({ activity, onViewDetails, onVerify, onReject, isSelected,
     setLoading(true);
     try {
       // Simulate loading for 1 second
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       await onVerify(activity.id, '');
     } finally {
       setLoading(false);
@@ -477,7 +611,7 @@ const ActivityCard = ({ activity, onViewDetails, onVerify, onReject, isSelected,
     setLoading(true);
     try {
       // Simulate loading for 1 second
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       await onReject(activity.id, '');
     } finally {
       setLoading(false);
@@ -498,10 +632,14 @@ const ActivityCard = ({ activity, onViewDetails, onVerify, onReject, isSelected,
           )}
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
-              <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${getTypeColor()}`}>
+              <span
+                className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${getTypeColor()}`}
+              >
                 {activity.type}
               </span>
-              <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium border ${getStatusColor()}`}>
+              <span
+                className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium border ${getStatusColor()}`}
+              >
                 {getStatusLabel()}
               </span>
             </div>
@@ -536,7 +674,9 @@ const ActivityCard = ({ activity, onViewDetails, onVerify, onReject, isSelected,
 const Activities = () => {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'pending' | 'sent_to_admin' | 'approved' | 'rejected'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'sent_to_admin' | 'approved' | 'rejected'>(
+    'pending'
+  );
   const [selectedActivities, setSelectedActivities] = useState<string[]>([]);
   const [detailModal, setDetailModal] = useState<Activity | null>(null);
   const [viewMode, setViewMode] = useState('grid');
@@ -544,12 +684,19 @@ const Activities = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({
     types: [],
-    dateRange: { start: '', end: '' }
+    dateRange: { start: '', end: '' },
   });
   const [sortBy, setSortBy] = useState('date_desc');
 
   // Get educator's school information with class assignments
-  const { school: educatorSchool, college: educatorCollege, educatorType, educatorRole, assignedClassIds, loading: schoolLoading } = useEducatorSchool();
+  const {
+    school: educatorSchool,
+    college: educatorCollege,
+    educatorType,
+    educatorRole,
+    assignedClassIds,
+    loading: schoolLoading,
+  } = useEducatorSchool();
 
   useEffect(() => {
     // Wait for school data before fetching activities
@@ -559,11 +706,11 @@ const Activities = () => {
 
   const fetchActivities = async () => {
     if (!educatorSchool?.id && !educatorCollege?.id) return;
-    
+
     setLoading(true);
     try {
       let students;
-      
+
       if (educatorType === 'school' && educatorSchool) {
         // For school educators, check role and class assignments
         if (educatorRole === 'admin' || educatorRole === 'school_admin') {
@@ -598,7 +745,7 @@ const Activities = () => {
       } else {
         students = [];
       }
-      
+
       // Create a mapping of user_id to student name
       const studentMap: Record<string, string> = {};
       const studentIds = new Set<string>();
@@ -612,12 +759,12 @@ const Activities = () => {
         .from('projects')
         .select('*')
         .in('student_id', Array.from(studentIds));
-      
+
       const { data: trainings } = await supabase
         .from('trainings')
         .select('*')
         .in('student_id', Array.from(studentIds));
-      
+
       const { data: certificates } = await supabase
         .from('certificates')
         .select('*')
@@ -627,7 +774,8 @@ const Activities = () => {
         ...(projects || []).map((p: any) => ({
           id: p.id,
           student_id: p.student_id,
-          student: studentMap[p.student_id] || `Student ${p.student_id?.substring(0, 8) || 'Unknown'}`,
+          student:
+            studentMap[p.student_id] || `Student ${p.student_id?.substring(0, 8) || 'Unknown'}`,
           title: p.title,
           type: 'Project' as const,
           status: p.approval_status || 'pending',
@@ -648,7 +796,8 @@ const Activities = () => {
         ...(trainings || []).map((t: any) => ({
           id: t.id,
           student_id: t.student_id,
-          student: studentMap[t.student_id] || `Student ${t.student_id?.substring(0, 8) || 'Unknown'}`,
+          student:
+            studentMap[t.student_id] || `Student ${t.student_id?.substring(0, 8) || 'Unknown'}`,
           title: t.title,
           type: 'Training' as const,
           status: t.approval_status || 'pending',
@@ -663,7 +812,8 @@ const Activities = () => {
         ...(certificates || []).map((c: any) => ({
           id: c.id,
           student_id: c.student_id,
-          student: studentMap[c.student_id] || `Student ${c.student_id?.substring(0, 8) || 'Unknown'}`,
+          student:
+            studentMap[c.student_id] || `Student ${c.student_id?.substring(0, 8) || 'Unknown'}`,
           title: c.title,
           type: 'Certificate' as const,
           status: c.approval_status || 'pending',
@@ -689,37 +839,38 @@ const Activities = () => {
 
   const typeOptions = useMemo(() => {
     const typeCounts = {};
-    activities.forEach(activity => {
+    activities.forEach((activity) => {
       typeCounts[activity.type] = (typeCounts[activity.type] || 0) + 1;
     });
     return Object.entries(typeCounts).map(([type, count]) => ({
       value: type,
       label: type,
-      count
+      count,
     }));
   }, [activities]);
 
   const filteredAndSortedActivities = useMemo(() => {
-    let result = activities.filter(activity => activity.status === activeTab);
+    let result = activities.filter((activity) => activity.status === activeTab);
 
     if (searchQuery.trim() !== '') {
       const query = searchQuery.toLowerCase();
-      result = result.filter(activity =>
-        activity.student.toLowerCase().includes(query) ||
-        activity.title.toLowerCase().includes(query) ||
-        activity.description?.toLowerCase().includes(query)
+      result = result.filter(
+        (activity) =>
+          activity.student.toLowerCase().includes(query) ||
+          activity.title.toLowerCase().includes(query) ||
+          activity.description?.toLowerCase().includes(query)
       );
     }
 
     if (filters.types.length > 0) {
-      result = result.filter(activity => filters.types.includes(activity.type));
+      result = result.filter((activity) => filters.types.includes(activity.type));
     }
 
     if (filters.dateRange.start) {
-      result = result.filter(activity => activity.date >= filters.dateRange.start);
+      result = result.filter((activity) => activity.date >= filters.dateRange.start);
     }
     if (filters.dateRange.end) {
-      result = result.filter(activity => activity.date <= filters.dateRange.end);
+      result = result.filter((activity) => activity.date <= filters.dateRange.end);
     }
 
     const sorted = [...result];
@@ -744,7 +895,7 @@ const Activities = () => {
   const handleClearFilters = () => {
     setFilters({
       types: [],
-      dateRange: { start: '', end: '' }
+      dateRange: { start: '', end: '' },
     });
     setSearchQuery('');
   };
@@ -753,13 +904,13 @@ const Activities = () => {
     if (checked) {
       setSelectedActivities([...selectedActivities, id]);
     } else {
-      setSelectedActivities(selectedActivities.filter(sid => sid !== id));
+      setSelectedActivities(selectedActivities.filter((sid) => sid !== id));
     }
   };
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedActivities(filteredAndSortedActivities.map(a => a.id));
+      setSelectedActivities(filteredAndSortedActivities.map((a) => a.id));
     } else {
       setSelectedActivities([]);
     }
@@ -767,28 +918,32 @@ const Activities = () => {
 
   const handleBulkVerify = async () => {
     if (selectedActivities.length === 0) return;
-    
+
     const remark = prompt('Enter remarks for bulk verification:');
     if (remark === null) return;
 
     try {
       for (const id of selectedActivities) {
-        const activity = activities.find(a => a.id === id);
+        const activity = activities.find((a) => a.id === id);
         if (!activity) continue;
-        
-        const table = activity.type === 'Project' ? 'projects' : 
-                     activity.type === 'Training' ? 'trainings' : 'certificates';
-        
+
+        const table =
+          activity.type === 'Project'
+            ? 'projects'
+            : activity.type === 'Training'
+              ? 'trainings'
+              : 'certificates';
+
         await supabase
           .from(table)
-          .update({ 
+          .update({
             approval_status: 'sent_to_admin',
             remarks: remark || null,
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
           })
           .eq('id', id);
       }
-      
+
       await fetchActivities();
       setSelectedActivities([]);
       alert('Activities verified successfully!');
@@ -800,28 +955,32 @@ const Activities = () => {
 
   const handleBulkReject = async () => {
     if (selectedActivities.length === 0) return;
-    
+
     const remark = prompt('Enter remarks for bulk rejection:');
     if (remark === null) return;
 
     try {
       for (const id of selectedActivities) {
-        const activity = activities.find(a => a.id === id);
+        const activity = activities.find((a) => a.id === id);
         if (!activity) continue;
-        
-        const table = activity.type === 'Project' ? 'projects' : 
-                     activity.type === 'Training' ? 'trainings' : 'certificates';
-        
+
+        const table =
+          activity.type === 'Project'
+            ? 'projects'
+            : activity.type === 'Training'
+              ? 'trainings'
+              : 'certificates';
+
         await supabase
           .from(table)
-          .update({ 
+          .update({
             approval_status: 'rejected',
             remarks: remark || null,
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
           })
           .eq('id', id);
       }
-      
+
       await fetchActivities();
       setSelectedActivities([]);
       alert('Activities rejected successfully!');
@@ -833,18 +992,22 @@ const Activities = () => {
 
   const handleVerify = async (id: string, remark: string) => {
     try {
-      const activity = activities.find(a => a.id === id);
+      const activity = activities.find((a) => a.id === id);
       if (!activity) return;
-      
-      const table = activity.type === 'Project' ? 'projects' : 
-                   activity.type === 'Training' ? 'trainings' : 'certificates';
-      
+
+      const table =
+        activity.type === 'Project'
+          ? 'projects'
+          : activity.type === 'Training'
+            ? 'trainings'
+            : 'certificates';
+
       await supabase
         .from(table)
-        .update({ 
+        .update({
           approval_status: 'sent_to_admin',
           remarks: remark || null,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', id);
 
@@ -859,18 +1022,22 @@ const Activities = () => {
 
   const handleReject = async (id: string, remark: string) => {
     try {
-      const activity = activities.find(a => a.id === id);
+      const activity = activities.find((a) => a.id === id);
       if (!activity) return;
-      
-      const table = activity.type === 'Project' ? 'projects' : 
-                   activity.type === 'Training' ? 'trainings' : 'certificates';
-      
+
+      const table =
+        activity.type === 'Project'
+          ? 'projects'
+          : activity.type === 'Training'
+            ? 'trainings'
+            : 'certificates';
+
       await supabase
         .from(table)
-        .update({ 
+        .update({
           approval_status: 'rejected',
           remarks: remark || null,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', id);
 
@@ -884,19 +1051,24 @@ const Activities = () => {
   };
 
   const tabCounts = {
-    pending: activities.filter(a => a.status === 'pending').length,
-    sent_to_admin: activities.filter(a => a.status === 'sent_to_admin').length,
-    approved: activities.filter(a => a.status === 'approved').length,
-    rejected: activities.filter(a => a.status === 'rejected').length,
+    pending: activities.filter((a) => a.status === 'pending').length,
+    sent_to_admin: activities.filter((a) => a.status === 'sent_to_admin').length,
+    approved: activities.filter((a) => a.status === 'approved').length,
+    rejected: activities.filter((a) => a.status === 'rejected').length,
   };
 
   const getTabLabel = (tab: string) => {
     switch (tab) {
-      case 'pending': return 'Pending';
-      case 'sent_to_admin': return 'Sent to Admin';
-      case 'approved': return 'Approved';
-      case 'rejected': return 'Rejected';
-      default: return tab;
+      case 'pending':
+        return 'Pending';
+      case 'sent_to_admin':
+        return 'Sent to Admin';
+      case 'approved':
+        return 'Approved';
+      case 'rejected':
+        return 'Rejected';
+      default:
+        return tab;
     }
   };
 
@@ -932,7 +1104,7 @@ const Activities = () => {
           >
             <FunnelIcon className="h-4 w-4 mr-2" />
             Filters
-            {(filters.types.length > 0) && (
+            {filters.types.length > 0 && (
               <span className="ml-1 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-primary-600 rounded-full">
                 {filters.types.length}
               </span>
@@ -989,7 +1161,7 @@ const Activities = () => {
           >
             <FunnelIcon className="h-4 w-4 mr-2" />
             Filters
-            {(filters.types.length > 0) && (
+            {filters.types.length > 0 && (
               <span className="ml-1 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-primary-600 rounded-full">
                 {filters.types.length}
               </span>
@@ -1023,7 +1195,7 @@ const Activities = () => {
       {/* Tabs */}
       <div className="bg-white border-b border-gray-200">
         <div className="flex px-4">
-          {(['pending', 'sent_to_admin', 'approved', 'rejected'] as const).map(tab => (
+          {(['pending', 'sent_to_admin', 'approved', 'rejected'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => {
@@ -1037,12 +1209,17 @@ const Activities = () => {
               }`}
             >
               {getTabLabel(tab)}
-              <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-medium ${
-                tab === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                tab === 'sent_to_admin' ? 'bg-blue-100 text-blue-800' :
-                tab === 'approved' ? 'bg-green-100 text-green-800' :
-                'bg-red-100 text-red-800'
-              }`}>
+              <span
+                className={`ml-2 px-2 py-0.5 rounded-full text-xs font-medium ${
+                  tab === 'pending'
+                    ? 'bg-yellow-100 text-yellow-800'
+                    : tab === 'sent_to_admin'
+                      ? 'bg-blue-100 text-blue-800'
+                      : tab === 'approved'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-red-100 text-red-800'
+                }`}
+              >
                 {tabCounts[tab]}
               </span>
             </button>
@@ -1057,7 +1234,7 @@ const Activities = () => {
             <div className="p-4">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-medium text-gray-900">Filters</h2>
-                <button 
+                <button
                   onClick={handleClearFilters}
                   className="text-sm text-primary-600 hover:text-primary-700"
                 >
@@ -1070,7 +1247,7 @@ const Activities = () => {
                   <CheckboxGroup
                     options={typeOptions}
                     selectedValues={filters.types}
-                    onChange={(values) => setFilters({...filters, types: values})}
+                    onChange={(values) => setFilters({ ...filters, types: values })}
                   />
                 </FilterSection>
 
@@ -1081,10 +1258,12 @@ const Activities = () => {
                       <input
                         type="date"
                         value={filters.dateRange.start}
-                        onChange={(e) => setFilters({
-                          ...filters, 
-                          dateRange: {...filters.dateRange, start: e.target.value}
-                        })}
+                        onChange={(e) =>
+                          setFilters({
+                            ...filters,
+                            dateRange: { ...filters.dateRange, start: e.target.value },
+                          })
+                        }
                         className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                       />
                     </div>
@@ -1093,10 +1272,12 @@ const Activities = () => {
                       <input
                         type="date"
                         value={filters.dateRange.end}
-                        onChange={(e) => setFilters({
-                          ...filters, 
-                          dateRange: {...filters.dateRange, end: e.target.value}
-                        })}
+                        onChange={(e) =>
+                          setFilters({
+                            ...filters,
+                            dateRange: { ...filters.dateRange, end: e.target.value },
+                          })
+                        }
                         className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                       />
                     </div>
@@ -1114,7 +1295,8 @@ const Activities = () => {
             <div className="px-4 py-3 bg-primary-50 border-b border-primary-200">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-gray-700">
-                  {selectedActivities.length} {selectedActivities.length === 1 ? 'activity' : 'activities'} selected
+                  {selectedActivities.length}{' '}
+                  {selectedActivities.length === 1 ? 'activity' : 'activities'} selected
                 </span>
                 <div className="flex space-x-2">
                   <button
@@ -1140,10 +1322,11 @@ const Activities = () => {
           <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-700">
-                Showing <span className="font-medium">{filteredAndSortedActivities.length}</span> result{filteredAndSortedActivities.length !== 1 ? 's' : ''}
+                Showing <span className="font-medium">{filteredAndSortedActivities.length}</span>{' '}
+                result{filteredAndSortedActivities.length !== 1 ? 's' : ''}
                 {searchQuery && <span className="text-gray-500"> for "{searchQuery}"</span>}
               </p>
-              <select 
+              <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
                 className="text-sm border border-gray-300 rounded-md px-3 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -1158,31 +1341,37 @@ const Activities = () => {
 
           {/* Results */}
           <div className="flex-1 overflow-y-auto p-4">
-            {(loading || schoolLoading) ? (
+            {loading || schoolLoading ? (
               <div className="text-center py-8">
                 <div className="text-sm text-gray-500">Loading activities...</div>
               </div>
             ) : viewMode === 'grid' ? (
-              <div className={`grid grid-cols-1 gap-4 ${
-                showFilters 
-                  ? 'md:grid-cols-2' 
-                  : 'md:grid-cols-2 lg:grid-cols-3'
-              }`}>
+              <div
+                className={`grid grid-cols-1 gap-4 ${
+                  showFilters ? 'md:grid-cols-2' : 'md:grid-cols-2 lg:grid-cols-3'
+                }`}
+              >
                 {filteredAndSortedActivities.length === 0 ? (
                   <div className="col-span-full text-center py-8">
                     <p className="text-sm text-gray-500 mb-2">
                       {activities.length === 0 && !searchQuery && filters.types.length === 0
-                        ? educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0
+                        ? educatorType === 'school' &&
+                          educatorRole !== 'admin' &&
+                          assignedClassIds.length === 0
                           ? 'You have not been assigned to any classes yet'
                           : 'No student activities found'
                         : `No ${getTabLabel(activeTab).toLowerCase()} activities found`}
                     </p>
-                    {activities.length === 0 && !searchQuery && filters.types.length === 0 && 
-                     educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0 && (
-                      <p className="text-xs text-gray-400">
-                        Please contact your school administrator to assign you to classes.
-                      </p>
-                    )}
+                    {activities.length === 0 &&
+                      !searchQuery &&
+                      filters.types.length === 0 &&
+                      educatorType === 'school' &&
+                      educatorRole !== 'admin' &&
+                      assignedClassIds.length === 0 && (
+                        <p className="text-xs text-gray-400">
+                          Please contact your school administrator to assign you to classes.
+                        </p>
+                      )}
                     {(searchQuery || filters.types.length > 0) && (
                       <button
                         onClick={handleClearFilters}
@@ -1215,7 +1404,10 @@ const Activities = () => {
                         <th className="px-6 py-3 text-left">
                           <input
                             type="checkbox"
-                            checked={selectedActivities.length === filteredAndSortedActivities.length && filteredAndSortedActivities.length > 0}
+                            checked={
+                              selectedActivities.length === filteredAndSortedActivities.length &&
+                              filteredAndSortedActivities.length > 0
+                            }
                             onChange={(e) => handleSelectAll(e.target.checked)}
                             className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                           />
@@ -1241,21 +1433,30 @@ const Activities = () => {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredAndSortedActivities.length === 0 ? (
                       <tr>
-                        <td colSpan={activeTab === 'pending' ? 6 : 5} className="px-6 py-12 text-center">
+                        <td
+                          colSpan={activeTab === 'pending' ? 6 : 5}
+                          className="px-6 py-12 text-center"
+                        >
                           <div className="text-gray-500">
                             <p className="mb-2">
                               {activities.length === 0 && !searchQuery && filters.types.length === 0
-                                ? educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0
+                                ? educatorType === 'school' &&
+                                  educatorRole !== 'admin' &&
+                                  assignedClassIds.length === 0
                                   ? 'You have not been assigned to any classes yet'
                                   : 'No student activities found'
                                 : `No ${getTabLabel(activeTab).toLowerCase()} activities found`}
                             </p>
-                            {activities.length === 0 && !searchQuery && filters.types.length === 0 && 
-                             educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0 && (
-                              <p className="text-xs text-gray-400">
-                                Please contact your school administrator to assign you to classes.
-                              </p>
-                            )}
+                            {activities.length === 0 &&
+                              !searchQuery &&
+                              filters.types.length === 0 &&
+                              educatorType === 'school' &&
+                              educatorRole !== 'admin' &&
+                              assignedClassIds.length === 0 && (
+                                <p className="text-xs text-gray-400">
+                                  Please contact your school administrator to assign you to classes.
+                                </p>
+                              )}
                           </div>
                         </td>
                       </tr>
@@ -1273,14 +1474,20 @@ const Activities = () => {
                             </td>
                           )}
                           <td className="px-6 py-4">
-                            <div className="text-sm font-medium text-gray-900">{activity.student}</div>
+                            <div className="text-sm font-medium text-gray-900">
+                              {activity.student}
+                            </div>
                           </td>
                           <td className="px-6 py-4">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                              activity.type === 'Project' ? 'bg-blue-100 text-blue-800' :
-                              activity.type === 'Training' ? 'bg-purple-100 text-purple-800' :
-                              'bg-green-100 text-green-800'
-                            }`}>
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                activity.type === 'Project'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : activity.type === 'Training'
+                                    ? 'bg-purple-100 text-purple-800'
+                                    : 'bg-green-100 text-green-800'
+                              }`}
+                            >
                               {activity.type}
                             </span>
                           </td>
@@ -1289,10 +1496,10 @@ const Activities = () => {
                           </td>
                           <td className="px-6 py-4">
                             <div className="text-sm text-gray-500">
-                              {new Date(activity.date).toLocaleDateString('en-US', { 
-                                month: 'short', 
-                                day: 'numeric', 
-                                year: 'numeric' 
+                              {new Date(activity.date).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
                               })}
                             </div>
                           </td>

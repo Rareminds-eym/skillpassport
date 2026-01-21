@@ -18,7 +18,7 @@ const SubscriptionPrefetch = () => {
     if (user?.id && !hasPrefetchedRef.current) {
       // Check if data is already cached
       const cachedData = queryClient.getQueryData(['subscription', user.id]);
-      
+
       if (!cachedData) {
         // Only prefetch if not already cached
         const timer = setTimeout(() => {
@@ -33,7 +33,7 @@ const SubscriptionPrefetch = () => {
         hasPrefetchedRef.current = true;
       }
     }
-    
+
     // Reset flag when user changes
     if (!user) {
       hasPrefetchedRef.current = false;
@@ -45,4 +45,3 @@ const SubscriptionPrefetch = () => {
 };
 
 export default SubscriptionPrefetch;
-

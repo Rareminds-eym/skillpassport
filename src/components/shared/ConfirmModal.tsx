@@ -1,5 +1,5 @@
-import React from "react";
-import { ExclamationTriangleIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import React from 'react';
+import { ExclamationTriangleIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -9,7 +9,7 @@ interface ConfirmModalProps {
   message: string;
   confirmText?: string;
   cancelText?: string;
-  variant?: "danger" | "warning" | "info";
+  variant?: 'danger' | 'warning' | 'info';
 }
 
 export const ConfirmModal: React.FC<ConfirmModalProps> = ({
@@ -18,27 +18,27 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   onConfirm,
   title,
   message,
-  confirmText = "Confirm",
-  cancelText = "Cancel",
-  variant = "warning",
+  confirmText = 'Confirm',
+  cancelText = 'Cancel',
+  variant = 'warning',
 }) => {
   if (!isOpen) return null;
 
   const variantStyles = {
     danger: {
-      icon: "text-red-600",
-      iconBg: "bg-red-100",
-      button: "bg-red-600 hover:bg-red-700 focus:ring-red-500",
+      icon: 'text-red-600',
+      iconBg: 'bg-red-100',
+      button: 'bg-red-600 hover:bg-red-700 focus:ring-red-500',
     },
     warning: {
-      icon: "text-orange-600",
-      iconBg: "bg-orange-100",
-      button: "bg-orange-600 hover:bg-orange-700 focus:ring-orange-500",
+      icon: 'text-orange-600',
+      iconBg: 'bg-orange-100',
+      button: 'bg-orange-600 hover:bg-orange-700 focus:ring-orange-500',
     },
     info: {
-      icon: "text-blue-600",
-      iconBg: "bg-blue-100",
-      button: "bg-blue-600 hover:bg-blue-700 focus:ring-blue-500",
+      icon: 'text-blue-600',
+      iconBg: 'bg-blue-100',
+      button: 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500',
     },
   };
 

@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { GraduationCap, Calendar, TrendingUp, BookOpen, Target, Award, BarChart3 } from 'lucide-react';
+import {
+  GraduationCap,
+  Calendar,
+  TrendingUp,
+  BookOpen,
+  Target,
+  Award,
+  BarChart3,
+} from 'lucide-react';
 import { supabase } from '../../../../lib/supabaseClient';
 
 interface ExamResult {
@@ -63,9 +71,9 @@ const ExamResultsTab: React.FC<ExamResultsTabProps> = ({ student, loading }) => 
   const fetchExamResults = async () => {
     try {
       setDataLoading(true);
-      
+
       let studentId = student.id;
-      
+
       // If we don't have student.id but have email, try to find the student ID
       if (!studentId && student.email) {
         const { data: studentData } = await supabase
@@ -73,12 +81,12 @@ const ExamResultsTab: React.FC<ExamResultsTabProps> = ({ student, loading }) => 
           .select('id')
           .eq('email', student.email)
           .single();
-          
+
         if (studentData?.id) {
           studentId = studentData.id;
         }
       }
-      
+
       if (!studentId) {
         console.log('No student ID available for exam results lookup');
         return;
@@ -87,7 +95,8 @@ const ExamResultsTab: React.FC<ExamResultsTabProps> = ({ student, loading }) => 
       // Get mark entries with assessment data
       const { data: markEntries, error: markError } = await supabase
         .from('mark_entries')
-        .select(`
+        .select(
+          `
           id,
           marks_obtained,
           total_marks,
@@ -107,7 +116,8 @@ const ExamResultsTab: React.FC<ExamResultsTabProps> = ({ student, loading }) => 
             end_date,
             target_classes
           )
-        `)
+        `
+        )
         .eq('student_id', studentId)
         .order('created_at', { ascending: false });
 
@@ -117,9 +127,9 @@ const ExamResultsTab: React.FC<ExamResultsTabProps> = ({ student, loading }) => 
       }
 
       // Get all timetable data for these assessments
-      const assessmentIds = [...new Set((markEntries || []).map(entry => entry.assessment_id))];
+      const assessmentIds = [...new Set((markEntries || []).map((entry) => entry.assessment_id))];
       let timetableData: any[] = [];
-      
+
       if (assessmentIds.length > 0) {
         const { data: timetable, error: timetableError } = await supabase
           .from('exam_timetable')
@@ -134,7 +144,7 @@ const ExamResultsTab: React.FC<ExamResultsTabProps> = ({ student, loading }) => 
 
       // Create a map of assessment_id -> unique subjects
       const assessmentSubjectsMap = new Map();
-      timetableData.forEach(tt => {
+      timetableData.forEach((tt) => {
         if (!assessmentSubjectsMap.has(tt.assessment_id)) {
           assessmentSubjectsMap.set(tt.assessment_id, []);
         }
@@ -146,18 +156,26 @@ const ExamResultsTab: React.FC<ExamResultsTabProps> = ({ student, loading }) => 
 
       // Process mark entries to create exam results
       const results: ExamResult[] = [];
-      
+
       (markEntries || []).forEach((entry: any, index: number) => {
         const assessment = entry.assessments;
         const subjects = assessmentSubjectsMap.get(entry.assessment_id) || [];
-        
-        const marksObtained = entry.is_absent ? 0 : (entry.marks_obtained ? Number(entry.marks_obtained) : 0);
+
+        const marksObtained = entry.is_absent
+          ? 0
+          : entry.marks_obtained
+            ? Number(entry.marks_obtained)
+            : 0;
         const totalMarks = entry.total_marks ? Number(entry.total_marks) : 100;
-        const percentage = entry.is_absent ? 0 : 
-          (entry.percentage ? Number(entry.percentage) : 
-           (marksObtained && totalMarks ? Math.round((marksObtained / totalMarks) * 100) : 0));
+        const percentage = entry.is_absent
+          ? 0
+          : entry.percentage
+            ? Number(entry.percentage)
+            : marksObtained && totalMarks
+              ? Math.round((marksObtained / totalMarks) * 100)
+              : 0;
         const calculatedGrade = entry.is_absent ? 'Absent' : calculateGrade(percentage);
-        
+
         if (subjects.length === 0) {
           // No timetable data - single entry
           results.push({
@@ -173,9 +191,11 @@ const ExamResultsTab: React.FC<ExamResultsTabProps> = ({ student, loading }) => 
             grade: calculatedGrade,
             exam_date: assessment?.start_date || entry.created_at,
             academic_year: assessment?.academic_year || 'Current',
-            class_name: assessment?.target_classes?.grade ? `Class ${assessment.target_classes.grade}${assessment.target_classes.sections?.[0] ? `-${assessment.target_classes.sections[0]}` : ''}` : '',
-            remarks: entry.is_absent ? 'Student was absent' : (entry.remarks || ''),
-            created_at: entry.created_at
+            class_name: assessment?.target_classes?.grade
+              ? `Class ${assessment.target_classes.grade}${assessment.target_classes.sections?.[0] ? `-${assessment.target_classes.sections[0]}` : ''}`
+              : '',
+            remarks: entry.is_absent ? 'Student was absent' : entry.remarks || '',
+            created_at: entry.created_at,
           });
         } else if (subjects.length === 1) {
           // Single subject exam
@@ -193,16 +213,18 @@ const ExamResultsTab: React.FC<ExamResultsTabProps> = ({ student, loading }) => 
             grade: calculatedGrade,
             exam_date: subject.exam_date || assessment?.start_date || entry.created_at,
             academic_year: assessment?.academic_year || 'Current',
-            class_name: assessment?.target_classes?.grade ? `Class ${assessment.target_classes.grade}${assessment.target_classes.sections?.[0] ? `-${assessment.target_classes.sections[0]}` : ''}` : '',
-            remarks: entry.is_absent ? 'Student was absent' : (entry.remarks || ''),
-            created_at: entry.created_at
+            class_name: assessment?.target_classes?.grade
+              ? `Class ${assessment.target_classes.grade}${assessment.target_classes.sections?.[0] ? `-${assessment.target_classes.sections[0]}` : ''}`
+              : '',
+            remarks: entry.is_absent ? 'Student was absent' : entry.remarks || '',
+            created_at: entry.created_at,
           });
         } else {
           // Multi-subject exam - assign each mark_entry to a specific subject
           // Use modulo to cycle through subjects for each mark entry
           const subjectIndex = index % subjects.length;
           const subject = subjects[subjectIndex];
-          
+
           results.push({
             id: entry.id,
             student_id: studentId,
@@ -216,49 +238,58 @@ const ExamResultsTab: React.FC<ExamResultsTabProps> = ({ student, loading }) => 
             grade: calculatedGrade,
             exam_date: subject.exam_date || assessment?.start_date || entry.created_at,
             academic_year: assessment?.academic_year || 'Current',
-            class_name: assessment?.target_classes?.grade ? `Class ${assessment.target_classes.grade}${assessment.target_classes.sections?.[0] ? `-${assessment.target_classes.sections[0]}` : ''}` : '',
-            remarks: entry.is_absent ? 'Student was absent' : (entry.remarks || ''),
-            created_at: entry.created_at
+            class_name: assessment?.target_classes?.grade
+              ? `Class ${assessment.target_classes.grade}${assessment.target_classes.sections?.[0] ? `-${assessment.target_classes.sections[0]}` : ''}`
+              : '',
+            remarks: entry.is_absent ? 'Student was absent' : entry.remarks || '',
+            created_at: entry.created_at,
           });
         }
       });
 
       setExamResults(results);
-      
+
       // Calculate subject summaries
       const subjectSummaryMap = new Map<string, ExamResult[]>();
-      results.forEach(result => {
+      results.forEach((result) => {
         if (!subjectSummaryMap.has(result.subject)) {
           subjectSummaryMap.set(result.subject, []);
         }
         subjectSummaryMap.get(result.subject)!.push(result);
       });
 
-      const summaries: SubjectSummary[] = Array.from(subjectSummaryMap.entries()).map(([subject, subjectResults]) => {
-        const sortedResults = subjectResults.sort((a, b) => new Date(a.exam_date).getTime() - new Date(b.exam_date).getTime());
-        const totalPercentage = subjectResults.reduce((sum, result) => sum + result.percentage, 0);
-        const averagePercentage = totalPercentage / subjectResults.length;
-        const bestScore = Math.max(...subjectResults.map(r => r.percentage));
-        const latestGrade = sortedResults[sortedResults.length - 1]?.grade || 'N/A';
-        
-        // Calculate trend (comparing last 2 results)
-        let trend: 'up' | 'down' | 'stable' = 'stable';
-        if (sortedResults.length >= 2) {
-          const latest = sortedResults[sortedResults.length - 1].percentage;
-          const previous = sortedResults[sortedResults.length - 2].percentage;
-          if (latest > previous) trend = 'up';
-          else if (latest < previous) trend = 'down';
-        }
+      const summaries: SubjectSummary[] = Array.from(subjectSummaryMap.entries()).map(
+        ([subject, subjectResults]) => {
+          const sortedResults = subjectResults.sort(
+            (a, b) => new Date(a.exam_date).getTime() - new Date(b.exam_date).getTime()
+          );
+          const totalPercentage = subjectResults.reduce(
+            (sum, result) => sum + result.percentage,
+            0
+          );
+          const averagePercentage = totalPercentage / subjectResults.length;
+          const bestScore = Math.max(...subjectResults.map((r) => r.percentage));
+          const latestGrade = sortedResults[sortedResults.length - 1]?.grade || 'N/A';
 
-        return {
-          subject,
-          total_exams: subjectResults.length,
-          average_percentage: Math.round(averagePercentage * 100) / 100,
-          best_score: bestScore,
-          latest_grade: latestGrade,
-          trend
-        };
-      });
+          // Calculate trend (comparing last 2 results)
+          let trend: 'up' | 'down' | 'stable' = 'stable';
+          if (sortedResults.length >= 2) {
+            const latest = sortedResults[sortedResults.length - 1].percentage;
+            const previous = sortedResults[sortedResults.length - 2].percentage;
+            if (latest > previous) trend = 'up';
+            else if (latest < previous) trend = 'down';
+          }
+
+          return {
+            subject,
+            total_exams: subjectResults.length,
+            average_percentage: Math.round(averagePercentage * 100) / 100,
+            best_score: bestScore,
+            latest_grade: latestGrade,
+            trend,
+          };
+        }
+      );
 
       setSubjectSummaries(summaries);
     } catch (error) {
@@ -270,46 +301,73 @@ const ExamResultsTab: React.FC<ExamResultsTabProps> = ({ student, loading }) => 
 
   const getGradeColor = (grade: string) => {
     switch (grade.toUpperCase()) {
-      case 'A+': case 'A': return 'bg-green-50 text-green-700';
-      case 'B+': case 'B': return 'bg-blue-50 text-blue-700';
-      case 'C+': case 'C': return 'bg-yellow-50 text-yellow-700';
-      case 'D': return 'bg-orange-50 text-orange-700';
-      case 'F': return 'bg-red-50 text-red-700';
-      case 'ABSENT': return 'bg-gray-50 text-gray-700';
-      default: return 'bg-gray-50 text-gray-700';
+      case 'A+':
+      case 'A':
+        return 'bg-green-50 text-green-700';
+      case 'B+':
+      case 'B':
+        return 'bg-blue-50 text-blue-700';
+      case 'C+':
+      case 'C':
+        return 'bg-yellow-50 text-yellow-700';
+      case 'D':
+        return 'bg-orange-50 text-orange-700';
+      case 'F':
+        return 'bg-red-50 text-red-700';
+      case 'ABSENT':
+        return 'bg-gray-50 text-gray-700';
+      default:
+        return 'bg-gray-50 text-gray-700';
     }
   };
 
   const getExamTypeIcon = (type: string) => {
     switch (type.toLowerCase()) {
-      case 'final': case 'final_exam': return <GraduationCap className="h-4 w-4" />;
-      case 'midterm': case 'mid_term': case 'term_exam': return <BookOpen className="h-4 w-4" />;
-      case 'unit_test': case 'unit test': return <Target className="h-4 w-4" />;
-      case 'assignment': return <BookOpen className="h-4 w-4" />;
-      case 'project': return <Award className="h-4 w-4" />;
-      case 'quiz': return <Target className="h-4 w-4" />;
-      case 'practical': case 'practical_exam': return <Award className="h-4 w-4" />;
-      case 'oral': return <BookOpen className="h-4 w-4" />;
-      default: return <BookOpen className="h-4 w-4" />;
+      case 'final':
+      case 'final_exam':
+        return <GraduationCap className="h-4 w-4" />;
+      case 'midterm':
+      case 'mid_term':
+      case 'term_exam':
+        return <BookOpen className="h-4 w-4" />;
+      case 'unit_test':
+      case 'unit test':
+        return <Target className="h-4 w-4" />;
+      case 'assignment':
+        return <BookOpen className="h-4 w-4" />;
+      case 'project':
+        return <Award className="h-4 w-4" />;
+      case 'quiz':
+        return <Target className="h-4 w-4" />;
+      case 'practical':
+      case 'practical_exam':
+        return <Award className="h-4 w-4" />;
+      case 'oral':
+        return <BookOpen className="h-4 w-4" />;
+      default:
+        return <BookOpen className="h-4 w-4" />;
     }
   };
 
   const getTrendIcon = (trend: string) => {
     switch (trend) {
-      case 'up': return <TrendingUp className="h-4 w-4 text-green-600" />;
-      case 'down': return <TrendingUp className="h-4 w-4 text-red-600 rotate-180" />;
-      default: return <BarChart3 className="h-4 w-4 text-gray-600" />;
+      case 'up':
+        return <TrendingUp className="h-4 w-4 text-green-600" />;
+      case 'down':
+        return <TrendingUp className="h-4 w-4 text-red-600 rotate-180" />;
+      default:
+        return <BarChart3 className="h-4 w-4 text-gray-600" />;
     }
   };
 
-  const filteredResults = examResults.filter(result => {
+  const filteredResults = examResults.filter((result) => {
     const subjectMatch = selectedSubject === 'all' || result.subject === selectedSubject;
     const typeMatch = selectedExamType === 'all' || result.exam_type === selectedExamType;
     return subjectMatch && typeMatch;
   });
 
-  const uniqueSubjects = Array.from(new Set(examResults.map(r => r.subject)));
-  const uniqueExamTypes = Array.from(new Set(examResults.map(r => r.exam_type)));
+  const uniqueSubjects = Array.from(new Set(examResults.map((r) => r.subject)));
+  const uniqueExamTypes = Array.from(new Set(examResults.map((r) => r.exam_type)));
 
   if (loading || dataLoading) {
     return (
@@ -350,9 +408,7 @@ const ExamResultsTab: React.FC<ExamResultsTabProps> = ({ student, loading }) => 
         </div>
         <div>
           <h3 className="text-lg font-semibold text-gray-900">Exam Results</h3>
-          <p className="text-sm text-gray-500">
-            Academic performance and examination records
-          </p>
+          <p className="text-sm text-gray-500">Academic performance and examination records</p>
         </div>
       </div>
 
@@ -366,7 +422,10 @@ const ExamResultsTab: React.FC<ExamResultsTabProps> = ({ student, loading }) => 
               <h4 className="font-semibold text-gray-900 mb-3">Subject Overview</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {subjectSummaries.map((summary) => (
-                  <div key={summary.subject} className="bg-white border border-gray-100 rounded-xl p-4">
+                  <div
+                    key={summary.subject}
+                    className="bg-white border border-gray-100 rounded-xl p-4"
+                  >
                     <div className="flex items-center justify-between mb-2">
                       <h5 className="font-semibold text-gray-900">{summary.subject}</h5>
                       {getTrendIcon(summary.trend)}
@@ -374,7 +433,9 @@ const ExamResultsTab: React.FC<ExamResultsTabProps> = ({ student, loading }) => 
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-600">Average</span>
-                        <span className="font-medium text-gray-900">{summary.average_percentage}%</span>
+                        <span className="font-medium text-gray-900">
+                          {summary.average_percentage}%
+                        </span>
                       </div>
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-600">Best Score</span>
@@ -382,7 +443,9 @@ const ExamResultsTab: React.FC<ExamResultsTabProps> = ({ student, loading }) => 
                       </div>
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-600">Latest Grade</span>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getGradeColor(summary.latest_grade)}`}>
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getGradeColor(summary.latest_grade)}`}
+                        >
                           {summary.latest_grade}
                         </span>
                       </div>
@@ -445,7 +508,7 @@ const ExamResultsTab: React.FC<ExamResultsTabProps> = ({ student, loading }) => 
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  {type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  {type.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
                 </button>
               ))}
             </div>
@@ -467,9 +530,13 @@ const ExamResultsTab: React.FC<ExamResultsTabProps> = ({ student, loading }) => 
                       <div>
                         <h5 className="font-semibold text-gray-900">{result.exam_name}</h5>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-sm font-medium text-gray-700">{result.subject}</span>
+                          <span className="text-sm font-medium text-gray-700">
+                            {result.subject}
+                          </span>
                           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
-                            {result.exam_type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                            {result.exam_type
+                              .replace(/_/g, ' ')
+                              .replace(/\b\w/g, (l) => l.toUpperCase())}
                           </span>
                           <span className="text-xs text-gray-500">
                             {new Date(result.exam_date).toLocaleDateString()}
@@ -477,17 +544,19 @@ const ExamResultsTab: React.FC<ExamResultsTabProps> = ({ student, loading }) => 
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="text-right">
                       <div className="text-2xl font-bold text-gray-900">
                         {result.grade === 'Absent' ? 'Absent' : `${result.percentage}%`}
                       </div>
                       <div className="text-xs text-gray-500">
-                        {result.grade === 'Absent' ? 'Was absent' : `${result.marks_obtained}/${result.total_marks} marks`}
+                        {result.grade === 'Absent'
+                          ? 'Was absent'
+                          : `${result.marks_obtained}/${result.total_marks} marks`}
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4 text-sm text-gray-600">
                       {result.academic_year && (
@@ -496,26 +565,30 @@ const ExamResultsTab: React.FC<ExamResultsTabProps> = ({ student, loading }) => 
                           <span>{result.academic_year}</span>
                         </div>
                       )}
-                      {result.class_name && (
-                        <span>{result.class_name}</span>
-                      )}
+                      {result.class_name && <span>{result.class_name}</span>}
                     </div>
-                    
+
                     <div className="flex items-center gap-2">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getGradeColor(result.grade)}`}>
+                      <span
+                        className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getGradeColor(result.grade)}`}
+                      >
                         Grade {result.grade}
                       </span>
-                      
+
                       {/* Progress bar - only show if not absent */}
                       {result.grade !== 'Absent' && (
                         <div className="w-20 bg-gray-100 rounded-full h-2">
-                          <div 
+                          <div
                             className={`h-2 rounded-full ${
-                              result.percentage >= 90 ? 'bg-green-500' :
-                              result.percentage >= 80 ? 'bg-blue-500' :
-                              result.percentage >= 70 ? 'bg-yellow-500' :
-                              result.percentage >= 60 ? 'bg-orange-500' :
-                              'bg-red-500'
+                              result.percentage >= 90
+                                ? 'bg-green-500'
+                                : result.percentage >= 80
+                                  ? 'bg-blue-500'
+                                  : result.percentage >= 70
+                                    ? 'bg-yellow-500'
+                                    : result.percentage >= 60
+                                      ? 'bg-orange-500'
+                                      : 'bg-red-500'
                             }`}
                             style={{ width: `${result.percentage}%` }}
                           ></div>
@@ -523,7 +596,7 @@ const ExamResultsTab: React.FC<ExamResultsTabProps> = ({ student, loading }) => 
                       )}
                     </div>
                   </div>
-                  
+
                   {result.remarks && (
                     <div className="mt-3 p-2 bg-gray-50 rounded-lg">
                       <p className="text-sm text-gray-700">{result.remarks}</p>

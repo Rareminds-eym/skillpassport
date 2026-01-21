@@ -14,7 +14,7 @@ const ExperienceDetailsModal = ({ experience, isOpen, onClose, onAction, current
   // Handle approve experience
   const handleApprove = async () => {
     setActionLoading('approving');
-    
+
     try {
       if (!currentUserId) {
         toast.error('User not authenticated');
@@ -23,7 +23,7 @@ const ExperienceDetailsModal = ({ experience, isOpen, onClose, onAction, current
 
       let result;
       const approvalAuthority = experience.approval_authority;
-      
+
       if (approvalAuthority === 'college_admin') {
         result = await CollegeAdminNotificationService.approveExperience(
           experience.id,
@@ -37,7 +37,7 @@ const ExperienceDetailsModal = ({ experience, isOpen, onClose, onAction, current
           'Approved by School Admin'
         );
       }
-      
+
       toast.success(result.message || `Experience "${experience.role}" approved successfully!`);
       onAction && onAction('approved', experience);
       onClose();
@@ -62,11 +62,11 @@ const ExperienceDetailsModal = ({ experience, isOpen, onClose, onAction, current
     }
 
     setActionLoading('rejecting');
-    
+
     try {
       let result;
       const approvalAuthority = experience.approval_authority;
-      
+
       if (approvalAuthority === 'college_admin') {
         result = await CollegeAdminNotificationService.rejectExperience(
           experience.id,
@@ -80,7 +80,7 @@ const ExperienceDetailsModal = ({ experience, isOpen, onClose, onAction, current
           rejectionReason
         );
       }
-      
+
       toast.success(result.message || `Experience "${experience.role}" rejected.`);
       onAction && onAction('rejected', experience);
       onClose();
@@ -97,18 +97,18 @@ const ExperienceDetailsModal = ({ experience, isOpen, onClose, onAction, current
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
     });
   };
 
   const formatDuration = (startDate, endDate) => {
     if (!startDate || !endDate) return 'Duration not specified';
-    
+
     const start = new Date(startDate);
     const end = new Date(endDate);
     const diffTime = Math.abs(end - start);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays < 30) return `${diffDays} days`;
     const months = Math.floor(diffDays / 30);
     return `${months} month${months > 1 ? 's' : ''}`;
@@ -161,13 +161,13 @@ const ExperienceDetailsModal = ({ experience, isOpen, onClose, onAction, current
               </div>
               <h3 className="text-lg font-semibold text-gray-900">Experience Information</h3>
             </div>
-            
+
             <div className="space-y-4">
               <div>
                 <p className="text-sm text-gray-600">Role/Position</p>
                 <p className="font-semibold text-gray-900 text-lg">{experience.role}</p>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-600">Organization</p>
@@ -181,12 +181,13 @@ const ExperienceDetailsModal = ({ experience, isOpen, onClose, onAction, current
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-gray-500" />
                     <p className="font-medium text-gray-900">
-                      {experience.duration || formatDuration(experience.start_date, experience.end_date)}
+                      {experience.duration ||
+                        formatDuration(experience.start_date, experience.end_date)}
                     </p>
                   </div>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-600">Start Date</p>
@@ -230,14 +231,18 @@ const ExperienceDetailsModal = ({ experience, isOpen, onClose, onAction, current
               <div>
                 <p className="text-sm text-gray-600">Approval Authority</p>
                 <p className="font-medium text-gray-900">
-                  {experience.approval_authority === 'school_admin' ? 'School Admin' : 
-                   experience.approval_authority === 'college_admin' ? 'College Admin' : 'Rareminds Admin'}
+                  {experience.approval_authority === 'school_admin'
+                    ? 'School Admin'
+                    : experience.approval_authority === 'college_admin'
+                      ? 'College Admin'
+                      : 'Rareminds Admin'}
                 </p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Reason</p>
                 <p className="text-sm text-gray-700">
-                  {experience.approval_authority === 'school_admin' || experience.approval_authority === 'college_admin'
+                  {experience.approval_authority === 'school_admin' ||
+                  experience.approval_authority === 'college_admin'
                     ? 'Experience is from the same institution as the student'
                     : 'Experience is from an external organization'}
                 </p>
@@ -268,7 +273,7 @@ const ExperienceDetailsModal = ({ experience, isOpen, onClose, onAction, current
           >
             Close
           </button>
-          
+
           {!showRejectForm ? (
             <>
               <button
@@ -279,7 +284,7 @@ const ExperienceDetailsModal = ({ experience, isOpen, onClose, onAction, current
                 <XCircle className="h-4 w-4" />
                 Reject
               </button>
-              
+
               <button
                 onClick={handleApprove}
                 disabled={actionLoading}
@@ -304,7 +309,7 @@ const ExperienceDetailsModal = ({ experience, isOpen, onClose, onAction, current
               >
                 Cancel
               </button>
-              
+
               <button
                 onClick={handleReject}
                 disabled={actionLoading || !rejectionReason.trim()}

@@ -17,7 +17,7 @@ export function FeatureGate({
   showUpgradePrompt = true,
   blurContent = false,
   className = '',
-  onUpgradeClick
+  onUpgradeClick,
 }) {
   const { hasAccess, isLoading, requiredAddOn, upgradePrice } = useFeatureGate(featureKey);
   const { purchaseAddOn, isPurchasing } = useSubscriptionContext();
@@ -54,10 +54,24 @@ export function FeatureGate({
             <BackButton />
           </div>
           <div className="flex-1 flex items-center justify-center">
-            <LockedCard featureKey={featureKey} addOn={requiredAddOn} upgradePrice={upgradePrice} showUpgradePrompt={showUpgradePrompt} onUpgradeClick={handleUpgradeClick} />
+            <LockedCard
+              featureKey={featureKey}
+              addOn={requiredAddOn}
+              upgradePrice={upgradePrice}
+              showUpgradePrompt={showUpgradePrompt}
+              onUpgradeClick={handleUpgradeClick}
+            />
           </div>
         </div>
-        {showModal && <PurchaseModal addOn={requiredAddOn} upgradePrice={upgradePrice} onClose={() => setShowModal(false)} onPurchase={purchaseAddOn} isPurchasing={isPurchasing} />}
+        {showModal && (
+          <PurchaseModal
+            addOn={requiredAddOn}
+            upgradePrice={upgradePrice}
+            onClose={() => setShowModal(false)}
+            onPurchase={purchaseAddOn}
+            isPurchasing={isPurchasing}
+          />
+        )}
       </div>
     );
   }
@@ -70,9 +84,23 @@ export function FeatureGate({
       </div>
       {/* Centered card */}
       <div className="flex-1 flex items-center justify-center">
-        <LockedCard featureKey={featureKey} addOn={requiredAddOn} upgradePrice={upgradePrice} showUpgradePrompt={showUpgradePrompt} onUpgradeClick={handleUpgradeClick} />
+        <LockedCard
+          featureKey={featureKey}
+          addOn={requiredAddOn}
+          upgradePrice={upgradePrice}
+          showUpgradePrompt={showUpgradePrompt}
+          onUpgradeClick={handleUpgradeClick}
+        />
       </div>
-      {showModal && <PurchaseModal addOn={requiredAddOn} upgradePrice={upgradePrice} onClose={() => setShowModal(false)} onPurchase={purchaseAddOn} isPurchasing={isPurchasing} />}
+      {showModal && (
+        <PurchaseModal
+          addOn={requiredAddOn}
+          upgradePrice={upgradePrice}
+          onClose={() => setShowModal(false)}
+          onPurchase={purchaseAddOn}
+          isPurchasing={isPurchasing}
+        />
+      )}
     </div>
   );
 }
@@ -121,7 +149,10 @@ function LockedContentPlaceholder() {
 function LockedCard({ featureKey, addOn, upgradePrice, showUpgradePrompt, onUpgradeClick }) {
   const monthlyPrice = upgradePrice?.monthly ? parseFloat(upgradePrice.monthly) : 0;
   const annualPrice = upgradePrice?.annual ? parseFloat(upgradePrice.annual) : 0;
-  const savings = monthlyPrice > 0 && annualPrice > 0 ? Math.round(((monthlyPrice * 12 - annualPrice) / (monthlyPrice * 12)) * 100) : 0;
+  const savings =
+    monthlyPrice > 0 && annualPrice > 0
+      ? Math.round(((monthlyPrice * 12 - annualPrice) / (monthlyPrice * 12)) * 100)
+      : 0;
 
   const benefits = {
     career_ai: ['AI-powered career guidance', 'Personalized recommendations', 'Industry insights'],
@@ -146,7 +177,9 @@ function LockedCard({ featureKey, addOn, upgradePrice, showUpgradePrompt, onUpgr
           <div className="absolute top-6 right-6">
             <div className="flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full shadow-sm">
               <Sparkles className="w-3 h-3 text-white" />
-              <span className="text-[11px] font-semibold text-white uppercase tracking-wide">Pro</span>
+              <span className="text-[11px] font-semibold text-white uppercase tracking-wide">
+                Pro
+              </span>
             </div>
           </div>
 
@@ -166,7 +199,9 @@ function LockedCard({ featureKey, addOn, upgradePrice, showUpgradePrompt, onUpgr
 
         {/* Benefits */}
         <div className="px-8 py-5 bg-gray-50 border-y border-gray-100">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">What you'll get</p>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
+            What you'll get
+          </p>
           <div className="space-y-3">
             {benefits.map((benefit, i) => (
               <div key={i} className="flex items-center gap-3">
@@ -235,11 +270,12 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
   const isAlreadyOwned = useMemo(() => {
     if (!addOn?.feature_key || !activeEntitlements) return false;
     const now = new Date();
-    return activeEntitlements.some(ent => 
-      ent.feature_key === addOn.feature_key && 
-      (ent.status === 'active' || 
-       ent.status === 'grace_period' ||
-       (ent.status === 'cancelled' && ent.end_date && new Date(ent.end_date) >= now))
+    return activeEntitlements.some(
+      (ent) =>
+        ent.feature_key === addOn.feature_key &&
+        (ent.status === 'active' ||
+          ent.status === 'grace_period' ||
+          (ent.status === 'cancelled' && ent.end_date && new Date(ent.end_date) >= now))
     );
   }, [addOn?.feature_key, activeEntitlements]);
 
@@ -248,7 +284,8 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
   const price = billing === 'monthly' ? monthly : annual;
   const monthlyEquivalent = billing === 'annual' ? Math.round(annual / 12) : monthly;
   const savings = monthly > 0 && annual > 0 ? Math.round(monthly * 12 - annual) : 0;
-  const savingsPct = monthly > 0 && annual > 0 ? Math.round(((monthly * 12 - annual) / (monthly * 12)) * 100) : 0;
+  const savingsPct =
+    monthly > 0 && annual > 0 ? Math.round(((monthly * 12 - annual) / (monthly * 12)) * 100) : 0;
 
   const handlePurchase = async () => {
     if (!addOn?.feature_key) {
@@ -256,45 +293,47 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
       setError('Unable to process purchase - missing feature information');
       return;
     }
-    
+
     // Check for duplicate purchase
     if (isAlreadyOwned) {
       setError('You already own this add-on. Access is active until your subscription expires.');
       return;
     }
-    
+
     try {
       setError(null);
       console.log('[PurchaseModal] Starting purchase for:', addOn.feature_key, billing);
-      
+
       // Load Razorpay script first
       console.log('[PurchaseModal] Loading Razorpay script...');
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
-        setError('Failed to load payment system. Please check your internet connection and try again.');
+        setError(
+          'Failed to load payment system. Please check your internet connection and try again.'
+        );
         return;
       }
       console.log('[PurchaseModal] Razorpay script loaded successfully');
-      
+
       const order = await onPurchase(addOn.feature_key, billing);
       console.log('[PurchaseModal] Order received:', order);
-      
+
       if (!order) {
         setError('Failed to create order - no response received');
         return;
       }
-      
+
       if (!window.Razorpay) {
         setError('Payment system not loaded. Please refresh the page.');
         return;
       }
-      
+
       console.log('[PurchaseModal] Opening Razorpay with:', {
         key: order.razorpayKeyId,
         amount: order.amount,
-        order_id: order.orderId
+        order_id: order.orderId,
       });
-      
+
       const razorpay = new window.Razorpay({
         key: order.razorpayKeyId,
         amount: order.amount,
@@ -306,33 +345,34 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
           // Payment successful - now verify and create entitlement
           console.log('[PurchaseModal] Payment successful, verifying...', response);
           setIsVerifying(true);
-          
+
           try {
             const verifyResult = await addOnPaymentService.verifyAddonPayment(
               response.razorpay_order_id,
               response.razorpay_payment_id,
               response.razorpay_signature
             );
-            
+
             console.log('[PurchaseModal] Verification result:', verifyResult);
-            
+
             if (verifyResult.success) {
               console.log('[PurchaseModal] Payment verified and entitlement created!');
               // Clear feature access cache to force re-check
               clearFeatureAccessCache();
               // Refresh entitlements in context instead of page reload
-              await Promise.all([
-                refreshAccess(),
-                fetchUserEntitlements()
-              ]);
+              await Promise.all([refreshAccess(), fetchUserEntitlements()]);
               onClose();
             } else {
-              setError(`Payment verification failed: ${verifyResult.error}. Please contact support with Order ID: ${response.razorpay_order_id}`);
+              setError(
+                `Payment verification failed: ${verifyResult.error}. Please contact support with Order ID: ${response.razorpay_order_id}`
+              );
               setIsVerifying(false);
             }
           } catch (verifyError) {
             console.error('[PurchaseModal] Verification error:', verifyError);
-            setError(`Payment completed but verification failed. Please contact support with Order ID: ${response.razorpay_order_id}`);
+            setError(
+              `Payment completed but verification failed. Please contact support with Order ID: ${response.razorpay_order_id}`
+            );
             setIsVerifying(false);
           }
         },
@@ -341,16 +381,18 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
         modal: {
           ondismiss: () => {
             console.log('[PurchaseModal] Payment modal dismissed');
-          }
-        }
+          },
+        },
       });
-      
+
       // Handle payment failure
       razorpay.on('payment.failed', (response) => {
         console.error('[PurchaseModal] Payment failed:', response.error);
-        setError(`Payment failed: ${response.error.description || 'Unknown error'}. Please try again.`);
+        setError(
+          `Payment failed: ${response.error.description || 'Unknown error'}. Please try again.`
+        );
       });
-      
+
       razorpay.open();
     } catch (e) {
       console.error('[PurchaseModal] Purchase error:', e);
@@ -359,23 +401,31 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-white rounded-3xl shadow-2xl max-w-[420px] w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-3xl shadow-2xl max-w-[420px] w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header with gradient background */}
         <div className="relative bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-700 px-6 pt-6 pb-8">
-          <button 
-            onClick={onClose} 
+          <button
+            onClick={onClose}
             className="absolute top-4 right-4 p-1.5 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
           >
             <X className="w-4 h-4 text-white" />
           </button>
-          
+
           <div className="flex items-center gap-3 mb-3">
             <div className="w-12 h-12 bg-white/15 backdrop-blur rounded-2xl flex items-center justify-center">
               <Sparkles className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-white">{addOn?.feature_name || 'Premium Feature'}</h2>
+              <h2 className="text-xl font-bold text-white">
+                {addOn?.feature_name || 'Premium Feature'}
+              </h2>
               <p className="text-indigo-200 text-sm">Unlock full access</p>
             </div>
           </div>
@@ -395,8 +445,8 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
                 <button
                   onClick={() => setBilling('monthly')}
                   className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${
-                    billing === 'monthly' 
-                      ? 'bg-white text-gray-900 shadow-sm' 
+                    billing === 'monthly'
+                      ? 'bg-white text-gray-900 shadow-sm'
                       : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
@@ -405,8 +455,8 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
                 <button
                   onClick={() => setBilling('annual')}
                   className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all relative ${
-                    billing === 'annual' 
-                      ? 'bg-white text-gray-900 shadow-sm' 
+                    billing === 'annual'
+                      ? 'bg-white text-gray-900 shadow-sm'
                       : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
@@ -424,7 +474,9 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
                 <div className="flex items-baseline justify-between mb-1">
                   <div className="flex items-baseline gap-1">
                     <span className="text-4xl font-bold text-gray-900">₹{price}</span>
-                    <span className="text-gray-400 text-sm">/{billing === 'monthly' ? 'mo' : 'yr'}</span>
+                    <span className="text-gray-400 text-sm">
+                      /{billing === 'monthly' ? 'mo' : 'yr'}
+                    </span>
                   </div>
                   {billing === 'annual' && (
                     <div className="text-right">
@@ -432,13 +484,15 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
                     </div>
                   )}
                 </div>
-                
+
                 {billing === 'annual' && savings > 0 && (
                   <div className="flex items-center gap-1.5 mt-2">
                     <div className="w-4 h-4 rounded-full bg-emerald-100 flex items-center justify-center">
                       <Check className="w-2.5 h-2.5 text-emerald-600" strokeWidth={3} />
                     </div>
-                    <span className="text-emerald-600 text-sm font-medium">Save ₹{savings} per year</span>
+                    <span className="text-emerald-600 text-sm font-medium">
+                      Save ₹{savings} per year
+                    </span>
                   </div>
                 )}
               </div>

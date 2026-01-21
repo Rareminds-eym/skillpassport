@@ -120,7 +120,7 @@ export interface RecruiterContext {
   };
 }
 
-export type RecruiterIntent = 
+export type RecruiterIntent =
   | 'candidate-search'
   | 'candidate-query'
   | 'opportunity-applications'

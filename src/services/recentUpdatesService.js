@@ -31,7 +31,8 @@ export const recentUpdatesService = {
         .eq('student_id', studentData.id)
         .maybeSingle();
 
-      if (updatesError && updatesError.code !== 'PGRST116') { // PGRST116 = no rows found
+      if (updatesError && updatesError.code !== 'PGRST116') {
+        // PGRST116 = no rows found
         throw new Error(`Failed to fetch recent updates: ${updatesError.message}`);
       }
 
@@ -85,14 +86,15 @@ export const recentUpdatesService = {
       const trimmedUpdates = updatedUpdates.slice(0, 10);
 
       // Update or insert the updates
-      const { data, error } = await supabase
-        .from('recent_updates')
-        .upsert({
+      const { data, error } = await supabase.from('recent_updates').upsert(
+        {
           student_id: studentData.id,
-          updates: { updates: trimmedUpdates }
-        }, {
-          onConflict: 'student_id'
-        });
+          updates: { updates: trimmedUpdates },
+        },
+        {
+          onConflict: 'student_id',
+        }
+      );
 
       if (error) {
         throw new Error(`Failed to save update: ${error.message}`);
@@ -126,14 +128,15 @@ export const recentUpdatesService = {
       }
 
       // Clear updates
-      const { error } = await supabase
-        .from('recent_updates')
-        .upsert({
+      const { error } = await supabase.from('recent_updates').upsert(
+        {
           student_id: studentData.id,
-          updates: { updates: [] }
-        }, {
-          onConflict: 'student_id'
-        });
+          updates: { updates: [] },
+        },
+        {
+          onConflict: 'student_id',
+        }
+      );
 
       if (error) {
         throw new Error(`Failed to clear updates: ${error.message}`);
@@ -144,5 +147,5 @@ export const recentUpdatesService = {
       console.error('Error in clearRecentUpdates:', error);
       throw error;
     }
-  }
+  },
 };

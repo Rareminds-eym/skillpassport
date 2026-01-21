@@ -4,7 +4,7 @@ export type FunnelRangePreset = '7d' | '30d' | '90d' | 'ytd' | 'custom';
 
 export interface FunnelRange {
   startDate: string; // ISO string (UTC)
-  endDate: string;   // ISO string (UTC)
+  endDate: string; // ISO string (UTC)
 }
 
 export interface RecruitmentFunnelStats {
@@ -20,7 +20,11 @@ export interface RecruitmentFunnelStats {
 }
 
 // Helper: build ISO date range from preset
-export const buildDateRange = (preset: FunnelRangePreset, start?: string, end?: string): FunnelRange => {
+export const buildDateRange = (
+  preset: FunnelRangePreset,
+  start?: string,
+  end?: string
+): FunnelRange => {
   if (preset === 'custom' && start && end) return { startDate: start, endDate: end };
   const now = new Date();
   const endDate = now.toISOString();
@@ -54,13 +58,18 @@ const makeTrendLabels = (preset: FunnelRangePreset): string[] => {
 };
 
 // Helper: bucket timestamps into N buckets between start and end
-const bucketize = (timestamps: string[], buckets: number, startISO: string, endISO: string): number[] => {
+const bucketize = (
+  timestamps: string[],
+  buckets: number,
+  startISO: string,
+  endISO: string
+): number[] => {
   if (buckets <= 0) return [];
   const start = new Date(startISO).getTime();
   const end = new Date(endISO).getTime();
   const span = Math.max(1, end - start);
   const arr = Array(buckets).fill(0);
-  timestamps.forEach(ts => {
+  timestamps.forEach((ts) => {
     const t = new Date(ts).getTime();
     const ratio = Math.min(0.999999, Math.max(0, (t - start) / span));
     const index = Math.floor(ratio * buckets);
@@ -86,7 +95,11 @@ export const getRecruitmentFunnelStats = async (
 
     if (snapErr) throw snapErr;
 
-    let sourced = 0, screened = 0, interviewed = 0, offered = 0, hired = 0;
+    let sourced = 0,
+      screened = 0,
+      interviewed = 0,
+      offered = 0,
+      hired = 0;
     (candidates || []).forEach((c: any) => {
       if (c.status === 'rejected') return;
       const s = (c.stage || '').toLowerCase();
@@ -183,7 +196,9 @@ export const getAnalyticsKPIMetrics = async (
     if (hireErr) throw hireErr;
 
     const successfulHires = (currentHires || []).length;
-    const hiredCandidateIds = [...new Set((currentHires || []).map((h: any) => h.pipeline_candidate_id))];
+    const hiredCandidateIds = [
+      ...new Set((currentHires || []).map((h: any) => h.pipeline_candidate_id)),
+    ];
 
     // 3. Time to Hire (average days from added_at to hired)
     let timeToHire = 23; // default fallback
@@ -264,7 +279,9 @@ export const getAnalyticsKPIMetrics = async (
       .lte('created_at', prevEndDate);
 
     const prevSuccessfulHires = (prevHires || []).length;
-    const prevHiredCandidateIds = [...new Set((prevHires || []).map((h: any) => h.pipeline_candidate_id))];
+    const prevHiredCandidateIds = [
+      ...new Set((prevHires || []).map((h: any) => h.pipeline_candidate_id)),
+    ];
 
     // Previous Time to Hire
     let prevTimeToHire = timeToHire; // fallback to current
@@ -286,7 +303,9 @@ export const getAnalyticsKPIMetrics = async (
           }
         }
         if (prevHireDurations.length > 0) {
-          prevTimeToHire = Math.round(prevHireDurations.reduce((a, b) => a + b, 0) / prevHireDurations.length);
+          prevTimeToHire = Math.round(
+            prevHireDurations.reduce((a, b) => a + b, 0) / prevHireDurations.length
+          );
         }
       }
     }
@@ -317,7 +336,9 @@ export const getAnalyticsKPIMetrics = async (
 
             if (prevScores.length > 0) {
               prevQualityScore = parseFloat(
-                (prevScores.reduce((a: number, b: number) => a + b, 0) / prevScores.length).toFixed(1)
+                (prevScores.reduce((a: number, b: number) => a + b, 0) / prevScores.length).toFixed(
+                  1
+                )
               );
             }
           }
@@ -373,7 +394,8 @@ export const getTopHiringColleges = async (
     // Step 1: Get pipeline candidates with student info (both foreign keys AND direct columns)
     const { data: pipelineCandidates, error: pipelineErr } = await supabase
       .from('pipeline_candidates')
-      .select(`
+      .select(
+        `
         student_id,
         students!inner(
           university_college_id,
@@ -381,7 +403,8 @@ export const getTopHiringColleges = async (
           university,
           college_school_name
         )
-      `)
+      `
+      )
       .gte('added_at', startDate)
       .lte('added_at', endDate);
 
@@ -409,28 +432,32 @@ export const getTopHiringColleges = async (
     if (universityCollegeIds.size > 0) {
       const { data: colleges, error: collegesErr } = await supabase
         .from('university_colleges')
-        .select(`
+        .select(
+          `
           id,
           university_id
-        `)
+        `
+        )
         .in('id', Array.from(universityCollegeIds));
 
       if (!collegesErr && colleges) {
         // Get unique university IDs
-        const universityIds = [...new Set(colleges.map((c: any) => c.university_id).filter(Boolean))];
-        
+        const universityIds = [
+          ...new Set(colleges.map((c: any) => c.university_id).filter(Boolean)),
+        ];
+
         if (universityIds.length > 0) {
           // Fetch university names from organizations table
           const { data: universities } = await supabase
             .from('organizations')
             .select('id, name')
             .in('id', universityIds);
-          
+
           const univNameMap: Record<string, string> = {};
           universities?.forEach((u: any) => {
             univNameMap[u.id] = u.name;
           });
-          
+
           colleges.forEach((college: any) => {
             if (college.university_id && univNameMap[college.university_id]) {
               universityMap[college.id] = univNameMap[college.university_id];
@@ -489,7 +516,8 @@ export const getTopHiringColleges = async (
       .map(([name, count]) => ({
         name,
         count: count as number,
-        percentage: totalCount > 0 ? parseFloat(((count as number / totalCount) * 100).toFixed(1)) : 0,
+        percentage:
+          totalCount > 0 ? parseFloat((((count as number) / totalCount) * 100).toFixed(1)) : 0,
       }))
       .sort((a, b) => b.count - a.count)
       .slice(0, limit);
@@ -521,7 +549,8 @@ export const getCoursePerformance = async (
     // Get all pipeline candidates with their courses
     const { data: results, error: queryErr } = await supabase
       .from('pipeline_candidates')
-      .select(`
+      .select(
+        `
         id,
         student_id,
         stage,
@@ -529,7 +558,8 @@ export const getCoursePerformance = async (
         students!inner(
           profile
         )
-      `)
+      `
+      )
       .gte('added_at', startDate)
       .lte('added_at', endDate);
 
@@ -543,9 +573,7 @@ export const getCoursePerformance = async (
     const courseStats: Record<string, { total: number; hired: number }> = {};
 
     results.forEach((row: any) => {
-      const course = row.students?.profile?.course ||
-        row.students?.profile?.program ||
-        'Unknown';
+      const course = row.students?.profile?.course || row.students?.profile?.program || 'Unknown';
 
       if (course && course !== 'Unknown') {
         if (!courseStats[course]) {
@@ -568,7 +596,8 @@ export const getCoursePerformance = async (
         name,
         totalCandidates: stats.total,
         hiredCandidates: stats.hired,
-        successRate: stats.total > 0 ? parseFloat(((stats.hired / stats.total) * 100).toFixed(1)) : 0,
+        successRate:
+          stats.total > 0 ? parseFloat(((stats.hired / stats.total) * 100).toFixed(1)) : 0,
       }))
       .sort((a, b) => b.totalCandidates - a.totalCandidates) // Sort by total candidates
       .slice(0, limit);
@@ -596,7 +625,7 @@ const formatDistrictName = (district: string | null | undefined): string => {
   // Capitalize first letter of each word (initcap)
   return cleaned
     .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(' ');
 };
 
@@ -618,12 +647,14 @@ export const getGeographicDistribution = async (
 
     const { data: results, error: queryErr } = await supabase
       .from('pipeline_candidates')
-      .select(`
+      .select(
+        `
         student_id,
         students!inner(
           state
         )
-      `)
+      `
+      )
       .gte('added_at', startDate)
       .lte('added_at', endDate);
 
@@ -653,7 +684,8 @@ export const getGeographicDistribution = async (
       .map(([city, count]) => ({
         city,
         count: count as number,
-        percentage: totalCount > 0 ? parseFloat(((count as number / totalCount) * 100).toFixed(1)) : 0,
+        percentage:
+          totalCount > 0 ? parseFloat((((count as number) / totalCount) * 100).toFixed(1)) : 0,
       }))
       .sort((a, b) => b.count - a.count)
       .slice(0, limit);
@@ -705,7 +737,8 @@ export const getQualityMetrics = async (
     // Note: employability_score doesn't exist in students table, so we only fetch available fields
     const { data: hiredCandidates, error: queryErr } = await supabase
       .from('pipeline_candidates')
-      .select(`
+      .select(
+        `
         student_id,
         students!inner(
           currentCgpa,
@@ -713,7 +746,8 @@ export const getQualityMetrics = async (
           age,
           branch_field
         )
-      `)
+      `
+      )
       .eq('stage', 'hired')
       .gte('added_at', startDate)
       .lte('added_at', endDate);
@@ -736,9 +770,9 @@ export const getQualityMetrics = async (
           },
           ageDemographics: {
             averageAge: 0,
-            ageRanges: []
+            ageRanges: [],
           },
-          topCourses: []
+          topCourses: [],
         },
         error: null,
       };
@@ -758,7 +792,7 @@ export const getQualityMetrics = async (
       '18-21': 0,
       '22-25': 0,
       '26-30': 0,
-      '30+': 0
+      '30+': 0,
     };
 
     // Course metrics
@@ -803,16 +837,19 @@ export const getQualityMetrics = async (
     const avgCgpa = cgpaCount > 0 ? parseFloat((totalCgpa / cgpaCount).toFixed(2)) : 0;
 
     const genderTotal = maleCount + femaleCount + otherCount;
-    const malePercent = genderTotal > 0 ? parseFloat(((maleCount / genderTotal) * 100).toFixed(1)) : 0;
-    const femalePercent = genderTotal > 0 ? parseFloat(((femaleCount / genderTotal) * 100).toFixed(1)) : 0;
-    const otherPercent = genderTotal > 0 ? parseFloat(((otherCount / genderTotal) * 100).toFixed(1)) : 0;
+    const malePercent =
+      genderTotal > 0 ? parseFloat(((maleCount / genderTotal) * 100).toFixed(1)) : 0;
+    const femalePercent =
+      genderTotal > 0 ? parseFloat(((femaleCount / genderTotal) * 100).toFixed(1)) : 0;
+    const otherPercent =
+      genderTotal > 0 ? parseFloat(((otherCount / genderTotal) * 100).toFixed(1)) : 0;
 
     // Process Age Demographics
     const avgAge = ageCount > 0 ? parseFloat((totalAge / ageCount).toFixed(1)) : 0;
     const processedAgeRanges = Object.entries(ageRanges).map(([range, count]) => ({
       range,
       count,
-      percentage: ageCount > 0 ? parseFloat(((count / ageCount) * 100).toFixed(1)) : 0
+      percentage: ageCount > 0 ? parseFloat(((count / ageCount) * 100).toFixed(1)) : 0,
     }));
 
     // Process Top Courses
@@ -820,7 +857,7 @@ export const getQualityMetrics = async (
       .map(([name, count]) => ({
         name,
         count,
-        percentage: parseFloat(((count / totalHired) * 100).toFixed(1))
+        percentage: parseFloat(((count / totalHired) * 100).toFixed(1)),
       }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 5); // Top 5 courses
@@ -839,9 +876,9 @@ export const getQualityMetrics = async (
       },
       ageDemographics: {
         averageAge: avgAge,
-        ageRanges: processedAgeRanges
+        ageRanges: processedAgeRanges,
       },
-      topCourses: processedCourses
+      topCourses: processedCourses,
     };
 
     return { data, error: null };
@@ -851,13 +888,11 @@ export const getQualityMetrics = async (
   }
 };
 
-
-
 export interface SpeedAnalytics {
-  timeToFirstResponse: number;  // Average days from added to first activity
-  timeToHire: number;           // Average days from added to hired
-  interviewToOffer: number;     // Average days from interview to offer
-  fastestHire: number;          // Minimum days to hire
+  timeToFirstResponse: number; // Average days from added to first activity
+  timeToHire: number; // Average days from added to hired
+  interviewToOffer: number; // Average days from interview to offer
+  fastestHire: number; // Minimum days to hire
 }
 
 // Helper: Calculate days between two dates
@@ -896,7 +931,7 @@ export const getSpeedAnalytics = async (
     }
 
     // Get all activities for these candidates
-    const candidateIds = candidates.map(c => c.id);
+    const candidateIds = candidates.map((c) => c.id);
     const { data: activities, error: actErr } = await supabase
       .from('pipeline_activities')
       .select('pipeline_candidate_id, activity_type, from_stage, to_stage, created_at')
@@ -910,7 +945,7 @@ export const getSpeedAnalytics = async (
     const timeToHireDurations: number[] = [];
     const interviewToOfferDurations: number[] = [];
 
-    candidates.forEach(candidate => {
+    candidates.forEach((candidate) => {
       const candidateActivities = (activities || []).filter(
         (a: any) => a.pipeline_candidate_id === candidate.id
       );
@@ -933,12 +968,15 @@ export const getSpeedAnalytics = async (
 
       // 3. Interview to Offer: days from first interview stage to offer stage
       const firstInterview = candidateActivities.find(
-        (a: any) => a.activity_type === 'stage_change' &&
-          (a.to_stage === 'interview_1' || a.to_stage === 'interview_2' || a.to_stage === 'interviewed')
+        (a: any) =>
+          a.activity_type === 'stage_change' &&
+          (a.to_stage === 'interview_1' ||
+            a.to_stage === 'interview_2' ||
+            a.to_stage === 'interviewed')
       );
       const offerActivity = candidateActivities.find(
-        (a: any) => a.activity_type === 'stage_change' &&
-          (a.to_stage === 'offer' || a.to_stage === 'offered')
+        (a: any) =>
+          a.activity_type === 'stage_change' && (a.to_stage === 'offer' || a.to_stage === 'offered')
       );
       if (firstInterview && offerActivity) {
         const days = calculateDays(firstInterview.created_at, offerActivity.created_at);
@@ -948,27 +986,37 @@ export const getSpeedAnalytics = async (
 
     // Calculate averages and minimum
     // Keep one decimal place to preserve fractional days (for hour conversion)
-    const avgTimeToFirstResponse = firstResponseTimes.length > 0
-      ? Math.round((firstResponseTimes.reduce((a, b) => a + b, 0) / firstResponseTimes.length) * 10) / 10
-      : 0;
+    const avgTimeToFirstResponse =
+      firstResponseTimes.length > 0
+        ? Math.round(
+            (firstResponseTimes.reduce((a, b) => a + b, 0) / firstResponseTimes.length) * 10
+          ) / 10
+        : 0;
 
-    const avgTimeToHire = timeToHireDurations.length > 0
-      ? Math.round((timeToHireDurations.reduce((a, b) => a + b, 0) / timeToHireDurations.length) * 10) / 10
-      : 0;
+    const avgTimeToHire =
+      timeToHireDurations.length > 0
+        ? Math.round(
+            (timeToHireDurations.reduce((a, b) => a + b, 0) / timeToHireDurations.length) * 10
+          ) / 10
+        : 0;
 
-    const avgInterviewToOffer = interviewToOfferDurations.length > 0
-      ? Math.round((interviewToOfferDurations.reduce((a, b) => a + b, 0) / interviewToOfferDurations.length) * 10) / 10
-      : 0;
+    const avgInterviewToOffer =
+      interviewToOfferDurations.length > 0
+        ? Math.round(
+            (interviewToOfferDurations.reduce((a, b) => a + b, 0) /
+              interviewToOfferDurations.length) *
+              10
+          ) / 10
+        : 0;
 
-    const fastestHire = timeToHireDurations.length > 0
-      ? Math.round(Math.min(...timeToHireDurations) * 10) / 10
-      : 0;
+    const fastestHire =
+      timeToHireDurations.length > 0 ? Math.round(Math.min(...timeToHireDurations) * 10) / 10 : 0;
 
     const data: SpeedAnalytics = {
       timeToFirstResponse: avgTimeToFirstResponse,
       timeToHire: avgTimeToHire,
       interviewToOffer: avgInterviewToOffer,
-      fastestHire: fastestHire
+      fastestHire: fastestHire,
     };
 
     return { data, error: null };

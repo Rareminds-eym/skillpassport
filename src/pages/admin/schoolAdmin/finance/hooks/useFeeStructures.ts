@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { supabase } from "../../../../../lib/supabaseClient";
-import toast from "react-hot-toast";
-import { FeeStructure } from "../types";
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { supabase } from '../../../../../lib/supabaseClient';
+import toast from 'react-hot-toast';
+import { FeeStructure } from '../types';
 
 export const useFeeStructures = (schoolId: string | null) => {
   const [feeStructures, setFeeStructures] = useState<FeeStructure[]>([]);
@@ -9,7 +9,7 @@ export const useFeeStructures = (schoolId: string | null) => {
 
   const loadFeeStructures = useCallback(async () => {
     if (!schoolId) return;
-    
+
     try {
       setLoading(true);
       console.log('🚀 [Fee Structures] Loading fee structures for school:', schoolId);
@@ -74,8 +74,8 @@ export const useFeeStructures = (schoolId: string | null) => {
       console.log(`✅ [Fee Structures] Loaded ${data?.length || 0} fee structures`);
       setFeeStructures(data || []);
     } catch (err) {
-      console.error("Failed to load fee structures:", err);
-      toast.error("Failed to load fee structures");
+      console.error('Failed to load fee structures:', err);
+      toast.error('Failed to load fee structures');
       setFeeStructures([]);
     } finally {
       setLoading(false);
@@ -83,11 +83,11 @@ export const useFeeStructures = (schoolId: string | null) => {
   }, [schoolId]);
 
   const saveFeeStructure = async (
-    data: Partial<FeeStructure>, 
+    data: Partial<FeeStructure>,
     existing?: FeeStructure | null
   ): Promise<boolean> => {
     if (!schoolId) {
-      toast.error("School ID not found");
+      toast.error('School ID not found');
       return false;
     }
 
@@ -116,10 +116,10 @@ export const useFeeStructures = (schoolId: string | null) => {
         if (error) {
           console.error('Update fee structure failed:', error);
           // For demo, update in local state
-          setFeeStructures(prev => 
-            prev.map(fs => fs.id === existing.id ? { ...fs, ...payload } : fs)
+          setFeeStructures((prev) =>
+            prev.map((fs) => (fs.id === existing.id ? { ...fs, ...payload } : fs))
           );
-          toast.success("Fee structure updated successfully!");
+          toast.success('Fee structure updated successfully!');
           return true;
         }
       } else {
@@ -136,65 +136,62 @@ export const useFeeStructures = (schoolId: string | null) => {
             ...payload,
             created_at: new Date().toISOString(),
           } as FeeStructure;
-          setFeeStructures(prev => [newStructure, ...prev]);
-          toast.success("Fee structure created successfully!");
+          setFeeStructures((prev) => [newStructure, ...prev]);
+          toast.success('Fee structure created successfully!');
           return true;
         }
       }
 
-      toast.success(existing ? "Fee structure updated!" : "Fee structure created!");
+      toast.success(existing ? 'Fee structure updated!' : 'Fee structure created!');
       loadFeeStructures();
       return true;
     } catch (err) {
-      console.error("Failed to save fee structure:", err);
-      toast.error("Failed to save fee structure");
+      console.error('Failed to save fee structure:', err);
+      toast.error('Failed to save fee structure');
       return false;
     }
   };
 
   const deleteFeeStructure = async (id: string): Promise<boolean> => {
     try {
-      const { error } = await supabase
-        .from('school_fee_structures')
-        .delete()
-        .eq('id', id);
+      const { error } = await supabase.from('school_fee_structures').delete().eq('id', id);
 
       if (error) {
         console.error('Delete fee structure failed:', error);
         // For demo, remove from local state
-        setFeeStructures(prev => prev.filter(fs => fs.id !== id));
-        toast.success("Fee structure deleted successfully!");
+        setFeeStructures((prev) => prev.filter((fs) => fs.id !== id));
+        toast.success('Fee structure deleted successfully!');
         return true;
       }
 
-      toast.success("Fee structure deleted!");
+      toast.success('Fee structure deleted!');
       loadFeeStructures();
       return true;
     } catch (err) {
-      console.error("Failed to delete fee structure:", err);
-      toast.error("Failed to delete fee structure");
+      console.error('Failed to delete fee structure:', err);
+      toast.error('Failed to delete fee structure');
       return false;
     }
   };
 
   const toggleActive = async (id: string): Promise<boolean> => {
     try {
-      const structure = feeStructures.find(fs => fs.id === id);
+      const structure = feeStructures.find((fs) => fs.id === id);
       if (!structure) return false;
 
       const { error } = await supabase
         .from('school_fee_structures')
-        .update({ 
+        .update({
           is_active: !structure.is_active,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', id);
 
       if (error) {
         console.error('Toggle active failed:', error);
         // For demo, update local state
-        setFeeStructures(prev => 
-          prev.map(fs => fs.id === id ? { ...fs, is_active: !fs.is_active } : fs)
+        setFeeStructures((prev) =>
+          prev.map((fs) => (fs.id === id ? { ...fs, is_active: !fs.is_active } : fs))
         );
         toast.success(`Fee structure ${!structure.is_active ? 'activated' : 'deactivated'}!`);
         return true;
@@ -204,15 +201,15 @@ export const useFeeStructures = (schoolId: string | null) => {
       loadFeeStructures();
       return true;
     } catch (err) {
-      console.error("Failed to toggle active status:", err);
-      toast.error("Failed to update status");
+      console.error('Failed to toggle active status:', err);
+      toast.error('Failed to update status');
       return false;
     }
   };
 
   const duplicateFeeStructure = async (id: string): Promise<boolean> => {
     try {
-      const structure = feeStructures.find(fs => fs.id === id);
+      const structure = feeStructures.find((fs) => fs.id === id);
       if (!structure) return false;
 
       const duplicateData = {
@@ -225,8 +222,8 @@ export const useFeeStructures = (schoolId: string | null) => {
 
       return await saveFeeStructure(duplicateData);
     } catch (err) {
-      console.error("Failed to duplicate fee structure:", err);
-      toast.error("Failed to duplicate fee structure");
+      console.error('Failed to duplicate fee structure:', err);
+      toast.error('Failed to duplicate fee structure');
       return false;
     }
   };
@@ -240,10 +237,10 @@ export const useFeeStructures = (schoolId: string | null) => {
   // Stats
   const stats = useMemo(() => {
     const total = feeStructures.length;
-    const active = feeStructures.filter(fs => fs.is_active).length;
+    const active = feeStructures.filter((fs) => fs.is_active).length;
     const inactive = total - active;
     const totalValue = feeStructures
-      .filter(fs => fs.is_active)
+      .filter((fs) => fs.is_active)
       .reduce((sum, fs) => sum + fs.amount, 0);
 
     return {

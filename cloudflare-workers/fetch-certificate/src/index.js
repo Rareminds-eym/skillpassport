@@ -121,7 +121,7 @@ export default {
       };
 
       // Platform-specific extraction (limited for JS-rendered pages)
-      let platformData = {
+      const platformData = {
         platform: 'unknown',
         needsAiExtraction: true,
       };

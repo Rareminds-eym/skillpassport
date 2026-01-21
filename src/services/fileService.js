@@ -6,7 +6,10 @@
 import { getFileUrl as getFileUrlFromApi } from './courseApiService';
 
 // Get the API URL from environment variables
-const FILE_SERVER_URL = import.meta.env.VITE_FILE_SERVER_URL || import.meta.env.VITE_EXTERNAL_API_KEY || 'http://localhost:3001';
+const FILE_SERVER_URL =
+  import.meta.env.VITE_FILE_SERVER_URL ||
+  import.meta.env.VITE_EXTERNAL_API_KEY ||
+  'http://localhost:3001';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
@@ -18,7 +21,7 @@ class FileService {
    */
   async getFileUrlFromApi(fileKey) {
     console.log('Calling Course API get-file-url with key:', fileKey);
-    
+
     try {
       const url = await getFileUrlFromApi(fileKey);
       console.log('Course API returned URL successfully');
@@ -62,7 +65,9 @@ class FileService {
       return await this.getFileUrlFromApi(fileKey);
     } catch (apiError) {
       console.error('Course API failed:', apiError.message);
-      throw new Error('Unable to generate file URL. Please ensure R2 credentials are configured in the Course API worker.');
+      throw new Error(
+        'Unable to generate file URL. Please ensure R2 credentials are configured in the Course API worker.'
+      );
     }
   }
 
@@ -126,9 +131,9 @@ class FileService {
    */
   getVideoFiles(files) {
     const videoExtensions = ['.mp4', '.webm', '.mov', '.avi', '.mkv'];
-    return files.filter(file => {
+    return files.filter((file) => {
       const key = file.key.toLowerCase();
-      return videoExtensions.some(ext => key.endsWith(ext));
+      return videoExtensions.some((ext) => key.endsWith(ext));
     });
   }
 
@@ -139,9 +144,9 @@ class FileService {
    */
   getResourceFiles(files) {
     const resourceExtensions = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt'];
-    return files.filter(file => {
+    return files.filter((file) => {
       const key = file.key.toLowerCase();
-      return resourceExtensions.some(ext => key.endsWith(ext));
+      return resourceExtensions.some((ext) => key.endsWith(ext));
     });
   }
 

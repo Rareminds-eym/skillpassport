@@ -1,6 +1,6 @@
 /**
  * Accept Invitation Page
- * 
+ *
  * Handles organization invitation acceptance flow:
  * 1. Validates the invitation token from URL
  * 2. Shows invitation details
@@ -8,14 +8,25 @@
  * 4. If not logged in: redirects to login with return URL
  */
 
-import { memberInvitationService, OrganizationInvitation } from '@/services/organization/memberInvitationService';
+import {
+  memberInvitationService,
+  OrganizationInvitation,
+} from '@/services/organization/memberInvitationService';
 import { supabase } from '@/lib/supabaseClient';
 import { AlertCircle, Building2, Check, Clock, LogIn, RefreshCw, UserPlus, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
-type PageState = 'loading' | 'valid' | 'invalid' | 'expired' | 'accepted' | 'already_accepted' | 'error' | 'not_logged_in';
+type PageState =
+  | 'loading'
+  | 'valid'
+  | 'invalid'
+  | 'expired'
+  | 'accepted'
+  | 'already_accepted'
+  | 'error'
+  | 'not_logged_in';
 
 export default function AcceptInvitationPage() {
   const [searchParams] = useSearchParams();
@@ -42,12 +53,14 @@ export default function AcceptInvitationPage() {
 
     try {
       // Check if user is logged in
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const {
+        data: { user: currentUser },
+      } = await supabase.auth.getUser();
       setUser(currentUser);
 
       // Load invitation details
       const inv = await memberInvitationService.getInvitationByToken(token);
-      
+
       if (!inv) {
         setPageState('invalid');
         setError('This invitation link is invalid or has already been used');
@@ -91,11 +104,7 @@ export default function AcceptInvitationPage() {
 
   const getOrganizationName = async (orgId: string, _orgType: string): Promise<string> => {
     try {
-      const { data } = await supabase
-        .from('organizations')
-        .select('name')
-        .eq('id', orgId)
-        .single();
+      const { data } = await supabase.from('organizations').select('name').eq('id', orgId).single();
       return data?.name || 'Organization';
     } catch {
       return 'Organization';
@@ -107,15 +116,19 @@ export default function AcceptInvitationPage() {
 
     // Verify that the logged-in user's email matches the invitation email
     if (user.email?.toLowerCase() !== invitation.email.toLowerCase()) {
-      toast.error('This invitation was sent to a different email address. Please log in with the correct account.');
-      setError(`This invitation was sent to ${invitation.email}. You are logged in as ${user.email}.`);
+      toast.error(
+        'This invitation was sent to a different email address. Please log in with the correct account.'
+      );
+      setError(
+        `This invitation was sent to ${invitation.email}. You are logged in as ${user.email}.`
+      );
       return;
     }
 
     setIsAccepting(true);
     try {
       const result = await memberInvitationService.acceptInvitation(token!, user.id);
-      
+
       setPageState('accepted');
       toast.success(`Welcome to ${result.organizationName}!`);
 
@@ -291,7 +304,9 @@ export default function AcceptInvitationPage() {
                     <UserPlus className="w-5 h-5 text-indigo-600" />
                   </div>
                   <div>
-                    <div className="font-medium text-gray-900">{getMemberTypeDisplay(invitation.memberType)}</div>
+                    <div className="font-medium text-gray-900">
+                      {getMemberTypeDisplay(invitation.memberType)}
+                    </div>
                     <div className="text-sm text-gray-500">{invitation.email}</div>
                   </div>
                 </div>
@@ -370,7 +385,9 @@ export default function AcceptInvitationPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Role</span>
-                  <span className="font-medium text-indigo-600">{getMemberTypeDisplay(invitation.memberType)}</span>
+                  <span className="font-medium text-indigo-600">
+                    {getMemberTypeDisplay(invitation.memberType)}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Email</span>
@@ -406,7 +423,8 @@ export default function AcceptInvitationPage() {
                 <div>
                   <p className="text-sm text-red-800 font-medium">Email Mismatch</p>
                   <p className="text-sm text-red-700 mt-1">
-                    This invitation was sent to <strong>{invitation.email}</strong>, but you're logged in as <strong>{user.email}</strong>.
+                    This invitation was sent to <strong>{invitation.email}</strong>, but you're
+                    logged in as <strong>{user.email}</strong>.
                   </p>
                   <p className="text-sm text-red-700 mt-1">
                     Please log out and sign in with the correct account.
@@ -426,7 +444,10 @@ export default function AcceptInvitationPage() {
             </button>
             <button
               onClick={handleAcceptInvitation}
-              disabled={isAccepting || (user && invitation && user.email?.toLowerCase() !== invitation.email.toLowerCase())}
+              disabled={
+                isAccepting ||
+                (user && invitation && user.email?.toLowerCase() !== invitation.email.toLowerCase())
+              }
               className="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isAccepting ? (

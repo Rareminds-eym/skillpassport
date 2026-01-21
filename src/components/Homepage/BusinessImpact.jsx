@@ -9,25 +9,33 @@ const AnimatedCounter = ({ end, duration = 1200, suffix = '' }) => {
     const el = ref.current;
     if (!el) return;
 
-    const observer = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting && !hasAnimated) {
-        setHasAnimated(true);
-        let start = null;
-        const step = (ts) => {
-          if (!start) start = ts;
-          const progress = Math.min((ts - start) / duration, 1);
-          setValue(Math.floor(progress * end));
-          if (progress < 1) requestAnimationFrame(step);
-        };
-        requestAnimationFrame(step);
-      }
-    }, { threshold: 0.4 });
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !hasAnimated) {
+          setHasAnimated(true);
+          let start = null;
+          const step = (ts) => {
+            if (!start) start = ts;
+            const progress = Math.min((ts - start) / duration, 1);
+            setValue(Math.floor(progress * end));
+            if (progress < 1) requestAnimationFrame(step);
+          };
+          requestAnimationFrame(step);
+        }
+      },
+      { threshold: 0.4 }
+    );
 
     observer.observe(el);
     return () => observer.disconnect();
   }, [end, duration, hasAnimated]);
 
-  return <span ref={ref}>{value}{suffix}</span>;
+  return (
+    <span ref={ref}>
+      {value}
+      {suffix}
+    </span>
+  );
 };
 
 const BusinessImpact = () => {
@@ -57,9 +65,7 @@ const BusinessImpact = () => {
               <div className="text-4xl sm:text-5xl md:text-6xl font-bold text-amber-400 mb-2">
                 <AnimatedCounter end={stat.value} suffix={stat.suffix} />
               </div>
-              <p className="text-xs sm:text-sm text-gray-300 leading-relaxed">
-                {stat.description}
-              </p>
+              <p className="text-xs sm:text-sm text-gray-300 leading-relaxed">{stat.description}</p>
             </div>
           ))}
         </div>

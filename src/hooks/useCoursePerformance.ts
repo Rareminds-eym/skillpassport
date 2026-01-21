@@ -10,11 +10,11 @@ interface UseCoursePerformanceOptions {
   limit?: number;
 }
 
-export const useCoursePerformance = ({ 
-  preset, 
-  startDate, 
+export const useCoursePerformance = ({
+  preset,
+  startDate,
   endDate,
-  limit = 4 
+  limit = 4,
 }: UseCoursePerformanceOptions) => {
   const queryClient = useQueryClient();
   const channelRef = useRef<any>(null);
@@ -31,11 +31,16 @@ export const useCoursePerformance = ({
 
   useEffect(() => {
     // Subscribe to pipeline changes for real-time updates via WebSocket
-    const channel = supabase.channel(`course-performance-${Date.now()}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pipeline_candidates' }, () => {
-        // Invalidate when candidates are added or updated
-        queryClient.invalidateQueries({ queryKey: ['course-performance'] });
-      })
+    const channel = supabase
+      .channel(`course-performance-${Date.now()}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'pipeline_candidates' },
+        () => {
+          // Invalidate when candidates are added or updated
+          queryClient.invalidateQueries({ queryKey: ['course-performance'] });
+        }
+      )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => {
         // Invalidate when student profiles (courses) are updated
         queryClient.invalidateQueries({ queryKey: ['course-performance'] });

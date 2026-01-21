@@ -8,13 +8,13 @@ export type SwapRequestStatus = 'pending' | 'accepted' | 'rejected' | 'cancelled
 
 export type AdminApprovalStatus = 'pending' | 'approved' | 'rejected';
 
-export type SwapHistoryAction = 
-  | 'created' 
-  | 'accepted' 
-  | 'rejected' 
-  | 'cancelled' 
-  | 'admin_approved' 
-  | 'admin_rejected' 
+export type SwapHistoryAction =
+  | 'created'
+  | 'accepted'
+  | 'rejected'
+  | 'cancelled'
+  | 'admin_approved'
+  | 'admin_rejected'
   | 'completed';
 
 export type ActorRole = 'requester' | 'target' | 'admin';
@@ -25,32 +25,32 @@ export type ActorRole = 'requester' | 'target' | 'admin';
 
 export interface ClassSwapRequest {
   id: string;
-  
+
   // Requester Information
   requester_faculty_id: string;
   requester_slot_id: string;
-  
+
   // Target Information
   target_faculty_id: string;
   target_slot_id: string;
-  
+
   // Request Details
   reason: string;
   request_type: SwapRequestType;
   swap_date?: string; // ISO date string for one_time swaps
-  
+
   // Status & Approval
   status: SwapRequestStatus;
   target_response?: string;
   target_responded_at?: string;
-  
+
   // Admin Approval
   requires_admin_approval: boolean;
   admin_approval_status?: AdminApprovalStatus;
   admin_id?: string;
   admin_response?: string;
   admin_responded_at?: string;
-  
+
   // Metadata
   created_at: string;
   updated_at: string;
@@ -176,7 +176,13 @@ export interface SwapNotification {
   id: string;
   swap_request_id: string;
   recipient_id: string;
-  notification_type: 'new_request' | 'accepted' | 'rejected' | 'admin_approved' | 'admin_rejected' | 'reminder';
+  notification_type:
+    | 'new_request'
+    | 'accepted'
+    | 'rejected'
+    | 'admin_approved'
+    | 'admin_rejected'
+    | 'reminder';
   message: string;
   is_read: boolean;
   created_at: string;

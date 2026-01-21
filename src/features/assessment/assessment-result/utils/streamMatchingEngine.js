@@ -2,7 +2,7 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  * STREAM RECOMMENDATION ENGINE FOR AFTER 10TH STUDENTS
  * ═══════════════════════════════════════════════════════════════════════════════
- * 
+ *
  * Uses the same multi-dimensional analysis as courseMatchingEngine to recommend
  * the best 11th/12th stream (Science/Commerce/Arts) based on:
  * - Subject marks and academic performance
@@ -17,122 +17,191 @@
 
 const STREAM_KNOWLEDGE_BASE = {
   pcmb: {
-    name: "PCMB (Physics, Chemistry, Maths, Biology)",
-    category: "Science",
-    riasec: { primary: ["I", "R"], secondary: ["C"], weights: { I: 0.4, R: 0.35, C: 0.25 } },
+    name: 'PCMB (Physics, Chemistry, Maths, Biology)',
+    category: 'Science',
+    riasec: { primary: ['I', 'R'], secondary: ['C'], weights: { I: 0.4, R: 0.35, C: 0.25 } },
     subjects: {
       core: { physics: 0.25, chemistry: 0.25, mathematics: 0.25, biology: 0.25 },
-      aliases: ["phy", "chem", "bio", "maths", "math", "science", "zoology", "botany"]
+      aliases: ['phy', 'chem', 'bio', 'maths', 'math', 'science', 'zoology', 'botany'],
     },
-    keywords: { high: ["research", "medical", "doctor", "scientist", "lab", "experiment"], medium: ["biology", "healthcare", "medicine"] },
-    careerPaths: ["Doctor/MBBS", "Research Scientist", "Biotechnologist", "Pharmacist", "Veterinarian"],
-    entranceExams: ["NEET", "AIIMS", "JIPMER", "State Medical Exams"],
-    bestFor: "Students interested in medicine, biology, and life sciences"
+    keywords: {
+      high: ['research', 'medical', 'doctor', 'scientist', 'lab', 'experiment'],
+      medium: ['biology', 'healthcare', 'medicine'],
+    },
+    careerPaths: [
+      'Doctor/MBBS',
+      'Research Scientist',
+      'Biotechnologist',
+      'Pharmacist',
+      'Veterinarian',
+    ],
+    entranceExams: ['NEET', 'AIIMS', 'JIPMER', 'State Medical Exams'],
+    bestFor: 'Students interested in medicine, biology, and life sciences',
   },
   pcms: {
-    name: "PCMS (Physics, Chemistry, Maths, Computer Science)",
-    category: "Science",
-    riasec: { primary: ["I", "R"], secondary: ["C"], weights: { I: 0.35, R: 0.4, C: 0.25 } },
+    name: 'PCMS (Physics, Chemistry, Maths, Computer Science)',
+    category: 'Science',
+    riasec: { primary: ['I', 'R'], secondary: ['C'], weights: { I: 0.35, R: 0.4, C: 0.25 } },
     subjects: {
       core: { physics: 0.3, chemistry: 0.2, mathematics: 0.3, computer: 0.2 },
-      aliases: ["phy", "chem", "maths", "math", "cs", "it", "programming", "computer science"]
+      aliases: ['phy', 'chem', 'maths', 'math', 'cs', 'it', 'programming', 'computer science'],
     },
-    keywords: { high: ["software", "coding", "programming", "app", "web", "technology", "ai", "data"], medium: ["computer", "tech", "digital"] },
-    careerPaths: ["Software Engineer", "Data Scientist", "AI/ML Engineer", "Cybersecurity Expert", "Game Developer"],
-    entranceExams: ["JEE Main", "JEE Advanced", "BITSAT", "State Engineering Exams"],
-    bestFor: "Students interested in technology, programming, and computer science"
+    keywords: {
+      high: ['software', 'coding', 'programming', 'app', 'web', 'technology', 'ai', 'data'],
+      medium: ['computer', 'tech', 'digital'],
+    },
+    careerPaths: [
+      'Software Engineer',
+      'Data Scientist',
+      'AI/ML Engineer',
+      'Cybersecurity Expert',
+      'Game Developer',
+    ],
+    entranceExams: ['JEE Main', 'JEE Advanced', 'BITSAT', 'State Engineering Exams'],
+    bestFor: 'Students interested in technology, programming, and computer science',
   },
   pcm: {
-    name: "PCM (Physics, Chemistry, Maths)",
-    category: "Science",
-    riasec: { primary: ["R", "I"], secondary: ["C"], weights: { R: 0.4, I: 0.35, C: 0.25 } },
+    name: 'PCM (Physics, Chemistry, Maths)',
+    category: 'Science',
+    riasec: { primary: ['R', 'I'], secondary: ['C'], weights: { R: 0.4, I: 0.35, C: 0.25 } },
     subjects: {
       core: { physics: 0.35, chemistry: 0.25, mathematics: 0.4 },
-      aliases: ["phy", "chem", "maths", "math", "science"]
+      aliases: ['phy', 'chem', 'maths', 'math', 'science'],
     },
-    keywords: { high: ["engineering", "design", "mechanical", "electrical", "civil", "robot"], medium: ["build", "construct", "machine"] },
-    careerPaths: ["Engineer (Mechanical/Civil/Electrical)", "Architect", "Pilot", "Defense Services", "Physicist"],
-    entranceExams: ["JEE Main", "JEE Advanced", "NDA", "State Engineering Exams"],
-    bestFor: "Students interested in engineering, physics, and mathematics"
+    keywords: {
+      high: ['engineering', 'design', 'mechanical', 'electrical', 'civil', 'robot'],
+      medium: ['build', 'construct', 'machine'],
+    },
+    careerPaths: [
+      'Engineer (Mechanical/Civil/Electrical)',
+      'Architect',
+      'Pilot',
+      'Defense Services',
+      'Physicist',
+    ],
+    entranceExams: ['JEE Main', 'JEE Advanced', 'NDA', 'State Engineering Exams'],
+    bestFor: 'Students interested in engineering, physics, and mathematics',
   },
   pcb: {
-    name: "PCB (Physics, Chemistry, Biology)",
-    category: "Science",
-    riasec: { primary: ["I", "S"], secondary: ["R"], weights: { I: 0.35, S: 0.4, R: 0.25 } },
+    name: 'PCB (Physics, Chemistry, Biology)',
+    category: 'Science',
+    riasec: { primary: ['I', 'S'], secondary: ['R'], weights: { I: 0.35, S: 0.4, R: 0.25 } },
     subjects: {
       core: { physics: 0.25, chemistry: 0.35, biology: 0.4 },
-      aliases: ["phy", "chem", "bio", "zoology", "botany", "life science"]
+      aliases: ['phy', 'chem', 'bio', 'zoology', 'botany', 'life science'],
     },
-    keywords: { high: ["medical", "nursing", "healthcare", "patient", "clinical"], medium: ["biology", "health", "care"] },
-    careerPaths: ["Doctor/MBBS", "Nurse", "Physiotherapist", "Medical Lab Technician", "Dentist"],
-    entranceExams: ["NEET", "AIIMS", "Nursing Entrance Exams"],
-    bestFor: "Students interested in healthcare and medical sciences"
+    keywords: {
+      high: ['medical', 'nursing', 'healthcare', 'patient', 'clinical'],
+      medium: ['biology', 'health', 'care'],
+    },
+    careerPaths: ['Doctor/MBBS', 'Nurse', 'Physiotherapist', 'Medical Lab Technician', 'Dentist'],
+    entranceExams: ['NEET', 'AIIMS', 'Nursing Entrance Exams'],
+    bestFor: 'Students interested in healthcare and medical sciences',
   },
   commerce_maths: {
-    name: "Commerce with Maths",
-    category: "Commerce",
-    riasec: { primary: ["E", "C"], secondary: ["I"], weights: { E: 0.35, C: 0.4, I: 0.25 } },
+    name: 'Commerce with Maths',
+    category: 'Commerce',
+    riasec: { primary: ['E', 'C'], secondary: ['I'], weights: { E: 0.35, C: 0.4, I: 0.25 } },
     subjects: {
       core: { accountancy: 0.3, economics: 0.25, business: 0.2, mathematics: 0.25 },
-      aliases: ["accounts", "eco", "commerce", "maths", "math", "business studies"]
+      aliases: ['accounts', 'eco', 'commerce', 'maths', 'math', 'business studies'],
     },
-    keywords: { high: ["finance", "investment", "stock", "banking", "ca", "accounting"], medium: ["business", "money", "trade"] },
-    careerPaths: ["Chartered Accountant", "Investment Banker", "Financial Analyst", "Actuary", "Economist"],
-    entranceExams: ["CA Foundation", "CS Foundation", "CMA", "CUET"],
-    bestFor: "Students interested in finance, accounting, and quantitative analysis"
+    keywords: {
+      high: ['finance', 'investment', 'stock', 'banking', 'ca', 'accounting'],
+      medium: ['business', 'money', 'trade'],
+    },
+    careerPaths: [
+      'Chartered Accountant',
+      'Investment Banker',
+      'Financial Analyst',
+      'Actuary',
+      'Economist',
+    ],
+    entranceExams: ['CA Foundation', 'CS Foundation', 'CMA', 'CUET'],
+    bestFor: 'Students interested in finance, accounting, and quantitative analysis',
   },
   commerce: {
-    name: "Commerce without Maths",
-    category: "Commerce",
-    riasec: { primary: ["E", "C"], secondary: ["S"], weights: { E: 0.4, C: 0.35, S: 0.25 } },
+    name: 'Commerce without Maths',
+    category: 'Commerce',
+    riasec: { primary: ['E', 'C'], secondary: ['S'], weights: { E: 0.4, C: 0.35, S: 0.25 } },
     subjects: {
       core: { accountancy: 0.35, economics: 0.3, business: 0.35 },
-      aliases: ["accounts", "eco", "commerce", "business studies"]
+      aliases: ['accounts', 'eco', 'commerce', 'business studies'],
     },
-    keywords: { high: ["business", "entrepreneur", "marketing", "sales", "management"], medium: ["trade", "company", "startup"] },
-    careerPaths: ["Business Manager", "Marketing Executive", "HR Manager", "Entrepreneur", "Company Secretary"],
-    entranceExams: ["CUET", "IPM", "BBA Entrance Exams"],
-    bestFor: "Students interested in business, management, and entrepreneurship"
+    keywords: {
+      high: ['business', 'entrepreneur', 'marketing', 'sales', 'management'],
+      medium: ['trade', 'company', 'startup'],
+    },
+    careerPaths: [
+      'Business Manager',
+      'Marketing Executive',
+      'HR Manager',
+      'Entrepreneur',
+      'Company Secretary',
+    ],
+    entranceExams: ['CUET', 'IPM', 'BBA Entrance Exams'],
+    bestFor: 'Students interested in business, management, and entrepreneurship',
   },
   arts_psychology: {
-    name: "Arts with Psychology",
-    category: "Arts",
-    riasec: { primary: ["S", "I"], secondary: ["A"], weights: { S: 0.4, I: 0.35, A: 0.25 } },
+    name: 'Arts with Psychology',
+    category: 'Arts',
+    riasec: { primary: ['S', 'I'], secondary: ['A'], weights: { S: 0.4, I: 0.35, A: 0.25 } },
     subjects: {
       core: { english: 0.25, psychology: 0.35, sociology: 0.2, history: 0.2 },
-      aliases: ["eng", "psych", "socio", "hist", "humanities"]
+      aliases: ['eng', 'psych', 'socio', 'hist', 'humanities'],
     },
-    keywords: { high: ["psychology", "counseling", "mental health", "behavior", "therapy"], medium: ["human", "mind", "social"] },
-    careerPaths: ["Psychologist", "Counselor", "HR Professional", "Social Worker", "Clinical Therapist"],
-    entranceExams: ["CUET", "DU JAT", "Psychology Entrance Exams"],
-    bestFor: "Students interested in understanding human behavior and mental health"
+    keywords: {
+      high: ['psychology', 'counseling', 'mental health', 'behavior', 'therapy'],
+      medium: ['human', 'mind', 'social'],
+    },
+    careerPaths: [
+      'Psychologist',
+      'Counselor',
+      'HR Professional',
+      'Social Worker',
+      'Clinical Therapist',
+    ],
+    entranceExams: ['CUET', 'DU JAT', 'Psychology Entrance Exams'],
+    bestFor: 'Students interested in understanding human behavior and mental health',
   },
   arts_economics: {
-    name: "Arts with Economics",
-    category: "Arts",
-    riasec: { primary: ["I", "E"], secondary: ["S"], weights: { I: 0.4, E: 0.35, S: 0.25 } },
+    name: 'Arts with Economics',
+    category: 'Arts',
+    riasec: { primary: ['I', 'E'], secondary: ['S'], weights: { I: 0.4, E: 0.35, S: 0.25 } },
     subjects: {
       core: { economics: 0.35, english: 0.25, political: 0.2, history: 0.2 },
-      aliases: ["eco", "eng", "civics", "pol sci", "hist"]
+      aliases: ['eco', 'eng', 'civics', 'pol sci', 'hist'],
     },
-    keywords: { high: ["economics", "policy", "government", "civil services", "ias"], medium: ["society", "politics", "development"] },
-    careerPaths: ["Economist", "Civil Services (IAS/IPS)", "Policy Analyst", "Journalist", "Professor"],
-    entranceExams: ["UPSC", "CUET", "Economics Honors Entrance"],
-    bestFor: "Students interested in economics, policy-making, and civil services"
+    keywords: {
+      high: ['economics', 'policy', 'government', 'civil services', 'ias'],
+      medium: ['society', 'politics', 'development'],
+    },
+    careerPaths: [
+      'Economist',
+      'Civil Services (IAS/IPS)',
+      'Policy Analyst',
+      'Journalist',
+      'Professor',
+    ],
+    entranceExams: ['UPSC', 'CUET', 'Economics Honors Entrance'],
+    bestFor: 'Students interested in economics, policy-making, and civil services',
   },
   arts: {
-    name: "Arts/Humanities General",
-    category: "Arts",
-    riasec: { primary: ["A", "S"], secondary: ["I"], weights: { A: 0.4, S: 0.35, I: 0.25 } },
+    name: 'Arts/Humanities General',
+    category: 'Arts',
+    riasec: { primary: ['A', 'S'], secondary: ['I'], weights: { A: 0.4, S: 0.35, I: 0.25 } },
     subjects: {
       core: { english: 0.3, history: 0.25, political: 0.2, geography: 0.25 },
-      aliases: ["eng", "hist", "civics", "geo", "literature", "hindi"]
+      aliases: ['eng', 'hist', 'civics', 'geo', 'literature', 'hindi'],
     },
-    keywords: { high: ["writing", "journalism", "content", "creative", "media", "law"], medium: ["art", "culture", "literature"] },
-    careerPaths: ["Journalist", "Content Writer", "Lawyer", "Teacher", "Civil Services"],
-    entranceExams: ["CLAT", "CUET", "Mass Communication Entrance"],
-    bestFor: "Students interested in humanities, writing, and creative fields"
-  }
+    keywords: {
+      high: ['writing', 'journalism', 'content', 'creative', 'media', 'law'],
+      medium: ['art', 'culture', 'literature'],
+    },
+    careerPaths: ['Journalist', 'Content Writer', 'Lawyer', 'Teacher', 'Civil Services'],
+    entranceExams: ['CLAT', 'CUET', 'Mass Communication Entrance'],
+    bestFor: 'Students interested in humanities, writing, and creative fields',
+  },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -144,7 +213,8 @@ const analyzeInterestDNA = (riasecScores) => {
     return { hasData: false, normalizedScores: {}, dominantTypes: [], strengthLevel: 0 };
   }
   const total = Object.values(riasecScores).reduce((sum, v) => sum + (v || 0), 0);
-  if (total === 0) return { hasData: false, normalizedScores: {}, dominantTypes: [], strengthLevel: 0 };
+  if (total === 0)
+    return { hasData: false, normalizedScores: {}, dominantTypes: [], strengthLevel: 0 };
 
   const maxPossible = Math.max(...Object.values(riasecScores), 1);
   const normalizedScores = {};
@@ -152,13 +222,23 @@ const analyzeInterestDNA = (riasecScores) => {
     normalizedScores[type] = Math.round(((score || 0) / maxPossible) * 100);
   });
 
-  const sortedTypes = Object.entries(normalizedScores).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([type]) => type);
+  const sortedTypes = Object.entries(normalizedScores)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([type]) => type);
   const scores = Object.values(normalizedScores);
   const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
   const variance = scores.reduce((sum, s) => sum + Math.pow(s - avg, 2), 0) / scores.length;
   const strengthLevel = Math.min(100, Math.sqrt(variance) * 3);
 
-  return { hasData: true, normalizedScores, dominantTypes: sortedTypes, strengthLevel, primaryType: sortedTypes[0], secondaryType: sortedTypes[1] };
+  return {
+    hasData: true,
+    normalizedScores,
+    dominantTypes: sortedTypes,
+    strengthLevel,
+    primaryType: sortedTypes[0],
+    secondaryType: sortedTypes[1],
+  };
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -167,23 +247,76 @@ const analyzeInterestDNA = (riasecScores) => {
 
 const profileAcademicIntelligence = (marks) => {
   if (!marks || marks.length === 0) {
-    return { hasData: false, subjectScores: {}, streamAffinity: { science: 0, commerce: 0, arts: 0 }, academicStrength: 0, topSubjects: [] };
+    return {
+      hasData: false,
+      subjectScores: {},
+      streamAffinity: { science: 0, commerce: 0, arts: 0 },
+      academicStrength: 0,
+      topSubjects: [],
+    };
   }
 
   const subjectScores = {};
   const streamScores = { science: [], commerce: [], arts: [] };
   const streamMap = {
-    science: ["physics", "phy", "chemistry", "chem", "biology", "bio", "mathematics", "maths", "math", "science", "computer", "cs", "it"],
-    commerce: ["accountancy", "accounts", "accounting", "economics", "eco", "commerce", "business", "finance"],
-    arts: ["english", "eng", "history", "hist", "political", "civics", "sociology", "psychology", "geography", "hindi", "literature"]
+    science: [
+      'physics',
+      'phy',
+      'chemistry',
+      'chem',
+      'biology',
+      'bio',
+      'mathematics',
+      'maths',
+      'math',
+      'science',
+      'computer',
+      'cs',
+      'it',
+    ],
+    commerce: [
+      'accountancy',
+      'accounts',
+      'accounting',
+      'economics',
+      'eco',
+      'commerce',
+      'business',
+      'finance',
+    ],
+    arts: [
+      'english',
+      'eng',
+      'history',
+      'hist',
+      'political',
+      'civics',
+      'sociology',
+      'psychology',
+      'geography',
+      'hindi',
+      'literature',
+    ],
   };
 
   marks.forEach((mark) => {
-    const subjectName = (mark.curriculum_subjects?.name || mark.subject_name || mark.subject_id || "").toLowerCase().trim();
+    const subjectName = (
+      mark.curriculum_subjects?.name ||
+      mark.subject_name ||
+      mark.subject_id ||
+      ''
+    )
+      .toLowerCase()
+      .trim();
     if (!subjectName) return;
-    const percentage = mark.percentage || (mark.marks_obtained && mark.total_marks ? (mark.marks_obtained / mark.total_marks) * 100 : 0);
+    const percentage =
+      mark.percentage ||
+      (mark.marks_obtained && mark.total_marks
+        ? (mark.marks_obtained / mark.total_marks) * 100
+        : 0);
     if (percentage > 0) {
-      if (!subjectScores[subjectName] || subjectScores[subjectName] < percentage) subjectScores[subjectName] = percentage;
+      if (!subjectScores[subjectName] || subjectScores[subjectName] < percentage)
+        subjectScores[subjectName] = percentage;
       Object.entries(streamMap).forEach(([stream, subjects]) => {
         if (subjects.some((s) => subjectName.includes(s))) streamScores[stream].push(percentage);
       });
@@ -192,16 +325,28 @@ const profileAcademicIntelligence = (marks) => {
 
   const streamAffinity = {};
   Object.entries(streamScores).forEach(([stream, scores]) => {
-    streamAffinity[stream] = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+    streamAffinity[stream] =
+      scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
   });
 
   const sortedSubjects = Object.entries(subjectScores).sort((a, b) => b[1] - a[1]);
-  const topSubjects = sortedSubjects.slice(0, 5).map(([name, score]) => ({ name, score: Math.round(score) }));
+  const topSubjects = sortedSubjects
+    .slice(0, 5)
+    .map(([name, score]) => ({ name, score: Math.round(score) }));
   const allScores = Object.values(subjectScores);
-  const academicStrength = allScores.length > 0 ? Math.round(allScores.reduce((a, b) => a + b, 0) / allScores.length) : 0;
-  const dominantStream = Object.entries(streamAffinity).sort((a, b) => b[1] - a[1])[0]?.[0] || "unknown";
+  const academicStrength =
+    allScores.length > 0 ? Math.round(allScores.reduce((a, b) => a + b, 0) / allScores.length) : 0;
+  const dominantStream =
+    Object.entries(streamAffinity).sort((a, b) => b[1] - a[1])[0]?.[0] || 'unknown';
 
-  return { hasData: true, subjectScores, streamAffinity, academicStrength, topSubjects, dominantStream };
+  return {
+    hasData: true,
+    subjectScores,
+    streamAffinity,
+    academicStrength,
+    topSubjects,
+    dominantStream,
+  };
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -217,16 +362,17 @@ const analyzeProjects = (projects) => {
   const technologies = new Set();
 
   const domainPatterns = {
-    technology: /\b(software|app|web|mobile|python|java|react|coding|programming|computer|robot)\b/gi,
+    technology:
+      /\b(software|app|web|mobile|python|java|react|coding|programming|computer|robot)\b/gi,
     business: /\b(startup|entrepreneur|business|marketing|sales|strategy)\b/gi,
     research: /\b(research|experiment|scientific|hypothesis|lab|data)\b/gi,
     creative: /\b(design|art|creative|content|media|video|graphic)\b/gi,
     social: /\b(ngo|volunteer|community|social|charity)\b/gi,
-    medical: /\b(medical|health|clinical|patient|biology)\b/gi
+    medical: /\b(medical|health|clinical|patient|biology)\b/gi,
   };
 
   projects.forEach((project) => {
-    const text = `${project.title || ""} ${project.description || ""}`.toLowerCase();
+    const text = `${project.title || ''} ${project.description || ''}`.toLowerCase();
     Object.entries(domainPatterns).forEach(([domain, pattern]) => {
       const matches = (text.match(pattern) || []).length;
       if (matches > 0) domainCounts[domain] = (domainCounts[domain] || 0) + matches;
@@ -236,8 +382,16 @@ const analyzeProjects = (projects) => {
     }
   });
 
-  const domains = Object.entries(domainCounts).sort((a, b) => b[1] - a[1]).map(([domain]) => domain);
-  return { hasData: true, domains, technologies: Array.from(technologies), projectCount: projects.length, primaryDomain: domains[0] || null };
+  const domains = Object.entries(domainCounts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([domain]) => domain);
+  return {
+    hasData: true,
+    domains,
+    technologies: Array.from(technologies),
+    projectCount: projects.length,
+    primaryDomain: domains[0] || null,
+  };
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -258,11 +412,11 @@ const analyzeExperiences = (experiences) => {
     research: /\b(research|lab|scientist|academic)\b/gi,
     creative: /\b(design|content|media|writer|art)\b/gi,
     social: /\b(volunteer|ngo|social|community|teaching)\b/gi,
-    medical: /\b(hospital|clinic|medical|health)\b/gi
+    medical: /\b(hospital|clinic|medical|health)\b/gi,
   };
 
   experiences.forEach((exp) => {
-    const text = `${exp.organization || ""} ${exp.role || ""}`.toLowerCase();
+    const text = `${exp.organization || ''} ${exp.role || ''}`.toLowerCase();
     Object.entries(typePatterns).forEach(([type, pattern]) => {
       const matches = (text.match(pattern) || []).length;
       if (matches > 0) typeCounts[type] = (typeCounts[type] || 0) + matches;
@@ -270,14 +424,26 @@ const analyzeExperiences = (experiences) => {
     if (exp.verified) verifiedCount++;
   });
 
-  return { hasData: true, experienceTypes: Object.keys(typeCounts), verifiedCount, primaryType: Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || null };
+  return {
+    hasData: true,
+    experienceTypes: Object.keys(typeCounts),
+    verifiedCount,
+    primaryType: Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || null,
+  };
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // MAIN SCORING ENGINE - Calculate stream match scores
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const calculateStreamScore = (streamId, streamProfile, interestDNA, academicProfile, projectAnalysis, experienceAnalysis) => {
+const calculateStreamScore = (
+  streamId,
+  streamProfile,
+  interestDNA,
+  academicProfile,
+  projectAnalysis,
+  experienceAnalysis
+) => {
   let totalScore = 0;
   const matchReasons = [];
   const scoreBreakdown = {};
@@ -287,8 +453,12 @@ const calculateStreamScore = (streamId, streamProfile, interestDNA, academicProf
   // ═══════════════════════════════════════════════════════════════════════════
   let interestScore = 0;
   if (interestDNA.hasData) {
-    const primaryMatch = interestDNA.dominantTypes.filter(t => streamProfile.riasec.primary.includes(t)).length;
-    const secondaryMatch = interestDNA.dominantTypes.filter(t => streamProfile.riasec.secondary.includes(t)).length;
+    const primaryMatch = interestDNA.dominantTypes.filter((t) =>
+      streamProfile.riasec.primary.includes(t)
+    ).length;
+    const secondaryMatch = interestDNA.dominantTypes.filter((t) =>
+      streamProfile.riasec.secondary.includes(t)
+    ).length;
     interestScore = primaryMatch * 12 + secondaryMatch * 6;
     interestScore = Math.min(25, interestScore);
     if (primaryMatch > 0) {
@@ -314,7 +484,7 @@ const calculateStreamScore = (streamId, streamProfile, interestDNA, academicProf
     Object.entries(streamProfile.subjects.core).forEach(([subject, weight]) => {
       const aliases = [subject, ...(streamProfile.subjects.aliases || [])];
       Object.entries(academicProfile.subjectScores).forEach(([studentSubject, score]) => {
-        if (aliases.some(a => studentSubject.includes(a))) {
+        if (aliases.some((a) => studentSubject.includes(a))) {
           subjectMatchScore += (score / 100) * weight * 20;
         }
       });
@@ -340,9 +510,9 @@ const calculateStreamScore = (streamId, streamProfile, interestDNA, academicProf
     const streamDomainMap = {
       Science: ['technology', 'research', 'medical'],
       Commerce: ['business'],
-      Arts: ['creative', 'social']
+      Arts: ['creative', 'social'],
     };
-    const relevantDomains = projectAnalysis.domains.filter(d => 
+    const relevantDomains = projectAnalysis.domains.filter((d) =>
       (streamDomainMap[streamProfile.category] || []).includes(d)
     );
     if (relevantDomains.length > 0) {
@@ -362,9 +532,9 @@ const calculateStreamScore = (streamId, streamProfile, interestDNA, academicProf
     const streamExpMap = {
       Science: ['technology', 'research', 'medical'],
       Commerce: ['business'],
-      Arts: ['creative', 'social']
+      Arts: ['creative', 'social'],
     };
-    const relevantTypes = experienceAnalysis.experienceTypes.filter(t => 
+    const relevantTypes = experienceAnalysis.experienceTypes.filter((t) =>
       (streamExpMap[streamProfile.category] || []).includes(t)
     );
     if (relevantTypes.length > 0) {
@@ -382,7 +552,7 @@ const calculateStreamScore = (streamId, streamProfile, interestDNA, academicProf
   // FINAL SCORE
   // ═══════════════════════════════════════════════════════════════════════════
   const finalScore = Math.min(98, Math.max(20, Math.round(totalScore)));
-  
+
   let matchLevel = 'Low';
   if (finalScore >= 80) matchLevel = 'High';
   else if (finalScore >= 60) matchLevel = 'Medium';
@@ -397,7 +567,7 @@ const calculateStreamScore = (streamId, streamProfile, interestDNA, academicProf
     scoreBreakdown,
     careerPaths: streamProfile.careerPaths || [],
     entranceExams: streamProfile.entranceExams || [],
-    bestFor: streamProfile.bestFor || ''
+    bestFor: streamProfile.bestFor || '',
   };
 };
 
@@ -414,7 +584,7 @@ const calculateStreamScore = (streamId, streamProfile, interestDNA, academicProf
 export const calculateStreamRecommendations = (assessmentResults, academicData = {}) => {
   // Extract RIASEC scores
   const riasecScores = assessmentResults?.riasec?.scores || {};
-  
+
   // Analyze all dimensions
   const interestDNA = analyzeInterestDNA(riasecScores);
   const academicProfile = profileAcademicIntelligence(academicData.subjectMarks || []);
@@ -424,7 +594,14 @@ export const calculateStreamRecommendations = (assessmentResults, academicData =
   // Calculate scores for all streams
   const streamScores = [];
   Object.entries(STREAM_KNOWLEDGE_BASE).forEach(([streamId, streamProfile]) => {
-    const score = calculateStreamScore(streamId, streamProfile, interestDNA, academicProfile, projectAnalysis, experienceAnalysis);
+    const score = calculateStreamScore(
+      streamId,
+      streamProfile,
+      interestDNA,
+      academicProfile,
+      projectAnalysis,
+      experienceAnalysis
+    );
     streamScores.push(score);
   });
 
@@ -441,17 +618,27 @@ export const calculateStreamRecommendations = (assessmentResults, academicData =
     streamFit: topRecommendation?.matchLevel || 'Medium',
     confidenceScore: topRecommendation?.matchScore || 50,
     reasoning: {
-      interests: topRecommendation?.reasons?.find(r => r.includes('interest')) || `Based on your RIASEC profile`,
-      aptitude: topRecommendation?.reasons?.find(r => r.includes('Strong') || r.includes('subject')) || `Based on your academic performance`,
-      personality: topRecommendation?.reasons?.find(r => r.includes('project') || r.includes('experience')) || `Based on your activities`
+      interests:
+        topRecommendation?.reasons?.find((r) => r.includes('interest')) ||
+        `Based on your RIASEC profile`,
+      aptitude:
+        topRecommendation?.reasons?.find((r) => r.includes('Strong') || r.includes('subject')) ||
+        `Based on your academic performance`,
+      personality:
+        topRecommendation?.reasons?.find(
+          (r) => r.includes('project') || r.includes('experience')
+        ) || `Based on your activities`,
     },
     scoreBasedAnalysis: {
       riasecTop3: interestDNA.dominantTypes || [],
-      strongAptitudes: academicProfile.topSubjects?.slice(0, 2).map(s => `${s.name} (${s.score}%)`) || [],
-      matchingPattern: `${topRecommendation?.category || 'Science'} stream alignment`
+      strongAptitudes:
+        academicProfile.topSubjects?.slice(0, 2).map((s) => `${s.name} (${s.score}%)`) || [],
+      matchingPattern: `${topRecommendation?.category || 'Science'} stream alignment`,
     },
     alternativeStream: alternativeRecommendation?.streamName || null,
-    alternativeReason: alternativeRecommendation ? `Also a good fit with ${alternativeRecommendation.matchScore}% match` : null,
+    alternativeReason: alternativeRecommendation
+      ? `Also a good fit with ${alternativeRecommendation.matchScore}% match`
+      : null,
     subjectsToFocus: getSubjectsForStream(topRecommendation?.streamId),
     careerPathsAfter12: topRecommendation?.careerPaths || [],
     entranceExams: topRecommendation?.entranceExams || [],
@@ -461,8 +648,8 @@ export const calculateStreamRecommendations = (assessmentResults, academicData =
       hasRiasec: interestDNA.hasData,
       hasAcademicData: academicProfile.hasData,
       hasProjects: projectAnalysis.hasData,
-      hasExperiences: experienceAnalysis.hasData
-    }
+      hasExperiences: experienceAnalysis.hasData,
+    },
   };
 };
 
@@ -477,7 +664,7 @@ const getSubjectsForStream = (streamId) => {
     commerce: ['Accountancy', 'Economics', 'Business Studies'],
     arts_psychology: ['English', 'Psychology', 'Sociology', 'History'],
     arts_economics: ['Economics', 'English', 'Political Science', 'History'],
-    arts: ['English', 'History', 'Political Science', 'Geography']
+    arts: ['English', 'History', 'Political Science', 'Geography'],
   };
   return subjectMap[streamId] || ['Core Subjects'];
 };
@@ -486,7 +673,7 @@ const getCollegeTypesForStream = (category) => {
   const collegeMap = {
     Science: ['IITs', 'NITs', 'Medical Colleges', 'Science Universities'],
     Commerce: ['Top Commerce Colleges', 'Business Schools', 'CA Institutes'],
-    Arts: ['Central Universities', 'Law Schools', 'Mass Communication Institutes']
+    Arts: ['Central Universities', 'Law Schools', 'Mass Communication Institutes'],
   };
   return collegeMap[category] || ['Universities'];
 };

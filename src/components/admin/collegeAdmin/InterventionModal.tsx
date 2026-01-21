@@ -6,7 +6,7 @@ import {
   ClockIcon,
   FlagIcon,
   DocumentTextIcon,
-  CheckCircleIcon
+  CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 
 interface Student {
@@ -26,7 +26,14 @@ interface InterventionModalProps {
   student: Student | null;
   noteText: string;
   noteOutcome: string;
-  interventionType: 'academic' | 'personal' | 'career' | 'attendance' | 'behavioral' | 'financial' | 'other';
+  interventionType:
+    | 'academic'
+    | 'personal'
+    | 'career'
+    | 'attendance'
+    | 'behavioral'
+    | 'financial'
+    | 'other';
   isPrivateNote: boolean;
   noteStatus: 'pending' | 'in-progress' | 'completed' | 'escalated';
   priority?: 'low' | 'medium' | 'high' | 'urgent';
@@ -72,19 +79,17 @@ const InterventionModal: React.FC<InterventionModalProps> = ({
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div>
             <h2 className="text-xl font-semibold text-gray-900">Add Mentoring Note</h2>
-            <p className="text-sm text-gray-500 mt-0.5">Document intervention and follow-up actions</p>
+            <p className="text-sm text-gray-500 mt-0.5">
+              Document intervention and follow-up actions
+            </p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
             <XMarkIcon className="h-6 w-6" />
           </button>
         </div>
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-6">
-
           <div className="space-y-6">
             {/* Student Information */}
             <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
@@ -94,16 +99,22 @@ const InterventionModal: React.FC<InterventionModalProps> = ({
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-base font-semibold text-gray-900">{student?.name}</h3>
-                  <p className="text-sm text-gray-600 mt-0.5">{student?.rollNo} • {student?.batch}</p>
+                  <p className="text-sm text-gray-600 mt-0.5">
+                    {student?.rollNo} • {student?.batch}
+                  </p>
 
                   <div className="grid grid-cols-3 gap-3 mt-3">
                     <div>
                       <p className="text-xs text-gray-500">Department</p>
-                      <p className="text-sm font-medium text-gray-900 mt-0.5">{student?.department}</p>
+                      <p className="text-sm font-medium text-gray-900 mt-0.5">
+                        {student?.department}
+                      </p>
                     </div>
                     <div>
                       <p className="text-xs text-gray-500">Semester</p>
-                      <p className="text-sm font-medium text-gray-900 mt-0.5">{student?.semester}</p>
+                      <p className="text-sm font-medium text-gray-900 mt-0.5">
+                        {student?.semester}
+                      </p>
                     </div>
                     <div>
                       <p className="text-xs text-gray-500">CGPA</p>
@@ -215,9 +226,7 @@ const InterventionModal: React.FC<InterventionModalProps> = ({
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none text-sm"
                   placeholder="Describe the intervention, discussion points, student response, and any observations..."
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  {noteText.length} characters
-                </p>
+                <p className="text-xs text-gray-500 mt-1">{noteText.length} characters</p>
               </div>
 
               <div>

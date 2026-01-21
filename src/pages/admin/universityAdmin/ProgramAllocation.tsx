@@ -31,7 +31,7 @@ const mockColleges = [
     totalPrograms: 12,
     activePrograms: 10,
     totalStudents: 2500,
-    status: 'active'
+    status: 'active',
   },
   {
     id: 2,
@@ -44,7 +44,7 @@ const mockColleges = [
     totalPrograms: 8,
     activePrograms: 7,
     totalStudents: 1800,
-    status: 'active'
+    status: 'active',
   },
   {
     id: 3,
@@ -57,7 +57,7 @@ const mockColleges = [
     totalPrograms: 15,
     activePrograms: 12,
     totalStudents: 3200,
-    status: 'active'
+    status: 'active',
   },
   {
     id: 4,
@@ -70,8 +70,8 @@ const mockColleges = [
     totalPrograms: 10,
     activePrograms: 9,
     totalStudents: 2100,
-    status: 'pending_review'
-  }
+    status: 'pending_review',
+  },
 ];
 
 const mockPrograms = [
@@ -86,7 +86,7 @@ const mockPrograms = [
     fees: 85000,
     status: 'approved',
     accreditation: 'NBA',
-    lastUpdated: '2024-01-15'
+    lastUpdated: '2024-01-15',
   },
   {
     id: 2,
@@ -99,7 +99,7 @@ const mockPrograms = [
     fees: 80000,
     status: 'approved',
     accreditation: 'NBA',
-    lastUpdated: '2024-01-10'
+    lastUpdated: '2024-01-10',
   },
   {
     id: 3,
@@ -112,7 +112,7 @@ const mockPrograms = [
     fees: 75000,
     status: 'pending',
     accreditation: 'Pending',
-    lastUpdated: '2024-01-20'
+    lastUpdated: '2024-01-20',
   },
   {
     id: 4,
@@ -125,7 +125,7 @@ const mockPrograms = [
     fees: 120000,
     status: 'under_review',
     accreditation: 'AICTE',
-    lastUpdated: '2024-01-18'
+    lastUpdated: '2024-01-18',
   },
   {
     id: 5,
@@ -138,8 +138,8 @@ const mockPrograms = [
     fees: 65000,
     status: 'approved',
     accreditation: 'AICTE',
-    lastUpdated: '2024-01-12'
-  }
+    lastUpdated: '2024-01-12',
+  },
 ];
 
 const ProgramAllocation: React.FC = () => {
@@ -161,15 +161,16 @@ const ProgramAllocation: React.FC = () => {
 
   // Filter colleges based on search and filters
   const filteredColleges = useMemo(() => {
-    return mockColleges.filter(college => {
-      const matchesSearch = college.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           college.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           college.district.toLowerCase().includes(searchTerm.toLowerCase());
-      
+    return mockColleges.filter((college) => {
+      const matchesSearch =
+        college.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        college.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        college.district.toLowerCase().includes(searchTerm.toLowerCase());
+
       const matchesStatus = filterStatus === 'all' || college.status === filterStatus;
       const matchesType = filterType === 'all' || college.type.toLowerCase() === filterType;
       const matchesDistrict = filterDistrict === 'all' || college.district === filterDistrict;
-      
+
       return matchesSearch && matchesStatus && matchesType && matchesDistrict;
     });
   }, [searchTerm, filterStatus, filterType, filterDistrict]);
@@ -184,16 +185,26 @@ const ProgramAllocation: React.FC = () => {
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       active: { color: 'bg-green-100 text-green-800', icon: CheckCircleIcon, text: 'Active' },
-      pending_review: { color: 'bg-yellow-100 text-yellow-800', icon: ClockIcon, text: 'Pending Review' },
-      inactive: { color: 'bg-red-100 text-red-800', icon: ExclamationTriangleIcon, text: 'Inactive' },
-      suspended: { color: 'bg-gray-100 text-gray-800', icon: XMarkIcon, text: 'Suspended' }
+      pending_review: {
+        color: 'bg-yellow-100 text-yellow-800',
+        icon: ClockIcon,
+        text: 'Pending Review',
+      },
+      inactive: {
+        color: 'bg-red-100 text-red-800',
+        icon: ExclamationTriangleIcon,
+        text: 'Inactive',
+      },
+      suspended: { color: 'bg-gray-100 text-gray-800', icon: XMarkIcon, text: 'Suspended' },
     };
-    
+
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.active;
     const Icon = config.icon;
-    
+
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
+      <span
+        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}
+      >
         <Icon className="w-3 h-3 mr-1" />
         {config.text}
       </span>
@@ -205,23 +216,23 @@ const ProgramAllocation: React.FC = () => {
       approved: { color: 'bg-green-100 text-green-800', text: 'Approved' },
       pending: { color: 'bg-yellow-100 text-yellow-800', text: 'Pending' },
       under_review: { color: 'bg-blue-100 text-blue-800', text: 'Under Review' },
-      rejected: { color: 'bg-red-100 text-red-800', text: 'Rejected' }
+      rejected: { color: 'bg-red-100 text-red-800', text: 'Rejected' },
     };
-    
+
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
-    
+
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
+      <span
+        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}
+      >
         {config.text}
       </span>
     );
   };
 
   const handleProgramSelection = (programId: number) => {
-    setSelectedPrograms(prev => 
-      prev.includes(programId) 
-        ? prev.filter(id => id !== programId)
-        : [...prev, programId]
+    setSelectedPrograms((prev) =>
+      prev.includes(programId) ? prev.filter((id) => id !== programId) : [...prev, programId]
     );
   };
 
@@ -239,7 +250,7 @@ const ProgramAllocation: React.FC = () => {
       <div className="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-medium text-gray-900">
-            Program Allocation - {mockColleges.find(c => c.id === selectedCollege)?.name}
+            Program Allocation - {mockColleges.find((c) => c.id === selectedCollege)?.name}
           </h3>
           <button
             onClick={() => setShowProgramModal(false)}
@@ -248,7 +259,7 @@ const ProgramAllocation: React.FC = () => {
             <XMarkIcon className="h-6 w-6" />
           </button>
         </div>
-        
+
         <div className="mb-4">
           <div className="flex justify-between items-center mb-4">
             <div className="flex items-center space-x-4">
@@ -286,7 +297,7 @@ const ProgramAllocation: React.FC = () => {
                     type="checkbox"
                     onChange={(e) => {
                       if (e.target.checked) {
-                        setSelectedPrograms(mockPrograms.map(p => p.id));
+                        setSelectedPrograms(mockPrograms.map((p) => p.id));
                       } else {
                         setSelectedPrograms([]);
                       }
@@ -325,7 +336,9 @@ const ProgramAllocation: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div>
                       <div className="text-sm font-medium text-gray-900">{program.name}</div>
-                      <div className="text-sm text-gray-500">{program.code} - {program.degree}</div>
+                      <div className="text-sm text-gray-500">
+                        {program.code} - {program.degree}
+                      </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -370,25 +383,24 @@ const ProgramAllocation: React.FC = () => {
             <XMarkIcon className="h-6 w-6" />
           </button>
         </div>
-        
+
         <div className="mb-6">
           <p className="text-sm text-gray-600 mb-4">
             You are about to allocate {selectedPrograms.length} program(s) to:
           </p>
           <div className="bg-gray-50 p-4 rounded-md">
             <h4 className="font-medium text-gray-900">
-              {mockColleges.find(c => c.id === selectedCollege)?.name}
+              {mockColleges.find((c) => c.id === selectedCollege)?.name}
             </h4>
             <p className="text-sm text-gray-600">
-              {mockColleges.find(c => c.id === selectedCollege)?.code} - {mockColleges.find(c => c.id === selectedCollege)?.district}
+              {mockColleges.find((c) => c.id === selectedCollege)?.code} -{' '}
+              {mockColleges.find((c) => c.id === selectedCollege)?.district}
             </p>
           </div>
         </div>
 
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Effective Date
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Effective Date</label>
           <input
             type="date"
             className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -397,9 +409,7 @@ const ProgramAllocation: React.FC = () => {
         </div>
 
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Remarks (Optional)
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Remarks (Optional)</label>
           <textarea
             rows={3}
             className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -437,7 +447,7 @@ const ProgramAllocation: React.FC = () => {
             <XMarkIcon className="h-6 w-6" />
           </button>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* College Selection */}
           <div className="space-y-4">
@@ -454,7 +464,9 @@ const ProgramAllocation: React.FC = () => {
                   />
                   <div className="ml-3 flex-1">
                     <div className="text-sm font-medium text-gray-900">{college.name}</div>
-                    <div className="text-sm text-gray-500">{college.code} - {college.district}</div>
+                    <div className="text-sm text-gray-500">
+                      {college.code} - {college.district}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -490,9 +502,7 @@ const ProgramAllocation: React.FC = () => {
           <h4 className="text-md font-medium text-gray-900">Allocation Details</h4>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Academic Year
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Academic Year</label>
               <select className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
                 <option value="2024-25">2024-25</option>
                 <option value="2025-26">2025-26</option>
@@ -500,9 +510,7 @@ const ProgramAllocation: React.FC = () => {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Effective Date
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Effective Date</label>
               <input
                 type="date"
                 className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -510,9 +518,7 @@ const ProgramAllocation: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Status
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
               <select className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
                 <option value="active">Active</option>
                 <option value="pending">Pending Approval</option>
@@ -524,9 +530,7 @@ const ProgramAllocation: React.FC = () => {
 
         {/* Additional Information */}
         <div className="mt-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Allocation Notes
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Allocation Notes</label>
           <textarea
             rows={3}
             className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -540,12 +544,11 @@ const ProgramAllocation: React.FC = () => {
             <h5 className="text-sm font-medium text-blue-900 mb-2">Allocation Summary</h5>
             <p className="text-sm text-blue-800">
               Allocating <strong>{selectedPrograms.length}</strong> program(s) to{' '}
-              <strong>{mockColleges.find(c => c.id === selectedCollege)?.name}</strong>
+              <strong>{mockColleges.find((c) => c.id === selectedCollege)?.name}</strong>
             </p>
             <div className="mt-2 text-xs text-blue-700">
-              Selected Programs: {selectedPrograms.map(id => 
-                mockPrograms.find(p => p.id === id)?.code
-              ).join(', ')}
+              Selected Programs:{' '}
+              {selectedPrograms.map((id) => mockPrograms.find((p) => p.id === id)?.code).join(', ')}
             </div>
           </div>
         )}
@@ -576,7 +579,7 @@ const ProgramAllocation: React.FC = () => {
   );
 
   const CollegeDetailsModal = () => {
-    const college = mockColleges.find(c => c.id === selectedCollege);
+    const college = mockColleges.find((c) => c.id === selectedCollege);
     if (!college) return null;
 
     return (
@@ -591,7 +594,7 @@ const ProgramAllocation: React.FC = () => {
               <XMarkIcon className="h-6 w-6" />
             </button>
           </div>
-          
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Basic Information */}
             <div className="lg:col-span-2 space-y-6">
@@ -638,7 +641,9 @@ const ProgramAllocation: React.FC = () => {
                     <div className="text-sm text-blue-800">Total Programs</div>
                   </div>
                   <div className="bg-green-50 rounded-lg p-4 text-center">
-                    <div className="text-2xl font-bold text-green-600">{college.activePrograms}</div>
+                    <div className="text-2xl font-bold text-green-600">
+                      {college.activePrograms}
+                    </div>
                     <div className="text-sm text-green-800">Active Programs</div>
                   </div>
                 </div>
@@ -651,9 +656,15 @@ const ProgramAllocation: React.FC = () => {
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Program</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Intake</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Program
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Intake
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Status
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -679,7 +690,9 @@ const ProgramAllocation: React.FC = () => {
                 <h4 className="text-md font-medium text-gray-900 mb-4">Quick Stats</h4>
                 <div className="space-y-3">
                   <div className="bg-gray-50 rounded-lg p-3">
-                    <div className="text-lg font-semibold text-gray-900">{college.totalStudents.toLocaleString()}</div>
+                    <div className="text-lg font-semibold text-gray-900">
+                      {college.totalStudents.toLocaleString()}
+                    </div>
                     <div className="text-sm text-gray-500">Total Students</div>
                   </div>
                   <div className="bg-gray-50 rounded-lg p-3">
@@ -767,7 +780,7 @@ const ProgramAllocation: React.FC = () => {
               <ArrowUpTrayIcon className="h-4 w-4 mr-2" />
               Import
             </button>
-            <button 
+            <button
               onClick={() => setShowNewAllocationModal(true)}
               className="bg-indigo-600 text-white rounded-md px-4 py-2 text-sm font-medium hover:bg-indigo-700 flex items-center"
             >
@@ -824,7 +837,9 @@ const ProgramAllocation: React.FC = () => {
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 truncate">Total Students</dt>
                   <dd className="text-lg font-medium text-gray-900">
-                    {mockColleges.reduce((sum, college) => sum + college.totalStudents, 0).toLocaleString()}
+                    {mockColleges
+                      .reduce((sum, college) => sum + college.totalStudents, 0)
+                      .toLocaleString()}
                   </dd>
                 </dl>
               </div>
@@ -842,7 +857,7 @@ const ProgramAllocation: React.FC = () => {
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 truncate">Pending Reviews</dt>
                   <dd className="text-lg font-medium text-gray-900">
-                    {mockColleges.filter(c => c.status === 'pending_review').length}
+                    {mockColleges.filter((c) => c.status === 'pending_review').length}
                   </dd>
                 </dl>
               </div>
@@ -867,7 +882,7 @@ const ProgramAllocation: React.FC = () => {
                 />
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-3">
               <button
                 onClick={() => setShowFilters(!showFilters)}
@@ -876,7 +891,7 @@ const ProgramAllocation: React.FC = () => {
                 <FunnelIcon className="h-4 w-4 mr-2" />
                 Filters
               </button>
-              
+
               <div className="flex rounded-md shadow-sm">
                 <button
                   onClick={() => setViewMode('table')}
@@ -920,7 +935,7 @@ const ProgramAllocation: React.FC = () => {
                     <option value="suspended">Suspended</option>
                   </select>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
                   <select
@@ -934,7 +949,7 @@ const ProgramAllocation: React.FC = () => {
                     <option value="aided">Aided</option>
                   </select>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">District</label>
                   <select
@@ -963,17 +978,20 @@ const ProgramAllocation: React.FC = () => {
               Colleges ({filteredColleges.length})
             </h3>
             <div className="text-sm text-gray-500">
-              Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredColleges.length)} of {filteredColleges.length} results
+              Showing {(currentPage - 1) * itemsPerPage + 1} to{' '}
+              {Math.min(currentPage * itemsPerPage, filteredColleges.length)} of{' '}
+              {filteredColleges.length} results
             </div>
           </div>
-          
+
           {/* Bulk Actions Bar */}
           {selectedColleges.length > 0 && (
             <div className="mt-4 bg-indigo-50 border border-indigo-200 rounded-md p-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <span className="text-sm font-medium text-indigo-900">
-                    {selectedColleges.length} college{selectedColleges.length > 1 ? 's' : ''} selected
+                    {selectedColleges.length} college{selectedColleges.length > 1 ? 's' : ''}{' '}
+                    selected
                   </span>
                 </div>
                 <div className="flex space-x-2">
@@ -983,7 +1001,7 @@ const ProgramAllocation: React.FC = () => {
                   <button className="bg-white border border-indigo-300 text-indigo-700 px-3 py-1 rounded text-sm font-medium hover:bg-indigo-50">
                     Export Selected
                   </button>
-                  <button 
+                  <button
                     onClick={() => setSelectedColleges([])}
                     className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
                   >
@@ -1000,9 +1018,7 @@ const ProgramAllocation: React.FC = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    
-                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     College
                   </th>
@@ -1034,7 +1050,7 @@ const ProgramAllocation: React.FC = () => {
                           if (e.target.checked) {
                             setSelectedColleges([...selectedColleges, college.id]);
                           } else {
-                            setSelectedColleges(selectedColleges.filter(id => id !== college.id));
+                            setSelectedColleges(selectedColleges.filter((id) => id !== college.id));
                           }
                         }}
                         className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
@@ -1058,7 +1074,9 @@ const ProgramAllocation: React.FC = () => {
                       <div className="text-sm text-gray-500">{college.district}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{college.activePrograms}/{college.totalPrograms}</div>
+                      <div className="text-sm text-gray-900">
+                        {college.activePrograms}/{college.totalPrograms}
+                      </div>
                       <div className="text-sm text-gray-500">Active/Total</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -1098,7 +1116,10 @@ const ProgramAllocation: React.FC = () => {
           <div className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {paginatedColleges.map((college) => (
-                <div key={college.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                <div
+                  key={college.id}
+                  className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
+                >
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center">
                       <div className="h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center">
@@ -1111,7 +1132,7 @@ const ProgramAllocation: React.FC = () => {
                     </div>
                     {getStatusBadge(college.status)}
                   </div>
-                  
+
                   <div className="space-y-3">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Type:</span>
@@ -1123,18 +1144,22 @@ const ProgramAllocation: React.FC = () => {
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Programs:</span>
-                      <span className="text-gray-900">{college.activePrograms}/{college.totalPrograms}</span>
+                      <span className="text-gray-900">
+                        {college.activePrograms}/{college.totalPrograms}
+                      </span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Students:</span>
-                      <span className="text-gray-900">{college.totalStudents.toLocaleString()}</span>
+                      <span className="text-gray-900">
+                        {college.totalStudents.toLocaleString()}
+                      </span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Accreditation:</span>
                       <span className="text-gray-900">{college.accreditation}</span>
                     </div>
                   </div>
-                  
+
                   <div className="mt-4 flex space-x-2">
                     <button
                       onClick={() => {
@@ -1145,7 +1170,7 @@ const ProgramAllocation: React.FC = () => {
                     >
                       Manage Programs
                     </button>
-                    <button 
+                    <button
                       onClick={() => {
                         setSelectedCollege(college.id);
                         setShowCollegeDetailsModal(true);
@@ -1183,13 +1208,19 @@ const ProgramAllocation: React.FC = () => {
             <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm text-gray-700">
-                  Showing <span className="font-medium">{((currentPage - 1) * itemsPerPage) + 1}</span> to{' '}
-                  <span className="font-medium">{Math.min(currentPage * itemsPerPage, filteredColleges.length)}</span> of{' '}
-                  <span className="font-medium">{filteredColleges.length}</span> results
+                  Showing{' '}
+                  <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+                  <span className="font-medium">
+                    {Math.min(currentPage * itemsPerPage, filteredColleges.length)}
+                  </span>{' '}
+                  of <span className="font-medium">{filteredColleges.length}</span> results
                 </p>
               </div>
               <div>
-                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                <nav
+                  className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
+                  aria-label="Pagination"
+                >
                   <button
                     onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                     disabled={currentPage === 1}

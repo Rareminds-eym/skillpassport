@@ -1,11 +1,11 @@
 // import React from 'react';
 // import { MapPin, Briefcase, Bookmark } from 'lucide-react';
 
-// const OpportunityListItem = ({ 
-//   opportunity, 
-//   onClick, 
-//   isSelected, 
-//   isApplied = false, 
+// const OpportunityListItem = ({
+//   opportunity,
+//   onClick,
+//   isSelected,
+//   isApplied = false,
 //   isSaved = false,
 //   onApply,
 //   onToggleSave
@@ -54,22 +54,22 @@
 //   };
 
 //   return (
-//     <div 
+//     <div
 //       className={`bg-white rounded-lg sm:rounded-xl p-3 sm:p-6 cursor-pointer transition-all duration-200 flex items-center gap-3 sm:gap-6 ${
-//         isSelected 
-//           ? 'shadow-lg ring-2 ring-blue-500' 
+//         isSelected
+//           ? 'shadow-lg ring-2 ring-blue-500'
 //           : 'shadow-sm hover:shadow-md border border-gray-100'
 //       }`}
 //       onClick={onClick}
 //     >
 //       {/* Company Logo */}
-//       <div 
+//       <div
 //         className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl flex items-center justify-center text-white font-bold text-lg sm:text-xl shadow-sm flex-shrink-0"
 //         style={{ backgroundColor: opportunity.company_logo ? 'transparent' : logoColor }}
 //       >
 //         {opportunity.company_logo ? (
-//           <img 
-//             src={opportunity.company_logo} 
+//           <img
+//             src={opportunity.company_logo}
 //             alt={opportunity.company_name}
 //             className="w-full h-full object-cover rounded-2xl"
 //           />
@@ -165,26 +165,27 @@
 
 // export default OpportunityListItem;
 
-
 import React from 'react';
 import { MapPin, Briefcase, Bookmark } from 'lucide-react';
 
-const OpportunityListItem = ({ 
-  opportunity, 
-  onClick, 
-  isSelected, 
-  isApplied = false, 
+const OpportunityListItem = ({
+  opportunity,
+  onClick,
+  isSelected,
+  isApplied = false,
   isSaved = false,
   onApply,
-  onToggleSave
+  onToggleSave,
 }) => {
   const getInitials = (name) => {
-    return name
-      ?.split(' ')
-      .map(word => word[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2) || '??';
+    return (
+      name
+        ?.split(' ')
+        .map((word) => word[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2) || '??'
+    );
   };
 
   const formatSalary = (min, max) => {
@@ -222,30 +223,30 @@ const OpportunityListItem = ({
   };
 
   return (
-    <div 
+    <div
       className={`bg-white rounded-lg sm:rounded-xl p-3 sm:p-6 cursor-pointer transition-all duration-200 flex items-center gap-3 sm:gap-6 ${
-        isSelected 
-          ? 'shadow-lg ring-2 ring-blue-500' 
+        isSelected
+          ? 'shadow-lg ring-2 ring-blue-500'
           : 'shadow-sm hover:shadow-md border border-gray-100'
       }`}
       onClick={onClick}
     >
       {/* Company Logo */}
-      <div 
+      <div
         className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl flex items-center justify-center text-white font-bold text-lg sm:text-xl shadow-sm flex-shrink-0"
         style={{ backgroundColor: opportunity.company_logo ? 'transparent' : logoColor }}
       >
         {opportunity.company_logo ? (
-          <img 
-            src={opportunity.company_logo} 
+          <img
+            src={opportunity.company_logo}
             alt={opportunity.company_name}
             className="w-full h-full object-cover rounded-2xl"
           />
-          ) : (
-            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white bg-opacity-30 rounded-full flex items-center justify-center">
-              <span className="text-xs sm:text-sm">{getInitials(opportunity.company_name)}</span>
-            </div>
-          )}
+        ) : (
+          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white bg-opacity-30 rounded-full flex items-center justify-center">
+            <span className="text-xs sm:text-sm">{getInitials(opportunity.company_name)}</span>
+          </div>
+        )}
       </div>
 
       {/* Job Title and Company */}
@@ -253,10 +254,8 @@ const OpportunityListItem = ({
         <h3 className="font-bold text-gray-900 text-base sm:text-xl mb-1">
           {opportunity.job_title || opportunity.title}
         </h3>
-        <p className="text-sm sm:text-base text-gray-600 mb-2">
-          {opportunity.company_name}
-        </p>
-        
+        <p className="text-sm sm:text-base text-gray-600 mb-2">{opportunity.company_name}</p>
+
         {/* Additional Tags */}
         <div className="flex flex-wrap gap-1.5">
           {opportunity.sector && (
@@ -275,11 +274,13 @@ const OpportunityListItem = ({
             </span>
           )}
           {opportunity.cost_inr !== null && opportunity.cost_inr !== undefined && (
-            <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
-              opportunity.cost_inr === 0 
-                ? 'bg-green-100 text-green-700' 
-                : 'bg-gray-100 text-gray-700'
-            }`}>
+            <span
+              className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
+                opportunity.cost_inr === 0
+                  ? 'bg-green-100 text-green-700'
+                  : 'bg-gray-100 text-gray-700'
+              }`}
+            >
               {opportunity.cost_inr === 0 ? '🎉 Free' : `₹${opportunity.cost_inr.toLocaleString()}`}
             </span>
           )}
@@ -290,9 +291,7 @@ const OpportunityListItem = ({
       {salary && (
         <div className="hidden sm:flex items-center gap-3">
           <div>
-            <p className="font-bold text-gray-900 text-lg">
-              {salary}
-            </p>
+            <p className="font-bold text-gray-900 text-lg">{salary}</p>
             <p className="text-sm text-gray-500">Monthly Salary</p>
           </div>
         </div>
@@ -305,9 +304,7 @@ const OpportunityListItem = ({
             <MapPin className="w-6 h-6 text-white" strokeWidth={2.5} />
           </div>
           <div>
-            <p className="font-bold text-gray-900 text-lg">
-              {opportunity.location}
-            </p>
+            <p className="font-bold text-gray-900 text-lg">{opportunity.location}</p>
             <p className="text-sm text-gray-500">Location</p>
           </div>
         </div>

@@ -6,7 +6,7 @@ import {
   UsersIcon,
   CheckCircleIcon,
   ClockIcon,
-  AcademicCapIcon
+  AcademicCapIcon,
 } from '@heroicons/react/24/outline';
 
 import { Course } from '../../../types/educator/course';
@@ -21,7 +21,7 @@ import {
   getCoursesByEducator,
   getAllCourses,
   createCourse,
-  updateCourse
+  updateCourse,
 } from '../../../services/educator/coursesService';
 import toast from 'react-hot-toast';
 // @ts-ignore - AuthContext is a .jsx file
@@ -111,26 +111,29 @@ const CollegeAdminCourses: React.FC = () => {
         console.log('📡 Fetching all courses');
         const coursesData = await getAllCourses();
         console.log('✅ Courses loaded:', coursesData.length, 'courses');
-        
+
         // Debug: Log module counts for each course
         coursesData.forEach((course, index) => {
-          console.log(`📚 Course ${index + 1}: "${course.title}" has ${course.modules?.length || 0} modules`);
+          console.log(
+            `📚 Course ${index + 1}: "${course.title}" has ${course.modules?.length || 0} modules`
+          );
           if (course.modules && course.modules.length > 0) {
             course.modules.forEach((mod, modIndex) => {
-              console.log(`   └─ Module ${modIndex + 1}: "${mod.title}" has ${mod.lessons?.length || 0} lessons`);
+              console.log(
+                `   └─ Module ${modIndex + 1}: "${mod.title}" has ${mod.lessons?.length || 0} lessons`
+              );
             });
           }
         });
-        
-        setCourses(coursesData);
 
+        setCourses(coursesData);
       } catch (err: any) {
         console.error('❌ Error loading courses:', err);
         console.error('Error details:', {
           message: err?.message,
           code: err?.code,
           details: err?.details,
-          hint: err?.hint
+          hint: err?.hint,
         });
         setError(err?.message || 'Failed to load courses.');
       } finally {
@@ -156,33 +159,23 @@ const CollegeAdminCourses: React.FC = () => {
    *  FILTER + SORT
    * ───────────────────────────────────────────── */
   const filteredCourses = useMemo(() => {
-    const filtered = courses.filter(course => {
+    const filtered = courses.filter((course) => {
       const matchesSearch =
         course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         course.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        course.skillsCovered.some(skill =>
+        course.skillsCovered.some((skill) =>
           skill.toLowerCase().includes(searchQuery.toLowerCase())
         );
 
-      const matchesTab =
-        activeTabFilter === 'All Courses' || course.status === activeTabFilter;
+      const matchesTab = activeTabFilter === 'All Courses' || course.status === activeTabFilter;
 
-      const matchesStatus =
-        statusFilter === 'All' || course.status === statusFilter;
+      const matchesStatus = statusFilter === 'All' || course.status === statusFilter;
 
-      const matchesSkill =
-        skillFilter === 'All' || course.skillsCovered.includes(skillFilter);
+      const matchesSkill = skillFilter === 'All' || course.skillsCovered.includes(skillFilter);
 
-      const matchesClass =
-        classFilter === 'All' || course.linkedClasses.includes(classFilter);
+      const matchesClass = classFilter === 'All' || course.linkedClasses.includes(classFilter);
 
-      return (
-        matchesSearch &&
-        matchesTab &&
-        matchesStatus &&
-        matchesSkill &&
-        matchesClass
-      );
+      return matchesSearch && matchesTab && matchesStatus && matchesSkill && matchesClass;
     });
 
     filtered.sort((a, b) => {
@@ -201,28 +194,18 @@ const CollegeAdminCourses: React.FC = () => {
     });
 
     return filtered;
-  }, [
-    courses,
-    searchQuery,
-    activeTabFilter,
-    statusFilter,
-    skillFilter,
-    classFilter,
-    sortBy
-  ]);
+  }, [courses, searchQuery, activeTabFilter, statusFilter, skillFilter, classFilter, sortBy]);
 
   /** ─────────────────────────────────────────────
    *  ANALYTICS
    * ───────────────────────────────────────────── */
   const analytics = useMemo(() => {
     const total = courses.length;
-    const active = courses.filter(c => c.status === 'Active').length;
+    const active = courses.filter((c) => c.status === 'Active').length;
     const totalEnrolled = courses.reduce((s, c) => s + c.enrollmentCount, 0);
     const avgCompletion =
       courses.length > 0
-        ? Math.round(
-            courses.reduce((s, c) => s + c.completionRate, 0) / courses.length
-          )
+        ? Math.round(courses.reduce((s, c) => s + c.completionRate, 0) / courses.length)
         : 0;
     const pendingEvidence = courses.reduce((s, c) => s + c.evidencePending, 0);
 
@@ -238,7 +221,7 @@ const CollegeAdminCourses: React.FC = () => {
     console.log('College Admin Name:', educatorName);
     console.log('School ID:', schoolId);
     console.log('Course Data:', courseData);
-    
+
     if (!educatorId || !educatorName || !schoolId) {
       console.error('❌ Missing college admin information');
       console.log('educatorId:', educatorId);
@@ -266,7 +249,7 @@ const CollegeAdminCourses: React.FC = () => {
           modules: courseData.modules || [],
           targetOutcomes: courseData.targetOutcomes || [],
           duration: courseData.duration || '',
-          coEducators: []
+          coEducators: [],
         },
         educatorId,
         educatorName,
@@ -278,14 +261,13 @@ const CollegeAdminCourses: React.FC = () => {
       setShowCreateModal(false);
       console.log('✅ Modal closed, courses updated');
       toast.success('Course created successfully!');
-
     } catch (err: any) {
       console.error('❌ Error creating course:', err);
       console.error('Error details:', {
         message: err?.message,
         code: err?.code,
         details: err?.details,
-        hint: err?.hint
+        hint: err?.hint,
       });
       setError('Failed to create course: ' + (err?.message || 'Unknown error'));
     } finally {
@@ -305,7 +287,7 @@ const CollegeAdminCourses: React.FC = () => {
     console.log('=== HANDLE UPDATE COURSE ===');
     console.log('Editing course:', editingCourse);
     console.log('Update data:', courseData);
-    
+
     if (!editingCourse) {
       console.error('❌ No editing course set');
       return;
@@ -317,7 +299,7 @@ const CollegeAdminCourses: React.FC = () => {
       const updatedCourse = await updateCourse(editingCourse.id, courseData);
 
       console.log('✅ Course updated successfully:', updatedCourse);
-      setCourses(courses.map(c => (c.id === editingCourse.id ? updatedCourse : c)));
+      setCourses(courses.map((c) => (c.id === editingCourse.id ? updatedCourse : c)));
       setEditingCourse(null);
       setShowCreateModal(false);
       console.log('✅ Modal closed, courses updated');
@@ -327,7 +309,7 @@ const CollegeAdminCourses: React.FC = () => {
         message: err?.message,
         code: err?.code,
         details: err?.details,
-        hint: err?.hint
+        hint: err?.hint,
       });
       setError('Failed to update course: ' + (err?.message || 'Unknown error'));
     } finally {
@@ -351,7 +333,7 @@ const CollegeAdminCourses: React.FC = () => {
       const updatedCourse = await updateCourse(course.id, { status: newStatus });
 
       console.log('✅ Course archived successfully');
-      setCourses(courses.map(c => (c.id === course.id ? updatedCourse : c)));
+      setCourses(courses.map((c) => (c.id === course.id ? updatedCourse : c)));
     } catch (err: any) {
       console.error('❌ Error archiving course:', err);
       setError('Failed to archive course: ' + (err?.message || 'Unknown error'));
@@ -362,15 +344,14 @@ const CollegeAdminCourses: React.FC = () => {
 
   const handleCourseUpdate = async (updatedCourse: Course) => {
     console.log('Updating course from drawer:', updatedCourse);
-    
+
     try {
       setLoading(true);
 
       const savedCourse = await updateCourse(updatedCourse.id, updatedCourse);
       console.log('✅ Course updated successfully');
-      setCourses(courses.map(c => (c.id === savedCourse.id ? savedCourse : c)));
+      setCourses(courses.map((c) => (c.id === savedCourse.id ? savedCourse : c)));
       setSelectedCourse(savedCourse);
-
     } catch (err: any) {
       console.error('❌ Error updating course:', err);
       setError('Failed to update course: ' + (err?.message || 'Unknown error'));
@@ -413,9 +394,7 @@ const CollegeAdminCourses: React.FC = () => {
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <BookOpenIcon className="h-8 w-8 text-red-600" />
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            Error Loading Courses
-          </h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Courses</h3>
           <p className="text-gray-600 mb-4">{error}</p>
           <button
             onClick={() => window.location.reload()}
@@ -433,14 +412,10 @@ const CollegeAdminCourses: React.FC = () => {
    * ───────────────────────────────────────────── */
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-
       {error && (
         <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-4 flex items-center justify-between">
           <p className="text-red-800">{error}</p>
-          <button
-            onClick={() => setError(null)}
-            className="text-red-600 hover:text-red-800"
-          >
+          <button onClick={() => setError(null)} className="text-red-600 hover:text-red-800">
             Dismiss
           </button>
         </div>
@@ -473,7 +448,7 @@ const CollegeAdminCourses: React.FC = () => {
 
       {/* Tabs */}
       <div className="mb-6 flex items-center gap-2 border-b border-gray-200">
-        {tabFilters.map(tab => (
+        {tabFilters.map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTabFilter(tab)}
@@ -579,7 +554,12 @@ const CollegeAdminCourses: React.FC = () => {
               ? 'Try adjusting your filters'
               : 'Create your first course to get started'}
           </p>
-          {!(searchQuery || statusFilter !== 'All' || skillFilter !== 'All' || classFilter !== 'All') && (
+          {!(
+            searchQuery ||
+            statusFilter !== 'All' ||
+            skillFilter !== 'All' ||
+            classFilter !== 'All'
+          ) && (
             <button
               onClick={() => setShowCreateModal(true)}
               className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
@@ -589,11 +569,14 @@ const CollegeAdminCourses: React.FC = () => {
           )}
         </div>
       ) : (
-        <div className={viewMode === 'grid'
-          ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5'
-          : 'space-y-4'
-        }>
-          {filteredCourses.map(course => (
+        <div
+          className={
+            viewMode === 'grid'
+              ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5'
+              : 'space-y-4'
+          }
+        >
+          {filteredCourses.map((course) => (
             <CourseCard
               key={course.id}
               course={course}

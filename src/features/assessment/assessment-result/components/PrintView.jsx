@@ -11,7 +11,7 @@ import PrintViewCollege from './PrintViewCollege';
 /**
  * Determines the appropriate grade level for routing
  * Requirements: 1.4, 5.1, 5.2, 5.3, 5.4, 5.5
- * 
+ *
  * @param {string|undefined} gradeLevel - Explicit grade level prop
  * @param {Object} results - Assessment results data
  * @returns {string} - Grade level category ('middle', 'higher_secondary', or 'college')
@@ -46,7 +46,7 @@ const determineGradeLevel = (gradeLevel, results) => {
  * PrintView Router Component
  * Delegates rendering to appropriate grade-level component
  * Requirements: 1.4, 6.4
- * 
+ *
  * @param {Object} props - Component props
  * @param {Object} props.results - Assessment results data
  * @param {Object} props.studentInfo - Student information
@@ -58,15 +58,15 @@ const determineGradeLevel = (gradeLevel, results) => {
  * @param {Object} props.studentAcademicData - Student academic data (optional)
  * @returns {JSX.Element} - Appropriate grade-level print view component
  */
-const PrintView = ({ 
-  results, 
-  studentInfo, 
-  gradeLevel, 
-  riasecNames, 
+const PrintView = ({
+  results,
+  studentInfo,
+  gradeLevel,
+  riasecNames,
   traitNames,
   courseRecommendations,
   streamRecommendation,
-  studentAcademicData
+  studentAcademicData,
 }) => {
   // Handle null/undefined results - Requirement 6.4
   if (!results) {

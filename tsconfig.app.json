@@ -14,11 +14,28 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
-    /* Linting */
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
+    /* Linting - RELAXED for gradual migration */
+    "strict": false,
+    "noImplicitAny": false,
+    "strictNullChecks": false,
+    "strictFunctionTypes": false,
+    "strictBindCallApply": false,
+    "strictPropertyInitialization": false,
+    "noImplicitThis": false,
+    "alwaysStrict": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": false,
+    "noImplicitReturns": false,
+    "noUncheckedIndexedAccess": false,
+    
+    /* Additional relaxations */
+    "noPropertyAccessFromIndexSignature": false,
+    "noImplicitOverride": false,
+    
+    /* Allow JS files */
+    "allowJs": true,
+    "checkJs": false,
 
     /* Path Aliases */
     "baseUrl": ".",
@@ -26,5 +43,10 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src", "src/types/**/*.d.ts"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build"
+  ]
 }

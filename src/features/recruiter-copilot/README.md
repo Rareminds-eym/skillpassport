@@ -52,6 +52,7 @@ recruiter-copilot/
 **Purpose**: Convert natural language queries into structured search criteria
 
 **Capabilities**:
+
 - Extracts required vs. preferred skills
 - Identifies experience level, location, CGPA requirements
 - Detects query intent (search, match, analyze, recommend)
@@ -59,6 +60,7 @@ recruiter-copilot/
 - Handles fallback with pattern matching
 
 **Example**:
+
 ```typescript
 Input: "Find React developers with 2+ years experience in Bangalore"
 
@@ -79,18 +81,20 @@ Parsed Output:
 **Purpose**: Find candidates using semantic understanding, not just keywords
 
 **Features**:
+
 - **Vector Similarity Search**: Uses pgvector for embedding-based matching
 - **Hybrid Search**: Combines semantic search with structured filters
 - **Opportunity Matching**: Finds candidates similar to job descriptions
 - **Multi-Factor Ranking**: Considers profile completeness, training, certifications
 
 **Key Methods**:
+
 ```typescript
 // Find candidates by semantic similarity to opportunity
-await semanticSearch.findCandidatesForOpportunity(opportunityId, limit)
+await semanticSearch.findCandidatesForOpportunity(opportunityId, limit);
 
 // Hybrid search with filters
-await semanticSearch.hybridCandidateSearch(parsedQuery, limit)
+await semanticSearch.hybridCandidateSearch(parsedQuery, limit);
 ```
 
 ### 3. Recruiter Insights (`recruiterInsights.ts`)
@@ -98,15 +102,17 @@ await semanticSearch.hybridCandidateSearch(parsedQuery, limit)
 **Purpose**: Intelligent candidate discovery and job matching
 
 **Scoring Algorithm**:
+
 ```
-Match Score = 
-  (Skill Match × 60%) + 
-  (Profile Quality × 20%) + 
-  (Training × 15%) + 
+Match Score =
+  (Skill Match × 60%) +
+  (Profile Quality × 20%) +
+  (Training × 15%) +
   (Certifications × 10%)
 ```
 
 **Profile Quality Scoring**:
+
 - Skills: up to 35 points (4 points per skill)
 - Training: up to 25 points (8 points per training)
 - Certifications: up to 15 points (5 points per cert)
@@ -115,6 +121,7 @@ Match Score =
 - Location: 2 points
 
 **Match Recommendations**:
+
 - 85-100%: 🌟 Excellent - Fast-track to interview
 - 70-84%: ✅ Strong - Screening call recommended
 - 55-69%: 💡 Good potential - Trainable gaps
@@ -126,17 +133,20 @@ Match Score =
 **Purpose**: Analyze recruitment pipeline and identify optimization opportunities
 
 **Capabilities**:
+
 - **Stage Metrics**: Conversion rates, time in stage, drop-off rates
 - **Bottleneck Detection**: Identifies slow stages and low conversion points
 - **At-Risk Candidates**: Flags candidates stuck or with overdue actions
 - **Success Pattern Recognition**: Learns from hired candidates
 
 **Risk Assessment**:
+
 - 🔴 **High Risk**: 14+ days in stage OR overdue action
 - 🟡 **Medium Risk**: 7-14 days in stage
 - 🟢 **Low Risk**: <7 days, on track
 
 **Example Insights**:
+
 ```
 Bottleneck Detected:
 Stage: Interview
@@ -150,6 +160,7 @@ Recommendation: Streamline interview scheduling process
 **Purpose**: Provide pool-wide insights and market intelligence
 
 **Metrics**:
+
 - Skill distribution across talent pool
 - Location demographics
 - Experience level breakdown
@@ -183,7 +194,7 @@ Built using senior-level prompt engineering principles:
 # CORE CAPABILITIES
 1. Intelligent Candidate Discovery
 2. Precision Matching
-3. Actionable Insights  
+3. Actionable Insights
 4. Proactive Intelligence
 
 # COMMUNICATION PRINCIPLES
@@ -210,8 +221,9 @@ Built using senior-level prompt engineering principles:
 ### Example Prompts
 
 **Candidate Search**:
+
 ```typescript
-buildCandidateSearchPrompt(parsedQuery, candidates, context)
+buildCandidateSearchPrompt(parsedQuery, candidates, context);
 // Returns structured prompt with:
 // - Original query + extracted criteria
 // - Candidate list with match scores
@@ -219,8 +231,9 @@ buildCandidateSearchPrompt(parsedQuery, candidates, context)
 ```
 
 **Opportunity Matching**:
+
 ```typescript
-buildOpportunityMatchingPrompt(opportunity, candidates)
+buildOpportunityMatchingPrompt(opportunity, candidates);
 // Returns structured prompt with:
 // - Job requirements breakdown
 // - Candidate pool overview
@@ -228,8 +241,9 @@ buildOpportunityMatchingPrompt(opportunity, candidates)
 ```
 
 **Pipeline Analysis**:
+
 ```typescript
-buildPipelineAnalysisPrompt(pipelineData)
+buildPipelineAnalysisPrompt(pipelineData);
 // Returns structured prompt with:
 // - Stage metrics and conversion rates
 // - Identified bottlenecks
@@ -244,21 +258,25 @@ buildPipelineAnalysisPrompt(pipelineData)
 ### Tables Used
 
 #### `students`
+
 - Core candidate information
 - Skills, training, certifications (via relations)
 - **Embedding field**: Vector representation for semantic search
 
 #### `opportunities`
+
 - Job postings with requirements
 - **Embedding field**: Vector representation of job description
 - Skills stored as JSONB array
 
 #### `pipeline_candidates`
+
 - Candidate journey through recruitment stages
 - Tracks stage changes, actions, ratings
 - Links students to opportunities
 
 #### `skills`, `trainings`, `certificates`
+
 - Detailed candidate qualifications
 - Used for multi-factor scoring
 
@@ -288,7 +306,7 @@ LANGUAGE plpgsql
 AS $$
 BEGIN
   RETURN QUERY
-  SELECT 
+  SELECT
     students.user_id,
     1 - (students.embedding <=> query_embedding) as similarity
   FROM students
@@ -312,7 +330,7 @@ LANGUAGE plpgsql
 AS $$
 BEGIN
   RETURN QUERY
-  SELECT 
+  SELECT
     students.user_id,
     1 - (students.embedding <=> opportunity_embedding) as similarity
   FROM students
@@ -335,7 +353,7 @@ import { recruiterIntelligenceEngine } from './services/recruiterIntelligenceEng
 
 // Process natural language query
 const response = await recruiterIntelligenceEngine.processQuery(
-  "Find React developers with good CGPA",
+  'Find React developers with good CGPA',
   recruiterId,
   conversationId
 );
@@ -385,9 +403,7 @@ import { queryParser } from './services/queryParser';
 import { semanticSearch } from './services/semanticSearch';
 
 // Parse query
-const parsed = await queryParser.parseQuery(
-  "Find Python developers in Bangalore with 8+ CGPA"
-);
+const parsed = await queryParser.parseQuery('Find Python developers in Bangalore with 8+ CGPA');
 
 // Execute hybrid search
 const candidates = await semanticSearch.hybridCandidateSearch(parsed, 25);
@@ -404,20 +420,17 @@ function calculateMatchScore(candidate, jobRequirements) {
   // Skill matching (60% weight)
   const skillMatchPercent = (matchedSkills / requiredSkills) * 100;
   const skillScore = Math.min(skillMatchPercent * 0.6, 60);
-  
+
   // Profile quality (20% weight)
   const profileBonus = profileCompleteness * 0.2;
-  
-  // Training (15% weight)  
+
+  // Training (15% weight)
   const trainingBonus = Math.min(trainingCount * 3, 15);
-  
+
   // Certifications (10% weight)
   const certBonus = Math.min(certCount * 2, 10);
-  
-  return Math.min(
-    Math.round(skillScore + profileBonus + trainingBonus + certBonus),
-    100
-  );
+
+  return Math.min(Math.round(skillScore + profileBonus + trainingBonus + certBonus), 100);
 }
 ```
 
@@ -426,15 +439,15 @@ function calculateMatchScore(candidate, jobRequirements) {
 ```typescript
 function calculateProfileScore(profile) {
   let score = 0;
-  
+
   if (profile.hasName) score += 5;
-  score += Math.min(profile.skillCount * 4, 35);      // Max 35
-  score += Math.min(profile.trainingCount * 8, 25);   // Max 25
-  score += Math.min(profile.certCount * 5, 15);       // Max 15
+  score += Math.min(profile.skillCount * 4, 35); // Max 35
+  score += Math.min(profile.trainingCount * 8, 25); // Max 25
+  score += Math.min(profile.certCount * 5, 15); // Max 15
   if (profile.hasCGPA) score += 10;
   if (profile.hasResume) score += 8;
   if (profile.hasLocation) score += 2;
-  
+
   return Math.min(score, 100);
 }
 ```
@@ -446,7 +459,7 @@ function calculateProfileScore(profile) {
 function matchesSkill(candidateSkill, requiredSkill) {
   const cs = candidateSkill.toLowerCase();
   const rs = requiredSkill.toLowerCase();
-  
+
   return cs.includes(rs) || rs.includes(cs);
   // Examples:
   // "React.js" matches "React"
@@ -461,18 +474,18 @@ function matchesSkill(candidateSkill, requiredSkill) {
 
 The system classifies recruiter queries into specific intents:
 
-| Intent | Description | Example Query |
-|--------|-------------|---------------|
-| `candidate-search` | Finding/searching for candidates | "Show me React developers" |
-| `talent-pool-analytics` | Analytics about talent pool | "What skills do we have?" |
-| `job-matching` | Matching candidates to specific job | "Match candidates to Software Engineer role" |
-| `hiring-recommendations` | Get hiring-ready candidates | "Who should I interview first?" |
-| `skill-insights` | Understanding skill distribution | "What are the most common skills?" |
-| `market-trends` | Market intelligence | "What skills are in demand?" |
-| `interview-guidance` | Interview tips and questions | "How should I assess this candidate?" |
-| `candidate-assessment` | Evaluating specific candidates | "Compare these three candidates" |
-| `pipeline-review` | Pipeline status and progress | "Show pipeline bottlenecks" |
-| `general` | General questions | "Help me with hiring" |
+| Intent                   | Description                         | Example Query                                |
+| ------------------------ | ----------------------------------- | -------------------------------------------- |
+| `candidate-search`       | Finding/searching for candidates    | "Show me React developers"                   |
+| `talent-pool-analytics`  | Analytics about talent pool         | "What skills do we have?"                    |
+| `job-matching`           | Matching candidates to specific job | "Match candidates to Software Engineer role" |
+| `hiring-recommendations` | Get hiring-ready candidates         | "Who should I interview first?"              |
+| `skill-insights`         | Understanding skill distribution    | "What are the most common skills?"           |
+| `market-trends`          | Market intelligence                 | "What skills are in demand?"                 |
+| `interview-guidance`     | Interview tips and questions        | "How should I assess this candidate?"        |
+| `candidate-assessment`   | Evaluating specific candidates      | "Compare these three candidates"             |
+| `pipeline-review`        | Pipeline status and progress        | "Show pipeline bottlenecks"                  |
+| `general`                | General questions                   | "Help me with hiring"                        |
 
 ---
 
@@ -524,6 +537,7 @@ const DEFAULT_MODEL = 'openrouter/polaris-alpha';
 2. **Selective Fields**: Only query needed columns
 3. **Count Optimizations**: Use `count: 'exact', head: true` for count queries
 4. **Index Requirements**:
+
    ```sql
    -- Recommended indexes
    CREATE INDEX idx_skills_student_enabled ON skills(student_id, enabled);
@@ -531,7 +545,7 @@ const DEFAULT_MODEL = 'openrouter/polaris-alpha';
    CREATE INDEX idx_certificates_student_enabled ON certificates(student_id, enabled);
    CREATE INDEX idx_pipeline_opportunity_stage ON pipeline_candidates(opportunity_id, stage);
    CREATE INDEX idx_opportunities_recruiter_active ON opportunities(recruiter_id, is_active);
-   
+
    -- Vector search index (for pgvector)
    CREATE INDEX idx_students_embedding ON students USING ivfflat (embedding vector_cosine_ops);
    CREATE INDEX idx_opportunities_embedding ON opportunities USING ivfflat (embedding vector_cosine_ops);
@@ -559,29 +573,29 @@ private conversationHistory: Map<string, any[]> = new Map();
 
 ```typescript
 // Skill-based search
-"Find React and Node.js developers"
-"Show me Python experts with machine learning experience"
+'Find React and Node.js developers';
+'Show me Python experts with machine learning experience';
 
 // Experience-based search
-"Find freshers with good CGPA"
-"Show senior developers with 5+ years"
+'Find freshers with good CGPA';
+'Show senior developers with 5+ years';
 
 // Location-based search
-"React developers in Bangalore"
-"Remote Python developers"
+'React developers in Bangalore';
+'Remote Python developers';
 
 // Complex queries
-"Find React developers in Mumbai with 7+ CGPA and certifications"
-"Show candidates with AWS experience ready for immediate hire"
+'Find React developers in Mumbai with 7+ CGPA and certifications';
+'Show candidates with AWS experience ready for immediate hire';
 
 // Analytics queries
-"What skills are most common in my talent pool?"
-"Show me pipeline bottlenecks"
-"Analyze hiring trends"
+'What skills are most common in my talent pool?';
+'Show me pipeline bottlenecks';
+'Analyze hiring trends';
 
 // Opportunity matching
-"Match candidates to Software Engineer position #123"
-"Who are the best fits for this Data Scientist role?"
+'Match candidates to Software Engineer position #123';
+'Who are the best fits for this Data Scientist role?';
 ```
 
 ---
@@ -718,6 +732,7 @@ Built with ❤️ by the SkillPassport Engineering Team
 ## 📞 Support
 
 For questions or issues:
+
 - Technical Documentation: This README
 - Database Schema: `types/database.ts`
 - Prompt Templates: `prompts/advancedPrompts.ts`

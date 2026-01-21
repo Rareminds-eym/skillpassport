@@ -1,7 +1,7 @@
 /**
  * Database Type Definitions for Recruiters
  * Type-safe interfaces for recruiters and related tables
- * 
+ *
  * These types map to the actual database schema and should be kept in sync.
  */
 
@@ -14,38 +14,38 @@ export interface RecruiterRow {
   id: string;
   user_id: string;
   company_id?: string;
-  
+
   // Personal information (used for AI context)
   first_name: string | null;
   last_name: string | null;
   email: string | null;
-  
+
   // Professional information (used for AI context)
-  designation: string | null;           // e.g., "Senior Recruiter", "Talent Acquisition Manager"
-  department: string | null;            // e.g., "Engineering", "Sales", "Operations"
-  specialization: string[] | null;      // e.g., ["Tech Hiring", "Campus Recruitment"]
-  experience_years: number | null;      // Years of recruitment experience
-  
+  designation: string | null; // e.g., "Senior Recruiter", "Talent Acquisition Manager"
+  department: string | null; // e.g., "Engineering", "Sales", "Operations"
+  specialization: string[] | null; // e.g., ["Tech Hiring", "Campus Recruitment"]
+  experience_years: number | null; // Years of recruitment experience
+
   // Account management
-  account_status: string | null;        // 'active' | 'deactivated' | 'suspended'
-  
+  account_status: string | null; // 'active' | 'deactivated' | 'suspended'
+
   // Fields NOT used in AI context (privacy & relevance)
-  employee_id?: string | null;          // Internal HR identifier
-  phone_number?: string | null;         // Private contact
-  dob?: Date | null;                    // Personal info
-  gender?: string | null;               // Personal info
-  address?: string | null;              // Private location
-  city?: string | null;                 // Private location
-  state?: string | null;                // Private location
-  country?: string | null;              // Private location
-  pincode?: string | null;              // Private location
-  photo_url?: string | null;            // Profile image
-  verification_status?: string | null;  // Internal workflow
-  verified_by?: string | null;          // Internal workflow
-  verified_at?: Date | null;            // Internal workflow
+  employee_id?: string | null; // Internal HR identifier
+  phone_number?: string | null; // Private contact
+  dob?: Date | null; // Personal info
+  gender?: string | null; // Personal info
+  address?: string | null; // Private location
+  city?: string | null; // Private location
+  state?: string | null; // Private location
+  country?: string | null; // Private location
+  pincode?: string | null; // Private location
+  photo_url?: string | null; // Profile image
+  verification_status?: string | null; // Internal workflow
+  verified_by?: string | null; // Internal workflow
+  verified_at?: Date | null; // Internal workflow
   metadata?: Record<string, any> | null; // Generic JSONB field
-  created_at?: Date | null;             // Audit field
-  updated_at?: Date | null;             // Audit field
+  created_at?: Date | null; // Audit field
+  updated_at?: Date | null; // Audit field
 }
 
 /**
@@ -57,17 +57,17 @@ export interface CompanyRow {
   id: string;
   name: string;
   code: string;
-  
+
   // Company information (used for AI context)
-  industry: string | null;              // e.g., "Technology", "Finance", "Healthcare"
-  size: string | null;                  // e.g., "1-50", "51-200", "201-500", "500+"
-  description: string | null;           // Brief company description
-  
+  industry: string | null; // e.g., "Technology", "Finance", "Healthcare"
+  size: string | null; // e.g., "1-50", "51-200", "201-500", "500+"
+  description: string | null; // Brief company description
+
   // Location information (used for AI context)
   city: string | null;
   state: string | null;
   country: string | null;
-  
+
   // Fields NOT used in AI context
   address?: string | null;
   pincode?: string | null;
@@ -97,7 +97,7 @@ export interface JobPostingRow {
   department: string | null;
   location: string;
   job_type: 'full-time' | 'part-time' | 'internship' | 'contract';
-  experience_required: string | null;   // e.g., "0-2 years", "2-5 years"
+  experience_required: string | null; // e.g., "0-2 years", "2-5 years"
   required_skills: string[] | null;
   preferred_skills: string[] | null;
   salary_range?: string | null;
@@ -126,7 +126,7 @@ export interface RecruiterWithCompany {
   specialization: string[] | null;
   experience_years: number | null;
   account_status: string | null;
-  
+
   // Nested company details
   companies?: {
     id: string;
@@ -176,7 +176,7 @@ export enum AccountStatus {
   ACTIVE = 'active',
   INACTIVE = 'inactive',
   SUSPENDED = 'suspended',
-  PENDING = 'pending'
+  PENDING = 'pending',
 }
 
 /**
@@ -192,7 +192,7 @@ export enum IndustrySector {
   CONSULTING = 'Consulting',
   MEDIA = 'Media & Entertainment',
   GOVERNMENT = 'Government',
-  OTHER = 'Other'
+  OTHER = 'Other',
 }
 
 /**
@@ -207,7 +207,7 @@ export enum RecruiterDesignation {
   HR_MANAGER = 'HR Manager',
   HR_DIRECTOR = 'HR Director',
   HIRING_MANAGER = 'Hiring Manager',
-  CAMPUS_RECRUITER = 'Campus Recruiter'
+  CAMPUS_RECRUITER = 'Campus Recruiter',
 }
 
 /**
@@ -216,7 +216,7 @@ export enum RecruiterDesignation {
 export enum JobPostingStatus {
   ACTIVE = 'active',
   CLOSED = 'closed',
-  DRAFT = 'draft'
+  DRAFT = 'draft',
 }
 
 /**
@@ -226,5 +226,5 @@ export enum JobType {
   FULL_TIME = 'full-time',
   PART_TIME = 'part-time',
   INTERNSHIP = 'internship',
-  CONTRACT = 'contract'
+  CONTRACT = 'contract',
 }

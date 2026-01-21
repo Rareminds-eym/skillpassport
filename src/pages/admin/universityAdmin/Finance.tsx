@@ -20,7 +20,7 @@ import {
   Trash2,
   IndianRupee,
   Receipt,
-  PieChart
+  PieChart,
 } from 'lucide-react';
 import FeeStructureModal from '../../../components/admin/universityAdmin/FeeStructureModal';
 
@@ -30,7 +30,17 @@ interface FeeStructure {
   college_name: string;
   program_id: string;
   program_name: string;
-  fee_type: 'tuition' | 'admission' | 'examination' | 'library' | 'laboratory' | 'hostel' | 'transport' | 'development' | 'sports' | 'other';
+  fee_type:
+    | 'tuition'
+    | 'admission'
+    | 'examination'
+    | 'library'
+    | 'laboratory'
+    | 'hostel'
+    | 'transport'
+    | 'development'
+    | 'sports'
+    | 'other';
   fee_name: string;
   amount: number;
   currency: string;
@@ -66,7 +76,14 @@ interface PaymentRecord {
   transaction_id?: string;
   payment_date?: string;
   due_date: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled' | 'refunded' | 'partially_paid';
+  status:
+    | 'pending'
+    | 'processing'
+    | 'completed'
+    | 'failed'
+    | 'cancelled'
+    | 'refunded'
+    | 'partially_paid';
   academic_year: string;
   semester?: number;
   created_at: string;
@@ -100,7 +117,7 @@ const mockColleges: College[] = [
   { id: '2', name: 'PSG College of Technology' },
   { id: '3', name: 'Coimbatore Institute of Technology' },
   { id: '4', name: 'Thiagarajar College of Engineering' },
-  { id: '5', name: 'Madras Institute of Technology' }
+  { id: '5', name: 'Madras Institute of Technology' },
 ];
 
 const mockPrograms: Program[] = [
@@ -108,7 +125,7 @@ const mockPrograms: Program[] = [
   { id: '2', name: 'Mechanical Engineering', college_id: '1' },
   { id: '3', name: 'Electrical Engineering', college_id: '2' },
   { id: '4', name: 'Civil Engineering', college_id: '2' },
-  { id: '5', name: 'Information Technology', college_id: '3' }
+  { id: '5', name: 'Information Technology', college_id: '3' },
 ];
 
 const mockFeeStructures: FeeStructure[] = [
@@ -135,7 +152,7 @@ const mockFeeStructures: FeeStructure[] = [
     status: 'active',
     description: 'Regular semester tuition fee for CSE program',
     created_at: '2024-01-15T10:00:00Z',
-    updated_at: '2024-01-15T10:00:00Z'
+    updated_at: '2024-01-15T10:00:00Z',
   },
   {
     id: '2',
@@ -160,7 +177,7 @@ const mockFeeStructures: FeeStructure[] = [
     status: 'active',
     description: 'End semester examination fee',
     created_at: '2024-01-15T10:00:00Z',
-    updated_at: '2024-01-15T10:00:00Z'
+    updated_at: '2024-01-15T10:00:00Z',
   },
   {
     id: '3',
@@ -185,8 +202,8 @@ const mockFeeStructures: FeeStructure[] = [
     status: 'active',
     description: 'Access to library books and digital resources',
     created_at: '2024-01-15T10:00:00Z',
-    updated_at: '2024-01-15T10:00:00Z'
-  }
+    updated_at: '2024-01-15T10:00:00Z',
+  },
 ];
 
 const mockPaymentRecords: PaymentRecord[] = [
@@ -209,7 +226,7 @@ const mockPaymentRecords: PaymentRecord[] = [
     status: 'completed',
     academic_year: '2024-25',
     semester: 1,
-    created_at: '2024-08-10T14:30:00Z'
+    created_at: '2024-08-10T14:30:00Z',
   },
   {
     id: '2',
@@ -228,7 +245,7 @@ const mockPaymentRecords: PaymentRecord[] = [
     status: 'pending',
     academic_year: '2024-25',
     semester: 1,
-    created_at: '2024-11-01T10:00:00Z'
+    created_at: '2024-11-01T10:00:00Z',
   },
   {
     id: '3',
@@ -248,8 +265,8 @@ const mockPaymentRecords: PaymentRecord[] = [
     status: 'partially_paid',
     academic_year: '2024-25',
     semester: 1,
-    created_at: '2024-08-20T16:45:00Z'
-  }
+    created_at: '2024-08-20T16:45:00Z',
+  },
 ];
 
 const mockStats: FinanceStats = {
@@ -260,10 +277,12 @@ const mockStats: FinanceStats = {
   totalColleges: 45,
   totalStudents: 12500,
   collectionRate: 85.2,
-  averagePaymentTime: 12
+  averagePaymentTime: 12,
 };
 const UniversityFinance: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'fee-structures' | 'payments' | 'reports'>('overview');
+  const [activeTab, setActiveTab] = useState<
+    'overview' | 'fee-structures' | 'payments' | 'reports'
+  >('overview');
   const [feeStructures, setFeeStructures] = useState<FeeStructure[]>(mockFeeStructures);
   const [paymentRecords, setPaymentRecords] = useState<PaymentRecord[]>(mockPaymentRecords);
   const [stats, setStats] = useState<FinanceStats>(mockStats);
@@ -277,31 +296,32 @@ const UniversityFinance: React.FC = () => {
   const [editingFeeStructure, setEditingFeeStructure] = useState<FeeStructure | null>(null);
 
   // Filter data based on selections
-  const filteredFeeStructures = feeStructures.filter(structure => {
+  const filteredFeeStructures = feeStructures.filter((structure) => {
     const matchesCollege = !selectedCollege || structure.college_id === selectedCollege;
     const matchesYear = structure.academic_year === selectedAcademicYear;
-    const matchesSearch = !searchTerm || 
+    const matchesSearch =
+      !searchTerm ||
       structure.fee_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       structure.college_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       structure.program_name.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     return matchesCollege && matchesYear && matchesSearch;
   });
 
-  const filteredPaymentRecords = paymentRecords.filter(payment => {
+  const filteredPaymentRecords = paymentRecords.filter((payment) => {
     const matchesCollege = !selectedCollege || payment.college_id === selectedCollege;
     const matchesYear = payment.academic_year === selectedAcademicYear;
-    
+
     return matchesCollege && matchesYear;
   });
 
   const handleSaveFeeStructure = async (data: Partial<FeeStructure>): Promise<boolean> => {
     try {
       setLoading(true);
-      
+
       if (editingFeeStructure) {
         // Update existing structure
-        const updatedStructures = feeStructures.map(structure =>
+        const updatedStructures = feeStructures.map((structure) =>
           structure.id === editingFeeStructure.id
             ? { ...structure, ...data, updated_at: new Date().toISOString() }
             : structure
@@ -311,16 +331,16 @@ const UniversityFinance: React.FC = () => {
         // Create new structure
         const newStructure: FeeStructure = {
           id: Date.now().toString(),
-          college_name: colleges.find(c => c.id === data.college_id)?.name || 'Unknown College',
-          program_name: programs.find(p => p.id === data.program_id)?.name || 'All Programs',
+          college_name: colleges.find((c) => c.id === data.college_id)?.name || 'Unknown College',
+          program_name: programs.find((p) => p.id === data.program_id)?.name || 'All Programs',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          ...data
+          ...data,
         } as FeeStructure;
-        
+
         setFeeStructures([...feeStructures, newStructure]);
       }
-      
+
       setEditingFeeStructure(null);
       return true;
     } catch (error) {
@@ -333,9 +353,9 @@ const UniversityFinance: React.FC = () => {
 
   const handleDeleteFeeStructure = async (id: string) => {
     if (!confirm('Are you sure you want to delete this fee structure?')) return;
-    
+
     try {
-      const updatedStructures = feeStructures.filter(structure => structure.id !== id);
+      const updatedStructures = feeStructures.filter((structure) => structure.id !== id);
       setFeeStructures(updatedStructures);
     } catch (error) {
       console.error('Error deleting fee structure:', error);
@@ -361,7 +381,7 @@ const UniversityFinance: React.FC = () => {
       failed: 'bg-red-100 text-red-800',
       cancelled: 'bg-gray-100 text-gray-800',
       refunded: 'bg-purple-100 text-purple-800',
-      partially_paid: 'bg-orange-100 text-orange-800'
+      partially_paid: 'bg-orange-100 text-orange-800',
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
@@ -374,7 +394,8 @@ const UniversityFinance: React.FC = () => {
           <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
           {change && (
             <p className={`text-sm mt-1 ${change > 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {change > 0 ? '+' : ''}{change}% from last month
+              {change > 0 ? '+' : ''}
+              {change}% from last month
             </p>
           )}
         </div>
@@ -503,7 +524,7 @@ const UniversityFinance: React.FC = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">All Colleges</option>
-              {colleges.map(college => (
+              {colleges.map((college) => (
                 <option key={college.id} value={college.id}>
                   {college.name}
                 </option>
@@ -556,7 +577,9 @@ const UniversityFinance: React.FC = () => {
                 <tr key={structure.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div>
-                      <div className="text-sm font-medium text-gray-900">{structure.college_name}</div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {structure.college_name}
+                      </div>
                       <div className="text-sm text-gray-500">{structure.program_name}</div>
                     </div>
                   </td>
@@ -572,9 +595,13 @@ const UniversityFinance: React.FC = () => {
                     {new Date(structure.due_date).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      structure.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                    }`}>
+                    <span
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        structure.status === 'active'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
                       {structure.status}
                     </span>
                   </td>
@@ -652,7 +679,9 @@ const UniversityFinance: React.FC = () => {
                 <tr key={payment.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div>
-                      <div className="text-sm font-medium text-gray-900">{payment.student_name}</div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {payment.student_name}
+                      </div>
                       <div className="text-sm text-gray-500">{payment.college_name}</div>
                     </div>
                   </td>
@@ -668,7 +697,9 @@ const UniversityFinance: React.FC = () => {
                     {new Date(payment.payment_date).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(payment.status)}`}>
+                    <span
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(payment.status)}`}
+                    >
                       {payment.status}
                     </span>
                   </td>
@@ -701,7 +732,9 @@ const UniversityFinance: React.FC = () => {
             </div>
             <h3 className="text-lg font-semibold text-gray-900">Revenue Report</h3>
           </div>
-          <p className="text-sm text-gray-600 mb-4">Detailed revenue analysis by college and program</p>
+          <p className="text-sm text-gray-600 mb-4">
+            Detailed revenue analysis by college and program
+          </p>
           <button className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors">
             Generate Report
           </button>
@@ -752,7 +785,8 @@ const UniversityFinance: React.FC = () => {
           Finance & Fees Management
         </h1>
         <p className="text-gray-600 text-sm sm:text-base">
-          Manage fee structures, track payments, and generate financial reports across all affiliated colleges
+          Manage fee structures, track payments, and generate financial reports across all
+          affiliated colleges
         </p>
       </div>
 
@@ -763,7 +797,7 @@ const UniversityFinance: React.FC = () => {
             { id: 'overview', label: 'Overview', icon: DollarSign },
             { id: 'fee-structures', label: 'Fee Structures', icon: FileText },
             { id: 'payments', label: 'Payments', icon: CreditCard },
-            { id: 'reports', label: 'Reports', icon: PieChart }
+            { id: 'reports', label: 'Reports', icon: PieChart },
           ].map((tab) => (
             <button
               key={tab.id}

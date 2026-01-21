@@ -1,4 +1,3 @@
-
 // import React, { useState } from "react";
 // import { v4 as uuidv4 } from "uuid"; // For generating UUIDs
 
@@ -184,7 +183,6 @@
 //   </div>
 // )}
 
-
 //       {/* Return Book */}
 //       {activeTab === "return" && (
 //         <div className="max-w-xl mx-auto">
@@ -262,14 +260,21 @@
 //     </div>
 //   );
 // }
-import { BookOpenIcon, MagnifyingGlassIcon, UsersIcon } from "@heroicons/react/24/outline";
-import { useEffect, useRef, useState } from "react";
+import { BookOpenIcon, MagnifyingGlassIcon, UsersIcon } from '@heroicons/react/24/outline';
+import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { supabase } from "../../../lib/supabaseClient";
-import { LibraryBook, LibraryBookIssue, libraryService, LibrarySetting, LibraryStats, OverdueBook } from "../../../services/libraryService";
+import { supabase } from '../../../lib/supabaseClient';
+import {
+  LibraryBook,
+  LibraryBookIssue,
+  libraryService,
+  LibrarySetting,
+  LibraryStats,
+  OverdueBook,
+} from '../../../services/libraryService';
 
 export default function LibraryModule() {
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -290,16 +295,16 @@ export default function LibraryModule() {
   });
 
   // New book form state
-  const [newBook, setNewBook] = useState({ 
-    title: "", 
-    author: "", 
-    isbn: "", 
+  const [newBook, setNewBook] = useState({
+    title: '',
+    author: '',
+    isbn: '',
     total_copies: 1,
-    category: "",
-    publisher: "",
+    category: '',
+    publisher: '',
     publication_year: new Date().getFullYear(),
-    description: "",
-    location_shelf: ""
+    description: '',
+    location_shelf: '',
   });
 
   // Dashboard pagination
@@ -307,34 +312,34 @@ export default function LibraryModule() {
   const dashboardBooksPerPage = 10;
 
   // Book Details filters and pagination
-  const [bookSearch, setBookSearch] = useState("");
-  const [bookFilter, setBookFilter] = useState("all"); // all, available, issued
+  const [bookSearch, setBookSearch] = useState('');
+  const [bookFilter, setBookFilter] = useState('all'); // all, available, issued
   const [currentPage, setCurrentPage] = useState(1);
   const booksPerPage = 6;
 
   // Return Book - Issued books pagination and modal
-  const [issuedBooksSearch, setIssuedBooksSearch] = useState("");
+  const [issuedBooksSearch, setIssuedBooksSearch] = useState('');
   const [issuedBooksPage, setIssuedBooksPage] = useState(1);
   const [showReturnModal, setShowReturnModal] = useState(false);
   const issuedBooksPerPage = 6;
 
   // Issue book form state
   const [issueForm, setIssueForm] = useState({
-    studentId: "",
-    studentName: "",
-    rollNumber: "",
-    enrollmentNumber: "",
-    admissionNumber: "",
-    grade: "",
-    section: "",
-    courseName: "",
-    semester: "",
-    bookId: "",
-    dueDate: "",
+    studentId: '',
+    studentName: '',
+    rollNumber: '',
+    enrollmentNumber: '',
+    admissionNumber: '',
+    grade: '',
+    section: '',
+    courseName: '',
+    semester: '',
+    bookId: '',
+    dueDate: '',
   });
 
   // Student search state
-  const [studentSearch, setStudentSearch] = useState("");
+  const [studentSearch, setStudentSearch] = useState('');
   const [studentSearchResults, setStudentSearchResults] = useState<any[]>([]);
   const [showStudentDropdown, setShowStudentDropdown] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
@@ -343,14 +348,14 @@ export default function LibraryModule() {
 
   // Return book form state
   const [returnForm, setReturnForm] = useState({
-    bookId: "",
-    studentId: "",
-    studentName: "",
-    rollNumber: "",
-    class: "",
-    bookTitle: "",
-    issueDate: "",
-    dueDate: "",
+    bookId: '',
+    studentId: '',
+    studentName: '',
+    rollNumber: '',
+    class: '',
+    bookTitle: '',
+    issueDate: '',
+    dueDate: '',
     returnDate: new Date().toISOString().split('T')[0],
   });
 
@@ -397,12 +402,18 @@ export default function LibraryModule() {
       const settings = await libraryService.getSettings();
       console.log('Settings loaded:', settings);
       setLibrarySettings(settings);
-      
+
       // Update library rules from settings
-      const maxBooks = parseInt(settings.find(s => s.setting_key === 'max_books_per_student')?.setting_value || '3');
-      const loanPeriod = parseInt(settings.find(s => s.setting_key === 'default_loan_period_days')?.setting_value || '14');
-      const finePerDay = parseInt(settings.find(s => s.setting_key === 'fine_per_day')?.setting_value || '10');
-      
+      const maxBooks = parseInt(
+        settings.find((s) => s.setting_key === 'max_books_per_student')?.setting_value || '3'
+      );
+      const loanPeriod = parseInt(
+        settings.find((s) => s.setting_key === 'default_loan_period_days')?.setting_value || '14'
+      );
+      const finePerDay = parseInt(
+        settings.find((s) => s.setting_key === 'fine_per_day')?.setting_value || '10'
+      );
+
       setLibraryRules({
         maxBooksPerStudent: maxBooks,
         defaultLoanPeriodDays: loanPeriod,
@@ -410,16 +421,10 @@ export default function LibraryModule() {
       });
 
       // Load other data
-      await Promise.all([
-        loadBooks(),
-        loadIssuedBooks(),
-        loadLibraryStats(),
-        loadOverdueBooks(),
-      ]);
+      await Promise.all([loadBooks(), loadIssuedBooks(), loadLibraryStats(), loadOverdueBooks()]);
 
       console.log('Initial data loading completed');
       //toast.success('Library data loaded successfully!', { duration: 2000 });
-
     } catch (err) {
       console.error('Error loading library data:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to load library data';
@@ -433,15 +438,15 @@ export default function LibraryModule() {
   const loadBooks = async (filters?: { search?: string; status?: string; page?: number }) => {
     try {
       console.log('Loading books with filters:', filters);
-      
+
       // If no filters provided, use current state values, but ensure we don't filter out new books
       const searchTerm = filters?.search !== undefined ? filters.search : bookSearch;
       const statusFilter = filters?.status !== undefined ? filters.status : bookFilter;
       const pageNum = filters?.page !== undefined ? filters.page : currentPage;
-      
+
       // When explicitly clearing filters (like after adding a book), ensure we get all books
       const actualStatusFilter = statusFilter === 'all' ? undefined : statusFilter;
-      
+
       const { books: booksData, count } = await libraryService.getBooks({
         search: searchTerm || undefined, // Don't pass empty string
         status: actualStatusFilter,
@@ -451,12 +456,11 @@ export default function LibraryModule() {
       console.log('Books loaded:', booksData, 'Total count:', count);
       setBooks(booksData);
       setTotalBooksCount(count || 0);
-      
+
       // Update state to match what was actually loaded
       if (filters?.search !== undefined) setBookSearch(filters.search);
       if (filters?.status !== undefined) setBookFilter(filters.status);
       if (filters?.page !== undefined) setCurrentPage(filters.page);
-      
     } catch (err) {
       console.error('Error loading books:', err);
       const errorMessage = 'Failed to load books';
@@ -515,14 +519,14 @@ export default function LibraryModule() {
 
       //testing 1
       //console.log('[Library] Searching students with term:', searchTerm);
-      
+
       // Get current user's institution ID - EXACT same logic as Admissions & Data
       let schoolId: string | null = null;
       let collegeId: string | null = null;
       let userRole: string | null = null;
       let userId: string | null = null;
       let universityId: string | null = null;
-      
+
       // First, check if user is logged in via AuthContext (for school/college admins)
       const storedUser = localStorage.getItem('user');
       if (storedUser) {
@@ -530,40 +534,48 @@ export default function LibraryModule() {
           const userData = JSON.parse(storedUser);
           console.log('📦 Found user in localStorage:', userData.email, 'role:', userData.role);
           userRole = userData.role;
-          
+
           if (userData.role === 'school_admin' && userData.schoolId) {
             schoolId = userData.schoolId;
             console.log('✅ School admin detected, using schoolId from localStorage:', schoolId);
           } else if (userData.role === 'college_admin' && userData.collegeId) {
             collegeId = userData.collegeId;
             console.log('✅ College admin detected, using collegeId from localStorage:', collegeId);
-          } else if (userData.role === 'university_admin' && (userData.universityId || userData.organizationId)) {
+          } else if (
+            userData.role === 'university_admin' &&
+            (userData.universityId || userData.organizationId)
+          ) {
             universityId = userData.universityId || userData.organizationId;
-            console.log('✅ University admin detected, using universityId from localStorage:', universityId);
+            console.log(
+              '✅ University admin detected, using universityId from localStorage:',
+              universityId
+            );
           }
         } catch (e) {
           console.error('Error parsing stored user:', e);
         }
       }
-      
+
       // If not found in localStorage, try Supabase Auth
       if (!schoolId && !collegeId) {
-        const { data: { user } } = await supabase.auth.getUser();
-        
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
         if (user) {
           console.log('🔍 Checking Supabase auth user:', user.email);
           userId = user.id;
-          
+
           // Get user role from users table
           const { data: userRecord } = await supabase
             .from('users')
             .select('role')
             .eq('id', user.id)
             .single();
-          
+
           userRole = userRecord?.role || null;
           console.log('👤 User role from database:', userRole);
-          
+
           // Check for college admin
           if (userRole === 'college_admin') {
             // Find college by matching email in organizations table (case-insensitive)
@@ -573,12 +585,22 @@ export default function LibraryModule() {
               .eq('organization_type', 'college')
               .ilike('email', user.email || '')
               .maybeSingle();
-            
+
             if (org?.id) {
               collegeId = org.id;
-              console.log('✅ Found college_id for college admin:', collegeId, 'College:', org.name, 'Email:', org.email);
+              console.log(
+                '✅ Found college_id for college admin:',
+                collegeId,
+                'College:',
+                org.name,
+                'Email:',
+                org.email
+              );
             } else {
-              console.warn('⚠️ College admin but no matching organization found for email:', user.email);
+              console.warn(
+                '⚠️ College admin but no matching organization found for email:',
+                user.email
+              );
             }
           }
           // Check for school admin/educator
@@ -589,7 +611,7 @@ export default function LibraryModule() {
               .select('school_id')
               .eq('user_id', user.id)
               .single();
-            
+
             if (educator?.school_id) {
               schoolId = educator.school_id;
               console.log('✅ Found school_id in school_educators:', schoolId);
@@ -601,7 +623,7 @@ export default function LibraryModule() {
                 .eq('organization_type', 'school')
                 .eq('email', user.email)
                 .maybeSingle();
-              
+
               schoolId = org?.id || null;
               if (schoolId) {
                 console.log('✅ Found school_id in organizations table:', schoolId);
@@ -610,16 +632,20 @@ export default function LibraryModule() {
           }
         }
       }
-      
+
       // Build the query - EXACT same as Admissions & Data
       let query = supabase
         .from('students')
-        .select('id, name, roll_number, enrollmentNumber, admission_number, contact_number, email, grade, section, course_name, semester')
+        .select(
+          'id, name, roll_number, enrollmentNumber, admission_number, contact_number, email, grade, section, course_name, semester'
+        )
         .eq('is_deleted', false)
-        .or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,contact_number.ilike.%${searchTerm}%,grade.ilike.%${searchTerm}%,section.ilike.%${searchTerm}%,roll_number.ilike.%${searchTerm}%`)
+        .or(
+          `name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,contact_number.ilike.%${searchTerm}%,grade.ilike.%${searchTerm}%,section.ilike.%${searchTerm}%,roll_number.ilike.%${searchTerm}%`
+        )
         .order('name')
         .limit(10);
-      
+
       // Filter by school_id, college_id, or universityId based on user role
       if (schoolId) {
         console.log('✅ Filtering students by school_id:', schoolId);
@@ -633,18 +659,17 @@ export default function LibraryModule() {
       } else {
         console.warn('⚠️ No school_id, college_id, or universityId found - User role:', userRole);
       }
-      
+
       const { data: students, error } = await query;
-      
+
       if (error) {
         console.error('Supabase query error:', error);
         throw error;
       }
-      
+
       console.log(`✅ [Library] Found ${students?.length || 0} students matching "${searchTerm}"`);
       setStudentSearchResults(students || []);
       setShowStudentDropdown(students && students.length > 0);
-      
     } catch (err) {
       console.error('Error searching students:', err);
       setStudentSearchResults([]);
@@ -672,13 +697,13 @@ export default function LibraryModule() {
       ...issueForm,
       studentId: student.id,
       studentName: student.name,
-      rollNumber: student.roll_number || "",
-      enrollmentNumber: student.enrollmentNumber || "",
-      admissionNumber: student.admission_number || "",
-      grade: student.grade || "",
-      section: student.section || "",
-      courseName: student.course_name || "",
-      semester: student.semester ? student.semester.toString() : "",
+      rollNumber: student.roll_number || '',
+      enrollmentNumber: student.enrollmentNumber || '',
+      admissionNumber: student.admission_number || '',
+      grade: student.grade || '',
+      section: student.section || '',
+      courseName: student.course_name || '',
+      semester: student.semester ? student.semester.toString() : '',
     });
     setShowStudentDropdown(false);
 
@@ -688,39 +713,41 @@ export default function LibraryModule() {
     try {
       const currentCount = await libraryService.getStudentIssuedBooksCount(student.id);
       if (currentCount >= LIBRARY_RULES.maxBooksPerStudent) {
-        toast.error(`${student.name} has already issued ${currentCount} books (maximum: ${LIBRARY_RULES.maxBooksPerStudent}). Cannot issue more books.`);
+        toast.error(
+          `${student.name} has already issued ${currentCount} books (maximum: ${LIBRARY_RULES.maxBooksPerStudent}). Cannot issue more books.`
+        );
       } else if (currentCount > 0) {
-        toast.success(`${student.name} currently has ${currentCount} book(s) issued.`, { 
+        toast.success(`${student.name} currently has ${currentCount} book(s) issued.`, {
           icon: 'ℹ️',
-          duration: 3000 
+          duration: 3000,
         });
       }
     } catch (err) {
       console.error('Error checking student issued books:', err);
-      toast.error('Failed to check student\'s current book count');
+      toast.error("Failed to check student's current book count");
     }
   };
 
   const clearStudentSelection = () => {
     setSelectedStudent(null);
-    setStudentSearch("");
+    setStudentSearch('');
     setIssueForm({
       ...issueForm,
-      studentId: "",
-      studentName: "",
-      rollNumber: "",
-      enrollmentNumber: "",
-      admissionNumber: "",
-      grade: "",
-      section: "",
-      courseName: "",
-      semester: "",
+      studentId: '',
+      studentName: '',
+      rollNumber: '',
+      enrollmentNumber: '',
+      admissionNumber: '',
+      grade: '',
+      section: '',
+      courseName: '',
+      semester: '',
     });
     setStudentSearchResults([]);
     setShowStudentDropdown(false);
-    toast.success('Student selection cleared', { 
+    toast.success('Student selection cleared', {
       icon: 'ℹ️',
-      duration: 1500 
+      duration: 1500,
     });
   };
 
@@ -743,70 +770,73 @@ export default function LibraryModule() {
       const issue = new Date(issueDate);
       const dueDate = new Date(issue);
       dueDate.setDate(dueDate.getDate() + LIBRARY_RULES.defaultLoanPeriodDays);
-      
+
       // Calculate overdue days
       const ret = new Date(returnDate);
-      const overdueDays = Math.max(0, Math.floor((ret.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)));
+      const overdueDays = Math.max(
+        0,
+        Math.floor((ret.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24))
+      );
       const fine = overdueDays * LIBRARY_RULES.finePerDay;
-      
-      return { 
-        dueDate: dueDate.toISOString().split('T')[0], 
-        overdueDays, 
-        fine 
+
+      return {
+        dueDate: dueDate.toISOString().split('T')[0],
+        overdueDays,
+        fine,
       };
     } catch (err) {
       console.error('Error calculating fine:', err);
-      return { 
-        dueDate: new Date().toISOString().split('T')[0], 
-        overdueDays: 0, 
-        fine: 0 
+      return {
+        dueDate: new Date().toISOString().split('T')[0],
+        overdueDays: 0,
+        fine: 0,
       };
     }
   };
 
   const addBook = async () => {
     if (!newBook.title || !newBook.author || !newBook.isbn || newBook.total_copies < 1) {
-      toast.error("Please fill all required fields correctly.");
+      toast.error('Please fill all required fields correctly.');
       return;
     }
 
     try {
       setLoading(true);
       const loadingToast = toast.loading('Adding book to library...');
-      
+
       await libraryService.addBook({
         ...newBook,
         available_copies: newBook.total_copies,
         status: 'available' as const,
       });
-      
+
       toast.dismiss(loadingToast);
-      
-      setNewBook({ 
-        title: "", 
-        author: "", 
-        isbn: "", 
+
+      setNewBook({
+        title: '',
+        author: '',
+        isbn: '',
         total_copies: 1,
-        category: "",
-        publisher: "",
+        category: '',
+        publisher: '',
         publication_year: new Date().getFullYear(),
-        description: "",
-        location_shelf: ""
+        description: '',
+        location_shelf: '',
       });
-      
-      toast.success("Book added successfully!", { duration: 3000 });
-      
+
+      toast.success('Book added successfully!', { duration: 3000 });
+
       // Clear any search filters and reset to first page to show all books
-      setBookSearch("");
-      setBookFilter("all");
+      setBookSearch('');
+      setBookFilter('all');
       setCurrentPage(1);
-      
+
       // Reload books without any filters to ensure new book appears
-      await loadBooks({ search: "", status: "all", page: 1 });
+      await loadBooks({ search: '', status: 'all', page: 1 });
       await loadLibraryStats();
-      
+
       // Switch to details tab to show the newly added book
-      setActiveTab("details");
+      setActiveTab('details');
     } catch (err) {
       console.error('Error adding book:', err);
       toast.error(err instanceof Error ? err.message : 'Failed to add book');
@@ -817,7 +847,7 @@ export default function LibraryModule() {
 
   const issueBook = async () => {
     if (!issueForm.studentId || !issueForm.studentName || !issueForm.bookId) {
-      toast.error("Please select a student and book.");
+      toast.error('Please select a student and book.');
       return;
     }
 
@@ -826,9 +856,18 @@ export default function LibraryModule() {
       const loadingToast = toast.loading(`Issuing book to ${issueForm.studentName}...`);
 
       // Use the most appropriate identifier for the student
-      const studentIdentifier = issueForm.rollNumber || issueForm.enrollmentNumber || issueForm.admissionNumber || issueForm.studentId;
-      const classInfo = issueForm.grade && issueForm.section ? `${issueForm.grade}-${issueForm.section}` : issueForm.grade || "";
-      const academicYear = issueForm.semester ? `Semester ${issueForm.semester}` : new Date().getFullYear().toString();
+      const studentIdentifier =
+        issueForm.rollNumber ||
+        issueForm.enrollmentNumber ||
+        issueForm.admissionNumber ||
+        issueForm.studentId;
+      const classInfo =
+        issueForm.grade && issueForm.section
+          ? `${issueForm.grade}-${issueForm.section}`
+          : issueForm.grade || '';
+      const academicYear = issueForm.semester
+        ? `Semester ${issueForm.semester}`
+        : new Date().getFullYear().toString();
 
       await libraryService.issueBook({
         book_id: issueForm.bookId,
@@ -842,30 +881,25 @@ export default function LibraryModule() {
       toast.dismiss(loadingToast);
 
       // Reset form
-      setIssueForm({ 
-        studentId: "",
-        studentName: "", 
-        rollNumber: "",
-        enrollmentNumber: "",
-        admissionNumber: "",
-        grade: "",
-        section: "",
-        courseName: "",
-        semester: "",
-        bookId: "", 
-        dueDate: "" 
+      setIssueForm({
+        studentId: '',
+        studentName: '',
+        rollNumber: '',
+        enrollmentNumber: '',
+        admissionNumber: '',
+        grade: '',
+        section: '',
+        courseName: '',
+        semester: '',
+        bookId: '',
+        dueDate: '',
       });
       clearStudentSelection();
-      
+
       toast.success(`Book issued successfully to ${issueForm.studentName}!`, { duration: 4000 });
-      
+
       // Reload data
-      await Promise.all([
-        loadBooks(),
-        loadIssuedBooks(),
-        loadLibraryStats(),
-      ]);
-      
+      await Promise.all([loadBooks(), loadIssuedBooks(), loadLibraryStats()]);
     } catch (err) {
       console.error('Error issuing book:', err);
       toast.error(err instanceof Error ? err.message : 'Failed to issue book');
@@ -876,14 +910,14 @@ export default function LibraryModule() {
 
   const searchIssuedBook = async () => {
     if (!returnForm.bookId && !returnForm.studentId) {
-      toast.error("Please enter at least Book ID or Student ID to search.");
+      toast.error('Please enter at least Book ID or Student ID to search.');
       return;
     }
 
     try {
       setLoading(true);
       const loadingToast = toast.loading('Searching for issued book...');
-      
+
       const issued = await libraryService.searchIssuedBook(
         returnForm.bookId || undefined,
         returnForm.studentId || undefined
@@ -894,7 +928,6 @@ export default function LibraryModule() {
       if (issued) {
         const today = new Date().toISOString().split('T')[0];
         const { dueDate, overdueDays, fine } = await calculateFine(issued.issue_date, today);
-        
 
         setReturnForm({
           ...returnForm,
@@ -908,26 +941,29 @@ export default function LibraryModule() {
           dueDate: dueDate,
           returnDate: new Date().toISOString().split('T')[0],
         });
-        
+
         if (overdueDays > 0) {
-          toast.error(`Book found! This book is ${overdueDays} days overdue. Current fine: ₹${fine}`, {
-            icon: '⚠️',
-            duration: 5000
-          });
+          toast.error(
+            `Book found! This book is ${overdueDays} days overdue. Current fine: ₹${fine}`,
+            {
+              icon: '⚠️',
+              duration: 5000,
+            }
+          );
         } else {
-          toast.success("Book found! No overdue charges.");
+          toast.success('Book found! No overdue charges.');
         }
       } else {
-        toast.error("No matching issued book found. Please check the Book ID and Student ID.");
+        toast.error('No matching issued book found. Please check the Book ID and Student ID.');
         setReturnForm({
           bookId: returnForm.bookId,
           studentId: returnForm.studentId,
-          studentName: "",
-          rollNumber: "",
-          class: "",
-          bookTitle: "",
-          issueDate: "",
-          dueDate: "",
+          studentName: '',
+          rollNumber: '',
+          class: '',
+          bookTitle: '',
+          issueDate: '',
+          dueDate: '',
           returnDate: new Date().toISOString().split('T')[0],
         });
       }
@@ -941,19 +977,19 @@ export default function LibraryModule() {
 
   const returnBook = async () => {
     if (!returnForm.bookId || !returnForm.studentId || !returnForm.bookTitle) {
-      toast.error("Please search for the issued book first before returning.");
+      toast.error('Please search for the issued book first before returning.');
       return;
     }
 
     try {
       setLoading(true);
       const loadingToast = toast.loading(`Processing return for ${returnForm.bookTitle}...`);
-      
+
       // Find the issue record
       const issued = await libraryService.searchIssuedBook(returnForm.bookId, returnForm.studentId);
       if (!issued) {
         toast.dismiss(loadingToast);
-        toast.error("No matching issued book found. Please search again.");
+        toast.error('No matching issued book found. Please search again.');
         return;
       }
 
@@ -965,34 +1001,31 @@ export default function LibraryModule() {
 
       toast.dismiss(loadingToast);
 
-      const fineMessage = fine > 0 
-        ? `Overdue: ${overdueDays} days | Fine: ₹${fine} (@ ₹${LIBRARY_RULES.finePerDay}/day)` 
-        : "No fine. Returned on time.";
-      
-      toast.success(`Book returned successfully!\n\nStudent: ${returnForm.studentName}\nBook: ${returnForm.bookTitle}\n${fineMessage}`, {
-        duration: 6000,
-      });
-      
-      setReturnForm({ 
-        bookId: "", 
-        studentId: "", 
-        studentName: "", 
-        rollNumber: "", 
-        class: "", 
-        bookTitle: "", 
-        issueDate: "", 
-        dueDate: "", 
-        returnDate: new Date().toISOString().split('T')[0] 
+      const fineMessage =
+        fine > 0
+          ? `Overdue: ${overdueDays} days | Fine: ₹${fine} (@ ₹${LIBRARY_RULES.finePerDay}/day)`
+          : 'No fine. Returned on time.';
+
+      toast.success(
+        `Book returned successfully!\n\nStudent: ${returnForm.studentName}\nBook: ${returnForm.bookTitle}\n${fineMessage}`,
+        {
+          duration: 6000,
+        }
+      );
+
+      setReturnForm({
+        bookId: '',
+        studentId: '',
+        studentName: '',
+        rollNumber: '',
+        class: '',
+        bookTitle: '',
+        issueDate: '',
+        dueDate: '',
+        returnDate: new Date().toISOString().split('T')[0],
       });
 
-    
-      await Promise.all([
-        loadBooks(),
-        loadIssuedBooks(),
-        loadLibraryStats(),
-        loadOverdueBooks(),
-      ]);
-      
+      await Promise.all([loadBooks(), loadIssuedBooks(), loadLibraryStats(), loadOverdueBooks()]);
     } catch (err) {
       console.error('Error returning book:', err);
       toast.error(err instanceof Error ? err.message : 'Failed to return book');
@@ -1021,33 +1054,31 @@ export default function LibraryModule() {
 
       {/* Tabs */}
       <div className="flex gap-2 mb-6 flex-wrap">
-        {["dashboard", "add", "details", "issue", "return", "history", "overdue"].map((tab) => (
+        {['dashboard', 'add', 'details', 'issue', 'return', 'history', 'overdue'].map((tab) => (
           <button
             key={tab}
             onClick={() => {
               setActiveTab(tab);
               // Load data when switching tabs
-              if (tab === "history" && borrowHistory.length === 0) {
+              if (tab === 'history' && borrowHistory.length === 0) {
                 toast.loading('Loading borrow history...', { id: 'load-history' });
                 loadBorrowHistory().finally(() => toast.dismiss('load-history'));
-              } else if (tab === "overdue" && overdueBooks.length === 0) {
+              } else if (tab === 'overdue' && overdueBooks.length === 0) {
                 toast.loading('Loading overdue books...', { id: 'load-overdue' });
                 loadOverdueBooks().finally(() => toast.dismiss('load-overdue'));
               }
             }}
             className={`px-4 py-2 rounded-lg ${
-              activeTab === tab ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-800"
+              activeTab === tab ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'
             }`}
           >
             {tab.charAt(0).toUpperCase() + tab.slice(1)}
           </button>
         ))}
-        
-       
       </div>
 
       {/* Dashboard / Book List */}
-      {activeTab === "dashboard" && (
+      {activeTab === 'dashboard' && (
         <div>
           <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-blue-100 p-4 rounded-lg">
@@ -1075,7 +1106,8 @@ export default function LibraryModule() {
               <>
                 {/* Results Count */}
                 <div className="mb-4 text-sm text-gray-600">
-                  Showing {startIndex + 1}-{Math.min(endIndex, books.length)} of {books.length} books
+                  Showing {startIndex + 1}-{Math.min(endIndex, books.length)} of {books.length}{' '}
+                  books
                 </div>
 
                 <div className="overflow-x-auto">
@@ -1100,9 +1132,11 @@ export default function LibraryModule() {
                           <td className="p-2 border">{book.isbn}</td>
                           <td className="p-2 border text-center">{book.total_copies}</td>
                           <td className="p-2 border text-center">
-                            <span className={`font-bold ${
-                              book.available_copies > 0 ? 'text-green-600' : 'text-red-600'
-                            }`}>
+                            <span
+                              className={`font-bold ${
+                                book.available_copies > 0 ? 'text-green-600' : 'text-red-600'
+                              }`}
+                            >
                               {book.available_copies}
                             </span>
                           </td>
@@ -1110,11 +1144,11 @@ export default function LibraryModule() {
                             <span
                               className={`px-3 py-1 rounded-full text-sm font-medium ${
                                 book.available_copies > 0
-                                  ? "bg-green-100 text-green-700"
-                                  : "bg-red-100 text-red-700"
+                                  ? 'bg-green-100 text-green-700'
+                                  : 'bg-red-100 text-red-700'
                               }`}
                             >
-                              {book.available_copies > 0 ? "Available" : "All Issued"}
+                              {book.available_copies > 0 ? 'Available' : 'All Issued'}
                             </span>
                           </td>
                         </tr>
@@ -1127,7 +1161,7 @@ export default function LibraryModule() {
                 {totalPages > 1 && (
                   <div className="flex justify-center items-center gap-2 mt-6">
                     <button
-                      onClick={() => setDashboardPage(prev => Math.max(1, prev - 1))}
+                      onClick={() => setDashboardPage((prev) => Math.max(1, prev - 1))}
                       disabled={dashboardPage === 1}
                       className={`px-4 py-2 rounded-lg font-medium ${
                         dashboardPage === 1
@@ -1137,9 +1171,9 @@ export default function LibraryModule() {
                     >
                       ←
                     </button>
-                    
+
                     <div className="flex gap-1">
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                         <button
                           key={page}
                           onClick={() => setDashboardPage(page)}
@@ -1153,9 +1187,9 @@ export default function LibraryModule() {
                         </button>
                       ))}
                     </div>
-                    
+
                     <button
-                      onClick={() => setDashboardPage(prev => Math.min(totalPages, prev + 1))}
+                      onClick={() => setDashboardPage((prev) => Math.min(totalPages, prev + 1))}
                       disabled={dashboardPage === totalPages}
                       className={`px-4 py-2 rounded-lg font-medium ${
                         dashboardPage === totalPages
@@ -1174,12 +1208,14 @@ export default function LibraryModule() {
       )}
 
       {/* Add New Book */}
-      {activeTab === "add" && (
+      {activeTab === 'add' && (
         <div className="max-w-xl mx-auto">
           <h2 className="text-xl font-bold mb-4">Add New Book</h2>
           <div className="space-y-4">
             <div>
-              <label className="block mb-2 font-medium">Title <span className="text-red-500">*</span></label>
+              <label className="block mb-2 font-medium">
+                Title <span className="text-red-500">*</span>
+              </label>
               <input
                 className="w-full p-2 border rounded"
                 value={newBook.title}
@@ -1187,9 +1223,11 @@ export default function LibraryModule() {
                 placeholder="Enter book title"
               />
             </div>
-            
+
             <div>
-              <label className="block mb-2 font-medium">Author  <span className="text-red-500">*</span></label>
+              <label className="block mb-2 font-medium">
+                Author <span className="text-red-500">*</span>
+              </label>
               <input
                 className="w-full p-2 border rounded"
                 value={newBook.author}
@@ -1197,9 +1235,11 @@ export default function LibraryModule() {
                 placeholder="Enter author name"
               />
             </div>
-            
+
             <div>
-              <label className="block mb-2 font-medium">ISBN  <span className="text-red-500">*</span></label>
+              <label className="block mb-2 font-medium">
+                ISBN <span className="text-red-500">*</span>
+              </label>
               <input
                 className="w-full p-2 border rounded"
                 value={newBook.isbn}
@@ -1207,10 +1247,12 @@ export default function LibraryModule() {
                 placeholder="Enter ISBN number"
               />
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block mb-2 font-medium">Total Copies  <span className="text-red-500">*</span></label>
+                <label className="block mb-2 font-medium">
+                  Total Copies <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="number"
                   min="1"
@@ -1219,7 +1261,7 @@ export default function LibraryModule() {
                   onChange={(e) => setNewBook({ ...newBook, total_copies: Number(e.target.value) })}
                 />
               </div>
-              
+
               <div>
                 <label className="block mb-2 font-medium">Publication Year</label>
                 <input
@@ -1228,11 +1270,13 @@ export default function LibraryModule() {
                   max={new Date().getFullYear()}
                   className="w-full p-2 border rounded"
                   value={newBook.publication_year}
-                  onChange={(e) => setNewBook({ ...newBook, publication_year: Number(e.target.value) })}
+                  onChange={(e) =>
+                    setNewBook({ ...newBook, publication_year: Number(e.target.value) })
+                  }
                 />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block mb-2 font-medium">Category</label>
@@ -1243,7 +1287,7 @@ export default function LibraryModule() {
                   placeholder="e.g., Academic, Fiction"
                 />
               </div>
-              
+
               <div>
                 <label className="block mb-2 font-medium">Publisher</label>
                 <input
@@ -1254,7 +1298,7 @@ export default function LibraryModule() {
                 />
               </div>
             </div>
-            
+
             <div>
               <label className="block mb-2 font-medium">Shelf Location</label>
               <input
@@ -1264,7 +1308,7 @@ export default function LibraryModule() {
                 placeholder="e.g., A1-B2, Section-3"
               />
             </div>
-            
+
             <div>
               <label className="block mb-2 font-medium">Description</label>
               <textarea
@@ -1275,9 +1319,9 @@ export default function LibraryModule() {
                 placeholder="Brief description of the book"
               />
             </div>
-            
-            <button 
-              onClick={addBook} 
+
+            <button
+              onClick={addBook}
               disabled={loading}
               className="w-full bg-green-600 text-white p-2 rounded-lg hover:bg-green-700 disabled:opacity-50"
             >
@@ -1288,13 +1332,12 @@ export default function LibraryModule() {
       )}
 
       {/* Book Details */}
-      {activeTab === "details" && (
+      {activeTab === 'details' && (
         <div>
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-bold">Book Details</h2>
-           
           </div>
-          
+
           {/* Search and Filters */}
           <div className="bg-white p-4 rounded-lg border mb-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1316,12 +1359,10 @@ export default function LibraryModule() {
                       }, 300);
                     }}
                   />
-                 <MagnifyingGlassIcon
-  className="absolute left-3 top-2.5 h-5 w-5 text-gray-400"
-/>
+                  <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
                 </div>
               </div>
-              
+
               {/* Filter */}
               <div>
                 <label className="block mb-2 font-medium text-sm">Filter by Status</label>
@@ -1355,23 +1396,25 @@ export default function LibraryModule() {
                 <div className="mb-4 text-sm text-gray-600">
                   Showing {startIndex}-{endIndex} of {totalBooksCount} books
                   {bookSearch && ` (search: "${bookSearch}")`}
-                  {bookFilter !== "all" && ` (filter: ${bookFilter})`}
+                  {bookFilter !== 'all' && ` (filter: ${bookFilter})`}
                 </div>
 
                 {/* Books Grid */}
                 {paginatedBooks.length === 0 ? (
                   <div className="text-center py-12 bg-gray-50 rounded-lg">
                     <p className="text-gray-500 text-lg">No books found</p>
-                    <p className="text-gray-400 text-sm mt-2">Try adjusting your search or filters, or add some books</p>
+                    <p className="text-gray-400 text-sm mt-2">
+                      Try adjusting your search or filters, or add some books
+                    </p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                     {paginatedBooks.map((book) => (
-                      <div 
-                        key={book.id} 
+                      <div
+                        key={book.id}
                         className={`border-2 rounded-lg p-4 hover:shadow-lg transition ${
-                          book.available_copies > 0 
-                            ? 'border-green-200 bg-green-50' 
+                          book.available_copies > 0
+                            ? 'border-green-200 bg-green-50'
                             : 'border-red-200 bg-red-50'
                         }`}
                       >
@@ -1381,7 +1424,7 @@ export default function LibraryModule() {
                             <h3 className="font-bold text-lg text-gray-800 mb-1">{book.title}</h3>
                             <p className="text-sm text-gray-600">by {book.author}</p>
                           </div>
-                          <span 
+                          <span
                             className={`px-3 py-1 rounded-full text-xs font-semibold ${
                               book.available_copies > 0
                                 ? 'bg-green-600 text-white'
@@ -1404,9 +1447,11 @@ export default function LibraryModule() {
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-600">Available:</span>
-                            <span className={`font-bold ${
-                              book.available_copies > 0 ? 'text-green-600' : 'text-red-600'
-                            }`}>
+                            <span
+                              className={`font-bold ${
+                                book.available_copies > 0 ? 'text-green-600' : 'text-red-600'
+                              }`}
+                            >
                               {book.available_copies}
                             </span>
                           </div>
@@ -1424,7 +1469,7 @@ export default function LibraryModule() {
 
                         {/* Action Buttons */}
                         <div className="flex gap-2">
-                          <button 
+                          <button
                             className={`flex-1 py-2 rounded-lg font-medium transition ${
                               book.available_copies > 0
                                 ? 'bg-blue-600 text-white hover:bg-blue-700'
@@ -1432,16 +1477,16 @@ export default function LibraryModule() {
                             }`}
                             disabled={book.available_copies === 0}
                             onClick={() => {
-                              setActiveTab("issue");
+                              setActiveTab('issue');
                               setIssueForm({ ...issueForm, bookId: book.id });
                             }}
                           >
                             Issue Book
                           </button>
-                          <button 
+                          <button
                             className="flex-1 bg-gray-600 text-white py-2 rounded-lg font-medium hover:bg-gray-700 transition"
                             onClick={() => {
-                              setActiveTab("return");
+                              setActiveTab('return');
                               setReturnForm({ ...returnForm, bookId: book.id });
                             }}
                           >
@@ -1471,7 +1516,7 @@ export default function LibraryModule() {
                     >
                       ←
                     </button>
-                    
+
                     <div className="flex gap-1">
                       {Array.from({ length: Math.min(totalPages, 10) }, (_, i) => {
                         // Show page numbers around current page
@@ -1484,7 +1529,7 @@ export default function LibraryModule() {
                           pageNum = start + i;
                           if (pageNum > end) return null;
                         }
-                        
+
                         return (
                           <button
                             key={pageNum}
@@ -1503,7 +1548,7 @@ export default function LibraryModule() {
                         );
                       })}
                     </div>
-                    
+
                     <button
                       onClick={() => {
                         const newPage = Math.min(totalPages, currentPage + 1);
@@ -1528,49 +1573,48 @@ export default function LibraryModule() {
       )}
 
       {/* Issue Book */}
-      {activeTab === "issue" && (
+      {activeTab === 'issue' && (
         <div className="max-w-4xl mx-auto">
           <h2 className="text-xl font-bold mb-6">Issue Book</h2>
-          
-          {/* Library Rules Info */}
-        <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-6 relative">
-  <div className="flex items-center justify-between mb-2">
-    <h3 className="font-bold text-blue-900">
-      Library Rules
-    </h3>
 
-    <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
-      <BookOpenIcon className="h-5 w-5 text-white" />
-    </div>
-  </div>
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+          {/* Library Rules Info */}
+          <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-6 relative">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-bold text-blue-900">Library Rules</h3>
+
+              <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
+                <BookOpenIcon className="h-5 w-5 text-white" />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
               <div>
-                <span className="font-medium">Max Books per Student:</span> {LIBRARY_RULES.maxBooksPerStudent}
+                <span className="font-medium">Max Books per Student:</span>{' '}
+                {LIBRARY_RULES.maxBooksPerStudent}
               </div>
               <div>
-                <span className="font-medium">Loan Period:</span> {LIBRARY_RULES.defaultLoanPeriodDays} days
+                <span className="font-medium">Loan Period:</span>{' '}
+                {LIBRARY_RULES.defaultLoanPeriodDays} days
               </div>
               <div>
                 <span className="font-medium">Overdue Fine:</span> ₹{LIBRARY_RULES.finePerDay}/day
               </div>
             </div>
-</div>
+          </div>
 
-          
           <div className="bg-white p-6 rounded-lg border">
             <div className="grid grid-cols-1 gap-6">
               {/* Student Search Section */}
               <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                 <h3 className="flex items-center gap-3 font-bold text-blue-900 mb-3">
-  <div className="w-10 h-10 rounded-full bg-white shadow flex items-center justify-center">
-    <UsersIcon className="w-6 h-6 text-blue-600" />
-  </div>
-  Select Student
-</h3>
+                  <div className="w-10 h-10 rounded-full bg-white shadow flex items-center justify-center">
+                    <UsersIcon className="w-6 h-6 text-blue-600" />
+                  </div>
+                  Select Student
+                </h3>
                 <div className="relative" ref={studentSearchRef}>
                   <label className="block mb-2 font-medium">Search Student</label>
                   <div className="relative">
-                    <input 
+                    <input
                       className="w-full p-3 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="Type student name, roll number, enrollment number, or email..."
                       value={studentSearch}
@@ -1588,13 +1632,23 @@ export default function LibraryModule() {
                       {searchLoading ? (
                         <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
                       ) : (
-                        <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        <svg
+                          className="h-5 w-5 text-gray-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                          />
                         </svg>
                       )}
                     </div>
                   </div>
-                  
+
                   {/* Student Search Dropdown */}
                   {showStudentDropdown && studentSearchResults.length > 0 && (
                     <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-xl max-h-60 overflow-y-auto">
@@ -1607,8 +1661,10 @@ export default function LibraryModule() {
                           <div className="font-semibold text-gray-800">{student.name}</div>
                           <div className="text-sm text-gray-600 mt-1">
                             {student.roll_number && `Roll: ${student.roll_number}`}
-                            {student.enrollmentNumber && ` | Enrollment: ${student.enrollmentNumber}`}
-                            {student.admission_number && ` | Admission: ${student.admission_number}`}
+                            {student.enrollmentNumber &&
+                              ` | Enrollment: ${student.enrollmentNumber}`}
+                            {student.admission_number &&
+                              ` | Admission: ${student.admission_number}`}
                           </div>
                           <div className="text-sm text-gray-600">
                             {student.grade && `Grade: ${student.grade}`}
@@ -1623,7 +1679,7 @@ export default function LibraryModule() {
                       ))}
                     </div>
                   )}
-                  
+
                   {/* Loading State */}
                   {searchLoading && studentSearch.length >= 2 && (
                     <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-3">
@@ -1633,35 +1689,45 @@ export default function LibraryModule() {
                       </div>
                     </div>
                   )}
-                  
+
                   {/* No Results Message */}
-                  {!searchLoading && studentSearch.length >= 2 && studentSearchResults.length === 0 && !showStudentDropdown && (
-                    <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-3">
-                      <div className="text-sm text-gray-500 text-center">
-                        No students found matching "{studentSearch}"
+                  {!searchLoading &&
+                    studentSearch.length >= 2 &&
+                    studentSearchResults.length === 0 &&
+                    !showStudentDropdown && (
+                      <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-3">
+                        <div className="text-sm text-gray-500 text-center">
+                          No students found matching "{studentSearch}"
+                        </div>
                       </div>
-                    </div>
-                  )}
-                  
+                    )}
+
                   {/* Selected Student Display */}
                   {selectedStudent && (
                     <div className="mt-3 p-4 bg-green-50 border border-green-200 rounded-lg">
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
-                          <div className="font-semibold text-green-800 text-lg">✓ Selected: {selectedStudent.name}</div>
+                          <div className="font-semibold text-green-800 text-lg">
+                            ✓ Selected: {selectedStudent.name}
+                          </div>
                           <div className="text-sm text-green-700 mt-1">
                             {selectedStudent.roll_number && `Roll: ${selectedStudent.roll_number}`}
-                            {selectedStudent.enrollmentNumber && ` | Enrollment: ${selectedStudent.enrollmentNumber}`}
-                            {selectedStudent.admission_number && ` | Admission: ${selectedStudent.admission_number}`}
+                            {selectedStudent.enrollmentNumber &&
+                              ` | Enrollment: ${selectedStudent.enrollmentNumber}`}
+                            {selectedStudent.admission_number &&
+                              ` | Admission: ${selectedStudent.admission_number}`}
                           </div>
                           <div className="text-sm text-green-700">
                             {selectedStudent.grade && `Grade: ${selectedStudent.grade}`}
                             {selectedStudent.section && ` Section: ${selectedStudent.section}`}
-                            {selectedStudent.course_name && ` | Course: ${selectedStudent.course_name}`}
+                            {selectedStudent.course_name &&
+                              ` | Course: ${selectedStudent.course_name}`}
                             {selectedStudent.semester && ` | Semester: ${selectedStudent.semester}`}
                           </div>
                           {selectedStudent.email && (
-                            <div className="text-xs text-green-600 mt-1">{selectedStudent.email}</div>
+                            <div className="text-xs text-green-600 mt-1">
+                              {selectedStudent.email}
+                            </div>
                           )}
                         </div>
                         <button
@@ -1669,8 +1735,18 @@ export default function LibraryModule() {
                           className="ml-3 text-red-600 hover:text-red-800 hover:bg-red-100 rounded-full p-1 transition-colors"
                           title="Clear selection"
                         >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M6 18L18 6M6 6l12 12"
+                            />
                           </svg>
                         </button>
                       </div>
@@ -1683,112 +1759,119 @@ export default function LibraryModule() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block mb-2 font-medium">Student Name</label>
-                  <input 
-                    className="w-full p-2 border rounded bg-gray-50" 
+                  <input
+                    className="w-full p-2 border rounded bg-gray-50"
                     value={issueForm.studentName}
                     readOnly
                     placeholder="Select student from search above"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block mb-2 font-medium">Roll Number</label>
-                  <input 
-                    className="w-full p-2 border rounded bg-gray-50" 
+                  <input
+                    className="w-full p-2 border rounded bg-gray-50"
                     value={issueForm.rollNumber}
                     readOnly
                     placeholder="Auto-filled from student data"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block mb-2 font-medium">Enrollment Number</label>
-                  <input 
-                    className="w-full p-2 border rounded bg-gray-50" 
+                  <input
+                    className="w-full p-2 border rounded bg-gray-50"
                     value={issueForm.enrollmentNumber}
                     readOnly
                     placeholder="Auto-filled from student data"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block mb-2 font-medium">Admission Number</label>
-                  <input 
-                    className="w-full p-2 border rounded bg-gray-50" 
+                  <input
+                    className="w-full p-2 border rounded bg-gray-50"
                     value={issueForm.admissionNumber}
                     readOnly
                     placeholder="Auto-filled from student data"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block mb-2 font-medium">Grade</label>
-                  <input 
-                    className="w-full p-2 border rounded bg-gray-50" 
+                  <input
+                    className="w-full p-2 border rounded bg-gray-50"
                     value={issueForm.grade}
                     readOnly
                     placeholder="Auto-filled from student data"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block mb-2 font-medium">Section</label>
-                  <input 
-                    className="w-full p-2 border rounded bg-gray-50" 
+                  <input
+                    className="w-full p-2 border rounded bg-gray-50"
                     value={issueForm.section}
                     readOnly
                     placeholder="Auto-filled from student data"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block mb-2 font-medium">Course Name</label>
-                  <input 
-                    className="w-full p-2 border rounded bg-gray-50" 
+                  <input
+                    className="w-full p-2 border rounded bg-gray-50"
                     value={issueForm.courseName}
                     readOnly
                     placeholder="Auto-filled from student data"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block mb-2 font-medium">Semester</label>
-                  <input 
-                    className="w-full p-2 border rounded bg-gray-50" 
+                  <input
+                    className="w-full p-2 border rounded bg-gray-50"
                     value={issueForm.semester}
                     readOnly
                     placeholder="Auto-filled from student data"
                   />
                 </div>
               </div>
-              
+
               {/* Book Selection */}
               <div>
                 <label className="block mb-2 font-medium">Select Book</label>
-                <select 
+                <select
                   className="w-full p-3 border rounded-lg"
                   value={issueForm.bookId}
                   onChange={(e) => setIssueForm({ ...issueForm, bookId: e.target.value })}
                 >
                   <option value="">-- Select Book --</option>
-                  {books.filter(b => b.available_copies > 0).map((book) => (
-                    <option key={book.id} value={book.id}>
-                      {book.title} by {book.author} (Available: {book.available_copies})
-                    </option>
-                  ))}
+                  {books
+                    .filter((b) => b.available_copies > 0)
+                    .map((book) => (
+                      <option key={book.id} value={book.id}>
+                        {book.title} by {book.author} (Available: {book.available_copies})
+                      </option>
+                    ))}
                 </select>
                 <p className="text-xs text-gray-500 mt-1">
-                  Due date will be automatically set to {LIBRARY_RULES.defaultLoanPeriodDays} days from today
+                  Due date will be automatically set to {LIBRARY_RULES.defaultLoanPeriodDays} days
+                  from today
                 </p>
               </div>
             </div>
-            
-            <button 
+
+            <button
               onClick={issueBook}
               disabled={loading || !selectedStudent || !issueForm.bookId}
               className="w-full mt-6 bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Issuing...' : selectedStudent && issueForm.bookId ? `Issue Book to ${selectedStudent.name}` : 'Select Student and Book to Issue'}
+              {loading
+                ? 'Issuing...'
+                : selectedStudent && issueForm.bookId
+                  ? `Issue Book to ${selectedStudent.name}`
+                  : 'Select Student and Book to Issue'}
             </button>
           </div>
 
@@ -1809,21 +1892,23 @@ export default function LibraryModule() {
                   </tr>
                 </thead>
                 <tbody>
-                  {issuedBooks.filter(ib => ib.status === "issued").map((issued) => (
-                    <tr key={issued.id}>
-                      <td className="p-2 border">{issued.book?.title || 'Unknown Book'}</td>
-                      <td className="p-2 border">{issued.student_name}</td>
-                      <td className="p-2 border">{issued.roll_number}</td>
-                      <td className="p-2 border">{issued.class}</td>
-                      <td className="p-2 border">{issued.issue_date}</td>
-                      <td className="p-2 border">{issued.due_date}</td>
-                      <td className="p-2 border">
-                        <span className="px-3 py-1 rounded-full text-sm bg-yellow-100 text-yellow-700">
-                          {issued.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {issuedBooks
+                    .filter((ib) => ib.status === 'issued')
+                    .map((issued) => (
+                      <tr key={issued.id}>
+                        <td className="p-2 border">{issued.book?.title || 'Unknown Book'}</td>
+                        <td className="p-2 border">{issued.student_name}</td>
+                        <td className="p-2 border">{issued.roll_number}</td>
+                        <td className="p-2 border">{issued.class}</td>
+                        <td className="p-2 border">{issued.issue_date}</td>
+                        <td className="p-2 border">{issued.due_date}</td>
+                        <td className="p-2 border">
+                          <span className="px-3 py-1 rounded-full text-sm bg-yellow-100 text-yellow-700">
+                            {issued.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
                 </tbody>
               </table>
             </div>
@@ -1832,37 +1917,37 @@ export default function LibraryModule() {
       )}
 
       {/* Return Book */}
-      {activeTab === "return" && (
+      {activeTab === 'return' && (
         <div>
           <h2 className="text-xl font-bold mb-6">Return Book</h2>
-          
+
           {/* Search Bar */}
           <div className="bg-white p-4 rounded-lg border mb-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block mb-2 font-medium text-sm">Search by Book ID</label>
-                <input 
-                  className="w-full p-2 border rounded" 
+                <input
+                  className="w-full p-2 border rounded"
                   placeholder="Enter book ID..."
                   value={returnForm.bookId}
                   onChange={(e) => setReturnForm({ ...returnForm, bookId: e.target.value })}
                 />
               </div>
-              
+
               <div>
                 <label className="block mb-2 font-medium text-sm">Search by Student ID</label>
-                <input 
-                  className="w-full p-2 border rounded" 
+                <input
+                  className="w-full p-2 border rounded"
                   placeholder="Enter student ID..."
                   value={returnForm.studentId}
                   onChange={(e) => setReturnForm({ ...returnForm, studentId: e.target.value })}
                 />
               </div>
-              
+
               <div>
                 <label className="block mb-2 font-medium text-sm">Or Search All</label>
-                <input 
-                  className="w-full p-2 border rounded" 
+                <input
+                  className="w-full p-2 border rounded"
                   placeholder="Search by book title or student..."
                   value={issuedBooksSearch}
                   onChange={(e) => {
@@ -1872,30 +1957,29 @@ export default function LibraryModule() {
                 />
               </div>
             </div>
-            
-            <button 
+
+            <button
               onClick={searchIssuedBook}
               className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition"
             >
-               Search by ID
+              Search by ID
             </button>
           </div>
 
           {/* Currently Issued Books Grid */}
           <div className="bg-white p-6 rounded-lg border">
-           <h3 className="font-bold mb-4 text-lg flex items-center gap-3">
-  <div className="w-10 h-10 bg-white border border-gray-200 rounded-lg flex items-center justify-center">
-    <BookOpenIcon className="h-5 w-5 text-blue-500" />
-  </div>
-  <span>Currently Issued Books</span>
-</h3>
+            <h3 className="font-bold mb-4 text-lg flex items-center gap-3">
+              <div className="w-10 h-10 bg-white border border-gray-200 rounded-lg flex items-center justify-center">
+                <BookOpenIcon className="h-5 w-5 text-blue-500" />
+              </div>
+              <span>Currently Issued Books</span>
+            </h3>
 
-            
             {(() => {
-              const filteredIssued = issuedBooks.filter(ib => {
-                if (ib.status !== "issued") return false;
+              const filteredIssued = issuedBooks.filter((ib) => {
+                if (ib.status !== 'issued') return false;
                 if (!issuedBooksSearch) return true;
-                
+
                 const search = issuedBooksSearch.toLowerCase();
                 return (
                   (ib.book?.title || '').toLowerCase().includes(search) ||
@@ -1914,7 +1998,8 @@ export default function LibraryModule() {
                 <>
                   {/* Results Count */}
                   <div className="mb-4 text-sm text-gray-600">
-                    Showing {startIndex + 1}-{Math.min(endIndex, filteredIssued.length)} of {filteredIssued.length} issued books
+                    Showing {startIndex + 1}-{Math.min(endIndex, filteredIssued.length)} of{' '}
+                    {filteredIssued.length} issued books
                   </div>
 
                   {paginatedIssued.length === 0 ? (
@@ -1926,12 +2011,15 @@ export default function LibraryModule() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                       {paginatedIssued.map((issued) => {
                         const today = new Date().toISOString().split('T')[0];
-                        const { dueDate, overdueDays, fine } = calculateFine(issued.issue_date, today);
+                        const { dueDate, overdueDays, fine } = calculateFine(
+                          issued.issue_date,
+                          today
+                        );
                         const isOverdue = overdueDays > 0;
-                        
+
                         return (
-                          <div 
-                            key={issued.id} 
+                          <div
+                            key={issued.id}
                             className={`border-2 rounded-lg p-4 hover:shadow-lg transition ${
                               isOverdue ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50'
                             }`}
@@ -1939,8 +2027,12 @@ export default function LibraryModule() {
                             {/* Card Header */}
                             <div className="flex justify-between items-start mb-3">
                               <div className="flex-1">
-                                <h4 className="font-bold text-base text-gray-800">{issued.book?.title || 'Unknown Book'}</h4>
-                                <p className="text-xs text-gray-500 mt-1">ID: {issued.book_id.slice(0, 12)}...</p>
+                                <h4 className="font-bold text-base text-gray-800">
+                                  {issued.book?.title || 'Unknown Book'}
+                                </h4>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  ID: {issued.book_id.slice(0, 12)}...
+                                </p>
                               </div>
                               {isOverdue && (
                                 <span className="px-2 py-1 bg-red-600 text-white text-xs rounded-full font-semibold">
@@ -1974,13 +2066,15 @@ export default function LibraryModule() {
                               {isOverdue && (
                                 <div className="flex justify-between pt-2 border-t border-red-200">
                                   <span className="text-red-700 font-semibold">Fine:</span>
-                                  <span className="text-red-700 font-bold">₹{fine} ({overdueDays}d)</span>
+                                  <span className="text-red-700 font-bold">
+                                    ₹{fine} ({overdueDays}d)
+                                  </span>
                                 </div>
                               )}
                             </div>
 
                             {/* Action Button */}
-                            <button 
+                            <button
                               className="w-full bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700 transition"
                               onClick={() => {
                                 setReturnForm({
@@ -2009,7 +2103,7 @@ export default function LibraryModule() {
                   {totalPages > 1 && (
                     <div className="flex justify-center items-center gap-2 mt-6">
                       <button
-                        onClick={() => setIssuedBooksPage(prev => Math.max(1, prev - 1))}
+                        onClick={() => setIssuedBooksPage((prev) => Math.max(1, prev - 1))}
                         disabled={issuedBooksPage === 1}
                         className={`px-4 py-2 rounded-lg font-medium ${
                           issuedBooksPage === 1
@@ -2019,9 +2113,9 @@ export default function LibraryModule() {
                       >
                         ←
                       </button>
-                      
+
                       <div className="flex gap-1">
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                           <button
                             key={page}
                             onClick={() => setIssuedBooksPage(page)}
@@ -2035,9 +2129,9 @@ export default function LibraryModule() {
                           </button>
                         ))}
                       </div>
-                      
+
                       <button
-                        onClick={() => setIssuedBooksPage(prev => Math.min(totalPages, prev + 1))}
+                        onClick={() => setIssuedBooksPage((prev) => Math.min(totalPages, prev + 1))}
                         disabled={issuedBooksPage === totalPages}
                         className={`px-4 py-2 rounded-lg font-medium ${
                           issuedBooksPage === totalPages
@@ -2061,7 +2155,7 @@ export default function LibraryModule() {
                 {/* Modal Header */}
                 <div className="sticky top-0 bg-blue-600 text-white p-4 rounded-t-lg flex justify-between items-center">
                   <h3 className="text-xl font-bold">📖 Return Book</h3>
-                  <button 
+                  <button
                     onClick={() => setShowReturnModal(false)}
                     className="text-white hover:bg-blue-700 rounded-full w-8 h-8 flex items-center justify-center"
                   >
@@ -2073,58 +2167,77 @@ export default function LibraryModule() {
                 <div className="p-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div className="bg-gray-50 p-3 rounded border">
-                      <label className="block text-sm font-medium text-gray-600 mb-1">Book Title</label>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">
+                        Book Title
+                      </label>
                       <p className="font-semibold">{returnForm.bookTitle}</p>
                     </div>
-                    
+
                     <div className="bg-gray-50 p-3 rounded border">
-                      <label className="block text-sm font-medium text-gray-600 mb-1">Student Name</label>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">
+                        Student Name
+                      </label>
                       <p className="font-semibold">{returnForm.studentName}</p>
                     </div>
-                    
+
                     <div className="bg-gray-50 p-3 rounded border">
-                      <label className="block text-sm font-medium text-gray-600 mb-1">Roll Number</label>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">
+                        Roll Number
+                      </label>
                       <p className="font-semibold">{returnForm.rollNumber}</p>
                     </div>
-                    
+
                     <div className="bg-gray-50 p-3 rounded border">
                       <label className="block text-sm font-medium text-gray-600 mb-1">Class</label>
                       <p className="font-semibold">{returnForm.class}</p>
                     </div>
-                    
+
                     <div className="bg-gray-50 p-3 rounded border">
-                      <label className="block text-sm font-medium text-gray-600 mb-1">Issue Date</label>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">
+                        Issue Date
+                      </label>
                       <p className="font-semibold">{returnForm.issueDate}</p>
                     </div>
-                    
+
                     <div className="bg-gray-50 p-3 rounded border">
-                      <label className="block text-sm font-medium text-gray-600 mb-1">Due Date</label>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">
+                        Due Date
+                      </label>
                       <p className="font-semibold">{returnForm.dueDate}</p>
                     </div>
                   </div>
 
                   <div className="mb-4">
                     <label className="block mb-2 font-medium">Return Date</label>
-                    <input 
+                    <input
                       type="date"
-                      className="w-full p-3 border rounded-lg" 
+                      className="w-full p-3 border rounded-lg"
                       value={returnForm.returnDate}
                       onChange={(e) => setReturnForm({ ...returnForm, returnDate: e.target.value })}
                     />
                   </div>
 
                   {(() => {
-                    const { dueDate, overdueDays, fine } = calculateFine(returnForm.issueDate, returnForm.returnDate);
-                    
+                    const { dueDate, overdueDays, fine } = calculateFine(
+                      returnForm.issueDate,
+                      returnForm.returnDate
+                    );
+
                     return overdueDays > 0 ? (
                       <div className="bg-red-100 border border-red-300 text-red-800 p-4 rounded-lg mb-4">
                         <div className="flex items-center gap-2 mb-2">
                           <span className="text-2xl">⚠️</span>
                           <strong className="text-lg">Overdue Book</strong>
                         </div>
-                        <p><strong>Calculated Due Date:</strong> {dueDate}</p>
-                        <p><strong>Days Overdue:</strong> {overdueDays} days</p>
-                        <p className="text-xl font-bold mt-2"><strong>Fine Amount:</strong> ₹{fine}</p>
+                        <p>
+                          <strong>Calculated Due Date:</strong> {dueDate}
+                        </p>
+                        <p>
+                          <strong>Days Overdue:</strong> {overdueDays} days
+                        </p>
+                        <p className="text-xl font-bold mt-2">
+                          <strong>Fine Amount:</strong> ₹{fine}
+                        </p>
                       </div>
                     ) : (
                       <div className="bg-green-100 border border-green-300 text-green-800 p-4 rounded-lg mb-4">
@@ -2137,13 +2250,13 @@ export default function LibraryModule() {
                   })()}
 
                   <div className="flex gap-3">
-                    <button 
+                    <button
                       onClick={() => setShowReturnModal(false)}
                       className="flex-1 bg-gray-500 text-white py-3 rounded-lg font-semibold hover:bg-gray-600 transition"
                     >
                       Cancel
                     </button>
-                    <button 
+                    <button
                       onClick={() => {
                         returnBook();
                         setShowReturnModal(false);
@@ -2161,10 +2274,10 @@ export default function LibraryModule() {
       )}
 
       {/* Borrow History */}
-      {activeTab === "history" && (
+      {activeTab === 'history' && (
         <div>
           <h2 className="text-xl font-bold mb-4">Borrow History</h2>
-          
+
           {borrowHistory.length === 0 ? (
             <div className="text-center py-12 bg-gray-50 rounded-lg">
               <p className="text-gray-500 text-lg">No borrow history found</p>
@@ -2193,15 +2306,21 @@ export default function LibraryModule() {
                       <td className="p-2 border">{item.student_name}</td>
                       <td className="p-2 border">{item.issue_date}</td>
                       <td className="p-2 border">{item.due_date}</td>
-                      <td className="p-2 border">{item.return_date || "Not Returned"}</td>
+                      <td className="p-2 border">{item.return_date || 'Not Returned'}</td>
                       <td className="p-2 border">₹{item.fine_amount}</td>
                       <td className="p-2 border">
-                        {item.status === "overdue" ? (
-                          <span className="px-3 py-1 rounded-full text-sm bg-red-100 text-red-700 font-bold">Overdue</span>
-                        ) : item.status === "issued" ? (
-                          <span className="px-3 py-1 rounded-full text-sm bg-yellow-100 text-yellow-700">Issued</span>
+                        {item.status === 'overdue' ? (
+                          <span className="px-3 py-1 rounded-full text-sm bg-red-100 text-red-700 font-bold">
+                            Overdue
+                          </span>
+                        ) : item.status === 'issued' ? (
+                          <span className="px-3 py-1 rounded-full text-sm bg-yellow-100 text-yellow-700">
+                            Issued
+                          </span>
                         ) : (
-                          <span className="px-3 py-1 rounded-full text-sm bg-green-100 text-green-700">Returned</span>
+                          <span className="px-3 py-1 rounded-full text-sm bg-green-100 text-green-700">
+                            Returned
+                          </span>
                         )}
                       </td>
                     </tr>
@@ -2214,10 +2333,10 @@ export default function LibraryModule() {
       )}
 
       {/* Overdue List */}
-      {activeTab === "overdue" && (
+      {activeTab === 'overdue' && (
         <div>
           <h2 className="text-xl font-bold mb-4">Overdue Books</h2>
-          
+
           {overdueBooks.length === 0 ? (
             <div className="text-center py-12 bg-gray-50 rounded-lg">
               <p className="text-gray-500 text-lg">No overdue books at the moment</p>
@@ -2245,7 +2364,9 @@ export default function LibraryModule() {
                       <td className="p-2 border">{item.student_name}</td>
                       <td className="p-2 border">{item.issue_date}</td>
                       <td className="p-2 border">{item.due_date}</td>
-                      <td className="p-2 border text-red-600 font-bold">{item.days_overdue} days</td>
+                      <td className="p-2 border text-red-600 font-bold">
+                        {item.days_overdue} days
+                      </td>
                       <td className="p-2 border text-red-600 font-bold">₹{item.current_fine}</td>
                     </tr>
                   ))}

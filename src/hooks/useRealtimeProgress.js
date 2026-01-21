@@ -6,11 +6,7 @@ import { supabase } from '../lib/supabaseClient';
  * Uses Supabase Realtime for instant updates
  */
 export const useRealtimeProgress = (studentId, courseId, options = {}) => {
-  const {
-    enabled = true,
-    onProgressUpdate = null,
-    onEnrollmentUpdate = null
-  } = options;
+  const { enabled = true, onProgressUpdate = null, onEnrollmentUpdate = null } = options;
 
   const [isConnected, setIsConnected] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
@@ -30,7 +26,7 @@ export const useRealtimeProgress = (studentId, courseId, options = {}) => {
           event: '*',
           schema: 'public',
           table: 'student_course_progress',
-          filter: `student_id=eq.${studentId}`
+          filter: `student_id=eq.${studentId}`,
         },
         (payload) => {
           console.log('📡 Real-time progress update:', payload);
@@ -38,7 +34,7 @@ export const useRealtimeProgress = (studentId, courseId, options = {}) => {
             type: 'progress',
             event: payload.eventType,
             data: payload.new,
-            timestamp: Date.now()
+            timestamp: Date.now(),
           });
 
           if (onProgressUpdate) {
@@ -62,7 +58,7 @@ export const useRealtimeProgress = (studentId, courseId, options = {}) => {
           event: 'UPDATE',
           schema: 'public',
           table: 'course_enrollments',
-          filter: `student_id=eq.${studentId}`
+          filter: `student_id=eq.${studentId}`,
         },
         (payload) => {
           console.log('📡 Real-time enrollment update:', payload);
@@ -70,7 +66,7 @@ export const useRealtimeProgress = (studentId, courseId, options = {}) => {
             type: 'enrollment',
             event: payload.eventType,
             data: payload.new,
-            timestamp: Date.now()
+            timestamp: Date.now(),
           });
 
           if (onEnrollmentUpdate) {
@@ -94,35 +90,41 @@ export const useRealtimeProgress = (studentId, courseId, options = {}) => {
   }, [enabled, studentId, courseId, onProgressUpdate, onEnrollmentUpdate]);
 
   // Broadcast progress to other devices
-  const broadcastProgress = useCallback(async (progressData) => {
-    if (!channelRef.current || !isConnected) return;
+  const broadcastProgress = useCallback(
+    async (progressData) => {
+      if (!channelRef.current || !isConnected) return;
 
-    try {
-      await channelRef.current.send({
-        type: 'broadcast',
-        event: 'progress_update',
-        payload: {
-          ...progressData,
-          timestamp: Date.now()
-        }
-      });
-    } catch (error) {
-      console.error('Error broadcasting progress:', error);
-    }
-  }, [isConnected]);
+      try {
+        await channelRef.current.send({
+          type: 'broadcast',
+          event: 'progress_update',
+          payload: {
+            ...progressData,
+            timestamp: Date.now(),
+          },
+        });
+      } catch (error) {
+        console.error('Error broadcasting progress:', error);
+      }
+    },
+    [isConnected]
+  );
 
   // Get connection status
-  const getStatus = useCallback(() => ({
-    isConnected,
-    lastUpdate,
-    channelState: channelRef.current?.state || 'disconnected'
-  }), [isConnected, lastUpdate]);
+  const getStatus = useCallback(
+    () => ({
+      isConnected,
+      lastUpdate,
+      channelState: channelRef.current?.state || 'disconnected',
+    }),
+    [isConnected, lastUpdate]
+  );
 
   return {
     isConnected,
     lastUpdate,
     broadcastProgress,
-    getStatus
+    getStatus,
   };
 };
 

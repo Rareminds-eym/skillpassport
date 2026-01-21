@@ -12,14 +12,14 @@ const WarningModal: React.FC<WarningModalProps> = ({ warningCount, onClose }) =>
       <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-xl">
         <div className="text-center mb-6">
           <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 font-serif">Warning: Tab Switching Detected</h3>
+          <h3 className="text-lg font-medium text-gray-900 font-serif">
+            Warning: Tab Switching Detected
+          </h3>
           <p className="mt-2 text-sm text-gray-500">
-            You have switched tabs or minimized the window. This activity has been recorded. 
+            You have switched tabs or minimized the window. This activity has been recorded.
             Multiple violations may result in test termination.
           </p>
-          <p className="mt-2 text-sm font-semibold text-red-600">
-            Warning {warningCount} of 3
-          </p>
+          <p className="mt-2 text-sm font-semibold text-red-600">Warning {warningCount} of 3</p>
         </div>
         <div className="flex justify-center">
           <button

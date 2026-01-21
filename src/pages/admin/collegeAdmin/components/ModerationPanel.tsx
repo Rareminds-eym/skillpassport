@@ -9,7 +9,11 @@ interface ModerationPanelProps {
   assessmentName: string;
   totalMarks: number;
   markEntries: MarkEntry[];
-  onModerate: (entryId: string, newMarks: number, reason: string) => Promise<{ success: boolean; error?: string }>;
+  onModerate: (
+    entryId: string,
+    newMarks: number,
+    reason: string
+  ) => Promise<{ success: boolean; error?: string }>;
   onApprove: () => Promise<{ success: boolean; error?: string }>;
 }
 
@@ -59,9 +63,7 @@ const ModerationModal: React.FC<ModerationModalProps> = ({
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Current Marks
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Current Marks</label>
             <input
               type="text"
               value={entry.marks_obtained}
@@ -84,7 +86,8 @@ const ModerationModal: React.FC<ModerationModalProps> = ({
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
             <p className="text-xs text-gray-500 mt-1">
-              Change: {newMarks > entry.marks_obtained ? '+' : ''}{(newMarks - entry.marks_obtained).toFixed(2)}
+              Change: {newMarks > entry.marks_obtained ? '+' : ''}
+              {(newMarks - entry.marks_obtained).toFixed(2)}
             </p>
           </div>
 
@@ -138,20 +141,15 @@ const ModerationPanel: React.FC<ModerationPanelProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   // Calculate statistics
-  const validMarks = markEntries.filter(m => !m.is_absent && !m.is_exempt);
-  const average = validMarks.length > 0
-    ? validMarks.reduce((sum, m) => sum + m.marks_obtained, 0) / validMarks.length
-    : 0;
-  const highest = validMarks.length > 0
-    ? Math.max(...validMarks.map(m => m.marks_obtained))
-    : 0;
-  const lowest = validMarks.length > 0
-    ? Math.min(...validMarks.map(m => m.marks_obtained))
-    : 0;
-  const passCount = validMarks.filter(m => m.marks_obtained >= (totalMarks * 0.4)).length;
-  const passPercentage = validMarks.length > 0
-    ? (passCount / validMarks.length) * 100
-    : 0;
+  const validMarks = markEntries.filter((m) => !m.is_absent && !m.is_exempt);
+  const average =
+    validMarks.length > 0
+      ? validMarks.reduce((sum, m) => sum + m.marks_obtained, 0) / validMarks.length
+      : 0;
+  const highest = validMarks.length > 0 ? Math.max(...validMarks.map((m) => m.marks_obtained)) : 0;
+  const lowest = validMarks.length > 0 ? Math.min(...validMarks.map((m) => m.marks_obtained)) : 0;
+  const passCount = validMarks.filter((m) => m.marks_obtained >= totalMarks * 0.4).length;
+  const passPercentage = validMarks.length > 0 ? (passCount / validMarks.length) * 100 : 0;
 
   // Distribution
   const getDistribution = () => {
@@ -163,8 +161,10 @@ const ModerationPanel: React.FC<ModerationPanelProps> = ({
       { label: '81-100%', min: totalMarks * 0.8, max: totalMarks, count: 0 },
     ];
 
-    validMarks.forEach(mark => {
-      const range = ranges.find(r => mark.marks_obtained >= r.min && mark.marks_obtained <= r.max);
+    validMarks.forEach((mark) => {
+      const range = ranges.find(
+        (r) => mark.marks_obtained >= r.min && mark.marks_obtained <= r.max
+      );
       if (range) range.count++;
     });
 
@@ -172,7 +172,7 @@ const ModerationPanel: React.FC<ModerationPanelProps> = ({
   };
 
   const distribution = getDistribution();
-  const maxCount = Math.max(...distribution.map(d => d.count), 1);
+  const maxCount = Math.max(...distribution.map((d) => d.count), 1);
 
   const handleModerate = async (newMarks: number, reason: string) => {
     if (!selectedEntry) return;
@@ -298,28 +298,46 @@ const ModerationPanel: React.FC<ModerationPanelProps> = ({
                 <table className="w-full">
                   <thead className="bg-gray-50 border-b border-gray-200 sticky top-0">
                     <tr>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Student</th>
-                      <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900">Marks</th>
-                      <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900">Status</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Moderation</th>
-                      <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900">Action</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
+                        Student
+                      </th>
+                      <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900">
+                        Marks
+                      </th>
+                      <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900">
+                        Status
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
+                        Moderation
+                      </th>
+                      <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900">
+                        Action
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {markEntries.map((entry) => (
                       <tr key={entry.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-sm text-gray-900">Student #{entry.student_id.slice(0, 8)}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900">
+                          Student #{entry.student_id.slice(0, 8)}
+                        </td>
                         <td className="px-4 py-3 text-center">
                           <span className="font-medium text-gray-900">{entry.marks_obtained}</span>
                           <span className="text-gray-500">/{totalMarks}</span>
                         </td>
                         <td className="px-4 py-3 text-center">
                           {entry.is_absent ? (
-                            <span className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs">Absent</span>
+                            <span className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs">
+                              Absent
+                            </span>
                           ) : entry.is_exempt ? (
-                            <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">Exempt</span>
+                            <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
+                              Exempt
+                            </span>
                           ) : (
-                            <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">Present</span>
+                            <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">
+                              Present
+                            </span>
                           )}
                         </td>
                         <td className="px-4 py-3 text-sm">

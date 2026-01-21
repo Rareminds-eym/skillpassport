@@ -1,15 +1,15 @@
 /**
  * SubscriptionBanner
- * 
+ *
  * Displays warning/info banners for subscription status.
  * Used by SubscriptionProtectedRoute to show expiry warnings, grace period alerts, etc.
  */
 
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  XMarkIcon, 
-  ExclamationTriangleIcon, 
+import {
+  XMarkIcon,
+  ExclamationTriangleIcon,
   ClockIcon,
   PauseCircleIcon,
   ExclamationCircleIcon,
@@ -69,8 +69,8 @@ const bannerStyles = {
   },
 };
 
-const SubscriptionBanner = ({ 
-  type = 'expiring_soon', 
+const SubscriptionBanner = ({
+  type = 'expiring_soon',
   message,
   showRenewLink = true,
   dismissible = true,
@@ -85,18 +85,17 @@ const SubscriptionBanner = ({
   const style = bannerStyles[type] || bannerStyles.expiring_soon;
   const Icon = style.icon;
 
-  const showRenew = showRenewLink && (type === WARNING_TYPES.EXPIRING_SOON || type === WARNING_TYPES.GRACE_PERIOD);
+  const showRenew =
+    showRenewLink && (type === WARNING_TYPES.EXPIRING_SOON || type === WARNING_TYPES.GRACE_PERIOD);
 
   return (
     <div className={`${style.bg} border-b px-4 py-3`}>
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Icon className={`h-5 w-5 ${style.iconColor} flex-shrink-0`} />
-          <p className={`text-sm font-medium ${style.text}`}>
-            {message}
-          </p>
+          <p className={`text-sm font-medium ${style.text}`}>{message}</p>
         </div>
-        
+
         <div className="flex items-center gap-3">
           {showRenew && (
             <Link
@@ -106,7 +105,7 @@ const SubscriptionBanner = ({
               Renew Now →
             </Link>
           )}
-          
+
           {type === WARNING_TYPES.PAUSED && (
             <Link
               to={`${basePath}/subscription/manage`}
@@ -115,7 +114,7 @@ const SubscriptionBanner = ({
               Resume Subscription →
             </Link>
           )}
-          
+
           {dismissible && (
             <button
               onClick={() => setIsDismissed(true)}

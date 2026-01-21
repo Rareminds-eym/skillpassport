@@ -1,12 +1,12 @@
 /**
  * AddOnCatalogService
- * 
+ *
  * Service for managing add-on catalog operations including:
  * - Fetching available add-ons from subscription_plan_features where is_addon=true
  * - Getting add-on details by feature key
  * - Finding bundles for specific roles
  * - Calculating bundle savings
- * 
+ *
  * @requirement REQ-3.1 - Add-On Catalog Service
  */
 
@@ -16,7 +16,7 @@ class AddOnCatalogService {
   /**
    * Get all add-ons with optional filtering
    * Queries subscription_plan_features where is_addon=true
-   * 
+   *
    * @param {Object} filters - Optional filters
    * @param {string} [filters.role] - Filter by target role
    * @param {string} [filters.category] - Filter by category
@@ -47,7 +47,7 @@ class AddOnCatalogService {
       // Filter by role if provided (target_roles is a text array)
       let filteredData = data;
       if (role && data) {
-        filteredData = data.filter(addOn => {
+        filteredData = data.filter((addOn) => {
           // If target_roles is null or empty, add-on is available to all roles
           if (!addOn.target_roles || addOn.target_roles.length === 0) {
             return true;
@@ -65,7 +65,7 @@ class AddOnCatalogService {
 
   /**
    * Get a single add-on by feature key
-   * 
+   *
    * @param {string} featureKey - The feature_key identifier
    * @returns {Promise<{success: boolean, data?: Object, error?: string}>}
    */
@@ -99,13 +99,13 @@ class AddOnCatalogService {
 
   /**
    * Get bundles filtered by role
-   * 
+   *
    * @param {string} [role] - Optional role to filter bundles
    * @returns {Promise<{success: boolean, data?: Array, error?: string}>}
    */
   async getBundles(role) {
     try {
-      let query = supabase
+      const query = supabase
         .from('bundles')
         .select('*, bundle_features(feature_key)')
         .eq('is_active', true)
@@ -121,7 +121,7 @@ class AddOnCatalogService {
       // Filter by role if provided
       let filteredData = data;
       if (role && data) {
-        filteredData = data.filter(bundle => {
+        filteredData = data.filter((bundle) => {
           // If target_roles is null or empty, bundle is available to all roles
           if (!bundle.target_roles || bundle.target_roles.length === 0) {
             return true;
@@ -139,7 +139,7 @@ class AddOnCatalogService {
 
   /**
    * Calculate savings for a bundle compared to individual add-on purchases
-   * 
+   *
    * @param {string} bundleId - The bundle UUID
    * @returns {Promise<{success: boolean, data?: {totalIndividual: number, bundlePrice: number, savings: number}, error?: string}>}
    */
@@ -165,7 +165,7 @@ class AddOnCatalogService {
       }
 
       // Get feature keys from the bundle
-      const featureKeys = bundle.bundle_features?.map(bf => bf.feature_key) || [];
+      const featureKeys = bundle.bundle_features?.map((bf) => bf.feature_key) || [];
 
       if (featureKeys.length === 0) {
         return {
@@ -173,8 +173,8 @@ class AddOnCatalogService {
           data: {
             totalIndividual: 0,
             bundlePrice: bundle.monthly_price,
-            savings: 0
-          }
+            savings: 0,
+          },
         };
       }
 
@@ -203,8 +203,8 @@ class AddOnCatalogService {
         data: {
           totalIndividual,
           bundlePrice,
-          savings
-        }
+          savings,
+        },
       };
     } catch (error) {
       console.error('Error in calculateBundleSavings:', error);
@@ -219,4 +219,3 @@ export default addOnCatalogService;
 
 // Also export the class for testing purposes
 export { AddOnCatalogService };
-

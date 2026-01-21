@@ -34,7 +34,7 @@ export interface ModuleAccess {
 }
 
 export interface ScopeRule {
-  type: "department" | "program";
+  type: 'department' | 'program';
   values: string[];
 }
 
@@ -81,9 +81,9 @@ export const getAvailablePermissions = async (): Promise<Permission[]> => {
 export const getRolesWithPermissions = async (): Promise<Role[]> => {
   try {
     // Get all role permissions with module and permission details
-    const { data: rolePermissions, error: permError } = await supabase
-      .from('college_role_module_permissions')
-      .select(`
+    const { data: rolePermissions, error: permError } = await supabase.from(
+      'college_role_module_permissions'
+    ).select(`
         role_type,
         college_setting_modules(id, module_name),
         college_setting_permissions(id, permission_name)
@@ -112,14 +112,14 @@ export const getRolesWithPermissions = async (): Promise<Role[]> => {
           id: roleType,
           roleName: formatRoleName(roleType),
           moduleAccess: [],
-          scopeRules: []
+          scopeRules: [],
         });
       }
 
       const role = roleMap.get(roleType)!;
-      
+
       // Find or create module access
-      let moduleAccess = role.moduleAccess.find(ma => ma.module === moduleName);
+      let moduleAccess = role.moduleAccess.find((ma) => ma.module === moduleName);
       if (!moduleAccess) {
         moduleAccess = { module: moduleName, permissions: [] };
         role.moduleAccess.push(moduleAccess);
@@ -134,22 +134,22 @@ export const getRolesWithPermissions = async (): Promise<Role[]> => {
     // Process scope rules
     roleScopeRules?.forEach((item: any) => {
       const roleType = item.role_type;
-      
+
       if (!roleMap.has(roleType)) {
         roleMap.set(roleType, {
           id: roleType,
           roleName: formatRoleName(roleType),
           moduleAccess: [],
-          scopeRules: []
+          scopeRules: [],
         });
       }
 
       const role = roleMap.get(roleType)!;
-      
+
       // Find or create scope rule
-      let scopeRule = role.scopeRules.find(sr => sr.type === item.scope_type);
+      let scopeRule = role.scopeRules.find((sr) => sr.type === item.scope_type);
       if (!scopeRule) {
-        scopeRule = { type: item.scope_type as "department" | "program", values: [] };
+        scopeRule = { type: item.scope_type as 'department' | 'program', values: [] };
         role.scopeRules.push(scopeRule);
       }
 
@@ -177,14 +177,8 @@ export const saveRolePermissions = async (
   try {
     // First, delete existing permissions and scope rules for this role
     const [deletePermError, deleteScopeError] = await Promise.all([
-      supabase
-        .from('college_role_module_permissions')
-        .delete()
-        .eq('role_type', roleType),
-      supabase
-        .from('college_role_scope_rules')
-        .delete()
-        .eq('role_type', roleType)
+      supabase.from('college_role_module_permissions').delete().eq('role_type', roleType),
+      supabase.from('college_role_scope_rules').delete().eq('role_type', roleType),
     ]);
 
     if (deletePermError.error) throw deletePermError.error;
@@ -197,18 +191,18 @@ export const saveRolePermissions = async (
     // Prepare new permissions data
     const newPermissions: any[] = [];
 
-    modulePermissions.forEach(moduleAccess => {
-      const module = modules.find(m => m.module_name === moduleAccess.module);
+    modulePermissions.forEach((moduleAccess) => {
+      const module = modules.find((m) => m.module_name === moduleAccess.module);
       if (!module) return;
 
-      moduleAccess.permissions.forEach(permissionName => {
-        const permission = permissions.find(p => p.permission_name === permissionName);
+      moduleAccess.permissions.forEach((permissionName) => {
+        const permission = permissions.find((p) => p.permission_name === permissionName);
         if (!permission) return;
 
         newPermissions.push({
           role_type: roleType,
           module_id: module.id,
-          permission_id: permission.id
+          permission_id: permission.id,
         });
       });
     });
@@ -216,12 +210,12 @@ export const saveRolePermissions = async (
     // Prepare new scope rules data
     const newScopeRules: any[] = [];
 
-    scopeRules.forEach(scopeRule => {
-      scopeRule.values.forEach(value => {
+    scopeRules.forEach((scopeRule) => {
+      scopeRule.values.forEach((value) => {
         newScopeRules.push({
           role_type: roleType,
           scope_type: scopeRule.type,
-          scope_value: value
+          scope_value: value,
         });
       });
     });
@@ -230,24 +224,16 @@ export const saveRolePermissions = async (
     const insertPromises = [];
 
     if (newPermissions.length > 0) {
-      insertPromises.push(
-        supabase
-          .from('college_role_module_permissions')
-          .insert(newPermissions)
-      );
+      insertPromises.push(supabase.from('college_role_module_permissions').insert(newPermissions));
     }
 
     if (newScopeRules.length > 0) {
-      insertPromises.push(
-        supabase
-          .from('college_role_scope_rules')
-          .insert(newScopeRules)
-      );
+      insertPromises.push(supabase.from('college_role_scope_rules').insert(newScopeRules));
     }
 
     if (insertPromises.length > 0) {
       const results = await Promise.all(insertPromises);
-      
+
       for (const result of results) {
         if (result.error) throw result.error;
       }
@@ -270,7 +256,7 @@ const formatRoleName = (roleType: string): string => {
     case 'college_educator':
       return 'Faculty (College Educator)';
     default:
-      return roleType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      return roleType.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
   }
 };
 
@@ -313,22 +299,40 @@ export const getPrograms = async (): Promise<{ id: string; name: string; code: s
 };
 export const getModulesForRole = async (roleType: string): Promise<Module[]> => {
   const allModules = await getAvailableModules();
-  
+
   // Filter modules based on role type
   if (roleType === 'college_admin') {
-    return allModules.filter(m => 
-      ['Dashboard', 'Students', 'Departments & Faculty', 'Academics', 
-       'Examinations', 'Placements & Skills', 'Operations', 'Administration', 'Settings']
-      .includes(m.module_name)
+    return allModules.filter((m) =>
+      [
+        'Dashboard',
+        'Students',
+        'Departments & Faculty',
+        'Academics',
+        'Examinations',
+        'Placements & Skills',
+        'Operations',
+        'Administration',
+        'Settings',
+      ].includes(m.module_name)
     );
   } else if (roleType === 'college_educator') {
-    return allModules.filter(m => 
-      ['Dashboard', 'Teaching Intelligence', 'Courses', 'Classroom Management', 
-       'Learning & Evaluation', 'Skill & Co-Curriculm', 'Digital Portfolio', 
-       'Analytics', 'Reports', 'Media Manager', 'Communication', 'Settings']
-      .includes(m.module_name)
+    return allModules.filter((m) =>
+      [
+        'Dashboard',
+        'Teaching Intelligence',
+        'Courses',
+        'Classroom Management',
+        'Learning & Evaluation',
+        'Skill & Co-Curriculm',
+        'Digital Portfolio',
+        'Analytics',
+        'Reports',
+        'Media Manager',
+        'Communication',
+        'Settings',
+      ].includes(m.module_name)
     );
   }
-  
+
   return allModules;
 };

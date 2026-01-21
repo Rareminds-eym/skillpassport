@@ -11,7 +11,7 @@ const LessonSection: React.FC<LessonSectionProps> = ({ icon: Icon, title, conten
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-      <div 
+      <div
         className="p-3 cursor-pointer hover:bg-gray-50 transition-colors"
         onClick={() => setIsExpanded(!isExpanded)}
       >
@@ -23,18 +23,23 @@ const LessonSection: React.FC<LessonSectionProps> = ({ icon: Icon, title, conten
             <h6 className="text-sm font-semibold text-gray-900">{title}</h6>
           </div>
           <div className="w-6 h-6 bg-gray-100 rounded-lg flex items-center justify-center">
-            <svg 
-              className={`w-3 h-3 text-gray-500 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} 
-              fill="none" 
-              stroke="currentColor" 
+            <svg
+              className={`w-3 h-3 text-gray-500 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
               viewBox="0 0 24 24"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
             </svg>
           </div>
         </div>
       </div>
-      
+
       {isExpanded && (
         <div className="border-t border-gray-200 p-3 bg-gray-50">
           {typeof content === 'string' ? (

@@ -1,9 +1,9 @@
-import { motion, useInView } from "framer-motion";
-import { useRef, useState, useEffect } from "react";
-import step1 from "../../assets/images/StepProcess/Step1.webp";
-import step2 from "../../assets/images/StepProcess/Step2.webp";
-import step3 from "../../assets/images/StepProcess/Step3.webp";
-import step4 from "../../assets/images/StepProcess/Step4.webp";
+import { motion, useInView } from 'framer-motion';
+import { useRef, useState, useEffect } from 'react';
+import step1 from '../../assets/images/StepProcess/Step1.webp';
+import step2 from '../../assets/images/StepProcess/Step2.webp';
+import step3 from '../../assets/images/StepProcess/Step3.webp';
+import step4 from '../../assets/images/StepProcess/Step4.webp';
 
 const StepBlock = ({
   title,
@@ -24,7 +24,7 @@ const StepBlock = ({
       ref={ref}
       initial={{ opacity: 0, y: 50 }}
       animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 50 }}
-      transition={{ duration: 0.6, ease: "easeOut" }}
+      transition={{ duration: 0.6, ease: 'easeOut' }}
       className="grid md:grid-cols-2 gap-8 md:gap-12 items-center"
     >
       {/* Image */}
@@ -62,27 +62,17 @@ const StepBlock = ({
         animate={isInView ? { opacity: 1, x: 0 } : { opacity: 0, x: reverse ? -50 : 50 }}
         transition={{ duration: 0.6, delay: 0.3 }}
         className={`flex flex-col items-center text-center px-4 ${
-          reverse ? "md:order-2" : "md:order-1"
+          reverse ? 'md:order-2' : 'md:order-1'
         }`}
       >
-        <h3 className="font-bold text-[#011938] mb-4 text-lg sm:text-xl md:text-2xl">
-          {title}
-        </h3>
-        <p className="text-gray-700 leading-relaxed max-w-xl text-sm sm:text-base">
-          {desc}
-        </p>
+        <h3 className="font-bold text-[#011938] mb-4 text-lg sm:text-xl md:text-2xl">{title}</h3>
+        <p className="text-gray-700 leading-relaxed max-w-xl text-sm sm:text-base">{desc}</p>
       </motion.div>
     </motion.div>
   );
 };
 
-const AnimatedSVG = ({ 
-  children, 
-  delay = 0 
-}: { 
-  children: React.ReactNode; 
-  delay?: number;
-}) => {
+const AnimatedSVG = ({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) => {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, amount: 0.3 });
 
@@ -91,20 +81,14 @@ const AnimatedSVG = ({
       ref={ref}
       initial={{ opacity: 0, scale: 0.8 }}
       animate={isInView ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.8 }}
-      transition={{ duration: 0.8, delay, ease: "easeOut" }}
+      transition={{ duration: 0.8, delay, ease: 'easeOut' }}
     >
       {children}
     </motion.div>
   );
 };
 
-const AnimatedPath = ({ 
-  d, 
-  delay = 0 
-}: { 
-  d: string; 
-  delay?: number;
-}) => {
+const AnimatedPath = ({ d, delay = 0 }: { d: string; delay?: number }) => {
   const ref = useRef<SVGPathElement>(null);
   const isInView = useInView(ref, { once: true, amount: 0.3 });
   const [pathLength, setPathLength] = useState(2000);
@@ -124,18 +108,22 @@ const AnimatedPath = ({
       strokeLinecap="round"
       fill="none"
       strokeDasharray={`${pathLength} ${pathLength}`}
-      initial={{ 
+      initial={{
         strokeDashoffset: pathLength,
-        opacity: 0 
+        opacity: 0,
       }}
-      animate={isInView ? { 
-        strokeDashoffset: 0,
-        opacity: 1 
-      } : { 
-        strokeDashoffset: pathLength,
-        opacity: 0 
-      }}
-      transition={{ duration: 2, delay, ease: "easeInOut" }}
+      animate={
+        isInView
+          ? {
+              strokeDashoffset: 0,
+              opacity: 1,
+            }
+          : {
+              strokeDashoffset: pathLength,
+              opacity: 0,
+            }
+      }
+      transition={{ duration: 2, delay, ease: 'easeInOut' }}
       style={{
         strokeDasharray: `10 15`,
       }}
@@ -152,9 +140,9 @@ export default function WorkSection() {
           How It Works
         </h2>
         <p className="text-center text-gray-500 mb-12 text-sm sm:text-base md:text-lg">
-          The Rareminds Skill Passport transforms training outcomes into
-          measurable skill intelligence through a simple yet powerful process —
-          from learning to verification to employability.
+          The Rareminds Skill Passport transforms training outcomes into measurable skill
+          intelligence through a simple yet powerful process — from learning to verification to
+          employability.
         </p>
 
         {/* Step 1 */}
@@ -208,7 +196,7 @@ export default function WorkSection() {
                   vectorEffect="non-scaling-stroke"
                   initial={{ scale: 0, rotate: 0 }}
                   animate={{ scale: 1, rotate: 360 }}
-                  transition={{ duration: 0.6, delay: 2, ease: "easeOut" }}
+                  transition={{ duration: 0.6, delay: 2, ease: 'easeOut' }}
                 />
               </svg>
             </div>
@@ -249,7 +237,7 @@ export default function WorkSection() {
                   vectorEffect="non-scaling-stroke"
                   initial={{ scale: 0, rotate: 0 }}
                   animate={{ scale: 1, rotate: 360 }}
-                  transition={{ duration: 0.6, delay: 0.6, ease: "easeOut" }}
+                  transition={{ duration: 0.6, delay: 0.6, ease: 'easeOut' }}
                 />
                 <AnimatedPath
                   d="M693 18.2507C668.797 6.9557 632.826 2.6091 594.88 53.3601C532.468 136.833 520.437 312.778 462.044 370.936C414.568 418.198 370.699 393.22 341.67 365.886C238.732 99.7033 117.664 87.8267 54.5854 287.647C48.0564 308.339 40.8692 333.929 33.954 366.957C26.2841 403.627 21.2821 438.247 18 465"
@@ -309,7 +297,7 @@ export default function WorkSection() {
                   vectorEffect="non-scaling-stroke"
                   initial={{ scale: 0, rotate: 0 }}
                   animate={{ scale: 1, rotate: 360 }}
-                  transition={{ duration: 0.6, delay: 0.6, ease: "easeOut" }}
+                  transition={{ duration: 0.6, delay: 0.6, ease: 'easeOut' }}
                 />
                 <AnimatedPath
                   d="M63 13.2507C87.203 1.9557 123.174 -2.3909 161.12 48.3601C223.532 131.833 235.563 307.778 293.956 365.936C341.432 413.198 385.301 388.22 414.33 360.886C517.268 94.7033 638.336 82.8267 701.415 282.647C707.944 303.339 715.131 328.929 722.046 361.957C729.716 398.627 734.718 433.247 738 460"

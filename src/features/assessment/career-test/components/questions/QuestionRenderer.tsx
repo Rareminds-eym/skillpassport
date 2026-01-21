@@ -1,9 +1,9 @@
 /**
  * QuestionRenderer Component
- * 
+ *
  * Routes to the appropriate question component based on question type.
  * Acts as a factory for different question types.
- * 
+ *
  * @module features/assessment/career-test/components/questions/QuestionRenderer
  */
 
@@ -64,7 +64,7 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
   adaptiveDifficulty,
   adaptiveLoading = false,
   adaptiveDisabled = false,
-  color = 'indigo'
+  color = 'indigo',
 }) => {
   // Adaptive Aptitude Questions
   if (isAdaptive) {
@@ -147,17 +147,17 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
   // Handle both array options and object options (AI sometimes returns { A: "...", B: "...", ... })
   // Also handle malformed keys like " options" (with leading space)
   let optionsArray: string[] | null = null;
-  
+
   // First check for options with leading space (AI malformed JSON bug)
   const questionAny = question as any;
   const rawOptions = question.options || questionAny[' options'];
-  
+
   if (Array.isArray(rawOptions)) {
-    optionsArray = rawOptions.map(o => String(o));
+    optionsArray = rawOptions.map((o) => String(o));
   } else if (rawOptions && typeof rawOptions === 'object') {
     // Convert object to array - handles { A: "...", B: "..." } format
     // Force convert all values to strings
-    const values = Object.values(rawOptions).map(v => String(v));
+    const values = Object.values(rawOptions).map((v) => String(v));
     if (values.length > 0) {
       optionsArray = values;
       console.log('✅ Converted object options to array:', values);
@@ -170,7 +170,7 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
       questionId,
       optionsRaw: JSON.stringify(rawOptions),
       isArray: Array.isArray(rawOptions),
-      typeOf: typeof rawOptions
+      typeOf: typeof rawOptions,
     });
   }
 
@@ -195,21 +195,19 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
     type: question.type,
     hasOptions: !!question.options,
     optionsType: typeof question.options,
-    hasResponseScale: !!responseScale
+    hasResponseScale: !!responseScale,
   });
-  
+
   return (
     <div className="space-y-4">
       <h3 className="text-xl md:text-2xl font-medium text-gray-800 leading-snug">
         {question.text}
       </h3>
-      <p className="text-gray-500 text-sm">
-        Question type not recognized. Please contact support.
-      </p>
+      <p className="text-gray-500 text-sm">Question type not recognized. Please contact support.</p>
       {import.meta.env.DEV && (
         <p className="text-xs text-red-400 font-mono">
-          Debug: type={question.type}, options={String(!!question.options)}, 
-          optionsType={typeof question.options}
+          Debug: type={question.type}, options={String(!!question.options)}, optionsType=
+          {typeof question.options}
         </p>
       )}
     </div>

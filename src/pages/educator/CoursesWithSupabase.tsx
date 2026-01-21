@@ -16,7 +16,7 @@ import {
   CheckCircleIcon,
   ClockIcon,
   AcademicCapIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 import { Course } from '../../types/educator/course';
 import { SKILL_CATEGORIES, CLASSES } from '../../data/educator/mockCourses';
@@ -29,7 +29,7 @@ import {
   getCoursesByEducator,
   createCourse,
   updateCourse,
-  deleteCourse
+  deleteCourse,
 } from '../../services/educator/coursesService';
 
 const CoursesWithSupabase: React.FC = () => {
@@ -65,7 +65,10 @@ const CoursesWithSupabase: React.FC = () => {
       setError(null);
 
       // Get current user
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
 
       if (authError || !user) {
         // Development mode fallback
@@ -99,24 +102,22 @@ const CoursesWithSupabase: React.FC = () => {
 
   // Filtered and sorted courses
   const filteredCourses = useMemo(() => {
-    const filtered = courses.filter(course => {
+    const filtered = courses.filter((course) => {
       const matchesSearch =
         course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         course.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        course.skillsCovered.some(skill =>
+        course.skillsCovered.some((skill) =>
           skill.toLowerCase().includes(searchQuery.toLowerCase())
         );
 
-      const matchesTab =
-        activeTabFilter === 'All Courses' || course.status === activeTabFilter;
+      const matchesTab = activeTabFilter === 'All Courses' || course.status === activeTabFilter;
 
       const matchesStatus = statusFilter === 'All' || course.status === statusFilter;
 
-      const matchesSkill =
-        skillFilter === 'All' || course.skillsCovered.includes(skillFilter);
+      const matchesSkill = skillFilter === 'All' || course.skillsCovered.includes(skillFilter);
 
       const matchesClass =
-        classFilter === 'All' || course.linkedClasses.some(c => c === classFilter);
+        classFilter === 'All' || course.linkedClasses.some((c) => c === classFilter);
 
       return matchesSearch && matchesTab && matchesStatus && matchesSkill && matchesClass;
     });
@@ -143,13 +144,11 @@ const CoursesWithSupabase: React.FC = () => {
   // Analytics
   const analytics = useMemo(() => {
     const total = courses.length;
-    const active = courses.filter(c => c.status === 'Active').length;
+    const active = courses.filter((c) => c.status === 'Active').length;
     const totalEnrolled = courses.reduce((sum, c) => sum + c.enrollmentCount, 0);
     const avgCompletion =
       courses.length > 0
-        ? Math.round(
-            courses.reduce((sum, c) => sum + c.completionRate, 0) / courses.length
-          )
+        ? Math.round(courses.reduce((sum, c) => sum + c.completionRate, 0) / courses.length)
         : 0;
     const pendingEvidence = courses.reduce((sum, c) => sum + c.evidencePending, 0);
 
@@ -178,7 +177,7 @@ const CoursesWithSupabase: React.FC = () => {
           modules: courseData.modules || [],
           targetOutcomes: courseData.targetOutcomes || [],
           duration: courseData.duration || '',
-          coEducators: []
+          coEducators: [],
         },
         currentEducatorId,
         currentEducatorName
@@ -203,7 +202,7 @@ const CoursesWithSupabase: React.FC = () => {
 
     try {
       const updatedCourse = await updateCourse(editingCourse.id, courseData);
-      setCourses(courses.map(c => c.id === updatedCourse.id ? updatedCourse : c));
+      setCourses(courses.map((c) => (c.id === updatedCourse.id ? updatedCourse : c)));
       setEditingCourse(null);
       setShowCreateModal(false);
     } catch (err) {
@@ -221,7 +220,7 @@ const CoursesWithSupabase: React.FC = () => {
     try {
       const newStatus = course.status === 'Archived' ? 'Draft' : 'Archived';
       const updatedCourse = await updateCourse(course.id, { status: newStatus });
-      setCourses(courses.map(c => c.id === updatedCourse.id ? updatedCourse : c));
+      setCourses(courses.map((c) => (c.id === updatedCourse.id ? updatedCourse : c)));
     } catch (err) {
       console.error('Error archiving course:', err);
       alert('Failed to archive course. Please try again.');
@@ -233,7 +232,7 @@ const CoursesWithSupabase: React.FC = () => {
 
     try {
       await deleteCourse(course.id);
-      setCourses(courses.filter(c => c.id !== course.id));
+      setCourses(courses.filter((c) => c.id !== course.id));
     } catch (err) {
       console.error('Error deleting course:', err);
       alert('Failed to delete course. Please try again.');
@@ -254,7 +253,7 @@ const CoursesWithSupabase: React.FC = () => {
   };
 
   const handleCourseUpdate = (updatedCourse: Course) => {
-    setCourses(courses.map(c => c.id === updatedCourse.id ? updatedCourse : c));
+    setCourses(courses.map((c) => (c.id === updatedCourse.id ? updatedCourse : c)));
   };
 
   if (loading) {
@@ -312,7 +311,7 @@ const CoursesWithSupabase: React.FC = () => {
 
       {/* Tab Navigation */}
       <div className="mb-6 flex items-center gap-2 border-b border-gray-200">
-        {tabFilters.map(tab => (
+        {tabFilters.map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTabFilter(tab)}
@@ -419,7 +418,12 @@ const CoursesWithSupabase: React.FC = () => {
               ? 'Try adjusting your filters'
               : 'Create your first course to get started'}
           </p>
-          {!(searchQuery || statusFilter !== 'All' || skillFilter !== 'All' || classFilter !== 'All') && (
+          {!(
+            searchQuery ||
+            statusFilter !== 'All' ||
+            skillFilter !== 'All' ||
+            classFilter !== 'All'
+          ) && (
             <button
               onClick={() => setShowCreateModal(true)}
               className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
@@ -436,7 +440,7 @@ const CoursesWithSupabase: React.FC = () => {
               : 'space-y-4'
           }
         >
-          {filteredCourses.map(course => (
+          {filteredCourses.map((course) => (
             <CourseCard
               key={course.id}
               course={course}

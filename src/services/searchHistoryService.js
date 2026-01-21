@@ -234,11 +234,10 @@
 //       return [];
 //     }
 //   }
-  
+
 // }
 
 // export default SearchHistoryService;
-
 
 import { supabase } from '../lib/supabaseClient';
 
@@ -254,7 +253,6 @@ export class SearchHistoryService {
    */
   static async addSearchTerm(studentId, searchTerm) {
     try {
-      
       if (!studentId) {
         return { success: false, message: 'Student ID is required' };
       }
@@ -273,7 +271,6 @@ export class SearchHistoryService {
         .eq('search_term', trimmedTerm)
         .maybeSingle();
 
-
       if (existingError) {
         console.error('❌ Error checking existing:', existingError);
         throw existingError;
@@ -285,7 +282,7 @@ export class SearchHistoryService {
           .from('search_history')
           .update({
             search_count: existing.search_count + 1,
-            last_searched_at: new Date().toISOString()
+            last_searched_at: new Date().toISOString(),
           })
           .eq('id', existing.id)
           .select()
@@ -299,7 +296,7 @@ export class SearchHistoryService {
         return {
           success: true,
           message: 'Search term updated',
-          data
+          data,
         };
       }
 
@@ -308,7 +305,6 @@ export class SearchHistoryService {
         .from('search_history')
         .select('*', { count: 'exact', head: true })
         .eq('student_id', studentId);
-
 
       if (countError) {
         console.error('❌ Error getting count:', countError);
@@ -334,7 +330,7 @@ export class SearchHistoryService {
             .from('search_history')
             .delete()
             .eq('id', oldestEntry.id);
-          
+
           if (deleteError) {
             console.error('❌ Error deleting oldest:', deleteError);
           } else {
@@ -345,12 +341,14 @@ export class SearchHistoryService {
       // Insert new search term
       const { data, error } = await supabase
         .from('search_history')
-        .insert([{
-          student_id: studentId,
-          search_term: trimmedTerm,
-          search_count: 1,
-          last_searched_at: new Date().toISOString()
-        }])
+        .insert([
+          {
+            student_id: studentId,
+            search_term: trimmedTerm,
+            search_count: 1,
+            last_searched_at: new Date().toISOString(),
+          },
+        ])
         .select()
         .single();
 
@@ -362,14 +360,14 @@ export class SearchHistoryService {
       return {
         success: true,
         message: 'Search term added',
-        data
+        data,
       };
     } catch (error) {
       console.error('❌ Error in addSearchTerm:', error);
       return {
         success: false,
         message: error.message || 'Failed to save search term',
-        error
+        error,
       };
     }
   }
@@ -381,7 +379,6 @@ export class SearchHistoryService {
    */
   static async getSearchHistory(studentId) {
     try {
-      
       if (!studentId) {
         return [];
       }
@@ -413,7 +410,6 @@ export class SearchHistoryService {
    */
   static async deleteSearchTerm(studentId, searchHistoryId) {
     try {
-      
       if (!studentId) {
         return { success: false, message: 'Student ID is required' };
       }
@@ -431,14 +427,14 @@ export class SearchHistoryService {
 
       return {
         success: true,
-        message: 'Search term deleted'
+        message: 'Search term deleted',
       };
     } catch (error) {
       console.error('❌ Error in deleteSearchTerm:', error);
       return {
         success: false,
         message: error.message || 'Failed to delete search term',
-        error
+        error,
       };
     }
   }
@@ -450,15 +446,11 @@ export class SearchHistoryService {
    */
   static async clearSearchHistory(studentId) {
     try {
-      
       if (!studentId) {
         return { success: false, message: 'Student ID is required' };
       }
 
-      const { error } = await supabase
-        .from('search_history')
-        .delete()
-        .eq('student_id', studentId);
+      const { error } = await supabase.from('search_history').delete().eq('student_id', studentId);
 
       if (error) {
         console.error('❌ Clear error:', error);
@@ -467,14 +459,14 @@ export class SearchHistoryService {
 
       return {
         success: true,
-        message: 'Search history cleared'
+        message: 'Search history cleared',
       };
     } catch (error) {
       console.error('❌ Error in clearSearchHistory:', error);
       return {
         success: false,
         message: error.message || 'Failed to clear search history',
-        error
+        error,
       };
     }
   }
@@ -487,7 +479,6 @@ export class SearchHistoryService {
    */
   static async getMostSearchedTerms(studentId, limit = 5) {
     try {
-      
       if (!studentId) {
         return [];
       }

@@ -71,7 +71,13 @@ export async function getAiTutorSuggestions(lessonId, token) {
 /**
  * Send message to AI tutor chat (streaming)
  */
-export async function sendAiTutorMessage({ conversationId, courseId, lessonId, message }, token, onToken, onDone, onError) {
+export async function sendAiTutorMessage(
+  { conversationId, courseId, lessonId, message },
+  token,
+  onToken,
+  onDone,
+  onError
+) {
   try {
     const response = await fetch(`${getBaseUrl()}/ai-tutor-chat`, {
       method: 'POST',
@@ -118,7 +124,9 @@ export async function sendAiTutorMessage({ conversationId, courseId, lessonId, m
               } else if (eventType === 'error') {
                 onError?.(new Error(data.error));
               }
-            } catch { /* skip */ }
+            } catch {
+              /* skip */
+            }
           }
         }
       }
@@ -131,7 +139,10 @@ export async function sendAiTutorMessage({ conversationId, courseId, lessonId, m
 /**
  * Submit feedback for AI tutor response
  */
-export async function submitAiTutorFeedback({ conversationId, messageIndex, rating, feedbackText }, token) {
+export async function submitAiTutorFeedback(
+  { conversationId, messageIndex, rating, feedbackText },
+  token
+) {
   const response = await fetch(`${getBaseUrl()}/ai-tutor-feedback`, {
     method: 'POST',
     headers: getAuthHeaders(token),

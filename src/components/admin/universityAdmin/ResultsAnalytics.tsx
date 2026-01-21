@@ -4,7 +4,7 @@ import {
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
   AcademicCapIcon,
-  UserGroupIcon
+  UserGroupIcon,
 } from '@heroicons/react/24/outline';
 
 interface AnalyticsProps {
@@ -18,61 +18,69 @@ export const ResultsAnalytics: React.FC<AnalyticsProps> = ({
   results,
   students,
   getStudentById,
-  getSubjectById
+  getSubjectById,
 }) => {
   // Calculate analytics data
   const calculateAnalytics = () => {
     const totalResults = results.length;
-    const passedResults = results.filter(r => r.status === 'pass').length;
-    const failedResults = results.filter(r => r.status === 'fail').length;
-    const absentResults = results.filter(r => r.status === 'absent').length;
-    
+    const passedResults = results.filter((r) => r.status === 'pass').length;
+    const failedResults = results.filter((r) => r.status === 'fail').length;
+    const absentResults = results.filter((r) => r.status === 'absent').length;
+
     const passRate = totalResults > 0 ? (passedResults / totalResults) * 100 : 0;
-    
+
     // Grade distribution
-    const gradeDistribution = ['A+', 'A', 'B+', 'B', 'C', 'D', 'F'].map(grade => ({
+    const gradeDistribution = ['A+', 'A', 'B+', 'B', 'C', 'D', 'F'].map((grade) => ({
       grade,
-      count: results.filter(r => r.grade === grade).length,
-      percentage: totalResults > 0 ? (results.filter(r => r.grade === grade).length / totalResults) * 100 : 0
+      count: results.filter((r) => r.grade === grade).length,
+      percentage:
+        totalResults > 0
+          ? (results.filter((r) => r.grade === grade).length / totalResults) * 100
+          : 0,
     }));
-    
+
     // Program-wise analysis
-    const programAnalysis = ['Computer Science', 'Mechanical Engineering', 'Electrical Engineering'].map(program => {
-      const programResults = results.filter(r => {
+    const programAnalysis = [
+      'Computer Science',
+      'Mechanical Engineering',
+      'Electrical Engineering',
+    ].map((program) => {
+      const programResults = results.filter((r) => {
         const student = getStudentById(r.studentId);
         return student?.program === program;
       });
-      const programPassed = programResults.filter(r => r.status === 'pass').length;
-      const programPassRate = programResults.length > 0 ? (programPassed / programResults.length) * 100 : 0;
-      
+      const programPassed = programResults.filter((r) => r.status === 'pass').length;
+      const programPassRate =
+        programResults.length > 0 ? (programPassed / programResults.length) * 100 : 0;
+
       return {
         program,
         totalResults: programResults.length,
         passed: programPassed,
-        failed: programResults.filter(r => r.status === 'fail').length,
-        absent: programResults.filter(r => r.status === 'absent').length,
-        passRate: programPassRate
+        failed: programResults.filter((r) => r.status === 'fail').length,
+        absent: programResults.filter((r) => r.status === 'absent').length,
+        passRate: programPassRate,
       };
     });
-    
+
     // College-wise analysis
-    const collegeAnalysis = ['Engineering College A', 'Engineering College B'].map(college => {
-      const collegeResults = results.filter(r => {
+    const collegeAnalysis = ['Engineering College A', 'Engineering College B'].map((college) => {
+      const collegeResults = results.filter((r) => {
         const student = getStudentById(r.studentId);
         return student?.college === college;
       });
-      const published = collegeResults.filter(r => r.publishedAt).length;
+      const published = collegeResults.filter((r) => r.publishedAt).length;
       const pending = collegeResults.length - published;
-      
+
       return {
         college,
         totalResults: collegeResults.length,
         published,
         pending,
-        publishRate: collegeResults.length > 0 ? (published / collegeResults.length) * 100 : 0
+        publishRate: collegeResults.length > 0 ? (published / collegeResults.length) * 100 : 0,
       };
     });
-    
+
     return {
       totalResults,
       passedResults,
@@ -81,7 +89,7 @@ export const ResultsAnalytics: React.FC<AnalyticsProps> = ({
       passRate,
       gradeDistribution,
       programAnalysis,
-      collegeAnalysis
+      collegeAnalysis,
     };
   };
 
@@ -124,11 +132,11 @@ export const ResultsAnalytics: React.FC<AnalyticsProps> = ({
             <div>
               <p className="text-sm font-medium text-gray-600">Results Published</p>
               <p className="text-3xl font-bold text-purple-600">
-                {results.filter(r => r.publishedAt).length}
+                {results.filter((r) => r.publishedAt).length}
               </p>
               <div className="flex items-center mt-2">
                 <span className="text-sm text-gray-600">
-                  {results.filter(r => !r.publishedAt).length} pending
+                  {results.filter((r) => !r.publishedAt).length} pending
                 </span>
               </div>
             </div>
@@ -141,7 +149,10 @@ export const ResultsAnalytics: React.FC<AnalyticsProps> = ({
             <div>
               <p className="text-sm font-medium text-gray-600">Absent Rate</p>
               <p className="text-3xl font-bold text-orange-600">
-                {analytics.totalResults > 0 ? ((analytics.absentResults / analytics.totalResults) * 100).toFixed(1) : 0}%
+                {analytics.totalResults > 0
+                  ? ((analytics.absentResults / analytics.totalResults) * 100).toFixed(1)
+                  : 0}
+                %
               </p>
               <div className="flex items-center mt-2">
                 <ArrowTrendingDownIcon className="h-4 w-4 text-green-500 mr-1" />
@@ -162,11 +173,15 @@ export const ResultsAnalytics: React.FC<AnalyticsProps> = ({
               <div className="flex items-center gap-3">
                 <span className="text-sm font-medium text-gray-700 w-8">Grade {grade}</span>
                 <div className="w-64 bg-gray-200 rounded-full h-3">
-                  <div 
+                  <div
                     className={`h-3 rounded-full ${
-                      grade === 'A+' || grade === 'A' ? 'bg-green-500' :
-                      grade === 'B+' || grade === 'B' ? 'bg-blue-500' :
-                      grade === 'C' || grade === 'D' ? 'bg-yellow-500' : 'bg-red-500'
+                      grade === 'A+' || grade === 'A'
+                        ? 'bg-green-500'
+                        : grade === 'B+' || grade === 'B'
+                          ? 'bg-blue-500'
+                          : grade === 'C' || grade === 'D'
+                            ? 'bg-yellow-500'
+                            : 'bg-red-500'
                     }`}
                     style={{ width: `${percentage}%` }}
                   ></div>
@@ -195,7 +210,7 @@ export const ResultsAnalytics: React.FC<AnalyticsProps> = ({
                   </span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
-                  <div 
+                  <div
                     className="h-2 bg-green-500 rounded-full"
                     style={{ width: `${program.passRate}%` }}
                   ></div>
@@ -225,7 +240,9 @@ export const ResultsAnalytics: React.FC<AnalyticsProps> = ({
 
         {/* College-wise Statistics */}
         <div className="bg-white rounded-lg shadow-sm border p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-6">College-wise Publication Status</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-6">
+            College-wise Publication Status
+          </h3>
           <div className="space-y-4">
             {analytics.collegeAnalysis.map((college) => (
               <div key={college.college} className="p-4 border border-gray-200 rounded-lg">
@@ -236,7 +253,7 @@ export const ResultsAnalytics: React.FC<AnalyticsProps> = ({
                   </span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
-                  <div 
+                  <div
                     className="h-2 bg-blue-500 rounded-full"
                     style={{ width: `${college.publishRate}%` }}
                   ></div>
@@ -271,20 +288,25 @@ export const ResultsAnalytics: React.FC<AnalyticsProps> = ({
             <p className="text-2xl font-bold text-green-600">+5.2%</p>
             <p className="text-xs text-green-600">vs last semester</p>
           </div>
-          
+
           <div className="text-center p-4 bg-blue-50 rounded-lg">
             <ChartBarIcon className="h-8 w-8 text-blue-500 mx-auto mb-2" />
             <p className="text-sm font-medium text-blue-700">Average Grade</p>
             <p className="text-2xl font-bold text-blue-600">B+</p>
             <p className="text-xs text-blue-600">Maintained from last semester</p>
           </div>
-          
+
           <div className="text-center p-4 bg-purple-50 rounded-lg">
             <AcademicCapIcon className="h-8 w-8 text-purple-500 mx-auto mb-2" />
             <p className="text-sm font-medium text-purple-700">Publication Rate</p>
             <p className="text-2xl font-bold text-purple-600">
-              {analytics.totalResults > 0 ? 
-                ((results.filter(r => r.publishedAt).length / analytics.totalResults) * 100).toFixed(1) : 0}%
+              {analytics.totalResults > 0
+                ? (
+                    (results.filter((r) => r.publishedAt).length / analytics.totalResults) *
+                    100
+                  ).toFixed(1)
+                : 0}
+              %
             </p>
             <p className="text-xs text-purple-600">Results published on time</p>
           </div>

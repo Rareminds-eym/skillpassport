@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from "react";
-import { X, Save, Trash2, AlertTriangle, User, DoorOpen } from "lucide-react";
-import { Faculty, CollegeClass, ScheduleSlot, TimePeriod, SlotFormData } from "../../types";
-import { DAYS } from "../../constants";
-import { formatDate, getSubjectsForFaculty, getClassName } from "../../utils";
+import React, { useState, useEffect } from 'react';
+import { X, Save, Trash2, AlertTriangle, User, DoorOpen } from 'lucide-react';
+import { Faculty, CollegeClass, ScheduleSlot, TimePeriod, SlotFormData } from '../../types';
+import { DAYS } from '../../constants';
+import { formatDate, getSubjectsForFaculty, getClassName } from '../../utils';
 
 interface ConflictInfo {
-  type: "faculty" | "room";
+  type: 'faculty' | 'room';
   message: string;
   className: string;
   facultyName?: string;
@@ -61,7 +61,7 @@ const SlotModal: React.FC<SlotModalProps> = ({
       const facultyConflict = slots.find((slot) => {
         // Skip the slot being edited
         if (editingSlot?.id && slot.id === editingSlot.id) return false;
-        
+
         // Check same faculty, same day, same period, different class
         return (
           slot.educator_id === slotForm.faculty_id &&
@@ -69,8 +69,9 @@ const SlotModal: React.FC<SlotModalProps> = ({
           slot.period_number === selectedCell.period.period_number &&
           slot.class_id !== currentClassId &&
           // Check recurring/date overlap
-          (slotForm.is_recurring || slot.is_recurring || 
-           slot.schedule_date === weekDates[selectedCell.day].toISOString().split("T")[0])
+          (slotForm.is_recurring ||
+            slot.is_recurring ||
+            slot.schedule_date === weekDates[selectedCell.day].toISOString().split('T')[0])
         );
       });
 
@@ -78,11 +79,11 @@ const SlotModal: React.FC<SlotModalProps> = ({
         const conflictClass = classes.find((c) => c.id === facultyConflict.class_id);
         const conflictFaculty = faculty.find((f) => f.id === facultyConflict.educator_id);
         newConflicts.push({
-          type: "faculty",
+          type: 'faculty',
           message: `${conflictFaculty?.first_name} ${conflictFaculty?.last_name} is already teaching`,
-          className: conflictClass 
+          className: conflictClass
             ? `${conflictClass.name} (${conflictClass.grade}-${conflictClass.section})`
-            : "another class",
+            : 'another class',
           facultyName: `${conflictFaculty?.first_name} ${conflictFaculty?.last_name}`,
         });
       }
@@ -93,15 +94,16 @@ const SlotModal: React.FC<SlotModalProps> = ({
       const roomConflict = slots.find((slot) => {
         // Skip the slot being edited
         if (editingSlot?.id && slot.id === editingSlot.id) return false;
-        
+
         // Check same room, same day, same period
         return (
           slot.room_number?.toLowerCase() === slotForm.room_number.toLowerCase() &&
           slot.day_of_week === selectedCell.day + 1 &&
           slot.period_number === selectedCell.period.period_number &&
           slot.class_id !== currentClassId &&
-          (slotForm.is_recurring || slot.is_recurring ||
-           slot.schedule_date === weekDates[selectedCell.day].toISOString().split("T")[0])
+          (slotForm.is_recurring ||
+            slot.is_recurring ||
+            slot.schedule_date === weekDates[selectedCell.day].toISOString().split('T')[0])
         );
       });
 
@@ -109,12 +111,12 @@ const SlotModal: React.FC<SlotModalProps> = ({
         const conflictClass = classes.find((c) => c.id === roomConflict.class_id);
         const conflictFaculty = faculty.find((f) => f.id === roomConflict.educator_id);
         newConflicts.push({
-          type: "room",
+          type: 'room',
           message: `Room ${slotForm.room_number} is already booked by`,
-          className: conflictClass 
+          className: conflictClass
             ? `${conflictClass.name} (${conflictClass.grade}-${conflictClass.section})`
-            : "another class",
-          facultyName: conflictFaculty 
+            : 'another class',
+          facultyName: conflictFaculty
             ? `${conflictFaculty.first_name} ${conflictFaculty.last_name}`
             : undefined,
         });
@@ -122,7 +124,17 @@ const SlotModal: React.FC<SlotModalProps> = ({
     }
 
     setConflicts(newConflicts);
-  }, [isOpen, selectedCell, slotForm, slots, editingSlot, selectedClassFilter, classes, faculty, weekDates]);
+  }, [
+    isOpen,
+    selectedCell,
+    slotForm,
+    slots,
+    editingSlot,
+    selectedClassFilter,
+    classes,
+    faculty,
+    weekDates,
+  ]);
 
   if (!isOpen || !selectedCell) return null;
 
@@ -134,7 +146,7 @@ const SlotModal: React.FC<SlotModalProps> = ({
       <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-gray-900">
-            {editingSlot ? "Edit Schedule" : "Add Schedule"}
+            {editingSlot ? 'Edit Schedule' : 'Add Schedule'}
           </h3>
           <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg">
             <X className="h-5 w-5 text-gray-500" />
@@ -146,12 +158,12 @@ const SlotModal: React.FC<SlotModalProps> = ({
             {DAYS[selectedCell.day]} • {selectedCell.period.period_name}
           </div>
           <div className="text-xs text-indigo-700">
-            {formatDate(weekDates[selectedCell.day])} | {selectedCell.period.start_time} -{" "}
+            {formatDate(weekDates[selectedCell.day])} | {selectedCell.period.start_time} -{' '}
             {selectedCell.period.end_time}
           </div>
           {(selectedClassFilter || editingSlot?.class_id) && (
             <div className="text-xs text-indigo-600 mt-1 font-medium">
-              Class:{" "}
+              Class:{' '}
               {classes.find((c) => c.id === (editingSlot?.class_id || selectedClassFilter))?.name} (
               {getClassName(editingSlot?.class_id || selectedClassFilter, classes)})
             </div>
@@ -165,45 +177,45 @@ const SlotModal: React.FC<SlotModalProps> = ({
               <div
                 key={index}
                 className={`rounded-lg p-3 border ${
-                  conflict.type === "faculty"
-                    ? "bg-red-50 border-red-200"
-                    : "bg-amber-50 border-amber-200"
+                  conflict.type === 'faculty'
+                    ? 'bg-red-50 border-red-200'
+                    : 'bg-amber-50 border-amber-200'
                 }`}
               >
                 <div className="flex items-start gap-2">
                   <AlertTriangle
                     className={`h-5 w-5 mt-0.5 flex-shrink-0 ${
-                      conflict.type === "faculty" ? "text-red-500" : "text-amber-500"
+                      conflict.type === 'faculty' ? 'text-red-500' : 'text-amber-500'
                     }`}
                   />
                   <div className="flex-1">
                     <div
                       className={`text-sm font-medium ${
-                        conflict.type === "faculty" ? "text-red-800" : "text-amber-800"
+                        conflict.type === 'faculty' ? 'text-red-800' : 'text-amber-800'
                       }`}
                     >
-                      {conflict.type === "faculty" ? "Faculty Conflict" : "Room Conflict"}
+                      {conflict.type === 'faculty' ? 'Faculty Conflict' : 'Room Conflict'}
                     </div>
                     <div
                       className={`text-sm ${
-                        conflict.type === "faculty" ? "text-red-700" : "text-amber-700"
+                        conflict.type === 'faculty' ? 'text-red-700' : 'text-amber-700'
                       }`}
                     >
                       {conflict.message}
                     </div>
                     <div className="flex items-center gap-2 mt-1">
-                      {conflict.type === "faculty" ? (
+                      {conflict.type === 'faculty' ? (
                         <User className="h-3.5 w-3.5 text-gray-500" />
                       ) : (
                         <DoorOpen className="h-3.5 w-3.5 text-gray-500" />
                       )}
                       <span
                         className={`text-sm font-medium ${
-                          conflict.type === "faculty" ? "text-red-900" : "text-amber-900"
+                          conflict.type === 'faculty' ? 'text-red-900' : 'text-amber-900'
                         }`}
                       >
                         {conflict.className}
-                        {conflict.type === "room" && conflict.facultyName && (
+                        {conflict.type === 'room' && conflict.facultyName && (
                           <span className="font-normal"> with {conflict.facultyName}</span>
                         )}
                       </span>
@@ -231,12 +243,12 @@ const SlotModal: React.FC<SlotModalProps> = ({
             <select
               value={slotForm.faculty_id}
               onChange={(e) =>
-                onFormChange({ ...slotForm, faculty_id: e.target.value, subject_name: "" })
+                onFormChange({ ...slotForm, faculty_id: e.target.value, subject_name: '' })
               }
               className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 ${
-                conflicts.some((c) => c.type === "faculty")
-                  ? "border-red-300 bg-red-50"
-                  : "border-gray-300"
+                conflicts.some((c) => c.type === 'faculty')
+                  ? 'border-red-300 bg-red-50'
+                  : 'border-gray-300'
               }`}
             >
               <option value="">Select Faculty</option>
@@ -261,9 +273,9 @@ const SlotModal: React.FC<SlotModalProps> = ({
               <option value="">
                 {slotForm.faculty_id
                   ? subjects.length > 0
-                    ? "Select Subject"
-                    : "No subjects assigned"
-                  : "Select Faculty First"}
+                    ? 'Select Subject'
+                    : 'No subjects assigned'
+                  : 'Select Faculty First'}
               </option>
               {subjects.map((subject) => (
                 <option key={subject} value={subject}>
@@ -284,9 +296,9 @@ const SlotModal: React.FC<SlotModalProps> = ({
               onChange={(e) => onFormChange({ ...slotForm, room_number: e.target.value })}
               placeholder="e.g., Lab 101"
               className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 ${
-                conflicts.some((c) => c.type === "room")
-                  ? "border-amber-300 bg-amber-50"
-                  : "border-gray-300"
+                conflicts.some((c) => c.type === 'room')
+                  ? 'border-amber-300 bg-amber-50'
+                  : 'border-gray-300'
               }`}
             />
           </div>
@@ -327,12 +339,12 @@ const SlotModal: React.FC<SlotModalProps> = ({
             disabled={loading}
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition ${
               hasConflicts
-                ? "bg-amber-500 hover:bg-amber-600 text-white"
-                : "bg-indigo-600 hover:bg-indigo-700 text-white"
+                ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                : 'bg-indigo-600 hover:bg-indigo-700 text-white'
             } disabled:bg-gray-400`}
           >
             <Save className="h-4 w-4" />
-            {loading ? "Saving..." : hasConflicts ? "Save Anyway" : "Save"}
+            {loading ? 'Saving...' : hasConflicts ? 'Save Anyway' : 'Save'}
           </button>
         </div>
 

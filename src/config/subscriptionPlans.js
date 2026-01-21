@@ -232,7 +232,8 @@ export function getSubscriptionPlans() {
       id: PLAN_IDS.ECOSYSTEM,
       name: 'Enterprise Ecosystem',
       subtitle: 'Extended & Regulated Scale',
-      description: 'Power extended learning across organizations, partners, and regulated environments',
+      description:
+        'Power extended learning across organizations, partners, and regulated environments',
       idealFor: 'Large enterprises, regulated orgs, external ecosystems',
       price: null, // Contact Sales
       currency: '₹',
@@ -344,9 +345,7 @@ export const FEATURE_CATEGORIES = {
   },
   engagementAutomation: {
     label: 'Engagement & Automation',
-    features: [
-      { key: 'notificationsNudges', label: 'Notifications & Nudges' },
-    ],
+    features: [{ key: 'notificationsNudges', label: 'Notifications & Nudges' }],
   },
   integrationsExtensibility: {
     label: 'Integrations & Extensibility',
@@ -381,11 +380,11 @@ export function hasFeatureAccess(planId, category, featureKey) {
   const plans = getSubscriptionPlans();
   const plan = plans[planId];
   if (!plan) return false;
-  
+
   if (category === 'limits') {
     return plan.limits?.[featureKey];
   }
-  
+
   const featureValue = plan.features?.[category]?.[featureKey];
   return featureValue !== false && featureValue !== undefined;
 }
@@ -397,11 +396,11 @@ export function getFeatureValue(planId, category, featureKey) {
   const plans = getSubscriptionPlans();
   const plan = plans[planId];
   if (!plan) return null;
-  
+
   if (category === 'limits') {
     return plan.limits?.[featureKey];
   }
-  
+
   return plan.features?.[category]?.[featureKey];
 }
 

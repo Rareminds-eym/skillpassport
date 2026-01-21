@@ -104,7 +104,12 @@ const PromotionalModal = ({ event, isOpen, onClose, getTimeRemaining }) => {
       className="relative"
       initial={hasAnimated.current ? false : { scale: 0, rotate: -30 }}
       animate={{ scale: 1, rotate: 0 }}
-      transition={{ type: 'spring', damping: 12, stiffness: 200, delay: hasAnimated.current ? 0 : 0.2 }}
+      transition={{
+        type: 'spring',
+        damping: 12,
+        stiffness: 200,
+        delay: hasAnimated.current ? 0 : 0.2,
+      }}
     >
       <svg viewBox="0 0 100 100" className="h-28 w-28 sm:h-36 sm:w-36 drop-shadow-lg">
         <path
@@ -155,7 +160,13 @@ const PromotionalModal = ({ event, isOpen, onClose, getTimeRemaining }) => {
           strokeWidth="3"
           strokeLinecap="round"
         />
-        <path d="M5 70 L10 75 L15 68" fill="none" stroke="#E85D3B" strokeWidth="3" strokeLinecap="round" />
+        <path
+          d="M5 70 L10 75 L15 68"
+          fill="none"
+          stroke="#E85D3B"
+          strokeWidth="3"
+          strokeLinecap="round"
+        />
       </svg>
       {/* Small sparkle */}
       <svg viewBox="0 0 24 24" className="h-5 w-5 text-amber-400">
@@ -175,7 +186,11 @@ const PromotionalModal = ({ event, isOpen, onClose, getTimeRemaining }) => {
       {/* Celebration stars */}
       <svg viewBox="0 0 40 60" className="h-14 w-8 sm:h-18 sm:w-10">
         <path fill="#0166cc" d="M20 0L22 8L30 10L22 12L20 20L18 12L10 10L18 8Z" />
-        <path fill="#0166cc" opacity="0.6" d="M30 25L31.5 30L37 31L31.5 32L30 37L28.5 32L23 31L28.5 30Z" />
+        <path
+          fill="#0166cc"
+          opacity="0.6"
+          d="M30 25L31.5 30L37 31L31.5 32L30 37L28.5 32L23 31L28.5 30Z"
+        />
         <path fill="#0166cc" opacity="0.4" d="M12 35L13 39L17 40L13 41L12 45L11 41L7 40L11 39Z" />
       </svg>
       {/* Small sparkle */}
@@ -191,7 +206,9 @@ const PromotionalModal = ({ event, isOpen, onClose, getTimeRemaining }) => {
       <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#0166cc] text-xl font-bold text-white shadow-md">
         {String(value).padStart(2, '0')}
       </div>
-      <span className="mt-1 text-[10px] font-medium uppercase tracking-wide text-gray-500">{label}</span>
+      <span className="mt-1 text-[10px] font-medium uppercase tracking-wide text-gray-500">
+        {label}
+      </span>
     </div>
   );
 

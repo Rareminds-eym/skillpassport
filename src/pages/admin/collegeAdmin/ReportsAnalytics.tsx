@@ -1,29 +1,29 @@
-import { useAuth } from "@/hooks/useAuth";
-import { reportsService } from "@/services/college/reportsService";
-import { ApexOptions } from "apexcharts";
+import { useAuth } from '@/hooks/useAuth';
+import { reportsService } from '@/services/college/reportsService';
+import { ApexOptions } from 'apexcharts';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import {
-    Activity,
-    Award,
-    BarChart3,
-    Briefcase,
-    Calendar,
-    ChevronDown,
-    DollarSign,
-    Download,
-    FileText,
-    Filter,
-    Loader2,
-    PieChart,
-    Table,
-    Target,
-    TrendingDown,
-    TrendingUp,
-    Users,
-} from "lucide-react";
-import React, { useEffect, useState } from "react";
-import ReactApexChart from "react-apexcharts";
+  Activity,
+  Award,
+  BarChart3,
+  Briefcase,
+  Calendar,
+  ChevronDown,
+  DollarSign,
+  Download,
+  FileText,
+  Filter,
+  Loader2,
+  PieChart,
+  Table,
+  Target,
+  TrendingDown,
+  TrendingUp,
+  Users,
+} from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import ReactApexChart from 'react-apexcharts';
 import * as XLSX from 'xlsx';
 
 interface FilterState {
@@ -49,66 +49,66 @@ interface ReportData {
 
 const ReportsAnalytics: React.FC = () => {
   const { user } = useAuth();
-  const [selectedCategory, setSelectedCategory] = useState("attendance");
-  const [viewMode, setViewMode] = useState<"chart" | "table">("chart");
+  const [selectedCategory, setSelectedCategory] = useState('attendance');
+  const [viewMode, setViewMode] = useState<'chart' | 'table'>('chart');
   const [filters, setFilters] = useState<FilterState>({
-    dateRange: "current-month",
-    department: "all",
-    semester: "current",
-    userRole: "admin"
+    dateRange: 'current-month',
+    department: 'all',
+    semester: 'current',
+    userRole: 'admin',
   });
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(true);
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [departments, setDepartments] = useState<{ id: string; name: string; code: string }[]>([]);
-  const [collegeId, setCollegeId] = useState<string>("");
+  const [collegeId, setCollegeId] = useState<string>('');
   const [showExportMenuHeader, setShowExportMenuHeader] = useState(false);
   const [showExportMenuReport, setShowExportMenuReport] = useState(false);
 
   // Report Categories based on client requirements
   const reportCategories = [
     {
-      id: "attendance",
-      title: "Attendance",
+      id: 'attendance',
+      title: 'Attendance',
       icon: <Users className="h-5 w-5" />,
-      description: "Student and faculty attendance tracking",
-      color: "blue"
+      description: 'Student and faculty attendance tracking',
+      color: 'blue',
     },
     {
-      id: "performance",
-      title: "Performance/Grades",
+      id: 'performance',
+      title: 'Performance/Grades',
       icon: <Award className="h-5 w-5" />,
-      description: "Academic performance and grading analytics",
-      color: "green"
+      description: 'Academic performance and grading analytics',
+      color: 'green',
     },
     {
-      id: "exam-progress",
-      title: "Exam Progress",
+      id: 'exam-progress',
+      title: 'Exam Progress',
       icon: <FileText className="h-5 w-5" />,
-      description: "Examination schedules and progress tracking",
-      color: "purple"
+      description: 'Examination schedules and progress tracking',
+      color: 'purple',
     },
     {
-      id: "placement",
-      title: "Placement Overview",
+      id: 'placement',
+      title: 'Placement Overview',
       icon: <Briefcase className="h-5 w-5" />,
-      description: "Placement statistics and company analytics",
-      color: "orange"
+      description: 'Placement statistics and company analytics',
+      color: 'orange',
     },
     {
-      id: "skill-analytics",
-      title: "Skill Course Analytics",
+      id: 'skill-analytics',
+      title: 'Skill Course Analytics',
       icon: <Target className="h-5 w-5" />,
-      description: "Skill development course performance",
-      color: "indigo"
+      description: 'Skill development course performance',
+      color: 'indigo',
     },
     {
-      id: "budget",
-      title: "Dept Budget Usage",
+      id: 'budget',
+      title: 'Dept Budget Usage',
       icon: <DollarSign className="h-5 w-5" />,
-      description: "Department-wise budget allocation and usage",
-      color: "emerald"
-    }
+      description: 'Department-wise budget allocation and usage',
+      color: 'emerald',
+    },
   ];
 
   // Fetch college ID on mount
@@ -128,7 +128,7 @@ const ReportsAnalytics: React.FC = () => {
         // Fallback to Supabase auth
         if (user?.id) {
           const { supabase } = await import('@/lib/supabaseClient');
-          
+
           // Query organizations table for college
           const { data: org } = await supabase
             .from('organizations')
@@ -136,7 +136,7 @@ const ReportsAnalytics: React.FC = () => {
             .eq('organization_type', 'college')
             .or(`admin_id.eq.${user.id},email.ilike.${user.email}`)
             .maybeSingle();
-          
+
           if (org?.id) {
             setCollegeId(org.id);
           }
@@ -167,28 +167,28 @@ const ReportsAnalytics: React.FC = () => {
           dateRange: filters.dateRange,
           department: filters.department,
           semester: filters.semester,
-          collegeId: collegeId
+          collegeId: collegeId,
         };
 
         let data: ReportData | null = null;
 
         switch (selectedCategory) {
-          case "attendance":
+          case 'attendance':
             data = await reportsService.getAttendanceReport(reportFilters);
             break;
-          case "performance":
+          case 'performance':
             data = await reportsService.getPerformanceReport(reportFilters);
             break;
-          case "placement":
+          case 'placement':
             data = await reportsService.getPlacementReport(reportFilters);
             break;
-          case "skill-analytics":
+          case 'skill-analytics':
             data = await reportsService.getSkillAnalyticsReport(reportFilters);
             break;
-          case "budget":
+          case 'budget':
             data = await reportsService.getBudgetReport(reportFilters);
             break;
-          case "exam-progress":
+          case 'exam-progress':
             data = await reportsService.getExamProgressReport(reportFilters);
             break;
           default:
@@ -210,123 +210,129 @@ const ReportsAnalytics: React.FC = () => {
   const getChartOptions = (): { options: ApexOptions; series: any; type: string } => {
     if (!reportData?.chartData) {
       return {
-        options: { chart: { type: "line" } } as ApexOptions,
+        options: { chart: { type: 'line' } } as ApexOptions,
         series: [],
-        type: "line"
+        type: 'line',
       };
     }
 
     switch (selectedCategory) {
-      case "attendance":
-      case "exam-progress":
+      case 'attendance':
+      case 'exam-progress':
         return {
           options: {
-            chart: { type: "line", toolbar: { show: false } },
-            stroke: { curve: "smooth", width: 3 },
-            colors: ["#3b82f6"],
+            chart: { type: 'line', toolbar: { show: false } },
+            stroke: { curve: 'smooth', width: 3 },
+            colors: ['#3b82f6'],
             xaxis: { categories: reportData.chartData.labels },
             yaxis: { min: 0, max: 100 },
-            grid: { show: true, borderColor: "#f1f5f9" },
-            tooltip: { theme: "light" }
+            grid: { show: true, borderColor: '#f1f5f9' },
+            tooltip: { theme: 'light' },
           } as ApexOptions,
-          series: [{ name: selectedCategory === "attendance" ? "Attendance %" : "Completion %", data: reportData.chartData.values }],
-          type: "line"
+          series: [
+            {
+              name: selectedCategory === 'attendance' ? 'Attendance %' : 'Completion %',
+              data: reportData.chartData.values,
+            },
+          ],
+          type: 'line',
         };
 
-      case "performance":
-      case "skill-analytics":
+      case 'performance':
+      case 'skill-analytics':
         return {
           options: {
-            chart: { type: "donut" },
+            chart: { type: 'donut' },
             labels: reportData.chartData.labels,
-            colors: ["#3b82f6", "#10b981", "#8b5cf6", "#f59e0b", "#ef4444"],
-            legend: { position: "bottom" },
+            colors: ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444'],
+            legend: { position: 'bottom' },
             plotOptions: {
               pie: {
                 donut: {
-                  size: "70%",
+                  size: '70%',
                   labels: {
                     show: true,
                     total: {
                       show: true,
-                      label: "Average",
-                      formatter: () => `${Math.round(reportData.chartData.values.reduce((a: number, b: number) => a + b, 0) / reportData.chartData.values.length)}%`
-                    }
-                  }
-                }
-              }
-            }
+                      label: 'Average',
+                      formatter: () =>
+                        `${Math.round(reportData.chartData.values.reduce((a: number, b: number) => a + b, 0) / reportData.chartData.values.length)}%`,
+                    },
+                  },
+                },
+              },
+            },
           } as ApexOptions,
           series: reportData.chartData.values,
-          type: "donut"
+          type: 'donut',
         };
 
-      case "placement":
+      case 'placement':
         return {
           options: {
-            chart: { type: "bar", toolbar: { show: false } },
-            colors: ["#10b981", "#3b82f6"],
+            chart: { type: 'bar', toolbar: { show: false } },
+            colors: ['#10b981', '#3b82f6'],
             xaxis: { categories: reportData.chartData.labels },
             plotOptions: {
-              bar: { horizontal: false, columnWidth: "55%", borderRadius: 4 }
+              bar: { horizontal: false, columnWidth: '55%', borderRadius: 4 },
             },
             dataLabels: { enabled: false },
-            legend: { position: "top" }
+            legend: { position: 'top' },
           } as ApexOptions,
           series: [
-            { name: "Placements", data: reportData.chartData.placements },
-            { name: "Applications", data: reportData.chartData.applications }
+            { name: 'Placements', data: reportData.chartData.placements },
+            { name: 'Applications', data: reportData.chartData.applications },
           ],
-          type: "bar"
+          type: 'bar',
         };
 
-      case "budget":
+      case 'budget':
         return {
           options: {
-            chart: { type: "bar", toolbar: { show: false }, stacked: false },
-            colors: ["#3b82f6", "#10b981"],
+            chart: { type: 'bar', toolbar: { show: false }, stacked: false },
+            colors: ['#3b82f6', '#10b981'],
             xaxis: { categories: reportData.chartData.labels },
             plotOptions: {
-              bar: { horizontal: false, columnWidth: "60%", borderRadius: 4 }
+              bar: { horizontal: false, columnWidth: '60%', borderRadius: 4 },
             },
             dataLabels: { enabled: false },
-            legend: { position: "top" },
+            legend: { position: 'top' },
             yaxis: {
               labels: {
                 formatter: (val: number) => {
                   if (val >= 10000000) return `₹${(val / 10000000).toFixed(1)}Cr`;
                   if (val >= 100000) return `₹${(val / 100000).toFixed(0)}L`;
                   return `₹${val}`;
-                }
-              }
-            }
+                },
+              },
+            },
           } as ApexOptions,
           series: [
-            { name: "Allocated", data: reportData.chartData.allocated },
-            { name: "Spent", data: reportData.chartData.spent }
+            { name: 'Allocated', data: reportData.chartData.allocated },
+            { name: 'Spent', data: reportData.chartData.spent },
           ],
-          type: "bar"
+          type: 'bar',
         };
 
       default:
         return {
-          options: { chart: { type: "line" } } as ApexOptions,
+          options: { chart: { type: 'line' } } as ApexOptions,
           series: [],
-          type: "line"
+          type: 'line',
         };
     }
   };
 
   const getColorClasses = (color: string) => {
     const colorMap: Record<string, string> = {
-      blue: "from-blue-500 to-blue-600 bg-blue-50 border-blue-200 text-blue-700",
-      green: "from-green-500 to-green-600 bg-green-50 border-green-200 text-green-700",
-      purple: "from-purple-500 to-purple-600 bg-purple-50 border-purple-200 text-purple-700",
-      orange: "from-orange-500 to-orange-600 bg-orange-50 border-orange-200 text-orange-700",
-      red: "from-red-500 to-red-600 bg-red-50 border-red-200 text-red-700",
-      indigo: "from-indigo-500 to-indigo-600 bg-indigo-50 border-indigo-200 text-indigo-700",
-      emerald: "from-emerald-500 to-emerald-600 bg-emerald-50 border-emerald-200 text-emerald-700",
-      gray: "from-gray-500 to-gray-600 bg-gray-50 border-gray-200 text-gray-700"
+      blue: 'from-blue-500 to-blue-600 bg-blue-50 border-blue-200 text-blue-700',
+      green: 'from-green-500 to-green-600 bg-green-50 border-green-200 text-green-700',
+      purple: 'from-purple-500 to-purple-600 bg-purple-50 border-purple-200 text-purple-700',
+      orange: 'from-orange-500 to-orange-600 bg-orange-50 border-orange-200 text-orange-700',
+      red: 'from-red-500 to-red-600 bg-red-50 border-red-200 text-red-700',
+      indigo: 'from-indigo-500 to-indigo-600 bg-indigo-50 border-indigo-200 text-indigo-700',
+      emerald: 'from-emerald-500 to-emerald-600 bg-emerald-50 border-emerald-200 text-emerald-700',
+      gray: 'from-gray-500 to-gray-600 bg-gray-50 border-gray-200 text-gray-700',
     };
     return colorMap[color] || colorMap.blue;
   };
@@ -340,8 +346,9 @@ const ReportsAnalytics: React.FC = () => {
 
     try {
       // Get the current report category name
-      const categoryName = reportCategories.find(cat => cat.id === selectedCategory)?.title || 'Report';
-      
+      const categoryName =
+        reportCategories.find((cat) => cat.id === selectedCategory)?.title || 'Report';
+
       // Create workbook
       const wb = XLSX.utils.book_new();
 
@@ -355,12 +362,7 @@ const ReportsAnalytics: React.FC = () => {
         [''],
         ['Key Performance Indicators'],
         ['Metric', 'Value', 'Change', 'Trend'],
-        ...reportData.kpis.map(kpi => [
-          kpi.title,
-          kpi.value,
-          kpi.change,
-          kpi.trend
-        ])
+        ...reportData.kpis.map((kpi) => [kpi.title, kpi.value, kpi.change, kpi.trend]),
       ];
       const ws1 = XLSX.utils.aoa_to_sheet(summaryData);
       XLSX.utils.book_append_sheet(wb, ws1, 'Summary');
@@ -369,13 +371,13 @@ const ReportsAnalytics: React.FC = () => {
       if (reportData.tableData && reportData.tableData.length > 0) {
         const detailedData = [
           ['Period', 'Department', 'Value', 'Change', 'Status'],
-          ...reportData.tableData.map(row => [
+          ...reportData.tableData.map((row) => [
             row.period,
             row.department,
             row.value,
             row.change,
-            row.status
-          ])
+            row.status,
+          ]),
         ];
         const ws2 = XLSX.utils.aoa_to_sheet(detailedData);
         XLSX.utils.book_append_sheet(wb, ws2, 'Detailed Data');
@@ -384,7 +386,7 @@ const ReportsAnalytics: React.FC = () => {
       // Sheet 3: Chart Data (if available)
       if (reportData.chartData) {
         const chartData: any[] = [['Category', 'Value']];
-        
+
         if (reportData.chartData.labels && reportData.chartData.values) {
           // Line/Area charts
           reportData.chartData.labels.forEach((label: string, index: number) => {
@@ -396,7 +398,7 @@ const ReportsAnalytics: React.FC = () => {
             chartData.push([
               label,
               reportData.chartData.allocated[index],
-              reportData.chartData.spent[index]
+              reportData.chartData.spent[index],
             ]);
           });
           chartData[0] = ['Department', 'Allocated', 'Spent'];
@@ -406,7 +408,7 @@ const ReportsAnalytics: React.FC = () => {
             chartData.push([
               label,
               reportData.chartData.placements[index],
-              reportData.chartData.applications[index]
+              reportData.chartData.applications[index],
             ]);
           });
           chartData[0] = ['Month', 'Placements', 'Applications'];
@@ -437,8 +439,9 @@ const ReportsAnalytics: React.FC = () => {
     }
 
     try {
-      const categoryName = reportCategories.find(cat => cat.id === selectedCategory)?.title || 'Report';
-      
+      const categoryName =
+        reportCategories.find((cat) => cat.id === selectedCategory)?.title || 'Report';
+
       // Combine all data into one CSV
       let csvContent = '';
 
@@ -453,7 +456,7 @@ const ReportsAnalytics: React.FC = () => {
       // Add KPIs
       csvContent += 'Key Performance Indicators\n';
       csvContent += 'Metric,Value,Change,Trend\n';
-      reportData.kpis.forEach(kpi => {
+      reportData.kpis.forEach((kpi) => {
         csvContent += `${kpi.title},${kpi.value},${kpi.change},${kpi.trend}\n`;
       });
       csvContent += '\n';
@@ -462,7 +465,7 @@ const ReportsAnalytics: React.FC = () => {
       if (reportData.tableData && reportData.tableData.length > 0) {
         csvContent += 'Detailed Data\n';
         csvContent += 'Period,Department,Value,Change,Status\n';
-        reportData.tableData.forEach(row => {
+        reportData.tableData.forEach((row) => {
           csvContent += `${row.period},${row.department},${row.value},${row.change},${row.status}\n`;
         });
         csvContent += '\n';
@@ -471,7 +474,7 @@ const ReportsAnalytics: React.FC = () => {
       // Add Chart Data
       if (reportData.chartData) {
         csvContent += 'Chart Data\n';
-        
+
         if (reportData.chartData.labels && reportData.chartData.values) {
           csvContent += 'Category,Value\n';
           reportData.chartData.labels.forEach((label: string, index: number) => {
@@ -494,9 +497,9 @@ const ReportsAnalytics: React.FC = () => {
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
-      
+
       const filename = `${categoryName.replace(/\s+/g, '_')}_Report_${new Date().toISOString().split('T')[0]}.csv`;
-      
+
       link.setAttribute('href', url);
       link.setAttribute('download', filename);
       link.style.visibility = 'hidden';
@@ -519,8 +522,9 @@ const ReportsAnalytics: React.FC = () => {
     }
 
     try {
-      const categoryName = reportCategories.find(cat => cat.id === selectedCategory)?.title || 'Report';
-      
+      const categoryName =
+        reportCategories.find((cat) => cat.id === selectedCategory)?.title || 'Report';
+
       // Create PDF document
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
@@ -530,12 +534,12 @@ const ReportsAnalytics: React.FC = () => {
       // Add header with logo/title
       doc.setFillColor(59, 130, 246); // Blue color
       doc.rect(0, 0, pageWidth, 40, 'F');
-      
+
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(24);
       doc.setFont('helvetica', 'bold');
       doc.text(categoryName, pageWidth / 2, 20, { align: 'center' });
-      
+
       doc.setFontSize(12);
       doc.setFont('helvetica', 'normal');
       doc.text('Reports & Analytics', pageWidth / 2, 30, { align: 'center' });
@@ -546,7 +550,7 @@ const ReportsAnalytics: React.FC = () => {
       doc.setTextColor(0, 0, 0);
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      
+
       const metadata = [
         ['Generated Date:', new Date().toLocaleDateString()],
         ['Date Range:', filters.dateRange],
@@ -572,11 +576,11 @@ const ReportsAnalytics: React.FC = () => {
       yPosition += 8;
 
       // Create KPI table
-      const kpiData = reportData.kpis.map(kpi => [
+      const kpiData = reportData.kpis.map((kpi) => [
         kpi.title,
         kpi.value,
         kpi.change,
-        kpi.trend === 'up' ? '↑' : kpi.trend === 'down' ? '↓' : '→'
+        kpi.trend === 'up' ? '↑' : kpi.trend === 'down' ? '↓' : '→',
       ]);
 
       autoTable(doc, {
@@ -588,15 +592,15 @@ const ReportsAnalytics: React.FC = () => {
           fillColor: [59, 130, 246],
           textColor: [255, 255, 255],
           fontStyle: 'bold',
-          fontSize: 10
+          fontSize: 10,
         },
         bodyStyles: {
-          fontSize: 9
+          fontSize: 9,
         },
         alternateRowStyles: {
-          fillColor: [245, 247, 250]
+          fillColor: [245, 247, 250],
         },
-        margin: { left: 14, right: 14 }
+        margin: { left: 14, right: 14 },
       });
 
       yPosition = (doc as any).lastAutoTable.finalY + 10;
@@ -615,12 +619,12 @@ const ReportsAnalytics: React.FC = () => {
         doc.text('Detailed Data', 14, yPosition);
         yPosition += 8;
 
-        const tableData = reportData.tableData.map(row => [
+        const tableData = reportData.tableData.map((row) => [
           row.period,
           row.department,
           row.value,
           row.change,
-          row.status
+          row.status,
         ]);
 
         autoTable(doc, {
@@ -632,16 +636,16 @@ const ReportsAnalytics: React.FC = () => {
             fillColor: [59, 130, 246],
             textColor: [255, 255, 255],
             fontStyle: 'bold',
-            fontSize: 10
+            fontSize: 10,
           },
           bodyStyles: {
-            fontSize: 9
+            fontSize: 9,
           },
           alternateRowStyles: {
-            fillColor: [245, 247, 250]
+            fillColor: [245, 247, 250],
           },
           margin: { left: 14, right: 14 },
-          didParseCell: function(data) {
+          didParseCell: function (data) {
             // Color code status column
             if (data.column.index === 4 && data.section === 'body') {
               const status = data.cell.raw as string;
@@ -653,7 +657,7 @@ const ReportsAnalytics: React.FC = () => {
                 data.cell.styles.textColor = [239, 68, 68]; // Red
               }
             }
-          }
+          },
         });
 
         yPosition = (doc as any).lastAutoTable.finalY + 10;
@@ -680,21 +684,21 @@ const ReportsAnalytics: React.FC = () => {
           chartHeaders = ['Category', 'Value'];
           chartTableData = reportData.chartData.labels.map((label: string, index: number) => [
             label,
-            reportData.chartData.values[index]
+            reportData.chartData.values[index],
           ]);
         } else if (reportData.chartData.allocated && reportData.chartData.spent) {
           chartHeaders = ['Department', 'Allocated', 'Spent'];
           chartTableData = reportData.chartData.labels.map((label: string, index: number) => [
             label,
             `₹${reportData.chartData.allocated[index].toLocaleString()}`,
-            `₹${reportData.chartData.spent[index].toLocaleString()}`
+            `₹${reportData.chartData.spent[index].toLocaleString()}`,
           ]);
         } else if (reportData.chartData.placements && reportData.chartData.applications) {
           chartHeaders = ['Month', 'Placements', 'Applications'];
           chartTableData = reportData.chartData.labels.map((label: string, index: number) => [
             label,
             reportData.chartData.placements[index],
-            reportData.chartData.applications[index]
+            reportData.chartData.applications[index],
           ]);
         }
 
@@ -708,15 +712,15 @@ const ReportsAnalytics: React.FC = () => {
               fillColor: [59, 130, 246],
               textColor: [255, 255, 255],
               fontStyle: 'bold',
-              fontSize: 10
+              fontSize: 10,
             },
             bodyStyles: {
-              fontSize: 9
+              fontSize: 9,
             },
             alternateRowStyles: {
-              fillColor: [245, 247, 250]
+              fillColor: [245, 247, 250],
             },
-            margin: { left: 14, right: 14 }
+            margin: { left: 14, right: 14 },
           });
         }
       }
@@ -727,18 +731,10 @@ const ReportsAnalytics: React.FC = () => {
         doc.setPage(i);
         doc.setFontSize(8);
         doc.setTextColor(128, 128, 128);
-        doc.text(
-          `Page ${i} of ${pageCount}`,
-          pageWidth / 2,
-          pageHeight - 10,
-          { align: 'center' }
-        );
-        doc.text(
-          `Generated on ${new Date().toLocaleString()}`,
-          pageWidth - 14,
-          pageHeight - 10,
-          { align: 'right' }
-        );
+        doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+        doc.text(`Generated on ${new Date().toLocaleString()}`, pageWidth - 14, pageHeight - 10, {
+          align: 'right',
+        });
       }
 
       // Generate filename and save
@@ -764,7 +760,8 @@ const ReportsAnalytics: React.FC = () => {
               Reports & Analytics Hub
             </h1>
             <p className="text-gray-600 text-sm sm:text-base leading-relaxed">
-              Unified access to comprehensive reports for Admin, Academic head, HoD, Exam cell, and Placement teams
+              Unified access to comprehensive reports for Admin, Academic head, HoD, Exam cell, and
+              Placement teams
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
@@ -774,10 +771,12 @@ const ReportsAnalytics: React.FC = () => {
             >
               <Filter className="h-4 w-4 flex-shrink-0" />
               <span className="truncate">Filters</span>
-              <ChevronDown className={`h-4 w-4 flex-shrink-0 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+              <ChevronDown
+                className={`h-4 w-4 flex-shrink-0 transition-transform ${showFilters ? 'rotate-180' : ''}`}
+              />
             </button>
             <div className="relative">
-              <button 
+              <button
                 onClick={() => setShowExportMenuHeader(!showExportMenuHeader)}
                 disabled={!reportData || loading}
                 className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium min-w-0 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -790,8 +789,8 @@ const ReportsAnalytics: React.FC = () => {
               {/* Dropdown Menu */}
               {showExportMenuHeader && (
                 <>
-                  <div 
-                    className="fixed inset-0 z-10" 
+                  <div
+                    className="fixed inset-0 z-10"
                     onClick={() => setShowExportMenuHeader(false)}
                   />
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
@@ -835,9 +834,9 @@ const ReportsAnalytics: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
-              <select 
+              <select
                 value={filters.dateRange}
-                onChange={(e) => setFilters({...filters, dateRange: e.target.value})}
+                onChange={(e) => setFilters({ ...filters, dateRange: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="current-month">Current Month</option>
@@ -849,22 +848,24 @@ const ReportsAnalytics: React.FC = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
-              <select 
+              <select
                 value={filters.department}
-                onChange={(e) => setFilters({...filters, department: e.target.value})}
+                onChange={(e) => setFilters({ ...filters, department: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="all">All Departments</option>
-                {departments.map(dept => (
-                  <option key={dept.id} value={dept.id}>{dept.name}</option>
+                {departments.map((dept) => (
+                  <option key={dept.id} value={dept.id}>
+                    {dept.name}
+                  </option>
                 ))}
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Semester</label>
-              <select 
+              <select
                 value={filters.semester}
-                onChange={(e) => setFilters({...filters, semester: e.target.value})}
+                onChange={(e) => setFilters({ ...filters, semester: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="current">Current Semester</option>
@@ -880,9 +881,9 @@ const ReportsAnalytics: React.FC = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">User Role</label>
-              <select 
+              <select
                 value={filters.userRole}
-                onChange={(e) => setFilters({...filters, userRole: e.target.value})}
+                onChange={(e) => setFilters({ ...filters, userRole: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="admin">Admin</option>
@@ -907,16 +908,22 @@ const ReportsAnalytics: React.FC = () => {
             className={`p-4 sm:p-5 md:p-6 rounded-xl border-2 cursor-pointer transition-all duration-200 hover:shadow-lg ${
               selectedCategory === category.id
                 ? `border-${category.color}-500 bg-${category.color}-50 shadow-md`
-                : "border-gray-200 bg-white hover:border-gray-300"
+                : 'border-gray-200 bg-white hover:border-gray-300'
             }`}
           >
             <div className="flex items-start gap-3 sm:gap-4">
-              <div className={`p-2 sm:p-3 rounded-lg bg-gradient-to-r ${getColorClasses(category.color).split(' ')[0]} ${getColorClasses(category.color).split(' ')[1]} text-white flex-shrink-0`}>
+              <div
+                className={`p-2 sm:p-3 rounded-lg bg-gradient-to-r ${getColorClasses(category.color).split(' ')[0]} ${getColorClasses(category.color).split(' ')[1]} text-white flex-shrink-0`}
+              >
                 {category.icon}
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-gray-900 mb-1 text-sm sm:text-base leading-tight">{category.title}</h3>
-                <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">{category.description}</p>
+                <h3 className="font-semibold text-gray-900 mb-1 text-sm sm:text-base leading-tight">
+                  {category.title}
+                </h3>
+                <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                  {category.description}
+                </p>
               </div>
             </div>
           </div>
@@ -930,27 +937,31 @@ const ReportsAnalytics: React.FC = () => {
           <div className="flex flex-col gap-4">
             <div>
               <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-1">
-                {reportCategories.find(cat => cat.id === selectedCategory)?.title} Report
+                {reportCategories.find((cat) => cat.id === selectedCategory)?.title} Report
               </h2>
               <p className="text-gray-600 text-sm">
-                {reportCategories.find(cat => cat.id === selectedCategory)?.description}
+                {reportCategories.find((cat) => cat.id === selectedCategory)?.description}
               </p>
             </div>
             <div className="flex flex-col md:flex-row gap-3">
               <div className="flex items-center bg-gray-100 rounded-lg p-1 w-full md:w-auto">
                 <button
-                  onClick={() => setViewMode("chart")}
+                  onClick={() => setViewMode('chart')}
                   className={`flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors flex-1 md:flex-none ${
-                    viewMode === "chart" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                    viewMode === 'chart'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
                   <BarChart3 className="h-4 w-4" />
                   <span>Chart</span>
                 </button>
                 <button
-                  onClick={() => setViewMode("table")}
+                  onClick={() => setViewMode('table')}
                   className={`flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors flex-1 md:flex-none ${
-                    viewMode === "table" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                    viewMode === 'table'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
                   <Table className="h-4 w-4" />
@@ -958,7 +969,7 @@ const ReportsAnalytics: React.FC = () => {
                 </button>
               </div>
               <div className="flex gap-2">
-                <button 
+                <button
                   onClick={exportToPDF}
                   className="flex items-center justify-center gap-2 px-3 md:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex-1 md:flex-none"
                 >
@@ -966,10 +977,10 @@ const ReportsAnalytics: React.FC = () => {
                   <span className="md:hidden">PDF</span>
                   <span className="hidden md:inline">Export PDF</span>
                 </button>
-                
+
                 {/* Export Dropdown */}
                 <div className="relative">
-                  <button 
+                  <button
                     onClick={() => setShowExportMenuReport(!showExportMenuReport)}
                     disabled={!reportData || loading}
                     className="flex items-center justify-center gap-2 px-3 md:px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium flex-1 md:flex-none disabled:opacity-50 disabled:cursor-not-allowed"
@@ -983,8 +994,8 @@ const ReportsAnalytics: React.FC = () => {
                   {/* Dropdown Menu */}
                   {showExportMenuReport && (
                     <>
-                      <div 
-                        className="fixed inset-0 z-10" 
+                      <div
+                        className="fixed inset-0 z-10"
                         onClick={() => setShowExportMenuReport(false)}
                       />
                       <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
@@ -1034,18 +1045,34 @@ const ReportsAnalytics: React.FC = () => {
             {/* KPI Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
               {reportData?.kpis.map((kpi, index) => (
-                <div key={index} className={`p-3 sm:p-4 rounded-xl border ${getColorClasses(kpi.color).split(' ').slice(2).join(' ')}`}>
+                <div
+                  key={index}
+                  className={`p-3 sm:p-4 rounded-xl border ${getColorClasses(kpi.color).split(' ').slice(2).join(' ')}`}
+                >
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-xs sm:text-sm font-medium truncate pr-2">{kpi.title}</p>
-                    {kpi.trend === "up" && <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-green-600 flex-shrink-0" />}
-                    {kpi.trend === "down" && <TrendingDown className="h-3 w-3 sm:h-4 sm:w-4 text-red-600 flex-shrink-0" />}
-                    {kpi.trend === "neutral" && <Activity className="h-3 w-3 sm:h-4 sm:w-4 text-gray-600 flex-shrink-0" />}
+                    {kpi.trend === 'up' && (
+                      <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-green-600 flex-shrink-0" />
+                    )}
+                    {kpi.trend === 'down' && (
+                      <TrendingDown className="h-3 w-3 sm:h-4 sm:w-4 text-red-600 flex-shrink-0" />
+                    )}
+                    {kpi.trend === 'neutral' && (
+                      <Activity className="h-3 w-3 sm:h-4 sm:w-4 text-gray-600 flex-shrink-0" />
+                    )}
                   </div>
-                  <p className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 mb-1">{kpi.value}</p>
-                  <p className={`text-xs sm:text-sm ${
-                    kpi.trend === "up" ? "text-green-600" : 
-                    kpi.trend === "down" ? "text-red-600" : "text-gray-600"
-                  }`}>
+                  <p className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 mb-1">
+                    {kpi.value}
+                  </p>
+                  <p
+                    className={`text-xs sm:text-sm ${
+                      kpi.trend === 'up'
+                        ? 'text-green-600'
+                        : kpi.trend === 'down'
+                          ? 'text-red-600'
+                          : 'text-gray-600'
+                    }`}
+                  >
                     {kpi.change} vs last period
                   </p>
                 </div>
@@ -1053,7 +1080,7 @@ const ReportsAnalytics: React.FC = () => {
             </div>
 
             {/* Chart/Table Content */}
-            {viewMode === "chart" ? (
+            {viewMode === 'chart' ? (
               <div className="bg-gray-50 rounded-xl p-3 sm:p-6">
                 <ReactApexChart
                   options={chartConfig.options}
@@ -1068,29 +1095,57 @@ const ReportsAnalytics: React.FC = () => {
                   <table className="w-full min-w-[600px]">
                     <thead>
                       <tr className="border-b border-gray-200">
-                        <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-semibold text-gray-900 text-sm">Period</th>
-                        <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-semibold text-gray-900 text-sm">Department</th>
-                        <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-semibold text-gray-900 text-sm">Value</th>
-                        <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-semibold text-gray-900 text-sm">Change</th>
-                        <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-semibold text-gray-900 text-sm">Status</th>
+                        <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-semibold text-gray-900 text-sm">
+                          Period
+                        </th>
+                        <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-semibold text-gray-900 text-sm">
+                          Department
+                        </th>
+                        <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-semibold text-gray-900 text-sm">
+                          Value
+                        </th>
+                        <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-semibold text-gray-900 text-sm">
+                          Change
+                        </th>
+                        <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-semibold text-gray-900 text-sm">
+                          Status
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
                       {reportData?.tableData.map((row, index) => (
-                        <tr key={index} className="border-b border-gray-100 hover:bg-white transition-colors">
-                          <td className="py-2 sm:py-3 px-2 sm:px-4 text-gray-900 text-sm">{row.period}</td>
-                          <td className="py-2 sm:py-3 px-2 sm:px-4 text-gray-900 text-sm">{row.department}</td>
-                          <td className="py-2 sm:py-3 px-2 sm:px-4 font-semibold text-gray-900 text-sm">{row.value}</td>
-                          <td className={`py-2 sm:py-3 px-2 sm:px-4 font-medium text-sm ${
-                            row.change.startsWith('+') ? 'text-green-600' : 'text-red-600'
-                          }`}>{row.change}</td>
+                        <tr
+                          key={index}
+                          className="border-b border-gray-100 hover:bg-white transition-colors"
+                        >
+                          <td className="py-2 sm:py-3 px-2 sm:px-4 text-gray-900 text-sm">
+                            {row.period}
+                          </td>
+                          <td className="py-2 sm:py-3 px-2 sm:px-4 text-gray-900 text-sm">
+                            {row.department}
+                          </td>
+                          <td className="py-2 sm:py-3 px-2 sm:px-4 font-semibold text-gray-900 text-sm">
+                            {row.value}
+                          </td>
+                          <td
+                            className={`py-2 sm:py-3 px-2 sm:px-4 font-medium text-sm ${
+                              row.change.startsWith('+') ? 'text-green-600' : 'text-red-600'
+                            }`}
+                          >
+                            {row.change}
+                          </td>
                           <td className="py-2 sm:py-3 px-2 sm:px-4">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
-                              row.status === 'Excellent' ? 'bg-green-100 text-green-800' :
-                              row.status === 'Good' || row.status === 'On Track' ? 'bg-blue-100 text-blue-800' :
-                              row.status === 'Average' || row.status === 'Under Utilized' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-red-100 text-red-800'
-                            }`}>
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
+                                row.status === 'Excellent'
+                                  ? 'bg-green-100 text-green-800'
+                                  : row.status === 'Good' || row.status === 'On Track'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : row.status === 'Average' || row.status === 'Under Utilized'
+                                      ? 'bg-yellow-100 text-yellow-800'
+                                      : 'bg-red-100 text-red-800'
+                              }`}
+                            >
                               {row.status}
                             </span>
                           </td>

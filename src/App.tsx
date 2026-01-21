@@ -38,30 +38,30 @@ function App() {
                     <SubscriptionPrefetch />
                     <AppRoutes />
                     <Toaster />
-                  <HotToaster 
-                    position="top-right"
-                    toastOptions={{
-                      duration: 5000,
-                      style: {
-                        background: '#fff',
-                        color: '#363636',
-                      },
-                      success: {
-                        duration: 3000,
-                        iconTheme: {
-                          primary: '#10b981',
-                          secondary: '#fff',
+                    <HotToaster
+                      position="top-right"
+                      toastOptions={{
+                        duration: 5000,
+                        style: {
+                          background: '#fff',
+                          color: '#363636',
                         },
-                      },
-                      error: {
-                        duration: 4000,
-                        iconTheme: {
-                          primary: '#ef4444',
-                          secondary: '#fff',
+                        success: {
+                          duration: 3000,
+                          iconTheme: {
+                            primary: '#10b981',
+                            secondary: '#fff',
+                          },
                         },
-                      },
-                    }}
-                  />
+                        error: {
+                          duration: 4000,
+                          iconTheme: {
+                            primary: '#ef4444',
+                            secondary: '#fff',
+                          },
+                        },
+                      }}
+                    />
                   </ToastProvider>
                 </SearchProvider>
               </SubscriptionProvider>

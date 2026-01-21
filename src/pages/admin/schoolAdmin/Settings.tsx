@@ -1,53 +1,53 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from '@/lib/supabaseClient';
 import {
-    AcademicCapIcon,
-    ArrowDownTrayIcon,
-    ArrowPathIcon,
-    BellIcon,
-    BuildingOfficeIcon,
-    CalendarDaysIcon,
-    CheckIcon,
-    ClockIcon,
-    Cog6ToothIcon,
-    CreditCardIcon,
-    DocumentTextIcon,
-    ExclamationTriangleIcon,
-    EyeIcon,
-    EyeSlashIcon,
-    LockClosedIcon,
-    PencilSquareIcon,
-    PlusCircleIcon,
-    ShieldCheckIcon,
-    TrashIcon,
-    UserGroupIcon,
-    XMarkIcon
-} from "@heroicons/react/24/outline";
-import { useEffect, useState } from "react";
-import SearchBar from "../../../components/common/SearchBar";
-import { SubscriptionSettingsSection } from "../../../components/Subscription/SubscriptionSettingsSection";
+  AcademicCapIcon,
+  ArrowDownTrayIcon,
+  ArrowPathIcon,
+  BellIcon,
+  BuildingOfficeIcon,
+  CalendarDaysIcon,
+  CheckIcon,
+  ClockIcon,
+  Cog6ToothIcon,
+  CreditCardIcon,
+  DocumentTextIcon,
+  ExclamationTriangleIcon,
+  EyeIcon,
+  EyeSlashIcon,
+  LockClosedIcon,
+  PencilSquareIcon,
+  PlusCircleIcon,
+  ShieldCheckIcon,
+  TrashIcon,
+  UserGroupIcon,
+  XMarkIcon,
+} from '@heroicons/react/24/outline';
+import { useEffect, useState } from 'react';
+import SearchBar from '../../../components/common/SearchBar';
+import { SubscriptionSettingsSection } from '../../../components/Subscription/SubscriptionSettingsSection';
 // import { supabase } from "../../../supabaseClient";
 
 /* ==============================
    TYPES & INTERFACES
    ============================== */
 type UserRole =
-  | "school_admin"
-  | "principal"
-  | "vice_principal"
-  | "class_teacher"
-  | "subject_teacher"
-  | "accountant"
-  | "librarian"
-  | "it_admin"
-  | "career_counselor";
+  | 'school_admin'
+  | 'principal'
+  | 'vice_principal'
+  | 'class_teacher'
+  | 'subject_teacher'
+  | 'accountant'
+  | 'librarian'
+  | 'it_admin'
+  | 'career_counselor';
 
 interface User {
   id: string;
   name: string;
   email: string;
   role: UserRole;
-  status: "active" | "inactive" | "suspended";
+  status: 'active' | 'inactive' | 'suspended';
   lastLogin: string;
   permissions: string[];
   createdAt: string;
@@ -90,7 +90,7 @@ interface AuditLog {
   action: string;
   module: string;
   ip: string;
-  status: "success" | "failed";
+  status: 'success' | 'failed';
 }
 
 interface ClassConfig {
@@ -104,7 +104,7 @@ interface SubjectConfig {
   id: string;
   name: string;
   code: string;
-  type: "core" | "elective" | "skill";
+  type: 'core' | 'elective' | 'skill';
   classes: string[];
 }
 
@@ -117,14 +117,14 @@ const ModalWrapper = ({
   children,
   isOpen,
   onClose,
-  size = "default",
+  size = 'default',
 }: {
   title: string;
   subtitle?: string;
   children: React.ReactNode;
   isOpen: boolean;
   onClose: () => void;
-  size?: "default" | "large";
+  size?: 'default' | 'large';
 }) => {
   if (!isOpen) return null;
 
@@ -137,15 +137,13 @@ const ModalWrapper = ({
         />
         <div
           className={`relative w-full ${
-            size === "large" ? "max-w-4xl" : "max-w-2xl"
+            size === 'large' ? 'max-w-4xl' : 'max-w-2xl'
           } transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all`}
         >
           <div className="flex items-start justify-between border-b border-gray-100 px-6 py-5">
             <div className="flex-1">
               <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
-              {subtitle && (
-                <p className="mt-1 text-sm text-gray-500">{subtitle}</p>
-              )}
+              {subtitle && <p className="mt-1 text-sm text-gray-500">{subtitle}</p>}
             </div>
             <button
               onClick={onClose}
@@ -154,9 +152,7 @@ const ModalWrapper = ({
               <XMarkIcon className="h-5 w-5" />
             </button>
           </div>
-          <div className="p-6 max-h-[calc(100vh-200px)] overflow-y-auto">
-            {children}
-          </div>
+          <div className="p-6 max-h-[calc(100vh-200px)] overflow-y-auto">{children}</div>
         </div>
       </div>
     </div>
@@ -170,41 +166,37 @@ const StatsCard = ({
   label,
   value,
   icon: Icon,
-  color = "blue",
+  color = 'blue',
   onClick,
 }: {
   label: string;
   value: number | string;
   icon: any;
-  color?: "blue" | "green" | "purple" | "amber" | "red" | "indigo";
+  color?: 'blue' | 'green' | 'purple' | 'amber' | 'red' | 'indigo';
   onClick?: () => void;
 }) => {
   const colorClasses = {
-    blue: "bg-blue-50 text-blue-600 border-blue-200",
-    green: "bg-green-50 text-green-600 border-green-200",
-    purple: "bg-purple-50 text-purple-600 border-purple-200",
-    amber: "bg-amber-50 text-amber-600 border-amber-200",
-    red: "bg-red-50 text-red-600 border-red-200",
-    indigo: "bg-indigo-50 text-indigo-600 border-indigo-200",
+    blue: 'bg-blue-50 text-blue-600 border-blue-200',
+    green: 'bg-green-50 text-green-600 border-green-200',
+    purple: 'bg-purple-50 text-purple-600 border-purple-200',
+    amber: 'bg-amber-50 text-amber-600 border-amber-200',
+    red: 'bg-red-50 text-red-600 border-red-200',
+    indigo: 'bg-indigo-50 text-indigo-600 border-indigo-200',
   };
 
   return (
     <div
       onClick={onClick}
       className={`bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-all ${
-        onClick ? "cursor-pointer" : ""
+        onClick ? 'cursor-pointer' : ''
       }`}
     >
       <div className="flex items-center justify-between">
         <div className="flex-1">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-            {label}
-          </p>
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">{label}</p>
           <p className="text-2xl font-bold text-gray-900">{value}</p>
         </div>
-        <div
-          className={`p-3 rounded-xl border ${colorClasses[color]} transition-colors`}
-        >
+        <div className={`p-3 rounded-xl border ${colorClasses[color]} transition-colors`}>
           <Icon className="h-6 w-6" />
         </div>
       </div>
@@ -227,14 +219,14 @@ const UserManagementModal = ({
   editUser?: User | null;
 }) => {
   const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    role: "class_teacher" as UserRole,
-    status: "active" as "active" | "inactive" | "suspended",
+    name: '',
+    email: '',
+    role: 'class_teacher' as UserRole,
+    status: 'active' as 'active' | 'inactive' | 'suspended',
     permissions: [] as string[],
   });
   const [showPassword, setShowPassword] = useState(false);
-  const [password, setPassword] = useState("");
+  const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -250,62 +242,62 @@ const UserManagementModal = ({
       });
     } else if (!editUser && isOpen) {
       setFormData({
-        name: "",
-        email: "",
-        role: "class_teacher",
-        status: "active",
+        name: '',
+        email: '',
+        role: 'class_teacher',
+        status: 'active',
         permissions: [],
       });
-      setPassword("");
+      setPassword('');
       setErrors({});
     }
   }, [editUser, isOpen]);
 
   const roleOptions: { value: UserRole; label: string }[] = [
-    { value: "principal", label: "Principal" },
-    { value: "vice_principal", label: "Vice Principal" },
-    { value: "class_teacher", label: "Class Teacher" },
-    { value: "subject_teacher", label: "Subject Teacher" },
-    { value: "accountant", label: "Accountant" },
-    { value: "librarian", label: "Librarian" },
-    { value: "it_admin", label: "IT Admin" },
-    { value: "career_counselor", label: "Career Counselor" },
+    { value: 'principal', label: 'Principal' },
+    { value: 'vice_principal', label: 'Vice Principal' },
+    { value: 'class_teacher', label: 'Class Teacher' },
+    { value: 'subject_teacher', label: 'Subject Teacher' },
+    { value: 'accountant', label: 'Accountant' },
+    { value: 'librarian', label: 'Librarian' },
+    { value: 'it_admin', label: 'IT Admin' },
+    { value: 'career_counselor', label: 'Career Counselor' },
   ];
 
   const availablePermissions = [
-    { id: "student_view", label: "View Students", module: "Student Management" },
-    { id: "student_create", label: "Create Students", module: "Student Management" },
-    { id: "student_edit", label: "Edit Students", module: "Student Management" },
-    { id: "student_delete", label: "Delete Students", module: "Student Management" },
-    { id: "attendance_mark", label: "Mark Attendance", module: "Attendance" },
-    { id: "attendance_edit", label: "Edit Attendance", module: "Attendance" },
-    { id: "exam_create", label: "Create Exams", module: "Exams" },
-    { id: "exam_marks", label: "Enter Marks", module: "Exams" },
-    { id: "exam_publish", label: "Publish Results", module: "Exams" },
-    { id: "fee_view", label: "View Fees", module: "Finance" },
-    { id: "fee_collect", label: "Collect Fees", module: "Finance" },
-    { id: "library_issue", label: "Issue Books", module: "Library" },
-    { id: "career_view", label: "View Career Data", module: "Career Module" },
-    { id: "career_counsel", label: "Career Counseling", module: "Career Module" },
-    { id: "settings_manage", label: "Manage Settings", module: "System" },
+    { id: 'student_view', label: 'View Students', module: 'Student Management' },
+    { id: 'student_create', label: 'Create Students', module: 'Student Management' },
+    { id: 'student_edit', label: 'Edit Students', module: 'Student Management' },
+    { id: 'student_delete', label: 'Delete Students', module: 'Student Management' },
+    { id: 'attendance_mark', label: 'Mark Attendance', module: 'Attendance' },
+    { id: 'attendance_edit', label: 'Edit Attendance', module: 'Attendance' },
+    { id: 'exam_create', label: 'Create Exams', module: 'Exams' },
+    { id: 'exam_marks', label: 'Enter Marks', module: 'Exams' },
+    { id: 'exam_publish', label: 'Publish Results', module: 'Exams' },
+    { id: 'fee_view', label: 'View Fees', module: 'Finance' },
+    { id: 'fee_collect', label: 'Collect Fees', module: 'Finance' },
+    { id: 'library_issue', label: 'Issue Books', module: 'Library' },
+    { id: 'career_view', label: 'View Career Data', module: 'Career Module' },
+    { id: 'career_counsel', label: 'Career Counseling', module: 'Career Module' },
+    { id: 'settings_manage', label: 'Manage Settings', module: 'System' },
   ];
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) {
-      newErrors.name = "Name is required";
+      newErrors.name = 'Name is required';
     }
     if (!formData.email.trim()) {
-      newErrors.email = "Email is required";
+      newErrors.email = 'Email is required';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "Invalid email format";
+      newErrors.email = 'Invalid email format';
     }
     if (!editUser && !password) {
-      newErrors.password = "Password is required";
+      newErrors.password = 'Password is required';
     }
     if (password && password.length < 8) {
-      newErrors.password = "Password must be at least 8 characters";
+      newErrors.password = 'Password must be at least 8 characters';
     }
 
     setErrors(newErrors);
@@ -324,7 +316,7 @@ const UserManagementModal = ({
         role: formData.role,
         status: formData.status,
         permissions: formData.permissions,
-        lastLogin: editUser?.lastLogin || "Never",
+        lastLogin: editUser?.lastLogin || 'Never',
         createdAt: editUser?.createdAt || new Date().toISOString(),
       });
       setSubmitting(false);
@@ -359,8 +351,8 @@ const UserManagementModal = ({
     <ModalWrapper
       isOpen={isOpen}
       onClose={onClose}
-      title={editUser ? "Edit User" : "Add New User"}
-      subtitle={editUser ? "Update user details and permissions" : "Create a new user account"}
+      title={editUser ? 'Edit User' : 'Add New User'}
+      subtitle={editUser ? 'Update user details and permissions' : 'Create a new user account'}
       size="large"
     >
       {Object.keys(errors).length > 0 && (
@@ -388,7 +380,7 @@ const UserManagementModal = ({
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             className={`w-full rounded-lg border ${
-              errors.name ? "border-red-300" : "border-gray-300"
+              errors.name ? 'border-red-300' : 'border-gray-300'
             } px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20`}
             placeholder="John Doe"
           />
@@ -403,7 +395,7 @@ const UserManagementModal = ({
             value={formData.email}
             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             className={`w-full rounded-lg border ${
-              errors.email ? "border-red-300" : "border-gray-300"
+              errors.email ? 'border-red-300' : 'border-gray-300'
             } px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20`}
             placeholder="john@school.com"
           />
@@ -415,9 +407,7 @@ const UserManagementModal = ({
           </label>
           <select
             value={formData.role}
-            onChange={(e) =>
-              setFormData({ ...formData, role: e.target.value as UserRole })
-            }
+            onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
             className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
           >
             {roleOptions.map((opt) => (
@@ -437,7 +427,7 @@ const UserManagementModal = ({
             onChange={(e) =>
               setFormData({
                 ...formData,
-                status: e.target.value as "active" | "inactive" | "suspended",
+                status: e.target.value as 'active' | 'inactive' | 'suspended',
               })
             }
             className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
@@ -455,11 +445,11 @@ const UserManagementModal = ({
             </label>
             <div className="relative">
               <input
-                type={showPassword ? "text" : "password"}
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className={`w-full rounded-lg border ${
-                  errors.password ? "border-red-300" : "border-gray-300"
+                  errors.password ? 'border-red-300' : 'border-gray-300'
                 } px-4 py-2.5 pr-10 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20`}
                 placeholder="Min 8 characters"
               />
@@ -503,11 +493,14 @@ const UserManagementModal = ({
           </div>
           <div className="border border-gray-200 rounded-lg p-4 max-h-64 overflow-y-auto">
             {Object.entries(
-              availablePermissions.reduce((acc, perm) => {
-                if (!acc[perm.module]) acc[perm.module] = [];
-                acc[perm.module].push(perm);
-                return acc;
-              }, {} as Record<string, typeof availablePermissions>)
+              availablePermissions.reduce(
+                (acc, perm) => {
+                  if (!acc[perm.module]) acc[perm.module] = [];
+                  acc[perm.module].push(perm);
+                  return acc;
+                },
+                {} as Record<string, typeof availablePermissions>
+              )
             ).map(([module, perms]) => (
               <div key={module} className="mb-4 last:mb-0">
                 <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
@@ -551,12 +544,12 @@ const UserManagementModal = ({
           {submitting ? (
             <>
               <ArrowPathIcon className="h-4 w-4 animate-spin" />
-              {editUser ? "Updating..." : "Creating..."}
+              {editUser ? 'Updating...' : 'Creating...'}
             </>
           ) : (
             <>
               <CheckIcon className="h-4 w-4" />
-              {editUser ? "Update User" : "Create User"}
+              {editUser ? 'Update User' : 'Create User'}
             </>
           )}
         </button>
@@ -592,14 +585,14 @@ const SystemConfigModal = ({
 
   const handleSubmit = async () => {
     if (!schoolId) {
-      alert("School ID not found");
+      alert('School ID not found');
       return;
     }
 
     setSubmitting(true);
     try {
       const { error } = await supabase
-        .from("organizations")
+        .from('organizations')
         .update({
           name: formData.schoolName,
           address: formData.address,
@@ -607,20 +600,20 @@ const SystemConfigModal = ({
           email: formData.email,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", schoolId)
-        .eq("organization_type", "school");
+        .eq('id', schoolId)
+        .eq('organization_type', 'school');
 
       if (error) {
-        console.error("Error updating school:", error);
-        alert("Failed to update school information");
+        console.error('Error updating school:', error);
+        alert('Failed to update school information');
         return;
       }
 
       onSaved(formData);
       onClose();
     } catch (error) {
-      console.error("Error in handleSubmit:", error);
-      alert("Failed to update school information");
+      console.error('Error in handleSubmit:', error);
+      alert('Failed to update school information');
     } finally {
       setSubmitting(false);
     }
@@ -639,64 +632,44 @@ const SystemConfigModal = ({
           <h3 className="text-sm font-semibold text-gray-900 mb-4">School Information</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                School Name
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">School Name</label>
               <input
                 value={formData.schoolName}
-                onChange={(e) =>
-                  setFormData({ ...formData, schoolName: e.target.value })
-                }
+                onChange={(e) => setFormData({ ...formData, schoolName: e.target.value })}
                 className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                School Code
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">School Code</label>
               <input
                 value={formData.schoolCode}
-                onChange={(e) =>
-                  setFormData({ ...formData, schoolCode: e.target.value })
-                }
+                onChange={(e) => setFormData({ ...formData, schoolCode: e.target.value })}
                 className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
               />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Address
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Address</label>
               <textarea
                 value={formData.address}
-                onChange={(e) =>
-                  setFormData({ ...formData, address: e.target.value })
-                }
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                 rows={2}
                 className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Phone
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
               <input
                 value={formData.phone}
-                onChange={(e) =>
-                  setFormData({ ...formData, phone: e.target.value })
-                }
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
               <input
                 type="email"
                 value={formData.email}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
               />
             </div>
@@ -770,20 +743,14 @@ const SystemConfigModal = ({
               <div className="flex items-center gap-3">
                 <ShieldCheckIcon className="h-5 w-5 text-indigo-600" />
                 <div>
-                  <p className="text-sm font-medium text-gray-900">
-                    Multi-Factor Authentication
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    Require MFA for admin users
-                  </p>
+                  <p className="text-sm font-medium text-gray-900">Multi-Factor Authentication</p>
+                  <p className="text-xs text-gray-500">Require MFA for admin users</p>
                 </div>
               </div>
               <input
                 type="checkbox"
                 checked={formData.enableMFA}
-                onChange={(e) =>
-                  setFormData({ ...formData, enableMFA: e.target.checked })
-                }
+                onChange={(e) => setFormData({ ...formData, enableMFA: e.target.checked })}
                 className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
               />
             </label>
@@ -792,20 +759,14 @@ const SystemConfigModal = ({
               <div className="flex items-center gap-3">
                 <LockClosedIcon className="h-5 w-5 text-green-600" />
                 <div>
-                  <p className="text-sm font-medium text-gray-900">
-                    Biometric Attendance
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    Enable RFID/fingerprint integration
-                  </p>
+                  <p className="text-sm font-medium text-gray-900">Biometric Attendance</p>
+                  <p className="text-xs text-gray-500">Enable RFID/fingerprint integration</p>
                 </div>
               </div>
               <input
                 type="checkbox"
                 checked={formData.enableBiometric}
-                onChange={(e) =>
-                  setFormData({ ...formData, enableBiometric: e.target.checked })
-                }
+                onChange={(e) => setFormData({ ...formData, enableBiometric: e.target.checked })}
                 className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
               />
             </label>
@@ -858,9 +819,9 @@ const AcademicYearModal = ({
   editYear?: AcademicYear | null;
 }) => {
   const [formData, setFormData] = useState({
-    year: "",
-    startDate: "",
-    endDate: "",
+    year: '',
+    startDate: '',
+    endDate: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -874,9 +835,9 @@ const AcademicYearModal = ({
       });
     } else if (!editYear && isOpen) {
       setFormData({
-        year: "",
-        startDate: "",
-        endDate: "",
+        year: '',
+        startDate: '',
+        endDate: '',
       });
       setErrors({});
     }
@@ -886,16 +847,16 @@ const AcademicYearModal = ({
     const newErrors: Record<string, string> = {};
 
     if (!formData.year.trim()) {
-      newErrors.year = "Academic year is required";
+      newErrors.year = 'Academic year is required';
     }
     if (!formData.startDate) {
-      newErrors.startDate = "Start date is required";
+      newErrors.startDate = 'Start date is required';
     }
     if (!formData.endDate) {
-      newErrors.endDate = "End date is required";
+      newErrors.endDate = 'End date is required';
     }
     if (formData.startDate && formData.endDate && formData.startDate >= formData.endDate) {
-      newErrors.endDate = "End date must be after start date";
+      newErrors.endDate = 'End date must be after start date';
     }
 
     setErrors(newErrors);
@@ -911,7 +872,8 @@ const AcademicYearModal = ({
       const end = new Date(formData.endDate);
       const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
       const today = new Date();
-      const daysElapsed = today > start ? Math.ceil((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+      const daysElapsed =
+        today > start ? Math.ceil((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) : 0;
 
       onSaved({
         id: editYear?.id || Date.now().toString(),
@@ -931,8 +893,8 @@ const AcademicYearModal = ({
     <ModalWrapper
       isOpen={isOpen}
       onClose={onClose}
-      title={editYear ? "Edit Academic Year" : "Add Academic Year"}
-      subtitle={editYear ? "Update academic year details" : "Create a new academic year"}
+      title={editYear ? 'Edit Academic Year' : 'Add Academic Year'}
+      subtitle={editYear ? 'Update academic year details' : 'Create a new academic year'}
     >
       {Object.keys(errors).length > 0 && (
         <div className="mb-5 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4">
@@ -959,7 +921,7 @@ const AcademicYearModal = ({
             value={formData.year}
             onChange={(e) => setFormData({ ...formData, year: e.target.value })}
             className={`w-full rounded-lg border ${
-              errors.year ? "border-red-300" : "border-gray-300"
+              errors.year ? 'border-red-300' : 'border-gray-300'
             } px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20`}
             placeholder="e.g., 2025-2026"
           />
@@ -974,7 +936,7 @@ const AcademicYearModal = ({
             value={formData.startDate}
             onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
             className={`w-full rounded-lg border ${
-              errors.startDate ? "border-red-300" : "border-gray-300"
+              errors.startDate ? 'border-red-300' : 'border-gray-300'
             } px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20`}
           />
         </div>
@@ -988,7 +950,7 @@ const AcademicYearModal = ({
             value={formData.endDate}
             onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
             className={`w-full rounded-lg border ${
-              errors.endDate ? "border-red-300" : "border-gray-300"
+              errors.endDate ? 'border-red-300' : 'border-gray-300'
             } px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20`}
           />
         </div>
@@ -1010,12 +972,12 @@ const AcademicYearModal = ({
           {submitting ? (
             <>
               <ArrowPathIcon className="h-4 w-4 animate-spin" />
-              {editYear ? "Updating..." : "Creating..."}
+              {editYear ? 'Updating...' : 'Creating...'}
             </>
           ) : (
             <>
               <CheckIcon className="h-4 w-4" />
-              {editYear ? "Update Year" : "Create Year"}
+              {editYear ? 'Update Year' : 'Create Year'}
             </>
           )}
         </button>
@@ -1050,28 +1012,26 @@ const RolePermissionsModal = ({
   }, [isOpen, currentPermissions]);
 
   const availablePermissions = [
-    { id: "student_view", label: "View Students", module: "Student Management" },
-    { id: "student_create", label: "Create Students", module: "Student Management" },
-    { id: "student_edit", label: "Edit Students", module: "Student Management" },
-    { id: "student_delete", label: "Delete Students", module: "Student Management" },
-    { id: "attendance_mark", label: "Mark Attendance", module: "Attendance" },
-    { id: "attendance_edit", label: "Edit Attendance", module: "Attendance" },
-    { id: "exam_create", label: "Create Exams", module: "Exams" },
-    { id: "exam_marks", label: "Enter Marks", module: "Exams" },
-    { id: "exam_publish", label: "Publish Results", module: "Exams" },
-    { id: "fee_view", label: "View Fees", module: "Finance" },
-    { id: "fee_collect", label: "Collect Fees", module: "Finance" },
-    { id: "library_issue", label: "Issue Books", module: "Library" },
-    { id: "career_view", label: "View Career Data", module: "Career Module" },
-    { id: "career_counsel", label: "Career Counseling", module: "Career Module" },
-    { id: "settings_manage", label: "Manage Settings", module: "System" },
+    { id: 'student_view', label: 'View Students', module: 'Student Management' },
+    { id: 'student_create', label: 'Create Students', module: 'Student Management' },
+    { id: 'student_edit', label: 'Edit Students', module: 'Student Management' },
+    { id: 'student_delete', label: 'Delete Students', module: 'Student Management' },
+    { id: 'attendance_mark', label: 'Mark Attendance', module: 'Attendance' },
+    { id: 'attendance_edit', label: 'Edit Attendance', module: 'Attendance' },
+    { id: 'exam_create', label: 'Create Exams', module: 'Exams' },
+    { id: 'exam_marks', label: 'Enter Marks', module: 'Exams' },
+    { id: 'exam_publish', label: 'Publish Results', module: 'Exams' },
+    { id: 'fee_view', label: 'View Fees', module: 'Finance' },
+    { id: 'fee_collect', label: 'Collect Fees', module: 'Finance' },
+    { id: 'library_issue', label: 'Issue Books', module: 'Library' },
+    { id: 'career_view', label: 'View Career Data', module: 'Career Module' },
+    { id: 'career_counsel', label: 'Career Counseling', module: 'Career Module' },
+    { id: 'settings_manage', label: 'Manage Settings', module: 'System' },
   ];
 
   const togglePermission = (permId: string) => {
     setSelectedPermissions((prev) =>
-      prev.includes(permId)
-        ? prev.filter((p) => p !== permId)
-        : [...prev, permId]
+      prev.includes(permId) ? prev.filter((p) => p !== permId) : [...prev, permId]
     );
   };
 
@@ -1125,11 +1085,14 @@ const RolePermissionsModal = ({
 
       <div className="border border-gray-200 rounded-lg p-4 max-h-96 overflow-y-auto">
         {Object.entries(
-          availablePermissions.reduce((acc, perm) => {
-            if (!acc[perm.module]) acc[perm.module] = [];
-            acc[perm.module].push(perm);
-            return acc;
-          }, {} as Record<string, typeof availablePermissions>)
+          availablePermissions.reduce(
+            (acc, perm) => {
+              if (!acc[perm.module]) acc[perm.module] = [];
+              acc[perm.module].push(perm);
+              return acc;
+            },
+            {} as Record<string, typeof availablePermissions>
+          )
         ).map(([module, perms]) => (
           <div key={module} className="mb-4 last:mb-0">
             <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
@@ -1200,11 +1163,11 @@ const ClassConfigModal = ({
   editClass?: ClassConfig | null;
 }) => {
   const [formData, setFormData] = useState({
-    name: "",
+    name: '',
     sections: [] as string[],
     capacity: 40,
   });
-  const [sectionInput, setSectionInput] = useState("");
+  const [sectionInput, setSectionInput] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -1217,7 +1180,7 @@ const ClassConfigModal = ({
       });
     } else if (!editClass && isOpen) {
       setFormData({
-        name: "",
+        name: '',
         sections: [],
         capacity: 40,
       });
@@ -1229,13 +1192,13 @@ const ClassConfigModal = ({
     const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) {
-      newErrors.name = "Class name is required";
+      newErrors.name = 'Class name is required';
     }
     if (formData.sections.length === 0) {
-      newErrors.sections = "At least one section is required";
+      newErrors.sections = 'At least one section is required';
     }
     if (formData.capacity < 1) {
-      newErrors.capacity = "Capacity must be at least 1";
+      newErrors.capacity = 'Capacity must be at least 1';
     }
 
     setErrors(newErrors);
@@ -1264,7 +1227,7 @@ const ClassConfigModal = ({
         ...formData,
         sections: [...formData.sections, sectionInput.trim().toUpperCase()],
       });
-      setSectionInput("");
+      setSectionInput('');
     }
   };
 
@@ -1279,8 +1242,8 @@ const ClassConfigModal = ({
     <ModalWrapper
       isOpen={isOpen}
       onClose={onClose}
-      title={editClass ? "Edit Class" : "Add Class"}
-      subtitle={editClass ? "Update class configuration" : "Create a new class"}
+      title={editClass ? 'Edit Class' : 'Add Class'}
+      subtitle={editClass ? 'Update class configuration' : 'Create a new class'}
     >
       {Object.keys(errors).length > 0 && (
         <div className="mb-5 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4">
@@ -1307,7 +1270,7 @@ const ClassConfigModal = ({
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             className={`w-full rounded-lg border ${
-              errors.name ? "border-red-300" : "border-gray-300"
+              errors.name ? 'border-red-300' : 'border-gray-300'
             } px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20`}
             placeholder="e.g., Class 10, Grade 9"
           />
@@ -1321,7 +1284,7 @@ const ClassConfigModal = ({
             <input
               value={sectionInput}
               onChange={(e) => setSectionInput(e.target.value)}
-              onKeyPress={(e) => e.key === "Enter" && addSection()}
+              onKeyPress={(e) => e.key === 'Enter' && addSection()}
               className="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
               placeholder="Enter section (e.g., A, B, C)"
               maxLength={2}
@@ -1353,9 +1316,7 @@ const ClassConfigModal = ({
               ))}
             </div>
           )}
-          {errors.sections && (
-            <p className="mt-2 text-sm text-red-600">{errors.sections}</p>
-          )}
+          {errors.sections && <p className="mt-2 text-sm text-red-600">{errors.sections}</p>}
         </div>
 
         <div>
@@ -1365,13 +1326,11 @@ const ClassConfigModal = ({
           <input
             type="number"
             value={formData.capacity}
-            onChange={(e) =>
-              setFormData({ ...formData, capacity: parseInt(e.target.value) || 0 })
-            }
+            onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) || 0 })}
             min="1"
             max="100"
             className={`w-full rounded-lg border ${
-              errors.capacity ? "border-red-300" : "border-gray-300"
+              errors.capacity ? 'border-red-300' : 'border-gray-300'
             } px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20`}
           />
         </div>
@@ -1393,12 +1352,12 @@ const ClassConfigModal = ({
           {submitting ? (
             <>
               <ArrowPathIcon className="h-4 w-4 animate-spin" />
-              {editClass ? "Updating..." : "Creating..."}
+              {editClass ? 'Updating...' : 'Creating...'}
             </>
           ) : (
             <>
               <CheckIcon className="h-4 w-4" />
-              {editClass ? "Update Class" : "Create Class"}
+              {editClass ? 'Update Class' : 'Create Class'}
             </>
           )}
         </button>
@@ -1424,9 +1383,9 @@ const SubjectConfigModal = ({
   availableClasses: ClassConfig[];
 }) => {
   const [formData, setFormData] = useState({
-    name: "",
-    code: "",
-    type: "core" as "core" | "elective" | "skill",
+    name: '',
+    code: '',
+    type: 'core' as 'core' | 'elective' | 'skill',
     classes: [] as string[],
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -1442,9 +1401,9 @@ const SubjectConfigModal = ({
       });
     } else if (!editSubject && isOpen) {
       setFormData({
-        name: "",
-        code: "",
-        type: "core",
+        name: '',
+        code: '',
+        type: 'core',
         classes: [],
       });
       setErrors({});
@@ -1455,13 +1414,13 @@ const SubjectConfigModal = ({
     const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) {
-      newErrors.name = "Subject name is required";
+      newErrors.name = 'Subject name is required';
     }
     if (!formData.code.trim()) {
-      newErrors.code = "Subject code is required";
+      newErrors.code = 'Subject code is required';
     }
     if (formData.classes.length === 0) {
-      newErrors.classes = "At least one class must be selected";
+      newErrors.classes = 'At least one class must be selected';
     }
 
     setErrors(newErrors);
@@ -1498,8 +1457,8 @@ const SubjectConfigModal = ({
     <ModalWrapper
       isOpen={isOpen}
       onClose={onClose}
-      title={editSubject ? "Edit Subject" : "Add Subject"}
-      subtitle={editSubject ? "Update subject configuration" : "Create a new subject"}
+      title={editSubject ? 'Edit Subject' : 'Add Subject'}
+      subtitle={editSubject ? 'Update subject configuration' : 'Create a new subject'}
     >
       {Object.keys(errors).length > 0 && (
         <div className="mb-5 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4">
@@ -1526,7 +1485,7 @@ const SubjectConfigModal = ({
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             className={`w-full rounded-lg border ${
-              errors.name ? "border-red-300" : "border-gray-300"
+              errors.name ? 'border-red-300' : 'border-gray-300'
             } px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20`}
             placeholder="e.g., Mathematics, Physics"
           />
@@ -1540,7 +1499,7 @@ const SubjectConfigModal = ({
             value={formData.code}
             onChange={(e) => setFormData({ ...formData, code: e.target.value })}
             className={`w-full rounded-lg border ${
-              errors.code ? "border-red-300" : "border-gray-300"
+              errors.code ? 'border-red-300' : 'border-gray-300'
             } px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20`}
             placeholder="e.g., MATH101, PHY201"
             maxLength={10}
@@ -1554,7 +1513,7 @@ const SubjectConfigModal = ({
           <select
             value={formData.type}
             onChange={(e) =>
-              setFormData({ ...formData, type: e.target.value as "core" | "elective" | "skill" })
+              setFormData({ ...formData, type: e.target.value as 'core' | 'elective' | 'skill' })
             }
             className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
           >
@@ -1592,9 +1551,7 @@ const SubjectConfigModal = ({
               </div>
             )}
           </div>
-          {errors.classes && (
-            <p className="mt-2 text-sm text-red-600">{errors.classes}</p>
-          )}
+          {errors.classes && <p className="mt-2 text-sm text-red-600">{errors.classes}</p>}
         </div>
       </div>
 
@@ -1614,12 +1571,12 @@ const SubjectConfigModal = ({
           {submitting ? (
             <>
               <ArrowPathIcon className="h-4 w-4 animate-spin" />
-              {editSubject ? "Updating..." : "Creating..."}
+              {editSubject ? 'Updating...' : 'Creating...'}
             </>
           ) : (
             <>
               <CheckIcon className="h-4 w-4" />
-              {editSubject ? "Update Subject" : "Create Subject"}
+              {editSubject ? 'Update Subject' : 'Create Subject'}
             </>
           )}
         </button>
@@ -1633,11 +1590,13 @@ const SubjectConfigModal = ({
    ============================== */
 const Settings = () => {
   const [activeTab, setActiveTab] = useState<
-    "users" | "roles" | "classes" | "academic" | "system" | "audit" | "subscription"
-  >("users");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive" | "suspended">("all");
-  const [roleFilter, setRoleFilter] = useState<"all" | UserRole>("all");
+    'users' | 'roles' | 'classes' | 'academic' | 'system' | 'audit' | 'subscription'
+  >('users');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive' | 'suspended'>(
+    'all'
+  );
+  const [roleFilter, setRoleFilter] = useState<'all' | UserRole>('all');
   const [showUserModal, setShowUserModal] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [showAcademicModal, setShowAcademicModal] = useState(false);
@@ -1648,24 +1607,26 @@ const Settings = () => {
   const [editAcademicYear, setEditAcademicYear] = useState<AcademicYear | null>(null);
   const [editClass, setEditClass] = useState<ClassConfig | null>(null);
   const [editSubject, setEditSubject] = useState<SubjectConfig | null>(null);
-  const [selectedRole, setSelectedRole] = useState<{ name: string; permissions: string[] } | null>(null);
-  const [auditTimeFilter, setAuditTimeFilter] = useState("24h");
+  const [selectedRole, setSelectedRole] = useState<{ name: string; permissions: string[] } | null>(
+    null
+  );
+  const [auditTimeFilter, setAuditTimeFilter] = useState('24h');
 
   // Filter audit logs based on time filter
   const getFilteredAuditLogs = () => {
-    if (!auditTimeFilter || auditTimeFilter === "all") return auditLogs;
+    if (!auditTimeFilter || auditTimeFilter === 'all') return auditLogs;
 
     const now = new Date();
-    let cutoffDate = new Date();
+    const cutoffDate = new Date();
 
     switch (auditTimeFilter) {
-      case "24h":
+      case '24h':
         cutoffDate.setHours(now.getHours() - 24);
         break;
-      case "7d":
+      case '7d':
         cutoffDate.setDate(now.getDate() - 7);
         break;
-      case "30d":
+      case '30d':
         cutoffDate.setDate(now.getDate() - 30);
         break;
       default:
@@ -1687,11 +1648,11 @@ const Settings = () => {
 
   // System Config State
   const [systemConfig, setSystemConfig] = useState<SystemConfig>({
-    schoolName: "",
-    schoolCode: "",
-    address: "",
-    phone: "",
-    email: "",
+    schoolName: '',
+    schoolCode: '',
+    address: '',
+    phone: '',
+    email: '',
     sessionTimeout: 30,
     maxLoginAttempts: 3,
     passwordExpiryDays: 90,
@@ -1702,7 +1663,9 @@ const Settings = () => {
 
   // Notification Settings State
   const [notificationSettings, setNotificationSettings] = useState<NotificationSetting[]>([]);
-  const [originalNotificationSettings, setOriginalNotificationSettings] = useState<NotificationSetting[]>([]);
+  const [originalNotificationSettings, setOriginalNotificationSettings] = useState<
+    NotificationSetting[]
+  >([]);
   const [notificationSettingsChanged, setNotificationSettingsChanged] = useState(false);
 
   // Classes State
@@ -1714,13 +1677,13 @@ const Settings = () => {
   // Role Permissions State
   const [rolePermissions, setRolePermissions] = useState<Record<string, string[]>>({
     Principal: [],
-    "Vice Principal": [],
-    "Class Teacher": [],
-    "Subject Teacher": [],
+    'Vice Principal': [],
+    'Class Teacher': [],
+    'Subject Teacher': [],
     Accountant: [],
     Librarian: [],
-    "IT Admin": [],
-    "Career Counselor": [],
+    'IT Admin': [],
+    'Career Counselor': [],
   });
 
   // Audit Logs State
@@ -1746,18 +1709,20 @@ const Settings = () => {
   const fetchCurrentSchool = async () => {
     try {
       setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       if (!user) {
-        console.error("No authenticated user");
+        console.error('No authenticated user');
         return;
       }
 
       // First try to get school_id from school_educators table
       const { data: educator, error: educatorError } = await supabase
-        .from("school_educators")
-        .select("school_id, role")
-        .eq("user_id", user.id)
+        .from('school_educators')
+        .select('school_id, role')
+        .eq('user_id', user.id)
         .maybeSingle(); // Use maybeSingle() instead of single() to avoid 406 error
 
       let schoolId = educator?.school_id;
@@ -1765,10 +1730,10 @@ const Settings = () => {
       // If not found in school_educators, try organizations table (for school admins)
       if (!schoolId) {
         const { data: org, error: orgError } = await supabase
-          .from("organizations")
-          .select("id")
-          .eq("admin_id", user.id)
-          .eq("organization_type", "school")
+          .from('organizations')
+          .select('id')
+          .eq('admin_id', user.id)
+          .eq('organization_type', 'school')
           .maybeSingle();
 
         if (org?.id) {
@@ -1777,7 +1742,7 @@ const Settings = () => {
       }
 
       if (!schoolId) {
-        console.error("Could not find school for user:", user.id);
+        console.error('Could not find school for user:', user.id);
         return;
       }
 
@@ -1785,22 +1750,22 @@ const Settings = () => {
 
       // Fetch school details from organizations table
       const { data: org, error: orgError } = await supabase
-        .from("organizations")
-        .select("*")
-        .eq("id", schoolId)
+        .from('organizations')
+        .select('*')
+        .eq('id', schoolId)
         .maybeSingle(); // Use maybeSingle() to avoid 406 error
 
       if (orgError || !org) {
-        console.error("Error fetching organization:", orgError);
+        console.error('Error fetching organization:', orgError);
         return;
       }
 
       setSystemConfig({
-        schoolName: org.name || "",
-        schoolCode: org.code || "",
-        address: org.address || "",
-        phone: org.phone || "",
-        email: org.email || "",
+        schoolName: org.name || '',
+        schoolCode: org.code || '',
+        address: org.address || '',
+        phone: org.phone || '',
+        email: org.email || '',
         sessionTimeout: 30,
         maxLoginAttempts: 3,
         passwordExpiryDays: 90,
@@ -1808,7 +1773,7 @@ const Settings = () => {
         enableBiometric: false,
       });
     } catch (error) {
-      console.error("Error in fetchCurrentSchool:", error);
+      console.error('Error in fetchCurrentSchool:', error);
     } finally {
       setLoading(false);
     }
@@ -1819,8 +1784,9 @@ const Settings = () => {
 
     try {
       const { data, error } = await supabase
-        .from("school_educators")
-        .select(`
+        .from('school_educators')
+        .select(
+          `
           id,
           user_id,
           first_name,
@@ -1830,29 +1796,30 @@ const Settings = () => {
           account_status,
           created_at,
           metadata
-        `)
-        .eq("school_id", currentSchoolId)
-        .order("created_at", { ascending: false });
+        `
+        )
+        .eq('school_id', currentSchoolId)
+        .order('created_at', { ascending: false });
 
       if (error) {
-        console.error("Error fetching educators:", error);
+        console.error('Error fetching educators:', error);
         return;
       }
 
       const mappedUsers: User[] = (data || []).map((educator: any) => ({
         id: educator.id,
-        name: `${educator.first_name || ""} ${educator.last_name || ""}`.trim() || "Unknown",
-        email: educator.email || "",
+        name: `${educator.first_name || ''} ${educator.last_name || ''}`.trim() || 'Unknown',
+        email: educator.email || '',
         role: mapEducatorRoleToUserRole(educator.role),
         status: mapAccountStatusToUserStatus(educator.account_status),
-        lastLogin: "N/A",
+        lastLogin: 'N/A',
         permissions: educator.metadata?.permissions || getRolePermissions(educator.role),
-        createdAt: educator.created_at ? new Date(educator.created_at).toLocaleDateString() : "",
+        createdAt: educator.created_at ? new Date(educator.created_at).toLocaleDateString() : '',
       }));
 
       setUsers(mappedUsers);
     } catch (error) {
-      console.error("Error in fetchSchoolEducators:", error);
+      console.error('Error in fetchSchoolEducators:', error);
     }
   };
 
@@ -1861,27 +1828,27 @@ const Settings = () => {
 
     try {
       const { data, error } = await supabase
-        .from("school_classes")
-        .select("*")
-        .eq("school_id", currentSchoolId)
-        .eq("account_status", "active")
-        .order("grade", { ascending: true });
+        .from('school_classes')
+        .select('*')
+        .eq('school_id', currentSchoolId)
+        .eq('account_status', 'active')
+        .order('grade', { ascending: true });
 
       if (error) {
-        console.error("Error fetching classes:", error);
+        console.error('Error fetching classes:', error);
         return;
       }
 
       const mappedClasses: ClassConfig[] = (data || []).map((cls: any) => ({
         id: cls.id,
-        name: `${cls.name || cls.grade}${cls.section ? ` - ${cls.section}` : ""}`,
+        name: `${cls.name || cls.grade}${cls.section ? ` - ${cls.section}` : ''}`,
         sections: cls.section ? [cls.section] : [],
         capacity: cls.max_students || 40,
       }));
 
       setClasses(mappedClasses);
     } catch (error) {
-      console.error("Error in fetchSchoolClasses:", error);
+      console.error('Error in fetchSchoolClasses:', error);
     }
   };
 
@@ -1890,14 +1857,14 @@ const Settings = () => {
 
     try {
       const { data, error } = await supabase
-        .from("curriculum_academic_years")
-        .select("*")
-        .eq("school_id", currentSchoolId)
-        .eq("is_active", true)
-        .order("year", { ascending: false });
+        .from('curriculum_academic_years')
+        .select('*')
+        .eq('school_id', currentSchoolId)
+        .eq('is_active', true)
+        .order('year', { ascending: false });
 
       if (error) {
-        console.error("Error fetching academic years:", error);
+        console.error('Error fetching academic years:', error);
         return;
       }
 
@@ -1906,7 +1873,10 @@ const Settings = () => {
         const end = new Date(year.end_date);
         const today = new Date();
         const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-        const daysElapsed = today > start ? Math.ceil((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+        const daysElapsed =
+          today > start
+            ? Math.ceil((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+            : 0;
 
         return {
           id: year.id,
@@ -1921,7 +1891,7 @@ const Settings = () => {
 
       setAcademicYears(mappedYears);
     } catch (error) {
-      console.error("Error in fetchAcademicYears:", error);
+      console.error('Error in fetchAcademicYears:', error);
     }
   };
 
@@ -1931,14 +1901,14 @@ const Settings = () => {
     try {
       // Fetch subjects for this school (school-specific and global)
       const { data, error } = await supabase
-        .from("curriculum_subjects")
-        .select("*")
+        .from('curriculum_subjects')
+        .select('*')
         .or(`school_id.eq.${currentSchoolId},school_id.is.null`)
-        .eq("is_active", true)
-        .order("display_order", { ascending: true });
+        .eq('is_active', true)
+        .order('display_order', { ascending: true });
 
       if (error) {
-        console.error("Error fetching subjects:", error);
+        console.error('Error fetching subjects:', error);
         return;
       }
 
@@ -1947,18 +1917,18 @@ const Settings = () => {
       const subjectsWithClasses = await Promise.all(
         (data || []).map(async (subject: any) => {
           const { data: curriculums } = await supabase
-            .from("curriculums")
-            .select("id, class")
-            .eq("school_id", currentSchoolId)
-            .eq("subject", subject.name);
+            .from('curriculums')
+            .select('id, class')
+            .eq('school_id', currentSchoolId)
+            .eq('subject', subject.name);
 
           const classIds = curriculums?.map((c: any) => c.id) || [];
 
           return {
             id: subject.id,
             name: subject.name,
-            code: subject.name.substring(0, 3).toUpperCase() + "101",
-            type: "core" as "core" | "elective" | "skill",
+            code: subject.name.substring(0, 3).toUpperCase() + '101',
+            type: 'core' as 'core' | 'elective' | 'skill',
             classes: classIds,
           };
         })
@@ -1966,7 +1936,7 @@ const Settings = () => {
 
       setSubjects(subjectsWithClasses);
     } catch (error) {
-      console.error("Error in fetchSubjects:", error);
+      console.error('Error in fetchSubjects:', error);
     }
   };
 
@@ -1975,8 +1945,9 @@ const Settings = () => {
 
     try {
       const { data, error } = await supabase
-        .from("audit_logs")
-        .select(`
+        .from('audit_logs')
+        .select(
+          `
           id,
           action,
           target,
@@ -1990,53 +1961,54 @@ const Settings = () => {
             email,
             role
           )
-        `)
-        .order("createdAt", { ascending: false })
+        `
+        )
+        .order('createdAt', { ascending: false })
         .limit(50);
 
       if (error) {
-        console.error("Error fetching audit logs:", error);
+        console.error('Error fetching audit logs:', error);
         return;
       }
 
       // Filter logs to only include school_admin and school_educator roles
       const filteredData = (data || []).filter((log: any) => {
         if (!log.users || !log.users.role) return false;
-        return log.users.role === "school_admin" || log.users.role === "school_educator";
+        return log.users.role === 'school_admin' || log.users.role === 'school_educator';
       });
 
       const mappedLogs: AuditLog[] = filteredData.map((log: any) => {
         // Format user name
-        let userName = "System";
+        let userName = 'System';
         if (log.users) {
-          const fullName = `${log.users.firstName || ""} ${log.users.lastName || ""}`.trim();
-          userName = fullName || log.users.email || "Unknown User";
+          const fullName = `${log.users.firstName || ''} ${log.users.lastName || ''}`.trim();
+          userName = fullName || log.users.email || 'Unknown User';
         }
 
         // Format action - convert snake_case to Title Case
         const formattedAction = log.action
           ? log.action
-              .split("_")
+              .split('_')
               .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-              .join(" ")
-          : "Unknown Action";
+              .join(' ')
+          : 'Unknown Action';
 
         // Format module/target - convert to readable format
-        let module = "System";
+        let module = 'System';
         if (log.target) {
           // If target is a UUID, try to get more info from payload
           if (log.target.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
             // Check payload for more context
-            if (log.payload && typeof log.payload === "object") {
+            if (log.payload && typeof log.payload === 'object') {
               if (log.payload.table) {
                 module = formatTableName(log.payload.table);
               } else if (log.payload.type) {
                 module = formatTableName(log.payload.type);
               } else {
-                module = "Record Management";
+                module = 'Record Management';
               }
             } else {
-              module = "Record Management";
+              module = 'Record Management';
             }
           } else {
             module = formatTableName(log.target);
@@ -2044,9 +2016,9 @@ const Settings = () => {
         }
 
         // Determine status from action or payload
-        let status: "success" | "failed" = "success";
-        if (log.action?.includes("fail") || log.action?.includes("error")) {
-          status = "failed";
+        let status: 'success' | 'failed' = 'success';
+        if (log.action?.includes('fail') || log.action?.includes('error')) {
+          status = 'failed';
         }
 
         return {
@@ -2055,14 +2027,14 @@ const Settings = () => {
           user: userName,
           action: formattedAction,
           module: module,
-          ip: log.ip || "N/A",
+          ip: log.ip || 'N/A',
           status: status,
         };
       });
 
       setAuditLogs(mappedLogs);
     } catch (error) {
-      console.error("Error in fetchAuditLogs:", error);
+      console.error('Error in fetchAuditLogs:', error);
     }
   };
 
@@ -2071,18 +2043,20 @@ const Settings = () => {
     if (!currentSchoolId) return;
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
 
       // Fetch from user_settings table using privacy_settings JSONB column
       const { data, error } = await supabase
-        .from("user_settings")
-        .select("privacy_settings")
-        .eq("user_id", user.id)
+        .from('user_settings')
+        .select('privacy_settings')
+        .eq('user_id', user.id)
         .maybeSingle();
 
       if (error) {
-        console.error("Error fetching role permissions:", error);
+        console.error('Error fetching role permissions:', error);
         return;
       }
 
@@ -2092,35 +2066,71 @@ const Settings = () => {
       } else {
         // Set default permissions if none exist
         const defaultPermissions = {
-          Principal: ["student_view", "student_create", "student_edit", "student_delete", "attendance_mark", "attendance_edit", "exam_create", "exam_marks", "exam_publish", "fee_view", "fee_collect", "library_issue", "career_view", "career_counsel", "settings_manage"],
-          "Vice Principal": ["student_view", "student_create", "student_edit", "attendance_mark", "attendance_edit", "exam_create", "exam_marks", "exam_publish", "career_view", "career_counsel", "settings_manage"],
-          "Class Teacher": ["student_view", "attendance_mark", "exam_marks", "career_view", "career_counsel"],
-          "Subject Teacher": ["student_view", "exam_marks", "career_view"],
-          Accountant: ["fee_view", "fee_collect"],
-          Librarian: ["library_issue"],
-          "IT Admin": ["student_view", "settings_manage"],
-          "Career Counselor": ["student_view", "career_view", "career_counsel"],
+          Principal: [
+            'student_view',
+            'student_create',
+            'student_edit',
+            'student_delete',
+            'attendance_mark',
+            'attendance_edit',
+            'exam_create',
+            'exam_marks',
+            'exam_publish',
+            'fee_view',
+            'fee_collect',
+            'library_issue',
+            'career_view',
+            'career_counsel',
+            'settings_manage',
+          ],
+          'Vice Principal': [
+            'student_view',
+            'student_create',
+            'student_edit',
+            'attendance_mark',
+            'attendance_edit',
+            'exam_create',
+            'exam_marks',
+            'exam_publish',
+            'career_view',
+            'career_counsel',
+            'settings_manage',
+          ],
+          'Class Teacher': [
+            'student_view',
+            'attendance_mark',
+            'exam_marks',
+            'career_view',
+            'career_counsel',
+          ],
+          'Subject Teacher': ['student_view', 'exam_marks', 'career_view'],
+          Accountant: ['fee_view', 'fee_collect'],
+          Librarian: ['library_issue'],
+          'IT Admin': ['student_view', 'settings_manage'],
+          'Career Counselor': ['student_view', 'career_view', 'career_counsel'],
         };
         setRolePermissions(defaultPermissions);
         // Save defaults to database
         await saveRolePermissionsToDb(defaultPermissions);
       }
     } catch (error) {
-      console.error("Error in fetchRolePermissions:", error);
+      console.error('Error in fetchRolePermissions:', error);
     }
   };
 
   // Save role permissions to database
   const saveRolePermissionsToDb = async (permissions: Record<string, string[]>) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
 
       // Check if user_settings record exists
       const { data: existing } = await supabase
-        .from("user_settings")
-        .select("id, privacy_settings")
-        .eq("user_id", user.id)
+        .from('user_settings')
+        .select('id, privacy_settings')
+        .eq('user_id', user.id)
         .maybeSingle();
 
       const updatedPrivacySettings = {
@@ -2131,36 +2141,34 @@ const Settings = () => {
       if (existing) {
         // Update existing record
         const { error } = await supabase
-          .from("user_settings")
+          .from('user_settings')
           .update({
             privacy_settings: updatedPrivacySettings,
             updated_at: new Date().toISOString(),
             updated_by: user.id,
           })
-          .eq("user_id", user.id);
+          .eq('user_id', user.id);
 
         if (error) {
-          console.error("Error updating role permissions:", error);
+          console.error('Error updating role permissions:', error);
         }
       } else {
         // Insert new record
-        const { error } = await supabase
-          .from("user_settings")
-          .insert({
-            user_id: user.id,
-            privacy_settings: updatedPrivacySettings,
-            notification_preferences: {},
-            ui_preferences: {},
-            communication_preferences: {},
-            updated_by: user.id,
-          });
+        const { error } = await supabase.from('user_settings').insert({
+          user_id: user.id,
+          privacy_settings: updatedPrivacySettings,
+          notification_preferences: {},
+          ui_preferences: {},
+          communication_preferences: {},
+          updated_by: user.id,
+        });
 
         if (error) {
-          console.error("Error inserting role permissions:", error);
+          console.error('Error inserting role permissions:', error);
         }
       }
     } catch (error) {
-      console.error("Error in saveRolePermissionsToDb:", error);
+      console.error('Error in saveRolePermissionsToDb:', error);
     }
   };
 
@@ -2169,18 +2177,20 @@ const Settings = () => {
     if (!currentSchoolId) return;
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
 
       // Fetch from user_settings table using notification_preferences JSONB column
       const { data, error } = await supabase
-        .from("user_settings")
-        .select("notification_preferences")
-        .eq("user_id", user.id)
+        .from('user_settings')
+        .select('notification_preferences')
+        .eq('user_id', user.id)
         .maybeSingle();
 
       if (error) {
-        console.error("Error fetching notification settings:", error);
+        console.error('Error fetching notification settings:', error);
         return;
       }
 
@@ -2194,33 +2204,33 @@ const Settings = () => {
         // Set default notification settings if none exist
         const defaultSettings: NotificationSetting[] = [
           {
-            id: "1",
-            label: "Attendance Alerts",
-            description: "Notify parents when student is absent",
+            id: '1',
+            label: 'Attendance Alerts',
+            description: 'Notify parents when student is absent',
             enabled: true,
           },
           {
-            id: "2",
-            label: "Fee Reminders",
-            description: "Send fee payment reminders before due date",
+            id: '2',
+            label: 'Fee Reminders',
+            description: 'Send fee payment reminders before due date',
             enabled: true,
           },
           {
-            id: "3",
-            label: "Exam Notifications",
-            description: "Alert students and parents about upcoming exams",
+            id: '3',
+            label: 'Exam Notifications',
+            description: 'Alert students and parents about upcoming exams',
             enabled: true,
           },
           {
-            id: "4",
-            label: "Result Publishing",
-            description: "Notify when exam results are published",
+            id: '4',
+            label: 'Result Publishing',
+            description: 'Notify when exam results are published',
             enabled: true,
           },
           {
-            id: "5",
-            label: "Career Updates",
-            description: "Send career assessment and recommendation updates",
+            id: '5',
+            label: 'Career Updates',
+            description: 'Send career assessment and recommendation updates',
             enabled: false,
           },
         ];
@@ -2231,21 +2241,23 @@ const Settings = () => {
         await saveNotificationSettingsToDb(defaultSettings);
       }
     } catch (error) {
-      console.error("Error in fetchNotificationSettings:", error);
+      console.error('Error in fetchNotificationSettings:', error);
     }
   };
 
   // Save notification settings to database
   const saveNotificationSettingsToDb = async (settings: NotificationSetting[]) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
 
       // Check if user_settings record exists
       const { data: existing } = await supabase
-        .from("user_settings")
-        .select("id, notification_preferences")
-        .eq("user_id", user.id)
+        .from('user_settings')
+        .select('id, notification_preferences')
+        .eq('user_id', user.id)
         .maybeSingle();
 
       const updatedNotificationPreferences = {
@@ -2256,57 +2268,55 @@ const Settings = () => {
       if (existing) {
         // Update existing record
         const { error } = await supabase
-          .from("user_settings")
+          .from('user_settings')
           .update({
             notification_preferences: updatedNotificationPreferences,
             updated_at: new Date().toISOString(),
             updated_by: user.id,
           })
-          .eq("user_id", user.id);
+          .eq('user_id', user.id);
 
         if (error) {
-          console.error("Error updating notification settings:", error);
+          console.error('Error updating notification settings:', error);
         }
       } else {
         // Insert new record
-        const { error } = await supabase
-          .from("user_settings")
-          .insert({
-            user_id: user.id,
-            notification_preferences: updatedNotificationPreferences,
-            privacy_settings: {},
-            ui_preferences: {},
-            communication_preferences: {},
-            updated_by: user.id,
-          });
+        const { error } = await supabase.from('user_settings').insert({
+          user_id: user.id,
+          notification_preferences: updatedNotificationPreferences,
+          privacy_settings: {},
+          ui_preferences: {},
+          communication_preferences: {},
+          updated_by: user.id,
+        });
 
         if (error) {
-          console.error("Error inserting notification settings:", error);
+          console.error('Error inserting notification settings:', error);
         }
       }
     } catch (error) {
-      console.error("Error in saveNotificationSettingsToDb:", error);
+      console.error('Error in saveNotificationSettingsToDb:', error);
     }
   };
 
   // Helper function to format table names
   const formatTableName = (name: string): string => {
-    if (!name) return "System";
-    
+    if (!name) return 'System';
+
     // Common table name mappings
     const tableNameMap: Record<string, string> = {
-      courses: "Course Management",
-      students: "Student Management",
-      school_educators: "Educator Management",
-      school_classes: "Class Management",
-      curriculum_subjects: "Subject Management",
-      curriculums: "Curriculum Management",
-      lesson_plans: "Lesson Plans",
-      attendance_records: "Attendance",
-      assignments: "Assignments",
-      timetables: "Timetable",
-      users: "User Management",
-      schools: "School Settings",
+      courses: 'Course Management',
+      students: 'Student Management',
+      school_educators: 'Educator Management',
+      school_classes: 'Class Management',
+      curriculum_subjects: 'Subject Management',
+      curriculums: 'Curriculum Management',
+      lesson_plans: 'Lesson Plans',
+      attendance_records: 'Attendance',
+      assignments: 'Assignments',
+      timetables: 'Timetable',
+      users: 'User Management',
+      schools: 'School Settings',
     };
 
     // Check if we have a mapping
@@ -2316,38 +2326,46 @@ const Settings = () => {
 
     // Otherwise, format the name
     return name
-      .split("_")
+      .split('_')
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(" ");
+      .join(' ');
   };
 
   // Helper functions
   const mapEducatorRoleToUserRole = (role: string): UserRole => {
     const roleMap: Record<string, UserRole> = {
-      school_admin: "school_admin",
-      principal: "principal",
-      vice_principal: "vice_principal",
-      class_teacher: "class_teacher",
-      subject_teacher: "subject_teacher",
-      it_admin: "it_admin",
+      school_admin: 'school_admin',
+      principal: 'principal',
+      vice_principal: 'vice_principal',
+      class_teacher: 'class_teacher',
+      subject_teacher: 'subject_teacher',
+      it_admin: 'it_admin',
     };
-    return roleMap[role] || "subject_teacher";
+    return roleMap[role] || 'subject_teacher';
   };
 
-  const mapAccountStatusToUserStatus = (status: string): "active" | "inactive" | "suspended" => {
-    if (status === "active") return "active";
-    if (status === "suspended") return "suspended";
-    return "inactive";
+  const mapAccountStatusToUserStatus = (status: string): 'active' | 'inactive' | 'suspended' => {
+    if (status === 'active') return 'active';
+    if (status === 'suspended') return 'suspended';
+    return 'inactive';
   };
 
   const getRolePermissions = (role: string): string[] => {
     const permissionsMap: Record<string, string[]> = {
-      principal: ["student_view", "student_create", "student_edit", "student_delete", "attendance_mark", "exam_publish", "settings_manage"],
-      vice_principal: ["student_view", "student_create", "attendance_mark", "exam_marks"],
-      class_teacher: ["student_view", "attendance_mark", "exam_marks"],
-      subject_teacher: ["student_view", "exam_marks"],
-      school_admin: ["student_view", "student_create", "settings_manage"],
-      it_admin: ["settings_manage"],
+      principal: [
+        'student_view',
+        'student_create',
+        'student_edit',
+        'student_delete',
+        'attendance_mark',
+        'exam_publish',
+        'settings_manage',
+      ],
+      vice_principal: ['student_view', 'student_create', 'attendance_mark', 'exam_marks'],
+      class_teacher: ['student_view', 'attendance_mark', 'exam_marks'],
+      subject_teacher: ['student_view', 'exam_marks'],
+      school_admin: ['student_view', 'student_create', 'settings_manage'],
+      it_admin: ['settings_manage'],
     };
     return permissionsMap[role] || [];
   };
@@ -2358,9 +2376,9 @@ const Settings = () => {
       user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.role.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesStatus = statusFilter === "all" || user.status === statusFilter;
-    const matchesRole = roleFilter === "all" || user.role === roleFilter;
+
+    const matchesStatus = statusFilter === 'all' || user.status === statusFilter;
+    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
 
     return matchesSearch && matchesStatus && matchesRole;
   });
@@ -2377,7 +2395,7 @@ const Settings = () => {
   };
 
   const handleDeleteUser = (userId: string) => {
-    if (confirm("Are you sure you want to delete this user? This action cannot be undone.")) {
+    if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
       setUsers(users.filter((u) => u.id !== userId));
     }
   };
@@ -2387,10 +2405,10 @@ const Settings = () => {
       if (editUser) {
         // Update existing educator
         const { error } = await supabase
-          .from("school_educators")
+          .from('school_educators')
           .update({
-            first_name: user.name.split(" ")[0],
-            last_name: user.name.split(" ").slice(1).join(" "),
+            first_name: user.name.split(' ')[0],
+            last_name: user.name.split(' ').slice(1).join(' '),
             email: user.email,
             role: user.role,
             account_status: user.status,
@@ -2399,22 +2417,24 @@ const Settings = () => {
             },
             updated_at: new Date().toISOString(),
           })
-          .eq("id", user.id);
+          .eq('id', user.id);
 
         if (error) {
-          console.error("Error updating educator:", error);
-          alert("Failed to update user");
+          console.error('Error updating educator:', error);
+          alert('Failed to update user');
           return;
         }
 
         setUsers(users.map((u) => (u.id === user.id ? user : u)));
       } else {
         // Create new educator - Note: This requires creating a user in auth first
-        alert("Creating new users requires additional setup. Please use the user management system.");
+        alert(
+          'Creating new users requires additional setup. Please use the user management system.'
+        );
       }
     } catch (error) {
-      console.error("Error saving user:", error);
-      alert("Failed to save user");
+      console.error('Error saving user:', error);
+      alert('Failed to save user');
     }
   };
 
@@ -2422,32 +2442,34 @@ const Settings = () => {
     const user = users.find((u) => u.id === userId);
     if (!user) return;
 
-    const newStatus = user.status === "active" ? "inactive" : "active";
+    const newStatus = user.status === 'active' ? 'inactive' : 'active';
 
     try {
       const { error } = await supabase
-        .from("school_educators")
+        .from('school_educators')
         .update({
           account_status: newStatus,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", userId);
+        .eq('id', userId);
 
       if (error) {
-        console.error("Error updating user status:", error);
-        alert("Failed to update user status");
+        console.error('Error updating user status:', error);
+        alert('Failed to update user status');
         return;
       }
 
-      setUsers(users.map((u) => {
-        if (u.id === userId) {
-          return { ...u, status: newStatus };
-        }
-        return u;
-      }));
+      setUsers(
+        users.map((u) => {
+          if (u.id === userId) {
+            return { ...u, status: newStatus };
+          }
+          return u;
+        })
+      );
     } catch (error) {
-      console.error("Error in handleToggleUserStatus:", error);
-      alert("Failed to update user status");
+      console.error('Error in handleToggleUserStatus:', error);
+      alert('Failed to update user status');
     }
   };
 
@@ -2469,18 +2491,18 @@ const Settings = () => {
       if (editAcademicYear) {
         // Update existing academic year
         const { error } = await supabase
-          .from("curriculum_academic_years")
+          .from('curriculum_academic_years')
           .update({
             year: year.year,
             start_date: year.startDate,
             end_date: year.endDate,
             updated_at: new Date().toISOString(),
           })
-          .eq("id", year.id);
+          .eq('id', year.id);
 
         if (error) {
-          console.error("Error updating academic year:", error);
-          alert("Failed to update academic year");
+          console.error('Error updating academic year:', error);
+          alert('Failed to update academic year');
           return;
         }
 
@@ -2488,7 +2510,7 @@ const Settings = () => {
       } else {
         // Create new academic year
         const { data, error } = await supabase
-          .from("curriculum_academic_years")
+          .from('curriculum_academic_years')
           .insert({
             school_id: currentSchoolId,
             year: year.year,
@@ -2501,16 +2523,16 @@ const Settings = () => {
           .single();
 
         if (error) {
-          console.error("Error creating academic year:", error);
-          alert("Failed to create academic year");
+          console.error('Error creating academic year:', error);
+          alert('Failed to create academic year');
           return;
         }
 
         setAcademicYears([...academicYears, { ...year, id: data.id }]);
       }
     } catch (error) {
-      console.error("Error saving academic year:", error);
-      alert("Failed to save academic year");
+      console.error('Error saving academic year:', error);
+      alert('Failed to save academic year');
     }
   };
 
@@ -2520,51 +2542,50 @@ const Settings = () => {
     try {
       // First, deactivate all academic years for this school
       await supabase
-        .from("curriculum_academic_years")
+        .from('curriculum_academic_years')
         .update({ is_current: false })
-        .eq("school_id", currentSchoolId);
+        .eq('school_id', currentSchoolId);
 
       // Then activate the selected year
       const { error } = await supabase
-        .from("curriculum_academic_years")
+        .from('curriculum_academic_years')
         .update({ is_current: true })
-        .eq("id", yearId);
+        .eq('id', yearId);
 
       if (error) {
-        console.error("Error activating academic year:", error);
-        alert("Failed to activate academic year");
+        console.error('Error activating academic year:', error);
+        alert('Failed to activate academic year');
         return;
       }
 
-      setAcademicYears(academicYears.map((y) => ({
-        ...y,
-        isActive: y.id === yearId,
-      })));
+      setAcademicYears(
+        academicYears.map((y) => ({
+          ...y,
+          isActive: y.id === yearId,
+        }))
+      );
     } catch (error) {
-      console.error("Error in handleActivateAcademicYear:", error);
-      alert("Failed to activate academic year");
+      console.error('Error in handleActivateAcademicYear:', error);
+      alert('Failed to activate academic year');
     }
   };
 
   const handleDeleteAcademicYear = async (yearId: string) => {
-    if (!confirm("Are you sure you want to delete this academic year?")) return;
+    if (!confirm('Are you sure you want to delete this academic year?')) return;
 
     try {
-      const { error } = await supabase
-        .from("curriculum_academic_years")
-        .delete()
-        .eq("id", yearId);
+      const { error } = await supabase.from('curriculum_academic_years').delete().eq('id', yearId);
 
       if (error) {
-        console.error("Error deleting academic year:", error);
-        alert("Failed to delete academic year");
+        console.error('Error deleting academic year:', error);
+        alert('Failed to delete academic year');
         return;
       }
 
       setAcademicYears(academicYears.filter((y) => y.id !== yearId));
     } catch (error) {
-      console.error("Error in handleDeleteAcademicYear:", error);
-      alert("Failed to delete academic year");
+      console.error('Error in handleDeleteAcademicYear:', error);
+      alert('Failed to delete academic year');
     }
   };
 
@@ -2576,7 +2597,7 @@ const Settings = () => {
       }
       return n;
     });
-    
+
     setNotificationSettings(updatedSettings);
     setNotificationSettingsChanged(true);
   };
@@ -2608,7 +2629,7 @@ const Settings = () => {
         [selectedRole.name]: permissions,
       };
       setRolePermissions(updatedPermissions);
-      
+
       // Save to database
       await saveRolePermissionsToDb(updatedPermissions);
     }
@@ -2632,17 +2653,17 @@ const Settings = () => {
       if (editClass) {
         // Update existing class
         const { error } = await supabase
-          .from("school_classes")
+          .from('school_classes')
           .update({
             name: cls.name,
             max_students: cls.capacity,
             updated_at: new Date().toISOString(),
           })
-          .eq("id", cls.id);
+          .eq('id', cls.id);
 
         if (error) {
-          console.error("Error updating class:", error);
-          alert("Failed to update class");
+          console.error('Error updating class:', error);
+          alert('Failed to update class');
           return;
         }
 
@@ -2655,17 +2676,14 @@ const Settings = () => {
           grade: cls.name,
           section: section,
           max_students: cls.capacity,
-          account_status: "active",
+          account_status: 'active',
         }));
 
-        const { data, error } = await supabase
-          .from("school_classes")
-          .insert(classInserts)
-          .select();
+        const { data, error } = await supabase.from('school_classes').insert(classInserts).select();
 
         if (error) {
-          console.error("Error creating class:", error);
-          alert("Failed to create class");
+          console.error('Error creating class:', error);
+          alert('Failed to create class');
           return;
         }
 
@@ -2673,34 +2691,36 @@ const Settings = () => {
         fetchSchoolClasses();
       }
     } catch (error) {
-      console.error("Error saving class:", error);
-      alert("Failed to save class");
+      console.error('Error saving class:', error);
+      alert('Failed to save class');
     }
   };
 
   const handleDeleteClass = async (classId: string) => {
-    if (!confirm("Are you sure you want to delete this class? This will affect associated subjects.")) return;
+    if (
+      !confirm('Are you sure you want to delete this class? This will affect associated subjects.')
+    )
+      return;
 
     try {
-      const { error } = await supabase
-        .from("school_classes")
-        .delete()
-        .eq("id", classId);
+      const { error } = await supabase.from('school_classes').delete().eq('id', classId);
 
       if (error) {
-        console.error("Error deleting class:", error);
-        alert("Failed to delete class");
+        console.error('Error deleting class:', error);
+        alert('Failed to delete class');
         return;
       }
 
       setClasses(classes.filter((c) => c.id !== classId));
-      setSubjects(subjects.map((s) => ({
-        ...s,
-        classes: s.classes.filter((c) => c !== classId),
-      })));
+      setSubjects(
+        subjects.map((s) => ({
+          ...s,
+          classes: s.classes.filter((c) => c !== classId),
+        }))
+      );
     } catch (error) {
-      console.error("Error in handleDeleteClass:", error);
-      alert("Failed to delete class");
+      console.error('Error in handleDeleteClass:', error);
+      alert('Failed to delete class');
     }
   };
 
@@ -2722,17 +2742,17 @@ const Settings = () => {
       if (editSubject) {
         // Update existing subject
         const { error } = await supabase
-          .from("curriculum_subjects")
+          .from('curriculum_subjects')
           .update({
             name: subject.name,
             description: `${subject.type} subject`,
             updated_at: new Date().toISOString(),
           })
-          .eq("id", subject.id);
+          .eq('id', subject.id);
 
         if (error) {
-          console.error("Error updating subject:", error);
-          alert("Failed to update subject");
+          console.error('Error updating subject:', error);
+          alert('Failed to update subject');
           return;
         }
 
@@ -2740,7 +2760,7 @@ const Settings = () => {
       } else {
         // Create new subject
         const { data, error } = await supabase
-          .from("curriculum_subjects")
+          .from('curriculum_subjects')
           .insert({
             school_id: currentSchoolId,
             name: subject.name,
@@ -2752,49 +2772,54 @@ const Settings = () => {
           .single();
 
         if (error) {
-          console.error("Error creating subject:", error);
-          alert("Failed to create subject");
+          console.error('Error creating subject:', error);
+          alert('Failed to create subject');
           return;
         }
 
         setSubjects([...subjects, { ...subject, id: data.id }]);
       }
     } catch (error) {
-      console.error("Error saving subject:", error);
-      alert("Failed to save subject");
+      console.error('Error saving subject:', error);
+      alert('Failed to save subject');
     }
   };
 
   const handleDeleteSubject = async (subjectId: string) => {
-    if (!confirm("Are you sure you want to delete this subject? This may affect existing curriculums.")) return;
+    if (
+      !confirm(
+        'Are you sure you want to delete this subject? This may affect existing curriculums.'
+      )
+    )
+      return;
 
     try {
       // Soft delete by setting is_active to false
       const { error } = await supabase
-        .from("curriculum_subjects")
+        .from('curriculum_subjects')
         .update({
           is_active: false,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", subjectId);
+        .eq('id', subjectId);
 
       if (error) {
-        console.error("Error deleting subject:", error);
-        alert("Failed to delete subject");
+        console.error('Error deleting subject:', error);
+        alert('Failed to delete subject');
         return;
       }
 
       setSubjects(subjects.filter((s) => s.id !== subjectId));
     } catch (error) {
-      console.error("Error in handleDeleteSubject:", error);
-      alert("Failed to delete subject");
+      console.error('Error in handleDeleteSubject:', error);
+      alert('Failed to delete subject');
     }
   };
 
   // Export Handlers
   const handleExportUsers = () => {
     const csv = [
-      ["Name", "Email", "Role", "Status", "Permissions", "Last Login", "Created At"],
+      ['Name', 'Email', 'Role', 'Status', 'Permissions', 'Last Login', 'Created At'],
       ...filteredUsers.map((u) => [
         u.name,
         u.email,
@@ -2805,20 +2830,20 @@ const Settings = () => {
         u.createdAt,
       ]),
     ]
-      .map((row) => row.join(","))
-      .join("\n");
+      .map((row) => row.join(','))
+      .join('\n');
 
-    const blob = new Blob([csv], { type: "text/csv" });
+    const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
+    const a = document.createElement('a');
     a.href = url;
-    a.download = `users-export-${new Date().toISOString().split("T")[0]}.csv`;
+    a.download = `users-export-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
   };
 
   const handleExportAuditLogs = () => {
     const csv = [
-      ["Timestamp", "User", "Action", "Module", "IP Address", "Status"],
+      ['Timestamp', 'User', 'Action', 'Module', 'IP Address', 'Status'],
       ...auditLogs.map((log) => [
         log.timestamp,
         log.user,
@@ -2828,86 +2853,86 @@ const Settings = () => {
         log.status,
       ]),
     ]
-      .map((row) => row.join(","))
-      .join("\n");
+      .map((row) => row.join(','))
+      .join('\n');
 
-    const blob = new Blob([csv], { type: "text/csv" });
+    const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
+    const a = document.createElement('a');
     a.href = url;
-    a.download = `audit-logs-${new Date().toISOString().split("T")[0]}.csv`;
+    a.download = `audit-logs-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
   };
 
   // Helper Functions
   const getRoleBadgeColor = (role: UserRole) => {
     const colors: Record<UserRole, string> = {
-      school_admin: "bg-violet-100 text-violet-700 border-violet-300",
-      principal: "bg-purple-100 text-purple-700 border-purple-300",
-      vice_principal: "bg-indigo-100 text-indigo-700 border-indigo-300",
-      class_teacher: "bg-blue-100 text-blue-700 border-blue-300",
-      subject_teacher: "bg-cyan-100 text-cyan-700 border-cyan-300",
-      accountant: "bg-green-100 text-green-700 border-green-300",
-      librarian: "bg-amber-100 text-amber-700 border-amber-300",
-      it_admin: "bg-red-100 text-red-700 border-red-300",
-      career_counselor: "bg-pink-100 text-pink-700 border-pink-300",
+      school_admin: 'bg-violet-100 text-violet-700 border-violet-300',
+      principal: 'bg-purple-100 text-purple-700 border-purple-300',
+      vice_principal: 'bg-indigo-100 text-indigo-700 border-indigo-300',
+      class_teacher: 'bg-blue-100 text-blue-700 border-blue-300',
+      subject_teacher: 'bg-cyan-100 text-cyan-700 border-cyan-300',
+      accountant: 'bg-green-100 text-green-700 border-green-300',
+      librarian: 'bg-amber-100 text-amber-700 border-amber-300',
+      it_admin: 'bg-red-100 text-red-700 border-red-300',
+      career_counselor: 'bg-pink-100 text-pink-700 border-pink-300',
     };
     return colors[role];
   };
 
   const getRoleDisplayName = (role: UserRole): string => {
     const displayNames: Record<UserRole, string> = {
-      school_admin: "School Admin",
-      principal: "Principal",
-      vice_principal: "Vice Principal",
-      class_teacher: "Class Teacher",
-      subject_teacher: "Subject Teacher",
-      accountant: "Accountant",
-      librarian: "Librarian",
-      it_admin: "IT Admin",
-      career_counselor: "Career Counselor",
+      school_admin: 'School Admin',
+      principal: 'Principal',
+      vice_principal: 'Vice Principal',
+      class_teacher: 'Class Teacher',
+      subject_teacher: 'Subject Teacher',
+      accountant: 'Accountant',
+      librarian: 'Librarian',
+      it_admin: 'IT Admin',
+      career_counselor: 'Career Counselor',
     };
-    return displayNames[role] || role.replace("_", " ").toUpperCase();
+    return displayNames[role] || role.replace('_', ' ').toUpperCase();
   };
 
   const getStatusBadgeColor = (status: string) => {
     const colors: Record<string, string> = {
-      active: "bg-green-100 text-green-700 border-green-300",
-      inactive: "bg-gray-100 text-gray-700 border-gray-300",
-      suspended: "bg-red-100 text-red-700 border-red-300",
+      active: 'bg-green-100 text-green-700 border-green-300',
+      inactive: 'bg-gray-100 text-gray-700 border-gray-300',
+      suspended: 'bg-red-100 text-red-700 border-red-300',
     };
     return colors[status];
   };
 
   const tabs = [
-    { id: "users" as const, label: "User Management", icon: UserGroupIcon },
-    { id: "roles" as const, label: "Roles & Permissions", icon: ShieldCheckIcon },
-    { id: "classes" as const, label: "Classes & Subjects", icon: AcademicCapIcon },
-    { id: "academic" as const, label: "Academic Year", icon: CalendarDaysIcon },
-    { id: "system" as const, label: "System Config", icon: Cog6ToothIcon },
-    { id: "audit" as const, label: "Audit Logs", icon: DocumentTextIcon },
-    { id: "subscription" as const, label: "Subscription", icon: CreditCardIcon },
+    { id: 'users' as const, label: 'User Management', icon: UserGroupIcon },
+    { id: 'roles' as const, label: 'Roles & Permissions', icon: ShieldCheckIcon },
+    { id: 'classes' as const, label: 'Classes & Subjects', icon: AcademicCapIcon },
+    { id: 'academic' as const, label: 'Academic Year', icon: CalendarDaysIcon },
+    { id: 'system' as const, label: 'System Config', icon: Cog6ToothIcon },
+    { id: 'audit' as const, label: 'Audit Logs', icon: DocumentTextIcon },
+    { id: 'subscription' as const, label: 'Subscription', icon: CreditCardIcon },
   ];
 
   const stats = [
-    { label: "Total Users", value: users.length, icon: UserGroupIcon, color: "blue" as const },
+    { label: 'Total Users', value: users.length, icon: UserGroupIcon, color: 'blue' as const },
     {
-      label: "Active Users",
-      value: users.filter((u) => u.status === "active").length,
+      label: 'Active Users',
+      value: users.filter((u) => u.status === 'active').length,
       icon: CheckIcon,
-      color: "green" as const,
+      color: 'green' as const,
     },
     {
-      label: "Inactive Users",
-      value: users.filter((u) => u.status === "inactive").length,
+      label: 'Inactive Users',
+      value: users.filter((u) => u.status === 'inactive').length,
       icon: XMarkIcon,
-      color: "amber" as const,
+      color: 'amber' as const,
     },
     {
-      label: "Suspended",
-      value: users.filter((u) => u.status === "suspended").length,
+      label: 'Suspended',
+      value: users.filter((u) => u.status === 'suspended').length,
       icon: ExclamationTriangleIcon,
-      color: "red" as const,
+      color: 'red' as const,
     },
   ];
 
@@ -2966,8 +2991,8 @@ const Settings = () => {
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === tab.id
-                  ? "border-indigo-600 text-indigo-600"
-                  : "border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300"
+                  ? 'border-indigo-600 text-indigo-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
               }`}
             >
               <tab.icon className="h-4 w-4" />
@@ -2979,7 +3004,7 @@ const Settings = () => {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-6">
-        {activeTab === "users" && (
+        {activeTab === 'users' && (
           <div className="space-y-4">
             {/* Actions Bar */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -3073,16 +3098,14 @@ const Settings = () => {
                             <div className="flex items-center gap-3">
                               <div className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-sm">
                                 {user.name
-                                  .split(" ")
+                                  .split(' ')
                                   .map((n) => n[0])
-                                  .join("")
+                                  .join('')
                                   .toUpperCase()
                                   .slice(0, 2)}
                               </div>
                               <div>
-                                <p className="text-sm font-medium text-gray-900">
-                                  {user.name}
-                                </p>
+                                <p className="text-sm font-medium text-gray-900">{user.name}</p>
                                 <p className="text-xs text-gray-500">{user.email}</p>
                               </div>
                             </div>
@@ -3114,7 +3137,7 @@ const Settings = () => {
                           <td className="px-6 py-4">
                             <span className="text-xs text-gray-600">
                               {user.permissions.length} permission
-                              {user.permissions.length !== 1 ? "s" : ""}
+                              {user.permissions.length !== 1 ? 's' : ''}
                             </span>
                           </td>
                           <td className="px-6 py-4">
@@ -3139,7 +3162,7 @@ const Settings = () => {
           </div>
         )}
 
-        {activeTab === "roles" && (
+        {activeTab === 'roles' && (
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
             <div className="mb-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-2">
@@ -3153,52 +3176,52 @@ const Settings = () => {
             <div className="space-y-4">
               {[
                 {
-                  role: "Principal",
-                  description: "Full system access and administrative control",
+                  role: 'Principal',
+                  description: 'Full system access and administrative control',
                   permissions: 15,
-                  color: "purple",
+                  color: 'purple',
                 },
                 {
-                  role: "Vice Principal",
-                  description: "Academic authority with limited admin access",
+                  role: 'Vice Principal',
+                  description: 'Academic authority with limited admin access',
                   permissions: 12,
-                  color: "indigo",
+                  color: 'indigo',
                 },
                 {
-                  role: "Class Teacher",
-                  description: "Attendance and academic management for assigned classes",
+                  role: 'Class Teacher',
+                  description: 'Attendance and academic management for assigned classes',
                   permissions: 8,
-                  color: "blue",
+                  color: 'blue',
                 },
                 {
-                  role: "Subject Teacher",
-                  description: "Subject teaching and assessment management",
+                  role: 'Subject Teacher',
+                  description: 'Subject teaching and assessment management',
                   permissions: 6,
-                  color: "cyan",
+                  color: 'cyan',
                 },
                 {
-                  role: "Accountant",
-                  description: "Finance and fee workflow management",
+                  role: 'Accountant',
+                  description: 'Finance and fee workflow management',
                   permissions: 4,
-                  color: "green",
+                  color: 'green',
                 },
                 {
-                  role: "Librarian",
-                  description: "Library operations and inventory management",
+                  role: 'Librarian',
+                  description: 'Library operations and inventory management',
                   permissions: 3,
-                  color: "amber",
+                  color: 'amber',
                 },
                 {
-                  role: "IT Admin",
-                  description: "System access and configuration management",
+                  role: 'IT Admin',
+                  description: 'System access and configuration management',
                   permissions: 10,
-                  color: "red",
+                  color: 'red',
                 },
                 {
-                  role: "Career Counselor",
-                  description: "Career module and student guidance access",
+                  role: 'Career Counselor',
+                  description: 'Career module and student guidance access',
                   permissions: 5,
-                  color: "pink",
+                  color: 'pink',
                 },
               ].map((roleInfo) => (
                 <div
@@ -3210,9 +3233,7 @@ const Settings = () => {
                       <ShieldCheckIcon className="h-6 w-6 text-gray-600" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-semibold text-gray-900">
-                        {roleInfo.role}
-                      </h3>
+                      <h3 className="text-sm font-semibold text-gray-900">{roleInfo.role}</h3>
                       <p className="text-xs text-gray-600">{roleInfo.description}</p>
                       <p className="text-xs text-gray-500 mt-1">
                         {rolePermissions[roleInfo.role]?.length || 0} permissions assigned
@@ -3231,18 +3252,14 @@ const Settings = () => {
           </div>
         )}
 
-        {activeTab === "classes" && (
+        {activeTab === 'classes' && (
           <div className="space-y-6">
             {/* Classes Section */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900 mb-2">
-                    Class Configuration
-                  </h2>
-                  <p className="text-sm text-gray-600">
-                    Manage classes, sections, and capacity
-                  </p>
+                  <h2 className="text-lg font-semibold text-gray-900 mb-2">Class Configuration</h2>
+                  <p className="text-sm text-gray-600">Manage classes, sections, and capacity</p>
                 </div>
                 <button
                   onClick={handleAddClass}
@@ -3261,11 +3278,10 @@ const Settings = () => {
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div>
-                        <h3 className="text-sm font-semibold text-gray-900">
-                          {cls.name}
-                        </h3>
+                        <h3 className="text-sm font-semibold text-gray-900">{cls.name}</h3>
                         <p className="text-xs text-gray-600 mt-1">
-                          {cls.sections.length} section{cls.sections.length !== 1 ? "s" : ""} • Capacity: {cls.capacity}
+                          {cls.sections.length} section{cls.sections.length !== 1 ? 's' : ''} •
+                          Capacity: {cls.capacity}
                         </p>
                       </div>
                       <div className="flex items-center gap-1">
@@ -3353,18 +3369,18 @@ const Settings = () => {
                         <td className="px-4 py-3">
                           <span
                             className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${
-                              subject.type === "core"
-                                ? "bg-blue-100 text-blue-700 border-blue-300"
-                                : subject.type === "elective"
-                                ? "bg-purple-100 text-purple-700 border-purple-300"
-                                : "bg-green-100 text-green-700 border-green-300"
+                              subject.type === 'core'
+                                ? 'bg-blue-100 text-blue-700 border-blue-300'
+                                : subject.type === 'elective'
+                                  ? 'bg-purple-100 text-purple-700 border-purple-300'
+                                  : 'bg-green-100 text-green-700 border-green-300'
                             }`}
                           >
                             {subject.type.toUpperCase()}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-600">
-                          {subject.classes.length} class{subject.classes.length !== 1 ? "es" : ""}
+                          {subject.classes.length} class{subject.classes.length !== 1 ? 'es' : ''}
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-end gap-2">
@@ -3393,13 +3409,11 @@ const Settings = () => {
           </div>
         )}
 
-        {activeTab === "academic" && (
+        {activeTab === 'academic' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Academic Year Management
-                </h2>
+                <h2 className="text-lg font-semibold text-gray-900">Academic Year Management</h2>
                 <p className="text-sm text-gray-600">
                   Configure academic year settings and session dates
                 </p>
@@ -3418,16 +3432,14 @@ const Settings = () => {
                 <div
                   key={year.id}
                   className={`p-4 border rounded-lg ${
-                    year.isActive
-                      ? "bg-green-50 border-green-200"
-                      : "bg-white border-gray-200"
+                    year.isActive ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
                       <div
                         className={`h-10 w-10 rounded-lg flex items-center justify-center ${
-                          year.isActive ? "bg-green-100" : "bg-gray-100"
+                          year.isActive ? 'bg-green-100' : 'bg-gray-100'
                         }`}
                       >
                         {year.isActive ? (
@@ -3438,10 +3450,10 @@ const Settings = () => {
                       </div>
                       <div>
                         <h3 className="text-sm font-semibold text-gray-900">
-                          {year.year} {year.isActive && "(Current)"}
+                          {year.year} {year.isActive && '(Current)'}
                         </h3>
                         <p className="text-xs text-gray-600">
-                          {new Date(year.startDate).toLocaleDateString()} -{" "}
+                          {new Date(year.startDate).toLocaleDateString()} -{' '}
                           {new Date(year.endDate).toLocaleDateString()}
                         </p>
                       </div>
@@ -3484,8 +3496,8 @@ const Settings = () => {
                       <div className="p-3 bg-white rounded-lg border border-green-200">
                         <p className="text-xs text-gray-600 mb-1">Days Remaining</p>
                         <p className="text-lg font-bold text-gray-900">
-                          {year.totalDays - year.daysElapsed <= 0 
-                            ? "Completed" 
+                          {year.totalDays - year.daysElapsed <= 0
+                            ? 'Completed'
                             : year.totalDays - year.daysElapsed}
                         </p>
                       </div>
@@ -3497,14 +3509,12 @@ const Settings = () => {
           </div>
         )}
 
-        {activeTab === "system" && (
+        {activeTab === 'system' && (
           <div className="space-y-4">
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900 mb-2">
-                    System Configuration
-                  </h2>
+                  <h2 className="text-lg font-semibold text-gray-900 mb-2">System Configuration</h2>
                   <p className="text-sm text-gray-600">
                     Manage system-wide settings and security policies
                   </p>
@@ -3581,22 +3591,20 @@ const Settings = () => {
                         <span className="text-sm text-gray-600">Multi-Factor Auth</span>
                         <span
                           className={`text-sm font-medium ${
-                            systemConfig.enableMFA ? "text-green-600" : "text-gray-400"
+                            systemConfig.enableMFA ? 'text-green-600' : 'text-gray-400'
                           }`}
                         >
-                          {systemConfig.enableMFA ? "Enabled" : "Disabled"}
+                          {systemConfig.enableMFA ? 'Enabled' : 'Disabled'}
                         </span>
                       </div>
                       <div className="flex justify-between py-2 border-b border-gray-100">
                         <span className="text-sm text-gray-600">Biometric Attendance</span>
                         <span
                           className={`text-sm font-medium ${
-                            systemConfig.enableBiometric
-                              ? "text-green-600"
-                              : "text-gray-400"
+                            systemConfig.enableBiometric ? 'text-green-600' : 'text-gray-400'
                           }`}
                         >
-                          {systemConfig.enableBiometric ? "Enabled" : "Disabled"}
+                          {systemConfig.enableBiometric ? 'Enabled' : 'Disabled'}
                         </span>
                       </div>
                     </div>
@@ -3607,9 +3615,7 @@ const Settings = () => {
 
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-gray-900">
-                  Notification Settings
-                </h3>
+                <h3 className="text-sm font-semibold text-gray-900">Notification Settings</h3>
                 {notificationSettingsChanged && (
                   <div className="flex items-center gap-2">
                     <button
@@ -3637,9 +3643,7 @@ const Settings = () => {
                     <div className="flex items-center gap-3">
                       <BellIcon className="h-5 w-5 text-gray-400" />
                       <div>
-                        <p className="text-sm font-medium text-gray-900">
-                          {setting.label}
-                        </p>
+                        <p className="text-sm font-medium text-gray-900">{setting.label}</p>
                         <p className="text-xs text-gray-500">{setting.description}</p>
                       </div>
                     </div>
@@ -3656,14 +3660,12 @@ const Settings = () => {
           </div>
         )}
 
-        {activeTab === "audit" && (
+        {activeTab === 'audit' && (
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900 mb-2">
-                    Audit Logs
-                  </h2>
+                  <h2 className="text-lg font-semibold text-gray-900 mb-2">Audit Logs</h2>
                   <p className="text-sm text-gray-600">
                     Track all system activities and user actions
                   </p>
@@ -3724,9 +3726,9 @@ const Settings = () => {
                             No audit logs found
                           </p>
                           <p className="text-xs text-gray-500">
-                            {auditTimeFilter === "all" 
-                              ? "There are no activity logs to display yet."
-                              : "No activity logs found for the selected time period."}
+                            {auditTimeFilter === 'all'
+                              ? 'There are no activity logs to display yet.'
+                              : 'No activity logs found for the selected time period.'}
                           </p>
                         </div>
                       </td>
@@ -3737,24 +3739,20 @@ const Settings = () => {
                         <td className="px-6 py-4 text-xs text-gray-600 whitespace-nowrap">
                           {log.timestamp}
                         </td>
-                        <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                          {log.user}
-                        </td>
+                        <td className="px-6 py-4 text-sm font-medium text-gray-900">{log.user}</td>
                         <td className="px-6 py-4 text-sm text-gray-700">{log.action}</td>
                         <td className="px-6 py-4">
                           <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-300">
                             {log.module}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-xs text-gray-600 font-mono">
-                          {log.ip}
-                        </td>
+                        <td className="px-6 py-4 text-xs text-gray-600 font-mono">{log.ip}</td>
                         <td className="px-6 py-4">
                           <span
                             className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${
-                              log.status === "success"
-                                ? "bg-green-100 text-green-700 border-green-300"
-                                : "bg-red-100 text-red-700 border-red-300"
+                              log.status === 'success'
+                                ? 'bg-green-100 text-green-700 border-green-300'
+                                : 'bg-red-100 text-red-700 border-red-300'
                             }`}
                           >
                             {log.status.toUpperCase()}
@@ -3769,7 +3767,10 @@ const Settings = () => {
 
             <div className="p-4 border-t border-gray-200 bg-gray-50">
               <div className="flex items-center justify-between text-sm text-gray-600">
-                <span>Showing {getFilteredAuditLogs().length} {getFilteredAuditLogs().length === 1 ? 'entry' : 'entries'}</span>
+                <span>
+                  Showing {getFilteredAuditLogs().length}{' '}
+                  {getFilteredAuditLogs().length === 1 ? 'entry' : 'entries'}
+                </span>
                 <div className="flex items-center gap-2">
                   <button className="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                     Previous
@@ -3783,9 +3784,7 @@ const Settings = () => {
           </div>
         )}
 
-        {activeTab === "subscription" && (
-          <SubscriptionSettingsSection />
-        )}
+        {activeTab === 'subscription' && <SubscriptionSettingsSection />}
       </div>
 
       {/* Modals */}
@@ -3823,7 +3822,7 @@ const Settings = () => {
           setShowRolePermissionsModal(false);
           setSelectedRole(null);
         }}
-        role={selectedRole?.name || ""}
+        role={selectedRole?.name || ''}
         currentPermissions={selectedRole?.permissions || []}
         onSaved={handleSaveRolePermissions}
       />

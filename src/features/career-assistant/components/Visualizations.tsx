@@ -18,7 +18,7 @@ export const ProgressBarComponent: React.FC<ProgressBarProps> = ({ data }) => {
     green: 'bg-emerald-500',
     yellow: 'bg-amber-500',
     red: 'bg-red-500',
-    purple: 'bg-purple-500'
+    purple: 'bg-purple-500',
   };
 
   const bgColorMap = {
@@ -26,7 +26,7 @@ export const ProgressBarComponent: React.FC<ProgressBarProps> = ({ data }) => {
     green: 'bg-gray-200',
     yellow: 'bg-gray-200',
     red: 'bg-gray-200',
-    purple: 'bg-gray-200'
+    purple: 'bg-gray-200',
   };
 
   const barColor = colorMap[data.color || 'blue'];
@@ -105,10 +105,7 @@ export const ScoreDisplayComponent: React.FC<ScoreDisplayProps> = ({ data }) => 
           {data.breakdown.map((item, idx) => (
             <div key={idx} className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div
-                  className="w-2 h-2 rounded-full"
-                  style={{ backgroundColor: item.color }}
-                />
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
                 <span className="text-sm text-gray-700">{item.label}</span>
               </div>
               <span className="text-sm font-semibold text-gray-900">{item.value}%</span>
@@ -133,7 +130,8 @@ interface StatCardProps {
 
 export const StatCard: React.FC<StatCardProps> = ({ label, value, icon, trend }) => {
   const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
-  const trendColor = trend === 'up' ? 'text-emerald-600' : trend === 'down' ? 'text-red-600' : 'text-gray-400';
+  const trendColor =
+    trend === 'up' ? 'text-emerald-600' : trend === 'down' ? 'text-red-600' : 'text-gray-400';
 
   // Dynamic icon loading
   let IconComponent: LucideIcon | null = null;
@@ -154,9 +152,7 @@ export const StatCard: React.FC<StatCardProps> = ({ label, value, icon, trend })
       </div>
       <div className="flex items-end justify-between">
         <span className="text-2xl font-bold text-gray-900">{value}</span>
-        {trend && (
-          <TrendIcon className={`w-4 h-4 ${trendColor}`} />
-        )}
+        {trend && <TrendIcon className={`w-4 h-4 ${trendColor}`} />}
       </div>
     </motion.div>
   );
@@ -213,4 +209,3 @@ export const VisualizationContainer: React.FC<VisualizationContainerProps> = ({ 
     </motion.div>
   );
 };
-

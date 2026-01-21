@@ -1,16 +1,7 @@
-import {
-    AlertTriangle,
-    Calendar,
-    CheckCircle,
-    Eye,
-    Plus,
-    Shield,
-    Trash2,
-    X,
-} from "lucide-react";
-import React, { useEffect, useState } from "react";
-import { useUserRole } from "../../../../hooks/useUserRole";
-import { supabase } from "../../../../lib/supabaseClient";
+import { AlertTriangle, Calendar, CheckCircle, Eye, Plus, Shield, Trash2, X } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { useUserRole } from '../../../../hooks/useUserRole';
+import { supabase } from '../../../../lib/supabaseClient';
 
 interface Teacher {
   id: string;
@@ -49,52 +40,40 @@ interface Conflict {
 
 // Period time mappings
 const periodTimes: { [key: number]: { start: string; end: string } } = {
-  1: { start: "09:00", end: "10:00" },
-  2: { start: "10:00", end: "11:00" },
-  3: { start: "11:00", end: "12:00" },
-  4: { start: "12:00", end: "13:00" },
-  5: { start: "13:00", end: "14:00" },
-  6: { start: "14:00", end: "15:00" },
-  7: { start: "15:00", end: "16:00" },
-  8: { start: "16:00", end: "17:00" },
-  9: { start: "17:00", end: "18:00" },
-  10: { start: "18:00", end: "19:00" },
+  1: { start: '09:00', end: '10:00' },
+  2: { start: '10:00', end: '11:00' },
+  3: { start: '11:00', end: '12:00' },
+  4: { start: '12:00', end: '13:00' },
+  5: { start: '13:00', end: '14:00' },
+  6: { start: '14:00', end: '15:00' },
+  7: { start: '15:00', end: '16:00' },
+  8: { start: '16:00', end: '17:00' },
+  9: { start: '17:00', end: '18:00' },
+  10: { start: '18:00', end: '19:00' },
 };
 
 const TimetableAllocationPage: React.FC = () => {
-  const {
-    canEditTimetable,
-    canViewTimetable,
-    roleLabel,
-    loading: roleLoading,
-  } = useUserRole();
+  const { canEditTimetable, canViewTimetable, roleLabel, loading: roleLoading } = useUserRole();
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [classes, setClasses] = useState<SchoolClass[]>([]);
-  const [selectedTeacher, setSelectedTeacher] = useState<string>("");
-  const [selectedClass, setSelectedClass] = useState<string>("");
-  const [timetableId, setTimetableId] = useState<string>("");
+  const [selectedTeacher, setSelectedTeacher] = useState<string>('');
+  const [selectedClass, setSelectedClass] = useState<string>('');
+  const [timetableId, setTimetableId] = useState<string>('');
   const [slots, setSlots] = useState<TimetableSlot[]>([]);
   const [conflicts, setConflicts] = useState<Conflict[]>([]);
   const [workload, setWorkload] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [schoolId, setSchoolId] = useState<string>("");
+  const [schoolId, setSchoolId] = useState<string>('');
 
   // For adding slot inline
   const [addingSlot, setAddingSlot] = useState<{
     day: number;
     period: number;
   } | null>(null);
-  const [newSubject, setNewSubject] = useState("");
-  const [newRoom, setNewRoom] = useState("");
+  const [newSubject, setNewSubject] = useState('');
+  const [newRoom, setNewRoom] = useState('');
 
-  const days = [
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-  ];
+  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const periods = Array.from({ length: 10 }, (_, i) => i + 1);
 
   useEffect(() => {
@@ -128,17 +107,17 @@ const TimetableAllocationPage: React.FC = () => {
       if (!user) return;
 
       const { data: userData } = await supabase
-        .from("users")
-        .select("role")
-        .eq("id", user.id)
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
         .single();
 
-      if (userData?.role === "school_admin") {
+      if (userData?.role === 'school_admin') {
         const { data: schoolData } = await supabase
-          .from("organizations")
-          .select("id")
-          .eq("organization_type", "school")
-          .eq("admin_id", user.id)
+          .from('organizations')
+          .select('id')
+          .eq('organization_type', 'school')
+          .eq('admin_id', user.id)
           .maybeSingle();
 
         if (schoolData?.id) {
@@ -147,11 +126,11 @@ const TimetableAllocationPage: React.FC = () => {
         }
       }
 
-      if (userData?.role === "school_educator") {
+      if (userData?.role === 'school_educator') {
         const { data: educatorData } = await supabase
-          .from("school_educators")
-          .select("school_id")
-          .eq("user_id", user.id)
+          .from('school_educators')
+          .select('school_id')
+          .eq('user_id', user.id)
           .maybeSingle();
 
         if (educatorData?.school_id) {
@@ -160,7 +139,7 @@ const TimetableAllocationPage: React.FC = () => {
         }
       }
     } catch (error) {
-      console.error("Error fetching school ID:", error);
+      console.error('Error fetching school ID:', error);
     }
   };
 
@@ -168,11 +147,11 @@ const TimetableAllocationPage: React.FC = () => {
     if (!schoolId) return;
 
     const { data } = await supabase
-      .from("school_educators")
-      .select("id, teacher_id, first_name, last_name")
-      .eq("school_id", schoolId)
-      .eq("account_status", "active")
-      .order("first_name");
+      .from('school_educators')
+      .select('id, teacher_id, first_name, last_name')
+      .eq('school_id', schoolId)
+      .eq('account_status', 'active')
+      .order('first_name');
 
     if (data) setTeachers(data);
   };
@@ -181,12 +160,12 @@ const TimetableAllocationPage: React.FC = () => {
     if (!schoolId) return;
 
     const { data } = await supabase
-      .from("school_classes")
-      .select("id, name, grade, section, academic_year")
-      .eq("school_id", schoolId)
-      .eq("account_status", "active")
-      .order("grade")
-      .order("section");
+      .from('school_classes')
+      .select('id, name, grade, section, academic_year')
+      .eq('school_id', schoolId)
+      .eq('account_status', 'active')
+      .order('grade')
+      .order('section');
 
     if (data) setClasses(data);
   };
@@ -194,25 +173,25 @@ const TimetableAllocationPage: React.FC = () => {
   const loadOrCreateTimetable = async () => {
     const currentYear = new Date().getFullYear();
     const { data: existing } = await supabase
-      .from("timetables")
-      .select("id")
-      .eq("academic_year", `${currentYear}-${currentYear + 1}`)
-      .eq("status", "draft")
+      .from('timetables')
+      .select('id')
+      .eq('academic_year', `${currentYear}-${currentYear + 1}`)
+      .eq('status', 'draft')
       .single();
 
     if (existing) {
       setTimetableId(existing.id);
     } else {
       const { data: newTimetable } = await supabase
-        .from("timetables")
+        .from('timetables')
         .insert({
           academic_year: `${currentYear}-${currentYear + 1}`,
-          term: "Term 1",
+          term: 'Term 1',
           start_date: `${currentYear}-06-01`,
           end_date: `${currentYear}-12-31`,
-          status: "draft",
+          status: 'draft',
         })
-        .select("id")
+        .select('id')
         .single();
 
       if (newTimetable) setTimetableId(newTimetable.id);
@@ -222,7 +201,7 @@ const TimetableAllocationPage: React.FC = () => {
   const loadSlots = async () => {
     // Load slots for selected teacher AND class combination
     const { data } = await supabase
-      .from("timetable_slots")
+      .from('timetable_slots')
       .select(
         `
         *,
@@ -240,21 +219,21 @@ const TimetableAllocationPage: React.FC = () => {
         )
       `
       )
-      .eq("timetable_id", timetableId)
-      .eq("educator_id", selectedTeacher)
-      .eq("class_id", selectedClass)
-      .order("day_of_week")
-      .order("period_number");
+      .eq('timetable_id', timetableId)
+      .eq('educator_id', selectedTeacher)
+      .eq('class_id', selectedClass)
+      .order('day_of_week')
+      .order('period_number');
 
     if (data) {
       const mappedSlots = data.map((slot: any) => ({
         ...slot,
         class_name: slot.school_classes
-          ? `${slot.school_classes.grade}${slot.school_classes.section ? `-${slot.school_classes.section}` : ""}`
-          : "N/A",
+          ? `${slot.school_classes.grade}${slot.school_classes.section ? `-${slot.school_classes.section}` : ''}`
+          : 'N/A',
         teacher_name: slot.school_educators
           ? `${slot.school_educators.first_name} ${slot.school_educators.last_name}`
-          : "N/A",
+          : 'N/A',
       }));
       setSlots(mappedSlots);
     }
@@ -263,7 +242,7 @@ const TimetableAllocationPage: React.FC = () => {
   const loadTeacherWorkload = async () => {
     if (!selectedTeacher) return;
 
-    const { data } = await supabase.rpc("calculate_teacher_workload", {
+    const { data } = await supabase.rpc('calculate_teacher_workload', {
       p_teacher_id: selectedTeacher,
       p_timetable_id: timetableId,
     });
@@ -271,41 +250,39 @@ const TimetableAllocationPage: React.FC = () => {
     if (data && data.length > 0) setWorkload(data[0]);
 
     const { data: conflictData } = await supabase
-      .from("timetable_conflicts")
-      .select("*")
-      .eq("timetable_id", timetableId)
-      .eq("teacher_id", selectedTeacher)
-      .eq("resolved", false);
+      .from('timetable_conflicts')
+      .select('*')
+      .eq('timetable_id', timetableId)
+      .eq('teacher_id', selectedTeacher)
+      .eq('resolved', false);
 
     if (conflictData) setConflicts(conflictData);
   };
 
   const getSlotForCell = (dayIndex: number, periodNum: number) => {
-    return slots.find(
-      (s) => s.day_of_week === dayIndex + 1 && s.period_number === periodNum
-    );
+    return slots.find((s) => s.day_of_week === dayIndex + 1 && s.period_number === periodNum);
   };
 
   const handleAddSlotClick = (dayIndex: number, periodNum: number) => {
     if (!selectedTeacher || !selectedClass) {
-      alert("Please select both Teacher and Class first");
+      alert('Please select both Teacher and Class first');
       return;
     }
     setAddingSlot({ day: dayIndex + 1, period: periodNum });
-    setNewSubject("");
-    setNewRoom("");
+    setNewSubject('');
+    setNewRoom('');
   };
 
   const handleSaveSlot = async () => {
     if (!addingSlot || !newSubject.trim()) {
-      alert("Please enter a subject name");
+      alert('Please enter a subject name');
       return;
     }
 
     setLoading(true);
     try {
       const times = periodTimes[addingSlot.period];
-      const { error } = await supabase.from("timetable_slots").insert({
+      const { error } = await supabase.from('timetable_slots').insert({
         timetable_id: timetableId,
         educator_id: selectedTeacher,
         class_id: selectedClass,
@@ -330,14 +307,11 @@ const TimetableAllocationPage: React.FC = () => {
   };
 
   const deleteSlot = async (slotId: string) => {
-    if (!confirm("Are you sure you want to delete this slot?")) return;
+    if (!confirm('Are you sure you want to delete this slot?')) return;
 
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from("timetable_slots")
-        .delete()
-        .eq("id", slotId);
+      const { error } = await supabase.from('timetable_slots').delete().eq('id', slotId);
 
       if (error) throw error;
 
@@ -370,12 +344,8 @@ const TimetableAllocationPage: React.FC = () => {
       <div className="space-y-6 p-4 sm:p-6 lg:p-8">
         <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
           <Shield className="h-12 w-12 text-red-500 mx-auto mb-3" />
-          <h3 className="text-lg font-semibold text-red-900 mb-2">
-            Access Denied
-          </h3>
-          <p className="text-red-700">
-            You don't have permission to view timetables.
-          </p>
+          <h3 className="text-lg font-semibold text-red-900 mb-2">Access Denied</h3>
+          <p className="text-red-700">You don't have permission to view timetables.</p>
         </div>
       </div>
     );
@@ -397,16 +367,14 @@ const TimetableAllocationPage: React.FC = () => {
               <Shield className="h-4 w-4 text-indigo-600" />
               <span className="text-sm text-indigo-600 font-medium">
                 Your Role: {roleLabel}
-                {canEdit ? " (Can Edit)" : " (View Only)"}
+                {canEdit ? ' (Can Edit)' : ' (View Only)'}
               </span>
             </div>
           </div>
           {!canEdit && (
             <div className="flex items-center gap-2 px-4 py-2 bg-yellow-50 border border-yellow-200 rounded-lg">
               <Eye className="h-5 w-5 text-yellow-600" />
-              <span className="text-sm text-yellow-800 font-medium">
-                View Only Mode
-              </span>
+              <span className="text-sm text-yellow-800 font-medium">View Only Mode</span>
             </div>
           )}
         </div>
@@ -415,9 +383,7 @@ const TimetableAllocationPage: React.FC = () => {
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-6">
         {/* Teacher Load Section - Select Teacher and Class */}
         <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Teacher Load
-          </h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Teacher Load</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -431,8 +397,7 @@ const TimetableAllocationPage: React.FC = () => {
                 <option value="">-- Select a teacher --</option>
                 {teachers.map((teacher) => (
                   <option key={teacher.id} value={teacher.id}>
-                    {teacher.teacher_id} - {teacher.first_name}{" "}
-                    {teacher.last_name}
+                    {teacher.teacher_id} - {teacher.first_name} {teacher.last_name}
                   </option>
                 ))}
               </select>
@@ -451,7 +416,7 @@ const TimetableAllocationPage: React.FC = () => {
                 {classes.map((cls) => (
                   <option key={cls.id} value={cls.id}>
                     {cls.grade}
-                    {cls.section ? `-${cls.section}` : ""} ({cls.name})
+                    {cls.section ? `-${cls.section}` : ''} ({cls.name})
                   </option>
                 ))}
               </select>
@@ -462,13 +427,11 @@ const TimetableAllocationPage: React.FC = () => {
           {selectedTeacher && selectedClass && (
             <div className="mt-4 p-3 bg-indigo-50 rounded-lg border border-indigo-200">
               <p className="text-sm text-indigo-800">
-                <span className="font-medium">Viewing timetable for:</span>{" "}
-                {selectedTeacherObj?.first_name} {selectedTeacherObj?.last_name}{" "}
-                → {selectedClassObj?.grade}
-                {selectedClassObj?.section
-                  ? `-${selectedClassObj.section}`
-                  : ""}{" "}
-                ({selectedClassObj?.name})
+                <span className="font-medium">Viewing timetable for:</span>{' '}
+                {selectedTeacherObj?.first_name} {selectedTeacherObj?.last_name} →{' '}
+                {selectedClassObj?.grade}
+                {selectedClassObj?.section ? `-${selectedClassObj.section}` : ''} (
+                {selectedClassObj?.name})
               </p>
             </div>
           )}
@@ -479,17 +442,13 @@ const TimetableAllocationPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div
               className={`p-4 rounded-xl border-2 ${
-                workload.exceeds_limit
-                  ? "bg-red-50 border-red-300"
-                  : "bg-green-50 border-green-300"
+                workload.exceeds_limit ? 'bg-red-50 border-red-300' : 'bg-green-50 border-green-300'
               }`}
             >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Total Periods/Week</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {workload.total_periods}/30
-                  </p>
+                  <p className="text-2xl font-bold text-gray-900">{workload.total_periods}/30</p>
                 </div>
                 {workload.exceeds_limit ? (
                   <AlertTriangle className="h-8 w-8 text-red-500" />
@@ -502,16 +461,14 @@ const TimetableAllocationPage: React.FC = () => {
             <div
               className={`p-4 rounded-xl border-2 ${
                 workload.consecutive_violation
-                  ? "bg-red-50 border-red-300"
-                  : "bg-green-50 border-green-300"
+                  ? 'bg-red-50 border-red-300'
+                  : 'bg-green-50 border-green-300'
               }`}
             >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Max Consecutive</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {workload.max_consecutive}/3
-                  </p>
+                  <p className="text-2xl font-bold text-gray-900">{workload.max_consecutive}/3</p>
                 </div>
                 {workload.consecutive_violation ? (
                   <AlertTriangle className="h-8 w-8 text-red-500" />
@@ -525,9 +482,7 @@ const TimetableAllocationPage: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Conflicts</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {conflicts.length}
-                  </p>
+                  <p className="text-2xl font-bold text-gray-900">{conflicts.length}</p>
                 </div>
                 <Calendar className="h-8 w-8 text-blue-500" />
               </div>
@@ -544,12 +499,9 @@ const TimetableAllocationPage: React.FC = () => {
             </h3>
             <div className="space-y-2">
               {conflicts.map((conflict, index) => (
-                <div
-                  key={index}
-                  className="bg-white p-3 rounded-lg border border-red-200"
-                >
+                <div key={index} className="bg-white p-3 rounded-lg border border-red-200">
                   <p className="font-medium text-gray-900">
-                    {conflict.conflict_type.replace(/_/g, " ").toUpperCase()}
+                    {conflict.conflict_type.replace(/_/g, ' ').toUpperCase()}
                   </p>
                   <p className="text-sm text-gray-600">
                     {JSON.stringify(conflict.conflict_details)}
@@ -583,9 +535,7 @@ const TimetableAllocationPage: React.FC = () => {
                 {periods.map((period) => (
                   <tr key={period} className="hover:bg-gray-50">
                     <td className="px-4 py-3 border-b border-r border-gray-200 bg-gray-50">
-                      <div className="font-medium text-gray-900">
-                        Period {period}
-                      </div>
+                      <div className="font-medium text-gray-900">Period {period}</div>
                       <div className="text-xs text-gray-500">
                         {periodTimes[period].start}-{periodTimes[period].end}
                       </div>
@@ -593,8 +543,7 @@ const TimetableAllocationPage: React.FC = () => {
                     {days.map((day, dayIndex) => {
                       const slot = getSlotForCell(dayIndex, period);
                       const isAdding =
-                        addingSlot?.day === dayIndex + 1 &&
-                        addingSlot?.period === period;
+                        addingSlot?.day === dayIndex + 1 && addingSlot?.period === period;
 
                       return (
                         <td
@@ -655,18 +604,14 @@ const TimetableAllocationPage: React.FC = () => {
                             </div>
                           ) : canEdit ? (
                             <button
-                              onClick={() =>
-                                handleAddSlotClick(dayIndex, period)
-                              }
+                              onClick={() => handleAddSlotClick(dayIndex, period)}
                               className="w-full py-2 text-green-600 hover:bg-green-50 rounded-lg transition flex items-center justify-center gap-1 text-sm"
                             >
                               <Plus className="h-4 w-4" />
                               Add Slot
                             </button>
                           ) : (
-                            <div className="text-center text-gray-400 text-xs py-2">
-                              -
-                            </div>
+                            <div className="text-center text-gray-400 text-xs py-2">-</div>
                           )}
                         </td>
                       );
@@ -679,12 +624,9 @@ const TimetableAllocationPage: React.FC = () => {
         ) : (
           <div className="bg-gray-50 rounded-xl p-8 text-center border border-gray-200">
             <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-            <h3 className="text-lg font-medium text-gray-900 mb-1">
-              Select Teacher and Class
-            </h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-1">Select Teacher and Class</h3>
             <p className="text-gray-500">
-              Please select both a teacher and a class above to view and manage
-              the timetable.
+              Please select both a teacher and a class above to view and manage the timetable.
             </p>
           </div>
         )}

@@ -63,20 +63,22 @@ export interface ProcessedStudent extends Student {
 
 export const useMentorAllocation = (collegeId: string) => {
   const { user } = useAuth() as { user: AuthUser | null };
-  
+
   // Debug logging for college ID
   console.log('🔍 [useMentorAllocation] College ID received:', collegeId);
   console.log('🔍 [useMentorAllocation] User context:', user);
-  
+
   // Data states
   const [mentors, setMentors] = useState<ProcessedMentor[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [periods, setPeriods] = useState<MentorPeriod[]>([]);
   const [allocations, setAllocations] = useState<MentorAllocation[]>([]);
   const [notes, setNotes] = useState<MentorNote[]>([]);
-  const [departments, setDepartments] = useState<Array<{id: string; name: string}>>([]);
-  const [programs, setPrograms] = useState<Array<{id: string; name: string; code: string; department_name: string}>>([]);
-  
+  const [departments, setDepartments] = useState<Array<{ id: string; name: string }>>([]);
+  const [programs, setPrograms] = useState<
+    Array<{ id: string; name: string; code: string; department_name: string }>
+  >([]);
+
   // Loading states
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -85,15 +87,17 @@ export const useMentorAllocation = (collegeId: string) => {
   const fetchData = async () => {
     if (!collegeId) {
       console.log('❌ [useMentorAllocation] No college ID provided');
-      setError('No college ID available. Please ensure you are logged in with a valid college account.');
+      setError(
+        'No college ID available. Please ensure you are logged in with a valid college account.'
+      );
       setLoading(false);
       return;
     }
-    
+
     try {
       setLoading(true);
       setError(null);
-      
+
       console.log('🔄 [useMentorAllocation] Fetching data for college:', collegeId);
 
       const [
@@ -145,67 +149,79 @@ export const useMentorAllocation = (collegeId: string) => {
 
   // Process mentors with their allocations and statistics
   const processedMentors = useMemo(() => {
-    return mentors.map(mentor => {
+    return mentors.map((mentor) => {
       // Get all periods for this college (not just those with allocations)
-      const allPeriods = periods.filter(period => period.is_active !== false); // Include active and null is_active
-      
+      const allPeriods = periods.filter((period) => period.is_active !== false); // Include active and null is_active
+
       // Get allocations for this mentor
       const mentorAllocations = allocations.filter(
-        allocation => allocation.mentor_id === mentor.id
+        (allocation) => allocation.mentor_id === mentor.id
       );
 
       // Create allocations for all periods (including empty ones)
-      const allocationsByPeriod = allPeriods.reduce((acc, period) => {
-        const key = period.id;
-        
-        // Get allocations for this specific period
-        const periodAllocations = mentorAllocations.filter(
-          allocation => allocation.period_id === period.id && 
-          (allocation.status === 'active' || allocation.status === 'pending')
-        );
+      const allocationsByPeriod = allPeriods.reduce(
+        (acc, period) => {
+          const key = period.id;
 
-        // Create the allocation object (even if no students)
-        acc[key] = {
-          id: key,
-          period,
-          students: [],
-          mentor_id: mentor.id,
-          status: periodAllocations.length > 0 ? 'active' : 'available', // 'available' for periods with no students
-          assigned_date: periodAllocations[0]?.assigned_date || new Date().toISOString().split('T')[0],
-          created_at: periodAllocations[0]?.created_at || new Date().toISOString(),
-          capacity: period.default_mentor_capacity || 15, // Add capacity from period
-        };
+          // Get allocations for this specific period
+          const periodAllocations = mentorAllocations.filter(
+            (allocation) =>
+              allocation.period_id === period.id &&
+              (allocation.status === 'active' || allocation.status === 'pending')
+          );
 
-        // Add students if there are any allocations
-        periodAllocations.forEach(allocation => {
-          const student = students.find(s => s.id === allocation.student_id);
-          if (student) {
-            // Add intervention count and last interaction from notes
-            const studentNotes = notes.filter(n => n.student_id === student.id && n.mentor_id === mentor.id);
-            const lastNote = studentNotes.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
-            
-            const processedStudent = {
-              ...student,
-              intervention_count: studentNotes.length,
-              last_interaction: lastNote?.note_date || undefined,
-            };
-            
-            acc[key].students.push(processedStudent);
-          }
-        });
+          // Create the allocation object (even if no students)
+          acc[key] = {
+            id: key,
+            period,
+            students: [],
+            mentor_id: mentor.id,
+            status: periodAllocations.length > 0 ? 'active' : 'available', // 'available' for periods with no students
+            assigned_date:
+              periodAllocations[0]?.assigned_date || new Date().toISOString().split('T')[0],
+            created_at: periodAllocations[0]?.created_at || new Date().toISOString(),
+            capacity: period.default_mentor_capacity || 15, // Add capacity from period
+          };
 
-        return acc;
-      }, {} as Record<string, ProcessedAllocation>);
+          // Add students if there are any allocations
+          periodAllocations.forEach((allocation) => {
+            const student = students.find((s) => s.id === allocation.student_id);
+            if (student) {
+              // Add intervention count and last interaction from notes
+              const studentNotes = notes.filter(
+                (n) => n.student_id === student.id && n.mentor_id === mentor.id
+              );
+              const lastNote = studentNotes.sort(
+                (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+              )[0];
+
+              const processedStudent = {
+                ...student,
+                intervention_count: studentNotes.length,
+                last_interaction: lastNote?.note_date || undefined,
+              };
+
+              acc[key].students.push(processedStudent);
+            }
+          });
+
+          return acc;
+        },
+        {} as Record<string, ProcessedAllocation>
+      );
 
       const processedAllocations = Object.values(allocationsByPeriod);
 
       // Calculate statistics (only count periods with actual students)
-      const currentLoad = processedAllocations.reduce((total, allocation) => total + allocation.students.length, 0);
-      const atRiskStudents = processedAllocations.reduce(
-        (total, allocation) => total + allocation.students.filter(s => s.at_risk).length,
+      const currentLoad = processedAllocations.reduce(
+        (total, allocation) => total + allocation.students.length,
         0
       );
-      const totalInterventions = notes.filter(n => n.mentor_id === mentor.id).length;
+      const atRiskStudents = processedAllocations.reduce(
+        (total, allocation) => total + allocation.students.filter((s) => s.at_risk).length,
+        0
+      );
+      const totalInterventions = notes.filter((n) => n.mentor_id === mentor.id).length;
 
       return {
         ...mentor,
@@ -220,31 +236,31 @@ export const useMentorAllocation = (collegeId: string) => {
   // Get unallocated students
   const unallocatedStudents = useMemo(() => {
     const allocatedStudentIds = allocations
-      .filter(allocation => allocation.status === 'active')
-      .map(allocation => allocation.student_id);
-    
-    return students.filter(student => !allocatedStudentIds.includes(student.id));
+      .filter((allocation) => allocation.status === 'active')
+      .map((allocation) => allocation.student_id);
+
+    return students.filter((student) => !allocatedStudentIds.includes(student.id));
   }, [students, allocations]);
 
   // Get at-risk students
   const atRiskStudents = useMemo(() => {
-    return students.filter(student => student.at_risk);
+    return students.filter((student) => student.at_risk);
   }, [students]);
 
   // Get active periods
   const activePeriods = useMemo(() => {
-    return periods.filter(period => period.is_active);
+    return periods.filter((period) => period.is_active);
   }, [periods]);
 
   // Get unique departments from mentors
   const uniqueDepartments = useMemo(() => {
-    const depts = new Set(mentors.map(m => m.department).filter(Boolean));
+    const depts = new Set(mentors.map((m) => m.department).filter(Boolean));
     return Array.from(depts);
   }, [mentors]);
 
   // Get unique batches from students
   const uniqueBatches = useMemo(() => {
-    const batches = new Set(students.map(s => s.batch).filter(Boolean));
+    const batches = new Set(students.map((s) => s.batch).filter(Boolean));
     return Array.from(batches);
   }, [students]);
 
@@ -252,7 +268,7 @@ export const useMentorAllocation = (collegeId: string) => {
   const statistics = useMemo(() => {
     const totalMentors = mentors.length;
     const totalStudents = students.length;
-    const allocatedStudents = allocations.filter(a => a.status === 'active').length;
+    const allocatedStudents = allocations.filter((a) => a.status === 'active').length;
     const totalAtRisk = atRiskStudents.length;
     const totalInterventions = notes.length;
 
@@ -268,20 +284,22 @@ export const useMentorAllocation = (collegeId: string) => {
 
   // Helper functions
   const getMentorCurrentLoad = (mentorId: string) => {
-    const mentor = processedMentors.find(m => m.id === mentorId);
+    const mentor = processedMentors.find((m) => m.id === mentorId);
     return mentor?.current_load || 0;
   };
 
   const getMentorActiveAllocations = (mentorId: string) => {
-    const mentor = processedMentors.find(m => m.id === mentorId);
+    const mentor = processedMentors.find((m) => m.id === mentorId);
     return mentor?.allocations || [];
   };
 
   const getMentorAtRiskStudents = (mentorId: string) => {
-    const mentor = processedMentors.find(m => m.id === mentorId);
-    return mentor?.allocations.flatMap(allocation => 
-      allocation.students.filter(student => student.at_risk)
-    ) || [];
+    const mentor = processedMentors.find((m) => m.id === mentorId);
+    return (
+      mentor?.allocations.flatMap((allocation) =>
+        allocation.students.filter((student) => student.at_risk)
+      ) || []
+    );
   };
 
   // Actions
@@ -293,7 +311,7 @@ export const useMentorAllocation = (collegeId: string) => {
   ) => {
     try {
       // Find the period to determine the correct status
-      const period = periods.find(p => p.id === periodId);
+      const period = periods.find((p) => p.id === periodId);
       if (!period) {
         throw new Error('Period not found');
       }
@@ -303,20 +321,20 @@ export const useMentorAllocation = (collegeId: string) => {
       today.setHours(0, 0, 0, 0);
       const startDate = new Date(period.start_date);
       startDate.setHours(0, 0, 0, 0);
-      
+
       // If period hasn't started yet, status should be 'pending'
       // If period has started, status should be 'active'
       const allocationStatus = today < startDate ? 'pending' : 'active';
-      
+
       console.log('🔍 [allocateStudents] Period status check:', {
         periodId,
         periodName: period.name,
         startDate: period.start_date,
         today: today.toISOString().split('T')[0],
-        status: allocationStatus
+        status: allocationStatus,
       });
 
-      const allocationsToCreate = studentIds.map(studentId => ({
+      const allocationsToCreate = studentIds.map((studentId) => ({
         mentor_id: mentorId,
         student_id: studentId,
         period_id: periodId,
@@ -326,8 +344,8 @@ export const useMentorAllocation = (collegeId: string) => {
       }));
 
       const newAllocations = await createMentorAllocations(allocationsToCreate);
-      setAllocations(prev => [...prev, ...newAllocations]);
-      
+      setAllocations((prev) => [...prev, ...newAllocations]);
+
       return newAllocations;
     } catch (err) {
       console.error('Error allocating students:', err);
@@ -361,7 +379,7 @@ export const useMentorAllocation = (collegeId: string) => {
       // If no allocation ID provided, try to find it
       let actualAllocationId = allocationId;
       if (!allocationId || allocationId === 'placeholder-allocation-id') {
-        actualAllocationId = await findAllocationId(mentorId, studentId, 'active') || '';
+        actualAllocationId = (await findAllocationId(mentorId, studentId, 'active')) || '';
         if (!actualAllocationId) {
           throw new Error('No active allocation found for this mentor-student pair');
         }
@@ -375,7 +393,7 @@ export const useMentorAllocation = (collegeId: string) => {
         ...noteData,
       });
 
-      setNotes(prev => [...prev, newNote]);
+      setNotes((prev) => [...prev, newNote]);
       return newNote;
     } catch (err) {
       console.error('Error adding mentor note:', err);
@@ -394,7 +412,7 @@ export const useMentorAllocation = (collegeId: string) => {
         allocationId,
         newMentorId,
         newPeriodId,
-        reason
+        reason,
       });
 
       // Validate allocation ID
@@ -408,7 +426,7 @@ export const useMentorAllocation = (collegeId: string) => {
       }
 
       // Get the current allocation details
-      const currentAllocation = allocations.find(a => a.id === allocationId);
+      const currentAllocation = allocations.find((a) => a.id === allocationId);
       if (!currentAllocation) {
         throw new Error('Current allocation not found');
       }
@@ -418,27 +436,30 @@ export const useMentorAllocation = (collegeId: string) => {
         currentMentorId: currentAllocation.mentor_id,
         currentPeriodId: currentAllocation.period_id,
         studentId: currentAllocation.student_id,
-        status: currentAllocation.status
+        status: currentAllocation.status,
       });
 
       // Validate the allocation is active
       if (currentAllocation.status !== 'active') {
-        throw new Error(`Cannot reassign: allocation status is '${currentAllocation.status}', must be 'active'`);
+        throw new Error(
+          `Cannot reassign: allocation status is '${currentAllocation.status}', must be 'active'`
+        );
       }
 
       // Validate new mentor is different from current mentor OR period is different
-      if (currentAllocation.mentor_id === newMentorId && currentAllocation.period_id === newPeriodId) {
+      if (
+        currentAllocation.mentor_id === newMentorId &&
+        currentAllocation.period_id === newPeriodId
+      ) {
         throw new Error('New mentor and period cannot be the same as current assignment');
       }
 
       // Check if new mentor has capacity in the selected period
-      const newMentorAllocationsInPeriod = allocations.filter(a => 
-        a.mentor_id === newMentorId && 
-        a.period_id === newPeriodId &&
-        a.status === 'active'
+      const newMentorAllocationsInPeriod = allocations.filter(
+        (a) => a.mentor_id === newMentorId && a.period_id === newPeriodId && a.status === 'active'
       );
 
-      const period = periods.find(p => p.id === newPeriodId);
+      const period = periods.find((p) => p.id === newPeriodId);
       if (!period) {
         throw new Error('Selected period not found');
       }
@@ -452,11 +473,13 @@ export const useMentorAllocation = (collegeId: string) => {
         periodName: period.name,
         currentLoad,
         maxCapacity,
-        hasCapacity: currentLoad < maxCapacity
+        hasCapacity: currentLoad < maxCapacity,
       });
 
       if (currentLoad >= maxCapacity) {
-        throw new Error(`New mentor has reached maximum capacity in this period (${currentLoad}/${maxCapacity})`);
+        throw new Error(
+          `New mentor has reached maximum capacity in this period (${currentLoad}/${maxCapacity})`
+        );
       }
 
       // Step 1: Mark the current allocation as transferred
@@ -476,7 +499,9 @@ export const useMentorAllocation = (collegeId: string) => {
         assigned_date: new Date().toISOString().split('T')[0],
         assigned_by: newMentorId, // Use new mentor as assigned_by since they're a valid lecturer
         status: 'active' as const,
-        transfer_reason: reason || `Transferred from previous mentor${currentAllocation.period_id !== newPeriodId ? ' to different period' : ''}`,
+        transfer_reason:
+          reason ||
+          `Transferred from previous mentor${currentAllocation.period_id !== newPeriodId ? ' to different period' : ''}`,
       };
 
       const newAllocations = await createMentorAllocations([newAllocationData]);
@@ -487,21 +512,23 @@ export const useMentorAllocation = (collegeId: string) => {
         mentorId: newAllocation.mentor_id,
         studentId: newAllocation.student_id,
         periodId: newAllocation.period_id,
-        status: newAllocation.status
+        status: newAllocation.status,
       });
 
       // Step 3: Update local state
-      setAllocations(prev => 
-        prev.map(a => 
-          a.id === allocationId 
-            ? { 
-                ...a, 
-                status: 'transferred', 
-                completion_date: new Date().toISOString().split('T')[0], 
-                transfer_reason: reason || 'Reassigned to different mentor/period'
-              }
-            : a
-        ).concat(newAllocation)
+      setAllocations((prev) =>
+        prev
+          .map((a) =>
+            a.id === allocationId
+              ? {
+                  ...a,
+                  status: 'transferred',
+                  completion_date: new Date().toISOString().split('T')[0],
+                  transfer_reason: reason || 'Reassigned to different mentor/period',
+                }
+              : a
+          )
+          .concat(newAllocation)
       );
 
       // Step 4: Refresh all data to ensure consistency
@@ -519,7 +546,7 @@ export const useMentorAllocation = (collegeId: string) => {
   const createPeriod = async (periodData: Omit<MentorPeriod, 'id' | 'created_at'>) => {
     try {
       const newPeriod = await createMentorPeriod(periodData);
-      setPeriods(prev => [...prev, newPeriod]);
+      setPeriods((prev) => [...prev, newPeriod]);
       return newPeriod;
     } catch (err) {
       console.error('Error creating period:', err);
@@ -530,11 +557,11 @@ export const useMentorAllocation = (collegeId: string) => {
   const updatePeriod = async (periodId: string, updates: Partial<MentorPeriod>) => {
     try {
       const updatedPeriod = await updateMentorPeriod(periodId, updates);
-      setPeriods(prev => prev.map(p => p.id === periodId ? updatedPeriod : p));
-      
+      setPeriods((prev) => prev.map((p) => (p.id === periodId ? updatedPeriod : p)));
+
       // Refetch all data to ensure consistency across all components
       await fetchData();
-      
+
       return updatedPeriod;
     } catch (err) {
       console.error('Error updating period:', err);
@@ -552,13 +579,13 @@ export const useMentorAllocation = (collegeId: string) => {
   ) => {
     try {
       if (!user?.id) throw new Error('User not authenticated');
-      
+
       const updatedNote = await updateMentorNoteResponse(noteId, {
         ...response,
         last_updated_by: user.id,
       });
-      
-      setNotes(prev => prev.map(n => n.id === noteId ? updatedNote : n));
+
+      setNotes((prev) => prev.map((n) => (n.id === noteId ? updatedNote : n)));
       return updatedNote;
     } catch (err) {
       console.error('Error updating note response:', err);
@@ -577,13 +604,13 @@ export const useMentorAllocation = (collegeId: string) => {
   ) => {
     try {
       if (!user?.id) throw new Error('User not authenticated');
-      
+
       const updatedNote = await updateMentorNoteFeedback(noteId, {
         ...feedback,
         last_updated_by: user.id,
       });
-      
-      setNotes(prev => prev.map(n => n.id === noteId ? updatedNote : n));
+
+      setNotes((prev) => prev.map((n) => (n.id === noteId ? updatedNote : n)));
       return updatedNote;
     } catch (err) {
       console.error('Error updating note feedback:', err);
@@ -594,9 +621,9 @@ export const useMentorAllocation = (collegeId: string) => {
   const markNoteResolved = async (noteId: string) => {
     try {
       if (!user?.id) throw new Error('User not authenticated');
-      
+
       const updatedNote = await resolveNote(noteId, user.id);
-      setNotes(prev => prev.map(n => n.id === noteId ? updatedNote : n));
+      setNotes((prev) => prev.map((n) => (n.id === noteId ? updatedNote : n)));
       return updatedNote;
     } catch (err) {
       console.error('Error resolving note:', err);
@@ -607,9 +634,9 @@ export const useMentorAllocation = (collegeId: string) => {
   const escalateNoteAction = async (noteId: string, reason: string) => {
     try {
       if (!user?.id) throw new Error('User not authenticated');
-      
+
       const updatedNote = await escalateNote(noteId, reason, user.id);
-      setNotes(prev => prev.map(n => n.id === noteId ? updatedNote : n));
+      setNotes((prev) => prev.map((n) => (n.id === noteId ? updatedNote : n)));
       return updatedNote;
     } catch (err) {
       console.error('Error escalating note:', err);
@@ -632,16 +659,16 @@ export const useMentorAllocation = (collegeId: string) => {
     uniqueDepartments,
     uniqueBatches,
     statistics,
-    
+
     // State
     loading,
     error,
-    
+
     // Helper functions
     getMentorCurrentLoad,
     getMentorActiveAllocations,
     getMentorAtRiskStudents,
-    
+
     // Actions
     allocateStudents,
     addMentorNote,

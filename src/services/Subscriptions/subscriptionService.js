@@ -1,17 +1,17 @@
 /**
  * Subscription Service (READ-ONLY)
- * 
+ *
  * This service handles READ operations for subscriptions using direct Supabase queries.
  * All WRITE operations (create, update, cancel, pause, resume) should go through
  * paymentsApiService → Cloudflare Worker for security and consistency.
- * 
+ *
  * READ OPERATIONS (this file):
  * - getActiveSubscription()     - Get user's active subscription (individual OR organization license)
  * - getUserSubscriptions()      - Get all user subscriptions (billing history)
  * - getSubscriptionPayments()   - Get payments for a subscription
  * - getUserPayments()           - Get all user payments
  * - checkActiveSubscription()   - Check if user has active subscription
- * 
+ *
  * WRITE OPERATIONS (use paymentsApiService):
  * - paymentsApiService.verifyPayment()         - Create subscription after payment
  * - paymentsApiService.deactivateSubscription() - Cancel subscription
@@ -36,7 +36,7 @@ export const getActiveSubscription = async () => {
       return {
         success: false,
         data: null,
-        error: 'User must be authenticated to view subscription'
+        error: 'User must be authenticated to view subscription',
       };
     }
 
@@ -49,7 +49,8 @@ export const getActiveSubscription = async () => {
     // ============================================================================
     const { data: licenseAssignment, error: licenseError } = await supabase
       .from('license_assignments')
-      .select(`
+      .select(
+        `
         id,
         status,
         expires_at,
@@ -69,23 +70,27 @@ export const getActiveSubscription = async () => {
             plan_code
           )
         )
-      `)
+      `
+      )
       .eq('user_id', userId)
       .eq('status', 'active')
       .maybeSingle();
 
     if (!licenseError && licenseAssignment) {
       const orgSub = licenseAssignment.organization_subscriptions;
-      
+
       // Check if organization subscription is active and not expired
       if (orgSub && orgSub.status === 'active') {
         const orgEndDate = new Date(orgSub.end_date);
-        
+
         if (orgEndDate > new Date()) {
           // Check if license assignment has its own expiry
-          const licenseExpiry = licenseAssignment.expires_at ? new Date(licenseAssignment.expires_at) : null;
-          const effectiveEndDate = licenseExpiry && licenseExpiry < orgEndDate ? licenseExpiry : orgEndDate;
-          
+          const licenseExpiry = licenseAssignment.expires_at
+            ? new Date(licenseAssignment.expires_at)
+            : null;
+          const effectiveEndDate =
+            licenseExpiry && licenseExpiry < orgEndDate ? licenseExpiry : orgEndDate;
+
           if (effectiveEndDate > new Date()) {
             // Build a subscription-like object for compatibility
             const orgSubscriptionData = {
@@ -104,11 +109,13 @@ export const getActiveSubscription = async () => {
               license_assignment_id: licenseAssignment.id,
             };
 
-            console.log(`✅ User ${userId} has active organization license from org ${orgSub.organization_id}`);
+            console.log(
+              `✅ User ${userId} has active organization license from org ${orgSub.organization_id}`
+            );
             return {
               success: true,
               data: orgSubscriptionData,
-              error: null
+              error: null,
             };
           }
         }
@@ -121,7 +128,8 @@ export const getActiveSubscription = async () => {
     // ============================================================================
     const { data: revokedLicense } = await supabase
       .from('license_assignments')
-      .select(`
+      .select(
+        `
         id,
         status,
         revoked_at,
@@ -131,7 +139,8 @@ export const getActiveSubscription = async () => {
             plan_code
           )
         )
-      `)
+      `
+      )
       .eq('user_id', userId)
       .eq('status', 'revoked')
       .order('revoked_at', { ascending: false })
@@ -159,7 +168,7 @@ export const getActiveSubscription = async () => {
       return {
         success: false,
         data: null,
-        error: error.message
+        error: error.message,
       };
     }
 
@@ -181,7 +190,7 @@ export const getActiveSubscription = async () => {
             was_revoked: true,
             revoked_at: revokedLicense.revoked_at,
           },
-          error: null
+          error: null,
         };
       }
 
@@ -200,21 +209,21 @@ export const getActiveSubscription = async () => {
       return {
         success: true,
         data: recentSub || null,
-        error: null
+        error: null,
       };
     }
 
     return {
       success: true,
       data: data,
-      error: null
+      error: null,
     };
   } catch (error) {
     console.error('❌ Unexpected error fetching subscription:', error);
     return {
       success: false,
       data: null,
-      error: error.message
+      error: error.message,
     };
   }
 };
@@ -232,7 +241,7 @@ export const getUserSubscriptions = async (includeAll = false) => {
       return {
         success: false,
         data: null,
-        error: 'User must be authenticated to view subscriptions'
+        error: 'User must be authenticated to view subscriptions',
       };
     }
 
@@ -255,21 +264,21 @@ export const getUserSubscriptions = async (includeAll = false) => {
       return {
         success: false,
         data: null,
-        error: error.message
+        error: error.message,
       };
     }
 
     return {
       success: true,
       data: data || [],
-      error: null
+      error: null,
     };
   } catch (error) {
     console.error('❌ Unexpected error fetching subscriptions:', error);
     return {
       success: false,
       data: null,
-      error: error.message
+      error: error.message,
     };
   }
 };
@@ -292,21 +301,21 @@ export const getSubscriptionPayments = async (subscriptionId) => {
       return {
         success: false,
         data: null,
-        error: error.message
+        error: error.message,
       };
     }
 
     return {
       success: true,
       data: data || [],
-      error: null
+      error: null,
     };
   } catch (error) {
     console.error('❌ Unexpected error fetching payments:', error);
     return {
       success: false,
       data: null,
-      error: error.message
+      error: error.message,
     };
   }
 };
@@ -323,7 +332,7 @@ export const getUserPayments = async () => {
       return {
         success: false,
         data: null,
-        error: 'User must be authenticated'
+        error: 'User must be authenticated',
       };
     }
 
@@ -340,21 +349,21 @@ export const getUserPayments = async () => {
       return {
         success: false,
         data: null,
-        error: error.message
+        error: error.message,
       };
     }
 
     return {
       success: true,
       data: data || [],
-      error: null
+      error: null,
     };
   } catch (error) {
     console.error('❌ Unexpected error fetching user payments:', error);
     return {
       success: false,
       data: null,
-      error: error.message
+      error: error.message,
     };
   }
 };
@@ -371,25 +380,26 @@ export const checkActiveSubscription = async () => {
     if (!result.success) {
       return {
         hasSubscription: false,
-        subscription: null
+        subscription: null,
       };
     }
 
     // Check if subscription is active, paused, or cancelled but not expired
-    const isValid = result.data && (
-      ['active', 'paused'].includes(result.data.status) ||
-      (result.data.status === 'cancelled' && new Date(result.data.subscription_end_date) >= new Date())
-    );
+    const isValid =
+      result.data &&
+      (['active', 'paused'].includes(result.data.status) ||
+        (result.data.status === 'cancelled' &&
+          new Date(result.data.subscription_end_date) >= new Date()));
 
     return {
       hasSubscription: isValid,
-      subscription: result.data
+      subscription: result.data,
     };
   } catch (error) {
     console.error('❌ Error checking subscription:', error);
     return {
       hasSubscription: false,
-      subscription: null
+      subscription: null,
     };
   }
 };

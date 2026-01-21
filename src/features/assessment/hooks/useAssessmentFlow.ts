@@ -266,10 +266,7 @@ function assessmentReducer(
 // ============================================
 
 export function useAssessmentFlow(initialOverrides?: Partial<AssessmentFlowState>) {
-  const [state, dispatch] = useReducer(
-    assessmentReducer,
-    { ...initialState, ...initialOverrides }
-  );
+  const [state, dispatch] = useReducer(assessmentReducer, { ...initialState, ...initialOverrides });
 
   // Action creators
   const actions = {

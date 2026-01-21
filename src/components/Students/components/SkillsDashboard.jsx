@@ -16,8 +16,8 @@ const SkillsDashboard = () => {
         </div>
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Skills Market Intelligence</h1>
         <p className="text-gray-600 max-w-2xl mx-auto">
-          Discover the most in-demand skills in the job market. Our dynamic analysis tracks real-time 
-          opportunities to help you focus on the skills that matter most.
+          Discover the most in-demand skills in the job market. Our dynamic analysis tracks
+          real-time opportunities to help you focus on the skills that matter most.
         </p>
       </div>
 
@@ -25,10 +25,7 @@ const SkillsDashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
         {/* Top Skills - Main Feature */}
         <div className="lg:col-span-2">
-          <TopSkillsInDemand 
-            limit={5} 
-            showHeader={true}
-          />
+          <TopSkillsInDemand limit={5} showHeader={true} />
         </div>
 
         {/* Side Panel with Info */}
@@ -41,15 +38,21 @@ const SkillsDashboard = () => {
             </div>
             <div className="space-y-3 text-sm text-gray-600">
               <div className="flex items-start gap-3">
-                <div className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold mt-0.5">1</div>
+                <div className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold mt-0.5">
+                  1
+                </div>
                 <p>We analyze all active job opportunities in real-time</p>
               </div>
               <div className="flex items-start gap-3">
-                <div className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold mt-0.5">2</div>
+                <div className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold mt-0.5">
+                  2
+                </div>
                 <p>Extract and count required skills from job postings</p>
               </div>
               <div className="flex items-start gap-3">
-                <div className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold mt-0.5">3</div>
+                <div className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold mt-0.5">
+                  3
+                </div>
                 <p>Rank skills by demand frequency and percentage</p>
               </div>
             </div>
@@ -81,7 +84,8 @@ const SkillsDashboard = () => {
           <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-xl border border-green-200 p-6">
             <h3 className="font-semibold text-gray-900 mb-2">Ready to Skill Up?</h3>
             <p className="text-sm text-gray-600 mb-4">
-              Use these insights to guide your learning journey and stay competitive in the job market.
+              Use these insights to guide your learning journey and stay competitive in the job
+              market.
             </p>
             <button className="w-full px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors duration-200">
               Explore Learning Opportunities

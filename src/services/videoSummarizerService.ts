@@ -73,7 +73,6 @@ export interface Flashcard {
   topic?: string;
 }
 
-
 export interface VideoSummary {
   id: string;
   lessonId?: string;
@@ -144,7 +143,6 @@ function transformVideoSummary(record: any): VideoSummary {
   };
 }
 
-
 // ==================== MAIN FUNCTIONS ====================
 
 /**
@@ -160,26 +158,25 @@ export async function processVideo(
   console.log('[VideoSummarizer] Starting enhanced video processing:', request.videoUrl);
   onProgress?.('Connecting to AI service...', 5);
 
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
 
   try {
     onProgress?.('Starting video analysis...', 10);
 
-    const response = await fetch(
-      getApiUrl('ai-video-summarizer'),
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token || ''}`,
-        },
-        body: JSON.stringify({
-          ...request,
-          enableQuiz: request.enableQuiz ?? true,
-          enableFlashcards: request.enableFlashcards ?? true,
-        }),
-      }
-    );
+    const response = await fetch(getApiUrl('ai-video-summarizer'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session?.access_token || ''}`,
+      },
+      body: JSON.stringify({
+        ...request,
+        enableQuiz: request.enableQuiz ?? true,
+        enableFlashcards: request.enableFlashcards ?? true,
+      }),
+    });
 
     if (!response.ok && response.status !== 202) {
       let errorMessage = 'Failed to start video processing';
@@ -208,7 +205,7 @@ export async function processVideo(
     let pollCount = 0;
 
     while (Date.now() - startTime < MAX_POLL_TIME_MS) {
-      await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
+      await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
       pollCount++;
 
       const elapsed = Date.now() - startTime;
@@ -240,7 +237,8 @@ export async function processVideo(
           .select('error_message, processing_status')
           .eq('id', jobId)
           .single();
-        const dbError = failedRecord?.error_message || 'Video processing failed (no details available)';
+        const dbError =
+          failedRecord?.error_message || 'Video processing failed (no details available)';
         throw new Error(`Processing failed\n\nDatabase error_message: ${dbError}`);
       }
 
@@ -250,7 +248,6 @@ export async function processVideo(
     }
 
     throw new Error('Processing is taking longer than expected. Please try again later.');
-
   } catch (error: any) {
     if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
       throw new Error('Connection issue. Please check your internet and try again.');
@@ -285,7 +282,10 @@ export async function getVideoSummaryByLesson(lessonId: string): Promise<VideoSu
 /**
  * Get video summary with robust error handling and fallback strategies
  */
-export async function getVideoSummaryRobust(lessonId?: string, videoUrl?: string): Promise<VideoSummary | null> {
+export async function getVideoSummaryRobust(
+  lessonId?: string,
+  videoUrl?: string
+): Promise<VideoSummary | null> {
   // Strategy 1: Try lesson_id first (most reliable)
   if (lessonId) {
     try {
@@ -362,15 +362,15 @@ export async function getVideoSummaryByUrl(videoUrl: string): Promise<VideoSumma
     // If not found and the URL looks like a presigned URL, try to find by file key
     if (!data && !error && videoUrl.includes('X-Amz-')) {
       const fileKey = extractFileKey(videoUrl);
-      
+
       // Get all video summaries and check if any match the file key
       const { data: allSummaries, error: allError } = await supabase
         .from('video_summaries')
         .select('*')
         .order('created_at', { ascending: false });
-      
+
       if (!allError && allSummaries) {
-        data = allSummaries.find(summary => isSameFile(summary.video_url, videoUrl)) || null;
+        data = allSummaries.find((summary) => isSameFile(summary.video_url, videoUrl)) || null;
       }
     }
 
@@ -434,7 +434,6 @@ export async function checkProcessingStatus(id: string): Promise<{
   }
 }
 
-
 // ==================== UTILITY FUNCTIONS ====================
 
 /**
@@ -444,19 +443,19 @@ export async function checkProcessingStatus(id: string): Promise<{
 function extractFileKey(url: string): string {
   try {
     const urlObj = new URL(url);
-    
+
     // Handle R2 URLs: https://account.r2.cloudflarestorage.com/bucket/path/file.ext
     if (urlObj.hostname.includes('r2.cloudflarestorage.com')) {
       const pathParts = urlObj.pathname.split('/');
       // Remove empty first element and bucket name
       return pathParts.slice(2).join('/');
     }
-    
+
     // Handle public R2 URLs: https://pub-account.r2.dev/path/file.ext
     if (urlObj.hostname.includes('r2.dev')) {
       return urlObj.pathname.substring(1); // Remove leading slash
     }
-    
+
     // For other URLs, return the full URL as fallback
     return url;
   } catch {
@@ -484,15 +483,22 @@ export function formatTimestamp(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
-export function findSegmentAtTime(segments: TranscriptSegment[], time: number): TranscriptSegment | null {
-  return segments.find(s => time >= s.start && time <= s.end) || null;
+export function findSegmentAtTime(
+  segments: TranscriptSegment[],
+  time: number
+): TranscriptSegment | null {
+  return segments.find((s) => time >= s.start && time <= s.end) || null;
 }
 
-export function getTranscriptContext(segments: TranscriptSegment[], time: number, windowSeconds: number = 30): string {
+export function getTranscriptContext(
+  segments: TranscriptSegment[],
+  time: number,
+  windowSeconds: number = 30
+): string {
   const relevantSegments = segments.filter(
-    s => s.start >= time - windowSeconds && s.end <= time + windowSeconds
+    (s) => s.start >= time - windowSeconds && s.end <= time + windowSeconds
   );
-  return relevantSegments.map(s => s.text).join(' ');
+  return relevantSegments.map((s) => s.text).join(' ');
 }
 
 /**
@@ -500,9 +506,12 @@ export function getTranscriptContext(segments: TranscriptSegment[], time: number
  */
 export function getSentimentColor(sentiment: string): string {
   switch (sentiment?.toLowerCase()) {
-    case 'positive': return '#22c55e';
-    case 'negative': return '#ef4444';
-    default: return '#6b7280';
+    case 'positive':
+      return '#22c55e';
+    case 'negative':
+      return '#ef4444';
+    default:
+      return '#6b7280';
   }
 }
 
@@ -511,9 +520,12 @@ export function getSentimentColor(sentiment: string): string {
  */
 export function getSentimentEmoji(sentiment: string): string {
   switch (sentiment?.toLowerCase()) {
-    case 'positive': return '😊';
-    case 'negative': return '😔';
-    default: return '😐';
+    case 'positive':
+      return '😊';
+    case 'negative':
+      return '😔';
+    default:
+      return '😐';
   }
 }
 

@@ -17,7 +17,7 @@ const CourseDetailModal = ({ course, isOpen, onClose }) => {
         >
           {/* Header with Thumbnail */}
           <div className="relative h-64 bg-gradient-to-br from-indigo-500 to-purple-600 overflow-hidden">
-            {(course.thumbnail?.startsWith('http') || course.thumbnail?.startsWith('data:')) ? (
+            {course.thumbnail?.startsWith('http') || course.thumbnail?.startsWith('data:') ? (
               <img
                 src={course.thumbnail}
                 alt={course.title}
@@ -39,11 +39,13 @@ const CourseDetailModal = ({ course, isOpen, onClose }) => {
 
             {/* Status Badge */}
             <div className="absolute top-4 left-4">
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                course.status === 'Active'
-                  ? 'bg-emerald-500 text-white'
-                  : 'bg-blue-500 text-white'
-              }`}>
+              <span
+                className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  course.status === 'Active'
+                    ? 'bg-emerald-500 text-white'
+                    : 'bg-blue-500 text-white'
+                }`}
+              >
                 {course.status}
               </span>
             </div>
@@ -64,4 +66,14 @@ const CourseDetailModal = ({ course, isOpen, onClose }) => {
                 <div>
                   <p className="text-xs text-gray-500">Duration</p>
                   <p className="text-sm font-medium">{course.duration || 'Self-paced'}</p>
-      
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </AnimatePresence>
+  );
+};
+
+export default CourseDetailModal;

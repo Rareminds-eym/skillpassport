@@ -27,14 +27,16 @@ const CourseManagement: React.FC = () => {
 
   useEffect(() => {
     const fetchUserCollege = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (user) {
         const { data: userData } = await supabase
           .from('users')
           .select('metadata')
           .eq('id', user.id)
           .single();
-        
+
         if (userData?.metadata?.college_id) {
           setCollegeId(userData.metadata.college_id);
         }
@@ -53,11 +55,11 @@ const CourseManagement: React.FC = () => {
         .eq('college_id', collegeId)
         .order('semester', { ascending: true })
         .order('course_code', { ascending: true });
-      
+
       if (error) throw error;
       return data || [];
     },
-    enabled: !!collegeId
+    enabled: !!collegeId,
   });
 
   // Fetch departments
@@ -73,7 +75,7 @@ const CourseManagement: React.FC = () => {
       if (error) throw error;
       return data || [];
     },
-    enabled: !!collegeId
+    enabled: !!collegeId,
   });
 
   // Fetch programs
@@ -88,12 +90,12 @@ const CourseManagement: React.FC = () => {
       if (error) throw error;
       return data || [];
     },
-    enabled: !!collegeId
+    enabled: !!collegeId,
   });
 
   // Filter courses
-  const filteredCourses = courses.filter(course => {
-    const matchesSearch = 
+  const filteredCourses = courses.filter((course) => {
+    const matchesSearch =
       course.course_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
       course.course_name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesSemester = !semesterFilter || course.semester === parseInt(semesterFilter);
@@ -117,9 +119,7 @@ const CourseManagement: React.FC = () => {
       <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 border border-blue-100">
         <div className="flex items-center gap-3 mb-2">
           <BookOpen className="h-8 w-8 text-blue-600" />
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-            Course Management
-          </h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Course Management</h1>
         </div>
         <p className="text-gray-600 text-sm sm:text-base">
           Manage curriculum courses for assessments and examinations
@@ -149,8 +149,10 @@ const CourseManagement: React.FC = () => {
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
               <option value="">All Semesters</option>
-              {[1, 2, 3, 4, 5, 6, 7, 8].map(sem => (
-                <option key={sem} value={sem}>Semester {sem}</option>
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
+                <option key={sem} value={sem}>
+                  Semester {sem}
+                </option>
               ))}
             </select>
 
@@ -189,10 +191,7 @@ const CourseManagement: React.FC = () => {
           <div className="text-center py-12">
             <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-500 mb-2">No courses found</p>
-            <button
-              onClick={handleAdd}
-              className="text-blue-600 hover:text-blue-700 font-medium"
-            >
+            <button onClick={handleAdd} className="text-blue-600 hover:text-blue-700 font-medium">
               Add your first course
             </button>
           </div>
@@ -202,13 +201,23 @@ const CourseManagement: React.FC = () => {
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Code</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Course Name</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
+                    Course Name
+                  </th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Type</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Semester</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Credits</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
+                    Semester
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
+                    Credits
+                  </th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Hours</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Status</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Actions</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -217,32 +226,33 @@ const CourseManagement: React.FC = () => {
                     <td className="px-4 py-3 text-sm font-medium text-gray-900">
                       {course.course_code}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-900">
-                      {course.course_name}
-                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{course.course_name}</td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        course.course_type === 'Theory' ? 'bg-blue-100 text-blue-700' :
-                        course.course_type === 'Lab' ? 'bg-green-100 text-green-700' :
-                        course.course_type === 'Practical' ? 'bg-purple-100 text-purple-700' :
-                        'bg-gray-100 text-gray-700'
-                      }`}>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          course.course_type === 'Theory'
+                            ? 'bg-blue-100 text-blue-700'
+                            : course.course_type === 'Lab'
+                              ? 'bg-green-100 text-green-700'
+                              : course.course_type === 'Practical'
+                                ? 'bg-purple-100 text-purple-700'
+                                : 'bg-gray-100 text-gray-700'
+                        }`}
+                      >
                         {course.course_type}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
-                      Sem {course.semester}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
-                      {course.credits}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
-                      {course.contact_hours}
-                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600">Sem {course.semester}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{course.credits}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{course.contact_hours}</td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        course.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                      }`}>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          course.is_active
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-red-100 text-red-700'
+                        }`}
+                      >
                         {course.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </td>
@@ -304,7 +314,7 @@ const CourseFormModal: React.FC<CourseFormModalProps> = ({
   collegeId,
   departments,
   programs,
-  onSuccess
+  onSuccess,
 }) => {
   const [formData, setFormData] = useState({
     course_code: course?.course_code || '',
@@ -326,13 +336,15 @@ const CourseFormModal: React.FC<CourseFormModalProps> = ({
     setError(null);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       const courseData = {
         ...formData,
         college_id: collegeId,
         created_by: user?.id,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       };
 
       if (course) {
@@ -341,14 +353,14 @@ const CourseFormModal: React.FC<CourseFormModalProps> = ({
           .from('curriculum_courses')
           .update(courseData)
           .eq('id', course.id);
-        
+
         if (updateError) throw updateError;
       } else {
         // Create new course
         const { error: insertError } = await supabase
           .from('curriculum_courses')
           .insert([courseData]);
-        
+
         if (insertError) throw insertError;
       }
 
@@ -438,16 +450,16 @@ const CourseFormModal: React.FC<CourseFormModalProps> = ({
                 onChange={(e) => setFormData({ ...formData, semester: parseInt(e.target.value) })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               >
-                {[1, 2, 3, 4, 5, 6, 7, 8].map(sem => (
-                  <option key={sem} value={sem}>Sem {sem}</option>
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
+                  <option key={sem} value={sem}>
+                    Sem {sem}
+                  </option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Credits
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Credits</label>
               <input
                 type="number"
                 step="0.5"
@@ -459,14 +471,14 @@ const CourseFormModal: React.FC<CourseFormModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Contact Hours
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Contact Hours</label>
               <input
                 type="number"
                 min="0"
                 value={formData.contact_hours}
-                onChange={(e) => setFormData({ ...formData, contact_hours: parseInt(e.target.value) })}
+                onChange={(e) =>
+                  setFormData({ ...formData, contact_hours: parseInt(e.target.value) })
+                }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -483,8 +495,10 @@ const CourseFormModal: React.FC<CourseFormModalProps> = ({
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Select Department</option>
-                {departments.map(dept => (
-                  <option key={dept.id} value={dept.id}>{dept.name}</option>
+                {departments.map((dept) => (
+                  <option key={dept.id} value={dept.id}>
+                    {dept.name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -499,8 +513,10 @@ const CourseFormModal: React.FC<CourseFormModalProps> = ({
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Select Program</option>
-                {programs.map(prog => (
-                  <option key={prog.id} value={prog.id}>{prog.name}</option>
+                {programs.map((prog) => (
+                  <option key={prog.id} value={prog.id}>
+                    {prog.name}
+                  </option>
                 ))}
               </select>
             </div>

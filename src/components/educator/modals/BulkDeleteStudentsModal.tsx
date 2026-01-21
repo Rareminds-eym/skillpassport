@@ -20,7 +20,7 @@ const BulkDeleteStudentsModal: React.FC<BulkDeleteStudentsModalProps> = ({
   isOpen,
   onClose,
   students,
-  onSuccess
+  onSuccess,
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +40,7 @@ const BulkDeleteStudentsModal: React.FC<BulkDeleteStudentsModalProps> = ({
     try {
       // Get the current educator's ID
       const educatorId = await getCurrentEducatorId();
-      
+
       if (!educatorId) {
         setError('Could not identify the educator. Please try logging in again.');
         setLoading(false);
@@ -52,17 +52,17 @@ const BulkDeleteStudentsModal: React.FC<BulkDeleteStudentsModalProps> = ({
       for (let i = 0; i < students.length; i++) {
         const student = students[i];
         setProgress({ current: i + 1, total: students.length });
-        
+
         const result = await softDeleteStudent(student.id, educatorId);
         results.push({ student, result });
-        
+
         // Small delay to avoid overwhelming the database
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
 
       // Check if all deletions were successful
-      const failures = results.filter(r => !r.result.success);
-      
+      const failures = results.filter((r) => !r.result.success);
+
       if (failures.length > 0) {
         setError(`Failed to delete ${failures.length} out of ${students.length} students`);
       } else {
@@ -95,17 +95,15 @@ const BulkDeleteStudentsModal: React.FC<BulkDeleteStudentsModalProps> = ({
               <ExclamationTriangleIcon className="h-6 w-6 text-red-600" />
             </div>
             <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left flex-1">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Delete Multiple Students
-              </h3>
+              <h3 className="text-lg font-semibold text-gray-900">Delete Multiple Students</h3>
               <div className="mt-2">
                 <p className="text-sm text-gray-500">
                   Are you sure you want to delete{' '}
                   <span className="font-bold text-red-600">{students.length}</span> students?
                 </p>
                 <p className="text-sm text-gray-500 mt-2">
-                  This action will soft delete all selected students from the system. 
-                  The records will be marked as deleted but can be restored later if needed.
+                  This action will soft delete all selected students from the system. The records
+                  will be marked as deleted but can be restored later if needed.
                 </p>
               </div>
             </div>
@@ -123,8 +121,12 @@ const BulkDeleteStudentsModal: React.FC<BulkDeleteStudentsModalProps> = ({
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50 sticky top-0">
                 <tr>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                    Name
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                    Email
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -143,7 +145,9 @@ const BulkDeleteStudentsModal: React.FC<BulkDeleteStudentsModalProps> = ({
             <div className="mt-4">
               <div className="flex items-center justify-between text-sm text-gray-700 mb-2">
                 <span>Deleting students...</span>
-                <span>{progress.current} / {progress.total}</span>
+                <span>
+                  {progress.current} / {progress.total}
+                </span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
@@ -182,8 +186,9 @@ const BulkDeleteStudentsModal: React.FC<BulkDeleteStudentsModalProps> = ({
           {/* Warning Note */}
           <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
             <p className="text-xs text-yellow-800">
-              <strong>Note:</strong> This is a bulk soft delete operation. The student data will not be 
-              permanently removed from the database and can be restored by an administrator if needed.
+              <strong>Note:</strong> This is a bulk soft delete operation. The student data will not
+              be permanently removed from the database and can be restored by an administrator if
+              needed.
             </p>
           </div>
 

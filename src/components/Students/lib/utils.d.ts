@@ -1,1 +1,3 @@
-export declare function cn(...inputs: (string | number | boolean | object | null | undefined)[]): string;
+export declare function cn(
+  ...inputs: (string | number | boolean | object | null | undefined)[]
+): string;

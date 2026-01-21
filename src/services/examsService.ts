@@ -2,7 +2,9 @@ import { supabase } from '../lib/supabaseClient';
 
 // Helper function to get current user ID
 const getCurrentUserId = async (): Promise<string> => {
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   return user?.id || 'system';
 };
 
@@ -164,7 +166,11 @@ export interface SchoolClass {
 
 class ExamsService {
   // Build target classes object for new targeting system
-  async buildTargetClasses(schoolId: string, grade: string, section?: string): Promise<{
+  async buildTargetClasses(
+    schoolId: string,
+    grade: string,
+    section?: string
+  ): Promise<{
     type: 'single_section' | 'whole_grade';
     grade: string;
     sections: string[] | null;
@@ -186,7 +192,7 @@ class ExamsService {
           type: 'single_section' as const,
           grade: grade,
           sections: [section],
-          class_ids: []
+          class_ids: [],
         };
       }
 
@@ -194,7 +200,7 @@ class ExamsService {
         type: 'single_section' as const,
         grade: grade,
         sections: [section],
-        class_ids: classData ? [classData.id] : []
+        class_ids: classData ? [classData.id] : [],
       };
     } else {
       // Whole grade targeting - get all sections for this grade
@@ -210,7 +216,7 @@ class ExamsService {
           type: 'whole_grade' as const,
           grade: grade,
           sections: null,
-          class_ids: []
+          class_ids: [],
         };
       }
 
@@ -218,7 +224,7 @@ class ExamsService {
         type: 'whole_grade' as const,
         grade: grade,
         sections: null,
-        class_ids: classesData?.map(c => c.id) || []
+        class_ids: classesData?.map((c) => c.id) || [],
       };
     }
   }
@@ -231,7 +237,9 @@ class ExamsService {
 
     const { data, error } = await supabase
       .from('students')
-      .select('id, name, email, roll_number, admission_number, grade, section, school_id, college_id')
+      .select(
+        'id, name, email, roll_number, admission_number, grade, section, school_id, college_id'
+      )
       .in('school_class_id', targetClasses.class_ids)
       .or('is_deleted.is.null,is_deleted.eq.false');
 
@@ -250,61 +258,55 @@ class ExamsService {
       .select('room_no')
       .eq('school_id', schoolId)
       .eq('grade', grade);
-    
+
     if (section) {
       // For specific section, get that section's room
       query = query.eq('section', section);
       const { data, error } = await query.maybeSingle();
-      
+
       if (error) {
         console.error('Error getting class room for section:', error);
         return null;
       }
-      
+
       return data?.room_no || null;
     } else {
       // For whole grade, get all rooms and return the first available one
       const { data, error } = await query.limit(1);
-      
+
       if (error) {
         console.error('Error getting class room for grade:', error);
         return null;
       }
-      
+
       // Return first room or a generic name for whole grade
       return data?.[0]?.room_no || `Grade ${grade} Hall`;
     }
   }
   // Assessment Types
   async getAssessmentTypes(schoolId?: string) {
-    let query = supabase
-      .from('assessment_types')
-      .select('*')
-      .eq('is_active', true);
-    
+    let query = supabase.from('assessment_types').select('*').eq('is_active', true);
+
     if (schoolId) {
       query = query.eq('institution_id', schoolId).eq('institution_type', 'school');
     }
-    
+
     const { data, error } = await query.order('name');
-    
+
     if (error) throw error;
     return data as AssessmentType[];
   }
 
   // Subjects
   async getSubjects(schoolId?: string) {
-    let query = supabase
-      .from('curriculum_subjects')
-      .select('*')
-      .eq('is_active', true);
-    
+    let query = supabase.from('curriculum_subjects').select('*').eq('is_active', true);
+
     if (schoolId) {
       query = query.eq('school_id', schoolId);
     }
-    
+
     const { data, error } = await query.order('display_order', { ascending: true });
-    
+
     if (error) throw error;
     return data as CurriculumSubject[];
   }
@@ -313,51 +315,47 @@ class ExamsService {
   async getSchoolClasses(schoolId: string, academicYear?: string) {
     let query = supabase
       .from('school_classes')
-      .select('id, name, grade, section, academic_year, max_students, current_students, school_id, room_no')
+      .select(
+        'id, name, grade, section, academic_year, max_students, current_students, school_id, room_no'
+      )
       .eq('school_id', schoolId);
-    
+
     if (academicYear) {
       query = query.eq('academic_year', academicYear);
     }
-    
+
     const { data, error } = await query.order('grade', { ascending: true });
-    
+
     if (error) throw error;
     return data as SchoolClass[];
   }
 
   // Teachers/Educators
   async getEducators(schoolId?: string) {
-    let query = supabase
-      .from('school_educators')
-      .select('*')
-      .eq('account_status', 'active');
-    
+    let query = supabase.from('school_educators').select('*').eq('account_status', 'active');
+
     if (schoolId) {
       query = query.eq('school_id', schoolId);
     }
-    
+
     const { data, error } = await query.order('first_name');
-    
+
     if (error) throw error;
     return data as SchoolEducator[];
   }
 
   // Exam Rooms
   async getExamRooms(schoolId?: string, collegeId?: string) {
-    let query = supabase
-      .from('exam_rooms')
-      .select('*')
-      .eq('status', 'active');
-    
+    let query = supabase.from('exam_rooms').select('*').eq('status', 'active');
+
     if (schoolId) {
       query = query.eq('school_id', schoolId);
     } else if (collegeId) {
       query = query.eq('college_id', collegeId);
     }
-    
+
     const { data, error } = await query.order('room_name');
-    
+
     if (error) throw error;
     return data as ExamRoom[];
   }
@@ -366,30 +364,32 @@ class ExamsService {
   async getStudents(schoolId?: string, collegeId?: string, grade?: string, section?: string) {
     let query = supabase
       .from('students')
-      .select('id, name, email, roll_number, admission_number, grade, section, school_id, college_id')
+      .select(
+        'id, name, email, roll_number, admission_number, grade, section, school_id, college_id'
+      )
       .or('is_deleted.is.null,is_deleted.eq.false'); // Handle null values properly
-    
+
     if (schoolId) {
       query = query.eq('school_id', schoolId);
     } else if (collegeId) {
       query = query.eq('college_id', collegeId);
     }
-    
+
     if (grade) {
       query = query.eq('grade', grade);
     }
-    
+
     // Handle section filtering with fallback logic
     if (section && section.trim() !== '') {
       // Use OR condition to match either the exact section OR null section
       // This handles cases where exam has section "A" but students have section null
       query = query.or(`section.eq.${section},section.is.null`);
     }
-    
+
     const { data, error } = await query.order('roll_number');
-    
+
     if (error) throw error;
-    
+
     return data as Student[];
   }
 
@@ -397,11 +397,13 @@ class ExamsService {
   async getStudentsByClassId(classId: string) {
     const { data, error } = await supabase
       .from('students')
-      .select('id, name, email, roll_number, admission_number, grade, section, school_id, college_id')
+      .select(
+        'id, name, email, roll_number, admission_number, grade, section, school_id, college_id'
+      )
       .eq('school_class_id', classId) // Assuming students table has school_class_id field
       .or('is_deleted.is.null,is_deleted.eq.false')
       .order('roll_number');
-    
+
     if (error) throw error;
     return data as Student[];
   }
@@ -432,13 +434,13 @@ class ExamsService {
 
       // Add class rooms
       if (classRooms) {
-        classRooms.forEach(room => {
+        classRooms.forEach((room) => {
           if (room.room_no) {
             allRooms.set(room.room_no, {
               id: `class_${room.room_no}`,
               name: room.room_no,
               type: 'class_room',
-              description: `Class ${room.grade}${room.section ? `-${room.section}` : ''} Room`
+              description: `Class ${room.grade}${room.section ? `-${room.section}` : ''} Room`,
             });
           }
         });
@@ -446,13 +448,15 @@ class ExamsService {
 
       // Add exam rooms
       if (examRooms) {
-        examRooms.forEach(room => {
+        examRooms.forEach((room) => {
           if (room.room_name) {
             allRooms.set(room.room_name, {
               id: `exam_${room.room_name}`,
               name: room.room_name,
               type: 'exam_room',
-              description: room.room_code ? `${room.room_name} (${room.room_code})` : room.room_name
+              description: room.room_code
+                ? `${room.room_name} (${room.room_code})`
+                : room.room_name,
             });
           }
         });
@@ -468,19 +472,17 @@ class ExamsService {
 
   // Assessments CRUD
   async getAssessments(schoolId?: string, collegeId?: string) {
-    let query = supabase
-      .from('assessments')
-      .select('*');
-    
+    let query = supabase.from('assessments').select('*');
+
     // Use proper fields for school vs college
     if (schoolId) {
       query = query.eq('school_id', schoolId);
     } else if (collegeId) {
       query = query.eq('college_id', collegeId);
     }
-    
+
     const { data, error } = await query.order('created_at', { ascending: false });
-    
+
     if (error) throw error;
     return data as Assessment[];
   }
@@ -495,7 +497,7 @@ class ExamsService {
       is_published: assessment.is_published || false,
       is_locked: assessment.is_locked || false,
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     };
 
     const { data, error } = await supabase
@@ -503,7 +505,7 @@ class ExamsService {
       .insert(assessmentData)
       .select()
       .single();
-    
+
     if (error) throw error;
     return data as Assessment;
   }
@@ -515,17 +517,14 @@ class ExamsService {
       .eq('id', id)
       .select()
       .single();
-    
+
     if (error) throw error;
     return data as Assessment;
   }
 
   async deleteAssessment(id: string) {
-    const { error } = await supabase
-      .from('assessments')
-      .delete()
-      .eq('id', id);
-    
+    const { error } = await supabase.from('assessments').delete().eq('id', id);
+
     if (error) throw error;
   }
 
@@ -536,18 +535,14 @@ class ExamsService {
       .select('*')
       .eq('assessment_id', assessmentId)
       .order('exam_date', { ascending: true });
-    
+
     if (error) throw error;
     return data as ExamTimetable[];
   }
 
   async createTimetableEntry(entry: Partial<ExamTimetable>) {
-    const { data, error } = await supabase
-      .from('exam_timetable')
-      .insert(entry)
-      .select()
-      .single();
-    
+    const { data, error } = await supabase.from('exam_timetable').insert(entry).select().single();
+
     if (error) throw error;
     return data as ExamTimetable;
   }
@@ -559,25 +554,20 @@ class ExamsService {
       .eq('id', id)
       .select()
       .single();
-    
+
     if (error) throw error;
     return data as ExamTimetable;
   }
 
   async deleteTimetableEntry(id: string) {
-    const { error } = await supabase
-      .from('exam_timetable')
-      .delete()
-      .eq('id', id);
-    
+    const { error } = await supabase.from('exam_timetable').delete().eq('id', id);
+
     if (error) throw error;
   }
 
   // Invigilation Assignments
   async getInvigilatorAssignments(examTimetableId?: string) {
-    let query = supabase
-      .from('invigilator_assignments')
-      .select(`
+    let query = supabase.from('invigilator_assignments').select(`
         *,
         exam_timetable!inner(
           id,
@@ -588,13 +578,13 @@ class ExamsService {
           room
         )
       `);
-    
+
     if (examTimetableId) {
       query = query.eq('exam_timetable_id', examTimetableId);
     }
-    
+
     const { data, error } = await query.order('duty_date', { ascending: true });
-    
+
     if (error) throw error;
     return data;
   }
@@ -614,17 +604,14 @@ class ExamsService {
       .insert(assignment)
       .select()
       .single();
-    
+
     if (error) throw error;
     return data;
   }
 
   async deleteInvigilatorAssignment(id: string) {
-    const { error } = await supabase
-      .from('invigilator_assignments')
-      .delete()
-      .eq('id', id);
-    
+    const { error } = await supabase.from('invigilator_assignments').delete().eq('id', id);
+
     if (error) throw error;
   }
 
@@ -632,7 +619,8 @@ class ExamsService {
   async getMarkEntries(assessmentId: string, subjectId?: string) {
     let query = supabase
       .from('mark_entries')
-      .select(`
+      .select(
+        `
         *,
         students!inner(id, name, roll_number, admission_number),
         mark_moderation_log(
@@ -645,20 +633,21 @@ class ExamsService {
           subject_id,
           requires_approval
         )
-      `)
+      `
+      )
       .eq('assessment_id', assessmentId);
-    
+
     // Filter by subject_id if provided
     if (subjectId) {
       query = query.eq('subject_id', subjectId);
     }
-    
+
     const { data, error } = await query.order('created_at', { ascending: true });
-    
+
     if (error) {
       throw error;
     }
-    
+
     // Sort by roll_number in JavaScript since we can't order by joined table fields directly
     if (data) {
       data.sort((a, b) => {
@@ -667,7 +656,7 @@ class ExamsService {
         return rollA.localeCompare(rollB, undefined, { numeric: true });
       });
     }
-    
+
     return data;
   }
 
@@ -676,24 +665,27 @@ class ExamsService {
       .from('mark_entries')
       .upsert(markEntries, {
         onConflict: 'assessment_id,student_id,subject_id',
-        ignoreDuplicates: false
+        ignoreDuplicates: false,
       })
       .select();
-    
+
     if (error) throw error;
     return data as MarkEntry[];
   }
 
-  async moderateMarks(markEntryId: string, moderationData: {
-    assessment_id: string;
-    student_id: string;
-    subject_id: string; // Add subject_id parameter
-    original_marks: number;
-    marks_obtained: number;
-    moderation_reason: string;
-    moderation_type: string;
-    moderated_by: string;
-  }) {
+  async moderateMarks(
+    markEntryId: string,
+    moderationData: {
+      assessment_id: string;
+      student_id: string;
+      subject_id: string; // Add subject_id parameter
+      original_marks: number;
+      marks_obtained: number;
+      moderation_reason: string;
+      moderation_type: string;
+      moderated_by: string;
+    }
+  ) {
     // First, delete any existing moderation logs for this mark entry to prevent duplicates
     const { error: deleteError } = await supabase
       .from('mark_moderation_log')
@@ -708,23 +700,23 @@ class ExamsService {
     }
 
     // Then, insert the new moderation log
-    const { error: logError } = await supabase
-      .from('mark_moderation_log')
-      .insert({
-        mark_entry_id: markEntryId,
-        assessment_id: moderationData.assessment_id,
-        student_id: moderationData.student_id,
-        subject_id: moderationData.subject_id, // Include subject_id in the log
-        original_marks: moderationData.original_marks,
-        moderated_marks: moderationData.marks_obtained,
-        difference: moderationData.marks_obtained - moderationData.original_marks,
-        moderation_type: moderationData.moderation_type,
-        reason: moderationData.moderation_reason,
-        moderated_by: moderationData.moderated_by,
-        moderator_name: 'Current User', // You might want to get this from auth
-        requires_approval: Math.abs(moderationData.marks_obtained - moderationData.original_marks) > (moderationData.original_marks * 0.1),
-        moderated_at: new Date().toISOString()
-      });
+    const { error: logError } = await supabase.from('mark_moderation_log').insert({
+      mark_entry_id: markEntryId,
+      assessment_id: moderationData.assessment_id,
+      student_id: moderationData.student_id,
+      subject_id: moderationData.subject_id, // Include subject_id in the log
+      original_marks: moderationData.original_marks,
+      moderated_marks: moderationData.marks_obtained,
+      difference: moderationData.marks_obtained - moderationData.original_marks,
+      moderation_type: moderationData.moderation_type,
+      reason: moderationData.moderation_reason,
+      moderated_by: moderationData.moderated_by,
+      moderator_name: 'Current User', // You might want to get this from auth
+      requires_approval:
+        Math.abs(moderationData.marks_obtained - moderationData.original_marks) >
+        moderationData.original_marks * 0.1,
+      moderated_at: new Date().toISOString(),
+    });
 
     if (logError) throw logError;
 
@@ -736,12 +728,12 @@ class ExamsService {
         marks_obtained: moderationData.marks_obtained,
         moderation_reason: moderationData.moderation_reason, // Keep this for backward compatibility
         moderated_by: moderationData.moderated_by,
-        moderation_date: new Date().toISOString()
+        moderation_date: new Date().toISOString(),
       })
       .eq('id', markEntryId)
       .select()
       .single();
-    
+
     if (error) throw error;
     return data as MarkEntry;
   }
@@ -749,14 +741,14 @@ class ExamsService {
   // Publish Results
   async publishAssessment(assessmentId: string) {
     const currentUserId = await getCurrentUserId();
-    
+
     // Lock all mark entries
     const { error: lockError } = await supabase
       .from('mark_entries')
-      .update({ 
+      .update({
         is_locked: true,
         locked_by: currentUserId,
-        locked_at: new Date().toISOString()
+        locked_at: new Date().toISOString(),
       })
       .eq('assessment_id', assessmentId);
 
@@ -765,45 +757,43 @@ class ExamsService {
     // Update assessment status
     const { data, error } = await supabase
       .from('assessments')
-      .update({ 
+      .update({
         status: 'published',
         is_published: true,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq('id', assessmentId)
       .select()
       .single();
-    
+
     if (error) throw error;
     return data as Assessment;
   }
 
   // Statistics
   async getAssessmentStats(schoolId?: string, collegeId?: string) {
-    let query = supabase
-      .from('assessments')
-      .select('status');
-    
+    let query = supabase.from('assessments').select('status');
+
     // Use proper fields for school vs college
     if (schoolId) {
       query = query.eq('school_id', schoolId);
     } else if (collegeId) {
       query = query.eq('college_id', collegeId);
     }
-    
+
     const { data, error } = await query;
-    
+
     if (error) throw error;
-    
+
     const stats = {
       total: data.length,
-      draft: data.filter(a => a.status === 'draft').length,
-      scheduled: data.filter(a => a.status === 'scheduled').length,
-      ongoing: data.filter(a => a.status === 'ongoing').length,
-      marks_pending: data.filter(a => a.status === 'marks_pending').length,
-      published: data.filter(a => a.status === 'published').length,
+      draft: data.filter((a) => a.status === 'draft').length,
+      scheduled: data.filter((a) => a.status === 'scheduled').length,
+      ongoing: data.filter((a) => a.status === 'ongoing').length,
+      marks_pending: data.filter((a) => a.status === 'marks_pending').length,
+      published: data.filter((a) => a.status === 'published').length,
     };
-    
+
     return stats;
   }
 
@@ -814,18 +804,18 @@ class ExamsService {
       .select('id, approval_status, moderation_type')
       .eq('assessment_id', assessmentId)
       .eq('subject_id', subjectId);
-    
+
     if (checkError) {
       throw checkError;
     }
-    
+
     // Update all moderation log entries for this assessment and subject to approved
     const { data, error } = await supabase
       .from('mark_moderation_log')
       .update({
         approval_status: 'approved',
         approved_by: approvedBy,
-        approved_at: new Date().toISOString()
+        approved_at: new Date().toISOString(),
       })
       .eq('assessment_id', assessmentId)
       .eq('subject_id', subjectId)
@@ -855,7 +845,7 @@ class ExamsService {
         moderation_reason: null,
         moderated_by: null,
         moderation_date: null,
-        original_marks: null
+        original_marks: null,
       })
       .eq('assessment_id', assessmentId)
       .eq('subject_id', subjectId);

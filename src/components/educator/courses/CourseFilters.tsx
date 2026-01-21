@@ -1,9 +1,5 @@
 import React from 'react';
-import {
-  MagnifyingGlassIcon,
-  Squares2X2Icon,
-  ListBulletIcon
-} from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, Squares2X2Icon, ListBulletIcon } from '@heroicons/react/24/outline';
 
 interface CourseFiltersProps {
   searchQuery: string;
@@ -38,7 +34,7 @@ const CourseFilters: React.FC<CourseFiltersProps> = ({
   setViewMode,
   onClearFilters,
   skillCategories,
-  classes
+  classes,
 }) => {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 shadow-sm">

@@ -58,23 +58,25 @@ class StudentAnalyzerService {
    */
   analyzeStudent(student: StudentProfile): StudentAnalysis {
     const profile = student.profile;
-    
+
     // Get enabled items only
-    const technicalSkills = (profile.technicalSkills || []).filter(s => s.enabled !== false);
-    const softSkills = (profile.softSkills || []);
-    const projects = (profile.projects || []).filter(p => p.enabled !== false);
-    const training = (profile.training || []).filter(t => t.enabled !== false);
-    const experience = (profile.experience || []).filter(e => e.enabled !== false);
-    const certificates = (profile.certificates || []).filter(c => c.enabled !== false);
+    const technicalSkills = (profile.technicalSkills || []).filter((s) => s.enabled !== false);
+    const softSkills = profile.softSkills || [];
+    const projects = (profile.projects || []).filter((p) => p.enabled !== false);
+    const training = (profile.training || []).filter((t) => t.enabled !== false);
+    const experience = (profile.experience || []).filter((e) => e.enabled !== false);
+    const certificates = (profile.certificates || []).filter((c) => c.enabled !== false);
 
     // Calculate metrics
     const metrics = {
       technicalSkillCount: technicalSkills.length,
       avgSkillLevel: this.calculateAverageSkillLevel(technicalSkills),
       projectCount: projects.length,
-      completedProjects: projects.filter(p => p.status === 'Completed' || p.status === 'completed').length,
+      completedProjects: projects.filter(
+        (p) => p.status === 'Completed' || p.status === 'completed'
+      ).length,
       trainingCount: training.length,
-      completedTraining: training.filter(t => t.status === 'completed').length,
+      completedTraining: training.filter((t) => t.status === 'completed').length,
       avgTrainingProgress: this.calculateAverageProgress(training),
       certificateCount: certificates.length,
       experienceYears: this.estimateExperienceYears(experience),
@@ -134,63 +136,63 @@ class StudentAnalyzerService {
   ): OpportunityMatch[] {
     const profile = student.profile;
     const studentSkills = (profile.technicalSkills || [])
-      .filter(s => s.enabled !== false)
-      .map(s => s.name.toLowerCase());
-    
+      .filter((s) => s.enabled !== false)
+      .map((s) => s.name.toLowerCase());
+
     const studentSkillLevels = new Map(
       (profile.technicalSkills || [])
-        .filter(s => s.enabled !== false)
-        .map(s => [s.name.toLowerCase(), s.level])
+        .filter((s) => s.enabled !== false)
+        .map((s) => [s.name.toLowerCase(), s.level])
     );
 
     const experienceYears = this.estimateExperienceYears(profile.experience || []);
 
-    return opportunities.map(opp => {
-      const requiredSkills = (opp.skills_required || []).map(s => s.toLowerCase());
-      
-      // Match skills
-      const matchingSkills: SkillMatch[] = requiredSkills.map(reqSkill => {
-        const hasSkill = studentSkills.includes(reqSkill);
-        const level = studentSkillLevels.get(reqSkill) || 0;
+    return opportunities
+      .map((opp) => {
+        const requiredSkills = (opp.skills_required || []).map((s) => s.toLowerCase());
+
+        // Match skills
+        const matchingSkills: SkillMatch[] = requiredSkills.map((reqSkill) => {
+          const hasSkill = studentSkills.includes(reqSkill);
+          const level = studentSkillLevels.get(reqSkill) || 0;
+          return {
+            skill: reqSkill,
+            studentLevel: level,
+            hasSkill,
+          };
+        });
+
+        const matchedCount = matchingSkills.filter((m) => m.hasSkill).length;
+        const totalRequired = requiredSkills.length || 1;
+        const skillMatchScore = (matchedCount / totalRequired) * 100;
+
+        // Check experience match
+        const experienceMatch = this.checkExperienceMatch(experienceYears, opp.experience_level);
+
+        // Calculate overall match score (70% skills, 30% experience)
+        const matchScore = Math.round(skillMatchScore * 0.7 + (experienceMatch ? 30 : 0));
+
+        // Determine recommendation
+        let recommendation: 'Ready' | 'Close' | 'Needs Training';
+        if (matchScore >= 80) recommendation = 'Ready';
+        else if (matchScore >= 60) recommendation = 'Close';
+        else recommendation = 'Needs Training';
+
+        // Missing skills
+        const missingSkills = matchingSkills.filter((m) => !m.hasSkill).map((m) => m.skill);
+
         return {
-          skill: reqSkill,
-          studentLevel: level,
-          hasSkill,
+          opportunityId: opp.id,
+          opportunityTitle: opp.job_title,
+          companyName: opp.company_name,
+          matchScore,
+          matchingSkills,
+          missingSkills,
+          experienceMatch,
+          recommendation,
         };
-      });
-
-      const matchedCount = matchingSkills.filter(m => m.hasSkill).length;
-      const totalRequired = requiredSkills.length || 1;
-      const skillMatchScore = (matchedCount / totalRequired) * 100;
-
-      // Check experience match
-      const experienceMatch = this.checkExperienceMatch(experienceYears, opp.experience_level);
-
-      // Calculate overall match score (70% skills, 30% experience)
-      const matchScore = Math.round(skillMatchScore * 0.7 + (experienceMatch ? 30 : 0));
-
-      // Determine recommendation
-      let recommendation: 'Ready' | 'Close' | 'Needs Training';
-      if (matchScore >= 80) recommendation = 'Ready';
-      else if (matchScore >= 60) recommendation = 'Close';
-      else recommendation = 'Needs Training';
-
-      // Missing skills
-      const missingSkills = matchingSkills
-        .filter(m => !m.hasSkill)
-        .map(m => m.skill);
-
-      return {
-        opportunityId: opp.id,
-        opportunityTitle: opp.job_title,
-        companyName: opp.company_name,
-        matchScore,
-        matchingSkills,
-        missingSkills,
-        experienceMatch,
-        recommendation,
-      };
-    }).sort((a, b) => b.matchScore - a.matchScore); // Sort by best match first
+      })
+      .sort((a, b) => b.matchScore - a.matchScore); // Sort by best match first
   }
 
   // Private helper methods
@@ -220,8 +222,8 @@ class StudentAnalyzerService {
   }
 
   private detectStagnantTraining(training: any[]): boolean {
-    const ongoingTraining = training.filter(t => t.status === 'ongoing');
-    return ongoingTraining.some(t => t.progress < 50);
+    const ongoingTraining = training.filter((t) => t.status === 'ongoing');
+    return ongoingTraining.some((t) => t.progress < 50);
   }
 
   private detectInactiveProfile(updatedAt?: string): boolean {
@@ -242,7 +244,7 @@ class StudentAnalyzerService {
 
   private calculateRiskLevel(metrics: any, flags: any): 'High' | 'Medium' | 'Low' | 'None' {
     let riskPoints = 0;
-    
+
     if (flags.hasNoProjects) riskPoints += 3;
     if (flags.hasLowSkillDiversity) riskPoints += 2;
     if (flags.hasStagnantTraining) riskPoints += 2;
@@ -258,19 +260,19 @@ class StudentAnalyzerService {
 
   private assessCareerReadiness(metrics: any, flags: any): 'High' | 'Medium' | 'Low' {
     let readinessScore = 0;
-    
+
     if (metrics.technicalSkillCount >= 5) readinessScore += 2;
     else if (metrics.technicalSkillCount >= 3) readinessScore += 1;
-    
+
     if (metrics.avgSkillLevel >= 4) readinessScore += 2;
     else if (metrics.avgSkillLevel >= 3) readinessScore += 1;
-    
+
     if (metrics.completedProjects >= 2) readinessScore += 2;
     else if (metrics.completedProjects >= 1) readinessScore += 1;
-    
+
     if (metrics.certificateCount >= 2) readinessScore += 1;
     if (metrics.experienceYears >= 1) readinessScore += 2;
-    
+
     if (flags.hasHighPotential) readinessScore += 2;
 
     if (readinessScore >= 7) return 'High';
@@ -280,149 +282,154 @@ class StudentAnalyzerService {
 
   private calculateOverallScore(metrics: any, flags: any): number {
     let score = 0;
-    
+
     // Skills (30 points)
     score += Math.min(metrics.technicalSkillCount * 2, 15);
     score += metrics.avgSkillLevel * 3;
-    
+
     // Projects (20 points)
     score += Math.min(metrics.completedProjects * 5, 20);
-    
+
     // Training (20 points)
     score += Math.min(metrics.completedTraining * 4, 12);
     score += (metrics.avgTrainingProgress / 100) * 8;
-    
+
     // Experience & Certificates (15 points)
     score += Math.min(metrics.experienceYears * 5, 10);
     score += Math.min(metrics.certificateCount * 2.5, 5);
-    
+
     // Bonus for high potential (15 points)
     if (flags.hasHighPotential) score += 15;
-    
+
     // Penalties
     if (flags.hasNoProjects) score -= 10;
     if (flags.hasLowSkillDiversity) score -= 5;
     if (flags.hasStagnantTraining) score -= 5;
-    
+
     return Math.max(0, Math.min(100, Math.round(score)));
   }
 
-  private identifyStrengths(metrics: any, skills: any[], projects: any[], training: any[]): string[] {
+  private identifyStrengths(
+    metrics: any,
+    skills: any[],
+    projects: any[],
+    training: any[]
+  ): string[] {
     const strengths: string[] = [];
-    
+
     if (metrics.avgSkillLevel >= 4) {
       strengths.push(`Strong technical skills (avg level ${metrics.avgSkillLevel}/5)`);
     }
-    
+
     if (metrics.technicalSkillCount >= 5) {
       strengths.push(`Diverse skill set (${metrics.technicalSkillCount} technical skills)`);
     }
-    
+
     if (metrics.completedProjects >= 2) {
       strengths.push(`Good project experience (${metrics.completedProjects} completed)`);
     }
-    
+
     if (metrics.completedTraining >= 2) {
       strengths.push(`Continuous learner (${metrics.completedTraining} courses completed)`);
     }
-    
+
     if (metrics.experienceYears >= 1) {
       strengths.push(`Professional experience (${metrics.experienceYears}+ years)`);
     }
 
     // Identify top skills
     const topSkills = skills
-      .filter(s => s.level >= 4)
+      .filter((s) => s.level >= 4)
       .sort((a, b) => b.level - a.level)
       .slice(0, 3)
-      .map(s => s.name);
-    
+      .map((s) => s.name);
+
     if (topSkills.length > 0) {
       strengths.push(`Expert in: ${topSkills.join(', ')}`);
     }
-    
+
     return strengths;
   }
 
   private identifyWeaknesses(metrics: any, flags: any): string[] {
     const weaknesses: string[] = [];
-    
+
     if (flags.hasNoProjects) {
       weaknesses.push('No practical project experience');
     }
-    
+
     if (flags.hasLowSkillDiversity) {
       weaknesses.push(`Limited technical skills (only ${metrics.technicalSkillCount})`);
     }
-    
+
     if (flags.hasStagnantTraining) {
       weaknesses.push('Incomplete training courses (low progress)');
     }
-    
+
     if (metrics.avgSkillLevel < 3) {
       weaknesses.push('Skills need more development (low proficiency)');
     }
-    
+
     if (metrics.certificateCount === 0) {
       weaknesses.push('No verified certifications');
     }
-    
+
     if (flags.hasInactiveProfile) {
       weaknesses.push('Profile not updated recently');
     }
-    
+
     return weaknesses;
   }
 
   private identifySkillGaps(skills: any[], training: any[]): string[] {
     const gaps: string[] = [];
-    
+
     // Common industry skills
     const commonSkills = ['react', 'node', 'python', 'sql', 'git', 'docker', 'aws', 'typescript'];
-    const studentSkills = skills.map(s => s.name.toLowerCase());
-    
-    const missing = commonSkills.filter(cs => !studentSkills.some(ss => ss.includes(cs)));
-    
+    const studentSkills = skills.map((s) => s.name.toLowerCase());
+
+    const missing = commonSkills.filter((cs) => !studentSkills.some((ss) => ss.includes(cs)));
+
     return missing.slice(0, 5); // Top 5 gaps
   }
 
   private generateRecommendations(metrics: any, flags: any, skillGaps: string[]): string[] {
     const recommendations: string[] = [];
-    
+
     if (flags.hasNoProjects) {
       recommendations.push('Start a portfolio project to demonstrate practical skills');
     }
-    
+
     if (flags.hasStagnantTraining) {
       recommendations.push('Complete ongoing training courses to build momentum');
     }
-    
+
     if (flags.hasLowSkillDiversity) {
       recommendations.push('Learn 2-3 complementary technologies to broaden skill set');
     }
-    
+
     if (skillGaps.length > 0) {
       recommendations.push(`Focus on in-demand skills: ${skillGaps.slice(0, 3).join(', ')}`);
     }
-    
+
     if (metrics.certificateCount === 0) {
       recommendations.push('Earn industry-recognized certifications to validate skills');
     }
-    
+
     if (metrics.completedProjects >= 1 && metrics.avgSkillLevel >= 3) {
       recommendations.push('Apply to internships or entry-level positions');
     }
-    
+
     if (flags.hasInactiveProfile) {
       recommendations.push('Update profile with recent activities and achievements');
     }
-    
+
     return recommendations.slice(0, 5); // Top 5 recommendations
   }
 
   private checkExperienceMatch(studentYears: number, requiredLevel: string): boolean {
     const level = (requiredLevel || '').toLowerCase();
-    
+
     if (level.includes('entry') || level.includes('junior') || level.includes('fresher')) {
       return studentYears >= 0;
     }
@@ -432,7 +439,7 @@ class StudentAnalyzerService {
     if (level.includes('senior') || level.includes('lead')) {
       return studentYears >= 5;
     }
-    
+
     return true; // Default to true if level not specified
   }
 }

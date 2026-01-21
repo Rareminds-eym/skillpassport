@@ -15,8 +15,8 @@ const PortfolioPage: React.FC = () => {
   const { student, settings, isLoading, isManuallySet, viewerRole } = usePortfolio();
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // console.log('🎨 PortfolioPage rendering...', { 
-  //   student: student?.name || student?.email, 
+  // console.log('🎨 PortfolioPage rendering...', {
+  //   student: student?.name || student?.email,
   //   currentLayout: settings.layout,
   //   viewerRole,
   //   isManuallySet,
@@ -41,7 +41,7 @@ const PortfolioPage: React.FC = () => {
       if (pendingExport) {
         try {
           const { type, filename, preferences } = JSON.parse(pendingExport);
-          
+
           // Small delay to ensure DOM is fully rendered
           setTimeout(async () => {
             try {
@@ -51,16 +51,17 @@ const PortfolioPage: React.FC = () => {
                   console.warn('Fullscreen not available');
                 });
                 setIsFullscreen(true);
-                
+
                 // Additional delay for fullscreen to apply
                 setTimeout(async () => {
-                  const layoutContent = document.querySelector('[data-portfolio-content]') || 
-                                      document.querySelector('.pt-20') ||
-                                      document.documentElement;
-                  
+                  const layoutContent =
+                    document.querySelector('[data-portfolio-content]') ||
+                    document.querySelector('.pt-20') ||
+                    document.documentElement;
+
                   await exportAsPDF(layoutContent as HTMLElement, filename);
                   sessionStorage.removeItem('pendingExport');
-                  
+
                   // Exit fullscreen after export
                   if (document.fullscreenElement) {
                     document.exitFullscreen();
@@ -73,10 +74,10 @@ const PortfolioPage: React.FC = () => {
                   if (!student || !settings) {
                     throw new Error('Student or settings data not available');
                   }
-                  
+
                   await exportAsHTML(student, settings, preferences, filename);
                   sessionStorage.removeItem('pendingExport');
-                  
+
                   // Navigate back to export settings
                   navigate('/settings/export');
                 }, 300);
@@ -151,13 +152,11 @@ const PortfolioPage: React.FC = () => {
         return <ModernLayout {...layoutProps} />;
     }
   };
-  
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Layout Content */}
-      <div>
-        {renderLayout()}
-      </div>
+      <div>{renderLayout()}</div>
     </div>
   );
 };

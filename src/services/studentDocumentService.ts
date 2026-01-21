@@ -31,11 +31,11 @@ export const uploadStudentDocument = async (
   try {
     // Upload file to R2 storage
     const uploadResult = await uploadFile(file, `students/${studentId}`);
-    
+
     if (!uploadResult.success || !uploadResult.url) {
       return {
         success: false,
-        error: uploadResult.error || 'Upload failed'
+        error: uploadResult.error || 'Upload failed',
       };
     }
 
@@ -45,7 +45,7 @@ export const uploadStudentDocument = async (
       name: file.name,
       type: documentType,
       uploadedAt: new Date().toISOString(),
-      size: file.size
+      size: file.size,
     };
 
     // Get current documents
@@ -60,7 +60,7 @@ export const uploadStudentDocument = async (
       await deleteFile(uploadResult.url);
       return {
         success: false,
-        error: `Failed to fetch student: ${fetchError.message}`
+        error: `Failed to fetch student: ${fetchError.message}`,
       };
     }
 
@@ -79,19 +79,19 @@ export const uploadStudentDocument = async (
       await deleteFile(uploadResult.url);
       return {
         success: false,
-        error: `Failed to update student record: ${updateError.message}`
+        error: `Failed to update student record: ${updateError.message}`,
       };
     }
 
     return {
       success: true,
-      document
+      document,
     };
   } catch (error) {
     console.error('Document upload error:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Upload failed'
+      error: error instanceof Error ? error.message : 'Upload failed',
     };
   }
 };
@@ -140,7 +140,7 @@ export const deleteStudentDocument = async (
     }
 
     const currentDocuments = student?.documents || [];
-    
+
     // Remove document from array
     const updatedDocuments = currentDocuments.filter(
       (doc: StudentDocument) => doc.url !== documentUrl
@@ -173,7 +173,10 @@ export const deleteStudentDocument = async (
 /**
  * Get document access URL (for viewing)
  */
-export const getStudentDocumentUrl = (documentUrl: string, mode: 'inline' | 'download' = 'inline'): string => {
+export const getStudentDocumentUrl = (
+  documentUrl: string,
+  mode: 'inline' | 'download' = 'inline'
+): string => {
   return getDocumentUrl(documentUrl, mode);
 };
 
@@ -199,7 +202,7 @@ export const updateStudentDocument = async (
     }
 
     const currentDocuments = student?.documents || [];
-    
+
     // Update specific document
     const updatedDocuments = currentDocuments.map((doc: StudentDocument) => {
       if (doc.url === documentUrl) {
@@ -234,7 +237,7 @@ export const getStudentDocumentsByType = async (
   documentType: StudentDocument['type']
 ): Promise<StudentDocument[]> => {
   const allDocuments = await getStudentDocuments(studentId);
-  return allDocuments.filter(doc => doc.type === documentType);
+  return allDocuments.filter((doc) => doc.type === documentType);
 };
 
 /**
@@ -246,38 +249,38 @@ export const validateStudentDocument = (
 ): { valid: boolean; error?: string } => {
   const maxSize = 10; // 10MB
   const allowedTypes = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'];
-  
+
   // Check file size
   if (file.size > maxSize * 1024 * 1024) {
     return {
       valid: false,
-      error: `File size must be less than ${maxSize}MB`
+      error: `File size must be less than ${maxSize}MB`,
     };
   }
-  
+
   // Check file type
   const fileExtension = file.name.split('.').pop()?.toLowerCase();
   if (!fileExtension || !allowedTypes.includes(fileExtension)) {
     return {
       valid: false,
-      error: `File type must be one of: ${allowedTypes.join(', ')}`
+      error: `File type must be one of: ${allowedTypes.join(', ')}`,
     };
   }
-  
+
   // Type-specific validations
   if (documentType === 'resume' && !['pdf', 'doc', 'docx'].includes(fileExtension)) {
     return {
       valid: false,
-      error: 'Resume must be in PDF or Word format'
+      error: 'Resume must be in PDF or Word format',
     };
   }
-  
+
   if (documentType === 'id_proof' && !['pdf', 'jpg', 'jpeg', 'png'].includes(fileExtension)) {
     return {
       valid: false,
-      error: 'ID proof must be in PDF or image format'
+      error: 'ID proof must be in PDF or image format',
     };
   }
-  
+
   return { valid: true };
 };

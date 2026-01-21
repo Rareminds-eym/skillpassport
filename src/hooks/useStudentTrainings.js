@@ -42,10 +42,7 @@ export const useStudentTrainings = (studentId, options = {}) => {
       setError(null);
 
       // Fetch from trainings table
-      let trainingsQuery = supabase
-        .from('trainings')
-        .select('*')
-        .eq('student_id', studentId);
+      let trainingsQuery = supabase.from('trainings').select('*').eq('student_id', studentId);
 
       // Apply status filter for trainings
       if (status && status !== 'all') {
@@ -64,7 +61,14 @@ export const useStudentTrainings = (studentId, options = {}) => {
       }
 
       // Apply sorting
-      const validSortFields = ['title', 'organization', 'start_date', 'end_date', 'created_at', 'status'];
+      const validSortFields = [
+        'title',
+        'organization',
+        'start_date',
+        'end_date',
+        'created_at',
+        'status',
+      ];
       const sortField = validSortFields.includes(sortBy) ? sortBy : 'created_at';
       trainingsQuery = trainingsQuery.order(sortField, { ascending: sortDirection === 'asc' });
 
@@ -88,15 +92,17 @@ export const useStudentTrainings = (studentId, options = {}) => {
       // Optimize: Get all course lesson counts in a single query instead of N+1 queries
       let courseLessonCounts = {};
       if (enrollmentsData && enrollmentsData.length > 0) {
-        const courseIds = enrollmentsData.map(e => e.course_id).filter(Boolean);
-        
+        const courseIds = enrollmentsData.map((e) => e.course_id).filter(Boolean);
+
         if (courseIds.length > 0) {
           const { data: allCourseLessons, error: lessonsError } = await supabase
             .from('course_modules')
-            .select(`
+            .select(
+              `
               course_id,
               lessons:lessons(lesson_id)
-            `)
+            `
+            )
             .in('course_id', courseIds);
 
           if (lessonsError) {
@@ -115,44 +121,47 @@ export const useStudentTrainings = (studentId, options = {}) => {
       }
 
       // Add calculated totals to enrollments (more memory efficient)
-      const enrollmentsWithCorrectTotals = enrollmentsData?.map(enrollment => ({
-        ...enrollment,
-        calculated_total_lessons: courseLessonCounts[enrollment.course_id] || 0
-      })) || [];
+      const enrollmentsWithCorrectTotals =
+        enrollmentsData?.map((enrollment) => ({
+          ...enrollment,
+          calculated_total_lessons: courseLessonCounts[enrollment.course_id] || 0,
+        })) || [];
 
       // Filter enrollments: show if progress > 0 OR status is completed OR recently accessed (within 7 days)
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      
-      const filteredEnrollments = enrollmentsWithCorrectTotals.filter(e => 
-        e.progress > 0 || 
-        e.status === 'completed' || 
-        (e.last_accessed && new Date(e.last_accessed) > sevenDaysAgo)
+
+      const filteredEnrollments = enrollmentsWithCorrectTotals.filter(
+        (e) =>
+          e.progress > 0 ||
+          e.status === 'completed' ||
+          (e.last_accessed && new Date(e.last_accessed) > sevenDaysAgo)
       );
 
       // Apply additional filters to enrollments
       let processedEnrollments = filteredEnrollments;
-      
+
       if (status && status !== 'all') {
         if (status === 'completed') {
-          processedEnrollments = processedEnrollments.filter(e => e.status === 'completed');
+          processedEnrollments = processedEnrollments.filter((e) => e.status === 'completed');
         } else if (status === 'ongoing') {
-          processedEnrollments = processedEnrollments.filter(e => e.status !== 'completed');
+          processedEnrollments = processedEnrollments.filter((e) => e.status !== 'completed');
         }
       }
 
       if (searchTerm && searchTerm.trim()) {
         const term = searchTerm.trim().toLowerCase();
-        processedEnrollments = processedEnrollments.filter(e => 
-          (e.course_title || '').toLowerCase().includes(term) ||
-          (e.educator_name || '').toLowerCase().includes(term)
+        processedEnrollments = processedEnrollments.filter(
+          (e) =>
+            (e.course_title || '').toLowerCase().includes(term) ||
+            (e.educator_name || '').toLowerCase().includes(term)
         );
       }
 
       // Transform trainings data
       const formattedTrainings = [];
-      
-      for (const train of (trainingsData || [])) {
+
+      for (const train of trainingsData || []) {
         // Fetch certificate for this training
         const { data: certificateRows } = await supabase
           .from('certificates')
@@ -160,7 +169,7 @@ export const useStudentTrainings = (studentId, options = {}) => {
           .eq('training_id', train.id)
           .eq('enabled', true)
           .limit(1);
-          
+
         // Fetch skills for this training (only technical skills to match service behavior)
         const { data: skillRows } = await supabase
           .from('skills')
@@ -168,7 +177,7 @@ export const useStudentTrainings = (studentId, options = {}) => {
           .eq('training_id', train.id)
           .eq('type', 'technical')
           .eq('enabled', true);
-        
+
         formattedTrainings.push({
           id: train.id,
           title: String(train.title || ''),
@@ -191,11 +200,11 @@ export const useStudentTrainings = (studentId, options = {}) => {
           enabled: train.approval_status !== 'rejected',
           source: String(train.source || 'manual'),
           course_id: train.course_id,
-          skills: skillRows?.map(s => s.name) || [], // Fetch actual skills
+          skills: skillRows?.map((s) => s.name) || [], // Fetch actual skills
           certificateUrl: certificateRows?.[0]?.link || '', // Fetch actual certificate URL
           createdAt: train.created_at,
           updatedAt: train.updated_at,
-          type: 'training'
+          type: 'training',
         });
       }
 
@@ -203,13 +212,13 @@ export const useStudentTrainings = (studentId, options = {}) => {
       const formattedEnrollments = processedEnrollments.map((enroll) => {
         const completedLessonsCount = enroll.completed_lessons?.length || 0;
         const totalLessonsCount = enroll.calculated_total_lessons || 0;
-        
+
         // Calculate correct progress percentage
         let calculatedProgress = 0;
         if (totalLessonsCount > 0) {
           calculatedProgress = Math.round((completedLessonsCount / totalLessonsCount) * 100);
         }
-        
+
         return {
           id: `enrollment-${enroll.id}`,
           title: String(enroll.course_title || 'Untitled Course'),
@@ -241,21 +250,25 @@ export const useStudentTrainings = (studentId, options = {}) => {
           lastAccessed: enroll.last_accessed,
           lastModuleIndex: enroll.last_module_index,
           lastLessonIndex: enroll.last_lesson_index,
-          sessionsCount: enroll.sessions_count
+          sessionsCount: enroll.sessions_count,
         };
       });
 
       // Merge and deduplicate
-      const enrollmentCourseIds = new Set(formattedEnrollments.map(e => e.course_id).filter(Boolean));
-      const filteredTrainings = formattedTrainings.filter(t => !t.course_id || !enrollmentCourseIds.has(t.course_id));
-      
+      const enrollmentCourseIds = new Set(
+        formattedEnrollments.map((e) => e.course_id).filter(Boolean)
+      );
+      const filteredTrainings = formattedTrainings.filter(
+        (t) => !t.course_id || !enrollmentCourseIds.has(t.course_id)
+      );
+
       // Combine both lists
-      let allItems = [...filteredTrainings, ...formattedEnrollments];
+      const allItems = [...filteredTrainings, ...formattedEnrollments];
 
       // Sort combined list
       allItems.sort((a, b) => {
         let aVal, bVal;
-        
+
         if (sortBy === 'title') {
           aVal = a.title?.toLowerCase() || '';
           bVal = b.title?.toLowerCase() || '';
@@ -282,7 +295,6 @@ export const useStudentTrainings = (studentId, options = {}) => {
 
       setTrainings(allItems);
       await fetchStats();
-
     } catch (err) {
       console.error('❌ useStudentTrainings exception:', err);
       setError(err.message);
@@ -298,7 +310,7 @@ export const useStudentTrainings = (studentId, options = {}) => {
     try {
       // Instead of querying raw tables, calculate stats from the deduplicated trainings array
       // This ensures we don't double-count courses that exist in both tables
-      
+
       // Get trainings that don't have course_id (external/manual trainings)
       const { data: externalTrainings, error: externalError } = await supabase
         .from('trainings')
@@ -324,21 +336,22 @@ export const useStudentTrainings = (studentId, options = {}) => {
       // Calculate stats for external trainings
       const externalStats = {
         total: externalTrainings?.length || 0,
-        completed: externalTrainings?.filter(t => t.status === 'completed').length || 0,
-        ongoing: externalTrainings?.filter(t => t.status === 'ongoing').length || 0
+        completed: externalTrainings?.filter((t) => t.status === 'completed').length || 0,
+        ongoing: externalTrainings?.filter((t) => t.status === 'ongoing').length || 0,
       };
 
       // Calculate stats for internal courses (with corrected completion logic)
-      const internalCoursesWithProgress = (internalCourses || []).filter(c => 
-        c.progress > 0 || 
-        c.status === 'completed' || 
-        (c.completed_lessons && c.completed_lessons.length > 0)
+      const internalCoursesWithProgress = (internalCourses || []).filter(
+        (c) =>
+          c.progress > 0 ||
+          c.status === 'completed' ||
+          (c.completed_lessons && c.completed_lessons.length > 0)
       );
 
       const internalStats = {
         total: internalCoursesWithProgress.length,
-        completed: internalCoursesWithProgress.filter(c => c.status === 'completed').length,
-        ongoing: internalCoursesWithProgress.filter(c => c.status !== 'completed').length
+        completed: internalCoursesWithProgress.filter((c) => c.status === 'completed').length,
+        ongoing: internalCoursesWithProgress.filter((c) => c.status !== 'completed').length,
       };
 
       // Combine stats (no double counting)

@@ -1,27 +1,27 @@
-import React, { useState, useEffect } from "react";
-import { Building2, Briefcase, Users, TrendingUp } from "lucide-react";
-import CompanyRegistration from "./CompanyRegistration";
-import JobPostings from "./JobPostings";
-import ApplicationTracking from "./ApplicationTracking";
-import PlacementAnalytics from "./PlacementAnalytics";
-import { companyService } from "@/services/companyService";
-import { opportunitiesService } from "@/services/opportunitiesService";
+import React, { useState, useEffect } from 'react';
+import { Building2, Briefcase, Users, TrendingUp } from 'lucide-react';
+import CompanyRegistration from './CompanyRegistration';
+import JobPostings from './JobPostings';
+import ApplicationTracking from './ApplicationTracking';
+import PlacementAnalytics from './PlacementAnalytics';
+import { companyService } from '@/services/companyService';
+import { opportunitiesService } from '@/services/opportunitiesService';
 
 const PlacementManagement: React.FC = () => {
-  const [activeTab, setActiveTab] = useState("companies");
+  const [activeTab, setActiveTab] = useState('companies');
   const [placementStats, setPlacementStats] = useState([
-    { label: "Total Companies", value: "0", icon: Building2, color: "bg-blue-500" },
-    { label: "Active Job Postings", value: "34", icon: Briefcase, color: "bg-purple-500" },
-    { label: "Students Placed", value: "1,245", icon: Users, color: "bg-green-500" },
-    { label: "Placement Rate", value: "87.3%", icon: TrendingUp, color: "bg-orange-500" },
+    { label: 'Total Companies', value: '0', icon: Building2, color: 'bg-blue-500' },
+    { label: 'Active Job Postings', value: '34', icon: Briefcase, color: 'bg-purple-500' },
+    { label: 'Students Placed', value: '1,245', icon: Users, color: 'bg-green-500' },
+    { label: 'Placement Rate', value: '87.3%', icon: TrendingUp, color: 'bg-orange-500' },
   ]);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
 
   const tabs = [
-    { id: "companies", label: "Company Registration" },
-    { id: "jobs", label: "Job Postings" },
-    { id: "applications", label: "Application Tracking" },
-    { id: "analytics", label: "Placement Analytics" },
+    { id: 'companies', label: 'Company Registration' },
+    { id: 'jobs', label: 'Job Postings' },
+    { id: 'applications', label: 'Application Tracking' },
+    { id: 'analytics', label: 'Placement Analytics' },
   ];
 
   // Load placement statistics
@@ -32,27 +32,37 @@ const PlacementManagement: React.FC = () => {
   const loadPlacementStats = async () => {
     try {
       setIsLoadingStats(true);
-      
+
       // Load company stats and opportunities stats in parallel
       const [companyStats, opportunitiesStats] = await Promise.all([
         companyService.getCompaniesStats(),
-        opportunitiesService.getOpportunitiesStats()
+        opportunitiesService.getOpportunitiesStats(),
       ]);
-      
+
       setPlacementStats([
-        { label: "Total Companies", value: companyStats.total.toString(), icon: Building2, color: "bg-blue-500" },
-        { label: "Active Job Postings", value: opportunitiesStats.active.toString(), icon: Briefcase, color: "bg-purple-500" },
-        { label: "Students Placed", value: "1,245", icon: Users, color: "bg-green-500" },
-        { label: "Placement Rate", value: "87.3%", icon: TrendingUp, color: "bg-orange-500" },
+        {
+          label: 'Total Companies',
+          value: companyStats.total.toString(),
+          icon: Building2,
+          color: 'bg-blue-500',
+        },
+        {
+          label: 'Active Job Postings',
+          value: opportunitiesStats.active.toString(),
+          icon: Briefcase,
+          color: 'bg-purple-500',
+        },
+        { label: 'Students Placed', value: '1,245', icon: Users, color: 'bg-green-500' },
+        { label: 'Placement Rate', value: '87.3%', icon: TrendingUp, color: 'bg-orange-500' },
       ]);
     } catch (error) {
       console.error('Error loading placement stats:', error);
       // Fallback to default values on error
       setPlacementStats([
-        { label: "Total Companies", value: "0", icon: Building2, color: "bg-blue-500" },
-        { label: "Active Job Postings", value: "0", icon: Briefcase, color: "bg-purple-500" },
-        { label: "Students Placed", value: "1,245", icon: Users, color: "bg-green-500" },
-        { label: "Placement Rate", value: "87.3%", icon: TrendingUp, color: "bg-orange-500" },
+        { label: 'Total Companies', value: '0', icon: Building2, color: 'bg-blue-500' },
+        { label: 'Active Job Postings', value: '0', icon: Briefcase, color: 'bg-purple-500' },
+        { label: 'Students Placed', value: '1,245', icon: Users, color: 'bg-green-500' },
+        { label: 'Placement Rate', value: '87.3%', icon: TrendingUp, color: 'bg-orange-500' },
       ]);
     } finally {
       setIsLoadingStats(false);
@@ -61,13 +71,13 @@ const PlacementManagement: React.FC = () => {
 
   const renderActiveTab = () => {
     switch (activeTab) {
-      case "companies":
+      case 'companies':
         return <CompanyRegistration onStatsUpdate={loadPlacementStats} />;
-      case "jobs":
+      case 'jobs':
         return <JobPostings />;
-      case "applications":
+      case 'applications':
         return <ApplicationTracking />;
-      case "analytics":
+      case 'analytics':
         return <PlacementAnalytics />;
       default:
         return <CompanyRegistration onStatsUpdate={loadPlacementStats} />;
@@ -78,9 +88,7 @@ const PlacementManagement: React.FC = () => {
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 border border-blue-100">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
-          Placement Management
-        </h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Placement Management</h1>
         <p className="text-gray-600 text-sm sm:text-base">
           Manage company registrations, job postings, and placement analytics
         </p>
@@ -122,8 +130,8 @@ const PlacementManagement: React.FC = () => {
               onClick={() => setActiveTab(tab.id)}
               className={`px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition ${
                 activeTab === tab.id
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
               {tab.label}

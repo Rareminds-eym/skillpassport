@@ -1,73 +1,73 @@
-import React, { useEffect, useState } from 'react'
-import { XMarkIcon, CheckIcon } from '@heroicons/react/24/outline'
-import { getShortlists, addCandidateToShortlist } from '../../../services/shortlistService'
+import React, { useEffect, useState } from 'react';
+import { XMarkIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { getShortlists, addCandidateToShortlist } from '../../../services/shortlistService';
 
 interface Props {
-  isOpen: boolean
-  onClose: () => void
-  candidate: any
-  onSuccess?: () => void
+  isOpen: boolean;
+  onClose: () => void;
+  candidate: any;
+  onSuccess?: () => void;
 }
 
 const AddToShortlistModal: React.FC<Props> = ({ isOpen, onClose, candidate, onSuccess }) => {
-  const [shortlists, setShortlists] = useState<any[]>([])
-  const [selectedShortlistId, setSelectedShortlistId] = useState<string>('')
-  const [loading, setLoading] = useState(false)
-  const [loadingShortlists, setLoadingShortlists] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [shortlists, setShortlists] = useState<any[]>([]);
+  const [selectedShortlistId, setSelectedShortlistId] = useState<string>('');
+  const [loading, setLoading] = useState(false);
+  const [loadingShortlists, setLoadingShortlists] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
-      fetchShortlists()
+      fetchShortlists();
     }
-  }, [isOpen])
+  }, [isOpen]);
 
   const fetchShortlists = async () => {
-    setLoadingShortlists(true)
+    setLoadingShortlists(true);
     try {
-      const { data, error } = await getShortlists()
-      if (error) throw error
-      setShortlists(data || [])
+      const { data, error } = await getShortlists();
+      if (error) throw error;
+      setShortlists(data || []);
     } catch (err: any) {
-      console.error('Error fetching shortlists:', err)
-      setError('Failed to load shortlists')
+      console.error('Error fetching shortlists:', err);
+      setError('Failed to load shortlists');
     } finally {
-      setLoadingShortlists(false)
+      setLoadingShortlists(false);
     }
-  }
+  };
 
   const handleAddToShortlist = async () => {
     if (!selectedShortlistId) {
-      setError('Please select a shortlist')
-      return
+      setError('Please select a shortlist');
+      return;
     }
 
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
 
     try {
-      const { error } = await addCandidateToShortlist(
-        selectedShortlistId,
-        candidate.id
-      )
-      if (error) throw new Error(error.message || 'Failed to add candidate to shortlist')
+      const { error } = await addCandidateToShortlist(selectedShortlistId, candidate.id);
+      if (error) throw new Error(error.message || 'Failed to add candidate to shortlist');
 
-      onSuccess?.()
-      onClose()
+      onSuccess?.();
+      onClose();
     } catch (err: any) {
-      console.error('Error adding to shortlist:', err)
-      setError(err.message)
+      console.error('Error adding to shortlist:', err);
+      setError(err.message);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  if (!isOpen) return null
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        <div
+          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          onClick={onClose}
+        ></div>
 
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-4">
@@ -90,9 +90,7 @@ const AddToShortlistModal: React.FC<Props> = ({ isOpen, onClose, candidate, onSu
           )}
 
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Select Shortlist
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Select Shortlist</label>
             {loadingShortlists ? (
               <div className="text-sm text-gray-500">Loading shortlists...</div>
             ) : shortlists.length === 0 ? (
@@ -130,9 +128,25 @@ const AddToShortlistModal: React.FC<Props> = ({ isOpen, onClose, candidate, onSu
             >
               {loading ? (
                 <>
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <svg
+                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
                   </svg>
                   Adding...
                 </>
@@ -147,7 +161,7 @@ const AddToShortlistModal: React.FC<Props> = ({ isOpen, onClose, candidate, onSu
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default AddToShortlistModal
+export default AddToShortlistModal;

@@ -10,7 +10,7 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   ChevronDownIcon,
-  ChevronUpIcon
+  ChevronUpIcon,
 } from '@heroicons/react/24/outline';
 import { getDashboardData } from '../../services/dashboardService';
 import ActivityFeed from '../../components/ActivityFeed';
@@ -22,7 +22,7 @@ const KpiCard = ({ title, value, icon: Icon, trend, color = 'primary' }) => {
     primary: 'text-primary-600 bg-primary-50',
     success: 'text-success-600 bg-success-50',
     warning: 'text-warning-600 bg-warning-50',
-    danger: 'text-danger-600 bg-danger-50'
+    danger: 'text-danger-600 bg-danger-50',
   };
 
   return (
@@ -40,10 +40,13 @@ const KpiCard = ({ title, value, icon: Icon, trend, color = 'primary' }) => {
               <dd className="flex items-baseline">
                 <div className="text-2xl font-semibold text-gray-900">{value}</div>
                 {trend && (
-                  <div className={`ml-2 flex items-baseline text-sm font-semibold ${
-                    trend > 0 ? 'text-success-600' : 'text-danger-600'
-                  }`}>
-                    {trend > 0 ? '+' : ''}{trend}%
+                  <div
+                    className={`ml-2 flex items-baseline text-sm font-semibold ${
+                      trend > 0 ? 'text-success-600' : 'text-danger-600'
+                    }`}
+                  >
+                    {trend > 0 ? '+' : ''}
+                    {trend}%
                   </div>
                 )}
               </dd>
@@ -70,11 +73,11 @@ const AlertCard = ({ type, title, message, time, urgent = false, action, onActio
   };
 
   return (
-    <div className={`border-l-4 p-4 ${urgent ? 'border-danger-400 bg-danger-50' : 'border-gray-200 bg-white'} rounded-r-lg shadow-sm`}>
+    <div
+      className={`border-l-4 p-4 ${urgent ? 'border-danger-400 bg-danger-50' : 'border-gray-200 bg-white'} rounded-r-lg shadow-sm`}
+    >
       <div className="flex items-start">
-        <div className="flex-shrink-0">
-          {getIcon()}
-        </div>
+        <div className="flex-shrink-0">{getIcon()}</div>
         <div className="ml-3 flex-1">
           <p className="text-sm font-medium text-gray-900">{title}</p>
           <p className="mt-1 text-sm text-gray-600">{message}</p>
@@ -101,13 +104,16 @@ const Overview = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isActivityExpanded, setIsActivityExpanded] = useState(false);
-  
+
   // Real-time activities hook
-  const { activities: realtimeActivities, isLoading: activitiesLoading } = useRealtimeActivities(15);
-  
+  const { activities: realtimeActivities, isLoading: activitiesLoading } =
+    useRealtimeActivities(15);
+
   // Show only 4 activities by default, all when expanded
-  const displayedActivities = isActivityExpanded ? realtimeActivities : realtimeActivities.slice(0, 4);
-  
+  const displayedActivities = isActivityExpanded
+    ? realtimeActivities
+    : realtimeActivities.slice(0, 4);
+
   // Handle quick search click
   const handleQuickSearchClick = async (search) => {
     try {
@@ -115,11 +121,11 @@ const Overview = () => {
       if (search.id && !search.id.startsWith('default-')) {
         await trackSearchUsage(search.id);
       }
-      
+
       // Navigate to talent pool with search criteria
       const searchCriteria = search.search_criteria || {};
       const params = new URLSearchParams();
-      
+
       if (searchCriteria.query) {
         params.append('q', searchCriteria.query);
       }
@@ -132,7 +138,7 @@ const Overview = () => {
       if (searchCriteria.experience) {
         params.append('experience', searchCriteria.experience);
       }
-      
+
       navigate(`/recruitment/talent-pool?${params.toString()}`);
     } catch (error) {
       console.error('Error handling quick search:', error);
@@ -140,13 +146,13 @@ const Overview = () => {
       navigate('/recruitment/talent-pool');
     }
   };
-  
+
   // Handle alert action clicks
   const handleAlertAction = (alert) => {
     // Route based on alert source and ID
     const alertId = alert.id || alert;
     const source = alert.source;
-    
+
     // Handle by source - navigate to basic pages without advanced filters
     if (source === 'talent_pool' || alertId.startsWith('talent-pool')) {
       navigate('/recruitment/talent-pool');
@@ -182,10 +188,10 @@ const Overview = () => {
     const fetchDashboardData = async () => {
       setLoading(true);
       setError(null);
-      
+
       try {
         const result = await getDashboardData();
-        
+
         if (result.data) {
           setDashboardData(result.data);
           setError(null);
@@ -215,7 +221,7 @@ const Overview = () => {
       offersExtended: 8,
       offersTrend: 15,
       timeToHire: 16,
-      timeToHireTrend: -8
+      timeToHireTrend: -8,
     },
     alerts: [
       {
@@ -224,7 +230,7 @@ const Overview = () => {
         title: 'Verification Pending',
         message: '3 candidates waiting for document verification',
         time: '2 hours ago',
-        urgent: true
+        urgent: true,
       },
       {
         id: 'expiring-offers',
@@ -232,7 +238,7 @@ const Overview = () => {
         title: 'Expiring Offers',
         message: 'Offer for Arjun Kumar expires in 24 hours',
         time: '4 hours ago',
-        urgent: true
+        urgent: true,
       },
       {
         id: 'positive-feedback',
@@ -240,8 +246,8 @@ const Overview = () => {
         title: 'Interview Feedback',
         message: 'Positive feedback received for Priya S',
         time: '1 day ago',
-        urgent: false
-      }
+        urgent: false,
+      },
     ],
     recentActivity: [
       {
@@ -249,47 +255,57 @@ const Overview = () => {
         user: 'Sarah Johnson',
         action: 'shortlisted',
         candidate: 'Priya S',
-        timestamp: '2 hours ago'
+        timestamp: '2 hours ago',
       },
       {
         id: 'activity-2',
         user: 'Mike Chen',
         action: 'added note for',
         candidate: 'Arjun Kumar',
-        timestamp: '4 hours ago'
+        timestamp: '4 hours ago',
       },
       {
         id: 'activity-3',
         user: 'Lisa Wang',
         action: 'scheduled interview with',
         candidate: 'Deepika M',
-        timestamp: '1 day ago'
-      }
+        timestamp: '1 day ago',
+      },
     ],
     shortlists: [
       {
         id: 'sl_001',
         name: 'FSQM Q4 Plant Quality Interns',
         candidates: [null, null, null],
-        created_date: '2025-09-25'
-      }
+        created_date: '2025-09-25',
+      },
     ],
     savedSearches: [
       'React + Node.js',
       'Python Developers',
       'Data Science + ML',
-      'Frontend Developers'
-    ]
+      'Frontend Developers',
+    ],
   };
 
   // Prioritize database data over fallback - only use fallback if we have an error AND no data
-  const data = dashboardData || (error ? fallbackData : {
-    kpis: { newProfiles: 0, shortlisted: 0, interviewsScheduled: 0, offersExtended: 0, timeToHire: 0 },
-    alerts: [],
-    recentActivity: [],
-    shortlists: [],
-    savedSearches: []
-  });
+  const data =
+    dashboardData ||
+    (error
+      ? fallbackData
+      : {
+          kpis: {
+            newProfiles: 0,
+            shortlisted: 0,
+            interviewsScheduled: 0,
+            offersExtended: 0,
+            timeToHire: 0,
+          },
+          alerts: [],
+          recentActivity: [],
+          shortlists: [],
+          savedSearches: [],
+        });
   const alerts = data.alerts || [];
 
   return (
@@ -304,7 +320,10 @@ const Overview = () => {
         {loading ? (
           // Loading skeleton
           [...Array(5)].map((_, i) => (
-            <div key={i} className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200 animate-pulse">
+            <div
+              key={i}
+              className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200 animate-pulse"
+            >
               <div className="p-5">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
@@ -370,8 +389,8 @@ const Overview = () => {
             </div>
             <div className="p-6 space-y-4">
               {alerts.map((alert) => (
-                <AlertCard 
-                  key={alert.id} 
+                <AlertCard
+                  key={alert.id}
                   {...alert}
                   action="View Details"
                   onActionClick={() => handleAlertAction(alert)}
@@ -389,10 +408,11 @@ const Overview = () => {
               <div className="flex flex-wrap gap-2">
                 {(data.savedSearches || []).map((search, index) => {
                   const searchName = typeof search === 'string' ? search : search.name;
-                  const searchObj = typeof search === 'string' 
-                    ? { id: `search-${index}`, name: search, search_criteria: { query: search } }
-                    : search;
-                  
+                  const searchObj =
+                    typeof search === 'string'
+                      ? { id: `search-${index}`, name: search, search_criteria: { query: search } }
+                      : search;
+
                   return (
                     <button
                       key={searchObj.id || index}
@@ -418,10 +438,15 @@ const Overview = () => {
             <div className="p-6">
               <div className="space-y-3">
                 {(data.shortlists || []).map((shortlist) => (
-                  <div key={shortlist.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div
+                    key={shortlist.id}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                  >
                     <div>
                       <p className="text-sm font-medium text-gray-900">{shortlist.name}</p>
-                      <p className="text-xs text-gray-500">{shortlist.candidates.length} candidates • {shortlist.created_date}</p>
+                      <p className="text-xs text-gray-500">
+                        {shortlist.candidates.length} candidates • {shortlist.created_date}
+                      </p>
                     </div>
                     <div className="flex space-x-2">
                       <button className="text-xs text-primary-600 hover:text-primary-700 font-medium">
@@ -458,8 +483,8 @@ const Overview = () => {
               </div>
             </button>
             <div className="p-6">
-              <ActivityFeed 
-                activities={displayedActivities} 
+              <ActivityFeed
+                activities={displayedActivities}
                 loading={activitiesLoading}
                 showRealtimeIndicator={true}
               />

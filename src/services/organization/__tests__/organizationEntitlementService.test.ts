@@ -1,15 +1,13 @@
 /**
  * Unit Tests for OrganizationEntitlementService
- * 
+ *
  * Tests for Task 21.3: Test OrganizationEntitlementService methods
  * Tests for Task 21.8: Test access control checks
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LicenseAssignment } from '../licenseManagementService';
-import {
-    OrganizationEntitlementService
-} from '../organizationEntitlementService';
+import { OrganizationEntitlementService } from '../organizationEntitlementService';
 
 // Mock Supabase client
 vi.mock('@/lib/supabaseClient', () => ({
@@ -22,12 +20,12 @@ vi.mock('@/lib/supabaseClient', () => ({
       in: vi.fn().mockReturnThis(),
       or: vi.fn().mockReturnThis(),
       single: vi.fn(),
-      order: vi.fn().mockReturnThis()
+      order: vi.fn().mockReturnThis(),
     })),
     auth: {
-      getUser: vi.fn()
-    }
-  }
+      getUser: vi.fn(),
+    },
+  },
 }));
 
 import { supabase } from '@/lib/supabaseClient';
@@ -58,16 +56,16 @@ describe('OrganizationEntitlementService', () => {
       assignedAt: new Date().toISOString(),
       assignedBy: 'admin-456',
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     };
 
     it('should grant entitlements for all plan features', async () => {
       const mockSubscription = {
-        subscription_plan_id: 'plan-001'
+        subscription_plan_id: 'plan-001',
       };
 
       const mockPlan = {
-        features: ['feature_ai_assistant', 'feature_analytics', 'feature_reports']
+        features: ['feature_ai_assistant', 'feature_analytics', 'feature_reports'],
       };
 
       const mockEntitlement = {
@@ -79,7 +77,7 @@ describe('OrganizationEntitlementService', () => {
         organization_subscription_id: 'sub-001',
         granted_by: 'admin-456',
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       };
 
       let callCount = 0;
@@ -89,21 +87,21 @@ describe('OrganizationEntitlementService', () => {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: mockSubscription, error: null })
+            single: vi.fn().mockResolvedValue({ data: mockSubscription, error: null }),
           } as any;
         }
         if (table === 'subscription_plans') {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: mockPlan, error: null })
+            single: vi.fn().mockResolvedValue({ data: mockPlan, error: null }),
           } as any;
         }
         // user_entitlements insert
         return {
           insert: vi.fn().mockReturnThis(),
           select: vi.fn().mockReturnThis(),
-          single: vi.fn().mockResolvedValue({ data: mockEntitlement, error: null })
+          single: vi.fn().mockResolvedValue({ data: mockEntitlement, error: null }),
         } as any;
       });
 
@@ -114,19 +112,23 @@ describe('OrganizationEntitlementService', () => {
     });
 
     it('should throw error when subscription not found', async () => {
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: null, error: null })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(
+        () =>
+          ({
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: null, error: null }),
+          }) as any
+      );
 
-      await expect(service.grantEntitlementsFromAssignment(mockAssignment))
-        .rejects.toThrow('Subscription not found');
+      await expect(service.grantEntitlementsFromAssignment(mockAssignment)).rejects.toThrow(
+        'Subscription not found'
+      );
     });
 
     it('should throw error when plan features not found', async () => {
       const mockSubscription = {
-        subscription_plan_id: 'plan-001'
+        subscription_plan_id: 'plan-001',
       };
 
       let callCount = 0;
@@ -136,18 +138,19 @@ describe('OrganizationEntitlementService', () => {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: mockSubscription, error: null })
+            single: vi.fn().mockResolvedValue({ data: mockSubscription, error: null }),
           } as any;
         }
         return {
           select: vi.fn().mockReturnThis(),
           eq: vi.fn().mockReturnThis(),
-          single: vi.fn().mockResolvedValue({ data: null, error: null })
+          single: vi.fn().mockResolvedValue({ data: null, error: null }),
         } as any;
       });
 
-      await expect(service.grantEntitlementsFromAssignment(mockAssignment))
-        .rejects.toThrow('Plan features not found');
+      await expect(service.grantEntitlementsFromAssignment(mockAssignment)).rejects.toThrow(
+        'Plan features not found'
+      );
     });
   });
 
@@ -155,7 +158,7 @@ describe('OrganizationEntitlementService', () => {
     it('should revoke all organization-provided entitlements', async () => {
       const mockAssignment = {
         user_id: 'user-123',
-        organization_subscription_id: 'sub-001'
+        organization_subscription_id: 'sub-001',
       };
 
       let callCount = 0;
@@ -166,7 +169,7 @@ describe('OrganizationEntitlementService', () => {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: mockAssignment, error: null })
+            single: vi.fn().mockResolvedValue({ data: mockAssignment, error: null }),
           } as any;
         }
         // Update entitlements - support 3 chained .eq() calls
@@ -174,25 +177,28 @@ describe('OrganizationEntitlementService', () => {
         chainable.update = vi.fn().mockReturnValue(chainable);
         chainable.eq = vi.fn().mockImplementation(() => ({
           eq: vi.fn().mockImplementation(() => ({
-            eq: vi.fn().mockResolvedValue({ error: null })
-          }))
+            eq: vi.fn().mockResolvedValue({ error: null }),
+          })),
         }));
         return chainable;
       });
 
-      await expect(service.revokeEntitlementsFromAssignment('assign-001'))
-        .resolves.not.toThrow();
+      await expect(service.revokeEntitlementsFromAssignment('assign-001')).resolves.not.toThrow();
     });
 
     it('should throw error when assignment not found', async () => {
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: null, error: null })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(
+        () =>
+          ({
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: null, error: null }),
+          }) as any
+      );
 
-      await expect(service.revokeEntitlementsFromAssignment('invalid-assign'))
-        .rejects.toThrow('Assignment not found');
+      await expect(service.revokeEntitlementsFromAssignment('invalid-assign')).rejects.toThrow(
+        'Assignment not found'
+      );
     });
   });
 
@@ -207,14 +213,17 @@ describe('OrganizationEntitlementService', () => {
         feature_key: 'feature_ai_assistant',
         is_active: true,
         granted_by_organization: true,
-        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       };
 
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: mockOrgEntitlement, error: null })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(
+        () =>
+          ({
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: mockOrgEntitlement, error: null }),
+          }) as any
+      );
 
       const result = await service.hasOrganizationAccess('user-123', 'feature_ai_assistant');
 
@@ -229,7 +238,7 @@ describe('OrganizationEntitlementService', () => {
         feature_key: 'feature_ai_assistant',
         is_active: true,
         granted_by_organization: false,
-        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       };
 
       let callCount = 0;
@@ -240,7 +249,7 @@ describe('OrganizationEntitlementService', () => {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } })
+            single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } }),
           } as any;
         }
         // Personal entitlement found
@@ -248,7 +257,7 @@ describe('OrganizationEntitlementService', () => {
           select: vi.fn().mockReturnThis(),
           eq: vi.fn().mockReturnThis(),
           or: vi.fn().mockReturnThis(),
-          single: vi.fn().mockResolvedValue({ data: mockPersonalEntitlement, error: null })
+          single: vi.fn().mockResolvedValue({ data: mockPersonalEntitlement, error: null }),
         } as any;
       });
 
@@ -259,12 +268,15 @@ describe('OrganizationEntitlementService', () => {
     });
 
     it('should return no access when user has no entitlement', async () => {
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        or: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(
+        () =>
+          ({
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            or: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } }),
+          }) as any
+      );
 
       const result = await service.hasOrganizationAccess('user-123', 'feature_ai_assistant');
 
@@ -273,11 +285,14 @@ describe('OrganizationEntitlementService', () => {
     });
 
     it('should handle errors gracefully and return no access', async () => {
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockRejectedValue(new Error('Database error'))
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(
+        () =>
+          ({
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockRejectedValue(new Error('Database error')),
+          }) as any
+      );
 
       const result = await service.hasOrganizationAccess('user-123', 'feature_ai_assistant');
 
@@ -297,7 +312,7 @@ describe('OrganizationEntitlementService', () => {
           granted_by_organization: true,
           organization_subscription_id: 'sub-001',
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         },
         {
           id: 'ent-002',
@@ -306,7 +321,7 @@ describe('OrganizationEntitlementService', () => {
           is_active: true,
           granted_by_organization: false,
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         },
         {
           id: 'ent-003',
@@ -316,8 +331,8 @@ describe('OrganizationEntitlementService', () => {
           granted_by_organization: true,
           organization_subscription_id: 'sub-001',
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
+          updated_at: new Date().toISOString(),
+        },
       ];
 
       // Create chainable mock that supports multiple .eq() calls
@@ -325,7 +340,7 @@ describe('OrganizationEntitlementService', () => {
         const chainable: any = {};
         chainable.select = vi.fn().mockReturnValue(chainable);
         chainable.eq = vi.fn().mockImplementation(() => ({
-          eq: vi.fn().mockResolvedValue({ data: mockEntitlements, error: null })
+          eq: vi.fn().mockResolvedValue({ data: mockEntitlements, error: null }),
         }));
         return chainable;
       };
@@ -345,7 +360,7 @@ describe('OrganizationEntitlementService', () => {
         const chainable: any = {};
         chainable.select = vi.fn().mockReturnValue(chainable);
         chainable.eq = vi.fn().mockImplementation(() => ({
-          eq: vi.fn().mockResolvedValue({ data: [], error: null })
+          eq: vi.fn().mockResolvedValue({ data: [], error: null }),
         }));
         return chainable;
       };
@@ -367,15 +382,15 @@ describe('OrganizationEntitlementService', () => {
           user_id: 'user-123',
           organization_subscription_id: 'sub-001',
           member_type: 'educator',
-          status: 'active'
+          status: 'active',
         },
         {
           id: 'assign-002',
           user_id: 'user-456',
           organization_subscription_id: 'sub-001',
           member_type: 'educator',
-          status: 'active'
-        }
+          status: 'active',
+        },
       ];
 
       const mockSubscription = { subscription_plan_id: 'plan-001' };
@@ -389,7 +404,7 @@ describe('OrganizationEntitlementService', () => {
           const chainable: any = {};
           chainable.select = vi.fn().mockReturnValue(chainable);
           chainable.eq = vi.fn().mockImplementation(() => ({
-            eq: vi.fn().mockResolvedValue({ data: mockAssignments, error: null })
+            eq: vi.fn().mockResolvedValue({ data: mockAssignments, error: null }),
           }));
           return chainable;
         }
@@ -399,12 +414,16 @@ describe('OrganizationEntitlementService', () => {
           update: vi.fn().mockReturnThis(),
           insert: vi.fn().mockReturnThis(),
           eq: vi.fn().mockReturnThis(),
-          single: vi.fn().mockResolvedValue({ data: table === 'organization_subscriptions' ? mockSubscription : mockPlan, error: null })
+          single: vi
+            .fn()
+            .mockResolvedValue({
+              data: table === 'organization_subscriptions' ? mockSubscription : mockPlan,
+              error: null,
+            }),
         } as any;
       });
 
-      await expect(service.syncOrganizationEntitlements('sub-001'))
-        .resolves.not.toThrow();
+      await expect(service.syncOrganizationEntitlements('sub-001')).resolves.not.toThrow();
     });
 
     it('should do nothing when no active assignments exist', async () => {
@@ -412,15 +431,14 @@ describe('OrganizationEntitlementService', () => {
         const chainable: any = {};
         chainable.select = vi.fn().mockReturnValue(chainable);
         chainable.eq = vi.fn().mockImplementation(() => ({
-          eq: vi.fn().mockResolvedValue({ data: [], error: null })
+          eq: vi.fn().mockResolvedValue({ data: [], error: null }),
         }));
         return chainable;
       };
 
       vi.mocked(supabase.from).mockImplementation(() => createChainableMock());
 
-      await expect(service.syncOrganizationEntitlements('sub-001'))
-        .resolves.not.toThrow();
+      await expect(service.syncOrganizationEntitlements('sub-001')).resolves.not.toThrow();
     });
   });
 
@@ -435,14 +453,17 @@ describe('OrganizationEntitlementService', () => {
         organization_subscription_id: 'sub-001',
         granted_by: 'admin-456',
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       };
 
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        insert: vi.fn().mockReturnThis(),
-        select: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: mockEntitlement, error: null })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(
+        () =>
+          ({
+            insert: vi.fn().mockReturnThis(),
+            select: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: mockEntitlement, error: null }),
+          }) as any
+      );
 
       const result = await service.bulkGrantEntitlements(
         ['user-123', 'user-456'],
@@ -473,11 +494,11 @@ describe('OrganizationEntitlementService', () => {
                 is_active: true,
                 granted_by_organization: true,
                 created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
+                updated_at: new Date().toISOString(),
               },
-              error: null
+              error: null,
             });
-          })
+          }),
         } as any;
       });
 
@@ -501,17 +522,16 @@ describe('OrganizationEntitlementService', () => {
         chainable.update = vi.fn().mockReturnValue(chainable);
         chainable.in = vi.fn().mockReturnValue(chainable);
         chainable.eq = vi.fn().mockImplementation(() => ({
-          eq: vi.fn().mockResolvedValue({ error: null })
+          eq: vi.fn().mockResolvedValue({ error: null }),
         }));
         return chainable;
       };
 
       vi.mocked(supabase.from).mockImplementation(() => createChainableMock());
 
-      await expect(service.bulkRevokeEntitlements(
-        ['user-123', 'user-456'],
-        'sub-001'
-      )).resolves.not.toThrow();
+      await expect(
+        service.bulkRevokeEntitlements(['user-123', 'user-456'], 'sub-001')
+      ).resolves.not.toThrow();
     });
 
     it('should throw error on database failure', async () => {
@@ -520,17 +540,16 @@ describe('OrganizationEntitlementService', () => {
         chainable.update = vi.fn().mockReturnValue(chainable);
         chainable.in = vi.fn().mockReturnValue(chainable);
         chainable.eq = vi.fn().mockImplementation(() => ({
-          eq: vi.fn().mockResolvedValue({ error: { message: 'Database error' } })
+          eq: vi.fn().mockResolvedValue({ error: { message: 'Database error' } }),
         }));
         return chainable;
       };
 
       vi.mocked(supabase.from).mockImplementation(() => createChainableMock());
 
-      await expect(service.bulkRevokeEntitlements(
-        ['user-123', 'user-456'],
-        'sub-001'
-      )).rejects.toThrow();
+      await expect(
+        service.bulkRevokeEntitlements(['user-123', 'user-456'], 'sub-001')
+      ).rejects.toThrow();
     });
   });
 
@@ -541,7 +560,7 @@ describe('OrganizationEntitlementService', () => {
         { user_id: 'user-1', feature_key: 'feature_analytics' },
         { user_id: 'user-2', feature_key: 'feature_ai' },
         { user_id: 'user-2', feature_key: 'feature_analytics' },
-        { user_id: 'user-3', feature_key: 'feature_ai' }
+        { user_id: 'user-3', feature_key: 'feature_ai' },
       ];
 
       // Create chainable mock that supports 3 .eq() calls
@@ -550,8 +569,8 @@ describe('OrganizationEntitlementService', () => {
         chainable.select = vi.fn().mockReturnValue(chainable);
         chainable.eq = vi.fn().mockImplementation(() => ({
           eq: vi.fn().mockImplementation(() => ({
-            eq: vi.fn().mockResolvedValue({ data: mockEntitlements, error: null })
-          }))
+            eq: vi.fn().mockResolvedValue({ data: mockEntitlements, error: null }),
+          })),
         }));
         return chainable;
       };
@@ -572,8 +591,8 @@ describe('OrganizationEntitlementService', () => {
         chainable.select = vi.fn().mockReturnValue(chainable);
         chainable.eq = vi.fn().mockImplementation(() => ({
           eq: vi.fn().mockImplementation(() => ({
-            eq: vi.fn().mockResolvedValue({ data: null, error: null })
-          }))
+            eq: vi.fn().mockResolvedValue({ data: null, error: null }),
+          })),
         }));
         return chainable;
       };

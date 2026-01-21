@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { supabase } from "../lib/supabaseClient";
-import { NotificationType } from "../hooks/useNotifications";
+import { supabase } from '../lib/supabaseClient';
+import { NotificationType } from '../hooks/useNotifications';
 
 // ✅ helper to check UUID
 function isUUID(value: string): boolean {
@@ -14,39 +14,37 @@ async function resolveUserId(identifier: string): Promise<string | null> {
 
   // Try educators first
   const { data: educatorData } = await supabase
-    .from("school_educators")
-    .select("user_id")
-    .ilike("email", identifier)
+    .from('school_educators')
+    .select('user_id')
+    .ilike('email', identifier)
     .maybeSingle();
 
   if (educatorData?.user_id) return educatorData.user_id;
 
   // Try students
   const { data: studentData } = await supabase
-    .from("students")
-    .select("user_id")
-    .ilike("email", identifier)
+    .from('students')
+    .select('user_id')
+    .ilike('email', identifier)
     .maybeSingle();
 
   if (studentData?.user_id) return studentData.user_id;
 
   // Try recruiters
- // Try recruiters
-const { data: recruiterData } = await supabase
-  .from("recruiters")
-  .select("user_id")
-  .ilike("email", identifier)
-  .maybeSingle();
+  // Try recruiters
+  const { data: recruiterData } = await supabase
+    .from('recruiters')
+    .select('user_id')
+    .ilike('email', identifier)
+    .maybeSingle();
 
-if (recruiterData?.user_id) return recruiterData.user_id;
-
-
+  if (recruiterData?.user_id) return recruiterData.user_id;
 
   // Try users (admins)
   const { data: userData } = await supabase
-    .from("users")
-    .select("id")
-    .ilike("email", identifier)
+    .from('users')
+    .select('id')
+    .ilike('email', identifier)
     .maybeSingle();
 
   return userData?.id ?? null;
@@ -63,11 +61,11 @@ export async function createNotification(
     const recipientId = await resolveUserId(recipientIdentifier);
 
     if (!recipientId) {
-      return { success: false, error: "Recipient not found" };
+      return { success: false, error: 'Recipient not found' };
     }
 
     const { data, error } = await supabase
-      .from("notifications")
+      .from('notifications')
       .insert([
         {
           recipient_id: recipientId,
@@ -86,7 +84,7 @@ export async function createNotification(
   } catch (err: any) {
     return {
       success: false,
-      error: err.message || "Failed to create notification",
+      error: err.message || 'Failed to create notification',
     };
   }
 }
@@ -117,13 +115,10 @@ export async function createBatchNotifications(
     }
 
     if (notifications.length === 0) {
-      return { success: false, error: "No valid recipients found" };
+      return { success: false, error: 'No valid recipients found' };
     }
 
-    const { data, error } = await supabase
-      .from("notifications")
-      .insert(notifications)
-      .select();
+    const { data, error } = await supabase.from('notifications').insert(notifications).select();
 
     if (error) throw error;
 
@@ -131,7 +126,7 @@ export async function createBatchNotifications(
   } catch (err: any) {
     return {
       success: false,
-      error: err.message || "Failed to create batch notifications",
+      error: err.message || 'Failed to create batch notifications',
     };
   }
 }

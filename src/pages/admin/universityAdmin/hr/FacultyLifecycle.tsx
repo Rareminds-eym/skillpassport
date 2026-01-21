@@ -8,13 +8,7 @@ import {
   PencilIcon,
   TrashIcon,
 } from '@heroicons/react/24/outline';
-import {
-  Users,
-  BarChart3,
-  Search,
-  UserCheck,
-  Clock,
-} from 'lucide-react';
+import { Users, BarChart3, Search, UserCheck, Clock } from 'lucide-react';
 import KPICard from '../../../../components/admin/KPICard';
 
 interface Faculty {
@@ -81,36 +75,36 @@ const FacultyLifecycle: React.FC = () => {
   // KPI Data
   const kpiData = [
     {
-      title: "Total Faculty",
+      title: 'Total Faculty',
       value: facultyStats.totalFaculty.toLocaleString(),
       change: 3,
-      changeLabel: "vs last month",
+      changeLabel: 'vs last month',
       icon: <Users className="h-6 w-6" />,
-      color: "blue" as const,
+      color: 'blue' as const,
     },
     {
-      title: "Active Faculty",
+      title: 'Active Faculty',
       value: facultyStats.activeFaculty.toLocaleString(),
       change: 2,
-      changeLabel: "currently active",
+      changeLabel: 'currently active',
       icon: <UserCheck className="h-6 w-6" />,
-      color: "green" as const,
+      color: 'green' as const,
     },
     {
-      title: "On Leave",
+      title: 'On Leave',
       value: facultyStats.onLeave.toLocaleString(),
       change: 0,
-      changeLabel: "temporary absence",
+      changeLabel: 'temporary absence',
       icon: <Clock className="h-6 w-6" />,
-      color: "yellow" as const,
+      color: 'yellow' as const,
     },
     {
-      title: "New Joinees",
+      title: 'New Joinees',
       value: facultyStats.newJoinees.toLocaleString(),
       change: 15,
-      changeLabel: "this month",
+      changeLabel: 'this month',
       icon: <UserPlusIcon className="h-6 w-6" />,
-      color: "purple" as const,
+      color: 'purple' as const,
     },
   ];
 
@@ -132,28 +126,38 @@ const FacultyLifecycle: React.FC = () => {
 
   const handleStartRecruitment = () => {
     // Navigate to recruitment process or open recruitment modal
-    alert('Starting recruitment process...\nThis would typically open a recruitment workflow or navigate to a detailed recruitment page.');
+    alert(
+      'Starting recruitment process...\nThis would typically open a recruitment workflow or navigate to a detailed recruitment page.'
+    );
   };
 
   const handleCreateOnboarding = () => {
     // Navigate to onboarding checklist creation
-    alert('Creating onboarding checklist...\nThis would typically open a form to create customized onboarding checklists for new faculty.');
+    alert(
+      'Creating onboarding checklist...\nThis would typically open a form to create customized onboarding checklists for new faculty.'
+    );
   };
 
   const handleStartPerformanceReview = () => {
     // Navigate to performance review system
-    alert('Starting performance review...\nThis would typically open the performance evaluation system with review templates and criteria.');
+    alert(
+      'Starting performance review...\nThis would typically open the performance evaluation system with review templates and criteria.'
+    );
   };
 
   const handleProcessSeparation = () => {
     // Navigate to separation process
-    alert('Processing separation...\nThis would typically open the exit procedure workflow including clearance forms and documentation.');
+    alert(
+      'Processing separation...\nThis would typically open the exit procedure workflow including clearance forms and documentation.'
+    );
   };
 
   const confirmDelete = () => {
     if (selectedFaculty) {
       // Here you would typically call an API to delete the faculty
-      alert(`Faculty ${selectedFaculty.name} would be deleted from the system.\nThis action would typically require additional confirmation and proper data handling.`);
+      alert(
+        `Faculty ${selectedFaculty.name} would be deleted from the system.\nThis action would typically require additional confirmation and proper data handling.`
+      );
       setShowDeleteModal(false);
       setSelectedFaculty(null);
     }
@@ -174,7 +178,7 @@ const FacultyLifecycle: React.FC = () => {
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-gray-800">Recent Faculty Additions</h3>
-            <button 
+            <button
               onClick={() => setActiveTab('recruitment')}
               className="text-sm text-purple-600 hover:text-purple-700 font-medium"
             >
@@ -183,7 +187,10 @@ const FacultyLifecycle: React.FC = () => {
           </div>
           <div className="space-y-4">
             {recentFaculty.map((faculty) => (
-              <div key={faculty.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div
+                key={faculty.id}
+                className="flex items-center justify-between p-4 bg-gray-50 rounded-xl"
+              >
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-green-100 rounded-lg">
                     <UserCheck className="h-4 w-4 text-green-600" />
@@ -194,10 +201,16 @@ const FacultyLifecycle: React.FC = () => {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-medium text-gray-900">{new Date(faculty.joiningDate).toLocaleDateString()}</p>
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                    faculty.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                  }`}>
+                  <p className="text-sm font-medium text-gray-900">
+                    {new Date(faculty.joiningDate).toLocaleDateString()}
+                  </p>
+                  <span
+                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      faculty.status === 'Active'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-yellow-100 text-yellow-800'
+                    }`}
+                  >
                     {faculty.status}
                   </span>
                 </div>
@@ -224,7 +237,7 @@ const FacultyLifecycle: React.FC = () => {
                 <p className="text-sm text-gray-600">Begin faculty hiring process</p>
               </div>
             </button>
-            
+
             <button
               onClick={handleCreateOnboarding}
               className="w-full flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-xl hover:shadow-md transition-all duration-200"
@@ -273,74 +286,90 @@ const FacultyLifecycle: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
-                <th className="text-left p-4 font-semibold text-gray-700 text-sm">Faculty Details</th>
+                <th className="text-left p-4 font-semibold text-gray-700 text-sm">
+                  Faculty Details
+                </th>
                 <th className="text-left p-4 font-semibold text-gray-700 text-sm">Department</th>
-                <th className="text-center p-4 font-semibold text-gray-700 text-sm">Joining Date</th>
+                <th className="text-center p-4 font-semibold text-gray-700 text-sm">
+                  Joining Date
+                </th>
                 <th className="text-center p-4 font-semibold text-gray-700 text-sm">Status</th>
                 <th className="text-center p-4 font-semibold text-gray-700 text-sm">Actions</th>
               </tr>
             </thead>
             <tbody>
               {recentFaculty
-                .filter(faculty => 
-                  faculty.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  faculty.department.toLowerCase().includes(searchTerm.toLowerCase())
+                .filter(
+                  (faculty) =>
+                    faculty.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    faculty.department.toLowerCase().includes(searchTerm.toLowerCase())
                 )
                 .map((faculty) => (
-                <tr key={faculty.id} className="border-b border-gray-100 hover:bg-purple-50/30 transition-colors">
-                  <td className="p-4">
-                    <div>
-                      <p className="font-medium text-gray-900">{faculty.name}</p>
-                      <p className="text-sm text-gray-500">{faculty.employeeId} • {faculty.designation}</p>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <span className="text-gray-700">{faculty.department}</span>
-                  </td>
-                  <td className="p-4 text-center">
-                    <span className="text-gray-700">{new Date(faculty.joiningDate).toLocaleDateString()}</span>
-                  </td>
-                  <td className="p-4 text-center">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      faculty.status === 'Active' ? 'bg-green-100 text-green-800' :
-                      faculty.status === 'On Leave' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {faculty.status}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    <div className="flex items-center justify-center gap-2">
-                      <button 
-                        onClick={() => handleViewFaculty(faculty)}
-                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="View Details"
+                  <tr
+                    key={faculty.id}
+                    className="border-b border-gray-100 hover:bg-purple-50/30 transition-colors"
+                  >
+                    <td className="p-4">
+                      <div>
+                        <p className="font-medium text-gray-900">{faculty.name}</p>
+                        <p className="text-sm text-gray-500">
+                          {faculty.employeeId} • {faculty.designation}
+                        </p>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <span className="text-gray-700">{faculty.department}</span>
+                    </td>
+                    <td className="p-4 text-center">
+                      <span className="text-gray-700">
+                        {new Date(faculty.joiningDate).toLocaleDateString()}
+                      </span>
+                    </td>
+                    <td className="p-4 text-center">
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          faculty.status === 'Active'
+                            ? 'bg-green-100 text-green-800'
+                            : faculty.status === 'On Leave'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-gray-100 text-gray-800'
+                        }`}
                       >
-                        <EyeIcon className="h-4 w-4" />
-                      </button>
-                      <button 
-                        onClick={() => handleEditFaculty(faculty)}
-                        className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                        title="Edit Faculty"
-                      >
-                        <PencilIcon className="h-4 w-4" />
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteFaculty(faculty)}
-                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Delete Faculty"
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                        {faculty.status}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => handleViewFaculty(faculty)}
+                          className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="View Details"
+                        >
+                          <EyeIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleEditFaculty(faculty)}
+                          className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                          title="Edit Faculty"
+                        >
+                          <PencilIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteFaculty(faculty)}
+                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete Faculty"
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
             </tbody>
           </table>
         </div>
@@ -353,7 +382,8 @@ const FacultyLifecycle: React.FC = () => {
       <UserPlusIcon className="mx-auto h-12 w-12 text-gray-300" />
       <h3 className="mt-4 text-lg font-semibold text-gray-900">Faculty Recruitment</h3>
       <p className="mt-2 text-sm text-gray-500">
-        Manage faculty recruitment process, job postings, and candidate evaluation across all affiliated colleges.
+        Manage faculty recruitment process, job postings, and candidate evaluation across all
+        affiliated colleges.
       </p>
       <div className="mt-6">
         <button
@@ -373,7 +403,8 @@ const FacultyLifecycle: React.FC = () => {
       <AcademicCapIcon className="mx-auto h-12 w-12 text-gray-300" />
       <h3 className="mt-4 text-lg font-semibold text-gray-900">Faculty Onboarding</h3>
       <p className="mt-2 text-sm text-gray-500">
-        Streamline the onboarding process for new faculty members with comprehensive checklists and workflows.
+        Streamline the onboarding process for new faculty members with comprehensive checklists and
+        workflows.
       </p>
       <div className="mt-6">
         <button
@@ -393,7 +424,8 @@ const FacultyLifecycle: React.FC = () => {
       <ClipboardDocumentListIcon className="mx-auto h-12 w-12 text-gray-300" />
       <h3 className="mt-4 text-lg font-semibold text-gray-900">Performance Management</h3>
       <p className="mt-2 text-sm text-gray-500">
-        Track and evaluate faculty performance, conduct appraisals, and manage career development programs.
+        Track and evaluate faculty performance, conduct appraisals, and manage career development
+        programs.
       </p>
       <div className="mt-6">
         <button
@@ -413,7 +445,8 @@ const FacultyLifecycle: React.FC = () => {
       <UserGroupIcon className="mx-auto h-12 w-12 text-gray-300" />
       <h3 className="mt-4 text-lg font-semibold text-gray-900">Faculty Separation</h3>
       <p className="mt-2 text-sm text-gray-500">
-        Manage faculty resignations, retirements, and exit procedures with proper documentation and clearance processes.
+        Manage faculty resignations, retirements, and exit procedures with proper documentation and
+        clearance processes.
       </p>
       <div className="mt-6">
         <button
@@ -453,7 +486,8 @@ const FacultyLifecycle: React.FC = () => {
           Faculty Lifecycle Management
         </h1>
         <p className="text-gray-600 mt-2">
-          Manage the complete lifecycle of faculty members from recruitment to separation across all affiliated colleges
+          Manage the complete lifecycle of faculty members from recruitment to separation across all
+          affiliated colleges
         </p>
       </div>
 
@@ -513,15 +547,21 @@ const FacultyLifecycle: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Joining Date</label>
-                  <p className="text-sm text-gray-900">{new Date(selectedFaculty.joiningDate).toLocaleDateString()}</p>
+                  <p className="text-sm text-gray-900">
+                    {new Date(selectedFaculty.joiningDate).toLocaleDateString()}
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Status</label>
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                    selectedFaculty.status === 'Active' ? 'bg-green-100 text-green-800' :
-                    selectedFaculty.status === 'On Leave' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
+                  <span
+                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      selectedFaculty.status === 'Active'
+                        ? 'bg-green-100 text-green-800'
+                        : selectedFaculty.status === 'On Leave'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-gray-100 text-gray-800'
+                    }`}
+                  >
                     {selectedFaculty.status}
                   </span>
                 </div>
@@ -632,8 +672,8 @@ const FacultyLifecycle: React.FC = () => {
               <h3 className="text-lg font-medium text-gray-900 mt-4">Delete Faculty</h3>
               <div className="mt-2 px-7 py-3">
                 <p className="text-sm text-gray-500">
-                  Are you sure you want to delete <strong>{selectedFaculty.name}</strong>? 
-                  This action cannot be undone.
+                  Are you sure you want to delete <strong>{selectedFaculty.name}</strong>? This
+                  action cannot be undone.
                 </p>
               </div>
               <div className="flex justify-center space-x-3 mt-6">

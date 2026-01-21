@@ -7,16 +7,16 @@ import { courseProgressService } from '../services/courseProgressService';
  */
 export const useVideoProgress = (studentId, courseId, lessonId, options = {}) => {
   const {
-    saveInterval = 5000,      // Save every 5 seconds during playback
+    saveInterval = 5000, // Save every 5 seconds during playback
     completionThreshold = 0.9, // 90% watched = completed
-    resumeBuffer = 2,          // Resume 2 seconds before saved position
-    enabled = true             // Allow disabling for non-students
+    resumeBuffer = 2, // Resume 2 seconds before saved position
+    enabled = true, // Allow disabling for non-students
   } = options;
 
   const videoRef = useRef(null);
   const saveTimeoutRef = useRef(null);
   const lastSavedPositionRef = useRef(0);
-  
+
   const [currentPosition, setCurrentPosition] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
@@ -33,13 +33,13 @@ export const useVideoProgress = (studentId, courseId, lessonId, options = {}) =>
     const loadPosition = async () => {
       setIsLoading(true);
       setHasRestored(false);
-      
+
       try {
         const saved = await courseProgressService.getVideoPosition(studentId, courseId, lessonId);
-        
+
         if (saved) {
           setIsCompleted(saved.video_completed || false);
-          
+
           // Store position to restore when video loads
           if (saved.video_position_seconds > 0 && !saved.video_completed) {
             lastSavedPositionRef.current = Math.max(0, saved.video_position_seconds - resumeBuffer);
@@ -63,23 +63,26 @@ export const useVideoProgress = (studentId, courseId, lessonId, options = {}) =>
   }, [studentId, courseId, lessonId, enabled, resumeBuffer]);
 
   // Save position to database (debounced)
-  const savePosition = useCallback(async (position, videoDuration) => {
-    if (!enabled || !studentId || !courseId || !lessonId) return;
-    
-    await courseProgressService.saveVideoPosition(
-      studentId,
-      courseId,
-      lessonId,
-      Math.floor(position),
-      Math.floor(videoDuration)
-    );
-    lastSavedPositionRef.current = position;
-  }, [enabled, studentId, courseId, lessonId]);
+  const savePosition = useCallback(
+    async (position, videoDuration) => {
+      if (!enabled || !studentId || !courseId || !lessonId) return;
+
+      await courseProgressService.saveVideoPosition(
+        studentId,
+        courseId,
+        lessonId,
+        Math.floor(position),
+        Math.floor(videoDuration)
+      );
+      lastSavedPositionRef.current = position;
+    },
+    [enabled, studentId, courseId, lessonId]
+  );
 
   // Immediate save (for pause, seek, blur events)
   const saveImmediately = useCallback(() => {
     if (!videoRef.current || !enabled) return;
-    
+
     const video = videoRef.current;
     if (video.currentTime > 0) {
       // Clear any pending debounced save
@@ -98,7 +101,7 @@ export const useVideoProgress = (studentId, courseId, lessonId, options = {}) =>
     // Restore position when video metadata loads
     const handleLoadedMetadata = () => {
       setDuration(video.duration);
-      
+
       // Restore saved position
       if (lastSavedPositionRef.current > 0 && !hasRestored) {
         video.currentTime = lastSavedPositionRef.current;
@@ -121,7 +124,7 @@ export const useVideoProgress = (studentId, courseId, lessonId, options = {}) =>
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
-      
+
       saveTimeoutRef.current = setTimeout(() => {
         if (!video.paused && position > lastSavedPositionRef.current + 3) {
           savePosition(position, video.duration);
@@ -159,13 +162,23 @@ export const useVideoProgress = (studentId, courseId, lessonId, options = {}) =>
       video.removeEventListener('pause', handlePause);
       video.removeEventListener('seeked', handleSeeked);
       video.removeEventListener('ended', handleEnded);
-      
+
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [enabled, studentId, courseId, lessonId, savePosition, saveImmediately, 
-      saveInterval, completionThreshold, isCompleted, hasRestored]);
+  }, [
+    enabled,
+    studentId,
+    courseId,
+    lessonId,
+    savePosition,
+    saveImmediately,
+    saveInterval,
+    completionThreshold,
+    isCompleted,
+    hasRestored,
+  ]);
 
   // Save on page unload
   useEffect(() => {
@@ -179,9 +192,9 @@ export const useVideoProgress = (studentId, courseId, lessonId, options = {}) =>
           courseId,
           lessonId,
           position: Math.floor(videoRef.current.currentTime),
-          duration: Math.floor(videoRef.current.duration)
+          duration: Math.floor(videoRef.current.duration),
         });
-        
+
         // Fallback: save synchronously if sendBeacon not available
         saveImmediately();
       }
@@ -220,7 +233,7 @@ export const useVideoProgress = (studentId, courseId, lessonId, options = {}) =>
     isCompleted,
     isLoading,
     seekTo,
-    saveImmediately
+    saveImmediately,
   };
 };
 

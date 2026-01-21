@@ -2,13 +2,13 @@
 
 import React from 'react';
 import { CounsellingSession, CounsellingTopicType } from '../../types/counselling';
-import { 
-  GraduationCap, 
-  Briefcase, 
-  TrendingUp, 
-  Heart, 
+import {
+  GraduationCap,
+  Briefcase,
+  TrendingUp,
+  Heart,
   MessageSquare,
-  ChevronRight 
+  ChevronRight,
 } from 'lucide-react';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
@@ -21,32 +21,35 @@ interface SessionListProps {
   selectedSessionId?: string;
 }
 
-const TOPIC_CONFIG: Record<CounsellingTopicType, { icon: React.ElementType; color: string; label: string }> = {
+const TOPIC_CONFIG: Record<
+  CounsellingTopicType,
+  { icon: React.ElementType; color: string; label: string }
+> = {
   academic: {
     icon: GraduationCap,
     color: 'bg-blue-100 text-blue-700',
-    label: 'Academic'
+    label: 'Academic',
   },
   career: {
     icon: Briefcase,
     color: 'bg-green-100 text-green-700',
-    label: 'Career'
+    label: 'Career',
   },
   performance: {
     icon: TrendingUp,
     color: 'bg-purple-100 text-purple-700',
-    label: 'Performance'
+    label: 'Performance',
   },
   'mental-health': {
     icon: Heart,
     color: 'bg-pink-100 text-pink-700',
-    label: 'Wellbeing'
+    label: 'Wellbeing',
   },
   general: {
     icon: MessageSquare,
     color: 'bg-gray-100 text-gray-700',
-    label: 'General'
-  }
+    label: 'General',
+  },
 };
 
 export const SessionList: React.FC<SessionListProps> = ({
@@ -121,9 +124,7 @@ const SessionCard: React.FC<SessionCardProps> = ({ session, isSelected, onClick 
               </div>
 
               {session.student_name && (
-                <p className="font-medium text-sm text-gray-900 truncate">
-                  {session.student_name}
-                </p>
+                <p className="font-medium text-sm text-gray-900 truncate">{session.student_name}</p>
               )}
 
               {session.metadata?.summary && (
@@ -139,10 +140,12 @@ const SessionCard: React.FC<SessionCardProps> = ({ session, isSelected, onClick 
           </div>
 
           {/* Arrow */}
-          <ChevronRight className={cn(
-            'w-4 h-4 flex-shrink-0 ml-2',
-            isSelected ? 'text-blue-500' : 'text-gray-400'
-          )} />
+          <ChevronRight
+            className={cn(
+              'w-4 h-4 flex-shrink-0 ml-2',
+              isSelected ? 'text-blue-500' : 'text-gray-400'
+            )}
+          />
         </div>
       </CardContent>
     </Card>

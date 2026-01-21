@@ -1,9 +1,9 @@
 /**
  * SJTQuestion Component
- * 
+ *
  * Renders a Situational Judgment Test question where users
  * select both the BEST and WORST response options.
- * 
+ *
  * @module features/assessment/career-test/components/questions/SJTQuestion
  */
 
@@ -35,14 +35,14 @@ export const SJTQuestion: React.FC<SJTQuestionProps> = ({
   options,
   optionLabels,
   selectedAnswer,
-  onAnswer
+  onAnswer,
 }) => {
   const currentAnswer = selectedAnswer || { best: null, worst: null };
 
   const handleBestSelect = (option: string) => {
     // Can't select same option for both
     if (currentAnswer.worst === option) return;
-    
+
     // Toggle: if already selected as best, deselect it
     const newBest = currentAnswer.best === option ? null : option;
     onAnswer({ ...currentAnswer, best: newBest });
@@ -51,7 +51,7 @@ export const SJTQuestion: React.FC<SJTQuestionProps> = ({
   const handleWorstSelect = (option: string) => {
     // Can't select same option for both
     if (currentAnswer.best === option) return;
-    
+
     // Toggle: if already selected as worst, deselect it
     const newWorst = currentAnswer.worst === option ? null : option;
     onAnswer({ ...currentAnswer, worst: newWorst });
@@ -67,15 +67,13 @@ export const SJTQuestion: React.FC<SJTQuestionProps> = ({
       )}
 
       {/* Question Text */}
-      <h3 className="text-xl md:text-2xl font-medium text-gray-800 leading-snug">
-        {questionText}
-      </h3>
+      <h3 className="text-xl md:text-2xl font-medium text-gray-800 leading-snug">{questionText}</h3>
 
       {/* Instructions */}
       <div className="p-3 bg-rose-50 rounded-lg border border-rose-200 mb-4">
         <p className="text-sm font-medium text-rose-700">
-          Select the <span className="font-bold text-green-700">BEST</span> response 
-          and the <span className="font-bold text-red-700">WORST</span> response for this scenario.
+          Select the <span className="font-bold text-green-700">BEST</span> response and the{' '}
+          <span className="font-bold text-red-700">WORST</span> response for this scenario.
         </p>
       </div>
 
@@ -91,11 +89,12 @@ export const SJTQuestion: React.FC<SJTQuestionProps> = ({
               key={idx}
               className={`
                 border-2 rounded-xl p-4 transition-all
-                ${isBest 
-                  ? 'border-green-500 bg-green-50 ring-1 ring-green-500/30' 
-                  : isWorst 
-                    ? 'border-red-500 bg-red-50 ring-1 ring-red-500/30' 
-                    : 'border-gray-200 hover:bg-gray-50'
+                ${
+                  isBest
+                    ? 'border-green-500 bg-green-50 ring-1 ring-green-500/30'
+                    : isWorst
+                      ? 'border-red-500 bg-red-50 ring-1 ring-red-500/30'
+                      : 'border-gray-200 hover:bg-gray-50'
                 }
               `}
             >
@@ -117,11 +116,12 @@ export const SJTQuestion: React.FC<SJTQuestionProps> = ({
                   disabled={currentAnswer.worst === option}
                   className={`
                     px-4 py-2 rounded-lg text-sm font-semibold transition-all
-                    ${isBest
-                      ? 'bg-green-500 text-white shadow-md'
-                      : currentAnswer.worst === option
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        : 'bg-green-100 text-green-700 hover:bg-green-200'
+                    ${
+                      isBest
+                        ? 'bg-green-500 text-white shadow-md'
+                        : currentAnswer.worst === option
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-green-100 text-green-700 hover:bg-green-200'
                     }
                   `}
                 >
@@ -136,11 +136,12 @@ export const SJTQuestion: React.FC<SJTQuestionProps> = ({
                   disabled={currentAnswer.best === option}
                   className={`
                     px-4 py-2 rounded-lg text-sm font-semibold transition-all
-                    ${isWorst
-                      ? 'bg-red-500 text-white shadow-md'
-                      : currentAnswer.best === option
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        : 'bg-red-100 text-red-700 hover:bg-red-200'
+                    ${
+                      isWorst
+                        ? 'bg-red-500 text-white shadow-md'
+                        : currentAnswer.best === option
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-red-100 text-red-700 hover:bg-red-200'
                     }
                   `}
                 >
@@ -154,16 +155,20 @@ export const SJTQuestion: React.FC<SJTQuestionProps> = ({
 
       {/* Selection Status */}
       <div className="flex justify-center gap-4 mt-4 text-sm">
-        <span className={`
+        <span
+          className={`
           px-3 py-1 rounded-full
           ${currentAnswer.best ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}
-        `}>
+        `}
+        >
           Best: {currentAnswer.best ? '✓ Selected' : 'Not selected'}
         </span>
-        <span className={`
+        <span
+          className={`
           px-3 py-1 rounded-full
           ${currentAnswer.worst ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-500'}
-        `}>
+        `}
+        >
           Worst: {currentAnswer.worst ? '✓ Selected' : 'Not selected'}
         </span>
       </div>

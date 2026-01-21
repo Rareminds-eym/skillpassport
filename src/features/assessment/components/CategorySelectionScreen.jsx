@@ -1,7 +1,7 @@
 /**
  * Category Selection Screen Component
  * Displays Science/Commerce/Arts category options
- * 
+ *
  * @module features/assessment/components/CategorySelectionScreen
  */
 
@@ -63,7 +63,9 @@ const CategoryOptionButton = ({ category, onClick }) => {
     >
       <div className="absolute inset-0 bg-gradient-to-r from-gray-50/50 to-white/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
       <div className="relative z-10 flex items-center gap-4">
-        <div className={`w-14 h-14 bg-gradient-to-br ${colors.gradient} rounded-xl flex items-center justify-center shadow-lg`}>
+        <div
+          className={`w-14 h-14 bg-gradient-to-br ${colors.gradient} rounded-xl flex items-center justify-center shadow-lg`}
+        >
           <Icon className="w-7 h-7 text-white" />
         </div>
         <div className="flex-1">
@@ -80,11 +82,7 @@ const CategoryOptionButton = ({ category, onClick }) => {
 /**
  * Category Selection Screen Component
  */
-export const CategorySelectionScreen = ({
-  onCategorySelect,
-  onBack,
-  gradeLevel,
-}) => {
+export const CategorySelectionScreen = ({ onCategorySelect, onBack, gradeLevel }) => {
   const navigate = useNavigate();
 
   // Get title based on grade level
@@ -136,7 +134,7 @@ export const CategorySelectionScreen = ({
 
           {/* Category Options */}
           <div className="space-y-4">
-            {STREAM_CATEGORIES.map(category => (
+            {STREAM_CATEGORIES.map((category) => (
               <CategoryOptionButton
                 key={category.id}
                 category={category}
@@ -148,8 +146,8 @@ export const CategorySelectionScreen = ({
           {/* Help Text */}
           <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
             <p className="text-sm text-blue-700">
-              <strong>Not sure which to choose?</strong> Select the category that best matches your interests. 
-              You can always retake the assessment later with a different selection.
+              <strong>Not sure which to choose?</strong> Select the category that best matches your
+              interests. You can always retake the assessment later with a different selection.
             </p>
           </div>
         </CardContent>

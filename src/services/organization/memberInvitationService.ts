@@ -1,6 +1,6 @@
 /**
  * Member Invitation Service
- * 
+ *
  * Handles member invitations with auto-subscription assignment for organizations.
  * Supports single and bulk invitations with secure token management.
  */
@@ -83,7 +83,9 @@ export class MemberInvitationService {
       }
 
       // 2. Get current user and their role
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
         throw new Error('User not authenticated');
       }
@@ -124,7 +126,7 @@ export class MemberInvitationService {
           invitation_token: invitationToken,
           expires_at: expiresAt.toISOString(),
           invitation_message: request.invitationMessage,
-          metadata: request.metadata || {}
+          metadata: request.metadata || {},
         })
         .select()
         .single();
@@ -155,7 +157,7 @@ export class MemberInvitationService {
       } catch (error) {
         failed.push({
           email: request.email,
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: error instanceof Error ? error.message : 'Unknown error',
         });
       }
     }
@@ -164,7 +166,7 @@ export class MemberInvitationService {
       successful,
       failed,
       totalSent: successful.length,
-      totalFailed: failed.length
+      totalFailed: failed.length,
     };
   }
 
@@ -199,7 +201,7 @@ export class MemberInvitationService {
         .update({
           invitation_token: newToken,
           expires_at: newExpiresAt.toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', invitationId);
 
@@ -222,7 +224,9 @@ export class MemberInvitationService {
   async cancelInvitation(invitationId: string): Promise<void> {
     try {
       // Get current user for cancelled_by field
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
         throw new Error('User not authenticated');
       }
@@ -233,7 +237,7 @@ export class MemberInvitationService {
           status: 'cancelled',
           cancelled_at: new Date().toISOString(),
           cancelled_by: user.id,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', invitationId)
         .eq('status', 'pending');
@@ -248,10 +252,7 @@ export class MemberInvitationService {
   /**
    * Accept an invitation and join the organization
    */
-  async acceptInvitation(
-    token: string,
-    userId: string
-  ): Promise<InvitationAcceptResult> {
+  async acceptInvitation(token: string, userId: string): Promise<InvitationAcceptResult> {
     try {
       // 1. Find invitation by token
       const { data: invitation, error } = await supabase
@@ -281,7 +282,7 @@ export class MemberInvitationService {
           status: 'accepted',
           accepted_at: new Date().toISOString(),
           accepted_by_user_id: userId,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', invitation.id);
 
@@ -322,10 +323,10 @@ export class MemberInvitationService {
           ...invitation,
           status: 'accepted',
           accepted_at: new Date().toISOString(),
-          accepted_by_user_id: userId
+          accepted_by_user_id: userId,
         }),
         assignedLicense,
-        organizationName
+        organizationName,
       };
     } catch (error) {
       console.error('Error accepting invitation:', error);
@@ -454,23 +455,29 @@ export class MemberInvitationService {
         accepted: 0,
         expired: 0,
         cancelled: 0,
-        acceptanceRate: 0
+        acceptanceRate: 0,
       };
 
-      (data || []).forEach(inv => {
+      (data || []).forEach((inv) => {
         switch (inv.status) {
-          case 'pending': stats.pending++; break;
-          case 'accepted': stats.accepted++; break;
-          case 'expired': stats.expired++; break;
-          case 'cancelled': stats.cancelled++; break;
+          case 'pending':
+            stats.pending++;
+            break;
+          case 'accepted':
+            stats.accepted++;
+            break;
+          case 'expired':
+            stats.expired++;
+            break;
+          case 'cancelled':
+            stats.cancelled++;
+            break;
         }
       });
 
       // Calculate acceptance rate (accepted / (accepted + expired + cancelled))
       const completed = stats.accepted + stats.expired + stats.cancelled;
-      stats.acceptanceRate = completed > 0 
-        ? Math.round((stats.accepted / completed) * 100) 
-        : 0;
+      stats.acceptanceRate = completed > 0 ? Math.round((stats.accepted / completed) * 100) : 0;
 
       return stats;
     } catch (error) {
@@ -488,7 +495,7 @@ export class MemberInvitationService {
         .from('organization_invitations')
         .update({
           status: 'expired',
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('status', 'pending')
         .lt('expires_at', new Date().toISOString())
@@ -549,14 +556,11 @@ export class MemberInvitationService {
    * Send invitation email via email-api Cloudflare Worker
    * Uses the generic endpoint with full HTML template
    */
-  private async sendInvitationEmail(
-    invitation: any,
-    customMessage?: string
-  ): Promise<boolean> {
+  private async sendInvitationEmail(invitation: any, customMessage?: string): Promise<boolean> {
     const EMAIL_API_URL = 'https://email-api.dark-mode-d021.workers.dev';
     // Use current origin in development, production URL otherwise
-    const APP_URL = import.meta.env.DEV 
-      ? window.location.origin 
+    const APP_URL = import.meta.env.DEV
+      ? window.location.origin
       : 'https://skillpassport.rareminds.in';
 
     try {
@@ -573,7 +577,7 @@ export class MemberInvitationService {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
-        day: 'numeric'
+        day: 'numeric',
       });
 
       const htmlContent = `
@@ -596,11 +600,15 @@ export class MemberInvitationService {
               <p style="color: #374151; font-size: 16px; margin-bottom: 24px;">
                 You have been invited to join <strong>${organizationName}</strong> as a <strong>${memberTypeDisplay}</strong> on Skill Passport.
               </p>
-              ${customMessage ? `
+              ${
+                customMessage
+                  ? `
               <div style="background-color: #F3F4F6; border-radius: 8px; padding: 20px; margin: 24px 0; border-left: 4px solid #6366F1;">
                 <p style="margin: 0; color: #4B5563; font-style: italic;">"${customMessage}"</p>
               </div>
-              ` : ''}
+              `
+                  : ''
+              }
               <div style="background-color: #EFF6FF; border-radius: 8px; padding: 24px; margin: 24px 0;">
                 <h3 style="margin: 0 0 16px; color: #1F2937; font-size: 18px;">Invitation Details</h3>
                 <table style="width: 100%; border-collapse: collapse;">
@@ -652,7 +660,7 @@ export class MemberInvitationService {
           subject: `You're invited to join ${organizationName} on Skill Passport`,
           html: htmlContent,
           from: 'noreply@rareminds.in',
-          fromName: 'Skill Passport'
+          fromName: 'Skill Passport',
         }),
       });
 
@@ -674,12 +682,12 @@ export class MemberInvitationService {
 
   /**
    * Link user to organization
-   * 
+   *
    * Updates the appropriate tables to associate the user with the organization:
    * - students table: school_id or college_id
    * - school_educators table: school_id (for school educators)
    * - users table: organizationId and role
-   * 
+   *
    * @param userId - The user's auth ID
    * @param organizationId - The organization's ID
    * @param organizationType - Type of organization (school, college, university)
@@ -705,7 +713,7 @@ export class MemberInvitationService {
         inviteeRole,
         inviteeEmail,
         isEducator,
-        isStudent
+        isStudent,
       });
 
       // Build update data for students/educators tables
@@ -724,7 +732,7 @@ export class MemberInvitationService {
           .update(memberUpdateData)
           .eq('user_id', userId)
           .select('id');
-        
+
         if (studentError) {
           console.warn('Could not update students table by user_id:', studentError.message);
         } else if (updatedByUserId && updatedByUserId.length > 0) {
@@ -737,7 +745,7 @@ export class MemberInvitationService {
             .update({ ...memberUpdateData, user_id: userId })
             .eq('email', inviteeEmail.toLowerCase())
             .select('id');
-          
+
           if (emailError) {
             console.warn('Could not update students table by email:', emailError.message);
           } else if (updatedByEmail && updatedByEmail.length > 0) {
@@ -756,9 +764,12 @@ export class MemberInvitationService {
           .update({ school_id: organizationId })
           .eq('user_id', userId)
           .select('id');
-        
+
         if (educatorError) {
-          console.warn('Could not update school_educators table by user_id:', educatorError.message);
+          console.warn(
+            'Could not update school_educators table by user_id:',
+            educatorError.message
+          );
         } else if (updatedByUserId && updatedByUserId.length > 0) {
           console.log('✅ Updated school_educators table with organization (by user_id)');
         } else if (inviteeEmail) {
@@ -769,7 +780,7 @@ export class MemberInvitationService {
             .update({ school_id: organizationId, user_id: userId })
             .eq('email', inviteeEmail.toLowerCase())
             .select('id');
-          
+
           if (emailError) {
             console.warn('Could not update school_educators table by email:', emailError.message);
           } else if (updatedByEmail && updatedByEmail.length > 0) {
@@ -781,7 +792,7 @@ export class MemberInvitationService {
       // Update the users table with organizationId and role
       const userUpdateData: Record<string, any> = {
         organizationId: organizationId,
-        role: inviteeRole
+        role: inviteeRole,
       };
 
       const { error: userError } = await supabase
@@ -794,7 +805,6 @@ export class MemberInvitationService {
       } else {
         console.log('✅ Updated users table with organization and role');
       }
-
     } catch (error) {
       console.error('Error linking user to organization:', error);
       // Don't throw - this is a best-effort operation
@@ -827,7 +837,7 @@ export class MemberInvitationService {
 
   /**
    * Map database record to OrganizationInvitation interface
-   * 
+   *
    * Database columns → Interface fields mapping:
    * - invitee_email → email
    * - invitee_role → memberType
@@ -853,7 +863,7 @@ export class MemberInvitationService {
       invitationMessage: data.invitation_message,
       metadata: data.metadata,
       createdAt: data.created_at,
-      updatedAt: data.updated_at
+      updatedAt: data.updated_at,
     };
   }
 }

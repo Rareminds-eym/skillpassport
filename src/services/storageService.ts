@@ -35,7 +35,8 @@ class StorageService {
   private baseUrl: string;
 
   constructor() {
-    this.baseUrl = import.meta.env.VITE_STORAGE_API_URL || 'https://storage-api.dark-mode-d021.workers.dev';
+    this.baseUrl =
+      import.meta.env.VITE_STORAGE_API_URL || 'https://storage-api.dark-mode-d021.workers.dev';
   }
 
   /**
@@ -58,7 +59,7 @@ class StorageService {
       console.error('Upload error:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Upload failed'
+        error: error instanceof Error ? error.message : 'Upload failed',
       };
     }
   }
@@ -66,7 +67,11 @@ class StorageService {
   /**
    * Upload teacher document with organized folder structure
    */
-  async uploadTeacherDocument(file: File, teacherId: string, documentType: string = 'general'): Promise<UploadResponse> {
+  async uploadTeacherDocument(
+    file: File,
+    teacherId: string,
+    documentType: string = 'general'
+  ): Promise<UploadResponse> {
     try {
       // Create organized filename with timestamp
       const timestamp = Date.now();
@@ -79,7 +84,7 @@ class StorageService {
       console.error('Teacher document upload error:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Document upload failed'
+        error: error instanceof Error ? error.message : 'Document upload failed',
       };
     }
   }
@@ -87,7 +92,11 @@ class StorageService {
   /**
    * Upload multiple teacher documents
    */
-  async uploadTeacherDocuments(files: File[], teacherId: string, documentType: string = 'general'): Promise<{
+  async uploadTeacherDocuments(
+    files: File[],
+    teacherId: string,
+    documentType: string = 'general'
+  ): Promise<{
     success: boolean;
     results: Array<{
       file: string;
@@ -105,24 +114,28 @@ class StorageService {
           file: file.name,
           success: result.success,
           url: result.url,
-          error: result.error
+          error: result.error,
         });
       } catch (error) {
         results.push({
           file: file.name,
           success: false,
-          error: error instanceof Error ? error.message : 'Upload failed'
+          error: error instanceof Error ? error.message : 'Upload failed',
         });
       }
     }
 
-    const successCount = results.filter(r => r.success).length;
+    const successCount = results.filter((r) => r.success).length;
     return {
       success: successCount > 0,
-      results
+      results,
     };
   }
-  async uploadStudentDocument(file: File, studentId: string, documentType: string = 'general'): Promise<UploadResponse> {
+  async uploadStudentDocument(
+    file: File,
+    studentId: string,
+    documentType: string = 'general'
+  ): Promise<UploadResponse> {
     try {
       // Create organized filename with timestamp
       const timestamp = Date.now();
@@ -135,7 +148,7 @@ class StorageService {
       console.error('Student document upload error:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Document upload failed'
+        error: error instanceof Error ? error.message : 'Document upload failed',
       };
     }
   }
@@ -143,7 +156,10 @@ class StorageService {
   /**
    * Upload multiple student documents
    */
-  async uploadStudentDocuments(files: File[], studentId: string): Promise<{
+  async uploadStudentDocuments(
+    files: File[],
+    studentId: string
+  ): Promise<{
     success: boolean;
     results: Array<{
       file: string;
@@ -161,28 +177,32 @@ class StorageService {
           file: file.name,
           success: result.success,
           url: result.url,
-          error: result.error
+          error: result.error,
         });
       } catch (error) {
         results.push({
           file: file.name,
           success: false,
-          error: error instanceof Error ? error.message : 'Upload failed'
+          error: error instanceof Error ? error.message : 'Upload failed',
         });
       }
     }
 
-    const successCount = results.filter(r => r.success).length;
+    const successCount = results.filter((r) => r.success).length;
     return {
       success: successCount > 0,
-      results
+      results,
     };
   }
 
   /**
    * Get presigned URL for large file uploads
    */
-  async getPresignedUrl(filename: string, contentType: string, studentId: string): Promise<PresignedResponse> {
+  async getPresignedUrl(
+    filename: string,
+    contentType: string,
+    studentId: string
+  ): Promise<PresignedResponse> {
     try {
       const response = await fetch(`${this.baseUrl}/presigned`, {
         method: 'POST',
@@ -203,7 +223,7 @@ class StorageService {
       console.error('Presigned URL error:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to get presigned URL'
+        error: error instanceof Error ? error.message : 'Failed to get presigned URL',
       };
     }
   }
@@ -211,7 +231,12 @@ class StorageService {
   /**
    * Confirm upload after using presigned URL
    */
-  async confirmUpload(fileKey: string, fileName?: string, fileSize?: number, fileType?: string): Promise<ConfirmResponse> {
+  async confirmUpload(
+    fileKey: string,
+    fileName?: string,
+    fileSize?: number,
+    fileType?: string
+  ): Promise<ConfirmResponse> {
     try {
       const response = await fetch(`${this.baseUrl}/confirm`, {
         method: 'POST',
@@ -232,7 +257,7 @@ class StorageService {
       console.error('Confirm upload error:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to confirm upload'
+        error: error instanceof Error ? error.message : 'Failed to confirm upload',
       };
     }
   }
@@ -256,7 +281,7 @@ class StorageService {
       console.error('Delete error:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Delete failed'
+        error: error instanceof Error ? error.message : 'Delete failed',
       };
     }
   }
@@ -280,7 +305,7 @@ class StorageService {
       console.error('Get file URL error:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to get file URL'
+        error: error instanceof Error ? error.message : 'Failed to get file URL',
       };
     }
   }
@@ -288,16 +313,19 @@ class StorageService {
   /**
    * Get signed URL for viewing a document (temporary access)
    */
-  async getSignedUrl(url: string, expiresIn: number = 3600): Promise<{ success: boolean; signedUrl?: string; error?: string }> {
+  async getSignedUrl(
+    url: string,
+    expiresIn: number = 3600
+  ): Promise<{ success: boolean; signedUrl?: string; error?: string }> {
     try {
       const response = await fetch(`${this.baseUrl}/signed-url`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           url,
-          expiresIn // seconds
+          expiresIn, // seconds
         }),
       });
 
@@ -307,7 +335,7 @@ class StorageService {
       console.error('Get signed URL error:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to get signed URL'
+        error: error instanceof Error ? error.message : 'Failed to get signed URL',
       };
     }
   }

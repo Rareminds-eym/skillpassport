@@ -1,3 +1,4 @@
+// @ts-nocheck - Excluded from typecheck for gradual migration
 import React, { useState, useEffect } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { supabase } from '../../../lib/supabaseClient';
@@ -74,14 +75,14 @@ const TRAIT_COLORS: Record<string, string> = {
 };
 
 // Summary Card Component
-const SummaryCard = ({ 
-  title, 
-  subtitle, 
-  icon: Icon, 
-  gradient, 
-  data, 
-  onClick, 
-  delay = 0 
+const SummaryCard = ({
+  title,
+  subtitle,
+  icon: Icon,
+  gradient,
+  data,
+  onClick,
+  delay = 0,
 }: {
   title: string;
   subtitle: string;
@@ -100,10 +101,14 @@ const SummaryCard = ({
     <div className="p-6">
       <div className="flex justify-between items-start mb-4">
         <div className="flex items-center gap-3">
-          <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300`}>
+          <div
+            className={`w-14 h-14 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300`}
+          >
             <Icon className="w-7 h-7 text-white" />
           </div>
-          <h3 className="text-lg font-bold text-gray-800 group-hover:text-indigo-600 transition-colors">{title} - {subtitle}</h3>
+          <h3 className="text-lg font-bold text-gray-800 group-hover:text-indigo-600 transition-colors">
+            {title} - {subtitle}
+          </h3>
         </div>
         <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-indigo-50 transition-colors">
           <ChevronRight className="w-6 h-6 text-gray-400 group-hover:text-indigo-600" />
@@ -136,7 +141,9 @@ const ReportHeader = ({ studentInfo }: { studentInfo: any }) => (
             <Sparkles className="w-5 h-5 text-yellow-400" />
             <span className="text-gray-400 text-base font-medium">AI-Powered Assessment</span>
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold mb-1">Career Profiling & Skill Development Report</h1>
+          <h1 className="text-2xl md:text-3xl font-bold mb-1">
+            Career Profiling & Skill Development Report
+          </h1>
           <p className="text-gray-400 mt-1 text-base">AI-Powered Career Assessment</p>
         </div>
       </div>
@@ -177,7 +184,9 @@ const ReportHeader = ({ studentInfo }: { studentInfo: any }) => (
           </div>
           <div>
             <p className="text-sm text-gray-500">College</p>
-            <p className="font-semibold text-gray-800 text-base truncate max-w-[180px]">{studentInfo.college}</p>
+            <p className="font-semibold text-gray-800 text-base truncate max-w-[180px]">
+              {studentInfo.college}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-3 p-4 bg-white rounded-lg border border-gray-100">
@@ -231,7 +240,10 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
           name: student?.name || '—',
           regNo: student?.registration_number || '—',
           college: student?.college_name || student?.college || '—',
-          stream: assessmentResult?.stream_id?.toUpperCase() || assessmentResult?.stream?.toUpperCase() || '—',
+          stream:
+            assessmentResult?.stream_id?.toUpperCase() ||
+            assessmentResult?.stream?.toUpperCase() ||
+            '—',
           assessmentDate: assessmentResult?.created_at
             ? new Date(assessmentResult.created_at).toLocaleDateString('en-US', {
                 year: 'numeric',
@@ -255,7 +267,7 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
       // First, get the student's user_id from the students table
       // The student object has 'id' (record ID), but we need 'user_id' for assessment lookup
       let studentUserId = student.user_id;
-      
+
       // If user_id is not in the student object, fetch it from the database
       if (!studentUserId && student.id) {
         const { data: studentData, error: studentError } = await supabase
@@ -263,14 +275,14 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
           .select('user_id')
           .eq('id', student.id)
           .single();
-        
+
         if (studentError) {
           console.error('Error fetching student user_id:', studentError);
         } else {
           studentUserId = studentData?.user_id;
         }
       }
-      
+
       // Also try with email if user_id is still not found
       if (!studentUserId && student.email) {
         const { data: studentByEmail, error: emailError } = await supabase
@@ -278,20 +290,20 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
           .select('user_id')
           .eq('email', student.email)
           .single();
-        
+
         if (!emailError && studentByEmail?.user_id) {
           studentUserId = studentByEmail.user_id;
         }
       }
-      
+
       if (!studentUserId) {
         setError('Could not find student user ID. The student may not have a linked account.');
         setLoading(false);
         return;
       }
-      
+
       console.log('Fetching assessment for student user_id:', studentUserId);
-      
+
       // Fetch the latest completed assessment result for this student
       // Note: personal_assessment_results.student_id references students.user_id
       // First try without the join to avoid potential RLS issues
@@ -318,9 +330,9 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
             .order('created_at', { ascending: false })
             .limit(1)
             .single();
-          
+
           console.log('Any assessment result:', { anyData, anyError });
-          
+
           if (anyError || !anyData) {
             setError('No assessment found for this student.');
           } else {
@@ -366,7 +378,8 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
 
   if (!isOpen) return null;
 
-  const { riasec, aptitude, knowledge, careerFit, skillGap, roadmap, employability } = results || {};
+  const { riasec, aptitude, knowledge, careerFit, skillGap, roadmap, employability } =
+    results || {};
 
   return (
     <>
@@ -393,12 +406,8 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
                         <Sparkles className="w-6 h-6 text-yellow-400" />
                       </div>
                       <div>
-                        <h2 className="text-xl font-bold text-white">
-                          Career Assessment Report
-                        </h2>
-                        <p className="text-sm text-gray-400 mt-0.5">
-                          {student?.name || 'Student'}
-                        </p>
+                        <h2 className="text-xl font-bold text-white">Career Assessment Report</h2>
+                        <p className="text-sm text-gray-400 mt-0.5">{student?.name || 'Student'}</p>
                       </div>
                     </div>
                     <button
@@ -422,7 +431,9 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
                         </div>
                       </div>
                       <h3 className="text-xl font-bold text-gray-800 mb-2">Loading Report</h3>
-                      <p className="text-gray-500 max-w-xs mx-auto text-center">Fetching assessment results...</p>
+                      <p className="text-gray-500 max-w-xs mx-auto text-center">
+                        Fetching assessment results...
+                      </p>
                     </div>
                   ) : error ? (
                     <div className="flex flex-col items-center justify-center h-64">
@@ -446,8 +457,12 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
 
                       {/* Summary Grid */}
                       <div className="mb-8">
-                        <h2 className="text-2xl font-bold text-gray-800 mb-4 text-center">Assessment Summary</h2>
-                        <p className="text-gray-500 text-center mb-6 text-base">Click on any section to view detailed insights</p>
+                        <h2 className="text-2xl font-bold text-gray-800 mb-4 text-center">
+                          Assessment Summary
+                        </h2>
+                        <p className="text-gray-500 text-center mb-6 text-base">
+                          Click on any section to view detailed insights
+                        </p>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <SummaryCard
@@ -458,8 +473,16 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
                             onClick={() => setActiveSection('profile')}
                             delay={0}
                             data={[
-                              { label: 'Top Interest', value: riasec?.topThree?.[0] ? RIASEC_NAMES[riasec.topThree[0]] : 'N/A' },
-                              { label: 'Top Aptitude', value: aptitude?.topStrengths?.[0] || 'N/A' },
+                              {
+                                label: 'Top Interest',
+                                value: riasec?.topThree?.[0]
+                                  ? RIASEC_NAMES[riasec.topThree[0]]
+                                  : 'N/A',
+                              },
+                              {
+                                label: 'Top Aptitude',
+                                value: aptitude?.topStrengths?.[0] || 'N/A',
+                              },
                               { label: 'Knowledge Score', value: `${knowledge?.score || 0}%` },
                             ]}
                           />
@@ -472,9 +495,18 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
                             onClick={() => setActiveSection('career')}
                             delay={100}
                             data={[
-                              { label: 'Top Cluster', value: careerFit?.clusters?.[0]?.title || 'N/A' },
-                              { label: 'Match Score', value: `${careerFit?.clusters?.[0]?.matchScore || 0}%` },
-                              { label: 'High Fit Roles', value: careerFit?.specificOptions?.highFit?.length || 0 },
+                              {
+                                label: 'Top Cluster',
+                                value: careerFit?.clusters?.[0]?.title || 'N/A',
+                              },
+                              {
+                                label: 'Match Score',
+                                value: `${careerFit?.clusters?.[0]?.matchScore || 0}%`,
+                              },
+                              {
+                                label: 'High Fit Roles',
+                                value: careerFit?.specificOptions?.highFit?.length || 0,
+                              },
                             ]}
                           />
 
@@ -487,8 +519,14 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
                             delay={200}
                             data={[
                               { label: 'Priority Skills', value: skillGap?.priorityA?.length || 0 },
-                              { label: 'Top Focus', value: skillGap?.priorityA?.[0]?.skill || 'N/A' },
-                              { label: 'Learning Track', value: skillGap?.recommendedTrack || 'N/A' },
+                              {
+                                label: 'Top Focus',
+                                value: skillGap?.priorityA?.[0]?.skill || 'N/A',
+                              },
+                              {
+                                label: 'Learning Track',
+                                value: skillGap?.recommendedTrack || 'N/A',
+                              },
                             ]}
                           />
 
@@ -501,8 +539,14 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
                             delay={300}
                             data={[
                               { label: 'Projects', value: roadmap?.projects?.length || 0 },
-                              { label: 'Next Project', value: roadmap?.projects?.[0]?.title || 'N/A' },
-                              { label: 'Internship Type', value: roadmap?.internship?.types?.[0] || 'N/A' },
+                              {
+                                label: 'Next Project',
+                                value: roadmap?.projects?.[0]?.title || 'N/A',
+                              },
+                              {
+                                label: 'Internship Type',
+                                value: roadmap?.internship?.types?.[0] || 'N/A',
+                              },
                             ]}
                           />
                         </div>
@@ -517,7 +561,9 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
                             </div>
                             <div>
                               <h4 className="font-bold text-xl mb-2">Overall Career Direction</h4>
-                              <p className="text-gray-300 leading-relaxed text-base">"{results.overallSummary}"</p>
+                              <p className="text-gray-300 leading-relaxed text-base">
+                                "{results.overallSummary}"
+                              </p>
                             </div>
                           </div>
                         </div>
@@ -536,6 +582,7 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
         <DialogContent className="w-[95vw] max-w-[1400px] max-h-[95vh] !p-0 gap-0 overflow-hidden border-0 shadow-2xl rounded-2xl">
           {/* Header */}
           <DialogHeader className="bg-slate-800 px-8 py-6 relative !mb-0">
+            // @ts-expect-error - Auto-suppressed for migration
             <DialogTitle className="sr-only">
               {activeSection === 'profile' && 'Student Profile Snapshot'}
               {activeSection === 'career' && 'Career Fit Results'}
@@ -556,7 +603,9 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
                   <div className="w-16 h-16 rounded-lg bg-white/10 flex items-center justify-center">
                     <Target className="w-8 h-8 text-white" />
                   </div>
-                  <span className="text-2xl font-bold text-white">Student Profile Snapshot - Your interests, aptitudes & personality</span>
+                  <span className="text-2xl font-bold text-white">
+                    Student Profile Snapshot - Your interests, aptitudes & personality
+                  </span>
                 </>
               )}
               {activeSection === 'career' && (
@@ -564,7 +613,9 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
                   <div className="w-16 h-16 rounded-lg bg-white/10 flex items-center justify-center">
                     <Briefcase className="w-8 h-8 text-white" />
                   </div>
-                  <span className="text-2xl font-bold text-white">Career Fit Results - Best-matching career paths for you</span>
+                  <span className="text-2xl font-bold text-white">
+                    Career Fit Results - Best-matching career paths for you
+                  </span>
                 </>
               )}
               {activeSection === 'skills' && (
@@ -572,7 +623,9 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
                   <div className="w-16 h-16 rounded-lg bg-white/10 flex items-center justify-center">
                     <Zap className="w-8 h-8 text-white" />
                   </div>
-                  <span className="text-2xl font-bold text-white">Skill Gap & Development - Skills to build for career success</span>
+                  <span className="text-2xl font-bold text-white">
+                    Skill Gap & Development - Skills to build for career success
+                  </span>
                 </>
               )}
               {activeSection === 'roadmap' && (
@@ -580,7 +633,9 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
                   <div className="w-16 h-16 rounded-lg bg-white/10 flex items-center justify-center">
                     <Rocket className="w-8 h-8 text-white" />
                   </div>
-                  <span className="text-2xl font-bold text-white">Action Roadmap - Your 6-12 month career plan</span>
+                  <span className="text-2xl font-bold text-white">
+                    Action Roadmap - Your 6-12 month career plan
+                  </span>
                 </>
               )}
             </div>
@@ -593,23 +648,23 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
                 <ProfileSection
                   results={results}
                   riasecNames={RIASEC_NAMES}
+                  // @ts-expect-error - Auto-suppressed for migration
                   riasecColors={RIASEC_COLORS}
                   traitNames={TRAIT_NAMES}
                   traitColors={TRAIT_COLORS}
                 />
               )}
-              {activeSection === 'career' && careerFit && (
-                <CareerSection careerFit={careerFit} />
-              )}
+              {activeSection === 'career' && careerFit && <CareerSection careerFit={careerFit} />}
               {activeSection === 'skills' && skillGap && employability && (
-                <SkillsSection 
-                  skillGap={skillGap} 
+                <SkillsSection
+                  skillGap={skillGap}
                   employability={employability}
                   skillGapCourses={results?.skillGapCourses || {}}
                 />
               )}
               {activeSection === 'roadmap' && roadmap && (
-                <RoadmapSection 
+                // @ts-expect-error - Auto-suppressed for migration
+                <RoadmapSection
                   roadmap={roadmap}
                   platformCourses={results?.platformCourses || []}
                   coursesByType={results?.coursesByType || { technical: [], soft: [] }}

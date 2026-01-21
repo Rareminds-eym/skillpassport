@@ -45,7 +45,7 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
   onAddClick,
   onNextAction,
   stageKey,
-  movingCandidates
+  movingCandidates,
 }) => {
   return (
     <div className="bg-gray-50 rounded-xl p-4 min-w-80 flex flex-col">
@@ -66,7 +66,10 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
         </button>
       </div>
 
-      <div className="space-y-3 overflow-y-auto flex-1" style={{ maxHeight: 'calc(100vh - 400px)' }}>
+      <div
+        className="space-y-3 overflow-y-auto flex-1"
+        style={{ maxHeight: 'calc(100vh - 400px)' }}
+      >
         {(candidates || []).length === 0 ? (
           <PipelineEmptyState stage={stageKey} onAddClick={onAddClick} />
         ) : (

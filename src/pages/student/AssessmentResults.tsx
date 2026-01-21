@@ -6,20 +6,21 @@ import { supabase } from '../../utils/supabase';
 const Results: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { score, totalQuestions, courseId, questions, certificateName } = location.state || { 
-    score: 0, 
-    totalQuestions: 0, 
+  const { score, totalQuestions, courseId, questions, certificateName } = location.state || {
+    score: 0,
+    totalQuestions: 0,
     courseId: '',
     questions: [],
-    certificateName: 'Assessment'
+    certificateName: 'Assessment',
   };
-  
+
   // Calculate percentage
   const percentage = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
   const passed = percentage >= 60;
-  
+
   // Calculate total time taken
-  const totalTimeTaken = questions?.reduce((acc: number, q: any) => acc + (q.timeTaken || 0), 0) || 0;
+  const totalTimeTaken =
+    questions?.reduce((acc: number, q: any) => acc + (q.timeTaken || 0), 0) || 0;
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -30,7 +31,7 @@ const Results: React.FC = () => {
   useEffect(() => {
     const markCompleted = async () => {
       if (!location.state?.attemptId) return;
-      
+
       try {
         await supabase
           .from('external_assessment_attempts')
@@ -39,16 +40,16 @@ const Results: React.FC = () => {
             score: percentage,
             correct_answers: score,
             completed_at: new Date().toISOString(),
-            time_taken: totalTimeTaken
+            time_taken: totalTimeTaken,
           })
           .eq('id', location.state.attemptId);
-        
+
         console.log('✅ Assessment marked as completed');
       } catch (error) {
         console.error('Failed to mark assessment as completed:', error);
       }
     };
-    
+
     markCompleted();
   }, [location.state?.attemptId, percentage, score, totalTimeTaken]);
 
@@ -58,14 +59,18 @@ const Results: React.FC = () => {
         {/* Main Card */}
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
           {/* Header with gradient */}
-          <div className={`px-8 py-10 text-center ${
-            passed 
-              ? 'bg-gradient-to-r from-emerald-500 to-teal-500' 
-              : 'bg-gradient-to-r from-blue-500 to-indigo-500'
-          }`}>
-            <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full mb-4 ${
-              passed ? 'bg-white/20' : 'bg-white/20'
-            }`}>
+          <div
+            className={`px-8 py-10 text-center ${
+              passed
+                ? 'bg-gradient-to-r from-emerald-500 to-teal-500'
+                : 'bg-gradient-to-r from-blue-500 to-indigo-500'
+            }`}
+          >
+            <div
+              className={`inline-flex items-center justify-center w-20 h-20 rounded-full mb-4 ${
+                passed ? 'bg-white/20' : 'bg-white/20'
+              }`}
+            >
               {passed ? (
                 <Award className="w-10 h-10 text-white" />
               ) : (
@@ -76,8 +81,8 @@ const Results: React.FC = () => {
               {passed ? 'Congratulations!' : 'Keep Learning!'}
             </h1>
             <p className="text-white/90 text-sm">
-              {passed 
-                ? 'You have successfully passed the assessment' 
+              {passed
+                ? 'You have successfully passed the assessment'
                 : 'Review the material and strengthen your skills'}
             </p>
           </div>
@@ -86,13 +91,17 @@ const Results: React.FC = () => {
           <div className="px-8 py-8">
             {/* Score Circle */}
             <div className="flex justify-center mb-8">
-              <div className={`relative w-32 h-32 rounded-full flex items-center justify-center ${
-                passed ? 'bg-emerald-50' : 'bg-blue-50'
-              }`}>
+              <div
+                className={`relative w-32 h-32 rounded-full flex items-center justify-center ${
+                  passed ? 'bg-emerald-50' : 'bg-blue-50'
+                }`}
+              >
                 <div className="text-center">
-                  <span className={`text-4xl font-bold ${
-                    passed ? 'text-emerald-600' : 'text-blue-600'
-                  }`}>
+                  <span
+                    className={`text-4xl font-bold ${
+                      passed ? 'text-emerald-600' : 'text-blue-600'
+                    }`}
+                  >
                     {percentage}%
                   </span>
                   <p className="text-xs text-gray-500 mt-1">Your Score</p>

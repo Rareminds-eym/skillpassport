@@ -9,7 +9,6 @@ const SimpleOpportunitiesTest = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        
         // Test 1: Basic connection
         const { data: testData, error: testError } = await supabase
           .from('opportunities')
@@ -41,11 +40,12 @@ const SimpleOpportunitiesTest = () => {
     <div className="p-4 border border-green-500 bg-green-50">
       <h3 className="font-bold text-green-800">✅ Simple Test Results</h3>
       <p>Found {data?.length || 0} opportunities:</p>
-      {data && data.map((opp, idx) => (
-        <div key={idx} className="mt-2 p-2 bg-white rounded">
-          <strong>{opp.title}</strong> at {opp.company_name} ({opp.employment_type})
-        </div>
-      ))}
+      {data &&
+        data.map((opp, idx) => (
+          <div key={idx} className="mt-2 p-2 bg-white rounded">
+            <strong>{opp.title}</strong> at {opp.company_name} ({opp.employment_type})
+          </div>
+        ))}
     </div>
   );
 };

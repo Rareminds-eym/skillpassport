@@ -1,8 +1,8 @@
 /**
  * useAssessmentProgress Hook
- * 
+ *
  * Calculates and tracks assessment progress across sections.
- * 
+ *
  * @module features/assessment/career-test/hooks/useAssessmentProgress
  */
 
@@ -45,7 +45,7 @@ export const useAssessmentProgress = ({
   currentSectionIndex,
   currentQuestionIndex,
   answers,
-  adaptiveProgress
+  adaptiveProgress,
 }: UseAssessmentProgressOptions): UseAssessmentProgressResult => {
   return useMemo(() => {
     if (!sections || sections.length === 0) {
@@ -56,7 +56,7 @@ export const useAssessmentProgress = ({
         currentSectionProgress: 0,
         sectionsCompleted: 0,
         isLastSection: false,
-        isLastQuestion: false
+        isLastQuestion: false,
       };
     }
 
@@ -70,7 +70,7 @@ export const useAssessmentProgress = ({
 
     // Count answered questions
     const regularAnsweredCount = Object.keys(answers).filter(
-      key => !key.startsWith('adaptive_aptitude')
+      (key) => !key.startsWith('adaptive_aptitude')
     ).length;
     const adaptiveAnsweredCount = adaptiveProgress?.questionsAnswered || 0;
     const answeredCount = regularAnsweredCount + adaptiveAnsweredCount;
@@ -84,14 +84,12 @@ export const useAssessmentProgress = ({
     if (currentSection) {
       if (currentSection.isAdaptive) {
         const adaptiveTotal = adaptiveProgress?.estimatedTotalQuestions || 20;
-        currentSectionProgress = adaptiveTotal > 0 
-          ? (adaptiveAnsweredCount / adaptiveTotal) * 100 
-          : 0;
+        currentSectionProgress =
+          adaptiveTotal > 0 ? (adaptiveAnsweredCount / adaptiveTotal) * 100 : 0;
       } else {
         const sectionTotal = currentSection.questions?.length || 0;
-        currentSectionProgress = sectionTotal > 0 
-          ? ((currentQuestionIndex + 1) / sectionTotal) * 100 
-          : 0;
+        currentSectionProgress =
+          sectionTotal > 0 ? ((currentQuestionIndex + 1) / sectionTotal) * 100 : 0;
       }
     }
 
@@ -108,7 +106,7 @@ export const useAssessmentProgress = ({
       currentSectionProgress,
       sectionsCompleted: currentSectionIndex,
       isLastSection,
-      isLastQuestion
+      isLastQuestion,
     };
   }, [sections, currentSectionIndex, currentQuestionIndex, answers, adaptiveProgress]);
 };

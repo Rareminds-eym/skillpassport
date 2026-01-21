@@ -33,21 +33,17 @@ export const createUserRecord = async (userId, userData) => {
       isActive: true,
       dob: dateOfBirth || null,
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     };
 
-    const { data, error } = await supabase
-      .from('users')
-      .insert([userRecord])
-      .select()
-      .single();
+    const { data, error } = await supabase.from('users').insert([userRecord]).select().single();
 
     if (error) {
       console.error('❌ Error creating user record:', error);
       return {
         success: false,
         data: null,
-        error: error.message
+        error: error.message,
       };
     }
 
@@ -55,14 +51,14 @@ export const createUserRecord = async (userId, userData) => {
     return {
       success: true,
       data: data,
-      error: null
+      error: null,
     };
   } catch (error) {
     console.error('❌ Unexpected error creating user record:', error);
     return {
       success: false,
       data: null,
-      error: error.message
+      error: error.message,
     };
   }
 };
@@ -86,13 +82,14 @@ export const createStudent = async (studentData, userId) => {
       state,
       city,
       preferredLanguage,
-      referralCode
+      referralCode,
     } = studentData;
 
     // Normalize studentType - handle both simple types and hyphenated types
     // e.g., 'college', 'college-student' -> 'college'
-    const normalizedStudentType = studentType?.toLowerCase().replace('-student', '').replace('-educator', '') || 'school';
-    
+    const normalizedStudentType =
+      studentType?.toLowerCase().replace('-student', '').replace('-educator', '') || 'school';
+
     // Prepare student record
     // IMPORTANT: id must match userId due to FK constraint students_id_fkey -> users.id
     // Note: first_name and last_name are stored in public.users table only
@@ -111,21 +108,17 @@ export const createStudent = async (studentData, userId) => {
       preferred_language: preferredLanguage || 'en',
       referral_code: referralCode || null,
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     };
 
-    const { data, error } = await supabase
-      .from('students')
-      .insert([student])
-      .select()
-      .single();
+    const { data, error } = await supabase.from('students').insert([student]).select().single();
 
     if (error) {
       console.error('❌ Error creating student record:', error);
       return {
         success: false,
         data: null,
-        error: error.message
+        error: error.message,
       };
     }
 
@@ -133,14 +126,14 @@ export const createStudent = async (studentData, userId) => {
     return {
       success: true,
       data: data,
-      error: null
+      error: null,
     };
   } catch (error) {
     console.error('❌ Unexpected error creating student:', error);
     return {
       success: false,
       data: null,
-      error: error.message
+      error: error.message,
     };
   }
 };
@@ -167,29 +160,34 @@ export const completeStudentRegistration = async (userId, registrationData) => {
       city,
       preferredLanguage,
       referralCode,
-      dateOfBirth
+      dateOfBirth,
     } = registrationData;
 
     // Use provided firstName/lastName or split from fullName as fallback, and capitalize
-    const finalFirstName = capitalizeFirstLetter(firstName || (fullName ? fullName.trim().split(' ')[0] : ''));
-    const finalLastName = capitalizeFirstLetter(lastName || (fullName ? fullName.trim().split(' ').slice(1).join(' ') : ''));
+    const finalFirstName = capitalizeFirstLetter(
+      firstName || (fullName ? fullName.trim().split(' ')[0] : '')
+    );
+    const finalLastName = capitalizeFirstLetter(
+      lastName || (fullName ? fullName.trim().split(' ').slice(1).join(' ') : '')
+    );
     const finalFullName = fullName || `${finalFirstName} ${finalLastName}`.trim();
 
     // Step 1: Create user record
     // Map studentType to user_role - handle both simple types and hyphenated types
     // e.g., 'college', 'college-student', 'school', 'school-student', 'university', 'university-student'
-    const normalizedType = studentType?.toLowerCase().replace('-student', '').replace('-educator', '') || 'school';
+    const normalizedType =
+      studentType?.toLowerCase().replace('-student', '').replace('-educator', '') || 'school';
     const userRoleMap = {
-      'school': 'school_student',
-      'college': 'college_student',
-      'university': 'college_student' // University students use college_student role
+      school: 'school_student',
+      college: 'college_student',
+      university: 'college_student', // University students use college_student role
     };
     const userResult = await createUserRecord(userId, {
       email: email,
       firstName: finalFirstName,
       lastName: finalLastName,
-      user_role: userRoleMap[normalizedType] || 'school_student',  // user_role is passed to createUserRecord which maps to 'role' column
-      dateOfBirth: dateOfBirth || null
+      user_role: userRoleMap[normalizedType] || 'school_student', // user_role is passed to createUserRecord which maps to 'role' column
+      dateOfBirth: dateOfBirth || null,
     });
 
     if (!userResult.success) {
@@ -197,26 +195,26 @@ export const completeStudentRegistration = async (userId, registrationData) => {
     }
 
     // Step 2: Create student record (first_name/last_name stored in users table only)
-    const studentResult = await createStudent({
-      name: finalFullName,
-      email: email,
-      phone: phone,
-      studentType: studentType,
-      schoolId: schoolId,
-      collegeId: collegeId,
-      country: country,
-      state: state,
-      city: city,
-      preferredLanguage: preferredLanguage,
-      referralCode: referralCode
-    }, userId);
+    const studentResult = await createStudent(
+      {
+        name: finalFullName,
+        email: email,
+        phone: phone,
+        studentType: studentType,
+        schoolId: schoolId,
+        collegeId: collegeId,
+        country: country,
+        state: state,
+        city: city,
+        preferredLanguage: preferredLanguage,
+        referralCode: referralCode,
+      },
+      userId
+    );
 
     if (!studentResult.success) {
       // Try to rollback user record if student creation fails
-      await supabase
-        .from('users')
-        .delete()
-        .eq('id', userId);
+      await supabase.from('users').delete().eq('id', userId);
 
       throw new Error(studentResult.error || 'Failed to create student record');
     }
@@ -225,16 +223,16 @@ export const completeStudentRegistration = async (userId, registrationData) => {
       success: true,
       data: {
         user: userResult.data,
-        student: studentResult.data
+        student: studentResult.data,
       },
-      error: null
+      error: null,
     };
   } catch (error) {
     console.error('❌ Error completing student registration:', error);
     return {
       success: false,
       data: null,
-      error: error.message
+      error: error.message,
     };
   }
 };
@@ -257,21 +255,21 @@ export const getStudentByUserId = async (userId) => {
       return {
         success: false,
         data: null,
-        error: error.message
+        error: error.message,
       };
     }
 
     return {
       success: true,
       data: data,
-      error: null
+      error: null,
     };
   } catch (error) {
     console.error('❌ Unexpected error fetching student:', error);
     return {
       success: false,
       data: null,
-      error: error.message
+      error: error.message,
     };
   }
 };
@@ -288,7 +286,7 @@ export const updateStudentProfile = async (userId, updates) => {
       .from('students')
       .update({
         ...updates,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq('user_id', userId)
       .select()
@@ -299,21 +297,21 @@ export const updateStudentProfile = async (userId, updates) => {
       return {
         success: false,
         data: null,
-        error: error.message
+        error: error.message,
       };
     }
 
     return {
       success: true,
       data: data,
-      error: null
+      error: null,
     };
   } catch (error) {
     console.error('❌ Unexpected error updating student profile:', error);
     return {
       success: false,
       data: null,
-      error: error.message
+      error: error.message,
     };
   }
 };
@@ -335,21 +333,21 @@ export const getAllColleges = async () => {
       return {
         success: false,
         data: null,
-        error: error.message
+        error: error.message,
       };
     }
 
     return {
       success: true,
       data: data || [],
-      error: null
+      error: null,
     };
   } catch (error) {
     console.error('❌ Unexpected error fetching colleges:', error);
     return {
       success: false,
       data: null,
-      error: error.message
+      error: error.message,
     };
   }
 };
@@ -371,21 +369,21 @@ export const getAllSchools = async () => {
       return {
         success: false,
         data: null,
-        error: error.message
+        error: error.message,
       };
     }
 
     return {
       success: true,
       data: data || [],
-      error: null
+      error: null,
     };
   } catch (error) {
     console.error('❌ Unexpected error fetching schools:', error);
     return {
       success: false,
       data: null,
-      error: error.message
+      error: error.message,
     };
   }
 };
@@ -402,7 +400,7 @@ export const updateStudent = async (studentId, updates) => {
       .from('students')
       .update({
         ...updates,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq('id', studentId)
       .select()
@@ -413,21 +411,21 @@ export const updateStudent = async (studentId, updates) => {
       return {
         success: false,
         data: null,
-        error: error.message
+        error: error.message,
       };
     }
 
     return {
       success: true,
       data: data,
-      error: null
+      error: null,
     };
   } catch (error) {
     console.error('❌ Unexpected error updating student:', error);
     return {
       success: false,
       data: null,
-      error: error.message
+      error: error.message,
     };
   }
 };
@@ -446,7 +444,7 @@ export const softDeleteStudent = async (studentId, educatorId) => {
         is_deleted: true,
         deleted_at: new Date().toISOString(),
         deleted_by: educatorId,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq('id', studentId)
       .select()
@@ -457,7 +455,7 @@ export const softDeleteStudent = async (studentId, educatorId) => {
       return {
         success: false,
         data: null,
-        error: error.message
+        error: error.message,
       };
     }
 
@@ -465,14 +463,14 @@ export const softDeleteStudent = async (studentId, educatorId) => {
     return {
       success: true,
       data: data,
-      error: null
+      error: null,
     };
   } catch (error) {
     console.error('❌ Unexpected error soft deleting student:', error);
     return {
       success: false,
       data: null,
-      error: error.message
+      error: error.message,
     };
   }
 };

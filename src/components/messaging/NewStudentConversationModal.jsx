@@ -22,7 +22,7 @@ const NewStudentConversationModal = ({ isOpen, onClose, schoolId, onConversation
     'Technical Support',
     'Admission Query',
     'Transfer Request',
-    'Other'
+    'Other',
   ];
 
   // Fetch students from the school when modal opens or search query changes
@@ -44,7 +44,9 @@ const NewStudentConversationModal = ({ isOpen, onClose, schoolId, onConversation
       // Apply search filter if query exists
       if (searchQuery.trim()) {
         const searchTerm = `%${searchQuery.trim()}%`;
-        query = query.or(`name.ilike.${searchTerm},email.ilike.${searchTerm},contact_number.ilike.${searchTerm},university.ilike.${searchTerm},branch_field.ilike.${searchTerm}`);
+        query = query.or(
+          `name.ilike.${searchTerm},email.ilike.${searchTerm},contact_number.ilike.${searchTerm},university.ilike.${searchTerm},branch_field.ilike.${searchTerm}`
+        );
       }
 
       const { data, error } = await query.limit(50); // Limit to 50 results for performance
@@ -65,7 +67,7 @@ const NewStudentConversationModal = ({ isOpen, onClose, schoolId, onConversation
       onConversationCreated({
         studentId: selectedStudent.id,
         subject: selectedSubject,
-        initialMessage: initialMessage.trim()
+        initialMessage: initialMessage.trim(),
       });
       handleClose();
     }
@@ -101,7 +103,9 @@ const NewStudentConversationModal = ({ isOpen, onClose, schoolId, onConversation
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-900">New Conversation with Student</h2>
-              <p className="text-sm text-gray-500">Search and select a student to start messaging</p>
+              <p className="text-sm text-gray-500">
+                Search and select a student to start messaging
+              </p>
             </div>
           </div>
           <button
@@ -122,7 +126,7 @@ const NewStudentConversationModal = ({ isOpen, onClose, schoolId, onConversation
                   <label className="block text-sm font-semibold text-gray-800 mb-3">
                     🔍 Search for a student
                   </label>
-                  
+
                   {/* Search Input */}
                   <div className="relative mb-4">
                     <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -146,10 +150,14 @@ const NewStudentConversationModal = ({ isOpen, onClose, schoolId, onConversation
                       <div className="text-center py-12">
                         <AcademicCapIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                         <p className="text-gray-500 text-sm">
-                          {searchQuery ? `No students found for "${searchQuery}"` : 'No students found'}
+                          {searchQuery
+                            ? `No students found for "${searchQuery}"`
+                            : 'No students found'}
                         </p>
                         <p className="text-gray-400 text-xs mt-2">
-                          {searchQuery ? 'Try a different search term' : 'Start typing to search for students'}
+                          {searchQuery
+                            ? 'Try a different search term'
+                            : 'Start typing to search for students'}
                         </p>
                       </div>
                     ) : (
@@ -166,13 +174,16 @@ const NewStudentConversationModal = ({ isOpen, onClose, schoolId, onConversation
                               className="w-12 h-12 rounded-full object-cover flex-shrink-0"
                             />
                             <div className="flex-1 min-w-0">
-                              <h3 className="font-semibold text-gray-900 truncate">{student.name || 'Unnamed Student'}</h3>
+                              <h3 className="font-semibold text-gray-900 truncate">
+                                {student.name || 'Unnamed Student'}
+                              </h3>
                               <p className="text-sm text-gray-600 truncate">{student.email}</p>
                               {(student.university || student.branch_field || student.grade) && (
                                 <p className="text-xs text-gray-500 truncate mt-1">
                                   {student.university && `${student.university}`}
                                   {student.branch_field && ` • ${student.branch_field}`}
-                                  {student.grade && ` • Grade ${student.grade}${student.section ? `-${student.section}` : ''}`}
+                                  {student.grade &&
+                                    ` • Grade ${student.grade}${student.section ? `-${student.section}` : ''}`}
                                 </p>
                               )}
                             </div>
@@ -196,7 +207,9 @@ const NewStudentConversationModal = ({ isOpen, onClose, schoolId, onConversation
                         className="w-12 h-12 rounded-full object-cover"
                       />
                       <div>
-                        <h3 className="font-semibold text-gray-900">{selectedStudent.name || 'Unnamed Student'}</h3>
+                        <h3 className="font-semibold text-gray-900">
+                          {selectedStudent.name || 'Unnamed Student'}
+                        </h3>
                         <p className="text-sm text-gray-600">{selectedStudent.email}</p>
                         {(selectedStudent.university || selectedStudent.branch_field) && (
                           <p className="text-xs text-gray-500 mt-1">
@@ -262,10 +275,11 @@ const NewStudentConversationModal = ({ isOpen, onClose, schoolId, onConversation
                         💬 Your message to {selectedStudent.name}
                       </label>
                       <div className="text-sm text-gray-600 mb-4 p-3 bg-white rounded-md border border-blue-200 shadow-sm">
-                        Subject: <span className="font-medium text-blue-700">{selectedSubject}</span>
+                        Subject:{' '}
+                        <span className="font-medium text-blue-700">{selectedSubject}</span>
                       </div>
                     </div>
-                    
+
                     <textarea
                       value={initialMessage}
                       onChange={(e) => setInitialMessage(e.target.value)}
@@ -274,21 +288,21 @@ const NewStudentConversationModal = ({ isOpen, onClose, schoolId, onConversation
                       className="w-full px-4 py-4 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-base bg-white shadow-sm"
                       maxLength={1000}
                     />
-                    
+
                     <div className="flex justify-between items-center mt-3">
                       <div className="text-sm text-gray-600 font-medium">
                         {initialMessage.length}/1000 characters
                       </div>
                       {initialMessage.length > 1000 && (
-                        <div className="text-sm text-red-600 font-medium">
-                          ⚠️ Message too long
-                        </div>
+                        <div className="text-sm text-red-600 font-medium">⚠️ Message too long</div>
                       )}
                     </div>
 
                     {/* Message Guidelines */}
                     <div className="mt-4 p-3 bg-white rounded-lg border border-blue-200">
-                      <h4 className="text-sm font-semibold text-gray-800 mb-2">💡 Tips for effective communication:</h4>
+                      <h4 className="text-sm font-semibold text-gray-800 mb-2">
+                        💡 Tips for effective communication:
+                      </h4>
                       <ul className="text-xs text-gray-600 space-y-1">
                         <li>• Be clear and specific about your request</li>
                         <li>• Include relevant details (dates, times, locations if applicable)</li>
@@ -314,7 +328,12 @@ const NewStudentConversationModal = ({ isOpen, onClose, schoolId, onConversation
           {selectedStudent && (
             <button
               onClick={handleCreateConversation}
-              disabled={!selectedStudent || !selectedSubject || !initialMessage.trim() || initialMessage.length > 1000}
+              disabled={
+                !selectedStudent ||
+                !selectedSubject ||
+                !initialMessage.trim() ||
+                initialMessage.length > 1000
+              }
               className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium flex items-center gap-2"
             >
               {initialMessage.trim() ? 'Send Message & Start Conversation' : 'Start Conversation'}

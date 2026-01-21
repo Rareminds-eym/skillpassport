@@ -1,9 +1,9 @@
 /**
  * Auto-Save Hook
- * 
+ *
  * Provides automatic saving of assessment progress with debouncing.
  * Handles save on change, periodic saves, and save before unload.
- * 
+ *
  * @module features/assessment/hooks/useAutoSave
  */
 
@@ -146,7 +146,7 @@ export function useAutoSave(options: UseAutoSaveOptions): UseAutoSaveReturn {
         const saveData = JSON.stringify(dataRef.current);
         // Note: This requires a beacon endpoint on the server
         // navigator.sendBeacon('/api/assessment/save', saveData);
-        
+
         // Show confirmation dialog
         e.preventDefault();
         e.returnValue = 'Your progress has been saved. Are you sure you want to leave?';
@@ -174,7 +174,7 @@ export function useAutoSave(options: UseAutoSaveOptions): UseAutoSaveReturn {
     setLastSaved(null);
     setLastError(null);
     setIsSaving(false);
-    
+
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }

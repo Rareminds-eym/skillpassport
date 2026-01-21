@@ -1,9 +1,9 @@
 // Counselling Type Definitions
 
-export type CounsellingTopicType = 
-  | 'academic' 
-  | 'career' 
-  | 'performance' 
+export type CounsellingTopicType =
+  | 'academic'
+  | 'career'
+  | 'performance'
   | 'mental-health'
   | 'general';
 

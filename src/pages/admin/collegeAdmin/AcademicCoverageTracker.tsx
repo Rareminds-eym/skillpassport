@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 import {
   BookOpenIcon,
   ChartBarIcon,
@@ -9,8 +9,8 @@ import {
   AcademicCapIcon,
   CalendarIcon,
   FunnelIcon,
-} from "@heroicons/react/24/outline";
-import { supabase } from "../../../lib/supabaseClient";
+} from '@heroicons/react/24/outline';
+import { supabase } from '../../../lib/supabaseClient';
 
 interface CoverageData {
   id: string;
@@ -25,17 +25,17 @@ interface CoverageData {
   total_outcomes: number;
   completed_outcomes: number;
   completion_percentage: number;
-  status: "on_track" | "behind" | "completed";
+  status: 'on_track' | 'behind' | 'completed';
   last_updated: string;
 }
 
 const AcademicCoverageTracker: React.FC = () => {
   const [coverageData, setCoverageData] = useState<CoverageData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [departmentFilter, setDepartmentFilter] = useState("");
-  const [programFilter, setProgramFilter] = useState("");
-  const [semesterFilter, setSemesterFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [departmentFilter, setDepartmentFilter] = useState('');
+  const [programFilter, setProgramFilter] = useState('');
+  const [semesterFilter, setSemesterFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
 
   useEffect(() => {
     loadCoverageData();
@@ -44,11 +44,12 @@ const AcademicCoverageTracker: React.FC = () => {
   const loadCoverageData = async () => {
     try {
       setLoading(true);
-      
+
       // Fetch curriculum data with completion tracking
       const { data: curriculumData, error } = await supabase
-        .from("curriculum")
-        .select(`
+        .from('curriculum')
+        .select(
+          `
           id,
           course_id,
           units,
@@ -71,8 +72,9 @@ const AcademicCoverageTracker: React.FC = () => {
               name
             )
           )
-        `)
-        .eq("status", "published");
+        `
+        )
+        .eq('status', 'published');
 
       if (error) throw error;
 
@@ -80,26 +82,25 @@ const AcademicCoverageTracker: React.FC = () => {
       const coverage: CoverageData[] = (curriculumData || []).map((item: any) => {
         const units = item.units || [];
         const outcomes = item.outcomes || [];
-        
+
         // Mock completion data - in real implementation, fetch from lesson_plans and assessments
         const completedUnits = Math.floor(units.length * Math.random());
         const completedOutcomes = Math.floor(outcomes.length * Math.random());
-        const completionPercentage = units.length > 0 
-          ? Math.round((completedUnits / units.length) * 100)
-          : 0;
+        const completionPercentage =
+          units.length > 0 ? Math.round((completedUnits / units.length) * 100) : 0;
 
-        let status: "on_track" | "behind" | "completed" = "on_track";
-        if (completionPercentage === 100) status = "completed";
-        else if (completionPercentage < 50) status = "behind";
+        let status: 'on_track' | 'behind' | 'completed' = 'on_track';
+        if (completionPercentage === 100) status = 'completed';
+        else if (completionPercentage < 50) status = 'behind';
 
         return {
           id: item.id,
-          department: item.course_mappings?.programs?.departments?.name || "N/A",
-          program: item.course_mappings?.programs?.name || "N/A",
+          department: item.course_mappings?.programs?.departments?.name || 'N/A',
+          program: item.course_mappings?.programs?.name || 'N/A',
           semester: item.course_mappings?.semester || 0,
-          course_code: item.course_mappings?.course_code || "N/A",
-          course_name: item.course_mappings?.course_name || "N/A",
-          faculty_name: item.course_mappings?.users?.name || "Unassigned",
+          course_code: item.course_mappings?.course_code || 'N/A',
+          course_name: item.course_mappings?.course_name || 'N/A',
+          faculty_name: item.course_mappings?.users?.name || 'Unassigned',
           total_units: units.length,
           completed_units: completedUnits,
           total_outcomes: outcomes.length,
@@ -112,7 +113,7 @@ const AcademicCoverageTracker: React.FC = () => {
 
       setCoverageData(coverage);
     } catch (error: any) {
-      console.error("Error loading coverage data:", error);
+      console.error('Error loading coverage data:', error);
     } finally {
       setLoading(false);
     }
@@ -132,35 +133,38 @@ const AcademicCoverageTracker: React.FC = () => {
 
   const getStatusBadge = (status: string) => {
     const styles = {
-      on_track: "bg-green-100 text-green-700",
-      behind: "bg-yellow-100 text-yellow-700",
-      completed: "bg-blue-100 text-blue-700",
+      on_track: 'bg-green-100 text-green-700',
+      behind: 'bg-yellow-100 text-yellow-700',
+      completed: 'bg-blue-100 text-blue-700',
     };
     const labels = {
-      on_track: "On Track",
-      behind: "Behind Schedule",
-      completed: "Completed",
+      on_track: 'On Track',
+      behind: 'Behind Schedule',
+      completed: 'Completed',
     };
     return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[status as keyof typeof styles]}`}>
+      <span
+        className={`px-2 py-1 rounded-full text-xs font-medium ${styles[status as keyof typeof styles]}`}
+      >
         {labels[status as keyof typeof labels]}
       </span>
     );
   };
 
   const getProgressColor = (percentage: number) => {
-    if (percentage >= 75) return "bg-green-500";
-    if (percentage >= 50) return "bg-yellow-500";
-    return "bg-red-500";
+    if (percentage >= 75) return 'bg-green-500';
+    if (percentage >= 50) return 'bg-yellow-500';
+    return 'bg-red-500';
   };
 
   // Calculate summary stats
   const totalCourses = filteredData.length;
-  const completedCourses = filteredData.filter((d) => d.status === "completed").length;
-  const behindSchedule = filteredData.filter((d) => d.status === "behind").length;
-  const avgCompletion = totalCourses > 0
-    ? Math.round(filteredData.reduce((sum, d) => sum + d.completion_percentage, 0) / totalCourses)
-    : 0;
+  const completedCourses = filteredData.filter((d) => d.status === 'completed').length;
+  const behindSchedule = filteredData.filter((d) => d.status === 'behind').length;
+  const avgCompletion =
+    totalCourses > 0
+      ? Math.round(filteredData.reduce((sum, d) => sum + d.completion_percentage, 0) / totalCourses)
+      : 0;
 
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
@@ -352,24 +356,14 @@ const AcademicCoverageTracker: React.FC = () => {
                   <tr key={item.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <div>
-                        <p className="text-sm font-medium text-gray-900">
-                          {item.course_code}
-                        </p>
+                        <p className="text-sm font-medium text-gray-900">{item.course_code}</p>
                         <p className="text-xs text-gray-500">{item.course_name}</p>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
-                      {item.department}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
-                      {item.program}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
-                      Sem {item.semester}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
-                      {item.faculty_name}
-                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{item.department}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{item.program}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">Sem {item.semester}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{item.faculty_name}</td>
                     <td className="px-4 py-3 text-sm text-gray-600">
                       {item.completed_units} / {item.total_units}
                     </td>

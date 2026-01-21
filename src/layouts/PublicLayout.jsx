@@ -6,7 +6,10 @@ import {
   PromotionalEventProvider,
   usePromotionalEventContext,
 } from '../contexts/PromotionalEventContext';
-import { AssessmentPromotionalProvider, useAssessmentPromotionalContext } from '../contexts/AssessmentPromotionalContext';
+import {
+  AssessmentPromotionalProvider,
+  useAssessmentPromotionalContext,
+} from '../contexts/AssessmentPromotionalContext';
 import useAuth from '../hooks/useAuth';
 import { useSubscriptionQuery } from '../hooks/Subscription/useSubscriptionQuery';
 import { isActiveOrPaused } from '../utils/subscriptionHelpers';
@@ -25,12 +28,12 @@ const PublicLayoutContent = () => {
   const { subscriptionData, loading: subscriptionLoading } = useSubscriptionQuery();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [activeTab, setActiveTab] = useState('subscription');
-  
+
   const { event, showBanner, dismissBanner, getTimeRemaining } = usePromotionalEventContext();
-  const { 
-    showBanner: showAssessmentBanner, 
+  const {
+    showBanner: showAssessmentBanner,
     dismissBanner: dismissAssessmentBanner,
-    getTimeRemaining: getAssessmentTimeRemaining
+    getTimeRemaining: getAssessmentTimeRemaining,
   } = useAssessmentPromotionalContext();
 
   // Show assessment banner if assessment modal was dismissed, otherwise show promo banner
@@ -38,7 +41,7 @@ const PublicLayoutContent = () => {
 
   // Check if we're on a subscription page
   const isSubscriptionPage = location.pathname.startsWith('/subscription/');
-  
+
   // Check if user has active subscription
   const hasActiveSubscription = subscriptionData && isActiveOrPaused(subscriptionData.status);
 
@@ -50,21 +53,29 @@ const PublicLayoutContent = () => {
       if (subscriptionLoading) {
         return <SubscriptionPurchaseHeader userEmail={user?.email} hasBanner={hasAnyBanner} />;
       }
-      
+
       // If user doesn't have active subscription, show simplified purchase header
       if (!hasActiveSubscription) {
         return <SubscriptionPurchaseHeader userEmail={user?.email} hasBanner={hasAnyBanner} />;
       }
-      
+
       // If user has active subscription, show role-specific header
       if (userRole) {
         // Student roles
-        if (userRole === 'student' || userRole === 'school_student' || userRole === 'college_student') {
+        if (
+          userRole === 'student' ||
+          userRole === 'school_student' ||
+          userRole === 'college_student'
+        ) {
           return <StudentHeader activeTab={activeTab} setActiveTab={setActiveTab} />;
         }
 
         // Educator roles
-        if (userRole === 'educator' || userRole === 'school_educator' || userRole === 'college_educator') {
+        if (
+          userRole === 'educator' ||
+          userRole === 'school_educator' ||
+          userRole === 'college_educator'
+        ) {
           return (
             <EducatorHeader
               onMenuToggle={() => setShowMobileMenu(!showMobileMenu)}
@@ -74,8 +85,14 @@ const PublicLayoutContent = () => {
         }
 
         // Admin roles
-        if (userRole === 'admin' || userRole === 'super_admin' || userRole === 'rm_admin' || 
-            userRole === 'school_admin' || userRole === 'college_admin' || userRole === 'university_admin') {
+        if (
+          userRole === 'admin' ||
+          userRole === 'super_admin' ||
+          userRole === 'rm_admin' ||
+          userRole === 'school_admin' ||
+          userRole === 'college_admin' ||
+          userRole === 'university_admin'
+        ) {
           return (
             <AdminHeader
               onMenuToggle={() => setShowMobileMenu(!showMobileMenu)}

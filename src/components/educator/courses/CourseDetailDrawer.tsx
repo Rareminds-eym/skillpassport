@@ -17,12 +17,18 @@ import {
   DocumentIcon,
   VideoCameraIcon,
   PhotoIcon,
-  LinkIcon
+  LinkIcon,
 } from '@heroicons/react/24/outline';
 import { Course, CourseModule, Lesson, Resource } from '../../../types/educator/course';
 import AddLessonModal from './AddLessonModal';
 import ResourceUploadComponent from './ResourceUploadComponent';
-import { addResource, deleteResource, addLesson, updateLesson, deleteLesson as deleteLessonFromDB } from '../../../services/educator/coursesService';
+import {
+  addResource,
+  deleteResource,
+  addLesson,
+  updateLesson,
+  deleteLesson as deleteLessonFromDB,
+} from '../../../services/educator/coursesService';
 import toast from 'react-hot-toast';
 
 interface CourseDetailDrawerProps {
@@ -38,7 +44,7 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
   isOpen,
   onClose,
   onEdit,
-  onUpdateCourse
+  onUpdateCourse,
 }) => {
   const [course, setCourse] = useState<Course | null>(initialCourse);
   const [activeTab, setActiveTab] = useState('overview');
@@ -61,12 +67,11 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
     { id: 'activities', label: 'Activities', icon: ClipboardDocumentListIcon },
     { id: 'skills', label: 'Skill Mapping', icon: CheckCircleIcon },
     { id: 'analytics', label: 'Analytics', icon: ChartBarIcon },
-    { id: 'settings', label: 'Settings', icon: Cog6ToothIcon }
+    { id: 'settings', label: 'Settings', icon: Cog6ToothIcon },
   ];
 
-  const skillCoverage = course.totalSkills > 0
-    ? Math.round((course.skillsMapped / course.totalSkills) * 100)
-    : 0;
+  const skillCoverage =
+    course.totalSkills > 0 ? Math.round((course.skillsMapped / course.totalSkills) * 100) : 0;
 
   const toggleModule = (moduleId: string) => {
     const newExpanded = new Set(expandedModules);
@@ -88,7 +93,7 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
     if (!selectedModuleId) return;
 
     const updatedCourse = { ...course };
-    const moduleIndex = updatedCourse.modules.findIndex(m => m.id === selectedModuleId);
+    const moduleIndex = updatedCourse.modules.findIndex((m) => m.id === selectedModuleId);
 
     if (moduleIndex === -1) return;
 
@@ -102,12 +107,12 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
 
         // Update local state
         const lessonIndex = updatedCourse.modules[moduleIndex].lessons.findIndex(
-          l => l.id === editingLesson.id
+          (l) => l.id === editingLesson.id
         );
         if (lessonIndex !== -1) {
           updatedCourse.modules[moduleIndex].lessons[lessonIndex] = {
             ...updatedCourse.modules[moduleIndex].lessons[lessonIndex],
-            ...lessonData
+            ...lessonData,
           };
         }
 
@@ -118,7 +123,7 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
         const savedLesson = await addLesson(selectedModuleId, {
           ...lessonData,
           order: updatedCourse.modules[moduleIndex].lessons.length + 1,
-          resources: []
+          resources: [],
         });
 
         console.log('Lesson saved to database:', savedLesson);
@@ -136,7 +141,7 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
     } catch (error) {
       console.error('Error saving lesson:', error);
       toast.error(editingLesson ? 'Failed to update lesson' : 'Failed to create lesson', {
-        id: loadingToast
+        id: loadingToast,
       });
     }
   };
@@ -151,7 +156,7 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
     if (!confirm('Are you sure you want to delete this lesson?')) return;
 
     const updatedCourse = { ...course };
-    const moduleIndex = updatedCourse.modules.findIndex(m => m.id === moduleId);
+    const moduleIndex = updatedCourse.modules.findIndex((m) => m.id === moduleId);
 
     if (moduleIndex === -1) return;
 
@@ -163,9 +168,9 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
       await deleteLessonFromDB(lessonId);
 
       // Update local state
-      updatedCourse.modules[moduleIndex].lessons = updatedCourse.modules[moduleIndex].lessons.filter(
-        l => l.id !== lessonId
-      );
+      updatedCourse.modules[moduleIndex].lessons = updatedCourse.modules[
+        moduleIndex
+      ].lessons.filter((l) => l.id !== lessonId);
 
       setCourse(updatedCourse);
       onUpdateCourse?.(updatedCourse);
@@ -196,7 +201,7 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
     }
 
     const updatedCourse = { ...course };
-    const moduleIndex = updatedCourse.modules.findIndex(m => m.id === selectedModuleId);
+    const moduleIndex = updatedCourse.modules.findIndex((m) => m.id === selectedModuleId);
 
     if (moduleIndex === -1) {
       console.error('Module not found:', selectedModuleId);
@@ -205,7 +210,7 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
     }
 
     const lessonIndex = updatedCourse.modules[moduleIndex].lessons.findIndex(
-      l => l.id === selectedLessonId
+      (l) => l.id === selectedLessonId
     );
 
     if (lessonIndex === -1) {
@@ -214,7 +219,10 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
       return;
     }
 
-    console.log('Before adding resources:', updatedCourse.modules[moduleIndex].lessons[lessonIndex].resources);
+    console.log(
+      'Before adding resources:',
+      updatedCourse.modules[moduleIndex].lessons[lessonIndex].resources
+    );
 
     // Save each resource to Supabase
     const savedResources: Resource[] = [];
@@ -229,7 +237,7 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
           url: resource.url,
           size: resource.size,
           thumbnailUrl: resource.thumbnailUrl,
-          embedUrl: resource.embedUrl
+          embedUrl: resource.embedUrl,
         });
         console.log('Resource saved:', savedResource);
         savedResources.push(savedResource);
@@ -237,7 +245,10 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
 
       // Update local state with saved resources
       updatedCourse.modules[moduleIndex].lessons[lessonIndex].resources.push(...savedResources);
-      console.log('After adding resources:', updatedCourse.modules[moduleIndex].lessons[lessonIndex].resources);
+      console.log(
+        'After adding resources:',
+        updatedCourse.modules[moduleIndex].lessons[lessonIndex].resources
+      );
 
       setCourse(updatedCourse);
       // Also update parent state to keep it in sync
@@ -245,13 +256,13 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
       setShowResourceUpload(false);
 
       toast.success(`${savedResources.length} resource(s) added successfully`, {
-        id: loadingToast
+        id: loadingToast,
       });
       console.log('✓ Resources saved to database successfully');
     } catch (error) {
       console.error('Error saving resources:', error);
       toast.error('Failed to save resources to database', {
-        id: loadingToast
+        id: loadingToast,
       });
     }
   };
@@ -263,7 +274,7 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
     console.log('Resource ID:', resourceId);
 
     const updatedCourse = { ...course };
-    const moduleIndex = updatedCourse.modules.findIndex(m => m.id === moduleId);
+    const moduleIndex = updatedCourse.modules.findIndex((m) => m.id === moduleId);
 
     if (moduleIndex === -1) {
       console.error('Module not found:', moduleId);
@@ -272,7 +283,7 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
     }
 
     const lessonIndex = updatedCourse.modules[moduleIndex].lessons.findIndex(
-      l => l.id === lessonId
+      (l) => l.id === lessonId
     );
 
     if (lessonIndex === -1) {
@@ -290,21 +301,20 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
       console.log('✓ Resource deleted from database');
 
       // Update local state
-      updatedCourse.modules[moduleIndex].lessons[lessonIndex].resources =
-        updatedCourse.modules[moduleIndex].lessons[lessonIndex].resources.filter(
-          r => r.id !== resourceId
-        );
+      updatedCourse.modules[moduleIndex].lessons[lessonIndex].resources = updatedCourse.modules[
+        moduleIndex
+      ].lessons[lessonIndex].resources.filter((r) => r.id !== resourceId);
 
       setCourse(updatedCourse);
       onUpdateCourse?.(updatedCourse);
 
       toast.success('Resource deleted successfully', {
-        id: loadingToast
+        id: loadingToast,
       });
     } catch (error) {
       console.error('Error deleting resource:', error);
       toast.error('Failed to delete resource from database', {
-        id: loadingToast
+        id: loadingToast,
       });
     }
   };
@@ -345,10 +355,10 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
                       course.status === 'Active'
                         ? 'bg-emerald-100 text-emerald-700'
                         : course.status === 'Draft'
-                        ? 'bg-gray-100 text-gray-700'
-                        : course.status === 'Upcoming'
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'bg-amber-100 text-amber-700'
+                          ? 'bg-gray-100 text-gray-700'
+                          : course.status === 'Upcoming'
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'bg-amber-100 text-amber-700'
                     }`}
                   >
                     {course.status}
@@ -396,7 +406,9 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
                 </div>
 
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Target Learning Outcomes</h3>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3">
+                    Target Learning Outcomes
+                  </h3>
                   <ul className="space-y-2">
                     {course.targetOutcomes.map((outcome, index) => (
                       <li key={index} className="flex items-start gap-2 text-sm text-gray-600">
@@ -503,7 +515,13 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
                                   <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
                                     <span>{module.lessons.length} lesson(s)</span>
                                     <span>•</span>
-                                    <span>{module.lessons.reduce((sum, l) => sum + l.resources.length, 0)} resource(s)</span>
+                                    <span>
+                                      {module.lessons.reduce(
+                                        (sum, l) => sum + l.resources.length,
+                                        0
+                                      )}{' '}
+                                      resource(s)
+                                    </span>
                                   </div>
                                 </div>
                               </button>
@@ -543,14 +561,19 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
                                   {module.lessons.map((lesson, lessonIndex) => {
                                     const ResourceIcon = getResourceIcon(lesson.resources[0]?.type);
                                     return (
-                                      <div key={lesson.id} className="p-4 hover:bg-gray-50 transition-colors">
+                                      <div
+                                        key={lesson.id}
+                                        className="p-4 hover:bg-gray-50 transition-colors"
+                                      >
                                         <div className="flex items-start justify-between mb-2">
                                           <div className="flex-1">
                                             <div className="flex items-center gap-2 mb-1">
                                               <span className="text-sm font-medium text-gray-500">
                                                 {lessonIndex + 1}.
                                               </span>
-                                              <h5 className="font-semibold text-gray-900">{lesson.title}</h5>
+                                              <h5 className="font-semibold text-gray-900">
+                                                {lesson.title}
+                                              </h5>
                                               {lesson.duration && (
                                                 <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
                                                   {lesson.duration}
@@ -558,7 +581,9 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
                                               )}
                                             </div>
                                             {lesson.description && (
-                                              <p className="text-sm text-gray-600 mb-2">{lesson.description}</p>
+                                              <p className="text-sm text-gray-600 mb-2">
+                                                {lesson.description}
+                                              </p>
                                             )}
                                           </div>
                                           <div className="flex items-center gap-1">
@@ -570,7 +595,9 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
                                               <PencilIcon className="h-4 w-4 text-gray-600" />
                                             </button>
                                             <button
-                                              onClick={() => handleDeleteLesson(module.id, lesson.id)}
+                                              onClick={() =>
+                                                handleDeleteLesson(module.id, lesson.id)
+                                              }
                                               className="p-1.5 hover:bg-red-100 rounded transition-colors"
                                               title="Delete lesson"
                                             >
@@ -586,7 +613,9 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
                                               Resources ({lesson.resources.length})
                                             </span>
                                             <button
-                                              onClick={() => handleAddResourceToLesson(module.id, lesson.id)}
+                                              onClick={() =>
+                                                handleAddResourceToLesson(module.id, lesson.id)
+                                              }
                                               className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
                                             >
                                               + Add
@@ -614,14 +643,22 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
                                                     </div>
                                                     <div className="flex items-center gap-1">
                                                       <button
-                                                        onClick={() => window.open(resource.url, '_blank')}
+                                                        onClick={() =>
+                                                          window.open(resource.url, '_blank')
+                                                        }
                                                         className="p-1 hover:bg-gray-200 rounded transition-colors"
                                                         title="View resource"
                                                       >
                                                         <EyeIcon className="h-3 w-3 text-gray-600" />
                                                       </button>
                                                       <button
-                                                        onClick={() => handleDeleteResource(module.id, lesson.id, resource.id)}
+                                                        onClick={() =>
+                                                          handleDeleteResource(
+                                                            module.id,
+                                                            lesson.id,
+                                                            resource.id
+                                                          )
+                                                        }
                                                         className="p-1 hover:bg-red-100 rounded transition-colors"
                                                         title="Delete resource"
                                                       >
@@ -633,7 +670,9 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
                                               })}
                                             </div>
                                           ) : (
-                                            <p className="text-xs text-gray-400 italic">No resources added</p>
+                                            <p className="text-xs text-gray-400 italic">
+                                              No resources added
+                                            </p>
                                           )}
                                         </div>
                                       </div>
@@ -679,16 +718,21 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
             {activeTab === 'skills' && (
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Skill Passport Alignment</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    Skill Passport Alignment
+                  </h3>
                   <p className="text-sm text-gray-600 mb-4">
-                    This course maps to {course.skillsMapped} out of {course.totalSkills} target skills
+                    This course maps to {course.skillsMapped} out of {course.totalSkills} target
+                    skills
                   </p>
                 </div>
 
                 {/* Skill Coverage Progress */}
                 <div className="p-4 bg-indigo-50 rounded-lg border border-indigo-200">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-semibold text-indigo-900">Overall Skill Coverage</span>
+                    <span className="text-sm font-semibold text-indigo-900">
+                      Overall Skill Coverage
+                    </span>
                     <span className="text-lg font-bold text-indigo-700">{skillCoverage}%</span>
                   </div>
                   <div className="w-full bg-indigo-200 rounded-full h-3">
@@ -720,14 +764,19 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
 
                 {/* Mapping Matrix */}
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Module-Skill Mapping Matrix</h4>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                    Module-Skill Mapping Matrix
+                  </h4>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-gray-200">
                           <th className="text-left py-2 px-3 font-medium text-gray-700">Module</th>
                           {course.skillsCovered.map((skill) => (
-                            <th key={skill} className="text-center py-2 px-3 font-medium text-gray-700 text-xs">
+                            <th
+                              key={skill}
+                              className="text-center py-2 px-3 font-medium text-gray-700 text-xs"
+                            >
                               {skill}
                             </th>
                           ))}
@@ -794,13 +843,15 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Course Status</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Course Status
+                    </label>
                     <select
                       value={course.status}
                       onChange={(e) => {
                         const updatedCourse = {
                           ...course,
-                          status: e.target.value as 'Active' | 'Draft' | 'Upcoming' | 'Archived'
+                          status: e.target.value as 'Active' | 'Draft' | 'Upcoming' | 'Archived',
                         };
                         setCourse(updatedCourse);
                         if (onUpdateCourse) {
@@ -818,11 +869,16 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Co-Educators</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Co-Educators
+                    </label>
                     <div className="space-y-2">
                       {course.coEducators && course.coEducators.length > 0 ? (
                         course.coEducators.map((educator, index) => (
-                          <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div
+                            key={index}
+                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                          >
                             <span className="text-sm text-gray-900">{educator}</span>
                             <button className="text-red-600 hover:bg-red-50 p-1 rounded transition-colors">
                               <XMarkIcon className="h-4 w-4" />
@@ -889,31 +945,35 @@ const CourseDetailDrawer: React.FC<CourseDetailDrawerProps> = ({
       )}
 
       {/* Resource Upload Component */}
-      {showResourceUpload && selectedModuleId && selectedLessonId && course && (() => {
-        console.log('=== Rendering ResourceUploadComponent ===');
-        console.log('course:', course);
-        console.log('course.id:', course.id);
-        console.log('selectedLessonId:', selectedLessonId);
-        console.log('selectedModuleId:', selectedModuleId);
+      {showResourceUpload &&
+        selectedModuleId &&
+        selectedLessonId &&
+        course &&
+        (() => {
+          console.log('=== Rendering ResourceUploadComponent ===');
+          console.log('course:', course);
+          console.log('course.id:', course.id);
+          console.log('selectedLessonId:', selectedLessonId);
+          console.log('selectedModuleId:', selectedModuleId);
 
-        const module = course.modules.find(m => m.id === selectedModuleId);
-        const lesson = module?.lessons.find(l => l.id === selectedLessonId);
-        console.log('Found module:', module);
-        console.log('Found lesson:', lesson);
+          const module = course.modules.find((m) => m.id === selectedModuleId);
+          const lesson = module?.lessons.find((l) => l.id === selectedLessonId);
+          console.log('Found module:', module);
+          console.log('Found lesson:', lesson);
 
-        return (
-          <ResourceUploadComponent
-            onResourcesAdded={handleResourcesAdded}
-            onClose={() => {
-              setShowResourceUpload(false);
-              setSelectedLessonId(null);
-            }}
-            existingResources={lesson?.resources || []}
-            courseId={course.id}
-            lessonId={selectedLessonId}
-          />
-        );
-      })()}
+          return (
+            <ResourceUploadComponent
+              onResourcesAdded={handleResourcesAdded}
+              onClose={() => {
+                setShowResourceUpload(false);
+                setSelectedLessonId(null);
+              }}
+              existingResources={lesson?.resources || []}
+              courseId={course.id}
+              lessonId={selectedLessonId}
+            />
+          );
+        })()}
     </>
   );
 };

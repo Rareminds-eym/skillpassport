@@ -8,13 +8,13 @@ import { getDomainKeywordsWithCache } from './fieldDomainService.js';
 /**
  * Build a composite text representation of the student's profile
  * from assessment results for embedding generation.
- * 
+ *
  * Includes skill gaps, career clusters, and employability areas
  * with skill gaps and career clusters weighted as primary factors.
- * 
+ *
  * @param {Object} assessmentResults - Assessment results from AI analysis
  * @returns {Promise<string>} - Composite profile text for embedding
- * 
+ *
  * Requirements: 2.1, 2.2
  */
 export const buildProfileText = async (assessmentResults) => {
@@ -29,7 +29,7 @@ export const buildProfileText = async (assessmentResults) => {
   const stream = assessmentResults.stream || assessmentResults.branch_field;
   if (stream) {
     parts.push(`Student Field of Study: ${stream}`);
-    
+
     // Generate domain-specific keywords using AI service
     // This works for ALL fields, not just hardcoded ones
     try {
@@ -43,8 +43,13 @@ export const buildProfileText = async (assessmentResults) => {
         console.log(`[Profile Builder] → Continuing with LAYER 4 (Other Profile Factors)`);
       }
     } catch (error) {
-      console.error(`[Profile Builder] ❌ LAYER 4 (Graceful Degradation) - Failed to generate domain keywords:`, error.message);
-      console.log(`[Profile Builder] → Continuing without domain keywords, using career clusters and skill gaps`);
+      console.error(
+        `[Profile Builder] ❌ LAYER 4 (Graceful Degradation) - Failed to generate domain keywords:`,
+        error.message
+      );
+      console.log(
+        `[Profile Builder] → Continuing without domain keywords, using career clusters and skill gaps`
+      );
       // Continue without domain keywords rather than failing
     }
   }
@@ -55,7 +60,7 @@ export const buildProfileText = async (assessmentResults) => {
     // Priority A skills (most important)
     if (skillGap.priorityA && Array.isArray(skillGap.priorityA) && skillGap.priorityA.length > 0) {
       const priorityASkills = skillGap.priorityA
-        .map(s => s.skill)
+        .map((s) => s.skill)
         .filter(Boolean)
         .join(', ');
       if (priorityASkills) {
@@ -66,7 +71,7 @@ export const buildProfileText = async (assessmentResults) => {
     // Priority B skills (secondary)
     if (skillGap.priorityB && Array.isArray(skillGap.priorityB) && skillGap.priorityB.length > 0) {
       const priorityBSkills = skillGap.priorityB
-        .map(s => s.skill)
+        .map((s) => s.skill)
         .filter(Boolean)
         .join(', ');
       if (priorityBSkills) {
@@ -75,7 +80,11 @@ export const buildProfileText = async (assessmentResults) => {
     }
 
     // Current strengths
-    if (skillGap.currentStrengths && Array.isArray(skillGap.currentStrengths) && skillGap.currentStrengths.length > 0) {
+    if (
+      skillGap.currentStrengths &&
+      Array.isArray(skillGap.currentStrengths) &&
+      skillGap.currentStrengths.length > 0
+    ) {
       parts.push(`Current Strengths: ${skillGap.currentStrengths.join(', ')}`);
     }
 
@@ -89,17 +98,19 @@ export const buildProfileText = async (assessmentResults) => {
   const careerFit = assessmentResults.careerFit;
   if (careerFit && careerFit.clusters && Array.isArray(careerFit.clusters)) {
     // Get top career cluster (highest fit)
-    const topClusters = careerFit.clusters
-      .filter(c => c && c.title)
-      .slice(0, 3); // Top 3 clusters
+    const topClusters = careerFit.clusters.filter((c) => c && c.title).slice(0, 3); // Top 3 clusters
 
     if (topClusters.length > 0) {
-      const clusterTitles = topClusters.map(c => c.title).join(', ');
+      const clusterTitles = topClusters.map((c) => c.title).join(', ');
       parts.push(`Career Interests: ${clusterTitles}`);
 
       // Add domains from top cluster
       const topCluster = topClusters[0];
-      if (topCluster.domains && Array.isArray(topCluster.domains) && topCluster.domains.length > 0) {
+      if (
+        topCluster.domains &&
+        Array.isArray(topCluster.domains) &&
+        topCluster.domains.length > 0
+      ) {
         parts.push(`Target Domains: ${topCluster.domains.join(', ')}`);
       }
 
@@ -114,12 +125,20 @@ export const buildProfileText = async (assessmentResults) => {
   const employability = assessmentResults.employability;
   if (employability) {
     // Improvement areas
-    if (employability.improvementAreas && Array.isArray(employability.improvementAreas) && employability.improvementAreas.length > 0) {
+    if (
+      employability.improvementAreas &&
+      Array.isArray(employability.improvementAreas) &&
+      employability.improvementAreas.length > 0
+    ) {
       parts.push(`Areas to Improve: ${employability.improvementAreas.join(', ')}`);
     }
 
     // Strength areas
-    if (employability.strengthAreas && Array.isArray(employability.strengthAreas) && employability.strengthAreas.length > 0) {
+    if (
+      employability.strengthAreas &&
+      Array.isArray(employability.strengthAreas) &&
+      employability.strengthAreas.length > 0
+    ) {
       parts.push(`Employability Strengths: ${employability.strengthAreas.join(', ')}`);
     }
   }

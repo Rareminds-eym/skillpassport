@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   verifyPaymentSignature,
   validatePaymentParams,
-  extractPaymentParams
+  extractPaymentParams,
 } from '../../services/Subscriptions/paymentVerificationService';
 
 /**
@@ -19,17 +19,12 @@ import {
  * @param {boolean} params.autoVerify - Whether to verify automatically on mount
  * @returns {Object} Verification state and methods
  */
-export const usePaymentVerification = ({
-  paymentId,
-  orderId,
-  signature,
-  autoVerify = true
-}) => {
+export const usePaymentVerification = ({ paymentId, orderId, signature, autoVerify = true }) => {
   const [status, setStatus] = useState('idle'); // 'idle' | 'loading' | 'success' | 'failure' | 'error'
   const [transactionDetails, setTransactionDetails] = useState(null);
   const [error, setError] = useState(null);
   const [verificationAttempts, setVerificationAttempts] = useState(0);
-  
+
   const verificationStartTime = useRef(null);
   const timeoutRef = useRef(null);
   const hasVerified = useRef(false);
@@ -47,21 +42,21 @@ export const usePaymentVerification = ({
     setStatus('loading');
     setError(null);
     verificationStartTime.current = Date.now();
-    setVerificationAttempts(prev => prev + 1);
+    setVerificationAttempts((prev) => prev + 1);
 
     try {
       // Validate parameters first
       const validation = validatePaymentParams({
         razorpay_payment_id: paymentId,
         razorpay_order_id: orderId,
-        razorpay_signature: signature
+        razorpay_signature: signature,
       });
 
       if (!validation.isValid) {
         setStatus('error');
         setError({
           message: validation.errors.join(', '),
-          code: 'INVALID_PARAMETERS'
+          code: 'INVALID_PARAMETERS',
         });
         return;
       }
@@ -80,7 +75,7 @@ export const usePaymentVerification = ({
         if (stored) {
           const planDetails = JSON.parse(stored);
           plan = {
-            id: planDetails.id,       // plan_id for foreign key reference
+            id: planDetails.id, // plan_id for foreign key reference
             name: planDetails.name,
             price: planDetails.price,
             duration: planDetails.duration,
@@ -116,10 +111,9 @@ export const usePaymentVerification = ({
         setStatus('failure');
         setError({
           message: result.error || 'Payment verification failed',
-          code: result.errorCode || 'VERIFICATION_FAILED'
+          code: result.errorCode || 'VERIFICATION_FAILED',
         });
       }
-
     } catch (err) {
       // Clear timeout on error
       if (timeoutRef.current) {
@@ -134,7 +128,7 @@ export const usePaymentVerification = ({
         setError({
           message: 'Verification is taking longer than expected. Please try again.',
           code: 'TIMEOUT',
-          canRetry: true
+          canRetry: true,
         });
       } else {
         console.error('❌ Verification error:', err);
@@ -142,7 +136,7 @@ export const usePaymentVerification = ({
         setError({
           message: err.message || 'An error occurred during verification',
           code: 'VERIFICATION_ERROR',
-          canRetry: true
+          canRetry: true,
         });
       }
     }
@@ -165,7 +159,7 @@ export const usePaymentVerification = ({
     setError(null);
     setVerificationAttempts(0);
     hasVerified.current = false;
-    
+
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
@@ -173,7 +167,14 @@ export const usePaymentVerification = ({
 
   // Auto-verify on mount if enabled
   useEffect(() => {
-    if (autoVerify && paymentId && orderId && signature && !hasVerified.current && status === 'idle') {
+    if (
+      autoVerify &&
+      paymentId &&
+      orderId &&
+      signature &&
+      !hasVerified.current &&
+      status === 'idle'
+    ) {
       verify();
     }
 
@@ -196,7 +197,7 @@ export const usePaymentVerification = ({
     isError: status === 'error',
     verify,
     retry,
-    reset
+    reset,
   };
 };
 
@@ -208,17 +209,17 @@ export const usePaymentVerification = ({
  */
 export const usePaymentVerificationFromURL = (searchParams, autoVerify = true) => {
   const params = extractPaymentParams(searchParams);
-  
+
   const verification = usePaymentVerification({
     paymentId: params.razorpay_payment_id,
     orderId: params.razorpay_order_id,
     signature: params.razorpay_signature,
-    autoVerify
+    autoVerify,
   });
 
   return {
     ...verification,
-    paymentParams: params
+    paymentParams: params,
   };
 };
 

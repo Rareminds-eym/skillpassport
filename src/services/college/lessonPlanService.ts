@@ -59,7 +59,9 @@ export interface CollegeLessonPlan {
 
 // Get current user's college ID
 async function getCurrentUserCollegeId(): Promise<string | null> {
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return null;
 
   const { data: lecturer } = await supabase
@@ -106,7 +108,9 @@ export const lessonPlanService = {
   /**
    * Get programs for a department
    */
-  async getPrograms(departmentId: string): Promise<{ success: boolean; data?: any[]; error?: any }> {
+  async getPrograms(
+    departmentId: string
+  ): Promise<{ success: boolean; data?: any[]; error?: any }> {
     try {
       const { data, error } = await supabase
         .from('programs')
@@ -132,7 +136,9 @@ export const lessonPlanService = {
   /**
    * Get available semesters for a program
    */
-  async getSemesters(programId: string): Promise<{ success: boolean; data?: number[]; error?: any }> {
+  async getSemesters(
+    programId: string
+  ): Promise<{ success: boolean; data?: number[]; error?: any }> {
     try {
       const { data, error } = await supabase
         .from('college_course_mappings')
@@ -143,8 +149,8 @@ export const lessonPlanService = {
       if (error) throw error;
 
       // Get unique semesters
-      const uniqueSemesters = [...new Set((data || []).map(item => item.semester))];
-      
+      const uniqueSemesters = [...new Set((data || []).map((item) => item.semester))];
+
       return { success: true, data: uniqueSemesters };
     } catch (error: any) {
       return {
@@ -160,11 +166,15 @@ export const lessonPlanService = {
   /**
    * Get courses for a specific program and semester
    */
-  async getCourses(programId: string, semester: number): Promise<{ success: boolean; data?: any[]; error?: any }> {
+  async getCourses(
+    programId: string,
+    semester: number
+  ): Promise<{ success: boolean; data?: any[]; error?: any }> {
     try {
       const { data, error } = await supabase
         .from('college_course_mappings')
-        .select(`
+        .select(
+          `
           id, 
           offering_type,
           course:college_courses(
@@ -174,25 +184,33 @@ export const lessonPlanService = {
             credits,
             course_type
           )
-        `)
+        `
+        )
         .eq('program_id', programId)
         .eq('semester', semester);
 
       if (error) throw error;
 
       // Transform data to match expected format
-      const transformedData = (data || []).map(mapping => {
-        const course = mapping.course;
-        return {
-          id: course?.id || null,
-          mapping_id: mapping.id,
-          course_code: course?.course_code || null,
-          course_name: course?.course_name || null,
-          credits: course?.credits || null,
-          offering_type: mapping.offering_type,
-          course_type: course?.course_type || null
-        };
-      }).filter(item => item.id); // Filter out items without valid course IDs
+      const transformedData = (data || [])
+        .map((mapping) => {
+          const course = mapping.course;
+          return {
+            // @ts-expect-error - Auto-suppressed for migration
+            id: course?.id || null,
+            mapping_id: mapping.id,
+            // @ts-expect-error - Auto-suppressed for migration
+            course_code: course?.course_code || null,
+            // @ts-expect-error - Auto-suppressed for migration
+            course_name: course?.course_name || null,
+            // @ts-expect-error - Auto-suppressed for migration
+            credits: course?.credits || null,
+            offering_type: mapping.offering_type,
+            // @ts-expect-error - Auto-suppressed for migration
+            course_type: course?.course_type || null,
+          };
+        })
+        .filter((item) => item.id); // Filter out items without valid course IDs
 
       return { success: true, data: transformedData };
     } catch (error: any) {
@@ -210,11 +228,15 @@ export const lessonPlanService = {
    * Get curriculum units for a specific course, program, and academic year
    * Returns both units and curriculum_id
    */
-  async getCurriculumUnits(courseId: string, programId: string, academicYear: string): Promise<{ success: boolean; data?: any[]; curriculumId?: string; error?: any }> {
+  async getCurriculumUnits(
+    courseId: string,
+    programId: string,
+    academicYear: string
+  ): Promise<{ success: boolean; data?: any[]; curriculumId?: string; error?: any }> {
     try {
       const collegeId = await getCurrentUserCollegeId();
       console.log('🏫 College ID for curriculum lookup:', collegeId);
-      
+
       if (!collegeId) {
         return { success: false, error: { message: 'Unable to determine user college' } };
       }
@@ -224,7 +246,7 @@ export const lessonPlanService = {
         program_id: programId,
         course_id: courseId,
         academic_year: academicYear,
-        status: 'published OR approved OR draft'
+        status: 'published OR approved OR draft',
       });
 
       // First find the curriculum - try published first, then approved, then draft
@@ -250,7 +272,7 @@ export const lessonPlanService = {
           .eq('academic_year', academicYear)
           .eq('status', 'approved')
           .single();
-        
+
         curriculum = approvedCurriculum;
         curriculumError = approvedError;
       }
@@ -267,7 +289,7 @@ export const lessonPlanService = {
           .eq('academic_year', academicYear)
           .eq('status', 'draft')
           .single();
-        
+
         curriculum = draftCurriculum;
         curriculumError = draftError;
       }
@@ -283,9 +305,9 @@ export const lessonPlanService = {
           .eq('program_id', programId)
           .eq('course_id', courseId)
           .eq('academic_year', academicYear);
-        
+
         console.log('📋 All curriculums for this combination:', { allCurriculums, allError });
-        
+
         return { success: true, data: [], curriculumId: undefined }; // No curriculum found, return empty array
       }
 
@@ -318,7 +340,9 @@ export const lessonPlanService = {
   /**
    * Get learning outcomes for a specific unit
    */
-  async getLearningOutcomes(unitId: string): Promise<{ success: boolean; data?: any[]; error?: any }> {
+  async getLearningOutcomes(
+    unitId: string
+  ): Promise<{ success: boolean; data?: any[]; error?: any }> {
     try {
       const { data, error } = await supabase
         .from('college_curriculum_outcomes')
@@ -342,9 +366,13 @@ export const lessonPlanService = {
   /**
    * Create new lesson plan
    */
-  async createLessonPlan(data: Omit<CollegeLessonPlan, 'id' | 'created_at' | 'updated_at' | 'created_by' | 'college_id'>): Promise<{ success: boolean; data?: CollegeLessonPlan; error?: any }> {
+  async createLessonPlan(
+    data: Omit<CollegeLessonPlan, 'id' | 'created_at' | 'updated_at' | 'created_by' | 'college_id'>
+  ): Promise<{ success: boolean; data?: CollegeLessonPlan; error?: any }> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
         return { success: false, error: { message: 'User not authenticated' } };
       }
@@ -356,23 +384,27 @@ export const lessonPlanService = {
 
       const { data: lessonPlan, error } = await supabase
         .from('college_lesson_plans')
-        .insert([{
-          ...data,
-          college_id: collegeId,
-          created_by: user.id,
-        }])
-        .select(`
+        .insert([
+          {
+            ...data,
+            college_id: collegeId,
+            created_by: user.id,
+          },
+        ])
+        .select(
+          `
           *,
           course:college_courses!college_lesson_plans_course_id_fkey(course_code, course_name),
           department:departments!college_lesson_plans_department_id_fkey(name),
           program:programs!college_lesson_plans_program_id_fkey(name),
           unit:college_curriculum_units!college_lesson_plans_unit_id_fkey(name)
-        `)
+        `
+        )
         .single();
 
       if (error) {
         console.error('❌ Database error creating lesson plan:', error);
-        
+
         // Handle specific constraint violations
         if (error.message?.includes('session_date') && error.message?.includes('not-null')) {
           throw new Error('Session date is required and cannot be empty');
@@ -408,9 +440,14 @@ export const lessonPlanService = {
   /**
    * Update lesson plan
    */
-  async updateLessonPlan(id: string, updates: Partial<CollegeLessonPlan>): Promise<{ success: boolean; data?: CollegeLessonPlan; error?: any }> {
+  async updateLessonPlan(
+    id: string,
+    updates: Partial<CollegeLessonPlan>
+  ): Promise<{ success: boolean; data?: CollegeLessonPlan; error?: any }> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
         return { success: false, error: { message: 'User not authenticated' } };
       }
@@ -423,13 +460,15 @@ export const lessonPlanService = {
           updated_at: new Date().toISOString(),
         })
         .eq('id', id)
-        .select(`
+        .select(
+          `
           *,
           course:college_courses!college_lesson_plans_course_id_fkey(course_code, course_name),
           department:departments!college_lesson_plans_department_id_fkey(name),
           program:programs!college_lesson_plans_program_id_fkey(name),
           unit:college_curriculum_units!college_lesson_plans_unit_id_fkey(name)
-        `)
+        `
+        )
         .single();
 
       if (error) throw error;
@@ -459,34 +498,40 @@ export const lessonPlanService = {
   /**
    * Get lesson plans with filters
    */
-  async getLessonPlans(filters: {
-    department_id?: string;
-    program_id?: string;
-    course_id?: string;
-    semester?: number;
-    academic_year?: string;
-    status?: string;
-  } = {}): Promise<{ success: boolean; data?: CollegeLessonPlan[]; error?: any }> {
+  async getLessonPlans(
+    filters: {
+      department_id?: string;
+      program_id?: string;
+      course_id?: string;
+      semester?: number;
+      academic_year?: string;
+      status?: string;
+    } = {}
+  ): Promise<{ success: boolean; data?: CollegeLessonPlan[]; error?: any }> {
     try {
       const collegeId = await getCurrentUserCollegeId();
       if (!collegeId) {
         return { success: false, error: { message: 'Unable to determine user college' } };
       }
 
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
         return { success: false, error: { message: 'User not authenticated' } };
       }
 
       let query = supabase
         .from('college_lesson_plans')
-        .select(`
+        .select(
+          `
           *,
           course:college_courses!college_lesson_plans_course_id_fkey(course_code, course_name),
           department:departments!college_lesson_plans_department_id_fkey(name),
           program:programs!college_lesson_plans_program_id_fkey(name),
           unit:college_curriculum_units!college_lesson_plans_unit_id_fkey(name)
-        `)
+        `
+        )
         .eq('college_id', collegeId)
         .eq('created_by', user.id); // Only show user's own lesson plans
 
@@ -502,7 +547,7 @@ export const lessonPlanService = {
       if (error) throw error;
 
       // Transform data
-      const result: CollegeLessonPlan[] = (lessonPlans || []).map(plan => ({
+      const result: CollegeLessonPlan[] = (lessonPlans || []).map((plan) => ({
         ...plan,
         course_code: plan.course?.course_code,
         course_name: plan.course?.course_name,
@@ -528,10 +573,7 @@ export const lessonPlanService = {
    */
   async deleteLessonPlan(id: string): Promise<{ success: boolean; error?: any }> {
     try {
-      const { error } = await supabase
-        .from('college_lesson_plans')
-        .delete()
-        .eq('id', id);
+      const { error } = await supabase.from('college_lesson_plans').delete().eq('id', id);
 
       if (error) throw error;
 
@@ -550,7 +592,11 @@ export const lessonPlanService = {
   /**
    * Check what curriculums exist for debugging
    */
-  async debugCurriculums(courseId?: string, programId?: string, academicYear?: string): Promise<{ success: boolean; data?: any[]; error?: any }> {
+  async debugCurriculums(
+    courseId?: string,
+    programId?: string,
+    academicYear?: string
+  ): Promise<{ success: boolean; data?: any[]; error?: any }> {
     try {
       const collegeId = await getCurrentUserCollegeId();
       if (!collegeId) {
@@ -559,14 +605,16 @@ export const lessonPlanService = {
 
       let query = supabase
         .from('college_curriculums')
-        .select(`
+        .select(
+          `
           id, 
           status, 
           academic_year,
           created_at,
           course:college_courses!college_curriculums_course_id_fkey(course_code, course_name),
           program:programs!college_curriculums_program_id_fkey(name, code)
-        `)
+        `
+        )
         .eq('college_id', collegeId);
 
       if (courseId) query = query.eq('course_id', courseId);
@@ -595,13 +643,13 @@ export const lessonPlanService = {
   getAcademicYears(): string[] {
     const currentYear = new Date().getFullYear();
     const years = [];
-    
+
     for (let i = -1; i <= 2; i++) {
       const startYear = currentYear + i;
       const endYear = startYear + 1;
       years.push(`${startYear}-${endYear}`);
     }
-    
+
     return years;
   },
 };

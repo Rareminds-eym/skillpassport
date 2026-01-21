@@ -1,14 +1,14 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-    AlertCircle,
-    CheckCircle,
-    ChevronLeft,
-    ChevronRight,
-    Clock,
-    HelpCircle,
-    RotateCcw,
-    Trophy,
-    X
+  AlertCircle,
+  CheckCircle,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  HelpCircle,
+  RotateCcw,
+  Trophy,
+  X,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { courseProgressService } from '../../../services/courseProgressService';
@@ -17,14 +17,7 @@ import { courseProgressService } from '../../../services/courseProgressService';
  * Quiz Progress Tracker Component
  * Handles quiz taking with progress saving and resume functionality
  */
-const QuizProgressTracker = ({
-  quiz,
-  studentId,
-  courseId,
-  lessonId,
-  onComplete,
-  onClose
-}) => {
+const QuizProgressTracker = ({ quiz, studentId, courseId, lessonId, onComplete, onClose }) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState({});
   const [attemptId, setAttemptId] = useState(null);
@@ -46,7 +39,7 @@ const QuizProgressTracker = ({
   useEffect(() => {
     const initQuiz = async () => {
       if (!studentId || !quiz?.id) return;
-      
+
       setIsLoading(true);
       try {
         const result = await courseProgressService.startQuizAttempt(
@@ -60,7 +53,7 @@ const QuizProgressTracker = ({
         if (result.success && result.data) {
           setAttemptId(result.data.id);
           setAttemptNumber(result.data.attempt_number);
-          
+
           if (result.resumed && result.data.answers) {
             setAnswers(result.data.answers);
             setCurrentQuestionIndex(result.data.current_question_index || 0);
@@ -83,40 +76,43 @@ const QuizProgressTracker = ({
     if (showResults || isLoading) return;
 
     const interval = setInterval(() => {
-      setTimeSpent(prev => prev + 1);
+      setTimeSpent((prev) => prev + 1);
     }, 1000);
 
     return () => clearInterval(interval);
   }, [showResults, isLoading]);
 
   // Handle answer selection
-  const handleAnswer = useCallback(async (questionId, answer) => {
-    const newAnswers = { ...answers, [questionId]: answer };
-    setAnswers(newAnswers);
+  const handleAnswer = useCallback(
+    async (questionId, answer) => {
+      const newAnswers = { ...answers, [questionId]: answer };
+      setAnswers(newAnswers);
 
-    // Save answer to database
-    if (studentId && quiz?.id) {
-      await courseProgressService.saveQuizAnswer(
-        studentId,
-        quiz.id,
-        attemptNumber,
-        questionId,
-        answer
-      );
-    }
-  }, [answers, studentId, quiz?.id, attemptNumber]);
+      // Save answer to database
+      if (studentId && quiz?.id) {
+        await courseProgressService.saveQuizAnswer(
+          studentId,
+          quiz.id,
+          attemptNumber,
+          questionId,
+          answer
+        );
+      }
+    },
+    [answers, studentId, quiz?.id, attemptNumber]
+  );
 
   // Navigate to next question
   const goToNext = useCallback(() => {
     if (currentQuestionIndex < totalQuestions - 1) {
-      setCurrentQuestionIndex(prev => prev + 1);
+      setCurrentQuestionIndex((prev) => prev + 1);
     }
   }, [currentQuestionIndex, totalQuestions]);
 
   // Navigate to previous question
   const goToPrevious = useCallback(() => {
     if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(prev => prev - 1);
+      setCurrentQuestionIndex((prev) => prev - 1);
     }
   }, [currentQuestionIndex]);
 
@@ -133,7 +129,7 @@ const QuizProgressTracker = ({
     try {
       // Calculate correct answers
       let correctCount = 0;
-      questions.forEach(q => {
+      questions.forEach((q) => {
         const userAnswer = answers[q.id];
         if (userAnswer === q.correctAnswer) {
           correctCount++;
@@ -154,10 +150,10 @@ const QuizProgressTracker = ({
           passed: result.passed,
           correctAnswers: correctCount,
           totalQuestions,
-          timeSpent
+          timeSpent,
         });
         setShowResults(true);
-        
+
         if (onComplete) {
           onComplete(result);
         }
@@ -167,7 +163,17 @@ const QuizProgressTracker = ({
     } finally {
       setIsSubmitting(false);
     }
-  }, [answeredCount, totalQuestions, questions, answers, studentId, quiz?.id, attemptNumber, timeSpent, onComplete]);
+  }, [
+    answeredCount,
+    totalQuestions,
+    questions,
+    answers,
+    studentId,
+    quiz?.id,
+    attemptNumber,
+    timeSpent,
+    onComplete,
+  ]);
 
   // Format time
   const formatTime = (seconds) => {
@@ -193,9 +199,11 @@ const QuizProgressTracker = ({
         animate={{ opacity: 1, scale: 1 }}
         className="bg-white rounded-xl shadow-lg p-8 max-w-md mx-auto text-center"
       >
-        <div className={`w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center ${
-          results.passed ? 'bg-emerald-100' : 'bg-amber-100'
-        }`}>
+        <div
+          className={`w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center ${
+            results.passed ? 'bg-emerald-100' : 'bg-amber-100'
+          }`}
+        >
           {results.passed ? (
             <Trophy className="w-10 h-10 text-emerald-600" />
           ) : (
@@ -206,11 +214,9 @@ const QuizProgressTracker = ({
         <h2 className="text-2xl font-bold text-gray-900 mb-2">
           {results.passed ? 'Congratulations!' : 'Keep Practicing!'}
         </h2>
-        
+
         <p className="text-gray-600 mb-6">
-          {results.passed 
-            ? 'You passed the quiz!' 
-            : 'You need 70% to pass. Try again!'}
+          {results.passed ? 'You passed the quiz!' : 'You need 70% to pass. Try again!'}
         </p>
 
         <div className="bg-gray-50 rounded-lg p-4 mb-6">
@@ -266,20 +272,18 @@ const QuizProgressTracker = ({
             <X className="w-5 h-5" />
           </button>
         </div>
-        
+
         <div className="flex items-center justify-between text-sm">
           <div className="flex items-center gap-4">
-            <span>Question {currentQuestionIndex + 1} of {totalQuestions}</span>
+            <span>
+              Question {currentQuestionIndex + 1} of {totalQuestions}
+            </span>
             <span className="flex items-center gap-1">
               <Clock className="w-4 h-4" />
               {formatTime(timeSpent)}
             </span>
           </div>
-          {resumed && (
-            <span className="bg-white/20 px-2 py-1 rounded text-xs">
-              Resumed
-            </span>
-          )}
+          {resumed && <span className="bg-white/20 px-2 py-1 rounded text-xs">Resumed</span>}
         </div>
 
         {/* Progress bar */}
@@ -308,9 +312,7 @@ const QuizProgressTracker = ({
                   <div className="p-2 bg-indigo-100 rounded-lg">
                     <HelpCircle className="w-5 h-5 text-indigo-600" />
                   </div>
-                  <p className="text-lg text-gray-900 font-medium">
-                    {currentQuestion.question}
-                  </p>
+                  <p className="text-lg text-gray-900 font-medium">{currentQuestion.question}</p>
                 </div>
 
                 {/* Options */}
@@ -328,14 +330,12 @@ const QuizProgressTracker = ({
                         }`}
                       >
                         <div className="flex items-center gap-3">
-                          <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                            isSelected
-                              ? 'border-indigo-600 bg-indigo-600'
-                              : 'border-gray-300'
-                          }`}>
-                            {isSelected && (
-                              <CheckCircle className="w-4 h-4 text-white" />
-                            )}
+                          <div
+                            className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                              isSelected ? 'border-indigo-600 bg-indigo-600' : 'border-gray-300'
+                            }`}
+                          >
+                            {isSelected && <CheckCircle className="w-4 h-4 text-white" />}
                           </div>
                           <span className={isSelected ? 'text-indigo-900' : 'text-gray-700'}>
                             {option}
@@ -365,8 +365,8 @@ const QuizProgressTracker = ({
                   isCurrent
                     ? 'bg-indigo-600 text-white'
                     : isAnswered
-                    ? 'bg-emerald-100 text-emerald-700'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
                 {index + 1}

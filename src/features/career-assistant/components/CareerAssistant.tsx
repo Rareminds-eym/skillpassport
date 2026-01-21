@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation } from 'react-router-dom';
-import { 
+import {
   Send,
   Mic,
   Paperclip,
@@ -9,7 +9,7 @@ import {
   ArrowDown,
   Square,
   PanelLeftClose,
-  PanelLeft
+  PanelLeft,
 } from 'lucide-react';
 import { streamCareerChat } from '../services/careerWorkerService';
 import { useAuth } from '../../../context/AuthContext';
@@ -34,7 +34,7 @@ interface Message {
 const CareerAssistant: React.FC = () => {
   const { user } = useAuth();
   const location = useLocation();
-  
+
   const {
     conversations,
     currentConversation,
@@ -52,7 +52,7 @@ const CareerAssistant: React.FC = () => {
     submitFeedback,
     loadFeedback,
     getFeedback,
-    isLoading: isFeedbackLoading
+    isLoading: isFeedbackLoading,
   } = useAIFeedback();
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -70,7 +70,7 @@ const CareerAssistant: React.FC = () => {
     }
     return false;
   });
-  
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -80,22 +80,27 @@ const CareerAssistant: React.FC = () => {
 
   useEffect(() => {
     if (currentConversation?.messages) {
-      const loadedMessages: Message[] = currentConversation.messages.map((msg: ConversationMessage) => ({
-        id: msg.id,
-        role: msg.role,
-        content: msg.content,
-        timestamp: msg.timestamp,
-      }));
+      const loadedMessages: Message[] = currentConversation.messages.map(
+        (msg: ConversationMessage) => ({
+          id: msg.id,
+          role: msg.role,
+          content: msg.content,
+          timestamp: msg.timestamp,
+        })
+      );
       setMessages(loadedMessages);
       setShowWelcome(false);
     }
   }, [currentConversation]);
 
-  const scrollToBottom = useCallback((force = false) => {
-    if (force || !userScrolledUp) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [userScrolledUp]);
+  const scrollToBottom = useCallback(
+    (force = false) => {
+      if (force || !userScrolledUp) {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }
+    },
+    [userScrolledUp]
+  );
 
   const isUserAtBottom = () => {
     const container = messagesContainerRef.current;
@@ -108,17 +113,17 @@ const CareerAssistant: React.FC = () => {
   const handleScroll = () => {
     const container = messagesContainerRef.current;
     if (!container) return;
-    
+
     const currentScrollTop = container.scrollTop;
     const scrollingUp = currentScrollTop < lastScrollTopRef.current;
     lastScrollTopRef.current = currentScrollTop;
-    
+
     const isScrollable = container.scrollHeight > container.clientHeight;
-    
+
     if (isTyping) {
       userInteractedRef.current = true;
     }
-    
+
     if (isScrollable && isUserAtBottom()) {
       setUserScrolledUp(false);
     } else if (isScrollable && scrollingUp && !isUserAtBottom()) {
@@ -179,7 +184,6 @@ const CareerAssistant: React.FC = () => {
     userInteractedRef.current = false;
   };
 
-
   const handleSend = async () => {
     if (!input.trim() || loading) return;
 
@@ -187,10 +191,10 @@ const CareerAssistant: React.FC = () => {
       id: Date.now().toString(),
       role: 'user',
       content: input.trim(),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     const userInput = input.trim();
     setInput('');
     setLoading(true);
@@ -205,15 +209,15 @@ const CareerAssistant: React.FC = () => {
       }
 
       const id = (Date.now() + 1).toString();
-      
+
       const aiMessage: Message = {
         id,
         role: 'assistant',
         content: '',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
-      
-      setMessages(prev => [...prev, aiMessage]);
+
+      setMessages((prev) => [...prev, aiMessage]);
       setLoading(false);
       setIsTyping(true);
 
@@ -222,10 +226,10 @@ const CareerAssistant: React.FC = () => {
         currentConversationId,
         selectedChips,
         (chunk: string) => {
-          setMessages(prev => prev.map(m => 
-            m.id === id ? { ...m, content: m.content + chunk } : m
-          ));
-          
+          setMessages((prev) =>
+            prev.map((m) => (m.id === id ? { ...m, content: m.content + chunk } : m))
+          );
+
           if (!userInteractedRef.current) {
             requestAnimationFrame(() => {
               if (!userInteractedRef.current) {
@@ -235,7 +239,7 @@ const CareerAssistant: React.FC = () => {
           }
         }
       );
-      
+
       if (!result.success && result.error) {
         throw new Error(result.error);
       }
@@ -247,27 +251,31 @@ const CareerAssistant: React.FC = () => {
 
       // Update message with backend's messageId, interactive content and metadata
       // This ensures feedback is saved with the correct ID that matches the database
-      setMessages(prev => prev.map(m => 
-        m.id === id ? { 
-          ...m, 
-          id: result.messageId || m.id, // Use backend's messageId for feedback matching
-          interactive: result.interactive,
-          intent: result.intent,
-          intentConfidence: result.intentConfidence,
-          phase: result.phase
-        } : m
-      ));
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === id
+            ? {
+                ...m,
+                id: result.messageId || m.id, // Use backend's messageId for feedback matching
+                interactive: result.interactive,
+                intent: result.intent,
+                intentConfidence: result.intentConfidence,
+                phase: result.phase,
+              }
+            : m
+        )
+      );
     } catch (error: any) {
       console.error('Career AI Error:', error);
-      
+
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: `I'm sorry, I encountered an error: ${error?.message || 'Unknown error'}. Please try again!`,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
-      
-      setMessages(prev => [...prev, errorMessage]);
+
+      setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setLoading(false);
       setIsTyping(false);
@@ -282,13 +290,13 @@ const CareerAssistant: React.FC = () => {
     setInput(prompt);
     setShowWelcome(false);
     if (!selectedChips.includes(label)) {
-      setSelectedChips(prev => [...prev, label]);
+      setSelectedChips((prev) => [...prev, label]);
     }
     inputRef.current?.focus();
   };
 
   const removeChip = (label: string) => {
-    setSelectedChips(prev => prev.filter(chip => chip !== label));
+    setSelectedChips((prev) => prev.filter((chip) => chip !== label));
   };
 
   const handleSendQuery = (query: string) => {
@@ -304,35 +312,36 @@ const CareerAssistant: React.FC = () => {
   };
 
   // Handle feedback submission
-  const handleFeedback = useCallback(async (
-    messageId: string, 
-    thumbsUp: boolean,
-    rating?: number,
-    feedbackText?: string
-  ) => {
-    if (!currentConversationId) return;
+  const handleFeedback = useCallback(
+    async (messageId: string, thumbsUp: boolean, rating?: number, feedbackText?: string) => {
+      if (!currentConversationId) return;
 
-    // Find the message and its preceding user message
-    const messageIndex = messages.findIndex(m => m.id === messageId);
-    if (messageIndex === -1) return;
+      // Find the message and its preceding user message
+      const messageIndex = messages.findIndex((m) => m.id === messageId);
+      if (messageIndex === -1) return;
 
-    const aiMessage = messages[messageIndex];
-    const userMessage = messages.slice(0, messageIndex).reverse().find(m => m.role === 'user');
+      const aiMessage = messages[messageIndex];
+      const userMessage = messages
+        .slice(0, messageIndex)
+        .reverse()
+        .find((m) => m.role === 'user');
 
-    if (!userMessage) return;
+      if (!userMessage) return;
 
-    const feedback: AIFeedback = {
-      conversationId: currentConversationId,
-      messageId: messageId,
-      userMessage: userMessage.content,
-      aiResponse: aiMessage.content,
-      detectedIntent: aiMessage.intent,
-      intentConfidence: aiMessage.intentConfidence,
-      conversationPhase: aiMessage.phase
-    };
+      const feedback: AIFeedback = {
+        conversationId: currentConversationId,
+        messageId: messageId,
+        userMessage: userMessage.content,
+        aiResponse: aiMessage.content,
+        detectedIntent: aiMessage.intent,
+        intentConfidence: aiMessage.intentConfidence,
+        conversationPhase: aiMessage.phase,
+      };
 
-    await submitFeedback(feedback, thumbsUp, rating, feedbackText);
-  }, [currentConversationId, messages, submitFeedback]);
+      await submitFeedback(feedback, thumbsUp, rating, feedbackText);
+    },
+    [currentConversationId, messages, submitFeedback]
+  );
 
   // Load feedback when conversation changes
   useEffect(() => {
@@ -344,7 +353,6 @@ const CareerAssistant: React.FC = () => {
   const handleSelectConversation = async (id: string) => {
     await loadConversation(id);
   };
-
 
   return (
     <div className="flex h-full min-h-0 bg-white">
@@ -368,64 +376,127 @@ const CareerAssistant: React.FC = () => {
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
             className="p-2 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50"
           >
-            {sidebarCollapsed ? <PanelLeft className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
+            {sidebarCollapsed ? (
+              <PanelLeft className="w-5 h-5" />
+            ) : (
+              <PanelLeftClose className="w-5 h-5" />
+            )}
           </button>
         </div>
 
         {/* Messages Area */}
-        <div 
+        <div
           ref={messagesContainerRef}
           onScroll={handleScroll}
           className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-8"
           style={{ scrollBehavior: 'smooth' }}
         >
           {showWelcome && messages.length === 0 ? (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-4xl mx-auto">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="max-w-4xl mx-auto"
+            >
               <div className="text-center mb-12">
-                <motion.h1 initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-5xl font-bold text-gray-900 mb-4">
+                <motion.h1
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="text-5xl font-bold text-gray-900 mb-4"
+                >
                   Welcome to Career AI
                 </motion.h1>
-                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="text-lg text-gray-600 max-w-2xl mx-auto">
-                  Get personalized career guidance, job matching, skill analysis, and interview prep. Not sure where to start?
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.2 }}
+                  className="text-lg text-gray-600 max-w-2xl mx-auto"
+                >
+                  Get personalized career guidance, job matching, skill analysis, and interview
+                  prep. Not sure where to start?
                 </motion.p>
               </div>
 
               <CareerAIToolsGrid onAction={handleQuickAction} variant="full" animated={true} />
 
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="text-center text-sm text-gray-500 mt-8">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+                className="text-center text-sm text-gray-500 mt-8"
+              >
                 💡 Click a card above or type your question below to get started
               </motion.div>
             </motion.div>
           ) : (
             <div className="max-w-4xl mx-auto space-y-6">
               {selectedChips.length === 0 && messages.length > 0 && (
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-6"
+                >
                   <p className="text-sm text-gray-500 mb-3 text-center">Quick Actions:</p>
-                  <CareerAIToolsGrid onAction={handleQuickAction} variant="compact" animated={true} />
+                  <CareerAIToolsGrid
+                    onAction={handleQuickAction}
+                    variant="compact"
+                    animated={true}
+                  />
                 </motion.div>
               )}
 
               <AnimatePresence>
-                {messages.map((message) => (
+                {messages.map((message) =>
                   message.role === 'user' ? (
-                    <SimpleMessage key={message.id} content={message.content} timestamp={message.timestamp} isUser={true} />
+                    <SimpleMessage
+                      key={message.id}
+                      content={message.content}
+                      timestamp={message.timestamp}
+                      isUser={true}
+                    />
                   ) : message.interactive ? (
-                    <EnhancedMessage key={message.id} response={{ success: true, message: message.content, interactive: message.interactive }} timestamp={message.timestamp} onSendQuery={handleSendQuery} />
+                    <EnhancedMessage
+                      key={message.id}
+                      response={{
+                        success: true,
+                        message: message.content,
+                        interactive: message.interactive,
+                      }}
+                      timestamp={message.timestamp}
+                      onSendQuery={handleSendQuery}
+                    />
                   ) : message.content === '' && isTyping ? (
-                    <motion.div key={message.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start mb-6">
+                    <motion.div
+                      key={message.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="flex justify-start mb-6"
+                    >
                       <div className="bg-gray-100 rounded-2xl px-6 py-4">
                         <div className="flex gap-2">
-                          <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1, repeat: Infinity, delay: 0 }} className="w-2 h-2 bg-gray-400 rounded-full" />
-                          <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1, repeat: Infinity, delay: 0.2 }} className="w-2 h-2 bg-gray-400 rounded-full" />
-                          <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1, repeat: Infinity, delay: 0.4 }} className="w-2 h-2 bg-gray-400 rounded-full" />
+                          <motion.div
+                            animate={{ scale: [1, 1.2, 1] }}
+                            transition={{ duration: 1, repeat: Infinity, delay: 0 }}
+                            className="w-2 h-2 bg-gray-400 rounded-full"
+                          />
+                          <motion.div
+                            animate={{ scale: [1, 1.2, 1] }}
+                            transition={{ duration: 1, repeat: Infinity, delay: 0.2 }}
+                            className="w-2 h-2 bg-gray-400 rounded-full"
+                          />
+                          <motion.div
+                            animate={{ scale: [1, 1.2, 1] }}
+                            transition={{ duration: 1, repeat: Infinity, delay: 0.4 }}
+                            className="w-2 h-2 bg-gray-400 rounded-full"
+                          />
                         </div>
                       </div>
                     </motion.div>
                   ) : (
-                    <SimpleMessage 
-                      key={message.id} 
-                      content={message.content} 
-                      timestamp={message.timestamp} 
+                    <SimpleMessage
+                      key={message.id}
+                      content={message.content}
+                      timestamp={message.timestamp}
                       isUser={false}
                       messageId={message.id}
                       onFeedback={handleFeedback}
@@ -433,16 +504,32 @@ const CareerAssistant: React.FC = () => {
                       feedbackLoading={isFeedbackLoading(message.id)}
                     />
                   )
-                ))}
+                )}
               </AnimatePresence>
 
               {loading && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex justify-start"
+                >
                   <div className="bg-gray-100 rounded-2xl px-6 py-4">
                     <div className="flex gap-2">
-                      <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1, repeat: Infinity, delay: 0 }} className="w-2 h-2 bg-gray-400 rounded-full" />
-                      <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1, repeat: Infinity, delay: 0.2 }} className="w-2 h-2 bg-gray-400 rounded-full" />
-                      <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1, repeat: Infinity, delay: 0.4 }} className="w-2 h-2 bg-gray-400 rounded-full" />
+                      <motion.div
+                        animate={{ scale: [1, 1.2, 1] }}
+                        transition={{ duration: 1, repeat: Infinity, delay: 0 }}
+                        className="w-2 h-2 bg-gray-400 rounded-full"
+                      />
+                      <motion.div
+                        animate={{ scale: [1, 1.2, 1] }}
+                        transition={{ duration: 1, repeat: Infinity, delay: 0.2 }}
+                        className="w-2 h-2 bg-gray-400 rounded-full"
+                      />
+                      <motion.div
+                        animate={{ scale: [1, 1.2, 1] }}
+                        transition={{ duration: 1, repeat: Infinity, delay: 0.4 }}
+                        className="w-2 h-2 bg-gray-400 rounded-full"
+                      />
                     </div>
                   </div>
                 </motion.div>
@@ -452,7 +539,6 @@ const CareerAssistant: React.FC = () => {
             </div>
           )}
         </div>
-
 
         {/* Floating Action Buttons */}
         <AnimatePresence>
@@ -521,7 +607,11 @@ const CareerAssistant: React.FC = () => {
         <div className="flex-shrink-0 border-t border-gray-200 bg-white px-4 py-4">
           <div className="max-w-4xl mx-auto">
             {selectedChips.length > 0 && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-wrap gap-2 mb-3">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex flex-wrap gap-2 mb-3"
+              >
                 {selectedChips.map((chip) => (
                   <motion.div
                     key={chip}
@@ -531,7 +621,11 @@ const CareerAssistant: React.FC = () => {
                     className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 text-gray-700 rounded-full text-sm font-medium border border-gray-200"
                   >
                     <span>{chip}</span>
-                    <button onClick={() => removeChip(chip)} className="hover:bg-gray-200 rounded-full p-0.5 transition-colors" aria-label={`Remove ${chip}`}>
+                    <button
+                      onClick={() => removeChip(chip)}
+                      className="hover:bg-gray-200 rounded-full p-0.5 transition-colors"
+                      aria-label={`Remove ${chip}`}
+                    >
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </motion.div>
@@ -546,16 +640,24 @@ const CareerAssistant: React.FC = () => {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
-                placeholder={showWelcome ? "Ask me anything about your career..." : "Type your message..."}
+                placeholder={
+                  showWelcome ? 'Ask me anything about your career...' : 'Type your message...'
+                }
                 disabled={loading || isTyping}
                 className="w-full px-5 py-4 pr-32 text-gray-900 placeholder-gray-500 bg-gray-50 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
               />
-              
+
               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors" title="Attach file">
+                <button
+                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+                  title="Attach file"
+                >
                   <Paperclip className="w-5 h-5" />
                 </button>
-                <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors" title="Voice message">
+                <button
+                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+                  title="Voice message"
+                >
                   <Mic className="w-5 h-5" />
                 </button>
                 <button

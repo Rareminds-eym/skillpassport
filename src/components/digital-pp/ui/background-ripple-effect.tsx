@@ -1,6 +1,6 @@
-"use client";
-import React, { useCallback, useState } from "react";
-import { cn } from "../../../utils/cn";
+'use client';
+import React, { useCallback, useState } from 'react';
+import { cn } from '../../../utils/cn';
 
 interface Cell {
   row: number;
@@ -41,12 +41,12 @@ const DivGrid: React.FC<DivGridProps> = ({
 
   return (
     <div
-      className={cn("absolute inset-0 overflow-hidden", className)}
+      className={cn('absolute inset-0 overflow-hidden', className)}
       style={{
-        display: "grid",
+        display: 'grid',
         gridTemplateColumns: `repeat(${cols}, 1fr)`,
         gridTemplateRows: `repeat(${rows}, 1fr)`,
-        gap: "1px",
+        gap: '1px',
       }}
     >
       {Array.from({ length: rows * cols }).map((_, index) => {
@@ -60,8 +60,8 @@ const DivGrid: React.FC<DivGridProps> = ({
             key={index}
             onClick={() => interactive && onCellClick?.(row, col)}
             className={cn(
-              "relative w-full h-full",
-              interactive && "cursor-pointer hover:opacity-60 transition-opacity"
+              'relative w-full h-full',
+              interactive && 'cursor-pointer hover:opacity-60 transition-opacity'
             )}
             style={{
               border: `1px solid ${borderColor}`,
@@ -70,8 +70,8 @@ const DivGrid: React.FC<DivGridProps> = ({
               animation:
                 clickedCell && distance < Infinity
                   ? `cell-ripple 600ms ease-out ${delay}ms`
-                  : "none",
-              aspectRatio: "1 / 1",
+                  : 'none',
+              aspectRatio: '1 / 1',
             }}
           />
         );
@@ -92,8 +92,8 @@ export const BackgroundRippleEffect: React.FC<BackgroundRippleEffectProps> = ({
   rows = 8,
   cols = 25,
   className,
-  borderColor = "rgba(99, 102, 241, 0.2)", // indigo-500 with opacity (default for dark mode)
-  fillColor = "rgba(99, 102, 241, 0.05)", // indigo-500 with very low opacity (default for dark mode)
+  borderColor = 'rgba(99, 102, 241, 0.2)', // indigo-500 with opacity (default for dark mode)
+  fillColor = 'rgba(99, 102, 241, 0.05)', // indigo-500 with very low opacity (default for dark mode)
 }) => {
   const [clickedCell, setClickedCell] = useState<Cell | null>(null);
 

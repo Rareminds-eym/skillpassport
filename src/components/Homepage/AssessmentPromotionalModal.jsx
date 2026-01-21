@@ -96,7 +96,9 @@ const AssessmentPromotionalModal = ({ isOpen, onClose, getTimeRemaining }) => {
       <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/30 text-base font-bold text-white">
         {String(value).padStart(2, '0')}
       </div>
-      <span className="mt-0.5 text-[8px] font-medium uppercase tracking-wide text-white/80">{label}</span>
+      <span className="mt-0.5 text-[8px] font-medium uppercase tracking-wide text-white/80">
+        {label}
+      </span>
     </div>
   );
 
@@ -175,12 +177,12 @@ const AssessmentPromotionalModal = ({ isOpen, onClose, getTimeRemaining }) => {
                   aria-label="Close modal"
                   initial={{ opacity: 0, scale: 0, rotate: -180 }}
                   animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                  transition={{ 
-                    duration: 0.5, 
+                  transition={{
+                    duration: 0.5,
                     delay: 0.3,
-                    type: "spring",
+                    type: 'spring',
                     stiffness: 200,
-                    damping: 15
+                    damping: 15,
                   }}
                   whileHover={{ scale: 1.1, rotate: 90 }}
                   whileTap={{ scale: 0.9 }}
@@ -194,7 +196,8 @@ const AssessmentPromotionalModal = ({ isOpen, onClose, getTimeRemaining }) => {
             <div className="px-5 pb-5 pt-3">
               {/* Description */}
               <p className="text-xs text-gray-600 leading-relaxed">
-                Take our comprehensive assessment to discover your strengths and get a personalized career roadmap.
+                Take our comprehensive assessment to discover your strengths and get a personalized
+                career roadmap.
               </p>
 
               {/* Skill Analysis Badge */}
@@ -223,7 +226,8 @@ const AssessmentPromotionalModal = ({ isOpen, onClose, getTimeRemaining }) => {
 
               {/* Extended Description */}
               <p className="text-xs text-gray-600 leading-relaxed">
-                Uncover your strengths, identify areas for growth, and explore opportunities tailored to you.
+                Uncover your strengths, identify areas for growth, and explore opportunities
+                tailored to you.
               </p>
 
               {/* Why Take This Assessment Section */}
@@ -251,7 +255,8 @@ const AssessmentPromotionalModal = ({ isOpen, onClose, getTimeRemaining }) => {
               {/* Motivational Quote */}
               <div className="mt-4 rounded-xl bg-gray-50 p-3">
                 <p className="text-[11px] italic text-gray-600">
-                  💡 <em>Simple, quick, and tailored for you—discover more about yourself today!</em>
+                  💡{' '}
+                  <em>Simple, quick, and tailored for you—discover more about yourself today!</em>
                 </p>
               </div>
 

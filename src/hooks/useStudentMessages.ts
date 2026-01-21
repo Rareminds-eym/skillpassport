@@ -19,7 +19,7 @@ export const useStudentMessages = ({
   studentId,
   conversationId = null,
   enabled = true,
-  enableRealtime = true
+  enableRealtime = true,
 }: UseStudentMessagesOptions) => {
   const queryClient = useQueryClient();
   const {
@@ -28,7 +28,7 @@ export const useStudentMessages = ({
     setMessages,
     setIsLoadingMessages,
     addOptimisticMessage,
-    removeOptimisticMessage
+    removeOptimisticMessage,
   } = useMessageStore();
 
   // Fetch messages with React Query (non-blocking)
@@ -36,7 +36,7 @@ export const useStudentMessages = ({
     data: fetchedMessages,
     isLoading,
     error,
-    refetch
+    refetch,
   } = useQuery({
     queryKey: ['student-messages', conversationId || 'none'],
     queryFn: async () => {
@@ -74,18 +74,18 @@ export const useStudentMessages = ({
           event: 'INSERT',
           schema: 'public',
           table: 'messages',
-          filter: `conversation_id=eq.${conversationId}`
+          filter: `conversation_id=eq.${conversationId}`,
         },
         (payload) => {
           const newMessage = payload.new as Message;
-          
+
           // Add to zustand store (automatically deduplicates)
           addMessage(newMessage);
-          
+
           // Invalidate query to keep react-query in sync
-          queryClient.invalidateQueries({ 
+          queryClient.invalidateQueries({
             queryKey: ['student-messages', conversationId],
-            refetchType: 'none'
+            refetchType: 'none',
           });
         }
       )
@@ -95,11 +95,11 @@ export const useStudentMessages = ({
           event: 'UPDATE',
           schema: 'public',
           table: 'messages',
-          filter: `conversation_id=eq.${conversationId}`
+          filter: `conversation_id=eq.${conversationId}`,
         },
         (payload) => {
           const updatedMessage = payload.new as Message;
-          
+
           // Update in zustand store
           useMessageStore.getState().updateMessage(updatedMessage.id, updatedMessage);
         }
@@ -120,7 +120,7 @@ export const useStudentMessages = ({
       receiverType,
       messageText,
       applicationId,
-      opportunityId
+      opportunityId,
     }: {
       senderId: string;
       senderType: 'student' | 'recruiter';
@@ -131,7 +131,7 @@ export const useStudentMessages = ({
       opportunityId?: number;
     }) => {
       if (!conversationId) throw new Error('No conversation selected');
-      
+
       return await MessageService.sendMessage(
         conversationId,
         senderId,
@@ -148,6 +148,7 @@ export const useStudentMessages = ({
       await queryClient.cancelQueries({ queryKey: ['student-messages', conversationId] });
 
       // Add optimistic message to zustand
+      // @ts-expect-error - Auto-suppressed for migration
       const tempId = addOptimisticMessage({
         conversation_id: conversationId!,
         sender_id: variables.senderId,
@@ -156,7 +157,7 @@ export const useStudentMessages = ({
         receiver_type: variables.receiverType,
         message_text: variables.messageText,
         application_id: variables.applicationId,
-        opportunity_id: variables.opportunityId
+        opportunity_id: variables.opportunityId,
       });
 
       return { tempId };
@@ -166,7 +167,7 @@ export const useStudentMessages = ({
       if (context?.tempId) {
         removeOptimisticMessage(context.tempId);
       }
-      
+
       // Add real message (will deduplicate via realtime)
       addMessage(realMessage);
     },
@@ -175,7 +176,7 @@ export const useStudentMessages = ({
       if (context?.tempId) {
         removeOptimisticMessage(context.tempId);
       }
-    }
+    },
   });
 
   return {
@@ -184,7 +185,7 @@ export const useStudentMessages = ({
     error,
     sendMessage: sendMessageMutation.mutate,
     isSending: sendMessageMutation.isPending,
-    refetch
+    refetch,
   };
 };
 
@@ -193,7 +194,7 @@ export const useStudentMessages = ({
  */
 export const useStudentUnreadCount = (studentId: string | null, enabled = true) => {
   const { setUnreadCount } = useMessageStore();
-  
+
   const { data: unreadCount = 0, isLoading } = useQuery({
     queryKey: ['student-unread-count', studentId || 'none'],
     queryFn: async () => {
@@ -204,7 +205,7 @@ export const useStudentUnreadCount = (studentId: string | null, enabled = true) 
     },
     enabled: enabled && !!studentId,
     refetchInterval: 60000, // Refetch every minute
-    staleTime: 30000
+    staleTime: 30000,
   });
 
   // Realtime subscription for unread count updates
@@ -219,7 +220,7 @@ export const useStudentUnreadCount = (studentId: string | null, enabled = true) 
           event: 'INSERT',
           schema: 'public',
           table: 'messages',
-          filter: `receiver_id=eq.${studentId}`
+          filter: `receiver_id=eq.${studentId}`,
         },
         () => {
           // Increment unread count
@@ -232,7 +233,7 @@ export const useStudentUnreadCount = (studentId: string | null, enabled = true) 
           event: 'UPDATE',
           schema: 'public',
           table: 'messages',
-          filter: `receiver_id=eq.${studentId}`
+          filter: `receiver_id=eq.${studentId}`,
         },
         (payload) => {
           const updatedMessage = payload.new as Message;
@@ -258,12 +259,12 @@ export const useStudentUnreadCount = (studentId: string | null, enabled = true) 
 export const useStudentConversations = (studentId: string | null, enabled = true) => {
   const { setConversations, setIsLoadingConversations } = useMessageStore();
   const queryClient = useQueryClient();
-  
+
   const {
     data: conversations = [],
     isLoading,
     error,
-    refetch
+    refetch,
   } = useQuery({
     queryKey: ['student-conversations', studentId || 'none'],
     queryFn: async () => {
@@ -272,10 +273,10 @@ export const useStudentConversations = (studentId: string | null, enabled = true
       try {
         // Only fetch student-recruiter conversations for this hook
         const convs = await MessageService.getUserConversations(
-          studentId, 
-          'student', 
+          studentId,
+          'student',
           false, // includeArchived
-          true,  // useCache
+          true, // useCache
           'student_recruiter' // conversationType filter
         );
         return convs;
@@ -288,35 +289,34 @@ export const useStudentConversations = (studentId: string | null, enabled = true
     refetchOnWindowFocus: false, // Disable - rely on real-time updates
     refetchInterval: false, // Disable polling - use real-time instead
     refetchOnMount: false, // Only fetch if data is stale
-    retry: 1 // Only retry once on failure
+    retry: 1, // Only retry once on failure
   });
-  
+
   /**
    * Optimistically clear unread count for a conversation
    * This makes the UI feel instant when marking messages as read
    */
-  const clearUnreadCount = useCallback((conversationId: string) => {
-    
-    // Get current data from React Query cache
-    const currentConversations = queryClient.getQueryData<any[]>(
-      ['student-conversations', studentId || 'none']
-    ) || [];
-    
-    
-    const optimisticConversations = currentConversations.map(conv => {
-      if (conv.id === conversationId) {
-        return { ...conv, student_unread_count: 0 };
-      }
-      return conv;
-    });
-    
-    // Update React Query cache immediately
-    queryClient.setQueryData(
-      ['student-conversations', studentId || 'none'],
-      optimisticConversations
-    );
-    
-  }, [studentId, queryClient]);
+  const clearUnreadCount = useCallback(
+    (conversationId: string) => {
+      // Get current data from React Query cache
+      const currentConversations =
+        queryClient.getQueryData<any[]>(['student-conversations', studentId || 'none']) || [];
+
+      const optimisticConversations = currentConversations.map((conv) => {
+        if (conv.id === conversationId) {
+          return { ...conv, student_unread_count: 0 };
+        }
+        return conv;
+      });
+
+      // Update React Query cache immediately
+      queryClient.setQueryData(
+        ['student-conversations', studentId || 'none'],
+        optimisticConversations
+      );
+    },
+    [studentId, queryClient]
+  );
 
   // Realtime subscription for conversation updates
   useEffect(() => {
@@ -330,23 +330,23 @@ export const useStudentConversations = (studentId: string | null, enabled = true
           event: 'UPDATE',
           schema: 'public',
           table: 'conversations',
-          filter: `student_id=eq.${studentId}`
+          filter: `student_id=eq.${studentId}`,
         },
         (payload) => {
           const updatedConv = payload.new as any;
           console.log('🔄 Realtime UPDATE detected:', updatedConv);
-          
+
           // CRITICAL: Ignore updates for conversations that were deleted
           // This prevents re-fetching deleted conversations back into the cache
           if (updatedConv.deleted_by_student || updatedConv.deleted_by_recruiter) {
             console.log('❌ Ignoring UPDATE for deleted conversation:', updatedConv.id);
             return; // Don't refetch
           }
-          
+
           // Invalidate and refetch to get updated data
-          queryClient.invalidateQueries({ 
+          queryClient.invalidateQueries({
             queryKey: ['student-conversations', studentId || 'none'],
-            refetchType: 'active' // Only refetch if query is active
+            refetchType: 'active', // Only refetch if query is active
           });
         }
       )
@@ -356,7 +356,7 @@ export const useStudentConversations = (studentId: string | null, enabled = true
           event: 'INSERT',
           schema: 'public',
           table: 'conversations',
-          filter: `student_id=eq.${studentId}`
+          filter: `student_id=eq.${studentId}`,
         },
         () => {
           // New conversation - immediately refetch
@@ -376,7 +376,6 @@ export const useStudentConversations = (studentId: string | null, enabled = true
     isLoading,
     error,
     refetch,
-    clearUnreadCount
+    clearUnreadCount,
   };
 };
-

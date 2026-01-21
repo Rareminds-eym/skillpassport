@@ -1,6 +1,6 @@
 /**
  * Organization Billing Service
- * 
+ *
  * Handles billing dashboard, invoicing, cost projections, and payment management
  * for organization-level subscriptions.
  */
@@ -153,7 +153,8 @@ export class OrganizationBillingService {
       // 1. Get all active subscriptions
       const { data: subscriptions, error: subError } = await supabase
         .from('organization_subscriptions')
-        .select(`
+        .select(
+          `
           *,
           subscription_plans (
             id,
@@ -161,7 +162,8 @@ export class OrganizationBillingService {
             price_monthly,
             price_yearly
           )
-        `)
+        `
+        )
         .eq('organization_id', organizationId)
         .eq('organization_type', organizationType)
         .in('status', ['active', 'grace_period']);
@@ -198,7 +200,7 @@ export class OrganizationBillingService {
       let totalActiveSeats = 0;
       let totalAssignedSeats = 0;
 
-      const subscriptionSummaries: SubscriptionSummary[] = (subscriptions || []).map(sub => {
+      const subscriptionSummaries: SubscriptionSummary[] = (subscriptions || []).map((sub) => {
         const monthlyCost = this.calculateMonthlyCost(sub);
         subscriptionCosts += monthlyCost;
         totalActiveSeats += sub.total_seats;
@@ -210,12 +212,11 @@ export class OrganizationBillingService {
           planName: sub.subscription_plans?.name || 'Unknown Plan',
           seatCount: sub.total_seats,
           assignedSeats: sub.assigned_seats,
-          utilization: sub.total_seats > 0 
-            ? Math.round((sub.assigned_seats / sub.total_seats) * 100) 
-            : 0,
+          utilization:
+            sub.total_seats > 0 ? Math.round((sub.assigned_seats / sub.total_seats) * 100) : 0,
           monthlyCost,
           status: sub.status,
-          endDate: sub.end_date
+          endDate: sub.end_date,
         };
       });
 
@@ -224,7 +225,7 @@ export class OrganizationBillingService {
       const addonSummaries: AddonSummary[] = [];
       const addonMap = new Map<string, AddonSummary>();
 
-      (addons || []).forEach(addon => {
+      (addons || []).forEach((addon) => {
         const addonKey = addon.addon_feature_key;
         const existing = addonMap.get(addonKey);
         const memberCount = addon.target_member_ids?.length || 1;
@@ -237,36 +238,38 @@ export class OrganizationBillingService {
         } else {
           addonMap.set(addonKey, {
             addonId: addonKey,
-            addonName: addonKey?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Unknown Addon',
+            addonName:
+              addonKey?.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()) ||
+              'Unknown Addon',
             memberCount,
-            monthlyCost: cost
+            monthlyCost: cost,
           });
         }
         addonCosts += cost;
       });
 
-      addonMap.forEach(addon => addonSummaries.push(addon));
+      addonMap.forEach((addon) => addonSummaries.push(addon));
 
       // 7. Get upcoming renewals (within 30 days)
       const thirtyDaysFromNow = new Date();
       thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
 
       const upcomingRenewals: UpcomingRenewal[] = (subscriptions || [])
-        .filter(sub => {
+        .filter((sub) => {
           const endDate = new Date(sub.end_date);
           return endDate <= thirtyDaysFromNow && sub.status === 'active';
         })
-        .map(sub => ({
+        .map((sub) => ({
           subscriptionId: sub.id,
           planName: sub.subscription_plans?.name || 'Unknown Plan',
           renewalDate: sub.end_date,
           estimatedCost: parseFloat(sub.final_amount),
           seatCount: sub.total_seats,
-          autoRenew: sub.auto_renew
+          autoRenew: sub.auto_renew,
         }));
 
       // 8. Map payment history
-      const paymentHistory: PaymentRecord[] = (payments || []).map(p => ({
+      const paymentHistory: PaymentRecord[] = (payments || []).map((p) => ({
         id: p.id,
         transactionId: p.razorpay_payment_id || p.id,
         amount: parseFloat(p.amount),
@@ -275,13 +278,12 @@ export class OrganizationBillingService {
         paymentMethod: p.payment_method || 'unknown',
         description: p.description || 'Subscription payment',
         createdAt: p.created_at,
-        invoiceId: p.invoice_id
+        invoiceId: p.invoice_id,
       }));
 
       // 9. Calculate overall utilization
-      const overallUtilization = totalActiveSeats > 0
-        ? Math.round((totalAssignedSeats / totalActiveSeats) * 100)
-        : 0;
+      const overallUtilization =
+        totalActiveSeats > 0 ? Math.round((totalAssignedSeats / totalActiveSeats) * 100) : 0;
 
       return {
         organizationId,
@@ -291,7 +293,7 @@ export class OrganizationBillingService {
           endDate: periodEnd.toISOString(),
           totalCost: subscriptionCosts + addonCosts,
           subscriptionCosts,
-          addonCosts
+          addonCosts,
         },
         subscriptions: subscriptionSummaries,
         addons: addonSummaries,
@@ -299,7 +301,7 @@ export class OrganizationBillingService {
         paymentHistory,
         totalActiveSeats,
         totalAssignedSeats,
-        overallUtilization
+        overallUtilization,
       };
     } catch (error) {
       console.error('Error fetching billing dashboard:', error);
@@ -336,10 +338,12 @@ export class OrganizationBillingService {
       if (transaction.organization_id) {
         const { data: orgSub } = await supabase
           .from('organization_subscriptions')
-          .select(`
+          .select(
+            `
             *,
             subscription_plans (name, price_monthly, price_yearly)
-          `)
+          `
+          )
           .eq('organization_id', transaction.organization_id)
           .order('created_at', { ascending: false })
           .limit(1)
@@ -358,8 +362,8 @@ export class OrganizationBillingService {
               unitPrice: orgSub.price_per_seat,
               amount: baseAmount,
               taxRate: 0,
-              taxAmount: 0
-            }
+              taxAmount: 0,
+            },
           ];
 
           if (discountAmount > 0) {
@@ -369,7 +373,7 @@ export class OrganizationBillingService {
               unitPrice: -discountAmount,
               amount: -discountAmount,
               taxRate: 0,
-              taxAmount: 0
+              taxAmount: 0,
             });
           }
 
@@ -379,7 +383,7 @@ export class OrganizationBillingService {
             unitPrice: taxAmount,
             amount: taxAmount,
             taxRate: 18,
-            taxAmount: taxAmount
+            taxAmount: taxAmount,
           });
         }
       }
@@ -389,7 +393,7 @@ export class OrganizationBillingService {
 
       // 4. Calculate totals
       const amount = parseFloat(transaction.amount);
-      const taxAmount = amount * 0.18 / 1.18; // Extract tax from total
+      const taxAmount = (amount * 0.18) / 1.18; // Extract tax from total
       const baseAmount = amount - taxAmount;
 
       // 5. Create invoice record
@@ -408,17 +412,22 @@ export class OrganizationBillingService {
         issueDate: new Date().toISOString(),
         dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         paidDate: transaction.status === 'success' ? transaction.created_at : undefined,
-        lineItems: lineItems.length > 0 ? lineItems : [{
-          description: transaction.description || 'Subscription Payment',
-          quantity: 1,
-          unitPrice: baseAmount,
-          amount: baseAmount,
-          taxRate: 18,
-          taxAmount
-        }],
+        lineItems:
+          lineItems.length > 0
+            ? lineItems
+            : [
+                {
+                  description: transaction.description || 'Subscription Payment',
+                  quantity: 1,
+                  unitPrice: baseAmount,
+                  amount: baseAmount,
+                  taxRate: 18,
+                  taxAmount,
+                },
+              ],
         billingAddress: organizationDetails?.billingAddress,
         gstNumber: organizationDetails?.gstNumber,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       };
 
       // 6. Store invoice in database (if invoices table exists)
@@ -435,10 +444,7 @@ export class OrganizationBillingService {
   /**
    * Get invoice history for an organization
    */
-  async getInvoiceHistory(
-    organizationId: string,
-    limit: number = 50
-  ): Promise<Invoice[]> {
+  async getInvoiceHistory(organizationId: string, limit: number = 50): Promise<Invoice[]> {
     try {
       // Get all successful payment transactions for the organization
       const { data: transactions, error } = await supabase
@@ -454,7 +460,7 @@ export class OrganizationBillingService {
       // Generate invoice objects for each transaction
       const invoices: Invoice[] = (transactions || []).map((tx, index) => {
         const amount = parseFloat(tx.amount);
-        const taxAmount = amount * 0.18 / 1.18;
+        const taxAmount = (amount * 0.18) / 1.18;
         const baseAmount = amount - taxAmount;
 
         return {
@@ -472,15 +478,17 @@ export class OrganizationBillingService {
           issueDate: tx.created_at,
           dueDate: tx.created_at,
           paidDate: tx.created_at,
-          lineItems: [{
-            description: tx.description || 'Subscription Payment',
-            quantity: tx.seat_count || 1,
-            unitPrice: baseAmount / (tx.seat_count || 1),
-            amount: baseAmount,
-            taxRate: 18,
-            taxAmount
-          }],
-          createdAt: tx.created_at
+          lineItems: [
+            {
+              description: tx.description || 'Subscription Payment',
+              quantity: tx.seat_count || 1,
+              unitPrice: baseAmount / (tx.seat_count || 1),
+              amount: baseAmount,
+              taxRate: 18,
+              taxAmount,
+            },
+          ],
+          createdAt: tx.created_at,
         };
       });
 
@@ -497,7 +505,9 @@ export class OrganizationBillingService {
    */
   async downloadInvoice(invoiceId: string): Promise<Blob> {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session?.access_token) {
         throw new Error('Not authenticated');
       }
@@ -507,9 +517,9 @@ export class OrganizationBillingService {
         {
           method: 'GET',
           headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json'
-          }
+            Authorization: `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
         }
       );
 
@@ -537,10 +547,12 @@ export class OrganizationBillingService {
       // Get active subscriptions
       const { data: subscriptions, error: subError } = await supabase
         .from('organization_subscriptions')
-        .select(`
+        .select(
+          `
           *,
           subscription_plans (price_monthly, price_yearly)
-        `)
+        `
+        )
         .eq('organization_id', organizationId)
         .eq('organization_type', organizationType)
         .eq('status', 'active');
@@ -559,13 +571,13 @@ export class OrganizationBillingService {
 
       // Calculate subscription costs
       let subscriptionCost = 0;
-      (subscriptions || []).forEach(sub => {
+      (subscriptions || []).forEach((sub) => {
         subscriptionCost += this.calculateMonthlyCost(sub);
       });
 
       // Calculate addon costs
       let addonCost = 0;
-      (addons || []).forEach(addon => {
+      (addons || []).forEach((addon) => {
         // Use the amount from the order itself
         addonCost += parseFloat(addon.amount || 0);
       });
@@ -581,8 +593,8 @@ export class OrganizationBillingService {
         breakdown: {
           subscriptions: subscriptionCost,
           addons: addonCost,
-          taxes
-        }
+          taxes,
+        },
       };
     } catch (error) {
       console.error('Error projecting monthly cost:', error);
@@ -611,10 +623,12 @@ export class OrganizationBillingService {
       // Get current subscription
       const { data: subscription, error } = await supabase
         .from('organization_subscriptions')
-        .select(`
+        .select(
+          `
           *,
           subscription_plans (price_monthly, price_yearly)
-        `)
+        `
+        )
         .eq('id', subscriptionId)
         .single();
 
@@ -624,11 +638,12 @@ export class OrganizationBillingService {
 
       const newTotalSeats = subscription.total_seats + additionalSeats;
       // Use price_monthly as default (can be enhanced to detect billing cycle from subscription dates)
-      const pricePerSeat = subscription.subscription_plans?.price_monthly || subscription.price_per_seat;
+      const pricePerSeat =
+        subscription.subscription_plans?.price_monthly || subscription.price_per_seat;
 
       // Calculate new volume discount
       const newDiscountPercentage = this.calculateVolumeDiscount(newTotalSeats);
-      
+
       // Calculate costs for additional seats
       const subtotal = pricePerSeat * additionalSeats;
       const discountAmount = (subtotal * newDiscountPercentage) / 100;
@@ -639,7 +654,9 @@ export class OrganizationBillingService {
       // Calculate proration
       const endDate = new Date(subscription.end_date);
       const now = new Date();
-      const totalDays = Math.ceil((endDate.getTime() - new Date(subscription.start_date).getTime()) / (1000 * 60 * 60 * 24));
+      const totalDays = Math.ceil(
+        (endDate.getTime() - new Date(subscription.start_date).getTime()) / (1000 * 60 * 60 * 24)
+      );
       const remainingDays = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
       const proratedCost = (totalCost / totalDays) * remainingDays;
 
@@ -652,7 +669,7 @@ export class OrganizationBillingService {
         taxAmount,
         totalCost,
         proratedDays: remainingDays,
-        proratedCost: Math.round(proratedCost * 100) / 100
+        proratedCost: Math.round(proratedCost * 100) / 100,
       };
     } catch (error) {
       console.error('Error calculating seat addition cost:', error);
@@ -678,12 +695,16 @@ export class OrganizationBillingService {
         return [];
       }
 
-      return data ? [{
-        name: data.name || 'Admin',
-        email: data.email || '',
-        phone: data.phone,
-        isPrimary: true
-      }] : [];
+      return data
+        ? [
+            {
+              name: data.name || 'Admin',
+              email: data.email || '',
+              phone: data.phone,
+              isPrimary: true,
+            },
+          ]
+        : [];
     } catch (error) {
       console.error('Error fetching billing contacts:', error);
       return [];
@@ -693,15 +714,12 @@ export class OrganizationBillingService {
   /**
    * Add or update billing contact
    */
-  async addBillingContact(
-    organizationId: string,
-    contact: BillingContact
-  ): Promise<void> {
+  async addBillingContact(organizationId: string, contact: BillingContact): Promise<void> {
     try {
       // In production, this would insert into a billing_contacts table
       // For now, we update the organization's admin contact
       console.log('Adding billing contact:', { organizationId, contact });
-      
+
       // This is a placeholder - actual implementation would depend on
       // having a dedicated billing_contacts table
     } catch (error) {
@@ -713,15 +731,12 @@ export class OrganizationBillingService {
   /**
    * Update payment method for organization
    */
-  async updatePaymentMethod(
-    organizationId: string,
-    paymentMethod: PaymentMethod
-  ): Promise<void> {
+  async updatePaymentMethod(organizationId: string, paymentMethod: PaymentMethod): Promise<void> {
     try {
       // In production, this would integrate with Razorpay to store
       // payment method tokens securely
       console.log('Updating payment method:', { organizationId, paymentMethod });
-      
+
       // This is a placeholder - actual implementation would integrate
       // with Razorpay's saved payment methods API
     } catch (error) {
@@ -742,9 +757,11 @@ export class OrganizationBillingService {
     // Determine if annual based on subscription duration
     const startDate = new Date(subscription.start_date);
     const endDate = new Date(subscription.end_date);
-    const durationDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    const durationDays = Math.ceil(
+      (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+    );
     const isAnnual = durationDays > 60; // More than 2 months = annual
-    
+
     if (isAnnual) {
       return finalAmount / 12;
     }

@@ -82,7 +82,9 @@ let userIdCache: string | null = null;
 async function getCurrentUserCollegeId(): Promise<string | null> {
   if (userCollegeIdCache) return userCollegeIdCache;
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return null;
 
   const { data: lecturer } = await supabase
@@ -101,7 +103,9 @@ async function getCurrentUserCollegeId(): Promise<string | null> {
 async function getCurrentUserId(): Promise<string | null> {
   if (userIdCache) return userIdCache;
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   userIdCache = user?.id || null;
   return userIdCache;
 }
@@ -153,10 +157,12 @@ export async function getCourses(searchQuery?: string, courseType?: string): Pro
 /**
  * Create a new course in the master catalog
  */
-export async function createCourse(courseData: Omit<Course, 'id' | 'created_at' | 'updated_at'>): Promise<Course> {
+export async function createCourse(
+  courseData: Omit<Course, 'id' | 'created_at' | 'updated_at'>
+): Promise<Course> {
   const collegeId = await getCurrentUserCollegeId();
   const currentUserId = await getCurrentUserId();
-  
+
   if (!collegeId) {
     throw new Error('Unable to determine user college');
   }
@@ -164,12 +170,14 @@ export async function createCourse(courseData: Omit<Course, 'id' | 'created_at' 
   try {
     const { data, error } = await supabase
       .from('college_courses')
-      .insert([{
-        ...courseData,
-        college_id: collegeId,
-        created_by: currentUserId,
-        updated_by: currentUserId
-      }])
+      .insert([
+        {
+          ...courseData,
+          college_id: collegeId,
+          created_by: currentUserId,
+          updated_by: currentUserId,
+        },
+      ])
       .select()
       .single();
 
@@ -199,7 +207,7 @@ export async function updateCourse(courseId: string, updates: Partial<Course>): 
       .update({
         ...updates,
         updated_by: currentUserId,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq('id', courseId)
       .select()
@@ -267,7 +275,8 @@ export async function getFaculty(departmentId?: string): Promise<Faculty[]> {
     if (departmentId) {
       const { data: assignments } = await supabase
         .from('department_faculty_assignments')
-        .select(`
+        .select(
+          `
           lecturer_id,
           college_lecturers!inner(
             id,
@@ -278,7 +287,8 @@ export async function getFaculty(departmentId?: string): Promise<Faculty[]> {
             accountStatus,
             collegeId
           )
-        `)
+        `
+        )
         .eq('department_id', departmentId)
         .eq('is_active', true)
         .eq('college_lecturers.collegeId', collegeId)
@@ -287,22 +297,31 @@ export async function getFaculty(departmentId?: string): Promise<Faculty[]> {
       if (assignments && assignments.length > 0) {
         // Get user IDs for workload calculation
         const lecturerUserIds = assignments
-          .map(a => a.college_lecturers?.user_id)
+          // @ts-expect-error - Auto-suppressed for migration
+          .map((a) => a.college_lecturers?.user_id)
           .filter(Boolean);
 
         // Calculate workload for assigned faculty
         const workloadMap = await calculateFacultyWorkload(lecturerUserIds);
 
-        return assignments.map(assignment => {
+        return assignments.map((assignment) => {
           const lecturer = assignment.college_lecturers;
-          const displayName = `${lecturer.first_name || ''} ${lecturer.last_name || ''}`.trim() || lecturer.email || 'Unknown';
-          
+          const displayName =
+            // @ts-expect-error - Auto-suppressed for migration
+            `${lecturer.first_name || ''} ${lecturer.last_name || ''}`.trim() ||
+            // @ts-expect-error - Auto-suppressed for migration
+            lecturer.email ||
+            'Unknown';
+
           return {
+            // @ts-expect-error - Auto-suppressed for migration
             id: lecturer.user_id || lecturer.id, // Prefer user_id if available
             name: displayName,
+            // @ts-expect-error - Auto-suppressed for migration
             email: lecturer.email || '',
             maxWorkload: 18,
-            currentWorkload: workloadMap.get(lecturer.user_id || lecturer.id) || 0
+            // @ts-expect-error - Auto-suppressed for migration
+            currentWorkload: workloadMap.get(lecturer.user_id || lecturer.id) || 0,
           };
         });
       }
@@ -312,7 +331,8 @@ export async function getFaculty(departmentId?: string): Promise<Faculty[]> {
     // First, get college lecturers with user accounts
     const { data: collegeLecturers, error: lecturersError } = await supabase
       .from('college_lecturers')
-      .select(`
+      .select(
+        `
         id,
         first_name,
         last_name,
@@ -320,7 +340,8 @@ export async function getFaculty(departmentId?: string): Promise<Faculty[]> {
         user_id,
         department,
         accountStatus
-      `)
+      `
+      )
       .eq('collegeId', collegeId)
       .eq('accountStatus', 'active')
       .not('user_id', 'is', null);
@@ -342,13 +363,16 @@ export async function getFaculty(departmentId?: string): Promise<Faculty[]> {
     if (collegeLecturers) {
       for (const lecturer of collegeLecturers) {
         if (lecturer.user_id) {
-          const displayName = `${lecturer.first_name || ''} ${lecturer.last_name || ''}`.trim() || lecturer.email || 'Unknown';
+          const displayName =
+            `${lecturer.first_name || ''} ${lecturer.last_name || ''}`.trim() ||
+            lecturer.email ||
+            'Unknown';
           facultyMap.set(lecturer.user_id, {
             id: lecturer.user_id,
             name: displayName,
             email: lecturer.email || '',
             maxWorkload: 18,
-            currentWorkload: 0
+            currentWorkload: 0,
           });
         }
       }
@@ -358,13 +382,14 @@ export async function getFaculty(departmentId?: string): Promise<Faculty[]> {
     if (educatorUsers) {
       for (const user of educatorUsers) {
         if (!facultyMap.has(user.id)) {
-          const displayName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'Unknown';
+          const displayName =
+            `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'Unknown';
           facultyMap.set(user.id, {
             id: user.id,
             name: displayName,
             email: user.email || '',
             maxWorkload: 18,
-            currentWorkload: 0
+            currentWorkload: 0,
           });
         }
       }
@@ -381,17 +406,17 @@ export async function getFaculty(departmentId?: string): Promise<Faculty[]> {
 
       if (department) {
         // Filter lecturers by department
-        const departmentLecturers = collegeLecturers.filter(lecturer => 
-          lecturer.department && (
-            lecturer.department.toLowerCase().includes(department.name.toLowerCase()) ||
-            lecturer.department.toLowerCase().includes(department.code.toLowerCase()) ||
-            department.name.toLowerCase().includes(lecturer.department.toLowerCase())
-          )
+        const departmentLecturers = collegeLecturers.filter(
+          (lecturer) =>
+            lecturer.department &&
+            (lecturer.department.toLowerCase().includes(department.name.toLowerCase()) ||
+              lecturer.department.toLowerCase().includes(department.code.toLowerCase()) ||
+              department.name.toLowerCase().includes(lecturer.department.toLowerCase()))
         );
 
         // Keep only faculty from this department
         const departmentFacultyIds = new Set(
-          departmentLecturers.map(l => l.user_id).filter(Boolean)
+          departmentLecturers.map((l) => l.user_id).filter(Boolean)
         );
 
         for (const [id, faculty] of facultyMap.entries()) {
@@ -406,7 +431,7 @@ export async function getFaculty(departmentId?: string): Promise<Faculty[]> {
     const facultyIds = Array.from(facultyMap.keys());
     if (facultyIds.length > 0) {
       const workloadMap = await calculateFacultyWorkload(facultyIds);
-      
+
       // Update workload in faculty map
       for (const [id, faculty] of facultyMap.entries()) {
         faculty.currentWorkload = workloadMap.get(id) || 0;
@@ -425,20 +450,23 @@ export async function getFaculty(departmentId?: string): Promise<Faculty[]> {
  */
 async function calculateFacultyWorkload(facultyIds: string[]): Promise<Map<string, number>> {
   const workloadMap = new Map<string, number>();
-  
+
   if (facultyIds.length === 0) return workloadMap;
 
   try {
     const { data: workloadData } = await supabase
       .from('college_course_mappings')
-      .select(`
+      .select(
+        `
         faculty_id,
         course:college_courses(credits)
-      `)
+      `
+      )
       .in('faculty_id', facultyIds);
 
-    (workloadData || []).forEach(mapping => {
+    (workloadData || []).forEach((mapping) => {
       const current = workloadMap.get(mapping.faculty_id) || 0;
+      // @ts-expect-error - Auto-suppressed for migration
       const credits = mapping.course?.credits || 0;
       workloadMap.set(mapping.faculty_id, current + Number(credits));
     });
@@ -481,7 +509,7 @@ export async function mapCourse(data: {
 
     // Handle legacy format where course data is provided directly
     let courseId = data.course_id;
-    
+
     if (!courseId && data.course_code && data.course_name) {
       // Create course in catalog first if it doesn't exist
       const collegeId = await getCurrentUserCollegeId();
@@ -509,7 +537,7 @@ export async function mapCourse(data: {
           description: '',
           prerequisites: [],
           course_type: 'theory',
-          is_active: true
+          is_active: true,
         });
         courseId = newCourse.id;
       }
@@ -538,12 +566,15 @@ export async function mapCourse(data: {
     } else if (offeringType) {
       // Map from service layer types to database types
       switch (offeringType) {
+        // @ts-expect-error - Auto-suppressed for migration
         case 'mandatory':
           offeringType = 'core';
           break;
+        // @ts-expect-error - Auto-suppressed for migration
         case 'department_elective':
           offeringType = 'dept_elective';
           break;
+        // @ts-expect-error - Auto-suppressed for migration
         case 'elective':
           offeringType = 'open_elective';
           break;
@@ -585,23 +616,27 @@ export async function mapCourse(data: {
 
     const { data: mapping, error } = await supabase
       .from('college_course_mappings')
-      .insert([{
-        course_id: courseId,
-        program_id: data.program_id,
-        semester: data.semester,
-        offering_type: offeringType || 'mandatory',
-        faculty_id: data.faculty_id,
-        capacity: data.capacity,
-        current_enrollment: 0,
-        created_by: currentUserId,
-        updated_by: currentUserId,
-        created_at: timestamp,
-        updated_at: timestamp
-      }])
-      .select(`
+      .insert([
+        {
+          course_id: courseId,
+          program_id: data.program_id,
+          semester: data.semester,
+          offering_type: offeringType || 'mandatory',
+          faculty_id: data.faculty_id,
+          capacity: data.capacity,
+          current_enrollment: 0,
+          created_by: currentUserId,
+          updated_by: currentUserId,
+          created_at: timestamp,
+          updated_at: timestamp,
+        },
+      ])
+      .select(
+        `
         *,
         course:college_courses(*)
-      `)
+      `
+      )
       .single();
 
     if (error) {
@@ -621,7 +656,10 @@ export async function mapCourse(data: {
 /**
  * Update a course mapping (optimized with validation)
  */
-export async function updateCourseMapping(id: string, updates: Partial<CourseMapping>): Promise<CourseMapping> {
+export async function updateCourseMapping(
+  id: string,
+  updates: Partial<CourseMapping>
+): Promise<CourseMapping> {
   if (!id) {
     throw new Error('VALIDATION_ERROR: Mapping ID is required');
   }
@@ -645,7 +683,11 @@ export async function updateCourseMapping(id: string, updates: Partial<CourseMap
     if (finalUpdates.offering_type) {
       if (finalUpdates.offering_type === 'core') {
         finalUpdates.capacity = null; // Core courses must have no capacity
-      } else if ((finalUpdates.offering_type === 'dept_elective' || finalUpdates.offering_type === 'open_elective') && !finalUpdates.capacity) {
+      } else if (
+        (finalUpdates.offering_type === 'dept_elective' ||
+          finalUpdates.offering_type === 'open_elective') &&
+        !finalUpdates.capacity
+      ) {
         throw new Error('VALIDATION_ERROR: Elective courses must have a capacity');
       }
     } else if (existing?.offering_type === 'core' && finalUpdates.capacity !== undefined) {
@@ -658,13 +700,15 @@ export async function updateCourseMapping(id: string, updates: Partial<CourseMap
       .update({
         ...finalUpdates,
         updated_by: currentUserId,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq('id', id)
-      .select(`
+      .select(
+        `
         *,
         course:college_courses(*)
-      `)
+      `
+      )
       .single();
 
     if (error) throw error;
@@ -695,10 +739,7 @@ export async function deleteCourseMapping(id: string): Promise<void> {
       throw new Error('INVALID_STATE: Course mapping is locked and cannot be modified');
     }
 
-    const { error } = await supabase
-      .from('college_course_mappings')
-      .delete()
-      .eq('id', id);
+    const { error } = await supabase.from('college_course_mappings').delete().eq('id', id);
 
     if (error) throw error;
   } catch (error) {
@@ -711,7 +752,7 @@ export async function deleteCourseMapping(id: string): Promise<void> {
  * Get course mappings for a program semester with search and filters (optimized)
  */
 export async function getCourseMappings(
-  programId: string, 
+  programId: string,
   semester?: number,
   searchQuery?: string,
   typeFilter?: 'core' | 'dept_elective' | 'open_elective'
@@ -723,10 +764,12 @@ export async function getCourseMappings(
   try {
     let query = supabase
       .from('college_course_mappings')
-      .select(`
+      .select(
+        `
         *,
         course:college_courses(*)
-      `)
+      `
+      )
       .eq('program_id', programId);
 
     if (semester !== undefined) {
@@ -737,29 +780,29 @@ export async function getCourseMappings(
       query = query.eq('offering_type', typeFilter);
     }
 
-    query = query
-      .order('semester', { ascending: true });
+    query = query.order('semester', { ascending: true });
 
     const { data, error } = await query;
     if (error) throw error;
-    
+
     let mappings = data || [];
 
     // Add legacy fields for backward compatibility
-    mappings = mappings.map(mapping => ({
+    mappings = mappings.map((mapping) => ({
       ...mapping,
       course_code: mapping.course?.course_code,
       course_name: mapping.course?.course_name,
       credits: mapping.course?.credits,
-      type: mapping.offering_type // Use offering_type directly since they now match
+      type: mapping.offering_type, // Use offering_type directly since they now match
     }));
 
     // Apply client-side search filter if provided
     if (searchQuery?.trim()) {
       const searchTerm = searchQuery.trim().toLowerCase();
-      mappings = mappings.filter(mapping => 
-        mapping.course?.course_name?.toLowerCase().includes(searchTerm) ||
-        mapping.course?.course_code?.toLowerCase().includes(searchTerm)
+      mappings = mappings.filter(
+        (mapping) =>
+          mapping.course?.course_name?.toLowerCase().includes(searchTerm) ||
+          mapping.course?.course_code?.toLowerCase().includes(searchTerm)
       );
     }
 
@@ -806,9 +849,9 @@ export async function lockSemester(programId: string, semester: number): Promise
   try {
     const { error } = await supabase
       .from('college_course_mappings')
-      .update({ 
+      .update({
         is_locked: true,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq('program_id', programId)
       .eq('semester', semester);
@@ -828,9 +871,9 @@ export async function unlockSemester(programId: string, semester: number): Promi
   try {
     const { error } = await supabase
       .from('college_course_mappings')
-      .update({ 
+      .update({
         is_locked: false,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq('program_id', programId)
       .eq('semester', semester);
@@ -846,9 +889,9 @@ export async function unlockSemester(programId: string, semester: number): Promi
  * Clone semester structure (optimized with batch operations)
  */
 export async function cloneSemesterStructure(
-  fromProgramId: string, 
-  fromSemester: number, 
-  toProgramId: string, 
+  fromProgramId: string,
+  fromSemester: number,
+  toProgramId: string,
   toSemester: number
 ): Promise<void> {
   if (!fromProgramId || !toProgramId || fromSemester === undefined || toSemester === undefined) {
@@ -872,8 +915,8 @@ export async function cloneSemesterStructure(
     // Prepare cloned mappings
     const timestamp = new Date().toISOString();
     const currentUserId = await getCurrentUserId();
-    
-    const clonedMappings = sourceMappings.map(mapping => ({
+
+    const clonedMappings = sourceMappings.map((mapping) => ({
       course_id: mapping.course_id,
       program_id: toProgramId,
       semester: toSemester,
@@ -884,7 +927,7 @@ export async function cloneSemesterStructure(
       created_by: currentUserId,
       updated_by: currentUserId,
       created_at: timestamp,
-      updated_at: timestamp
+      updated_at: timestamp,
     }));
 
     // Insert cloned mappings
@@ -918,9 +961,9 @@ export async function allocateFaculty(mappingId: string, facultyId: string): Pro
   try {
     const { error } = await supabase
       .from('college_course_mappings')
-      .update({ 
+      .update({
         faculty_id: facultyId,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq('id', mappingId);
 
@@ -943,16 +986,14 @@ export async function calculateWorkload(facultyId: string): Promise<WorkloadSumm
     const [coursesResult, facultyResult] = await Promise.all([
       supabase
         .from('college_course_mappings')
-        .select(`
+        .select(
+          `
           course:college_courses(course_name, credits),
           programs:program_id (name)
-        `)
+        `
+        )
         .eq('faculty_id', facultyId),
-      supabase
-        .from('users')
-        .select('firstName, lastName, email')
-        .eq('id', facultyId)
-        .single()
+      supabase.from('users').select('firstName, lastName, email').eq('id', facultyId).single(),
     ]);
 
     if (coursesResult.error) throw coursesResult.error;
@@ -962,20 +1003,24 @@ export async function calculateWorkload(facultyId: string): Promise<WorkloadSumm
     const faculty = facultyResult.data;
 
     const total_credits = courses.reduce((sum, mapping) => {
+      // @ts-expect-error - Auto-suppressed for migration
       return sum + (mapping.course?.credits || 0);
     }, 0);
-    
-    const faculty_name = `${faculty.firstName || ''} ${faculty.lastName || ''}`.trim() || faculty.email;
+
+    const faculty_name =
+      `${faculty.firstName || ''} ${faculty.lastName || ''}`.trim() || faculty.email;
 
     return {
       faculty_id: facultyId,
       faculty_name,
       total_credits,
-      courses: courses.map(mapping => ({
+      courses: courses.map((mapping) => ({
+        // @ts-expect-error - Auto-suppressed for migration
         course_name: mapping.course?.course_name || 'Unknown',
+        // @ts-expect-error - Auto-suppressed for migration
         credits: mapping.course?.credits || 0,
-        program: (mapping.programs as any)?.name || 'Unknown'
-      }))
+        program: (mapping.programs as any)?.name || 'Unknown',
+      })),
     };
   } catch (error) {
     console.error('Error calculating workload:', error);
@@ -993,10 +1038,12 @@ export async function getAllCourseMappings(
   try {
     let query = supabase
       .from('college_course_mappings')
-      .select(`
+      .select(
+        `
         *,
         course:college_courses(*)
-      `)
+      `
+      )
       .order('semester', { ascending: true });
 
     if (limit) {
@@ -1019,10 +1066,10 @@ export async function getAllCourseMappings(
 /**
  * Check elective capacity (optimized for future enrollment tracking)
  */
-export async function checkElectiveCapacity(mappingId: string): Promise<{ 
-  enrolled: number; 
-  capacity: number; 
-  available: number 
+export async function checkElectiveCapacity(mappingId: string): Promise<{
+  enrolled: number;
+  capacity: number;
+  available: number;
 }> {
   if (!mappingId) {
     throw new Error('VALIDATION_ERROR: Mapping ID is required');
@@ -1043,7 +1090,7 @@ export async function checkElectiveCapacity(mappingId: string): Promise<{
     return {
       enrolled,
       capacity,
-      available: Math.max(0, capacity - enrolled)
+      available: Math.max(0, capacity - enrolled),
     };
   } catch (error) {
     console.error('Error checking elective capacity:', error);

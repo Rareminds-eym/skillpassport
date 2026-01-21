@@ -11,13 +11,13 @@ const StudentPlanCard = memo(({ plan, isSelected, onSelect, isPromoActive }) => 
   const displayPrice = hasEsfePrice ? plan.esfe_price : plan.price;
   const originalPrice = plan.price;
   const discountPercent = hasEsfePrice ? plan.esfe_discount_percent : 0;
-  
+
   return (
-    <div 
+    <div
       onClick={() => onSelect(plan)}
       className={`relative flex flex-col bg-white rounded-2xl border-2 transition-all duration-300 cursor-pointer overflow-hidden ${
-        isSelected 
-          ? 'border-blue-500 shadow-xl shadow-blue-500/20 scale-[1.02]' 
+        isSelected
+          ? 'border-blue-500 shadow-xl shadow-blue-500/20 scale-[1.02]'
           : 'border-gray-200 hover:border-blue-300 hover:shadow-lg'
       }`}
     >
@@ -29,15 +29,17 @@ const StudentPlanCard = memo(({ plan, isSelected, onSelect, isPromoActive }) => 
           </div>
         </div>
       )}
-      
+
       <div className="p-6 pt-8 flex flex-col flex-1">
         {/* Plan Name */}
-        <h3 className={`text-xl font-bold text-center mb-3 ${
-          plan.tier_name === 'Professional' ? 'text-blue-600' : 'text-gray-900'
-        }`}>
+        <h3
+          className={`text-xl font-bold text-center mb-3 ${
+            plan.tier_name === 'Professional' ? 'text-blue-600' : 'text-gray-900'
+          }`}
+        >
           {plan.tier_name}
         </h3>
-        
+
         {/* ESFE Special Badge */}
         {hasEsfePrice && (
           <div className="flex justify-center mb-3">
@@ -46,7 +48,7 @@ const StudentPlanCard = memo(({ plan, isSelected, onSelect, isPromoActive }) => 
             </span>
           </div>
         )}
-        
+
         {/* Pricing */}
         <div className="text-center mb-3">
           {/* Original Price (crossed out) */}
@@ -55,19 +57,19 @@ const StudentPlanCard = memo(({ plan, isSelected, onSelect, isPromoActive }) => 
               ₹{originalPrice.toLocaleString()}
             </div>
           )}
-          
+
           {/* Display Price */}
-          <div className={`text-4xl font-bold ${
-            plan.tier_name === 'Professional' ? 'text-emerald-600' : 'text-gray-900'
-          }`}>
+          <div
+            className={`text-4xl font-bold ${
+              plan.tier_name === 'Professional' ? 'text-emerald-600' : 'text-gray-900'
+            }`}
+          >
             ₹{displayPrice.toLocaleString()}
           </div>
-          
+
           {/* Per Month Label */}
-          <div className="text-gray-500 text-sm mt-1">
-            per month
-          </div>
-          
+          <div className="text-gray-500 text-sm mt-1">per month</div>
+
           {/* Savings Badge */}
           {hasEsfePrice && discountPercent > 0 && (
             <div className="flex justify-center mt-2">
@@ -77,7 +79,7 @@ const StudentPlanCard = memo(({ plan, isSelected, onSelect, isPromoActive }) => 
             </div>
           )}
         </div>
-        
+
         {/* Features List */}
         <ul className="space-y-3 mt-4 flex-1">
           {(plan.features || []).map((feature, idx) => (
@@ -87,7 +89,7 @@ const StudentPlanCard = memo(({ plan, isSelected, onSelect, isPromoActive }) => 
             </li>
           ))}
         </ul>
-        
+
         {/* Select Button */}
         <button
           onClick={(e) => {

@@ -11,7 +11,7 @@ import {
   SparklesIcon,
   ChartBarIcon,
   ClockIcon,
-  UserIcon
+  UserIcon,
 } from '@heroicons/react/24/outline';
 import { PipelineFilters } from '../../../types/recruiter';
 
@@ -28,17 +28,35 @@ const STAGES = [
   { value: 'interview_1', label: 'Interview 1' },
   { value: 'interview_2', label: 'Interview 2' },
   { value: 'offer', label: 'Offer' },
-  { value: 'hired', label: 'Hired' }
+  { value: 'hired', label: 'Hired' },
 ];
 
-const SKILLS = ['React', 'Python', 'Node.js', 'Java', 'TypeScript', 'AWS', 'Docker', 'SQL', 'MongoDB', 'Kubernetes'];
-const DEPARTMENTS = ['Engineering', 'Food Safety', 'Manufacturing', 'Quality Assurance', 'IT', 'Operations'];
+const SKILLS = [
+  'React',
+  'Python',
+  'Node.js',
+  'Java',
+  'TypeScript',
+  'AWS',
+  'Docker',
+  'SQL',
+  'MongoDB',
+  'Kubernetes',
+];
+const DEPARTMENTS = [
+  'Engineering',
+  'Food Safety',
+  'Manufacturing',
+  'Quality Assurance',
+  'IT',
+  'Operations',
+];
 const LOCATIONS = ['Chennai', 'Bangalore', 'Coimbatore', 'Pune', 'Mumbai', 'Hyderabad', 'Delhi'];
 const SOURCES = [
   { value: 'talent_pool', label: 'Talent Pool' },
   { value: 'direct_application', label: 'Direct Application' },
   { value: 'referral', label: 'Referral' },
-  { value: 'sourced', label: 'Sourced' }
+  { value: 'sourced', label: 'Sourced' },
 ];
 
 const NEXT_ACTION_TYPES = [
@@ -46,21 +64,21 @@ const NEXT_ACTION_TYPES = [
   { value: 'schedule_interview', label: 'Schedule Interview' },
   { value: 'make_offer', label: 'Make Offer' },
   { value: 'follow_up', label: 'Follow-up' },
-  { value: 'review_application', label: 'Review Application' }
+  { value: 'review_application', label: 'Review Application' },
 ];
 
 const RECRUITERS = ['Sarah Johnson', 'Mike Chen', 'Lisa Wang', 'Raj Kumar', 'Emily Brown'];
 
-const PipelineAdvancedFilters: React.FC<PipelineAdvancedFiltersProps> = ({ 
-  filters, 
-  onFiltersChange, 
-  onReset 
+const PipelineAdvancedFilters: React.FC<PipelineAdvancedFiltersProps> = ({
+  filters,
+  onFiltersChange,
+  onReset,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null);
 
   // Count active filters
-  const activeFilterCount = 
+  const activeFilterCount =
     filters.stages.length +
     filters.skills.length +
     filters.departments.length +
@@ -74,12 +92,12 @@ const PipelineAdvancedFilters: React.FC<PipelineAdvancedFiltersProps> = ({
   const toggleFilter = (category: keyof PipelineFilters, value: string) => {
     const currentValues = filters[category] as string[];
     const newValues = currentValues.includes(value)
-      ? currentValues.filter(v => v !== value)
+      ? currentValues.filter((v) => v !== value)
       : [...currentValues, value];
-    
+
     onFiltersChange({
       ...filters,
-      [category]: newValues
+      [category]: newValues,
     });
   };
 
@@ -87,31 +105,31 @@ const PipelineAdvancedFilters: React.FC<PipelineAdvancedFiltersProps> = ({
     if (category === 'aiScoreRange') {
       onFiltersChange({
         ...filters,
-        aiScoreRange: {}
+        aiScoreRange: {},
       });
     } else if (category === 'hasNextAction') {
       onFiltersChange({
         ...filters,
-        hasNextAction: null
+        hasNextAction: null,
       });
     } else {
       onFiltersChange({
         ...filters,
-        [category]: []
+        [category]: [],
       });
     }
   };
 
-  const FilterSection = ({ 
-    title, 
-    icon: Icon, 
-    category, 
-    options 
-  }: { 
-    title: string; 
-    icon: any; 
-    category: keyof PipelineFilters; 
-    options: Array<string | { value: string; label: string }> 
+  const FilterSection = ({
+    title,
+    icon: Icon,
+    category,
+    options,
+  }: {
+    title: string;
+    icon: any;
+    category: keyof PipelineFilters;
+    options: Array<string | { value: string; label: string }>;
   }) => {
     const selectedValues = filters[category] as string[];
     const isActive = selectedValues.length > 0;
@@ -133,20 +151,20 @@ const PipelineAdvancedFilters: React.FC<PipelineAdvancedFiltersProps> = ({
               </span>
             )}
           </div>
-          <ChevronDownIcon 
+          <ChevronDownIcon
             className={`h-4 w-4 text-gray-400 transition-transform ${
               activeSection === category ? 'transform rotate-180' : ''
-            }`} 
+            }`}
           />
         </button>
-        
+
         {activeSection === category && (
           <div className="px-6 py-4 bg-gray-50 space-y-2 max-h-80 overflow-y-auto">
             {options.map((option) => {
               const optionValue = typeof option === 'string' ? option : option.value;
               const optionLabel = typeof option === 'string' ? option : option.label;
               const isSelected = selectedValues.includes(optionValue);
-              
+
               return (
                 <label
                   key={optionValue}
@@ -177,7 +195,8 @@ const PipelineAdvancedFilters: React.FC<PipelineAdvancedFiltersProps> = ({
   };
 
   const AIScoreRangeSection = () => {
-    const isActive = filters.aiScoreRange.min !== undefined || filters.aiScoreRange.max !== undefined;
+    const isActive =
+      filters.aiScoreRange.min !== undefined || filters.aiScoreRange.max !== undefined;
 
     return (
       <div className="border-b border-gray-200">
@@ -186,7 +205,9 @@ const PipelineAdvancedFilters: React.FC<PipelineAdvancedFiltersProps> = ({
           className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
         >
           <div className="flex items-center gap-2">
-            <ChartBarIcon className={`h-4 w-4 ${isActive ? 'text-primary-600' : 'text-gray-500'}`} />
+            <ChartBarIcon
+              className={`h-4 w-4 ${isActive ? 'text-primary-600' : 'text-gray-500'}`}
+            />
             <span className={`text-sm font-medium ${isActive ? 'text-gray-900' : 'text-gray-700'}`}>
               AI Score Range
             </span>
@@ -196,13 +217,13 @@ const PipelineAdvancedFilters: React.FC<PipelineAdvancedFiltersProps> = ({
               </span>
             )}
           </div>
-          <ChevronDownIcon 
+          <ChevronDownIcon
             className={`h-4 w-4 text-gray-400 transition-transform ${
               activeSection === 'aiScoreRange' ? 'transform rotate-180' : ''
-            }`} 
+            }`}
           />
         </button>
-        
+
         {activeSection === 'aiScoreRange' && (
           <div className="px-6 py-4 bg-gray-50 space-y-3">
             <div>
@@ -212,10 +233,15 @@ const PipelineAdvancedFilters: React.FC<PipelineAdvancedFiltersProps> = ({
                 min="0"
                 max="100"
                 value={filters.aiScoreRange.min || ''}
-                onChange={(e) => onFiltersChange({
-                  ...filters,
-                  aiScoreRange: { ...filters.aiScoreRange, min: e.target.value ? Number(e.target.value) : undefined }
-                })}
+                onChange={(e) =>
+                  onFiltersChange({
+                    ...filters,
+                    aiScoreRange: {
+                      ...filters.aiScoreRange,
+                      min: e.target.value ? Number(e.target.value) : undefined,
+                    },
+                  })
+                }
                 className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="0"
               />
@@ -227,10 +253,15 @@ const PipelineAdvancedFilters: React.FC<PipelineAdvancedFiltersProps> = ({
                 min="0"
                 max="100"
                 value={filters.aiScoreRange.max || ''}
-                onChange={(e) => onFiltersChange({
-                  ...filters,
-                  aiScoreRange: { ...filters.aiScoreRange, max: e.target.value ? Number(e.target.value) : undefined }
-                })}
+                onChange={(e) =>
+                  onFiltersChange({
+                    ...filters,
+                    aiScoreRange: {
+                      ...filters.aiScoreRange,
+                      max: e.target.value ? Number(e.target.value) : undefined,
+                    },
+                  })
+                }
                 className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="100"
               />
@@ -255,7 +286,9 @@ const PipelineAdvancedFilters: React.FC<PipelineAdvancedFiltersProps> = ({
     return (
       <div className="border-b border-gray-200">
         <button
-          onClick={() => setActiveSection(activeSection === 'hasNextAction' ? null : 'hasNextAction')}
+          onClick={() =>
+            setActiveSection(activeSection === 'hasNextAction' ? null : 'hasNextAction')
+          }
           className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
         >
           <div className="flex items-center gap-2">
@@ -269,13 +302,13 @@ const PipelineAdvancedFilters: React.FC<PipelineAdvancedFiltersProps> = ({
               </span>
             )}
           </div>
-          <ChevronDownIcon 
+          <ChevronDownIcon
             className={`h-4 w-4 text-gray-400 transition-transform ${
               activeSection === 'hasNextAction' ? 'transform rotate-180' : ''
-            }`} 
+            }`}
           />
         </button>
-        
+
         {activeSection === 'hasNextAction' && (
           <div className="px-6 py-4 bg-gray-50 space-y-2">
             <label className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 p-2 rounded transition-colors">
@@ -337,8 +370,8 @@ const PipelineAdvancedFilters: React.FC<PipelineAdvancedFiltersProps> = ({
             {activeFilterCount}
           </span>
         )}
-        <ChevronDownIcon 
-          className={`h-4 w-4 transition-transform ${isExpanded ? 'transform rotate-180' : ''}`} 
+        <ChevronDownIcon
+          className={`h-4 w-4 transition-transform ${isExpanded ? 'transform rotate-180' : ''}`}
         />
       </button>
 
@@ -346,11 +379,11 @@ const PipelineAdvancedFilters: React.FC<PipelineAdvancedFiltersProps> = ({
       {isExpanded && (
         <>
           {/* Backdrop */}
-          <div 
+          <div
             className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity"
             onClick={() => setIsExpanded(false)}
           />
-          
+
           {/* Slide-in Panel from Right */}
           <div className="fixed top-0 right-0 h-full w-full md:w-[480px] bg-white shadow-2xl z-50 flex flex-col transform transition-transform duration-300 ease-out">
             {/* Header */}
@@ -392,46 +425,46 @@ const PipelineAdvancedFilters: React.FC<PipelineAdvancedFiltersProps> = ({
                 category="stages"
                 options={STAGES}
               />
-              
+
               <FilterSection
                 title="Skills"
                 icon={SparklesIcon}
                 category="skills"
                 options={SKILLS}
               />
-              
+
               <FilterSection
                 title="Department"
                 icon={BriefcaseIcon}
                 category="departments"
                 options={DEPARTMENTS}
               />
-              
+
               <FilterSection
                 title="Location"
                 icon={MapPinIcon}
                 category="locations"
                 options={LOCATIONS}
               />
-              
+
               <FilterSection
                 title="Source"
                 icon={UserGroupIcon}
                 category="sources"
                 options={SOURCES}
               />
-              
+
               <AIScoreRangeSection />
-              
+
               <FilterSection
                 title="Next Action Type"
                 icon={ClockIcon}
                 category="nextActionTypes"
                 options={NEXT_ACTION_TYPES}
               />
-              
+
               <NextActionStatusSection />
-              
+
               <FilterSection
                 title="Assigned To"
                 icon={UserIcon}

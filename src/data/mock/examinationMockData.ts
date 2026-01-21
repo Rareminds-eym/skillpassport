@@ -47,10 +47,20 @@ export const mockStudents = [
 // Mock Faculty
 export const mockFaculty = [
   { id: 'faculty-1', name: 'Dr. Rajesh Kumar', department: 'Computer Science', assigned_slots: 2 },
-  { id: 'faculty-2', name: 'Prof. Sunita Sharma', department: 'Computer Science', assigned_slots: 1 },
+  {
+    id: 'faculty-2',
+    name: 'Prof. Sunita Sharma',
+    department: 'Computer Science',
+    assigned_slots: 1,
+  },
   { id: 'faculty-3', name: 'Dr. Anil Verma', department: 'Computer Science', assigned_slots: 1 },
   { id: 'faculty-4', name: 'Prof. Meera Patel', department: 'Computer Science', assigned_slots: 0 },
-  { id: 'faculty-5', name: 'Dr. Suresh Reddy', department: 'Mechanical Engineering', assigned_slots: 0 },
+  {
+    id: 'faculty-5',
+    name: 'Dr. Suresh Reddy',
+    department: 'Mechanical Engineering',
+    assigned_slots: 0,
+  },
   { id: 'faculty-6', name: 'Prof. Lakshmi Nair', department: 'Electronics', assigned_slots: 0 },
 ];
 

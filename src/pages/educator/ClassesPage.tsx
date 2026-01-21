@@ -1,36 +1,36 @@
 import {
-    ArrowPathIcon,
-    CalendarDaysIcon,
-    ChevronDownIcon,
-    ClipboardDocumentCheckIcon,
-    ClockIcon,
-    EnvelopeIcon,
-    EyeIcon,
-    FunnelIcon,
-    PencilIcon,
-    PlusCircleIcon,
-    Squares2X2Icon,
-    TableCellsIcon,
-    UserGroupIcon,
-    XMarkIcon
-} from "@heroicons/react/24/outline"
-import { useEffect, useMemo, useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
-import SearchBar from "../../components/common/SearchBar"
-import { useClasses } from "../../hooks/useClasses"
-import { useEducatorId } from "../../hooks/useEducatorId"
-import { useEducatorSchool } from "../../hooks/useEducatorSchool"
+  ArrowPathIcon,
+  CalendarDaysIcon,
+  ChevronDownIcon,
+  ClipboardDocumentCheckIcon,
+  ClockIcon,
+  EnvelopeIcon,
+  EyeIcon,
+  FunnelIcon,
+  PencilIcon,
+  PlusCircleIcon,
+  Squares2X2Icon,
+  TableCellsIcon,
+  UserGroupIcon,
+  XMarkIcon,
+} from '@heroicons/react/24/outline';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import SearchBar from '../../components/common/SearchBar';
+import { useClasses } from '../../hooks/useClasses';
+import { useEducatorId } from '../../hooks/useEducatorId';
+import { useEducatorSchool } from '../../hooks/useEducatorSchool';
 // @ts-ignore - AuthContext is a .jsx file
-import toast from "react-hot-toast"
-import ManageStudentsModal from "../../components/educator/ManageStudentsModal"
-import Pagination from "../../components/educator/Pagination"
-import { useAuth } from "../../context/AuthContext"
-import { supabase } from "../../lib/supabaseClient"
-import { createClass, EducatorClass, updateClass } from "../../services/classService"
-import ProgramSectionsPage from "./ProgramSectionsPage"
+import toast from 'react-hot-toast';
+import ManageStudentsModal from '../../components/educator/ManageStudentsModal';
+import Pagination from '../../components/educator/Pagination';
+import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../lib/supabaseClient';
+import { createClass, EducatorClass, updateClass } from '../../services/classService';
+import ProgramSectionsPage from './ProgramSectionsPage';
 
 const FilterSection = ({ title, children, defaultOpen = false }: any) => {
-  const [isOpen, setIsOpen] = useState(defaultOpen)
+  const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
     <div className="border-b border-gray-200 py-4">
@@ -41,12 +41,12 @@ const FilterSection = ({ title, children, defaultOpen = false }: any) => {
         aria-expanded={isOpen}
       >
         <span className="text-sm font-medium text-gray-900">{title}</span>
-        <ChevronDownIcon className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+        <ChevronDownIcon className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {isOpen && <div className="mt-3 space-y-2">{children}</div>}
     </div>
-  )
-}
+  );
+};
 
 const CheckboxGroup = ({ options, selectedValues, onChange }: any) => {
   return options.map((option: any) => (
@@ -56,9 +56,9 @@ const CheckboxGroup = ({ options, selectedValues, onChange }: any) => {
         checked={selectedValues.includes(option.value)}
         onChange={(e) => {
           if (e.target.checked) {
-            onChange([...selectedValues, option.value])
+            onChange([...selectedValues, option.value]);
           } else {
-            onChange(selectedValues.filter((value: string) => value !== option.value))
+            onChange(selectedValues.filter((value: string) => value !== option.value));
           }
         }}
         className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
@@ -68,48 +68,50 @@ const CheckboxGroup = ({ options, selectedValues, onChange }: any) => {
         <span className="ml-auto text-xs text-gray-500">({option.count})</span>
       )}
     </label>
-  ))
-}
+  ));
+};
 
 const StatusBadge = ({ status }: { status: string }) => {
   const config: Record<string, string> = {
-    Active: "bg-emerald-100 text-emerald-700",
-    Completed: "bg-indigo-100 text-indigo-700",
-    Upcoming: "bg-amber-100 text-amber-700"
-  }
+    Active: 'bg-emerald-100 text-emerald-700',
+    Completed: 'bg-indigo-100 text-indigo-700',
+    Upcoming: 'bg-amber-100 text-amber-700',
+  };
 
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium ${config[status] || "bg-gray-100 text-gray-600"}`}>
+    <span
+      className={`inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium ${config[status] || 'bg-gray-100 text-gray-600'}`}
+    >
       {status}
     </span>
-  )
-}
+  );
+};
 
 const getProgressConfig = (value: number) => {
   if (value >= 70) {
     return {
-      bar: "bg-emerald-500",
-      label: "On Track",
-      badge: "bg-emerald-50 text-emerald-700"
-    }
+      bar: 'bg-emerald-500',
+      label: 'On Track',
+      badge: 'bg-emerald-50 text-emerald-700',
+    };
   }
   if (value >= 40) {
     return {
-      bar: "bg-amber-400",
-      label: "Needs Attention",
-      badge: "bg-amber-50 text-amber-700"
-    }
+      bar: 'bg-amber-400',
+      label: 'Needs Attention',
+      badge: 'bg-amber-50 text-amber-700',
+    };
   }
   return {
-    bar: "bg-rose-500",
-    label: "Needs Support",
-    badge: "bg-rose-50 text-rose-700"
-  }
-}
+    bar: 'bg-rose-500',
+    label: 'Needs Support',
+    badge: 'bg-rose-50 text-rose-700',
+  };
+};
 
 const ProgressBar = ({ value }: { value: number }) => {
-  const clamped = Math.min(100, Math.max(0, value))
-  const config = getProgressConfig(clamped)
+  const clamped = Math.min(100, Math.max(0, value));
+  const config = getProgressConfig(clamped);
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between text-xs text-gray-500">
@@ -119,45 +121,47 @@ const ProgressBar = ({ value }: { value: number }) => {
       <div className="w-full bg-gray-100 h-2 rounded-full">
         <div className={`${config.bar} h-2 rounded-full`} style={{ width: `${clamped}%` }} />
       </div>
-      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${config.badge}`}>
+      <span
+        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${config.badge}`}
+      >
         {config.label}
       </span>
     </div>
-  )
-}
+  );
+};
 
 const taskStatusStyles: Record<string, string> = {
-  Pending: "bg-amber-100 text-amber-700",
-  "In Progress": "bg-indigo-100 text-indigo-700",
-  Completed: "bg-emerald-100 text-emerald-700"
-}
+  Pending: 'bg-amber-100 text-amber-700',
+  'In Progress': 'bg-indigo-100 text-indigo-700',
+  Completed: 'bg-emerald-100 text-emerald-700',
+};
 
 const formatDate = (value: string) => {
-  if (!value) return "-"
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
-}
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+};
 
 const ClassDetailsDrawer = ({
   classItem,
   onClose,
   onManageStudents,
   onAssignTask,
-  onEdit
+  onEdit,
 }: {
-  classItem: EducatorClass | null
-  onClose: () => void
-  onManageStudents: (classItem: EducatorClass) => void
-  onAssignTask: () => void
-  onEdit: (classItem: EducatorClass) => void
+  classItem: EducatorClass | null;
+  onClose: () => void;
+  onManageStudents: (classItem: EducatorClass) => void;
+  onAssignTask: () => void;
+  onEdit: (classItem: EducatorClass) => void;
 }) => {
-  if (!classItem) return null
+  if (!classItem) return null;
 
-  const topStudents = classItem.students.slice(0, 5)
-  const activeTasks = classItem.tasks.slice(0, 4)
-  const recentNotes = classItem.notes.slice(0, 4)
-  const progressConfig = getProgressConfig(classItem.avg_progress)
+  const topStudents = classItem.students.slice(0, 5);
+  const activeTasks = classItem.tasks.slice(0, 4);
+  const recentNotes = classItem.notes.slice(0, 4);
+  const progressConfig = getProgressConfig(classItem.avg_progress);
 
   return (
     <div className="fixed inset-0 z-50">
@@ -174,12 +178,14 @@ const ClassDetailsDrawer = ({
               <StatusBadge status={classItem.status} />
             </div>
             <p className="mt-1 text-sm text-gray-500">{classItem.course}</p>
-            <p className="text-xs text-gray-400">{classItem.department} • Batch {classItem.year}</p>
-            {classItem.educator && classItem.educator !== "TBD" && (
+            <p className="text-xs text-gray-400">
+              {classItem.department} • Batch {classItem.year}
+            </p>
+            {classItem.educator && classItem.educator !== 'TBD' && (
               <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-gray-600">
                 <span className="text-gray-500">Class Teacher:</span>
                 <span className="font-medium text-gray-900">{classItem.educator}</span>
-                {classItem.educatorEmail && classItem.educatorEmail !== "Not assigned" && (
+                {classItem.educatorEmail && classItem.educatorEmail !== 'Not assigned' && (
                   <>
                     <span className="text-gray-400">•</span>
                     <a
@@ -214,7 +220,9 @@ const ClassDetailsDrawer = ({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="rounded-lg border border-gray-200 bg-white p-4">
               <p className="text-xs uppercase tracking-wide text-gray-500">Students</p>
-              <p className="mt-2 text-2xl font-semibold text-gray-900">{classItem.total_students}</p>
+              <p className="mt-2 text-2xl font-semibold text-gray-900">
+                {classItem.total_students}
+              </p>
             </div>
             <div className="rounded-lg border border-gray-200 bg-white p-4">
               <p className="text-xs uppercase tracking-wide text-gray-500">Average Progress</p>
@@ -224,7 +232,9 @@ const ClassDetailsDrawer = ({
             </div>
             <div className="rounded-lg border border-gray-200 bg-white p-4">
               <p className="text-xs uppercase tracking-wide text-gray-500">Performance Band</p>
-              <span className={`mt-3 inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold ${progressConfig.badge}`}>
+              <span
+                className={`mt-3 inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold ${progressConfig.badge}`}
+              >
                 {classItem.performance_band}
               </span>
             </div>
@@ -268,7 +278,9 @@ const ClassDetailsDrawer = ({
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-900">Student Progress</h3>
               {classItem.students.length > 5 && (
-                <span className="text-xs text-gray-500">Showing top 5 of {classItem.students.length}</span>
+                <span className="text-xs text-gray-500">
+                  Showing top 5 of {classItem.students.length}
+                </span>
               )}
             </div>
             <div className="mt-4 space-y-3">
@@ -278,8 +290,8 @@ const ClassDetailsDrawer = ({
                 </div>
               )}
               {topStudents.map((student) => {
-                const studentConfig = getProgressConfig(student.progress)
-                const progressValue = Math.min(100, Math.max(0, student.progress))
+                const studentConfig = getProgressConfig(student.progress);
+                const progressValue = Math.min(100, Math.max(0, student.progress));
                 return (
                   <div key={student.id} className="rounded-lg border border-gray-200 bg-white p-4">
                     <div className="flex items-center justify-between">
@@ -295,7 +307,10 @@ const ClassDetailsDrawer = ({
                       <span className="text-sm font-semibold text-gray-900">{progressValue}%</span>
                     </div>
                     <div className="mt-3 h-2 w-full rounded-full bg-gray-100">
-                      <div className={`${studentConfig.bar} h-2 rounded-full`} style={{ width: `${progressValue}%` }} />
+                      <div
+                        className={`${studentConfig.bar} h-2 rounded-full`}
+                        style={{ width: `${progressValue}%` }}
+                      />
                     </div>
                     {student.lastActive && (
                       <div className="mt-2 flex items-center text-xs text-gray-500">
@@ -304,7 +319,7 @@ const ClassDetailsDrawer = ({
                       </div>
                     )}
                   </div>
-                )
+                );
               })}
             </div>
           </section>
@@ -313,7 +328,9 @@ const ClassDetailsDrawer = ({
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-900">Tasks</h3>
               {classItem.tasks.length > 4 && (
-                <span className="text-xs text-gray-500">Showing recent {activeTasks.length} of {classItem.tasks.length}</span>
+                <span className="text-xs text-gray-500">
+                  Showing recent {activeTasks.length} of {classItem.tasks.length}
+                </span>
               )}
             </div>
             <div className="mt-4 space-y-3">
@@ -345,8 +362,9 @@ const ClassDetailsDrawer = ({
                       </div>
                     </div>
                     <span
-                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${taskStatusStyles[task.status] || "bg-gray-100 text-gray-600"
-                        }`}
+                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                        taskStatusStyles[task.status] || 'bg-gray-100 text-gray-600'
+                      }`}
                     >
                       {task.status}
                     </span>
@@ -372,7 +390,9 @@ const ClassDetailsDrawer = ({
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-900">Recent Notes</h3>
               {classItem.notes.length > 4 && (
-                <span className="text-xs text-gray-500">Showing latest {recentNotes.length} of {classItem.notes.length}</span>
+                <span className="text-xs text-gray-500">
+                  Showing latest {recentNotes.length} of {classItem.notes.length}
+                </span>
               )}
             </div>
             <div className="mt-4 space-y-3">
@@ -395,8 +415,8 @@ const ClassDetailsDrawer = ({
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
 const AddEditClassModal = ({
   isOpen,
@@ -406,51 +426,51 @@ const AddEditClassModal = ({
   educatorSchool,
   educatorCollege,
   educatorInfo,
-  educatorType
+  educatorType,
 }: {
-  isOpen: boolean
-  onClose: () => void
-  onSaved: (savedClass: EducatorClass) => void
-  editingClass?: EducatorClass | null
-  educatorSchool: { id: string; name: string } | null
-  educatorCollege: { id: string; name: string } | null
-  educatorInfo: { id: string; name: string; email: string } | null
-  educatorType: 'school' | 'college' | null
+  isOpen: boolean;
+  onClose: () => void;
+  onSaved: (savedClass: EducatorClass) => void;
+  editingClass?: EducatorClass | null;
+  educatorSchool: { id: string; name: string } | null;
+  educatorCollege: { id: string; name: string } | null;
+  educatorInfo: { id: string; name: string; email: string } | null;
+  educatorType: 'school' | 'college' | null;
 }) => {
-  const [name, setName] = useState("")
-  const [grade, setGrade] = useState("")
-  const [section, setSection] = useState("")
-  const [academicYear, setAcademicYear] = useState("")
-  const [maxStudents, setMaxStudents] = useState("40")
-  const [status, setStatus] = useState("Active")
-  const [skillInput, setSkillInput] = useState("")
-  const [error, setError] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
-  const statusOptions = ["Active", "Upcoming", "Completed"]
+  const [name, setName] = useState('');
+  const [grade, setGrade] = useState('');
+  const [section, setSection] = useState('');
+  const [academicYear, setAcademicYear] = useState('');
+  const [maxStudents, setMaxStudents] = useState('40');
+  const [status, setStatus] = useState('Active');
+  const [skillInput, setSkillInput] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const statusOptions = ['Active', 'Upcoming', 'Completed'];
 
   useEffect(() => {
     if (isOpen && editingClass) {
-      setName(editingClass.name)
-      setGrade(editingClass.course)
-      setSection(editingClass.department)
-      setAcademicYear(editingClass.year)
-      setMaxStudents(String(editingClass.total_students))
-      setStatus(editingClass.status)
-      setSkillInput(editingClass.skillAreas.join(", "))
+      setName(editingClass.name);
+      setGrade(editingClass.course);
+      setSection(editingClass.department);
+      setAcademicYear(editingClass.year);
+      setMaxStudents(String(editingClass.total_students));
+      setStatus(editingClass.status);
+      setSkillInput(editingClass.skillAreas.join(', '));
     } else if (!isOpen) {
-      setName("")
-      setGrade("")
-      setSection("")
-      setAcademicYear("")
-      setMaxStudents("40")
-      setStatus("Active")
-      setSkillInput("")
-      setError(null)
-      setSubmitting(false)
+      setName('');
+      setGrade('');
+      setSection('');
+      setAcademicYear('');
+      setMaxStudents('40');
+      setStatus('Active');
+      setSkillInput('');
+      setError(null);
+      setSubmitting(false);
     }
-  }, [isOpen, editingClass])
+  }, [isOpen, editingClass]);
 
-  if (!isOpen) return null
+  if (!isOpen) return null;
 
   const handleSubmit = async () => {
     // Debug logging
@@ -461,39 +481,45 @@ const AddEditClassModal = ({
       educatorType,
       hasEducatorInfo: !!educatorInfo,
       hasInstitution: !!(educatorSchool || educatorCollege),
-      hasEducatorType: !!educatorType
-    })
+      hasEducatorType: !!educatorType,
+    });
 
     // Validate required fields
-    if (!name.trim() || !grade.trim() || !section.trim() || !academicYear.trim() || !maxStudents.trim()) {
-      setError("Fill in all required fields")
-      return
+    if (
+      !name.trim() ||
+      !grade.trim() ||
+      !section.trim() ||
+      !academicYear.trim() ||
+      !maxStudents.trim()
+    ) {
+      setError('Fill in all required fields');
+      return;
     }
 
     // Validate educator info is available
     if (!educatorInfo) {
-      setError("Educator information not available")
-      return
+      setError('Educator information not available');
+      return;
     }
 
     if (!educatorSchool && !educatorCollege) {
-      setError("Institution information not available")
-      return
+      setError('Institution information not available');
+      return;
     }
 
     if (!educatorType) {
-      setError("Educator type not determined")
-      return
+      setError('Educator type not determined');
+      return;
     }
 
-    const maxStudentsNum = parseInt(maxStudents)
+    const maxStudentsNum = parseInt(maxStudents);
     if (isNaN(maxStudentsNum) || maxStudentsNum <= 0) {
-      setError("Max students must be a positive number")
-      return
+      setError('Max students must be a positive number');
+      return;
     }
 
-    setError(null)
-    setSubmitting(true)
+    setError(null);
+    setSubmitting(true);
 
     try {
       const payload = {
@@ -502,9 +528,9 @@ const AddEditClassModal = ({
         section: section.trim(),
         academicYear: academicYear.trim(),
         maxStudents: maxStudentsNum,
-        status: status as "Active" | "Completed" | "Upcoming",
+        status: status as 'Active' | 'Completed' | 'Upcoming',
         skillAreas: skillInput
-          .split(",")
+          .split(',')
           .map((value) => value.trim())
           .filter(Boolean),
         schoolId: educatorSchool?.id,
@@ -512,34 +538,34 @@ const AddEditClassModal = ({
         educatorId: educatorInfo.id,
         educatorName: educatorInfo.name,
         educatorEmail: educatorInfo.email,
-        educatorType: educatorType
-      }
+        educatorType: educatorType,
+      };
 
-      let result
+      let result;
       if (editingClass) {
-        result = await updateClass(editingClass.id, payload)
+        result = await updateClass(editingClass.id, payload);
       } else {
-        result = await createClass(payload)
+        result = await createClass(payload);
       }
 
-      const { data, error: serviceError } = result
-      
+      const { data, error: serviceError } = result;
+
       if (serviceError || !data) {
-        setError(serviceError || `Unable to ${editingClass ? 'update' : 'create'} class`)
-        toast.error(serviceError || `Unable to ${editingClass ? 'update' : 'create'} class`)
-        return
+        setError(serviceError || `Unable to ${editingClass ? 'update' : 'create'} class`);
+        toast.error(serviceError || `Unable to ${editingClass ? 'update' : 'create'} class`);
+        return;
       }
 
-      toast.success(`Class ${editingClass ? 'updated' : 'created'}`)
-      onSaved(data)
-      onClose()
+      toast.success(`Class ${editingClass ? 'updated' : 'created'}`);
+      onSaved(data);
+      onClose();
     } catch (err: any) {
-      setError(err.message || `Unable to ${editingClass ? 'update' : 'create'} class`)
-      toast.error(err.message || `Unable to ${editingClass ? 'update' : 'create'} class`)
+      setError(err.message || `Unable to ${editingClass ? 'update' : 'create'} class`);
+      toast.error(err.message || `Unable to ${editingClass ? 'update' : 'create'} class`);
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true">
@@ -548,8 +574,14 @@ const AddEditClassModal = ({
         <div className="inline-block w-full max-w-2xl transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left align-middle shadow-xl transition-all sm:my-8 sm:p-6">
           <div className="flex items-start justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">{editingClass ? 'Edit Class' : 'Create New Class'}</h2>
-              <p className="mt-1 text-sm text-gray-500">{editingClass ? 'Update class details' : 'Enter class details to add it to your educator workspace.'}</p>
+              <h2 className="text-lg font-semibold text-gray-900">
+                {editingClass ? 'Edit Class' : 'Create New Class'}
+              </h2>
+              <p className="mt-1 text-sm text-gray-500">
+                {editingClass
+                  ? 'Update class details'
+                  : 'Enter class details to add it to your educator workspace.'}
+              </p>
             </div>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600" type="button">
               <XMarkIcon className="h-6 w-6" />
@@ -599,7 +631,9 @@ const AddEditClassModal = ({
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">Academic Year *</label>
+                <label className="mb-1 block text-xs font-medium text-gray-700">
+                  Academic Year *
+                </label>
                 <input
                   value={academicYear}
                   onChange={(e) => setAcademicYear(e.target.value)}
@@ -610,7 +644,9 @@ const AddEditClassModal = ({
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">Max Students *</label>
+                <label className="mb-1 block text-xs font-medium text-gray-700">
+                  Max Students *
+                </label>
                 <input
                   value={maxStudents}
                   onChange={(e) => setMaxStudents(e.target.value)}
@@ -636,7 +672,9 @@ const AddEditClassModal = ({
                 </select>
               </div>
               <div className="sm:col-span-2">
-                <label className="mb-1 block text-xs font-medium text-gray-700">Skill Areas (comma separated)</label>
+                <label className="mb-1 block text-xs font-medium text-gray-700">
+                  Skill Areas (comma separated)
+                </label>
                 <input
                   value={skillInput}
                   onChange={(e) => setSkillInput(e.target.value)}
@@ -663,14 +701,20 @@ const AddEditClassModal = ({
               disabled={submitting}
               type="button"
             >
-              {submitting ? (editingClass ? 'Updating...' : 'Creating...') : (editingClass ? 'Update Class' : 'Create Class')}
+              {submitting
+                ? editingClass
+                  ? 'Updating...'
+                  : 'Creating...'
+                : editingClass
+                  ? 'Update Class'
+                  : 'Create Class'}
             </button>
           </div>
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
 const EmptyState = ({ onCreate }: { onCreate: () => void }) => {
   return (
@@ -680,7 +724,8 @@ const EmptyState = ({ onCreate }: { onCreate: () => void }) => {
       </div>
       <h2 className="mt-4 text-lg font-semibold text-gray-900">No classes yet</h2>
       <p className="mt-2 text-sm text-gray-500 max-w-sm">
-        No classes found. You can import from CSV or create one manually to get started with your educator workspace.
+        No classes found. You can import from CSV or create one manually to get started with your
+        educator workspace.
       </p>
       <div className="mt-6 flex flex-col space-y-3 w-full sm:w-auto">
         <button
@@ -698,30 +743,39 @@ const EmptyState = ({ onCreate }: { onCreate: () => void }) => {
         </Link>
       </div>
     </div>
-  )
-}
+  );
+};
 
 const ClassesPage = () => {
-  const navigate = useNavigate()
-  
+  const navigate = useNavigate();
+
   // Get auth context
-  const { user, isAuthenticated } = useAuth()
-  
+  const { user, isAuthenticated } = useAuth();
+
   // Get educator's school/college information
-  const { school: educatorSchool, college: educatorCollege, educatorType, loading: schoolLoading } = useEducatorSchool()
-  
+  const {
+    school: educatorSchool,
+    college: educatorCollege,
+    educatorType,
+    loading: schoolLoading,
+  } = useEducatorSchool();
+
   // Get educator ID securely
-  const { educatorId, loading: educatorIdLoading, error: educatorIdError } = useEducatorId()
-  
+  const { educatorId, loading: educatorIdLoading, error: educatorIdError } = useEducatorId();
+
   // Get educator information from auth context and database
-  const [educatorInfo, setEducatorInfo] = useState<{ id: string; name: string; email: string } | null>(null)
-  
+  const [educatorInfo, setEducatorInfo] = useState<{
+    id: string;
+    name: string;
+    email: string;
+  } | null>(null);
+
   useEffect(() => {
     const fetchEducatorInfo = async () => {
-      if (!user || !educatorId) return
-      
-      console.log('🔍 Fetching educator info:', { user: user.email, educatorId, educatorType })
-      
+      if (!user || !educatorId) return;
+
+      console.log('🔍 Fetching educator info:', { user: user.email, educatorId, educatorType });
+
       try {
         // Check if school or college educator
         if (educatorType === 'school') {
@@ -729,69 +783,77 @@ const ClassesPage = () => {
             .from('school_educators')
             .select('id, first_name, last_name, email')
             .eq('id', educatorId)
-            .single()
+            .single();
 
           if (educatorData) {
             const info = {
               id: educatorData.id,
-              name: `${educatorData.first_name || ''} ${educatorData.last_name || ''}`.trim() || educatorData.email,
-              email: educatorData.email
-            }
-            console.log('✅ School educator info loaded:', info)
-            setEducatorInfo(info)
+              name:
+                `${educatorData.first_name || ''} ${educatorData.last_name || ''}`.trim() ||
+                educatorData.email,
+              email: educatorData.email,
+            };
+            console.log('✅ School educator info loaded:', info);
+            setEducatorInfo(info);
           }
         } else if (educatorType === 'college') {
           const { data: educatorData } = await supabase
             .from('college_lecturers')
             .select('id, first_name, last_name, email')
             .eq('id', educatorId)
-            .single()
+            .single();
 
           if (educatorData) {
             const info = {
               id: educatorData.id,
-              name: `${educatorData.first_name || ''} ${educatorData.last_name || ''}`.trim() || educatorData.email,
-              email: educatorData.email
-            }
-            console.log('✅ College educator info loaded:', info)
-            setEducatorInfo(info)
+              name:
+                `${educatorData.first_name || ''} ${educatorData.last_name || ''}`.trim() ||
+                educatorData.email,
+              email: educatorData.email,
+            };
+            console.log('✅ College educator info loaded:', info);
+            setEducatorInfo(info);
           }
         }
       } catch (err) {
-        console.error('❌ Error fetching educator info:', err)
+        console.error('❌ Error fetching educator info:', err);
       }
-    }
+    };
 
-    fetchEducatorInfo()
-  }, [user, educatorId, educatorType])
+    fetchEducatorInfo();
+  }, [user, educatorId, educatorType]);
 
   // Security check: Ensure user is authenticated and has educator role
   useEffect(() => {
     if (!isAuthenticated) {
-      navigate('/auth/login')
-      return
+      navigate('/auth/login');
+      return;
     }
-    
-    if (user?.role !== 'educator' && user?.role !== 'school_educator' && user?.role !== 'college_educator') {
-      console.error('Unauthorized access attempt to educator classes page')
-      navigate('/auth/login')
-      return
+
+    if (
+      user?.role !== 'educator' &&
+      user?.role !== 'school_educator' &&
+      user?.role !== 'college_educator'
+    ) {
+      console.error('Unauthorized access attempt to educator classes page');
+      navigate('/auth/login');
+      return;
     }
-  }, [isAuthenticated, user, navigate])
-  
+  }, [isAuthenticated, user, navigate]);
+
   // Fetch classes - only for this specific educator
-  const { classes, loading, error, stats, upsertClass } = useClasses({ 
+  const { classes, loading, error, stats, upsertClass } = useClasses({
     schoolId: educatorSchool?.id,
     collegeId: educatorCollege?.id,
     educatorId: educatorId,
-    educatorType: educatorType
-  })
-  
-  const [viewMode, setViewMode] = useState("grid")
-  const [showFilters, setShowFilters] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage] = useState(25)
+    educatorType: educatorType,
+  });
+
+  const [viewMode, setViewMode] = useState('grid');
+  const [showFilters, setShowFilters] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(25);
 
   const [filters, setFilters] = useState({
     courses: [] as string[],
@@ -800,138 +862,148 @@ const ClassesPage = () => {
     departments: [] as string[],
     educators: [] as string[],
     skillAreas: [] as string[],
-    performanceBands: [] as string[]
-  })
-  const [detailClass, setDetailClass] = useState<EducatorClass | null>(null)
-  const [manageStudentsClass, setManageStudentsClass] = useState<EducatorClass | null>(null)
-  const [showAddClassModal, setShowAddClassModal] = useState(false)
-  const [editingClass, setEditingClass] = useState<EducatorClass | null>(null)
+    performanceBands: [] as string[],
+  });
+  const [detailClass, setDetailClass] = useState<EducatorClass | null>(null);
+  const [manageStudentsClass, setManageStudentsClass] = useState<EducatorClass | null>(null);
+  const [showAddClassModal, setShowAddClassModal] = useState(false);
+  const [editingClass, setEditingClass] = useState<EducatorClass | null>(null);
 
   useEffect(() => {
-    setCurrentPage(1)
-  }, [searchQuery, filters])
+    setCurrentPage(1);
+  }, [searchQuery, filters]);
 
   const courseOptions = useMemo(() => {
-    const counts: Record<string, number> = {}
+    const counts: Record<string, number> = {};
     classes.forEach((item) => {
-      const value = item.course.toLowerCase()
-      counts[value] = (counts[value] || 0) + 1
-    })
+      const value = item.course.toLowerCase();
+      counts[value] = (counts[value] || 0) + 1;
+    });
     return Object.entries(counts)
       .map(([value, count]) => ({
         value,
         label: value.replace(/\b\w/g, (letter) => letter.toUpperCase()),
-        count
+        count,
       }))
-      .sort((a, b) => b.count - a.count)
-  }, [classes])
+      .sort((a, b) => b.count - a.count);
+  }, [classes]);
 
   const departmentOptions = useMemo(() => {
-    const counts: Record<string, number> = {}
+    const counts: Record<string, number> = {};
     classes.forEach((item) => {
-      const value = item.department.toLowerCase()
-      counts[value] = (counts[value] || 0) + 1
-    })
+      const value = item.department.toLowerCase();
+      counts[value] = (counts[value] || 0) + 1;
+    });
     return Object.entries(counts)
       .map(([value, count]) => ({
         value,
         label: value.replace(/\b\w/g, (letter) => letter.toUpperCase()),
-        count
+        count,
       }))
-      .sort((a, b) => b.count - a.count)
-  }, [classes])
+      .sort((a, b) => b.count - a.count);
+  }, [classes]);
 
   const yearOptions = useMemo(() => {
-    const counts: Record<string, number> = {}
+    const counts: Record<string, number> = {};
     classes.forEach((item) => {
-      counts[item.year] = (counts[item.year] || 0) + 1
-    })
+      counts[item.year] = (counts[item.year] || 0) + 1;
+    });
     return Object.entries(counts)
       .map(([value, count]) => ({ value, label: value, count }))
-      .sort((a, b) => Number(b.value) - Number(a.value))
-  }, [classes])
+      .sort((a, b) => Number(b.value) - Number(a.value));
+  }, [classes]);
 
   const educatorOptions = useMemo(() => {
-    const counts: Record<string, number> = {}
+    const counts: Record<string, number> = {};
     classes.forEach((item) => {
-      const value = item.educator.toLowerCase()
-      counts[value] = (counts[value] || 0) + 1
-    })
+      const value = item.educator.toLowerCase();
+      counts[value] = (counts[value] || 0) + 1;
+    });
     return Object.entries(counts)
       .map(([value, count]) => ({
         value,
         label: value.replace(/\b\w/g, (letter) => letter.toUpperCase()),
-        count
+        count,
       }))
-      .sort((a, b) => b.count - a.count)
-  }, [classes])
+      .sort((a, b) => b.count - a.count);
+  }, [classes]);
 
   const statusOptions = useMemo(() => {
-    const counts: Record<string, number> = {}
+    const counts: Record<string, number> = {};
     classes.forEach((item) => {
-      const value = item.status.toLowerCase()
-      counts[value] = (counts[value] || 0) + 1
-    })
+      const value = item.status.toLowerCase();
+      counts[value] = (counts[value] || 0) + 1;
+    });
     return Object.entries(counts)
       .map(([value, count]) => ({
         value,
         label: value.replace(/\b\w/g, (letter) => letter.toUpperCase()),
-        count
+        count,
       }))
-      .sort((a, b) => b.count - a.count)
-  }, [classes])
+      .sort((a, b) => b.count - a.count);
+  }, [classes]);
 
   const skillAreaOptions = useMemo(() => {
-    const counts: Record<string, number> = {}
+    const counts: Record<string, number> = {};
     classes.forEach((item) => {
       item.skillAreas.forEach((area) => {
-        const key = area.toLowerCase()
-        counts[key] = (counts[key] || 0) + 1
-      })
-    })
+        const key = area.toLowerCase();
+        counts[key] = (counts[key] || 0) + 1;
+      });
+    });
     return Object.entries(counts)
       .map(([value, count]) => ({
         value,
         label: value.replace(/\b\w/g, (letter) => letter.toUpperCase()),
-        count
+        count,
       }))
-      .sort((a, b) => b.count - a.count)
-  }, [classes])
+      .sort((a, b) => b.count - a.count);
+  }, [classes]);
 
   const performanceOptions = useMemo(() => {
-    const counts: Record<string, number> = {}
+    const counts: Record<string, number> = {};
     classes.forEach((item) => {
-      const value = item.performance_band.toLowerCase()
-      counts[value] = (counts[value] || 0) + 1
-    })
+      const value = item.performance_band.toLowerCase();
+      counts[value] = (counts[value] || 0) + 1;
+    });
     return Object.entries(counts)
       .map(([value, count]) => ({
         value,
         label: value.replace(/\b\w/g, (letter) => letter.toUpperCase()),
-        count
+        count,
       }))
-      .sort((a, b) => b.count - a.count)
-  }, [classes])
+      .sort((a, b) => b.count - a.count);
+  }, [classes]);
 
   const filteredClasses = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase()
+    const query = searchQuery.trim().toLowerCase();
 
     return classes.filter((item) => {
       const matchesSearch = query
-        ? [item.name, item.course, item.educator, item.department, item.year].some((field) => field.toLowerCase().includes(query))
-        : true
+        ? [item.name, item.course, item.educator, item.department, item.year].some((field) =>
+            field.toLowerCase().includes(query)
+          )
+        : true;
 
-      const matchesCourse = filters.courses.length ? filters.courses.includes(item.course.toLowerCase()) : true
-      const matchesYear = filters.years.length ? filters.years.includes(item.year) : true
-      const matchesStatus = filters.statuses.length ? filters.statuses.includes(item.status.toLowerCase()) : true
-      const matchesDepartment = filters.departments.length ? filters.departments.includes(item.department.toLowerCase()) : true
-      const matchesEducator = filters.educators.length ? filters.educators.includes(item.educator.toLowerCase()) : true
+      const matchesCourse = filters.courses.length
+        ? filters.courses.includes(item.course.toLowerCase())
+        : true;
+      const matchesYear = filters.years.length ? filters.years.includes(item.year) : true;
+      const matchesStatus = filters.statuses.length
+        ? filters.statuses.includes(item.status.toLowerCase())
+        : true;
+      const matchesDepartment = filters.departments.length
+        ? filters.departments.includes(item.department.toLowerCase())
+        : true;
+      const matchesEducator = filters.educators.length
+        ? filters.educators.includes(item.educator.toLowerCase())
+        : true;
       const matchesSkill = filters.skillAreas.length
         ? item.skillAreas.some((area) => filters.skillAreas.includes(area.toLowerCase()))
-        : true
+        : true;
       const matchesPerformance = filters.performanceBands.length
         ? filters.performanceBands.includes(item.performance_band.toLowerCase())
-        : true
+        : true;
 
       return (
         matchesSearch &&
@@ -942,20 +1014,20 @@ const ClassesPage = () => {
         matchesEducator &&
         matchesSkill &&
         matchesPerformance
-      )
-    })
-  }, [classes, searchQuery, filters])
+      );
+    });
+  }, [classes, searchQuery, filters]);
 
-  const totalItems = filteredClasses.length
-  const totalPages = Math.ceil(totalItems / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const paginatedClasses = filteredClasses.slice(startIndex, endIndex)
+  const totalItems = filteredClasses.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedClasses = filteredClasses.slice(startIndex, endIndex);
 
   const handlePageChange = (page: number) => {
-    setCurrentPage(page)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const handleClearFilters = () => {
     setFilters({
@@ -965,19 +1037,19 @@ const ClassesPage = () => {
       departments: [],
       educators: [],
       skillAreas: [],
-      performanceBands: []
-    })
-  }
+      performanceBands: [],
+    });
+  };
 
   const handleViewDetails = (classItem: EducatorClass) => {
-    const matched = classes.find((item) => item.id === classItem.id)
-    setDetailClass(matched || classItem)
-  }
+    const matched = classes.find((item) => item.id === classItem.id);
+    setDetailClass(matched || classItem);
+  };
 
   const handleEditClass = (classItem: EducatorClass) => {
-    setEditingClass(classItem)
-    setShowAddClassModal(true)
-  }
+    setEditingClass(classItem);
+    setShowAddClassModal(true);
+  };
 
   const totalFilters =
     filters.courses.length +
@@ -986,30 +1058,35 @@ const ClassesPage = () => {
     filters.departments.length +
     filters.educators.length +
     filters.skillAreas.length +
-    filters.performanceBands.length
+    filters.performanceBands.length;
 
-  const isLoading = loading || schoolLoading || educatorIdLoading
+  const isLoading = loading || schoolLoading || educatorIdLoading;
   // Only show actual errors, not "Educator record not found" which is expected for new educators
-  const hasError = error && error !== 'Educator record not found'
-  const isEmpty = !isLoading && paginatedClasses.length === 0 && !hasError && !searchQuery && totalFilters === 0
+  const hasError = error && error !== 'Educator record not found';
+  const isEmpty =
+    !isLoading && paginatedClasses.length === 0 && !hasError && !searchQuery && totalFilters === 0;
 
   // For college educators, show program sections page instead
   if (educatorType === 'college') {
-    return <ProgramSectionsPage />
+    return <ProgramSectionsPage />;
   }
 
   return (
     <div className="flex  overflow-y-auto mb-4 flex-col h-screen">
-      <div className='p-4 sm:p-6 lg:p-8 mb-2'>
+      <div className="p-4 sm:p-6 lg:p-8 mb-2">
         <h1 className="text-xl md:text-3xl font-bold text-gray-900">Classes Management</h1>
-        <p className="text-base md:text-lg mt-2 text-gray-600">Manage your classes and manage student progress here.</p>
+        <p className="text-base md:text-lg mt-2 text-gray-600">
+          Manage your classes and manage student progress here.
+        </p>
       </div>
 
       <div className="px-4 sm:px-6 lg:px-8 hidden lg:flex items-center p-4 bg-white border-b border-gray-200">
         <div className="w-80 flex-shrink-0 pr-4 text-left">
           <div className="inline-flex items-baseline">
             <h1 className="text-xl font-semibold text-gray-900">Classes</h1>
-            <span className="ml-2 text-sm text-gray-500">({stats.activeCount} active of {stats.total} total)</span>
+            <span className="ml-2 text-sm text-gray-500">
+              ({stats.activeCount} active of {stats.total} total)
+            </span>
           </div>
         </div>
 
@@ -1040,21 +1117,23 @@ const ClassesPage = () => {
           </button>
           <div className="flex rounded-md shadow-sm">
             <button
-              onClick={() => setViewMode("grid")}
-              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${viewMode === "grid"
-                ? "bg-indigo-50 border-indigo-300 text-indigo-700"
-                : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
-                }`}
+              onClick={() => setViewMode('grid')}
+              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${
+                viewMode === 'grid'
+                  ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
               type="button"
             >
               <Squares2X2Icon className="h-4 w-4" />
             </button>
             <button
-              onClick={() => setViewMode("table")}
-              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${viewMode === "table"
-                ? "bg-indigo-50 border-indigo-300 text-indigo-700"
-                : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
-                }`}
+              onClick={() => setViewMode('table')}
+              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${
+                viewMode === 'table'
+                  ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
               type="button"
             >
               <TableCellsIcon className="h-4 w-4" />
@@ -1070,7 +1149,12 @@ const ClassesPage = () => {
         </div>
 
         <div>
-          <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search classes" size="md" />
+          <SearchBar
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search classes"
+            size="md"
+          />
         </div>
 
         <div className="flex items-center space-x-2">
@@ -1089,21 +1173,23 @@ const ClassesPage = () => {
           </button>
           <div className="flex rounded-md shadow-sm">
             <button
-              onClick={() => setViewMode("grid")}
-              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${viewMode === "grid"
-                ? "bg-indigo-50 border-indigo-300 text-indigo-700"
-                : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
-                }`}
+              onClick={() => setViewMode('grid')}
+              className={`px-3 py-2 text-sm font-medium rounded-l-md border ${
+                viewMode === 'grid'
+                  ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
               type="button"
             >
               <Squares2X2Icon className="h-4 w-4" />
             </button>
             <button
-              onClick={() => setViewMode("table")}
-              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${viewMode === "table"
-                ? "bg-indigo-50 border-indigo-300 text-indigo-700"
-                : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
-                }`}
+              onClick={() => setViewMode('table')}
+              className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${
+                viewMode === 'table'
+                  ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
               type="button"
             >
               <TableCellsIcon className="h-4 w-4" />
@@ -1115,13 +1201,20 @@ const ClassesPage = () => {
       <div className="flex flex-1 relative">
         {showFilters && (
           <>
-            <div className="fixed inset-0 z-40 bg-gray-900/40 lg:hidden" onClick={() => setShowFilters(false)} />
+            <div
+              className="fixed inset-0 z-40 bg-gray-900/40 lg:hidden"
+              onClick={() => setShowFilters(false)}
+            />
             <div className="fixed inset-y-0 left-0 z-50 w-80 bg-white border-r border-gray-200 overflow-y-auto shadow-xl lg:static lg:inset-auto lg:z-auto lg:h-full lg:flex-shrink-0 lg:shadow-none">
               <div className="p-4">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="font-medium text-gray-900">Filters</h2>
                   <div className="flex items-center gap-3">
-                    <button onClick={handleClearFilters} className="text-sm text-indigo-600 hover:text-indigo-700" type="button">
+                    <button
+                      onClick={handleClearFilters}
+                      className="text-sm text-indigo-600 hover:text-indigo-700"
+                      type="button"
+                    >
                       Clear all
                     </button>
                     <button
@@ -1140,7 +1233,9 @@ const ClassesPage = () => {
                     <CheckboxGroup
                       options={courseOptions}
                       selectedValues={filters.courses}
-                      onChange={(values: string[]) => setFilters((prev) => ({ ...prev, courses: values }))}
+                      onChange={(values: string[]) =>
+                        setFilters((prev) => ({ ...prev, courses: values }))
+                      }
                     />
                   </FilterSection>
 
@@ -1148,7 +1243,9 @@ const ClassesPage = () => {
                     <CheckboxGroup
                       options={yearOptions}
                       selectedValues={filters.years}
-                      onChange={(values: string[]) => setFilters((prev) => ({ ...prev, years: values }))}
+                      onChange={(values: string[]) =>
+                        setFilters((prev) => ({ ...prev, years: values }))
+                      }
                     />
                   </FilterSection>
 
@@ -1156,7 +1253,9 @@ const ClassesPage = () => {
                     <CheckboxGroup
                       options={statusOptions}
                       selectedValues={filters.statuses}
-                      onChange={(values: string[]) => setFilters((prev) => ({ ...prev, statuses: values }))}
+                      onChange={(values: string[]) =>
+                        setFilters((prev) => ({ ...prev, statuses: values }))
+                      }
                     />
                   </FilterSection>
 
@@ -1164,7 +1263,9 @@ const ClassesPage = () => {
                     <CheckboxGroup
                       options={departmentOptions}
                       selectedValues={filters.departments}
-                      onChange={(values: string[]) => setFilters((prev) => ({ ...prev, departments: values }))}
+                      onChange={(values: string[]) =>
+                        setFilters((prev) => ({ ...prev, departments: values }))
+                      }
                     />
                   </FilterSection>
 
@@ -1172,7 +1273,9 @@ const ClassesPage = () => {
                     <CheckboxGroup
                       options={educatorOptions}
                       selectedValues={filters.educators}
-                      onChange={(values: string[]) => setFilters((prev) => ({ ...prev, educators: values }))}
+                      onChange={(values: string[]) =>
+                        setFilters((prev) => ({ ...prev, educators: values }))
+                      }
                     />
                   </FilterSection>
 
@@ -1180,7 +1283,9 @@ const ClassesPage = () => {
                     <CheckboxGroup
                       options={skillAreaOptions}
                       selectedValues={filters.skillAreas}
-                      onChange={(values: string[]) => setFilters((prev) => ({ ...prev, skillAreas: values }))}
+                      onChange={(values: string[]) =>
+                        setFilters((prev) => ({ ...prev, skillAreas: values }))
+                      }
                     />
                   </FilterSection>
 
@@ -1188,7 +1293,9 @@ const ClassesPage = () => {
                     <CheckboxGroup
                       options={performanceOptions}
                       selectedValues={filters.performanceBands}
-                      onChange={(values: string[]) => setFilters((prev) => ({ ...prev, performanceBands: values }))}
+                      onChange={(values: string[]) =>
+                        setFilters((prev) => ({ ...prev, performanceBands: values }))
+                      }
                     />
                   </FilterSection>
                 </div>
@@ -1200,13 +1307,14 @@ const ClassesPage = () => {
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="px-4 sm:px-6 lg:px-8 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
             <p className="text-sm text-gray-700">
-              Showing <span className="font-medium">{filteredClasses.length}</span> result{filteredClasses.length === 1 ? "" : "s"}
+              Showing <span className="font-medium">{filteredClasses.length}</span> result
+              {filteredClasses.length === 1 ? '' : 's'}
               {searchQuery && <span className="text-gray-500"> for "{searchQuery}"</span>}
             </p>
             <button
               onClick={() => {
-                setEditingClass(null)
-                setShowAddClassModal(true)
+                setEditingClass(null);
+                setShowAddClassModal(true);
               }}
               className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
               type="button"
@@ -1225,19 +1333,24 @@ const ClassesPage = () => {
             )}
             {!isLoading && hasError && (
               <div className="bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-md p-4">
-                {error || "Failed to load classes"}
+                {error || 'Failed to load classes'}
               </div>
             )}
             {!isLoading && isEmpty && <EmptyState onCreate={() => setShowAddClassModal(true)} />}
 
-            {!isLoading && !isEmpty && viewMode === "grid" && paginatedClasses.length > 0 && (
+            {!isLoading && !isEmpty && viewMode === 'grid' && paginatedClasses.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {paginatedClasses.map((classItem) => (
-                  <div key={classItem.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                  <div
+                    key={classItem.id}
+                    className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                  >
                     <div className="flex items-start justify-between mb-3">
                       <div>
                         <h3 className="font-semibold text-gray-900">{classItem.name}</h3>
-                        <p className="text-xs text-gray-400">Section {classItem.department} • {classItem.year}</p>
+                        <p className="text-xs text-gray-400">
+                          Section {classItem.department} • {classItem.year}
+                        </p>
                         <p className="text-sm text-gray-500">Grade {classItem.course}</p>
                       </div>
                       <StatusBadge status={classItem.status} />
@@ -1251,15 +1364,19 @@ const ClassesPage = () => {
                         </span>
                       </div>
                       <ProgressBar value={classItem.avg_progress} />
-                      {classItem.educator && classItem.educator !== "TBD" && (
+                      {classItem.educator && classItem.educator !== 'TBD' && (
                         <div className="text-sm text-gray-600">
-                          <span className="text-gray-500">Class Teacher:</span> <span className="font-medium text-gray-900">{classItem.educator}</span>
+                          <span className="text-gray-500">Class Teacher:</span>{' '}
+                          <span className="font-medium text-gray-900">{classItem.educator}</span>
                         </div>
                       )}
                       {classItem.skillAreas.length > 0 && (
                         <div className="flex flex-wrap gap-2">
                           {classItem.skillAreas.map((skill) => (
-                            <span key={skill} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700">
+                            <span
+                              key={skill}
+                              className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700"
+                            >
                               {skill}
                             </span>
                           ))}
@@ -1302,18 +1419,32 @@ const ClassesPage = () => {
               </div>
             )}
 
-            {!isLoading && !isEmpty && viewMode === "table" && paginatedClasses.length > 0 && (
+            {!isLoading && !isEmpty && viewMode === 'table' && paginatedClasses.length > 0 && (
               <div className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Students</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Progress</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Skill Areas</th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Class
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Course
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Students
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Progress
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Skill Areas
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -1323,8 +1454,12 @@ const ClassesPage = () => {
                           <div className="text-sm font-medium text-gray-900">{classItem.name}</div>
                           <div className="text-xs text-gray-500">{classItem.educator}</div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{classItem.course}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{classItem.total_students}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {classItem.course}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {classItem.total_students}
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="w-36">
                             <ProgressBar value={classItem.avg_progress} />
@@ -1336,24 +1471,41 @@ const ClassesPage = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           <div className="flex flex-wrap gap-1 max-w-[180px]">
                             {classItem.skillAreas.slice(0, 3).map((skill) => (
-                              <span key={skill} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700">
+                              <span
+                                key={skill}
+                                className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700"
+                              >
                                 {skill}
                               </span>
                             ))}
                             {classItem.skillAreas.length > 3 && (
-                              <span className="text-xs text-gray-500">+{classItem.skillAreas.length - 3}</span>
+                              <span className="text-xs text-gray-500">
+                                +{classItem.skillAreas.length - 3}
+                              </span>
                             )}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex items-center justify-end space-x-2">
-                            <button onClick={() => handleEditClass(classItem)} className="text-indigo-600 hover:text-indigo-900" type="button">
+                            <button
+                              onClick={() => handleEditClass(classItem)}
+                              className="text-indigo-600 hover:text-indigo-900"
+                              type="button"
+                            >
                               Edit
                             </button>
-                            <button onClick={() => setManageStudentsClass(classItem)} className="text-indigo-600 hover:text-indigo-900" type="button">
+                            <button
+                              onClick={() => setManageStudentsClass(classItem)}
+                              className="text-indigo-600 hover:text-indigo-900"
+                              type="button"
+                            >
                               Students
                             </button>
-                            <button onClick={() => handleViewDetails(classItem)} className="text-indigo-600 hover:text-indigo-900" type="button">
+                            <button
+                              onClick={() => handleViewDetails(classItem)}
+                              className="text-indigo-600 hover:text-indigo-900"
+                              type="button"
+                            >
                               View
                             </button>
                           </div>
@@ -1372,7 +1524,11 @@ const ClassesPage = () => {
               <div className="text-center py-10 text-sm text-gray-500">
                 No classes match your current filters. Try adjusting filters or clearing them.
                 <div className="mt-3">
-                  <button onClick={handleClearFilters} className="text-sm font-medium text-indigo-600 hover:text-indigo-700" type="button">
+                  <button
+                    onClick={handleClearFilters}
+                    className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                    type="button"
+                  >
                     Clear all filters
                   </button>
                 </div>
@@ -1395,13 +1551,13 @@ const ClassesPage = () => {
       <AddEditClassModal
         isOpen={showAddClassModal}
         onClose={() => {
-          setShowAddClassModal(false)
-          setEditingClass(null)
+          setShowAddClassModal(false);
+          setEditingClass(null);
         }}
         onSaved={(savedClass) => {
-          upsertClass(savedClass)
-          setShowAddClassModal(false)
-          setEditingClass(null)
+          upsertClass(savedClass);
+          setShowAddClassModal(false);
+          setEditingClass(null);
         }}
         editingClass={editingClass}
         educatorSchool={educatorSchool}
@@ -1418,10 +1574,10 @@ const ClassesPage = () => {
         collegeId={educatorCollege?.id}
         educatorType={educatorType as 'school' | 'college'}
         onStudentsUpdated={(updated) => {
-          upsertClass(updated)
-          setManageStudentsClass(updated)
+          upsertClass(updated);
+          setManageStudentsClass(updated);
           if (detailClass && detailClass.id === updated.id) {
-            setDetailClass(updated)
+            setDetailClass(updated);
           }
         }}
       />
@@ -1430,19 +1586,19 @@ const ClassesPage = () => {
         classItem={detailClass}
         onClose={() => setDetailClass(null)}
         onEdit={(item) => {
-          handleEditClass(item)
-          setDetailClass(null)
+          handleEditClass(item);
+          setDetailClass(null);
         }}
         onManageStudents={(item) => {
-          setManageStudentsClass(item)
-          setDetailClass(item)
+          setManageStudentsClass(item);
+          setDetailClass(item);
         }}
         onAssignTask={() => {
-          navigate("/educator/assignments")
+          navigate('/educator/assignments');
         }}
       />
     </div>
-  )
-}
+  );
+};
 
-export default ClassesPage
+export default ClassesPage;

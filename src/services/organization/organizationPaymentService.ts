@@ -1,6 +1,6 @@
 /**
  * Organization Payment Service
- * 
+ *
  * Handles Razorpay integration for organization bulk purchases.
  * Creates orders, processes payments, and creates organization subscriptions.
  */
@@ -53,16 +53,18 @@ export interface OrganizationOrderResult {
 // ============================================================================
 
 const getAuthHeaders = async () => {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   const token = session?.access_token;
-  
+
   if (!token) {
     throw new Error('No authentication token available');
   }
-  
+
   return {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`,
+    Authorization: `Bearer ${token}`,
   };
 };
 
@@ -96,9 +98,9 @@ export async function createOrganizationOrder(
 ): Promise<OrganizationOrderResult> {
   try {
     console.log('[OrgPayment] Creating organization order:', purchaseData);
-    
+
     const headers = await getAuthHeaders();
-    
+
     // Create order via Worker
     const response = await fetch(`${WORKER_URL}/create-org-order`, {
       method: 'POST',
@@ -143,9 +145,9 @@ export async function verifyOrganizationPayment(paymentData: {
 }): Promise<{ success: boolean; subscription?: any; error?: string }> {
   try {
     console.log('[OrgPayment] Verifying payment:', paymentData.razorpay_payment_id);
-    
+
     const headers = await getAuthHeaders();
-    
+
     const response = await fetch(`${WORKER_URL}/verify-org-payment`, {
       method: 'POST',
       headers,
@@ -177,9 +179,9 @@ export async function purchaseOrganizationSubscription(
 ): Promise<{ success: boolean; subscription?: any; error?: string }> {
   try {
     console.log('[OrgPayment] Purchasing subscription directly:', purchaseData);
-    
+
     const headers = await getAuthHeaders();
-    
+
     const response = await fetch(`${WORKER_URL}/org-subscriptions/purchase`, {
       method: 'POST',
       headers,
@@ -215,7 +217,7 @@ export async function initiateOrganizationPayment(params: {
   onFailure: (error: Error) => void;
 }): Promise<void> {
   const { purchaseData, onSuccess, onFailure } = params;
-  
+
   try {
     // Store purchase data in localStorage for success page
     localStorage.setItem('org_payment_purchase_data', JSON.stringify(purchaseData));
@@ -231,7 +233,7 @@ export async function initiateOrganizationPayment(params: {
 
     // Get current origin for redirect URLs
     const origin = window.location.origin;
-    
+
     // Get base path from current location
     const pathname = window.location.pathname;
     let basePath = '/school-admin';
@@ -273,7 +275,7 @@ export async function initiateOrganizationPayment(params: {
             razorpay_signature: response.razorpay_signature,
             purchaseData,
           });
-          
+
           if (verificationResult.success) {
             onSuccess(verificationResult);
           } else {

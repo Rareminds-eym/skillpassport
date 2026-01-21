@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { supabase } from "../../../../../lib/supabaseClient";
-import toast from "react-hot-toast";
-import { StudentLedger, FeePayment, StudentFeeSummary, PaymentStatus } from "../types";
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { supabase } from '../../../../../lib/supabaseClient';
+import toast from 'react-hot-toast';
+import { StudentLedger, FeePayment, StudentFeeSummary, PaymentStatus } from '../types';
 
 export const useFeeTracking = (schoolId: string | null) => {
   const [ledgers, setLedgers] = useState<StudentLedger[]>([]);
@@ -10,18 +10,18 @@ export const useFeeTracking = (schoolId: string | null) => {
 
   const loadLedgers = useCallback(async () => {
     if (!schoolId) return;
-    
+
     try {
       setLoading(true);
       console.log('🚀 [Fee Tracking] Loading student ledgers for school:', schoolId);
 
       // Try to load from database first
       const { data, error } = await supabase
-        .from("school_student_ledgers")
-        .select("*")
-        .eq("school_id", schoolId)
-        .order("student_name", { ascending: true });
-      
+        .from('school_student_ledgers')
+        .select('*')
+        .eq('school_id', schoolId)
+        .order('student_name', { ascending: true });
+
       if (error) {
         console.error('Student ledgers query failed:', error);
         // Load students and create mock ledgers
@@ -37,8 +37,8 @@ export const useFeeTracking = (schoolId: string | null) => {
         await loadStudentsAsFallback();
       }
     } catch (err) {
-      console.error("Failed to load ledgers:", err);
-      toast.error("Failed to load student ledgers");
+      console.error('Failed to load ledgers:', err);
+      toast.error('Failed to load student ledgers');
       setLedgers([]);
     } finally {
       setLoading(false);
@@ -47,17 +47,17 @@ export const useFeeTracking = (schoolId: string | null) => {
 
   const loadStudentsAsFallback = useCallback(async () => {
     if (!schoolId) return;
-    
+
     try {
       console.log('🚀 [Fee Tracking] Loading students for school:', schoolId);
-      
+
       // Get all students for this school
       const { data: students, error } = await supabase
-        .from("students")
-        .select("id, user_id, name, roll_number, email, school_id, grade, section")
-        .eq("school_id", schoolId)
-        .order("name", { ascending: true });
-      
+        .from('students')
+        .select('id, user_id, name, roll_number, email, school_id, grade, section')
+        .eq('school_id', schoolId)
+        .order('name', { ascending: true });
+
       if (error) {
         console.error('Students query failed:', error);
         // Create completely mock data
@@ -128,36 +128,38 @@ export const useFeeTracking = (schoolId: string | null) => {
       console.log(`✅ [Fee Tracking] Found ${students?.length || 0} students in school`);
 
       // Create ledger entries for all students (real + mock)
-      const allLedgers = students?.map((student: any) => {
-        const studentId = student.user_id || student.id;
-        const mockAmount = 5000 + Math.floor(Math.random() * 3000); // 5K-8K
-        const paidAmount = Math.random() > 0.3 ? Math.floor(Math.random() * mockAmount * 0.8) : 0;
-        
-        return {
-          id: `mock-${student.id}`,
-          student_id: studentId,
-          student_name: student.name || 'Unknown',
-          roll_number: student.roll_number || 'N/A',
-          student_email: student.email || '',
-          school_id: student.school_id,
-          fee_structure_id: 'mock-fee-structure',
-          fee_head_id: 'mock-fee-head',
-          fee_head_name: 'Tuition Fee',
-          due_amount: mockAmount,
-          paid_amount: paidAmount,
-          balance: mockAmount - paidAmount,
-          due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          payment_status: (mockAmount - paidAmount) <= 0 ? 'paid' : paidAmount > 0 ? 'partial' : 'pending',
-          is_overdue: Math.random() > 0.8, // 20% chance of being overdue
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        } as StudentLedger;
-      }) || [];
+      const allLedgers =
+        students?.map((student: any) => {
+          const studentId = student.user_id || student.id;
+          const mockAmount = 5000 + Math.floor(Math.random() * 3000); // 5K-8K
+          const paidAmount = Math.random() > 0.3 ? Math.floor(Math.random() * mockAmount * 0.8) : 0;
+
+          return {
+            id: `mock-${student.id}`,
+            student_id: studentId,
+            student_name: student.name || 'Unknown',
+            roll_number: student.roll_number || 'N/A',
+            student_email: student.email || '',
+            school_id: student.school_id,
+            fee_structure_id: 'mock-fee-structure',
+            fee_head_id: 'mock-fee-head',
+            fee_head_name: 'Tuition Fee',
+            due_amount: mockAmount,
+            paid_amount: paidAmount,
+            balance: mockAmount - paidAmount,
+            due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+            payment_status:
+              mockAmount - paidAmount <= 0 ? 'paid' : paidAmount > 0 ? 'partial' : 'pending',
+            is_overdue: Math.random() > 0.8, // 20% chance of being overdue
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          } as StudentLedger;
+        }) || [];
 
       console.log(`✅ [Fee Tracking] Created ${allLedgers.length} ledger entries`);
       setLedgers(allLedgers);
     } catch (err) {
-      console.error("Failed to load students:", err);
+      console.error('Failed to load students:', err);
       setLedgers([]);
     }
   }, [schoolId]);
@@ -165,11 +167,11 @@ export const useFeeTracking = (schoolId: string | null) => {
   const loadPayments = useCallback(async (studentId?: string) => {
     try {
       let query = supabase
-        .from("school_fee_payments")
-        .select("*")
-        .order("payment_date", { ascending: false });
+        .from('school_fee_payments')
+        .select('*')
+        .order('payment_date', { ascending: false });
 
-      if (studentId) query = query.eq("student_id", studentId);
+      if (studentId) query = query.eq('student_id', studentId);
 
       const { data, error } = await query;
       if (error) {
@@ -179,7 +181,7 @@ export const useFeeTracking = (schoolId: string | null) => {
       }
       setPayments(data || []);
     } catch (err) {
-      console.error("Failed to load payments:", err);
+      console.error('Failed to load payments:', err);
       setPayments([]);
     }
   }, []);
@@ -187,10 +189,12 @@ export const useFeeTracking = (schoolId: string | null) => {
   // Generate receipt number
   const generateReceiptNumber = () => {
     const date = new Date();
-    const prefix = "SCH";
+    const prefix = 'SCH';
     const year = date.getFullYear().toString().slice(-2);
-    const month = (date.getMonth() + 1).toString().padStart(2, "0");
-    const random = Math.floor(Math.random() * 10000).toString().padStart(4, "0");
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const random = Math.floor(Math.random() * 10000)
+      .toString()
+      .padStart(4, '0');
     return `${prefix}${year}${month}${random}`;
   };
 
@@ -200,9 +204,11 @@ export const useFeeTracking = (schoolId: string | null) => {
     paymentData: Partial<FeePayment>
   ): Promise<boolean> => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
-        toast.error("User not authenticated");
+        toast.error('User not authenticated');
         return false;
       }
 
@@ -219,18 +225,16 @@ export const useFeeTracking = (schoolId: string | null) => {
         cheque_date: paymentData.cheque_date || null,
         dd_number: paymentData.dd_number || null,
         receipt_number: receiptNumber,
-        payment_date: paymentData.payment_date || new Date().toISOString().split("T")[0],
+        payment_date: paymentData.payment_date || new Date().toISOString().split('T')[0],
         paid_at: new Date().toISOString(),
-        status: "completed",
+        status: 'completed',
         remarks: paymentData.remarks || null,
         recorded_by: user.id,
         is_verified: false,
         is_reconciled: false,
       };
 
-      const { error: paymentError } = await supabase
-        .from("school_fee_payments")
-        .insert(payload);
+      const { error: paymentError } = await supabase.from('school_fee_payments').insert(payload);
 
       if (paymentError) {
         console.error('Payment insert failed:', paymentError);
@@ -242,26 +246,34 @@ export const useFeeTracking = (schoolId: string | null) => {
       if (ledger) {
         const newPaidAmount = (ledger.paid_amount || 0) + (paymentData.amount || 0);
         const newBalance = ledger.due_amount - newPaidAmount;
-        const newStatus: PaymentStatus = newBalance <= 0 ? "paid" : newBalance < ledger.due_amount ? "partial" : "pending";
+        const newStatus: PaymentStatus =
+          newBalance <= 0 ? 'paid' : newBalance < ledger.due_amount ? 'partial' : 'pending';
 
         const { error: updateError } = await supabase
-          .from("school_student_ledgers")
+          .from('school_student_ledgers')
           .update({
             paid_amount: newPaidAmount,
             balance: newBalance,
             payment_status: newStatus,
             updated_at: new Date().toISOString(),
           })
-          .eq("id", ledgerId);
+          .eq('id', ledgerId);
 
         if (updateError) {
           console.error('Ledger update failed:', updateError);
           // For demo, update local state
-          setLedgers(prev => prev.map(l => 
-            l.id === ledgerId 
-              ? { ...l, paid_amount: newPaidAmount, balance: newBalance, payment_status: newStatus }
-              : l
-          ));
+          setLedgers((prev) =>
+            prev.map((l) =>
+              l.id === ledgerId
+                ? {
+                    ...l,
+                    paid_amount: newPaidAmount,
+                    balance: newBalance,
+                    payment_status: newStatus,
+                  }
+                : l
+            )
+          );
         }
       }
 
@@ -269,8 +281,8 @@ export const useFeeTracking = (schoolId: string | null) => {
       loadLedgers();
       return true;
     } catch (err) {
-      console.error("Failed to record payment:", err);
-      toast.error("Failed to record payment");
+      console.error('Failed to record payment:', err);
+      toast.error('Failed to record payment');
       return false;
     }
   };
@@ -308,10 +320,10 @@ export const useFeeTracking = (schoolId: string | null) => {
 
     // Update status based on aggregated values
     summaryMap.forEach((summary) => {
-      if (summary.balance <= 0) summary.status = "paid";
-      else if (summary.total_paid > 0) summary.status = "partial";
-      else if (summary.ledger_entries.some((l) => l.is_overdue)) summary.status = "overdue";
-      else summary.status = "pending";
+      if (summary.balance <= 0) summary.status = 'paid';
+      else if (summary.total_paid > 0) summary.status = 'partial';
+      else if (summary.ledger_entries.some((l) => l.is_overdue)) summary.status = 'overdue';
+      else summary.status = 'pending';
     });
 
     return Array.from(summaryMap.values());
@@ -324,10 +336,10 @@ export const useFeeTracking = (schoolId: string | null) => {
       const totalCollected = studentSummaries.reduce((sum, s) => sum + s.total_paid, 0);
       const totalPending = studentSummaries.reduce((sum, s) => sum + s.balance, 0);
       const totalStudents = studentSummaries.length;
-      const paidCount = studentSummaries.filter((s) => s.status === "paid").length;
-      const partialCount = studentSummaries.filter((s) => s.status === "partial").length;
-      const pendingCount = studentSummaries.filter((s) => s.status === "pending").length;
-      const overdueCount = studentSummaries.filter((s) => s.status === "overdue").length;
+      const paidCount = studentSummaries.filter((s) => s.status === 'paid').length;
+      const partialCount = studentSummaries.filter((s) => s.status === 'partial').length;
+      const pendingCount = studentSummaries.filter((s) => s.status === 'pending').length;
+      const overdueCount = studentSummaries.filter((s) => s.status === 'overdue').length;
 
       return {
         totalDue,

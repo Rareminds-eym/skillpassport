@@ -19,7 +19,7 @@ import {
   FileText,
   Mail,
   Phone,
-  MapPin
+  MapPin,
 } from 'lucide-react';
 
 interface PaymentRecord {
@@ -41,7 +41,14 @@ interface PaymentRecord {
   transaction_id?: string;
   payment_date?: string;
   due_date: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled' | 'refunded' | 'partially_paid';
+  status:
+    | 'pending'
+    | 'processing'
+    | 'completed'
+    | 'failed'
+    | 'cancelled'
+    | 'refunded'
+    | 'partially_paid';
   academic_year: string;
   semester?: number;
   created_at: string;
@@ -82,7 +89,7 @@ const mockPaymentRecords: PaymentRecord[] = [
     status: 'completed',
     academic_year: '2024-25',
     semester: 1,
-    created_at: '2024-08-10T14:30:00Z'
+    created_at: '2024-08-10T14:30:00Z',
   },
   {
     id: '2',
@@ -104,7 +111,7 @@ const mockPaymentRecords: PaymentRecord[] = [
     status: 'pending',
     academic_year: '2024-25',
     semester: 1,
-    created_at: '2024-11-01T10:00:00Z'
+    created_at: '2024-11-01T10:00:00Z',
   },
   {
     id: '3',
@@ -127,7 +134,7 @@ const mockPaymentRecords: PaymentRecord[] = [
     status: 'partially_paid',
     academic_year: '2024-25',
     semester: 1,
-    created_at: '2024-08-20T16:45:00Z'
+    created_at: '2024-08-20T16:45:00Z',
   },
   {
     id: '4',
@@ -151,7 +158,7 @@ const mockPaymentRecords: PaymentRecord[] = [
     status: 'completed',
     academic_year: '2024-25',
     semester: 1,
-    created_at: '2024-08-05T09:15:00Z'
+    created_at: '2024-08-05T09:15:00Z',
   },
   {
     id: '5',
@@ -173,8 +180,8 @@ const mockPaymentRecords: PaymentRecord[] = [
     status: 'failed',
     academic_year: '2024-25',
     semester: 1,
-    created_at: '2024-07-25T11:20:00Z'
-  }
+    created_at: '2024-07-25T11:20:00Z',
+  },
 ];
 
 const mockStats: PaymentStats = {
@@ -185,7 +192,7 @@ const mockStats: PaymentStats = {
   overdueAmount: 890000,
   todayPayments: 45,
   thisWeekPayments: 312,
-  thisMonthPayments: 1180
+  thisMonthPayments: 1180,
 };
 
 const PaymentTracking: React.FC = () => {
@@ -204,23 +211,25 @@ const PaymentTracking: React.FC = () => {
 
   // Filter and sort payments
   const filteredPayments = paymentRecords
-    .filter(payment => {
-      const matchesSearch = !searchTerm || 
+    .filter((payment) => {
+      const matchesSearch =
+        !searchTerm ||
         payment.student_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         payment.college_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         payment.transaction_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         payment.fee_name.toLowerCase().includes(searchTerm.toLowerCase());
-      
+
       const matchesStatus = !selectedStatus || payment.status === selectedStatus;
       const matchesCollege = !selectedCollege || payment.college_id === selectedCollege;
-      const matchesPaymentMethod = !selectedPaymentMethod || payment.payment_method === selectedPaymentMethod;
-      
+      const matchesPaymentMethod =
+        !selectedPaymentMethod || payment.payment_method === selectedPaymentMethod;
+
       return matchesSearch && matchesStatus && matchesCollege && matchesPaymentMethod;
     })
     .sort((a, b) => {
       const aValue = a[sortField as keyof PaymentRecord];
       const bValue = b[sortField as keyof PaymentRecord];
-      
+
       if (sortDirection === 'asc') {
         return aValue > bValue ? 1 : -1;
       } else {
@@ -247,7 +256,7 @@ const PaymentTracking: React.FC = () => {
       failed: 'bg-red-100 text-red-800',
       cancelled: 'bg-gray-100 text-gray-800',
       refunded: 'bg-purple-100 text-purple-800',
-      partially_paid: 'bg-orange-100 text-orange-800'
+      partially_paid: 'bg-orange-100 text-orange-800',
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
@@ -286,7 +295,8 @@ const PaymentTracking: React.FC = () => {
           <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
           {change !== undefined && (
             <p className={`text-sm mt-1 ${change > 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {change > 0 ? '+' : ''}{change}% from last month
+              {change > 0 ? '+' : ''}
+              {change}% from last month
             </p>
           )}
         </div>
@@ -350,27 +360,39 @@ const PaymentTracking: React.FC = () => {
                 </div>
                 <div>
                   <span className="text-sm text-gray-600">Amount Due:</span>
-                  <p className="text-sm font-medium">{formatCurrency(selectedPayment.amount_due)}</p>
+                  <p className="text-sm font-medium">
+                    {formatCurrency(selectedPayment.amount_due)}
+                  </p>
                 </div>
                 <div>
                   <span className="text-sm text-gray-600">Amount Paid:</span>
-                  <p className="text-sm font-medium">{formatCurrency(selectedPayment.amount_paid)}</p>
+                  <p className="text-sm font-medium">
+                    {formatCurrency(selectedPayment.amount_paid)}
+                  </p>
                 </div>
                 <div>
                   <span className="text-sm text-gray-600">Late Fee:</span>
-                  <p className="text-sm font-medium">{formatCurrency(selectedPayment.late_fee_applied)}</p>
+                  <p className="text-sm font-medium">
+                    {formatCurrency(selectedPayment.late_fee_applied)}
+                  </p>
                 </div>
                 <div>
                   <span className="text-sm text-gray-600">Discount:</span>
-                  <p className="text-sm font-medium">{formatCurrency(selectedPayment.discount_applied)}</p>
+                  <p className="text-sm font-medium">
+                    {formatCurrency(selectedPayment.discount_applied)}
+                  </p>
                 </div>
                 <div>
                   <span className="text-sm text-gray-600">Net Amount:</span>
-                  <p className="text-lg font-bold text-blue-600">{formatCurrency(selectedPayment.net_amount)}</p>
+                  <p className="text-lg font-bold text-blue-600">
+                    {formatCurrency(selectedPayment.net_amount)}
+                  </p>
                 </div>
                 <div>
                   <span className="text-sm text-gray-600">Status:</span>
-                  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(selectedPayment.status)}`}>
+                  <span
+                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(selectedPayment.status)}`}
+                  >
                     {getStatusIcon(selectedPayment.status)}
                     {selectedPayment.status.replace('_', ' ')}
                   </span>
@@ -389,17 +411,23 @@ const PaymentTracking: React.FC = () => {
                 {selectedPayment.transaction_id && (
                   <div>
                     <span className="text-sm text-gray-600">Transaction ID:</span>
-                    <p className="text-sm font-medium font-mono">{selectedPayment.transaction_id}</p>
+                    <p className="text-sm font-medium font-mono">
+                      {selectedPayment.transaction_id}
+                    </p>
                   </div>
                 )}
                 <div>
                   <span className="text-sm text-gray-600">Due Date:</span>
-                  <p className="text-sm font-medium">{new Date(selectedPayment.due_date).toLocaleDateString()}</p>
+                  <p className="text-sm font-medium">
+                    {new Date(selectedPayment.due_date).toLocaleDateString()}
+                  </p>
                 </div>
                 {selectedPayment.payment_date && (
                   <div>
                     <span className="text-sm text-gray-600">Payment Date:</span>
-                    <p className="text-sm font-medium">{new Date(selectedPayment.payment_date).toLocaleDateString()}</p>
+                    <p className="text-sm font-medium">
+                      {new Date(selectedPayment.payment_date).toLocaleDateString()}
+                    </p>
                   </div>
                 )}
               </div>
@@ -427,9 +455,7 @@ const PaymentTracking: React.FC = () => {
     <div className="space-y-6 p-6">
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 border border-blue-100">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
-          Payment Tracking
-        </h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Payment Tracking</h1>
         <p className="text-gray-600 text-sm sm:text-base">
           Monitor and manage all payment transactions across affiliated colleges
         </p>
@@ -543,7 +569,7 @@ const PaymentTracking: React.FC = () => {
               />
             </div>
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
             <select
@@ -604,7 +630,7 @@ const PaymentTracking: React.FC = () => {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th 
+                <th
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort('student_name')}
                 >
@@ -616,7 +642,7 @@ const PaymentTracking: React.FC = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Fee Details
                 </th>
-                <th 
+                <th
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort('net_amount')}
                 >
@@ -628,7 +654,7 @@ const PaymentTracking: React.FC = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Payment Method
                 </th>
-                <th 
+                <th
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort('payment_date')}
                 >
@@ -650,7 +676,9 @@ const PaymentTracking: React.FC = () => {
                 <tr key={payment.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div>
-                      <div className="text-sm font-medium text-gray-900">{payment.student_name}</div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {payment.student_name}
+                      </div>
                       <div className="text-sm text-gray-500">{payment.college_name}</div>
                     </div>
                   </td>
@@ -662,7 +690,9 @@ const PaymentTracking: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div>
-                      <div className="text-sm font-medium text-gray-900">{formatCurrency(payment.net_amount)}</div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {formatCurrency(payment.net_amount)}
+                      </div>
                       <div className="text-sm text-gray-500">
                         Paid: {formatCurrency(payment.amount_paid)}
                       </div>
@@ -676,7 +706,9 @@ const PaymentTracking: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div>
                       <div className="text-sm text-gray-900">
-                        {payment.payment_date ? new Date(payment.payment_date).toLocaleDateString() : '-'}
+                        {payment.payment_date
+                          ? new Date(payment.payment_date).toLocaleDateString()
+                          : '-'}
                       </div>
                       <div className="text-sm text-gray-500">
                         Due: {new Date(payment.due_date).toLocaleDateString()}
@@ -684,7 +716,9 @@ const PaymentTracking: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(payment.status)}`}>
+                    <span
+                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(payment.status)}`}
+                    >
                       {getStatusIcon(payment.status)}
                       {payment.status.replace('_', ' ')}
                     </span>

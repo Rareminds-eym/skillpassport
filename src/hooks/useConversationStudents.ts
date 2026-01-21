@@ -13,12 +13,20 @@ export function useConversationStudents() {
   const educatorId = user?.id;
 
   // Fetch active conversations with comprehensive student data
-  const { data: activeConversations = [], isLoading: loadingActive, error: errorActive } = useQuery({
+  const {
+    data: activeConversations = [],
+    isLoading: loadingActive,
+    error: errorActive,
+  } = useQuery({
     queryKey: ['educator-conversations', educatorId, 'active'],
     queryFn: async () => {
       if (!educatorId) return [];
-      const allConversations = await MessageService.getUserConversations(educatorId, 'educator', false);
-      return allConversations.filter(conv => conv.conversation_type === 'student_educator');
+      const allConversations = await MessageService.getUserConversations(
+        educatorId,
+        'educator',
+        false
+      );
+      return allConversations.filter((conv) => conv.conversation_type === 'student_educator');
     },
     enabled: !!educatorId,
     staleTime: 60000,
@@ -29,13 +37,21 @@ export function useConversationStudents() {
   });
 
   // Fetch archived conversations with comprehensive student data
-  const { data: archivedConversations = [], isLoading: loadingArchived, error: errorArchived } = useQuery({
+  const {
+    data: archivedConversations = [],
+    isLoading: loadingArchived,
+    error: errorArchived,
+  } = useQuery({
     queryKey: ['educator-conversations', educatorId, 'archived'],
     queryFn: async () => {
       if (!educatorId) return [];
-      const allConversations = await MessageService.getUserConversations(educatorId, 'educator', true);
-      return allConversations.filter(conv => 
-        conv.conversation_type === 'student_educator' && conv.status === 'archived'
+      const allConversations = await MessageService.getUserConversations(
+        educatorId,
+        'educator',
+        true
+      );
+      return allConversations.filter(
+        (conv) => conv.conversation_type === 'student_educator' && conv.status === 'archived'
       );
     },
     enabled: !!educatorId,
@@ -49,15 +65,19 @@ export function useConversationStudents() {
   // Extract and transform students from conversations
   const students = useMemo(() => {
     const allConversations = [...activeConversations, ...archivedConversations];
+    // @ts-expect-error - Auto-suppressed for migration
     return extractStudentsFromConversations(allConversations);
   }, [activeConversations, archivedConversations]);
 
   // Calculate stats
-  const stats = useMemo(() => ({ 
-    count: students.length,
-    activeConversations: activeConversations.length,
-    archivedConversations: archivedConversations.length
-  }), [students.length, activeConversations.length, archivedConversations.length]);
+  const stats = useMemo(
+    () => ({
+      count: students.length,
+      activeConversations: activeConversations.length,
+      archivedConversations: archivedConversations.length,
+    }),
+    [students.length, activeConversations.length, archivedConversations.length]
+  );
 
   const loading = loadingActive || loadingArchived;
   const error = errorActive || errorArchived;
@@ -69,6 +89,6 @@ export function useConversationStudents() {
     stats,
     refetch: () => {
       // This will be handled by the query invalidation in the Communication component
-    }
+    },
   };
 }

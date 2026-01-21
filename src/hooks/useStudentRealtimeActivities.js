@@ -12,27 +12,27 @@ import { getStudentRecentActivity } from '../services/studentActivityService';
  * Helper — format timestamps into "2 min ago" / "Oct 24" etc.
  */
 const formatTimestamp = (timestamp) => {
-  if (!timestamp) return "";
+  if (!timestamp) return '';
 
   const date = new Date(timestamp);
   const now = new Date();
   const diffMs = now - date;
 
-  if (isNaN(diffMs)) return "Unknown time";
+  if (isNaN(diffMs)) return 'Unknown time';
 
   const diffMins = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
 
-  if (diffMins < 1) return "Just now";
-  if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? "s" : ""} ago`;
-  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
-  if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`;
+  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+  if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
 
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
   });
 };
 
@@ -62,7 +62,7 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
     if (!email) {
       return null;
     }
-    
+
     try {
       setIsResolvingStudent(true);
 
@@ -72,9 +72,9 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
 
       // Search by direct email column (students table has email as a direct column)
       const result = await supabase
-        .from("students")
-        .select("id, email, name")
-        .eq("email", email)
+        .from('students')
+        .select('id, email, name')
+        .eq('email', email)
         .maybeSingle();
 
       if (result.data) {
@@ -110,9 +110,9 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
 
     try {
       const { data, error } = await supabase
-        .from("recent_updates")
-        .select("*")
-        .eq("student_id", resolvedStudentId)
+        .from('recent_updates')
+        .select('*')
+        .eq('student_id', resolvedStudentId)
         .maybeSingle();
 
       if (error) {
@@ -126,10 +126,7 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
       // Safely parse JSONB and clean data
       let updatesArray = [];
       try {
-        const parsed =
-          typeof data.updates === "string"
-            ? JSON.parse(data.updates)
-            : data.updates;
+        const parsed = typeof data.updates === 'string' ? JSON.parse(data.updates) : data.updates;
 
         updatesArray = (parsed?.updates || []).filter(Boolean);
       } catch (parseErr) {
@@ -139,9 +136,7 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
       // Format timestamps and add proper structure
       const formattedUpdates = updatesArray.map((u, index) => {
         const realTimestamp =
-          u.created_at && u.created_at !== "Just now"
-            ? u.created_at
-            : new Date().toISOString();
+          u.created_at && u.created_at !== 'Just now' ? u.created_at : new Date().toISOString();
 
         const formatted = {
           id: u.id || `update-${Date.now()}-${Math.random()}`,
@@ -155,7 +150,7 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
           rawTimestamp: realTimestamp,
           type: u.type || u.activity_type || 'update',
           icon: u.icon || 'bell',
-          metadata: u.metadata || {}
+          metadata: u.metadata || {},
         };
 
         return formatted;
@@ -196,20 +191,20 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
 
       // Fetch from both sources in parallel
       const [realtimeResult, recentUpdatesResult] = await Promise.all([
-        getStudentRecentActivity(studentEmail, limit).catch(err => {
+        getStudentRecentActivity(studentEmail, limit).catch((err) => {
           return { data: [], error: err.message };
         }),
-        fetchRecentUpdatesFromDB(studentId)
+        fetchRecentUpdatesFromDB(studentId),
       ]);
 
       const realtimeActivities = realtimeResult.data || [];
       const recentUpdatesActivities = recentUpdatesResult || [];
-      
+
       // Combine all sources and sort by timestamp
       const combined = [...recentUpdatesActivities, ...realtimeActivities]
         // Remove duplicates based on ID
         .filter((activity, index, self) => {
-          const isDuplicate = index !== self.findIndex(a => a.id === activity.id);
+          const isDuplicate = index !== self.findIndex((a) => a.id === activity.id);
           return !isDuplicate;
         })
         .sort((a, b) => {
@@ -219,11 +214,13 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
         })
         .slice(0, limit)
         // Ensure all activities have formatted timestamps
-        .map(activity => ({
+        .map((activity) => ({
           ...activity,
-          formattedTimestamp: activity.formattedTimestamp || formatTimestamp(activity.timestamp || activity.rawTimestamp || activity.created_at)
+          formattedTimestamp:
+            activity.formattedTimestamp ||
+            formatTimestamp(activity.timestamp || activity.rawTimestamp || activity.created_at),
         }));
-      
+
       return combined;
     },
     enabled: !!effectiveEmail && !isResolvingStudent && !!studentId, // Only run if email, student ID are available and not resolving
@@ -240,20 +237,22 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
   // 4️⃣ Auto-refresh formatted timestamps every 60s
   useEffect(() => {
     if (!query.data || query.data.length === 0) return;
-    
+
     const interval = setInterval(() => {
       queryClient.setQueryData(
         ['student-activities', studentEmail, studentId, limit],
         (oldData) => {
           if (!oldData) return oldData;
-          return oldData.map(activity => ({
+          return oldData.map((activity) => ({
             ...activity,
-            formattedTimestamp: formatTimestamp(activity.timestamp || activity.rawTimestamp || activity.created_at)
+            formattedTimestamp: formatTimestamp(
+              activity.timestamp || activity.rawTimestamp || activity.created_at
+            ),
           }));
         }
       );
     }, 60000);
-    
+
     return () => {
       clearInterval(interval);
     };
@@ -265,22 +264,25 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
-    
+
     // Set new timer for 500ms debounce
     debounceTimerRef.current = setTimeout(() => {
       setLastUpdateTime(Date.now());
-      queryClient.invalidateQueries({ 
+      queryClient.invalidateQueries({
         queryKey: ['student-activities', studentEmail],
-        refetchType: 'active' 
+        refetchType: 'active',
       });
     }, 500);
   }, [queryClient, studentEmail]);
 
   // Callback to handle real-time changes
-  const handleRealtimeChange = useCallback((table, payload) => {
-    // Use debounced refetch instead of immediate
-    debouncedRefetch();
-  }, [debouncedRefetch]);
+  const handleRealtimeChange = useCallback(
+    (table, payload) => {
+      // Use debounced refetch instead of immediate
+      debouncedRefetch();
+    },
+    [debouncedRefetch]
+  );
 
   // Set up real-time subscriptions for student-relevant tables
   useEffect(() => {
@@ -297,28 +299,28 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
       const tableSubscriptions = [
         {
           table: 'recent_updates',
-          filter: `student_id=eq.${studentId}` // Listen for updates to this student's recent_updates
+          filter: `student_id=eq.${studentId}`, // Listen for updates to this student's recent_updates
         },
         {
           table: 'shortlist_candidates',
-          filter: `student_id=eq.${studentId}`
+          filter: `student_id=eq.${studentId}`,
         },
         {
-          table: 'pipeline_activities', 
-          filter: `student_id=eq.${studentId}`
+          table: 'pipeline_activities',
+          filter: `student_id=eq.${studentId}`,
         },
         {
           table: 'pipeline_candidates',
-          filter: null // Listen to all changes
+          filter: null, // Listen to all changes
         },
         {
           table: 'offers',
-          filter: null // Listen to all changes
+          filter: null, // Listen to all changes
         },
         {
           table: 'placements',
-          filter: `studentId=eq.${studentId}`
-        }
+          filter: `studentId=eq.${studentId}`,
+        },
       ];
 
       // Subscribe to changes on each table
@@ -334,10 +336,8 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
           subscriptionConfig.filter = filter;
         }
 
-        channel.on(
-          'postgres_changes',
-          subscriptionConfig,
-          (payload) => handleRealtimeChange(table, payload)
+        channel.on('postgres_changes', subscriptionConfig, (payload) =>
+          handleRealtimeChange(table, payload)
         );
       });
 
@@ -365,7 +365,7 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
       }
-      
+
       // Unsubscribe from WebSocket
       if (channelRef.current) {
         channelRef.current.unsubscribe();
@@ -393,10 +393,10 @@ export const useStudentRealtimeActivities = (studentEmail, limit = 10) => {
  */
 export const useRefreshStudentActivities = (studentEmail) => {
   const queryClient = useQueryClient();
-  
+
   return () => {
-    queryClient.invalidateQueries({ 
-      queryKey: ['student-activities', studentEmail] 
+    queryClient.invalidateQueries({
+      queryKey: ['student-activities', studentEmail],
     });
   };
 };

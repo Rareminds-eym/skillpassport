@@ -7,8 +7,11 @@ import { supabase } from '../lib/supabaseClient';
 export const getCurrentEducator = async () => {
   try {
     // Get current authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
     if (authError) throw authError;
     if (!user) {
       return { data: null, error: 'No authenticated user found' };
@@ -29,9 +32,9 @@ export const getCurrentEducator = async () => {
     return { data, error: null };
   } catch (error) {
     console.error('Error in getCurrentEducator:', error);
-    return { 
-      data: null, 
-      error: error?.message || 'Failed to fetch educator information' 
+    return {
+      data: null,
+      error: error?.message || 'Failed to fetch educator information',
     };
   }
 };

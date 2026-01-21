@@ -1,6 +1,6 @@
 /**
  * OrganizationPaymentPage
- * 
+ *
  * Payment page for organization bulk purchases.
  * Handles Razorpay integration for organization subscriptions.
  */
@@ -23,7 +23,10 @@ import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLocation, useNavigate } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
-import { initiateOrganizationPayment, OrganizationPurchaseData } from '../../services/organization/organizationPaymentService';
+import {
+  initiateOrganizationPayment,
+  OrganizationPurchaseData,
+} from '../../services/organization/organizationPaymentService';
 
 interface OrganizationConfig {
   organizationType: 'school' | 'college' | 'university';
@@ -68,10 +71,10 @@ function OrganizationPaymentPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, isAuthenticated } = useAuth();
-  
+
   const state = location.state as LocationState | null;
   const { plan, organizationConfig, organizationId: stateOrgId } = state || {};
-  
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [billingDetails, setBillingDetails] = useState({
@@ -80,7 +83,7 @@ function OrganizationPaymentPage() {
     phone: '',
     gstNumber: organizationConfig?.gstNumber || '',
   });
-  
+
   // Get organization ID from state first, then fallback to user context
   const organizationId = useMemo(() => {
     // First priority: from location state (passed from BulkPurchasePage)
@@ -88,7 +91,7 @@ function OrganizationPaymentPage() {
       console.log('[OrgPaymentPage] Using organizationId from state:', stateOrgId);
       return stateOrgId;
     }
-    
+
     // Fallback: Try to get from user object
     if (user?.school_id) return String(user.school_id);
     if (user?.college_id) return String(user.college_id);
@@ -96,7 +99,7 @@ function OrganizationPaymentPage() {
     if (user?.schoolId) return String(user.schoolId);
     if (user?.collegeId) return String(user.collegeId);
     if (user?.universityId) return String(user.universityId);
-    
+
     // Try localStorage
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
@@ -105,13 +108,15 @@ function OrganizationPaymentPage() {
         if (userData.schoolId) return userData.schoolId;
         if (userData.collegeId) return userData.collegeId;
         if (userData.universityId) return userData.universityId;
-      } catch (e) { /* ignore */ }
+      } catch (e) {
+        /* ignore */
+      }
     }
-    
+
     console.log('[OrgPaymentPage] Could not find organizationId');
     return '';
   }, [stateOrgId, user]);
-  
+
   // Get base path for navigation
   const basePath = useMemo(() => {
     const role = user?.role || '';
@@ -120,14 +125,14 @@ function OrganizationPaymentPage() {
     if (role.includes('university')) return '/university-admin';
     return '/school-admin';
   }, [user?.role]);
-  
+
   // Redirect if no plan data
   useEffect(() => {
     if (!plan || !organizationConfig) {
       navigate(`${basePath}/subscription/bulk-purchase`, { replace: true });
     }
   }, [plan, organizationConfig, navigate, basePath]);
-  
+
   // Pre-fill billing details from user
   useEffect(() => {
     if (user && !billingDetails.email) {
@@ -136,92 +141,100 @@ function OrganizationPaymentPage() {
       const fullName = `${firstName} ${lastName}`.trim();
       const userName = typeof user.name === 'string' ? user.name : fullName;
       const userEmail = typeof user.email === 'string' ? user.email : '';
-      
-      setBillingDetails(prev => ({
+
+      setBillingDetails((prev) => ({
         ...prev,
         email: prev.email || userEmail,
         name: prev.name || userName,
       }));
     }
   }, [user, billingDetails.email]);
-  
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setBillingDetails(prev => ({ ...prev, [name]: value }));
-    if (error) setError('');
-  }, [error]);
-  
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (loading || !plan || !organizationConfig) return;
-    
-    // Validate required fields
-    if (!billingDetails.name.trim()) {
-      setError('Billing name is required');
-      return;
-    }
-    if (!billingDetails.email.trim()) {
-      setError('Billing email is required');
-      return;
-    }
-    if (!organizationId) {
-      setError('Organization ID not found. Please try again.');
-      return;
-    }
-    
-    setLoading(true);
-    setError('');
-    
-    // Prepare purchase data
-    const purchaseData: OrganizationPurchaseData = {
-      organizationId,
-      organizationType: organizationConfig.organizationType,
-      planId: plan.id,
-      planName: plan.name,
-      seatCount: organizationConfig.seatCount,
-      targetMemberType: organizationConfig.memberType,
-      billingCycle: organizationConfig.billingCycle,
-      autoRenew: true,
-      pricing: organizationConfig.pricing,
-      assignmentMode: organizationConfig.assignmentMode,
-      selectedMemberIds: organizationConfig.selectedMemberIds,
-      poolName: organizationConfig.poolName,
-      autoAssignNewMembers: organizationConfig.autoAssignNewMembers,
-      billingEmail: billingDetails.email,
-      billingName: billingDetails.name,
-      gstNumber: billingDetails.gstNumber || undefined,
-    };
-    
-    try {
-      await initiateOrganizationPayment({
-        purchaseData,
-        onSuccess: (result) => {
-          console.log('[OrgPayment] Payment successful:', result);
-          toast.success('Payment successful! Your subscription has been activated.');
-          
-          // Navigate to organization subscription page
-          navigate(`${basePath}/subscription/organization`, { 
-            replace: true,
-            state: { paymentSuccess: true, subscription: result.subscription }
-          });
-        },
-        onFailure: (err) => {
-          console.error('[OrgPayment] Payment failed:', err);
-          setLoading(false);
-          setError(err.message || 'Payment failed. Please try again.');
-        },
-      });
-    } catch (err) {
-      console.error('[OrgPayment] Error:', err);
-      setLoading(false);
-      setError(err instanceof Error ? err.message : 'Failed to process payment. Please try again.');
-    }
-  }, [loading, plan, organizationConfig, organizationId, billingDetails, navigate, basePath]);
-  
+
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const { name, value } = e.target;
+      setBillingDetails((prev) => ({ ...prev, [name]: value }));
+      if (error) setError('');
+    },
+    [error]
+  );
+
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (loading || !plan || !organizationConfig) return;
+
+      // Validate required fields
+      if (!billingDetails.name.trim()) {
+        setError('Billing name is required');
+        return;
+      }
+      if (!billingDetails.email.trim()) {
+        setError('Billing email is required');
+        return;
+      }
+      if (!organizationId) {
+        setError('Organization ID not found. Please try again.');
+        return;
+      }
+
+      setLoading(true);
+      setError('');
+
+      // Prepare purchase data
+      const purchaseData: OrganizationPurchaseData = {
+        organizationId,
+        organizationType: organizationConfig.organizationType,
+        planId: plan.id,
+        planName: plan.name,
+        seatCount: organizationConfig.seatCount,
+        targetMemberType: organizationConfig.memberType,
+        billingCycle: organizationConfig.billingCycle,
+        autoRenew: true,
+        pricing: organizationConfig.pricing,
+        assignmentMode: organizationConfig.assignmentMode,
+        selectedMemberIds: organizationConfig.selectedMemberIds,
+        poolName: organizationConfig.poolName,
+        autoAssignNewMembers: organizationConfig.autoAssignNewMembers,
+        billingEmail: billingDetails.email,
+        billingName: billingDetails.name,
+        gstNumber: billingDetails.gstNumber || undefined,
+      };
+
+      try {
+        await initiateOrganizationPayment({
+          purchaseData,
+          onSuccess: (result) => {
+            console.log('[OrgPayment] Payment successful:', result);
+            toast.success('Payment successful! Your subscription has been activated.');
+
+            // Navigate to organization subscription page
+            navigate(`${basePath}/subscription/organization`, {
+              replace: true,
+              state: { paymentSuccess: true, subscription: result.subscription },
+            });
+          },
+          onFailure: (err) => {
+            console.error('[OrgPayment] Payment failed:', err);
+            setLoading(false);
+            setError(err.message || 'Payment failed. Please try again.');
+          },
+        });
+      } catch (err) {
+        console.error('[OrgPayment] Error:', err);
+        setLoading(false);
+        setError(
+          err instanceof Error ? err.message : 'Failed to process payment. Please try again.'
+        );
+      }
+    },
+    [loading, plan, organizationConfig, organizationId, billingDetails, navigate, basePath]
+  );
+
   const handleBack = useCallback(() => {
     navigate(`${basePath}/subscription/bulk-purchase`);
   }, [navigate, basePath]);
-  
+
   // Loading/redirect state
   if (!isAuthenticated || !user || !plan || !organizationConfig) {
     return (
@@ -233,13 +246,13 @@ function OrganizationPaymentPage() {
       </div>
     );
   }
-  
+
   const organizationLabel = {
     school: 'School',
     college: 'College',
     university: 'University',
   }[organizationConfig.organizationType];
-  
+
   return (
     <div className="min-h-screen bg-gray-50 py-6 px-4 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto">
@@ -251,7 +264,7 @@ function OrganizationPaymentPage() {
           <ArrowLeft className="w-4 h-4" />
           Back to Purchase
         </button>
-        
+
         <div className="grid lg:grid-cols-5 gap-6">
           {/* Form Section */}
           <div className="lg:col-span-3">
@@ -268,12 +281,15 @@ function OrganizationPaymentPage() {
                   </p>
                 </div>
               </div>
-              
+
               {/* Form */}
               <form onSubmit={handleSubmit} className="space-y-5">
                 {/* Billing Name */}
                 <div className="space-y-1.5">
-                  <label htmlFor="name" className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                  <label
+                    htmlFor="name"
+                    className="flex items-center gap-1.5 text-sm font-medium text-gray-700"
+                  >
                     Billing Name <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -292,10 +308,13 @@ function OrganizationPaymentPage() {
                     />
                   </div>
                 </div>
-                
+
                 {/* Billing Email */}
                 <div className="space-y-1.5">
-                  <label htmlFor="email" className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                  <label
+                    htmlFor="email"
+                    className="flex items-center gap-1.5 text-sm font-medium text-gray-700"
+                  >
                     Billing Email <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -314,11 +333,15 @@ function OrganizationPaymentPage() {
                     />
                   </div>
                 </div>
-                
+
                 {/* Phone */}
                 <div className="space-y-1.5">
-                  <label htmlFor="phone" className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
-                    Phone Number <span className="text-gray-400 font-normal text-xs">(Optional)</span>
+                  <label
+                    htmlFor="phone"
+                    className="flex items-center gap-1.5 text-sm font-medium text-gray-700"
+                  >
+                    Phone Number{' '}
+                    <span className="text-gray-400 font-normal text-xs">(Optional)</span>
                   </label>
                   <div className="relative">
                     <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
@@ -336,10 +359,13 @@ function OrganizationPaymentPage() {
                     />
                   </div>
                 </div>
-                
+
                 {/* GST Number */}
                 <div className="space-y-1.5">
-                  <label htmlFor="gstNumber" className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                  <label
+                    htmlFor="gstNumber"
+                    className="flex items-center gap-1.5 text-sm font-medium text-gray-700"
+                  >
                     GST Number <span className="text-gray-400 font-normal text-xs">(Optional)</span>
                   </label>
                   <div className="relative">
@@ -357,9 +383,11 @@ function OrganizationPaymentPage() {
                       disabled={loading}
                     />
                   </div>
-                  <p className="text-xs text-gray-500">Provide your GST number for tax invoice purposes</p>
+                  <p className="text-xs text-gray-500">
+                    Provide your GST number for tax invoice purposes
+                  </p>
                 </div>
-                
+
                 {/* Payment Methods */}
                 <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
                   <div className="flex items-center gap-2 mb-3">
@@ -377,7 +405,7 @@ function OrganizationPaymentPage() {
                     ))}
                   </div>
                 </div>
-                
+
                 {/* Error */}
                 {error && (
                   <div className="flex items-start gap-3 p-3 bg-red-50 border border-red-100 rounded-lg">
@@ -388,7 +416,7 @@ function OrganizationPaymentPage() {
                     </div>
                   </div>
                 )}
-                
+
                 {/* Buttons */}
                 <div className="flex gap-3 pt-2">
                   <button
@@ -420,14 +448,14 @@ function OrganizationPaymentPage() {
               </form>
             </div>
           </div>
-          
+
           {/* Sidebar - Order Summary */}
           <div className="lg:col-span-2 space-y-4">
             {/* Plan Card */}
             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 p-6 text-white shadow-lg shadow-blue-500/20">
               <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
               <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
-              
+
               <div className="relative">
                 <div className="flex items-center gap-2 mb-3">
                   <Building2 className="w-4 h-4 text-blue-200" />
@@ -435,14 +463,14 @@ function OrganizationPaymentPage() {
                     {organizationLabel} Purchase
                   </span>
                 </div>
-                
+
                 <h3 className="text-2xl font-bold mb-1">{plan.name} Plan</h3>
-                
+
                 <div className="flex items-center gap-2 mb-5">
                   <Users className="w-4 h-4 text-blue-200" />
                   <span className="text-blue-100">{organizationConfig.seatCount} seats</span>
                 </div>
-                
+
                 <div className="border-t border-white/20 pt-4 space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-blue-200">Subtotal</span>
@@ -450,7 +478,9 @@ function OrganizationPaymentPage() {
                   </div>
                   {organizationConfig.pricing.discountPercentage > 0 && (
                     <div className="flex justify-between text-sm text-green-300">
-                      <span>Volume Discount ({organizationConfig.pricing.discountPercentage}%)</span>
+                      <span>
+                        Volume Discount ({organizationConfig.pricing.discountPercentage}%)
+                      </span>
                       <span>-₹{organizationConfig.pricing.discountAmount.toLocaleString()}</span>
                     </div>
                   )}
@@ -465,7 +495,7 @@ function OrganizationPaymentPage() {
                 </div>
               </div>
             </div>
-            
+
             {/* Trust Features */}
             <div className="bg-white rounded-xl border border-gray-100 p-5">
               <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">
@@ -486,7 +516,7 @@ function OrganizationPaymentPage() {
                 ))}
               </div>
             </div>
-            
+
             {/* Assignment Summary */}
             <div className="bg-white rounded-xl border border-gray-100 p-5">
               <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">
@@ -513,14 +543,15 @@ function OrganizationPaymentPage() {
                     </span>
                   </div>
                 )}
-                {organizationConfig.assignmentMode === 'create-pool' && organizationConfig.poolName && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Pool Name</span>
-                    <span className="text-gray-900 font-medium">
-                      {organizationConfig.poolName}
-                    </span>
-                  </div>
-                )}
+                {organizationConfig.assignmentMode === 'create-pool' &&
+                  organizationConfig.poolName && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Pool Name</span>
+                      <span className="text-gray-900 font-medium">
+                        {organizationConfig.poolName}
+                      </span>
+                    </div>
+                  )}
               </div>
             </div>
           </div>

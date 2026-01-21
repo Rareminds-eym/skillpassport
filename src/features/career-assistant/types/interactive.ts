@@ -18,12 +18,12 @@ export type CardType = 'job' | 'course' | 'skill' | 'project' | 'certification' 
 export interface ActionButton {
   id: string;
   label: string;
-  icon?: string;  // Lucide icon name
+  icon?: string; // Lucide icon name
   variant: ButtonVariant;
   action: {
     type: ActionType;
     value: string;
-    data?: any;  // Additional data for the action
+    data?: any; // Additional data for the action
   };
   disabled?: boolean;
   tooltip?: string;
@@ -49,7 +49,7 @@ export interface JobCard extends BaseCard {
     employmentType: string;
     matchScore: number;
     matchReason: string;
-    tags: string[];  // Skills required
+    tags: string[]; // Skills required
     deadline?: string;
   };
   actions: ActionButton[];
@@ -60,7 +60,7 @@ export interface CourseCard extends BaseCard {
   data: {
     title: string;
     platform: string;
-    cost: string;  // "FREE", "$19.99", etc.
+    cost: string; // "FREE", "$19.99", etc.
     duration: string;
     level: 'Beginner' | 'Intermediate' | 'Advanced';
     rating?: number;
@@ -74,11 +74,11 @@ export interface SkillCard extends BaseCard {
   type: 'skill';
   data: {
     name: string;
-    demand: number;  // Percentage (0-100)
-    impact: string;  // "+25% job opportunities"
+    demand: number; // Percentage (0-100)
+    impact: string; // "+25% job opportunities"
     status: 'missing' | 'learning' | 'completed';
     priority: 'critical' | 'high' | 'medium' | 'low';
-    timeToLearn: string;  // "4-6 weeks"
+    timeToLearn: string; // "4-6 weeks"
   };
   actions: ActionButton[];
 }
@@ -91,7 +91,7 @@ export interface InsightCard extends BaseCard {
     metric?: {
       value: number;
       label: string;
-      change?: string;  // "+15%", "-5%"
+      change?: string; // "+15%", "-5%"
     };
     category: 'profile' | 'market' | 'comparison' | 'recommendation';
     severity?: 'info' | 'warning' | 'success' | 'error';
@@ -108,7 +108,7 @@ export type InteractiveCard = JobCard | CourseCard | SkillCard | InsightCard;
 export interface SuggestedAction {
   id: string;
   label: string;
-  query: string;  // The query to send when clicked
+  query: string; // The query to send when clicked
   icon?: string;
 }
 
@@ -118,7 +118,7 @@ export interface SuggestedAction {
 
 export interface ProgressBar {
   label: string;
-  value: number;  // 0-100
+  value: number; // 0-100
   maxValue?: number;
   color?: 'blue' | 'green' | 'yellow' | 'red' | 'purple';
   showPercentage?: boolean;
@@ -153,23 +153,23 @@ export interface VisualizationData {
 export interface InteractiveElements {
   // Quick action buttons at the bottom
   quickActions?: ActionButton[];
-  
+
   // Rich cards (jobs, courses, skills)
   cards?: InteractiveCard[];
-  
+
   // Suggested follow-up queries
   suggestions?: SuggestedAction[];
-  
+
   // Visual elements (progress bars, scores)
   visualData?: VisualizationData;
-  
+
   // Response metadata
   metadata?: {
     intentHandled: string;
     processingTime?: number;
     dataSource?: string;
-    encouragement?: string;  // Motivational message based on context
-    nextSteps?: string[];     // Actionable next steps for the user
+    encouragement?: string; // Motivational message based on context
+    nextSteps?: string[]; // Actionable next steps for the user
   };
 }
 
@@ -178,7 +178,7 @@ export interface EnhancedAIResponse {
   message?: string;
   data?: any;
   error?: string;
-  
+
   // NEW: Interactive elements
   interactive?: InteractiveElements;
 }
@@ -230,4 +230,3 @@ export interface ProfileAnalysisData {
     }>;
   };
 }
-

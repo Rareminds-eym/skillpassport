@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { X, FileText, Download, Eye, AlertCircle, Loader2, ExternalLink } from "lucide-react";
-import { getDocumentUrl } from "../../../services/fileUploadService";
+import React, { useState, useEffect } from 'react';
+import { X, FileText, Download, Eye, AlertCircle, Loader2, ExternalLink } from 'lucide-react';
+import { getDocumentUrl } from '../../../services/fileUploadService';
 
 interface Document {
   name: string;
@@ -43,11 +43,13 @@ const FacultyDocumentViewerModal: React.FC<FacultyDocumentViewerModalProps> = ({
   if (facultyData?.metadata?.degree_certificate_url) {
     documentList.push({
       category: 'Degree Certificate',
-      docs: [{
-        name: 'Degree Certificate',
-        url: facultyData.metadata.degree_certificate_url,
-        type: 'application/pdf'
-      }]
+      docs: [
+        {
+          name: 'Degree Certificate',
+          url: facultyData.metadata.degree_certificate_url,
+          type: 'application/pdf',
+        },
+      ],
     });
   }
 
@@ -55,23 +57,28 @@ const FacultyDocumentViewerModal: React.FC<FacultyDocumentViewerModalProps> = ({
   if (facultyData?.metadata?.id_proof_url) {
     documentList.push({
       category: 'ID Proof',
-      docs: [{
-        name: 'ID Proof',
-        url: facultyData.metadata.id_proof_url,
-        type: 'image/jpeg'
-      }]
+      docs: [
+        {
+          name: 'ID Proof',
+          url: facultyData.metadata.id_proof_url,
+          type: 'image/jpeg',
+        },
+      ],
     });
   }
 
   // Add experience letters
-  if (facultyData?.metadata?.experience_letters_url && facultyData.metadata.experience_letters_url.length > 0) {
+  if (
+    facultyData?.metadata?.experience_letters_url &&
+    facultyData.metadata.experience_letters_url.length > 0
+  ) {
     documentList.push({
       category: 'Experience Letters',
       docs: facultyData.metadata.experience_letters_url.map((url, index) => ({
         name: `Experience Letter ${index + 1}`,
         url: url,
-        type: 'application/pdf'
-      }))
+        type: 'application/pdf',
+      })),
     });
   }
 
@@ -95,11 +102,11 @@ const FacultyDocumentViewerModal: React.FC<FacultyDocumentViewerModalProps> = ({
   const handleDirectOpen = (url: string) => {
     setLoading(true);
     setError(null);
-    
+
     try {
       // Get the viewable URL through our document access endpoint
       const viewUrl = getDocumentUrl(url, 'inline');
-      
+
       // Open in new tab for viewing
       window.open(viewUrl, '_blank');
     } catch (err) {
@@ -111,7 +118,7 @@ const FacultyDocumentViewerModal: React.FC<FacultyDocumentViewerModalProps> = ({
 
   const handleDownload = (url: string, filename: string) => {
     const downloadUrl = getDocumentUrl(url, 'download');
-    
+
     // Create a temporary link to trigger download
     const link = document.createElement('a');
     link.href = downloadUrl;
@@ -126,7 +133,10 @@ const FacultyDocumentViewerModal: React.FC<FacultyDocumentViewerModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        <div
+          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          onClick={onClose}
+        ></div>
 
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full sm:p-6">
           {/* Header */}
@@ -135,9 +145,7 @@ const FacultyDocumentViewerModal: React.FC<FacultyDocumentViewerModalProps> = ({
               <h3 className="text-xl font-semibold text-gray-900">
                 {facultyData?.name} - Documents
               </h3>
-              <p className="text-sm text-gray-500 mt-1">
-                Faculty document viewer
-              </p>
+              <p className="text-sm text-gray-500 mt-1">Faculty document viewer</p>
             </div>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
               <X className="h-6 w-6" />
@@ -158,26 +166,33 @@ const FacultyDocumentViewerModal: React.FC<FacultyDocumentViewerModalProps> = ({
             <div className="text-center py-12">
               <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No Documents</h3>
-              <p className="text-gray-500">No documents have been uploaded for this faculty member.</p>
+              <p className="text-gray-500">
+                No documents have been uploaded for this faculty member.
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Document List */}
               <div className="space-y-6">
                 <h4 className="text-lg font-medium text-gray-900">Uploaded Documents</h4>
-                
+
                 {documentList.map((category, categoryIndex) => (
                   <div key={categoryIndex} className="bg-gray-50 rounded-lg p-4">
-                    <h5 className="text-sm font-semibold text-gray-700 mb-3">{category.category}</h5>
+                    <h5 className="text-sm font-semibold text-gray-700 mb-3">
+                      {category.category}
+                    </h5>
                     <div className="space-y-2">
                       {category.docs.map((doc, docIndex) => (
-                        <div key={docIndex} className="flex items-center justify-between p-3 bg-white rounded-md border border-gray-200 hover:border-gray-300 transition-colors">
+                        <div
+                          key={docIndex}
+                          className="flex items-center justify-between p-3 bg-white rounded-md border border-gray-200 hover:border-gray-300 transition-colors"
+                        >
                           <div className="flex items-center space-x-3">
                             {getFileIcon(doc.type)}
                             <div>
                               <p className="text-sm font-medium text-gray-900">{doc.name}</p>
                               <p className="text-xs text-gray-500">
-                                {doc.type.includes('pdf') ? 'PDF Document' : 'Image File'} 
+                                {doc.type.includes('pdf') ? 'PDF Document' : 'Image File'}
                                 {formatFileSize(doc.size)}
                               </p>
                             </div>
@@ -215,7 +230,7 @@ const FacultyDocumentViewerModal: React.FC<FacultyDocumentViewerModalProps> = ({
               {/* Document Access Panel */}
               <div className="bg-gray-50 rounded-lg p-4">
                 <h4 className="text-lg font-medium text-gray-900 mb-4">Secure Document Access</h4>
-                
+
                 {selectedDocument ? (
                   <div className="bg-white rounded-md border border-gray-200 p-8">
                     <div className="text-center">
@@ -236,7 +251,7 @@ const FacultyDocumentViewerModal: React.FC<FacultyDocumentViewerModalProps> = ({
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="space-y-4">
                         <button
                           onClick={() => handleDirectOpen(selectedDocument)}
@@ -250,7 +265,7 @@ const FacultyDocumentViewerModal: React.FC<FacultyDocumentViewerModalProps> = ({
                           )}
                           Open Document
                         </button>
-                        
+
                         <div className="flex items-center justify-center space-x-4 text-sm">
                           <button
                             onClick={() => handleDownload(selectedDocument, 'document')}
@@ -268,7 +283,9 @@ const FacultyDocumentViewerModal: React.FC<FacultyDocumentViewerModalProps> = ({
                     <div className="text-center">
                       <Eye className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                       <h5 className="text-lg font-medium text-gray-900 mb-2">Select a Document</h5>
-                      <p className="text-gray-500">Click on any document from the list to access it securely</p>
+                      <p className="text-gray-500">
+                        Click on any document from the list to access it securely
+                      </p>
                     </div>
                   </div>
                 )}

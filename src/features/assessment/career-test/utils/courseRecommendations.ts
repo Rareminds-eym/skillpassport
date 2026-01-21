@@ -1,9 +1,9 @@
 /**
  * Course Recommendations Utility
- * 
+ *
  * Generates course recommendations based on assessment results
  * using RIASEC, aptitude, and personality matching.
- * 
+ *
  * @module features/assessment/career-test/utils/courseRecommendations
  */
 
@@ -119,8 +119,7 @@ export const generateCourseRecommendations = (
 
           const isTopStrength = aptitudeTopStrengths.some(
             (s) =>
-              s.toLowerCase().includes(strengthLower) ||
-              strengthLower.includes(s.toLowerCase())
+              s.toLowerCase().includes(strengthLower) || strengthLower.includes(s.toLowerCase())
           );
 
           if (isTopStrength) {
@@ -176,8 +175,8 @@ export const generateCourseRecommendations = (
       const category = STREAMS_BY_CATEGORY.science.find((s) => s.id === course.id)
         ? 'Science'
         : STREAMS_BY_CATEGORY.commerce.find((s) => s.id === course.id)
-        ? 'Commerce'
-        : 'Arts';
+          ? 'Commerce'
+          : 'Arts';
 
       return {
         courseId: course.id,
@@ -186,10 +185,10 @@ export const generateCourseRecommendations = (
         matchLevel: (matchScore >= 75
           ? 'Excellent'
           : matchScore >= 60
-          ? 'Good'
-          : matchScore >= 45
-          ? 'Fair'
-          : 'Low') as CourseRecommendation['matchLevel'],
+            ? 'Good'
+            : matchScore >= 45
+              ? 'Fair'
+              : 'Low') as CourseRecommendation['matchLevel'],
         reasons: matchReasons.slice(0, 3),
         category,
       };
