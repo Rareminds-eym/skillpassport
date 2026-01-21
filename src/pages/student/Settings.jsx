@@ -498,6 +498,13 @@ const Settings = () => {
         title: "Success",
         description: "Profile updated successfully",
       });
+      
+      // Dispatch event to notify other pages (like Dashboard) to refresh
+      window.dispatchEvent(new CustomEvent('student_settings_updated', {
+        detail: { type: 'profile_updated', data: profileData }
+      }));
+      console.log('📢 Dispatched student_settings_updated event');
+      
       // Refresh recent updates if available
       try {
         if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
@@ -1569,6 +1576,8 @@ const Settings = () => {
                                 setCustomProgramName(programName);
                                 // Store in branch_field
                                 handleProfileChange("branch", programName);
+                                // Clear programId when manually entering program
+                                handleProfileChange("programId", "");
                                 
                                 // Auto-set grade based on program name
                                 const lowerName = programName.toLowerCase();

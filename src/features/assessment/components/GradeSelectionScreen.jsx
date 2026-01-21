@@ -95,7 +95,7 @@ const shouldShowOption = (optionId, {
   monthsInGrade,
   isCollegeStudent,
 }) => {
-  // Always show all options on skillpassport.pages.dev
+  // Always show all options if explicitly requested (currently disabled)
   if (shouldShowAllOptions) return true;
   
   // Don't filter if not required
