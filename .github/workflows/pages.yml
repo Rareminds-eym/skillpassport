@@ -56,18 +56,23 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_OPENAI_API_KEY: ${{ secrets.VITE_OPENAI_API_KEY }}
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
-          VITE_COURSE_API_URL: ${{ secrets.VITE_COURSE_API_URL }}
+          VITE_ASSESSMENT_API_URL: ${{ secrets.VITE_ASSESSMENT_API_URL }}
           VITE_CAREER_API_URL: ${{ secrets.VITE_CAREER_API_URL }}
+          VITE_COURSE_API_URL: ${{ secrets.VITE_COURSE_API_URL }}
+          VITE_EMAIL_API_URL: ${{ secrets.VITE_EMAIL_API_URL }}
+          VITE_EMBEDDING_API_URL: ${{ secrets.VITE_EMBEDDING_API_URL }}
+          VITE_OTP_API_URL: ${{ secrets.VITE_OTP_API_URL }}
           VITE_PAYMENTS_API_URL: ${{ secrets.VITE_PAYMENTS_API_URL }}
-          VITE_USER_API_URL: ${{ secrets.VITE_USER_API_URL }}
           VITE_STORAGE_API_URL: ${{ secrets.VITE_STORAGE_API_URL }}
+          VITE_STREAK_API_URL: ${{ secrets.VITE_STREAK_API_URL }}
+          VITE_USER_API_URL: ${{ secrets.VITE_USER_API_URL }}
+          VITE_CLOUDFLARE_CERTIFICATE_WORKER_URL: ${{ secrets.VITE_CLOUDFLARE_CERTIFICATE_WORKER_URL }}
           VITE_RAZORPAY_KEY_ID: ${{ secrets.VITE_RAZORPAY_KEY_ID }}
           VITE_RAZORPAY_LIVE_KEY_ID: ${{ secrets.VITE_RAZORPAY_LIVE_KEY_ID }}
           VITE_RAZORPAY_TEST_KEY_ID: ${{ secrets.VITE_RAZORPAY_TEST_KEY_ID }}
           VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
           VITE_OPENROUTER_API_KEY: ${{ secrets.VITE_OPENROUTER_API_KEY }}
           VITE_CLAUDE_API_KEY: ${{ secrets.VITE_CLAUDE_API_KEY }}
-          VITE_CLOUDFLARE_CERTIFICATE_WORKER_URL: ${{ secrets.VITE_CLOUDFLARE_CERTIFICATE_WORKER_URL }}
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
