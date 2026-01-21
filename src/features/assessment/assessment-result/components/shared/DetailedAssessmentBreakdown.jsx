@@ -131,8 +131,8 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
             scores: knowledge?.score !== undefined ? [
                 {
                     label: 'Overall Knowledge Score',
-                    value: knowledge.score,
-                    max: 100,
+                    value: knowledge.correctCount || 0,
+                    max: knowledge.totalQuestions || 0,
                     percentage: knowledge.score
                 }
             ] : [],
@@ -340,7 +340,11 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
                                                     fontWeight: '600',
                                                     color: '#374151'
                                                 }}>
-                                                    {score.value.toFixed(1)} / {score.max}
+                                                    {/* Show whole numbers for knowledge scores, decimals for others */}
+                                                    {stage.id === 5 
+                                                        ? `${Math.round(score.value)} / ${score.max}`
+                                                        : `${score.value.toFixed(1)} / ${score.max}`
+                                                    }
                                                 </td>
                                                 <td style={{
                                                     ...printStyles.td,
