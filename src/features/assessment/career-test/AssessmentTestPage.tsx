@@ -88,6 +88,57 @@ import {
 import { supabase } from '@/lib/supabaseClient';
 
 /**
+ * Get icon image path for a section based on section ID
+ */
+const getSectionIconPath = (sectionId: string): string => {
+  const iconMap: Record<string, string> = {
+    // Career Interests (RIASEC)
+    'riasec': '/assets/Assessment Icons/Career Interests.png',
+    
+    // Big Five Personality
+    'bigfive': '/assets/Assessment Icons/Big 5 Personality.png',
+    
+    // Work Values & Motivators
+    'values': '/assets/Assessment Icons/Work Value & Motivators.png',
+    
+    // Employability Skills
+    'employability': '/assets/Assessment Icons/Employability Skills.png',
+    
+    // Multi-Aptitude
+    'aptitude': '/assets/Assessment Icons/Multi-Aptitude.png',
+    
+    // Stream Knowledge
+    'knowledge': '/assets/Assessment Icons/Stream Knowledge.png',
+    
+    // Middle School - Interest Explorer
+    'middle_interest_explorer': '/assets/Assessment Icons/Interest Explorer.png',
+    
+    // Middle School - Strengths & Character
+    'middle_strengths_character': '/assets/Assessment Icons/Strenghts & Character.png',
+    
+    // Middle School - Learning & Work Preferences
+    'middle_learning_preferences': '/assets/Assessment Icons/Learning & Work Preference.png',
+    
+    // High School - Interest Explorer
+    'hs_interest_explorer': '/assets/Assessment Icons/Interest Explorer.png',
+    
+    // High School - Strengths & Character
+    'hs_strengths_character': '/assets/Assessment Icons/Strenghts & Character.png',
+    
+    // High School - Learning & Work Preferences
+    'hs_learning_preferences': '/assets/Assessment Icons/Learning & Work Preference.png',
+    
+    // High School - Aptitude Sampling
+    'hs_aptitude_sampling': '/assets/Assessment Icons/Aptitude Sampling.png',
+    
+    // Adaptive Aptitude Test
+    'adaptive_aptitude': '/assets/Assessment Icons/Adaptive Aptitude Test.png',
+  };
+  
+  return iconMap[sectionId] || '/assets/Assessment Icons/Career Interests.png';
+};
+
+/**
  * Build sections with questions for a given grade level
  */
 const buildSectionsWithQuestions = (
@@ -1853,7 +1904,7 @@ const AssessmentTestPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Progress Header */}
-      <div className="max-w-4xl mx-auto px-4 pt-6">
+      <div>
         <ProgressHeader
           sections={sections}
           currentSectionIndex={flow.currentSectionIndex}
@@ -1970,7 +2021,7 @@ const AssessmentTestPage: React.FC = () => {
               title={currentSection.title}
               description={currentSection.description}
               instruction={currentSection.instruction}
-              icon={null}
+              icon={getSectionIconPath(currentSection.id)}
               color={currentSection.color}
               sectionId={currentSection.id}
               questionCount={currentSection.questions?.length || 0}
@@ -1998,45 +2049,38 @@ const AssessmentTestPage: React.FC = () => {
           
           {/* Question with Sidebar Layout */}
           {!flow.showSectionIntro && !flow.showSectionComplete && currentQuestion && (
-            <motion.div
-              key={questionId}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
+            <QuestionLayout
+              sectionTitle={currentSection?.title || ''}
+              sectionDescription={currentSection?.description || ''}
+              sectionInstruction={currentSection?.instruction}
+              sectionId={currentSection?.id || ''}
+              sectionColor={currentSection?.color}
+              currentSectionIndex={flow.currentSectionIndex}
+              totalSections={sections.length}
+              currentQuestionIndex={currentSection?.isAdaptive
+                ? (adaptiveAptitude.progress?.questionsAnswered || 0)
+                : flow.currentQuestionIndex}
+              totalQuestions={currentSection?.isAdaptive
+                ? (adaptiveAptitude.progress?.estimatedTotalQuestions || 21)
+                : (currentSection?.questions?.length || 0)}
+              elapsedTime={flow.elapsedTime}
+              showNoWrongAnswers={!currentSection?.isAptitude && !currentSection?.isAdaptive}
+              perQuestionTimer={((currentSection?.isAptitude && flow.aptitudePhase === 'individual') || currentSection?.isKnowledge) ? flow.aptitudeQuestionTimer : null}
+              showPerQuestionTimer={((currentSection?.isAptitude && flow.aptitudePhase === 'individual') || currentSection?.isKnowledge) && flow.aptitudeQuestionTimer !== null}
             >
-              <QuestionLayout
-                sectionTitle={currentSection?.title || ''}
-                sectionDescription={currentSection?.description || ''}
-                sectionInstruction={currentSection?.instruction}
-                sectionId={currentSection?.id || ''}
-                sectionColor={currentSection?.color}
-                currentSectionIndex={flow.currentSectionIndex}
-                totalSections={sections.length}
-                currentQuestionIndex={currentSection?.isAdaptive 
-                  ? (adaptiveAptitude.progress?.questionsAnswered || 0)
-                  : flow.currentQuestionIndex}
-                totalQuestions={currentSection?.isAdaptive 
-                  ? (adaptiveAptitude.progress?.estimatedTotalQuestions || 21)
-                  : (currentSection?.questions?.length || 0)}
-                elapsedTime={flow.elapsedTime}
-                showNoWrongAnswers={!currentSection?.isAptitude && !currentSection?.isAdaptive}
-                perQuestionTimer={((currentSection?.isAptitude && flow.aptitudePhase === 'individual') || currentSection?.isKnowledge) ? flow.aptitudeQuestionTimer : null}
-                showPerQuestionTimer={((currentSection?.isAptitude && flow.aptitudePhase === 'individual') || currentSection?.isKnowledge) && flow.aptitudeQuestionTimer !== null}
-              >
-                {/* Question Number Label with Per-Question Timer */}
-                <div className="flex items-center justify-between mb-2">
-                  <div className="text-sm font-semibold text-indigo-600">
-                    QUESTION {currentSection?.isAdaptive 
+              {/* Question Number Label with Per-Question Timer - Fixed at top in container */}
+              <div className="bg-white/60 rounded-xl border border-blue-200/50 px-4 py-2 mb-12 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div className="text-base font-semibold text-indigo-600">
+                    QUESTION {currentSection?.isAdaptive
                       ? `${(adaptiveAptitude.progress?.questionsAnswered || 0) + 1} / ${adaptiveAptitude.progress?.estimatedTotalQuestions || 21}`
                       : `${flow.currentQuestionIndex + 1} / ${currentSection?.questions?.length || 0}`}
                   </div>
                   
                   {/* Per-Question Countdown Timer - Top Right (for aptitude/knowledge sections ONLY) */}
                   {((currentSection?.isAptitude && flow.aptitudePhase === 'individual') || currentSection?.isKnowledge) && flow.aptitudeQuestionTimer !== null && (
-                    <div className={`text-sm font-semibold flex items-center gap-1.5 ${
-                      flow.aptitudeQuestionTimer <= 10 ? 'text-red-600' : 'text-orange-600'
-                    }`}>
+                    <div className={`text-xs font-semibold flex items-center gap-1.5 px-2 py-1 rounded-lg ${flow.aptitudeQuestionTimer <= 10 ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'
+                      }`}>
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <circle cx="12" cy="12" r="10" strokeWidth="2"/>
                         <path strokeLinecap="round" strokeWidth="2" d="M12 6v6l4 2"/>
@@ -2045,32 +2089,47 @@ const AssessmentTestPage: React.FC = () => {
                     </div>
                   )}
                 </div>
-                
-                <QuestionRenderer
-                  question={currentQuestion}
-                  questionId={questionId}
-                  sectionId={currentSection?.id || ''}
-                  answer={currentSection?.isAdaptive ? adaptiveAptitudeAnswer : flow.answers[questionId]}
-                  onAnswer={handleAnswerChange}
-                  responseScale={currentSection?.responseScale}
-                  isAdaptive={currentSection?.isAdaptive}
-                  adaptiveTimer={adaptiveQuestionTimer}
-                  adaptiveDifficulty={adaptiveAptitude.currentQuestion?.difficulty || adaptiveAptitude.progress?.currentDifficulty}
-                  adaptiveLoading={false}
-                  adaptiveDisabled={currentSection?.isAdaptive ? adaptiveAptitude.submitting : false}
-                />
-                
-                <QuestionNavigation
-                  onPrevious={flow.goToPreviousQuestion}
-                  onNext={handleNextQuestion}
-                  canGoPrevious={flow.currentQuestionIndex > 0 && !currentSection?.isAdaptive}
-                  isAnswered={isCurrentAnswered}
-                  isSubmitting={currentSection?.isAdaptive ? adaptiveAptitude.submitting : false}
-                  isSaving={flow.isSaving}
-                  isLastQuestion={flow.isLastQuestion}
-                />
-              </QuestionLayout>
-            </motion.div>
+              </div>
+
+              <motion.div
+                key={questionId}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+                className="flex flex-col flex-1"
+              >
+                {/* Question Content */}
+                <div className="flex-1 py-8">
+                  <QuestionRenderer
+                    question={currentQuestion}
+                    questionId={questionId}
+                    sectionId={currentSection?.id || ''}
+                    answer={currentSection?.isAdaptive ? adaptiveAptitudeAnswer : flow.answers[questionId]}
+                    onAnswer={handleAnswerChange}
+                    responseScale={currentSection?.responseScale}
+                    isAdaptive={currentSection?.isAdaptive}
+                    adaptiveTimer={adaptiveQuestionTimer}
+                    adaptiveDifficulty={adaptiveAptitude.currentQuestion?.difficulty || adaptiveAptitude.progress?.currentDifficulty}
+                    adaptiveLoading={false}
+                    adaptiveDisabled={currentSection?.isAdaptive ? adaptiveAptitude.submitting : false}
+                  />
+                </div>
+
+                {/* Navigation Buttons - Fixed at bottom */}
+                <div className="mt-2">
+                  <QuestionNavigation
+                    onPrevious={flow.goToPreviousQuestion}
+                    onNext={handleNextQuestion}
+                    canGoPrevious={flow.currentQuestionIndex > 0 && !currentSection?.isAdaptive}
+                    canGoNext={isCurrentAnswered}
+                    isAnswered={isCurrentAnswered}
+                    isSubmitting={currentSection?.isAdaptive ? adaptiveAptitude.submitting : false}
+                    isLastQuestion={flow.isLastQuestion}
+                  />
+                </div>
+              </motion.div>
+            </QuestionLayout>
           )}
         </AnimatePresence>
       </div>

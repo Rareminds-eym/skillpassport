@@ -9,12 +9,6 @@
 
 import React from 'react';
 import { 
-  Heart, 
-  Brain, 
-  BookOpen, 
-  Target, 
-  Briefcase, 
-  Lightbulb,
   Clock,
   Layers,
   HelpCircle,
@@ -39,40 +33,54 @@ interface QuestionLayoutProps {
 }
 
 /**
- * Get section icon based on section ID
+ * Get icon image path for a section based on section ID
  */
-const getSectionIcon = (sectionId: string, color: string) => {
-  const iconClass = `w-6 h-6 text-${color}-500`;
-  
-  const iconMap: Record<string, React.ReactNode> = {
-    // Interest/RIASEC sections
-    'hs_interest_explorer': <Heart className={iconClass} />,
-    'middle_interest_explorer': <Heart className={iconClass} />,
-    'riasec': <Heart className={iconClass} />,
+const getSectionIconPath = (sectionId: string): string => {
+  const iconMap: Record<string, string> = {
+    // Career Interests (RIASEC)
+    'riasec': '/assets/Assessment Icons/Career Interests.png',
     
-    // Strengths/Character sections
-    'hs_strengths_character': <Brain className={iconClass} />,
-    'middle_strengths_character': <Brain className={iconClass} />,
-    'bigfive': <Brain className={iconClass} />,
+    // Big Five Personality
+    'bigfive': '/assets/Assessment Icons/Big 5 Personality.png',
     
-    // Learning/Preferences sections
-    'hs_learning_preferences': <BookOpen className={iconClass} />,
-    'middle_learning_preferences': <BookOpen className={iconClass} />,
+    // Work Values & Motivators
+    'values': '/assets/Assessment Icons/Work Value & Motivators.png',
     
-    // Aptitude sections
-    'hs_aptitude_sampling': <Target className={iconClass} />,
-    'aptitude': <Target className={iconClass} />,
-    'adaptive_aptitude': <Lightbulb className={iconClass} />,
+    // Employability Skills
+    'employability': '/assets/Assessment Icons/Employability Skills.png',
     
-    // Values/Employability
-    'values': <Briefcase className={iconClass} />,
-    'employability': <Briefcase className={iconClass} />,
+    // Multi-Aptitude
+    'aptitude': '/assets/Assessment Icons/Multi-Aptitude.png',
     
-    // Knowledge
-    'knowledge': <BookOpen className={iconClass} />,
+    // Stream Knowledge
+    'knowledge': '/assets/Assessment Icons/Stream Knowledge.png',
+    
+    // Middle School - Interest Explorer
+    'middle_interest_explorer': '/assets/Assessment Icons/Interest Explorer.png',
+    
+    // Middle School - Strengths & Character
+    'middle_strengths_character': '/assets/Assessment Icons/Strenghts & Character.png',
+    
+    // Middle School - Learning & Work Preferences
+    'middle_learning_preferences': '/assets/Assessment Icons/Learning & Work Preference.png',
+    
+    // High School - Interest Explorer
+    'hs_interest_explorer': '/assets/Assessment Icons/Interest Explorer.png',
+    
+    // High School - Strengths & Character
+    'hs_strengths_character': '/assets/Assessment Icons/Strenghts & Character.png',
+    
+    // High School - Learning & Work Preferences
+    'hs_learning_preferences': '/assets/Assessment Icons/Learning & Work Preference.png',
+    
+    // High School - Aptitude Sampling
+    'hs_aptitude_sampling': '/assets/Assessment Icons/Aptitude Sampling.png',
+    
+    // Adaptive Aptitude Test
+    'adaptive_aptitude': '/assets/Assessment Icons/Adaptive Aptitude Test.png',
   };
   
-  return iconMap[sectionId] || <HelpCircle className={iconClass} />;
+  return iconMap[sectionId] || '/assets/Assessment Icons/Career Interests.png';
 };
 
 /**
@@ -129,25 +137,49 @@ export const QuestionLayout: React.FC<QuestionLayoutProps> = ({
   };
   
   return (
-    <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
-      {/* Left Sidebar */}
-      <div className="lg:w-72 xl:w-80 shrink-0">
-        <div className="lg:sticky lg:top-24 space-y-4">
-          {/* Section Icon */}
-          <div className={`w-14 h-14 ${colors.iconBg} rounded-2xl flex items-center justify-center`}>
-            {getSectionIcon(sectionId, sectionColor)}
+    <div className="relative min-h-screen">
+      <div className="flex flex-col lg:flex-row lg:items-start gap-0 max-w-7xl mx-auto px-4 py-6">
+        {/* Left Sidebar with Gray Glass Effect - Sticky Position */}
+        <div className="lg:w-72 xl:w-80 shrink-0 relative overflow-hidden rounded-l-2xl backdrop-blur-xl bg-gray-50/40 border border-gray-200/50 shadow-lg lg:sticky lg:top-20 lg:self-start z-20"
+          style={{
+            background: `linear-gradient(135deg, rgba(249, 250, 251, 0.6) 0%, rgba(243, 244, 246, 0.3) 100%)`,
+            boxShadow: '0 8px 32px 0 rgba(107, 114, 128, 0.08), inset 0 1px 0 0 rgba(255, 255, 255, 0.5)',
+          }}
+        >
+          {/* Glass shine effect */}
+          <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent rounded-l-2xl pointer-events-none z-0" />
+          
+          <div className="p-6 space-y-4 relative z-10">
+          {/* Section Icon with Glassmorphism - Centered */}
+          <div className="flex justify-center">
+            <div 
+              className="w-20 h-20 rounded-3xl flex items-center justify-center p-4 relative overflow-hidden backdrop-blur-xl bg-white/30 border border-white/40 shadow-2xl"
+              style={{
+                background: `linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.1) 100%)`,
+                boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.15), inset 0 1px 0 0 rgba(255, 255, 255, 0.5)',
+              }}
+            >
+              {/* Glass shine effect */}
+              <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent rounded-3xl" />
+              
+              <img 
+                src={getSectionIconPath(sectionId)} 
+                alt={sectionTitle}
+                className="w-full h-full object-contain relative z-10 drop-shadow-lg"
+              />
+            </div>
           </div>
           
           {/* Section Title */}
-          <div>
+          <div className="text-center">
             <h2 className="text-xl font-bold text-gray-900">{sectionTitle}</h2>
             <p className="text-sm text-gray-600 mt-1">{sectionDescription}</p>
           </div>
           
           {/* Instruction Box */}
           {sectionInstruction && (
-            <div className={`${colors.bg} ${colors.border} border rounded-xl p-4`}>
-              <p className={`text-sm ${colors.text}`}>
+            <div className="bg-blue-50 border-blue-200 border rounded-xl p-4">
+              <p className="text-sm text-blue-700 font-medium">
                 {sectionInstruction}
               </p>
             </div>
@@ -162,7 +194,7 @@ export const QuestionLayout: React.FC<QuestionLayoutProps> = ({
           )}
           
           {/* Progress Info */}
-          <div className="space-y-2 pt-2 border-t border-gray-100">
+          <div className="bg-gray-50 rounded-xl p-4 space-y-2 border border-gray-200">
             {/* Section Progress */}
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Layers className="w-4 h-4" />
@@ -175,19 +207,30 @@ export const QuestionLayout: React.FC<QuestionLayoutProps> = ({
               <span>Question {currentQuestionIndex + 1} / {totalQuestions}</span>
             </div>
             
-            {/* Timer - Always show section elapsed time in sidebar */}
+            {/* Timer - With blink animation on time value only */}
             <div className="flex items-center gap-2 text-sm text-indigo-600 font-medium">
               <Clock className="w-4 h-4" />
-              <span>Time: {formatTime(elapsedTime)}</span>
+              <span>Time: <span className="animate-[pulse_2s_ease-in-out_infinite] text-indigo-800">{formatTime(elapsedTime)}</span></span>
             </div>
           </div>
+          </div>
+        </div>
+      
+      {/* Right Content Area with Blue Glass Effect */}
+      <div className="flex-1 min-w-0 relative rounded-r-2xl backdrop-blur-xl bg-blue-50/40 border-t border-r border-b border-blue-200/50 shadow-lg flex flex-col z-10 min-h-[600px]"
+        style={{
+          background: `linear-gradient(135deg, rgba(219, 234, 254, 0.6) 0%, rgba(191, 219, 254, 0.3) 100%)`,
+          boxShadow: '0 8px 32px 0 rgba(59, 130, 246, 0.1), inset 0 1px 0 0 rgba(255, 255, 255, 0.5)',
+        }}
+      >
+        {/* Glass shine effect */}
+        <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent rounded-r-2xl pointer-events-none z-0" />
+        
+        <div className="relative z-10 p-6 flex-1 flex flex-col">
+          {children}
         </div>
       </div>
-      
-      {/* Right Content Area */}
-      <div className="flex-1 min-w-0">
-        {children}
-      </div>
+    </div>
     </div>
   );
 };

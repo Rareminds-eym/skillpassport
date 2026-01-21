@@ -58,20 +58,20 @@ export const LikertQuestion: React.FC<LikertQuestionProps> = ({
                 flex flex-col items-center justify-center p-4 rounded-xl border-2 
                 min-w-[100px] transition-all duration-200
                 ${isSelected 
-                  ? `border-${color}-500 bg-${color}-50 ring-2 ring-${color}-500/30` 
-                  : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                  ? 'border-blue-500 bg-gradient-to-r from-blue-600 to-indigo-600 ring-2 ring-blue-500/30 shadow-md' 
+                  : 'border-gray-300 bg-white hover:border-blue-300 hover:bg-gray-50'
                 }
               `}
             >
               <span className={`
                 text-2xl font-bold mb-1
-                ${isSelected ? `text-${color}-600` : 'text-gray-600'}
+                ${isSelected ? 'text-white' : 'text-gray-600'}
               `}>
                 {option.value}
               </span>
               <span className={`
                 text-xs text-center leading-tight
-                ${isSelected ? `text-${color}-700 font-medium` : 'text-gray-500'}
+                ${isSelected ? 'text-white font-medium' : 'text-gray-500'}
               `}>
                 {option.label}
               </span>
