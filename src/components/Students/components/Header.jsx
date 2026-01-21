@@ -40,6 +40,9 @@ const Header = ({ activeTab, setActiveTab }) => {
 
   // Check if current route is a digital portfolio route
   const isDigitalPortfolioRoute = location.pathname.startsWith('/student/digital-portfolio');
+  
+  // Check if current route is assessment result page - hide header completely
+  const isAssessmentResultRoute = location.pathname.startsWith('/student/assessment/result');
 
   // Add scrollbar-hide and navbar hover styles
   React.useEffect(() => {
@@ -177,6 +180,11 @@ const Header = ({ activeTab, setActiveTab }) => {
       navigate("/student/messages");
     }
   };
+
+  // Don't render header on assessment result page (after all hooks are called)
+  if (isAssessmentResultRoute) {
+    return null;
+  }
 
   return (
     <header className="bg-white border-b border-gray-200 shadow-sm py-2 px-1 sm:px-2 lg:px-4 sticky top-0 z-[100]">
