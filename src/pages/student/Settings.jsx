@@ -498,6 +498,13 @@ const Settings = () => {
         title: "Success",
         description: "Profile updated successfully",
       });
+      
+      // Dispatch event to notify other pages (like Dashboard) to refresh
+      window.dispatchEvent(new CustomEvent('student_settings_updated', {
+        detail: { type: 'profile_updated', data: profileData }
+      }));
+      console.log('📢 Dispatched student_settings_updated event');
+      
       // Refresh recent updates if available
       try {
         if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
