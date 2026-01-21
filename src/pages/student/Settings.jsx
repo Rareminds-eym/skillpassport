@@ -1576,6 +1576,8 @@ const Settings = () => {
                                 setCustomProgramName(programName);
                                 // Store in branch_field
                                 handleProfileChange("branch", programName);
+                                // Clear programId when manually entering program
+                                handleProfileChange("programId", "");
                                 
                                 // Auto-set grade based on program name
                                 const lowerName = programName.toLowerCase();

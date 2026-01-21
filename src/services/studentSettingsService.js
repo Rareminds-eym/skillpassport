@@ -325,11 +325,13 @@ export const updateStudentSettings = async (email, updates) => {
           columnUpdates.course_name = value;
           // If manually setting branch (not via program_id dropdown), clear program_id
           // This prevents the FK relationship from overriding the manual entry
-          if (!updates.programId) {
+          // Check if programId is empty, null, or not provided
+          const hasProgramId = updates.programId && updates.programId !== '' && updates.programId !== null;
+          if (!hasProgramId) {
             columnUpdates.program_id = null;
+            console.log('🔓 Clearing program_id to use manual entry');
           }
           console.log('📚 Syncing course_name with branch_field:', value);
-          console.log('🔓 Clearing program_id to use manual entry');
         }
         
         // IMPORTANT: When program_id is set via dropdown, also update branch_field and course_name
@@ -346,7 +348,7 @@ export const updateStudentSettings = async (email, updates) => {
     });
 
     // If program_id was set, fetch the program name and sync to branch_field and course_name
-    if (columnUpdates.program_id) {
+    if (columnUpdates.program_id && columnUpdates.program_id !== null) {
       console.log('🔍 Fetching program name for program_id:', columnUpdates.program_id);
       const { data: programData, error: programError } = await supabase
         .from('programs')
