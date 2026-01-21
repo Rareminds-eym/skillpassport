@@ -71,7 +71,7 @@ export const getStudentPortfolioByEmail = async (email) => {
       return { success: false, error: 'Student not found' };
     }
 
-    const userId = student.user_id;
+    const userId = student.id;
 
     // Fetch all related data in parallel for performance
     const [
