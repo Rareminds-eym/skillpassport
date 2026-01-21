@@ -789,6 +789,38 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
     console.warn('⚠️ Check if fetchAIKnowledgeQuestions() returned questions');
   }
   
+  /**
+   * Get the correct answer text from a question
+   * Handles both "Option X" format and direct text format
+   */
+  const getCorrectAnswerText = (question) => {
+    let correctAnswer = question.correct_answer || question.correctAnswer || question.correct;
+    
+    // If correct_answer is in "Option X" format, convert to actual text
+    if (correctAnswer && typeof correctAnswer === 'string') {
+      const optionMatch = correctAnswer.match(/^Option\s+([A-D])$/i);
+      if (optionMatch && question.options) {
+        const optionLetter = optionMatch[1].toUpperCase();
+        const optionIndex = optionLetter.charCodeAt(0) - 'A'.charCodeAt(0);
+        if (optionIndex >= 0 && optionIndex < question.options.length) {
+          correctAnswer = question.options[optionIndex];
+          console.log(`   🔄 Converted "${question.correct_answer}" to "${correctAnswer}"`);
+        }
+      }
+    }
+    
+    // If correct is just a letter (A, B, C, D), convert to actual text
+    if (correctAnswer && correctAnswer.length === 1 && /[A-D]/i.test(correctAnswer) && question.options) {
+      const optionIndex = correctAnswer.toUpperCase().charCodeAt(0) - 'A'.charCodeAt(0);
+      if (optionIndex >= 0 && optionIndex < question.options.length) {
+        correctAnswer = question.options[optionIndex];
+        console.log(`   🔄 Converted letter "${question.correct}" to "${correctAnswer}"`);
+      }
+    }
+    
+    return correctAnswer;
+  };
+  
   let knowledgeFound = 0;
   let knowledgeNotFound = 0;
   let knowledgeCorrect = 0;
@@ -799,8 +831,8 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
       const question = streamQuestions.find(q => q.id === questionId);
       if (question) {
         knowledgeFound++;
-        // Handle different field names for correct answer
-        const correctAnswer = question.correct || question.correctAnswer || question.correct_answer;
+        // Get correct answer with format normalization
+        const correctAnswer = getCorrectAnswerText(question);
         
         // Normalize values for comparison
         const normalizeValue = (v) => {

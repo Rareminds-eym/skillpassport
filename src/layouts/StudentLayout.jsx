@@ -87,7 +87,10 @@ const StudentLayout = () => {
   const isCareerAIPage = location.pathname === '/student/career-ai' || location.pathname.includes('/career-ai');
 
   // Check if current page is Assessment (should be full-screen without padding)
-  const isAssessmentPage = location.pathname.includes('/assessment/platform') || location.pathname.includes('/assessment/start') || location.pathname.includes('/assessment/result');
+  const isAssessmentPage = location.pathname.includes('/assessment/platform') || location.pathname.includes('/assessment/start') || location.pathname.includes('/assessment/result') || location.pathname.includes('/assessment/test') || location.pathname.includes('/assessment-report');
+
+  // Hide navbar only for assessment test pages (not result pages)
+  const isAssessmentTestPage = location.pathname.includes('/assessment/test') || location.pathname.includes('/assessment-report') || location.pathname.includes('/assessment/start') || location.pathname.includes('/assessment/platform');
 
   // Assessment result page needs scrolling, unlike test/platform pages
   const isAssessmentResultPage = location.pathname.includes('/assessment/result');
@@ -96,12 +99,12 @@ const StudentLayout = () => {
   return (
     <GlobalPresenceProvider userType="student">
       <div className={isCareerAIPage || isFullScreenAssessment ? "h-screen bg-gray-50 flex flex-col" : "min-h-screen bg-gray-50 flex flex-col"}>
-        {!isAssessmentPage && <Header activeTab={activeTab} setActiveTab={setActiveTab} />}
+        {!isAssessmentTestPage && <Header activeTab={activeTab} setActiveTab={setActiveTab} />}
         {!isViewingOthersProfile && isDashboardPage && <ProfileHeroEdit onEditClick={handleEditClick} />}
         <main className={isCareerAIPage ? "flex-1 overflow-hidden" : ""}>
           <Outlet context={{ activeTab, userData, handleSave, setActiveModal }} />
         </main>
-        {!isCareerAIPage && !isAssessmentPage && (
+        {!isCareerAIPage && (
           <footer className="bg-white border-t border-gray-200 py-4 px-6">
             <div className="flex items-center justify-between text-sm text-gray-500">
               <span>© {new Date().getFullYear()} Student Portal. All rights reserved.</span>
@@ -113,7 +116,7 @@ const StudentLayout = () => {
             </div>
           </footer>
         )}
-        {!isAssessmentPage && <FloatingAIButton />}
+        {!isAssessmentTestPage && <FloatingAIButton />}
         <Toaster />
 
         {/* Edit Modals - Only show if not viewing someone else's profile */}

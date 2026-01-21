@@ -318,7 +318,14 @@ export const useAssessmentResults = () => {
                         branch_field,
                         course_name,
                         college_school_name,
-                        grade_start_date
+                        grade_start_date,
+                        program_id,
+                        programs (
+                            id,
+                            name,
+                            code,
+                            degree_level
+                        )
                     `)
                     .eq('user_id', user.id)
                     .maybeSingle();
@@ -556,8 +563,9 @@ export const useAssessmentResults = () => {
                     }
                     console.log('Derived gradeLevel from student data:', derivedGradeLevel, 'grade:', studentGrade, 'school_id:', studentData.school_id, 'college_id:', studentData.college_id, 'schoolClassId:', studentData.schoolClassId);
 
-                    // Derive stream from branch_field or course_name (database only)
+                    // Derive stream from program, branch_field or course_name (database only)
                     let derivedStream = '—';
+                    let programName = '—';
 
                     // For middle/high school, use friendly labels
                     if (derivedGradeLevel === 'middle') {
@@ -565,9 +573,47 @@ export const useAssessmentResults = () => {
                     } else if (derivedGradeLevel === 'highschool' || derivedGradeLevel === 'higher_secondary') {
                         derivedStream = 'High School (Grades 9-10)';
                     }
-                    // If we have branch_field or course_name, derive the stream
+                    // Check if student has a program (from programs table)
+                    else if (studentData.programs) {
+                        programName = studentData.programs.name || studentData.programs.code || '—';
+                        const fieldText = programName.toLowerCase();
+
+                        // Science stream indicators
+                        if (fieldText.includes('science') || fieldText.includes('engineering') ||
+                            fieldText.includes('tech') || fieldText.includes('bca') ||
+                            fieldText.includes('computer') || fieldText.includes('physics') ||
+                            fieldText.includes('chemistry') || fieldText.includes('biology') ||
+                            fieldText.includes('mathematics') || fieldText.includes('medical') ||
+                            fieldText.includes('mbbs') || fieldText.includes('bsc') ||
+                            fieldText.includes('b.sc') || fieldText.includes('b.tech') ||
+                            fieldText.includes('m.tech') || fieldText.includes('mtech') ||
+                            fieldText.includes('electronics') || fieldText.includes('ece')) {
+                            derivedStream = 'SCIENCE';
+                        }
+                        // Commerce stream indicators
+                        else if (fieldText.includes('commerce') || fieldText.includes('business') ||
+                            fieldText.includes('bba') || fieldText.includes('bcom') ||
+                            fieldText.includes('b.com') || fieldText.includes('finance') ||
+                            fieldText.includes('accounting') || fieldText.includes('economics') ||
+                            fieldText.includes('management') || fieldText.includes('marketing')) {
+                            derivedStream = 'COMMERCE';
+                        }
+                        // Arts stream indicators
+                        else if (fieldText.includes('arts') || fieldText.includes('humanities') ||
+                            fieldText.includes('ba ') || fieldText.includes('b.a') ||
+                            fieldText.includes('law') || fieldText.includes('llb') ||
+                            fieldText.includes('english') || fieldText.includes('history') ||
+                            fieldText.includes('political') || fieldText.includes('sociology') ||
+                            fieldText.includes('psychology') || fieldText.includes('literature')) {
+                            derivedStream = 'ARTS';
+                        }
+
+                        console.log('📚 Derived stream from program:', derivedStream, 'from program:', programName);
+                    }
+                    // Fallback: If we have branch_field or course_name, derive the stream
                     else if (studentData.branch_field || studentData.course_name) {
-                        const fieldText = (studentData.branch_field || studentData.course_name || '').toLowerCase();
+                        programName = studentData.course_name || studentData.branch_field || '—';
+                        const fieldText = programName.toLowerCase();
 
                         // Science stream indicators
                         if (fieldText.includes('science') || fieldText.includes('engineering') ||
@@ -609,8 +655,8 @@ export const useAssessmentResults = () => {
                         school: schoolName,    // Only show school for school students
                         stream: derivedStream,
                         grade: studentGrade,
-                        branchField: studentData.branch_field || '—',
-                        courseName: studentData.course_name || '—'
+                        branchField: programName, // Use program name instead of branch_field
+                        courseName: programName   // Use program name for course name too
                     });
 
                     // Calculate months in grade from grade_start_date
