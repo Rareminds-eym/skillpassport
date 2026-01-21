@@ -3,19 +3,17 @@ name: Deploy to Cloudflare Pages
 on:
   push:
     branches:
-      - main
-      - dev
+      - production
   pull_request:
     branches:
-      - main
-      - dev
+      - production
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     environment:
-      name: ${{ github.ref == 'refs/heads/main' && 'production' || github.ref == 'refs/heads/dev' && 'development' || 'preview' }}
-      url: ${{ github.ref == 'refs/heads/main' && 'https://skillpassport.rareminds.in' || github.ref == 'refs/heads/dev' && 'https://dev.skillpassport.pages.dev' || steps.preview.outputs.preview_url }}
+      name: ${{ github.event_name == 'push' && 'production' || 'preview' }}
+      url: ${{ github.event_name == 'push' && 'https://skillpassport.rareminds.in' || steps.preview.outputs.preview_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -75,21 +73,14 @@ jobs:
 
       - name: Create Pages project if not exists
         run: |
-          npx wrangler pages project create skillpassport --production-branch=main || true
+          npx wrangler pages project create skillpassport --production-branch=production || true
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Deploy to Cloudflare Pages (Production)
-        if: github.ref == 'refs/heads/main'
-        run: npx wrangler pages deploy dist --project-name=skillpassport --commit-dirty=true --branch=main
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
-      - name: Deploy to Cloudflare Pages (Development)
-        if: github.ref == 'refs/heads/dev'
-        run: npx wrangler pages deploy dist --project-name=skillpassport --commit-dirty=true --branch=dev
+        if: github.event_name == 'push' && github.ref == 'refs/heads/production'
+        run: npx wrangler pages deploy dist --project-name=skillpassport --commit-dirty=true --branch=production
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -111,15 +102,11 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const targetBranch = context.payload.pull_request.base.ref;
-            const emoji = targetBranch === 'main' ? '🚀' : '🧪';
-            const envName = targetBranch === 'main' ? 'Production Preview' : 'Development Preview';
-            
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `${emoji} **${envName} deployed!**\n\n🔗 Preview: ${process.env.PREVIEW_URL}\n📝 Commit: ${context.sha.substring(0, 7)}\n🎯 Target: \`${targetBranch}\` branch`
+              body: `🚀 **Preview deployed!**\n\n🔗 Preview: ${process.env.PREVIEW_URL}\n📝 Commit: ${context.sha.substring(0, 7)}`
             })
         env:
           PREVIEW_URL: ${{ steps.preview.outputs.preview_url }}
@@ -132,18 +119,13 @@ jobs:
           echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| Status | ${{ job.status }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Environment | ${{ github.ref == 'refs/heads/main' && 'Production' || github.ref == 'refs/heads/dev' && 'Development' || 'PR Preview' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Environment | ${{ github.event_name == 'push' && 'Production' || 'Preview' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Branch | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            echo "| Target Branch | \`${{ github.base_ref }}\` |" >> $GITHUB_STEP_SUMMARY
-          fi
           echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Triggered by | ${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+          if [ "${{ github.event_name }}" == "push" ]; then
             echo "| Production URL | https://skillpassport.rareminds.in |" >> $GITHUB_STEP_SUMMARY
-          elif [ "${{ github.ref }}" == "refs/heads/dev" ]; then
-            echo "| Development URL | https://dev.skillpassport.pages.dev |" >> $GITHUB_STEP_SUMMARY
-          elif [ "${{ github.event_name }}" == "pull_request" ]; then
+          else
             echo "| Preview URL | ${{ steps.preview.outputs.preview_url }} |" >> $GITHUB_STEP_SUMMARY
           fi
 
