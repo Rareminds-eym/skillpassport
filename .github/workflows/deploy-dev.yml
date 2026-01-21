@@ -1,19 +1,19 @@
-name: Deploy to Cloudflare Pages
+name: Deploy to Development
 
 on:
   push:
     branches:
-      - production
+      - dev
   pull_request:
     branches:
-      - production
+      - dev
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     environment:
-      name: ${{ github.event_name == 'push' && 'production' || 'preview' }}
-      url: ${{ github.event_name == 'push' && 'https://skillpassport.rareminds.in' || steps.preview.outputs.preview_url }}
+      name: ${{ github.event_name == 'push' && 'development' || 'preview' }}
+      url: ${{ github.event_name == 'push' && 'https://dev.skillpassport.pages.dev' || steps.preview.outputs.preview_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -67,7 +67,7 @@ jobs:
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: dist-${{ github.sha }}
+          name: dist-dev-${{ github.sha }}
           path: dist/
           retention-days: 7
 
@@ -78,9 +78,9 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      - name: Deploy to Cloudflare Pages (Production)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/production'
-        run: npx wrangler pages deploy dist --project-name=skillpassport --commit-dirty=true --branch=production
+      - name: Deploy to Cloudflare Pages (Development)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+        run: npx wrangler pages deploy dist --project-name=skillpassport --commit-dirty=true --branch=dev
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -106,7 +106,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `🚀 **Preview deployed!**\n\n🔗 Preview: ${process.env.PREVIEW_URL}\n📝 Commit: ${context.sha.substring(0, 7)}`
+              body: `🧪 **Development Preview deployed!**\n\n🔗 Preview: ${process.env.PREVIEW_URL}\n📝 Commit: ${context.sha.substring(0, 7)}`
             })
         env:
           PREVIEW_URL: ${{ steps.preview.outputs.preview_url }}
@@ -114,17 +114,17 @@ jobs:
       - name: Deployment Summary
         if: always()
         run: |
-          echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## 🧪 Development Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| Status | ${{ job.status }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Environment | ${{ github.event_name == 'push' && 'Production' || 'Preview' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Environment | ${{ github.event_name == 'push' && 'Development' || 'Preview' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Branch | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Triggered by | ${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
           if [ "${{ github.event_name }}" == "push" ]; then
-            echo "| Production URL | https://skillpassport.rareminds.in |" >> $GITHUB_STEP_SUMMARY
+            echo "| Development URL | https://dev.skillpassport.pages.dev |" >> $GITHUB_STEP_SUMMARY
           else
             echo "| Preview URL | ${{ steps.preview.outputs.preview_url }} |" >> $GITHUB_STEP_SUMMARY
           fi
@@ -132,7 +132,7 @@ jobs:
       - name: Notify on Failure
         if: failure()
         run: |
-          echo "::error::Deployment failed! Check the logs above for details."
-          echo "## ❌ Deployment Failed" >> $GITHUB_STEP_SUMMARY
+          echo "::error::Development deployment failed! Check the logs above for details."
+          echo "## ❌ Development Deployment Failed" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Please review the workflow logs for error details." >> $GITHUB_STEP_SUMMARY
