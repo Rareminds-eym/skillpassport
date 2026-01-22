@@ -445,9 +445,10 @@ const AssessmentTestPage: React.FC = () => {
   useEffect(() => {
     if (!flow.gradeLevel) return;
     
-    // For stream-based assessments (higher_secondary, after12, college), wait for stream selection
+    // For stream-based assessments (after12, college), wait for stream selection
     // For middle/highschool, build sections immediately
     // For after10, we use 'general' stream which is set automatically in handleGradeSelect
+    // For higher_secondary, students select their stream (Science/Commerce/Arts) before assessment
     const needsStream = ['higher_secondary', 'after12', 'college'].includes(flow.gradeLevel);
     const canBuild = flow.studentStream || !needsStream;
     
@@ -1508,7 +1509,8 @@ const AssessmentTestPage: React.FC = () => {
         currentAttempt,
         userId: user?.id || null,
         timeRemaining: flow.timeRemaining,
-        elapsedTime: flow.elapsedTime
+        elapsedTime: flow.elapsedTime,
+        selectedCategory: flow.selectedCategory
       });
     } else {
       console.log('⏭️ [NEXT SECTION] Moving to next section with optimized save strategy');

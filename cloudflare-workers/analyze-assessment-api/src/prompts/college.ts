@@ -12,7 +12,30 @@ export function buildCollegePrompt(assessmentData: AssessmentData, answersHash: 
   
   // Student context for program-specific recommendations
   const studentContext = assessmentData.studentContext;
-  const hasStudentContext = studentContext && (studentContext.rawGrade || studentContext.programName || studentContext.degreeLevel);
+  const hasStudentContext = studentContext && (studentContext.rawGrade || studentContext.programName || studentContext.degreeLevel || studentContext.selectedStream);
+  
+  // Extract stream information for higher secondary students
+  const isHigherSecondary = assessmentData.gradeLevel === 'higher_secondary';
+  const selectedStream = studentContext?.selectedStream || assessmentData.stream;
+  const selectedCategory = studentContext?.selectedCategory;
+  
+  // Determine stream category (arts/science/commerce) from stream ID
+  const getStreamCategory = (stream: string | undefined): string | null => {
+    if (!stream) return null;
+    const streamLower = stream.toLowerCase();
+    if (streamLower.includes('arts') || streamLower.includes('humanities')) return 'arts';
+    if (streamLower.includes('science') || streamLower.includes('pcm') || streamLower.includes('pcb')) return 'science';
+    if (streamLower.includes('commerce')) return 'commerce';
+    return null;
+  };
+  
+  const streamCategory = selectedCategory || getStreamCategory(selectedStream);
+  
+  const streamInfo = isHigherSecondary && selectedStream ? `
+**⚠️ CRITICAL: STUDENT'S SELECTED STREAM**: ${selectedStream.toUpperCase()}
+**Stream Category**: ${streamCategory ? streamCategory.toUpperCase() : 'Not specified'}
+**This student has ALREADY CHOSEN their stream. You MUST provide career recommendations aligned with ${streamCategory ? streamCategory.toUpperCase() : selectedStream.toUpperCase()} stream ONLY.**
+` : '';
   
   // Build student context section
   const studentContextSection = hasStudentContext ? `
@@ -22,6 +45,7 @@ export function buildCollegePrompt(assessmentData: AssessmentData, answersHash: 
 **Program/Course**: ${studentContext.programName || 'Not specified'}
 **Program Code**: ${studentContext.programCode || 'Not specified'}
 **Degree Level**: ${studentContext.degreeLevel || 'Not specified'}
+${streamInfo}
 
 ${studentContext.degreeLevel === 'postgraduate' ? `
 ### ⚠️ POSTGRADUATE STUDENT - SPECIAL INSTRUCTIONS ⚠️
@@ -39,21 +63,103 @@ This student is pursuing a POSTGRADUATE degree (Master's/PG Diploma). Your recom
 5. **Industry-Specific Roles**: Match recommendations to their field of study
 
 **Program Field Alignment:**
-${studentContext.programCode === 'mca' || studentContext.programName?.toLowerCase().includes('mca') || studentContext.programName?.toLowerCase().includes('computer') ? `
-- **MCA/Computer Science PG**: Focus on Software Engineering, Data Science, Cloud Architecture, AI/ML, DevOps
-- Recommended roles: Senior Software Engineer, Data Scientist, ML Engineer, Cloud Architect, Full Stack Developer
-- Certifications: AWS Solutions Architect, Azure DevOps, GCP Professional, Kubernetes, Docker
-` : ''}
-${studentContext.programCode === 'mba' || studentContext.programName?.toLowerCase().includes('mba') || studentContext.programName?.toLowerCase().includes('management') ? `
-- **MBA/Management PG**: Focus on Business Strategy, Product Management, Consulting, Finance
-- Recommended roles: Product Manager, Business Analyst, Management Consultant, Financial Analyst
-- Certifications: PMP, Six Sigma, CFA, Digital Marketing
-` : ''}
-${studentContext.programCode === 'mtech' || studentContext.programName?.toLowerCase().includes('m.tech') || studentContext.programName?.toLowerCase().includes('engineering') ? `
-- **M.Tech/Engineering PG**: Focus on specialized engineering roles, R&D, technical leadership
-- Recommended roles: Senior Engineer, Technical Lead, R&D Engineer, Solutions Architect
-- Certifications: Domain-specific technical certifications, Project Management
-` : ''}
+
+⚠️ CRITICAL: The student is studying **${studentContext.programName || 'their chosen program'}**. 
+You MUST analyze this program and provide career recommendations that are DIRECTLY ALIGNED with this field of study.
+
+**MANDATORY INSTRUCTIONS FOR PROGRAM-SPECIFIC RECOMMENDATIONS:**
+
+1. **Analyze the Program Field:**
+   - Identify the domain: Technology/IT, Engineering, Business/Management, Healthcare/Medical, Science, Pharmacy, Arts/Humanities, Law, etc.
+   - Understand the specialization within that domain
+   - Consider the degree level (UG/PG/Diploma) for role seniority
+
+2. **Generate Field-Aligned Career Clusters:**
+   - **Cluster 1 (High Fit)**: Core careers directly related to the program
+   - **Cluster 2 (Medium Fit)**: Adjacent careers that leverage the program's skills
+   - **Cluster 3 (Explore)**: Interdisciplinary careers that combine the program with other interests
+
+3. **Common Program Mappings (USE AS REFERENCE, NOT EXHAUSTIVE):**
+
+   **Technology & IT Programs:**
+   - MCA, BCA, B.Tech/M.Tech CS/IT, Computer Science, Information Technology
+   - → Software Engineer, Data Scientist, AI/ML Engineer, Cloud Architect, Full Stack Developer, DevOps Engineer
+   - → Certifications: AWS, Azure, GCP, Kubernetes, Docker, Python, Java
+
+   **Engineering Programs:**
+   - B.Tech/M.Tech (Mechanical, Civil, Electrical, Electronics, etc.)
+   - → Design Engineer, Project Engineer, R&D Engineer, Quality Engineer, Technical Consultant
+   - → Certifications: AutoCAD, MATLAB, PMP, Six Sigma, Domain-specific tools
+
+   **Business & Management:**
+   - MBA, BBA, B.Com, M.Com, Management Studies
+   - → Product Manager, Business Analyst, Management Consultant, Financial Analyst, Marketing Manager
+   - → Certifications: PMP, Six Sigma, CFA, Digital Marketing, Agile/Scrum
+
+   **Healthcare & Medical:**
+   - MBBS, BDS, BAMS, BHMS, Nursing, Physiotherapy, Medical Lab Technology
+   - → Doctor, Dentist, Medical Officer, Healthcare Consultant, Clinical Researcher, Hospital Administrator
+   - → Certifications: Medical specializations, Healthcare Management, Clinical Research
+
+   **Pharmacy:**
+   - B.Pharm, M.Pharm, Pharm.D
+   - → Pharmacist, Clinical Pharmacist, Drug Safety Associate, Regulatory Affairs, Medical Writer, Pharmaceutical Sales
+   - → Certifications: Drug Regulatory Affairs, Clinical Research, Pharmacovigilance, Quality Assurance
+
+   **Life Sciences & Biotechnology:**
+   - B.Sc/M.Sc Biotechnology, Microbiology, Biochemistry, Genetics
+   - → Research Scientist, Biotech Analyst, Quality Control Analyst, Clinical Research Associate, Lab Technician
+   - → Certifications: Good Laboratory Practice (GLP), Clinical Research, Bioinformatics tools
+
+   **Pure Sciences:**
+   - B.Sc/M.Sc Physics, Chemistry, Mathematics, Statistics
+   - → Research Scientist, Data Analyst, Quality Analyst, Lab Technician, Academic Researcher, Science Educator
+   - → Certifications: Data Science, Statistical Analysis, Research Methodology, Lab certifications
+
+   **Commerce & Finance:**
+   - B.Com, M.Com, CA, CMA, CS
+   - → Chartered Accountant, Financial Analyst, Tax Consultant, Auditor, Investment Banker, Accountant
+   - → Certifications: CA, CMA, CFA, ACCA, Taxation, GST
+
+   **Arts & Humanities:**
+   - BA/MA English, History, Psychology, Sociology, Political Science
+   - → Content Writer, Journalist, Psychologist, Social Worker, HR Professional, Civil Services, Teacher
+   - → Certifications: Content Writing, Counseling, HR Management, Public Administration
+
+   **Law:**
+   - LLB, LLM, BA LLB
+   - → Lawyer, Legal Advisor, Corporate Counsel, Legal Analyst, Compliance Officer, Judge
+   - → Certifications: Specialized law courses, Corporate Law, IPR, Cyber Law
+
+   **Design & Creative:**
+   - B.Des, M.Des, Fashion Design, Graphic Design
+   - → UI/UX Designer, Graphic Designer, Fashion Designer, Product Designer, Creative Director
+   - → Certifications: Adobe Suite, Figma, Sketch, Design Thinking
+
+   **Agriculture & Food Science:**
+   - B.Sc/M.Sc Agriculture, Food Technology, Horticulture
+   - → Agricultural Officer, Food Technologist, Quality Assurance Manager, Agronomist, Research Scientist
+   - → Certifications: Food Safety, Organic Farming, Agricultural Extension
+
+   **Architecture & Planning:**
+   - B.Arch, M.Arch, Urban Planning
+   - → Architect, Urban Planner, Interior Designer, Landscape Architect, Project Manager
+   - → Certifications: AutoCAD, Revit, LEED, Project Management
+
+4. **If Program is NOT in the list above:**
+   - Analyze the program name to identify the field
+   - Research typical career paths for that program
+   - Generate relevant career clusters based on the field's industry demand
+   - Provide realistic salary ranges for that field in India
+
+5. **CRITICAL VALIDATION:**
+   - ✅ DO: Ensure ALL 3 career clusters are related to the student's program field
+   - ✅ DO: Match salary ranges to the field's industry standards
+   - ✅ DO: Recommend certifications relevant to the field
+   - ✅ DO: Consider degree level (UG = entry-level, PG = mid-senior level)
+   - ❌ DON'T: Recommend careers from completely unrelated fields
+   - ❌ DON'T: Ignore the program information and give generic recommendations
+   - ❌ DON'T: Recommend UG programs to PG students or vice versa
 
 **FILTERING RULES (STRICTLY ENFORCE):**
 - ❌ Remove any "Complete your Bachelor's degree" suggestions
@@ -254,9 +360,45 @@ Analyze THEIR scores below and recommend THEIR best stream!
 
 IMPORTANT: Base your recommendation on the ACTUAL scores provided, not assumptions!
 
-## CRITICAL: CAREER CLUSTERS MUST ALIGN WITH RECOMMENDED STREAM
+## CRITICAL: CAREER CLUSTERS MUST ALIGN WITH STUDENT'S STREAM
 
-For after 10th students, the career clusters in "careerFit.clusters" MUST be directly related to the streams:
+${isHigherSecondary ? `
+### ⚠️ HIGHER SECONDARY (11th/12th) STUDENT - STREAM ALREADY SELECTED ⚠️
+
+This student is in ${selectedStream?.toUpperCase() || 'UNKNOWN'} stream. They have ALREADY made their stream choice.
+
+**YOU MUST:**
+1. Provide career recommendations ONLY for ${selectedStream?.toUpperCase() || 'their selected'} stream
+2. Do NOT recommend careers from other streams
+3. All 3 career clusters MUST be from ${selectedStream?.toUpperCase() || 'their selected'} stream
+
+**STREAM-SPECIFIC CAREER CLUSTERS:**
+
+${selectedStream === 'science' ? `
+**SCIENCE STREAM CAREERS (Use these for all 3 clusters):**
+- Cluster 1 (High Fit): Engineering & Technology (Software Engineer, Data Scientist, Mechanical Engineer)
+- Cluster 2 (Medium Fit): Healthcare & Medicine (Doctor, Pharmacist, Medical Researcher, Biotechnologist)
+- Cluster 3 (Explore): Research & Academia (Research Scientist, Lab Technician, Science Educator)
+` : ''}
+
+${selectedStream === 'commerce' ? `
+**COMMERCE STREAM CAREERS (Use these for all 3 clusters):**
+- Cluster 1 (High Fit): Finance & Accounting (Chartered Accountant, Financial Analyst, Investment Banker)
+- Cluster 2 (Medium Fit): Business & Management (Business Manager, Entrepreneur, Marketing Manager)
+- Cluster 3 (Explore): Banking & Insurance (Bank Manager, Actuary, Risk Analyst)
+` : ''}
+
+${selectedStream === 'arts' ? `
+**ARTS STREAM CAREERS (Use these for all 3 clusters):**
+- Cluster 1 (High Fit): Law & Legal Services (Lawyer, Legal Advisor, Judge, Corporate Counsel)
+- Cluster 2 (Medium Fit): Media & Communication (Journalist, Content Creator, PR Manager, Editor)
+- Cluster 3 (Explore): Social Sciences & Humanities (Psychologist, Social Worker, Teacher, Civil Services)
+` : ''}
+
+` : `
+### FOR AFTER 10TH STUDENTS ONLY:
+
+For after 10th students, the career clusters in "careerFit.clusters" MUST be directly related to the streams:`}
 - **Cluster 1 (High Fit)** and **Cluster 2 (Medium Fit)**: Based on the PRIMARY recommended stream
 - **Cluster 3 (Explore)**: Based on the ALTERNATIVE stream recommendation (the second-best stream option)
 
