@@ -445,9 +445,10 @@ const AssessmentTestPage: React.FC = () => {
   useEffect(() => {
     if (!flow.gradeLevel) return;
     
-    // For stream-based assessments (higher_secondary, after12, college), wait for stream selection
+    // For stream-based assessments (after12, college), wait for stream selection
     // For middle/highschool, build sections immediately
     // For after10, we use 'general' stream which is set automatically in handleGradeSelect
+    // For higher_secondary, students select their stream (Science/Commerce/Arts) before assessment
     const needsStream = ['higher_secondary', 'after12', 'college'].includes(flow.gradeLevel);
     const canBuild = flow.studentStream || !needsStream;
     
@@ -1508,7 +1509,8 @@ const AssessmentTestPage: React.FC = () => {
         currentAttempt,
         userId: user?.id || null,
         timeRemaining: flow.timeRemaining,
-        elapsedTime: flow.elapsedTime
+        elapsedTime: flow.elapsedTime,
+        selectedCategory: flow.selectedCategory
       });
     } else {
       console.log('⏭️ [NEXT SECTION] Moving to next section with optimized save strategy');
@@ -2079,8 +2081,9 @@ const AssessmentTestPage: React.FC = () => {
                   
                   {/* Per-Question Countdown Timer - Top Right (for aptitude/knowledge sections ONLY) */}
                   {((currentSection?.isAptitude && flow.aptitudePhase === 'individual') || currentSection?.isKnowledge) && flow.aptitudeQuestionTimer !== null && (
-                    <div className={`text-xs font-semibold flex items-center gap-1.5 px-2 py-1 rounded-lg ${flow.aptitudeQuestionTimer <= 10 ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'
-                      }`}>
+                    <div className={`text-sm font-semibold flex items-center gap-1.5 ${
+                      flow.aptitudeQuestionTimer <= 10 ? 'text-red-600' : 'text-orange-600'
+                    }`}>
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <circle cx="12" cy="12" r="10" strokeWidth="2"/>
                         <path strokeLinecap="round" strokeWidth="2" d="M12 6v6l4 2"/>

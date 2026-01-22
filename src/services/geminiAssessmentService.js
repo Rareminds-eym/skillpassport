@@ -341,8 +341,9 @@ const formatTimeForPrompt = (seconds) => {
 /**
  * Get section prefix based on grade level
  * Maps to database section names in personal_assessment_sections table
+ * Exported for testing
  */
-const getSectionPrefix = (baseSection, gradeLevel) => {
+export const getSectionPrefix = (baseSection, gradeLevel) => {
   if (gradeLevel === 'middle') {
     const middleSchoolMap = {
       'riasec': 'middle_interest_explorer',
@@ -350,7 +351,8 @@ const getSectionPrefix = (baseSection, gradeLevel) => {
       'knowledge': 'middle_learning_preferences'
     };
     return middleSchoolMap[baseSection] || baseSection;
-  } else if (gradeLevel === 'highschool' || gradeLevel === 'higher_secondary') {
+  } else if (gradeLevel === 'highschool') {
+    // NOTE: higher_secondary removed from here - it uses comprehensive sections with 'riasec', 'bigfive', etc.
     const highSchoolMap = {
       'riasec': 'hs_interest_explorer',
       'bigfive': 'hs_strengths_character',
@@ -417,15 +419,32 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
     streamKnowledgeQuestions 
   } = questionBanks;
 
-  console.log('=== prepareAssessmentData DEBUG ===');
-  console.log('Total answers received:', Object.keys(answers).length);
-  console.log('Sample answer keys (first 10):', Object.keys(answers).slice(0, 10));
-  console.log('Sample answer entries (first 3):', Object.entries(answers).slice(0, 3));
-  console.log('Grade level:', gradeLevel);
-  console.log('riasecQuestions provided:', riasecQuestions?.length || 0);
-  console.log('bigFiveQuestions provided:', bigFiveQuestions?.length || 0);
-  console.log('workValuesQuestions provided:', workValuesQuestions?.length || 0);
-  console.log('employabilityQuestions provided:', employabilityQuestions?.length || 0);
+  // ============================================================================
+  // ENHANCED LOGGING: Log grade level and section prefix before extraction (Requirement 6.1, 6.2)
+  // ============================================================================
+  console.log('=== prepareAssessmentData EXTRACTION START ===');
+  console.log('📊 Grade Level:', gradeLevel);
+  console.log('📊 Stream:', stream);
+  console.log('📊 Total answers received:', Object.keys(answers).length);
+  console.log('📊 Sample answer keys (first 10):', Object.keys(answers).slice(0, 10));
+  console.log('📊 Sample answer entries (first 3):', Object.entries(answers).slice(0, 3));
+  
+  // Log section prefixes that will be used for extraction
+  console.log('📊 Section Prefixes for extraction:');
+  console.log('   - RIASEC prefix:', getSectionPrefix('riasec', gradeLevel));
+  console.log('   - BigFive prefix:', getSectionPrefix('bigfive', gradeLevel));
+  console.log('   - Aptitude prefix:', getSectionPrefix('aptitude', gradeLevel));
+  console.log('   - Knowledge prefix:', getSectionPrefix('knowledge', gradeLevel));
+  console.log('   - Values prefix: values (no mapping)');
+  console.log('   - Employability prefix: employability (no mapping)');
+  
+  console.log('📊 Question banks provided:');
+  console.log('   - riasecQuestions:', riasecQuestions?.length || 0);
+  console.log('   - bigFiveQuestions:', bigFiveQuestions?.length || 0);
+  console.log('   - workValuesQuestions:', workValuesQuestions?.length || 0);
+  console.log('   - employabilityQuestions:', employabilityQuestions?.length || 0);
+  console.log('   - aptitudeQuestions:', aptitudeQuestions?.length || 0);
+  console.log('   - streamKnowledgeQuestions:', streamKnowledgeQuestions ? Object.keys(streamKnowledgeQuestions).length : 0, 'streams');
 
   // Extract RIASEC answers - IMPROVED: Extract even if riasecQuestions is empty
   const riasecAnswers = {};
@@ -479,6 +498,15 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
     console.log('   Sample extracted keys:', Object.keys(riasecAnswers).slice(0, 5));
     console.log('   Sample extracted values:', Object.values(riasecAnswers).slice(0, 2));
   }
+
+  // ============================================================================
+  // EXTRACTION SUMMARY: Log count of extracted answers (Requirement 6.2, 6.3)
+  // ============================================================================
+  console.log('📊 RIASEC Extraction Summary:');
+  console.log('   - Prefix used:', riasecPrefix);
+  console.log('   - Answers extracted:', Object.keys(riasecAnswers).length);
+  console.log('   - Expected for higher_secondary: 48 (8 per RIASEC type)');
+  console.log('   - Sample keys:', Object.keys(riasecAnswers).slice(0, 5).join(', '));
 
   // Extract Aptitude answers - IMPROVED: Handle AI-generated questions with correct answers
   const aptitudeAnswers = {
@@ -650,6 +678,27 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
     clerical: aptitudeAnswers.clerical.length
   });
 
+  // ============================================================================
+  // EXTRACTION SUMMARY: Log aptitude extraction details (Requirement 6.2, 6.3)
+  // ============================================================================
+  console.log('📊 Aptitude Extraction Summary:');
+  console.log('   - Prefix used:', aptitudePrefix);
+  console.log('   - Total answers extracted:', 
+    aptitudeAnswers.verbal.length + 
+    aptitudeAnswers.numerical.length + 
+    aptitudeAnswers.abstract.length + 
+    aptitudeAnswers.spatial.length + 
+    aptitudeAnswers.clerical.length
+  );
+  console.log('   - By category:', {
+    verbal: aptitudeAnswers.verbal.length,
+    numerical: aptitudeAnswers.numerical.length,
+    abstract: aptitudeAnswers.abstract.length,
+    spatial: aptitudeAnswers.spatial.length,
+    clerical: aptitudeAnswers.clerical.length
+  });
+  console.log('   - Expected for higher_secondary: 48 total (varies by category)');
+
   // Extract Big Five answers - IMPROVED: Extract even if bigFiveQuestions is empty
   const bigFiveAnswers = {};
   const bigFivePrefix = getSectionPrefix('bigfive', gradeLevel);
@@ -675,6 +724,15 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
   
   console.log('BigFive answers extracted:', Object.keys(bigFiveAnswers).length);
 
+  // ============================================================================
+  // EXTRACTION SUMMARY: Log BigFive extraction details (Requirement 6.2, 6.3)
+  // ============================================================================
+  console.log('📊 BigFive Extraction Summary:');
+  console.log('   - Prefix used:', bigFivePrefix);
+  console.log('   - Answers extracted:', Object.keys(bigFiveAnswers).length);
+  console.log('   - Expected for higher_secondary: 30 (6 per trait: O, C, E, A, N)');
+  console.log('   - Sample keys:', Object.keys(bigFiveAnswers).slice(0, 5).join(', '));
+
   // Extract Work Values answers - IMPROVED: Extract even if workValuesQuestions is empty
   const workValuesAnswers = {};
   Object.entries(answers).forEach(([key, value]) => {
@@ -696,6 +754,15 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
   });
   
   console.log('WorkValues answers extracted:', Object.keys(workValuesAnswers).length);
+
+  // ============================================================================
+  // EXTRACTION SUMMARY: Log WorkValues extraction details (Requirement 6.2, 6.3)
+  // ============================================================================
+  console.log('📊 WorkValues Extraction Summary:');
+  console.log('   - Prefix used: values (no mapping)');
+  console.log('   - Answers extracted:', Object.keys(workValuesAnswers).length);
+  console.log('   - Expected for higher_secondary: 24 (3 per dimension)');
+  console.log('   - Sample keys:', Object.keys(workValuesAnswers).slice(0, 5).join(', '));
 
   // Extract Employability answers - IMPROVED: Extract even if employabilityQuestions is empty
   const employabilityAnswers = {
@@ -777,6 +844,17 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
       .map(([key, arr]) => `${key}:${arr.length}`)
       .join(', ') || 'none'
   );
+
+  // ============================================================================
+  // EXTRACTION SUMMARY: Log Employability extraction details (Requirement 6.2, 6.3)
+  // ============================================================================
+  const totalSelfRating = Object.values(employabilityAnswers.selfRating).reduce((sum, arr) => sum + arr.length, 0);
+  console.log('📊 Employability Extraction Summary:');
+  console.log('   - Prefix used: employability (no mapping)');
+  console.log('   - SJT answers extracted:', employabilityAnswers.sjt.length);
+  console.log('   - Self-rating answers extracted:', totalSelfRating);
+  console.log('   - Total answers:', employabilityAnswers.sjt.length + totalSelfRating);
+  console.log('   - Expected for higher_secondary: 14 total (7 SJT + 7 self-rating)');
 
   // Extract Knowledge answers
   const knowledgeAnswers = {};
@@ -871,6 +949,17 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
   console.log(`   Questions NOT found: ${knowledgeNotFound}`);
   console.log(`   Correct answers: ${knowledgeCorrect}`);
   console.log('📚 Knowledge answers extracted:', Object.keys(knowledgeAnswers).length);
+
+  // ============================================================================
+  // EXTRACTION SUMMARY: Log Knowledge extraction details (Requirement 6.2, 6.3)
+  // ============================================================================
+  console.log('📊 Knowledge Extraction Summary:');
+  console.log('   - Prefix used:', knowledgePrefix);
+  console.log('   - Stream:', stream);
+  console.log('   - Answers extracted:', Object.keys(knowledgeAnswers).length);
+  console.log('   - Expected for higher_secondary: 20 (stream-specific)');
+  console.log('   - Correct answers:', knowledgeCorrect);
+  console.log('   - Sample keys:', Object.keys(knowledgeAnswers).slice(0, 5).join(', '));
 
   // Calculate aptitude scores - USE PRE-CALCULATED if available
   let aptitudeScores;
@@ -1101,6 +1190,29 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
       degreeLevel = 'diploma';
     }
   }
+
+  // ============================================================================
+  // FINAL EXTRACTION SUMMARY: Log all extraction counts (Requirement 6.6)
+  // ============================================================================
+  console.log('📊 === FINAL EXTRACTION SUMMARY ===');
+  console.log('📊 Grade Level:', gradeLevel);
+  console.log('📊 Stream:', stream);
+  console.log('📊 Total input answers:', Object.keys(answers).length);
+  console.log('📊 Extracted answers by section:');
+  console.log('   - RIASEC:', Object.keys(riasecAnswers).length, '/ expected: 48 for higher_secondary');
+  console.log('   - BigFive:', Object.keys(bigFiveAnswers).length, '/ expected: 30 for higher_secondary');
+  console.log('   - WorkValues:', Object.keys(workValuesAnswers).length, '/ expected: 24 for higher_secondary');
+  console.log('   - Employability:', employabilityAnswers.sjt.length + Object.values(employabilityAnswers.selfRating).reduce((sum, arr) => sum + arr.length, 0), '/ expected: 14 for higher_secondary');
+  console.log('   - Aptitude:', 
+    aptitudeAnswers.verbal.length + 
+    aptitudeAnswers.numerical.length + 
+    aptitudeAnswers.abstract.length + 
+    aptitudeAnswers.spatial.length + 
+    aptitudeAnswers.clerical.length,
+    '/ expected: 48 for higher_secondary'
+  );
+  console.log('   - Knowledge:', Object.keys(knowledgeAnswers).length, '/ expected: 20 for higher_secondary');
+  console.log('📊 === END EXTRACTION SUMMARY ===');
 
   return {
     stream,

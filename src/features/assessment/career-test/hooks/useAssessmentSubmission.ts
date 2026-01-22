@@ -276,6 +276,7 @@ interface SubmissionOptions {
   userId: string | null;
   timeRemaining: number | null;
   elapsedTime: number;
+  selectedCategory?: string | null;
 }
 
 interface UseAssessmentSubmissionResult {
@@ -341,7 +342,8 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
     currentAttempt,
     userId,
     timeRemaining,
-    elapsedTime
+    elapsedTime,
+    selectedCategory
   }: SubmissionOptions) => {
     console.log('🚀 submission.submit called!');
     console.log('📊 Submission params:', {
@@ -349,6 +351,7 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
       sectionsCount: sections.length,
       studentStream,
       gradeLevel,
+      selectedCategory,
       sectionTimingsKeys: Object.keys(sectionTimings),
       currentAttemptId: currentAttempt?.id,
       userId,
@@ -374,10 +377,128 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
       console.log('   Grade:', gradeLevel, 'Stream:', studentStream);
       console.log('   Total answers:', Object.keys(answers).length);
       
-      // ✅ REMOVED: localStorage saves (data already in database from real-time saving)
-      // All responses are already saved to database after each answer
-      // No need for redundant localStorage storage
-
+      // ✅ Derive category from stream if not explicitly provided
+      let derivedCategory = selectedCategory;
+      if (!derivedCategory && studentStream) {
+        const streamLower = studentStream.toLowerCase();
+        if (streamLower.includes('science') || streamLower.includes('pcm') || streamLower.includes('pcb')) {
+          derivedCategory = 'science';
+        } else if (streamLower.includes('commerce')) {
+          derivedCategory = 'commerce';
+        } else if (streamLower.includes('arts') || streamLower.includes('humanities')) {
+          derivedCategory = 'arts';
+        }
+        console.log(`🔍 Derived category from stream "${studentStream}": ${derivedCategory}`);
+      }
+      
+      // ✅ CRITICAL FIX: Fetch student context for college, after12, and higher_secondary students
+      // This ensures career clusters are aligned with the student's program/course/stream
+      let studentContext: any = {};
+      
+      if (userId && (gradeLevel === 'college' || gradeLevel === 'after12' || gradeLevel === 'higher_secondary')) {
+        try {
+          console.log('📚 Fetching student context for enhanced AI recommendations...');
+          const { data: student, error: studentError } = await supabase
+            .from('students')
+            .select(`
+              grade,
+              branch_field,
+              course_name,
+              program_id,
+              programs (
+                name,
+                code,
+                degree_level
+              )
+            `)
+            .eq('user_id', userId)
+            .maybeSingle();
+          
+          if (!studentError && student) {
+            // Extract degree level from grade or program
+            const extractDegreeLevel = (grade: string | null, programDegreeLevel: string | null): string | null => {
+              if (programDegreeLevel) return programDegreeLevel;
+              if (!grade) return null;
+              const gradeStr = grade.toLowerCase();
+              if (gradeStr.includes('pg') || gradeStr.includes('postgraduate') ||
+                  gradeStr.includes('m.tech') || gradeStr.includes('mtech') ||
+                  gradeStr.includes('mca') || gradeStr.includes('mba') ||
+                  gradeStr.includes('m.sc') || gradeStr.includes('msc')) {
+                return 'postgraduate';
+              }
+              if (gradeStr.includes('ug') || gradeStr.includes('undergraduate') ||
+                  gradeStr.includes('b.tech') || gradeStr.includes('btech') ||
+                  gradeStr.includes('bca') || gradeStr.includes('b.sc') ||
+                  gradeStr.includes('b.com') || gradeStr.includes('ba ') ||
+                  gradeStr.includes('bba')) {
+                return 'undergraduate';
+              }
+              if (gradeStr.includes('diploma')) {
+                return 'diploma';
+              }
+              return null;
+            };
+            
+            const programName = student.branch_field || 
+                               (student.programs as any)?.name || 
+                               student.course_name;
+            const programCode = (student.programs as any)?.code || null;
+            const degreeLevel = extractDegreeLevel(
+              student.grade, 
+              (student.programs as any)?.degree_level
+            );
+            
+            // ✅ FIX: For higher_secondary, include the selected stream in rawGrade
+            // This ensures AI knows if student is in Arts/Science/Commerce
+            let enhancedGrade = student.grade;
+            if (gradeLevel === 'higher_secondary' && studentStream) {
+              // Map stream ID to readable name
+              const streamMap: Record<string, string> = {
+                'science': 'Science',
+                'commerce': 'Commerce', 
+                'arts': 'Arts'
+              };
+              const streamName = streamMap[studentStream] || studentStream;
+              enhancedGrade = `${student.grade} - ${streamName}`;
+              console.log(`✅ Enhanced grade for higher_secondary: "${enhancedGrade}"`);
+            }
+            
+            studentContext = {
+              rawGrade: enhancedGrade,
+              programName: programName,
+              programCode: programCode,
+              degreeLevel: degreeLevel,
+              selectedStream: studentStream, // Include the selected stream
+              selectedCategory: derivedCategory // Include the category (arts/science/commerce)
+            };
+            
+            console.log('✅ Student context fetched:', studentContext);
+            console.log('   - Stream:', studentStream);
+            console.log('   - Category:', derivedCategory);
+          } else {
+            console.warn('⚠️ Could not fetch student context:', studentError?.message);
+          }
+        } catch (contextError) {
+          console.error('❌ Error fetching student context:', contextError);
+        }
+      }
+      
+      // ✅ FIX: If no student record but we have a stream selection, still include it
+      if (Object.keys(studentContext).length === 0 && studentStream && gradeLevel === 'higher_secondary') {
+        const streamMap: Record<string, string> = {
+          'science': 'Science',
+          'commerce': 'Commerce',
+          'arts': 'Arts'
+        };
+        const streamName = streamMap[studentStream] || studentStream;
+        studentContext = {
+          rawGrade: `Grade 11/12 - ${streamName}`,
+          selectedStream: studentStream,
+          selectedCategory: derivedCategory
+        };
+        console.log('✅ Created student context from stream selection:', studentContext);
+      }
+      
       // Save to database WITHOUT AI analysis
       // AI analysis will be generated on-demand when viewing result (same as Regenerate)
       let attemptId = currentAttempt?.id;
@@ -400,6 +521,28 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
           }
         } catch (fetchErr: any) {
           console.log('Could not fetch latest attempt:', fetchErr.message);
+        }
+      }
+      
+      // ✅ CRITICAL FIX: Store studentContext in the attempt for later use
+      // This ensures the AI analysis can access program information when generating career clusters
+      if (attemptId && Object.keys(studentContext).length > 0) {
+        try {
+          console.log('💾 Storing student context in attempt for AI analysis...');
+          const { error: contextError } = await supabase
+            .from('personal_assessment_attempts')
+            .update({
+              student_context: studentContext
+            })
+            .eq('id', attemptId);
+          
+          if (contextError) {
+            console.warn('⚠️ Could not store student context:', contextError.message);
+          } else {
+            console.log('✅ Student context stored in attempt');
+          }
+        } catch (contextUpdateError) {
+          console.error('❌ Error storing student context:', contextUpdateError);
         }
       }
       

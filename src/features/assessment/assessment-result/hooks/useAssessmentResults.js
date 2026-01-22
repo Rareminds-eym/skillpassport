@@ -595,8 +595,8 @@ export const useAssessmentResults = () => {
                             } else if (gradeNum >= 9 && gradeNum <= 10) {
                                 derivedGradeLevel = 'highschool';
                             } else if (gradeNum >= 11 && gradeNum <= 12) {
-                                // 11th and 12th grade students should see after12 assessment results
-                                derivedGradeLevel = 'after12';
+                                // 11th and 12th grade students - use higher_secondary for stream-based assessments
+                                derivedGradeLevel = 'higher_secondary';
                             }
                         } else {
                             // If grade is not a number, default to after12 for school students
@@ -622,8 +622,10 @@ export const useAssessmentResults = () => {
                     // For middle/high school, use friendly labels
                     if (derivedGradeLevel === 'middle') {
                         derivedStream = 'Middle School (Grades 6-8)';
-                    } else if (derivedGradeLevel === 'highschool' || derivedGradeLevel === 'higher_secondary') {
+                    } else if (derivedGradeLevel === 'highschool') {
                         derivedStream = 'High School (Grades 9-10)';
+                    } else if (derivedGradeLevel === 'higher_secondary') {
+                        derivedStream = 'Higher Secondary (Grades 11-12)';
                     }
                     // Check if student has a program (from programs table)
                     else if (studentData.programs) {
@@ -1105,12 +1107,23 @@ export const useAssessmentResults = () => {
                     } else {
                         // Result exists but no AI analysis - AUTO-GENERATE IT!
 
+                        // Check if this is a newly created result (within last 30 seconds)
+                        const resultCreatedAt = new Date(result.created_at);
+                        const now = new Date();
+                        const ageInSeconds = (now - resultCreatedAt) / 1000;
+                        const isNewlyCreated = ageInSeconds < 30;
+
                         // Check if we already tried auto-retrying this session (using attemptId to match handleRetry)
                         const retryKey = `auto_retry_done_attempt_${attemptId}`;
                         const alreadyRetried = sessionStorage.getItem(retryKey);
 
-                        if (retryCompleted || alreadyRetried) {
+                        // For newly created results, always generate (ignore session storage)
+                        // For older results, check session storage to avoid infinite loops
+                        if (!isNewlyCreated && (retryCompleted || alreadyRetried)) {
                             console.log('⏭️ Skipping auto-retry - already completed/attempted');
+                            console.log('   Result age:', Math.round(ageInSeconds), 'seconds');
+                            console.log('   retryCompleted:', retryCompleted);
+                            console.log('   alreadyRetried:', !!alreadyRetried);
 
                             // If we're skipping but don't have results, set an error so the user can manually retry
                             // instead of showing a blank page
@@ -1127,6 +1140,8 @@ export const useAssessmentResults = () => {
                         console.log('📊 Database result exists but missing AI analysis');
                         console.log('   Result ID:', result.id);
                         console.log('   Attempt ID:', attemptId);
+                        console.log('   Result age:', Math.round(ageInSeconds), 'seconds');
+                        console.log('   Is newly created:', isNewlyCreated);
                         console.log('   gemini_results:', result.gemini_results);
                         console.log('   retryCompleted:', retryCompleted);
                         console.log('   🚀 Setting autoRetry flag to TRUE...');
@@ -1432,16 +1447,26 @@ export const useAssessmentResults = () => {
             };
 
             // Build student context for enhanced AI recommendations
-            // Use studentInfo that was already fetched earlier in the hook
-            const studentContext = {
-                rawGrade: studentInfo.grade || storedGradeLevel, // Use actual grade from studentInfo
-                programName: studentInfo.courseName || null, // Use course name from studentInfo
-                programCode: null, // Not available in retry context
-                degreeLevel: extractDegreeLevel(studentInfo.grade || storedGradeLevel) // Extract from grade
-            };
+            // CRITICAL FIX: Use studentContext from attempt if available (stored during submission)
+            // This ensures career clusters are aligned with the student's program/course
+            let studentContext = {};
+            
+            if (attempt.student_context && Object.keys(attempt.student_context).length > 0) {
+                console.log('✅ Using student context from attempt (stored during submission)');
+                studentContext = attempt.student_context;
+            } else {
+                console.log('⚠️ No student context in attempt, building from studentInfo...');
+                // Fallback: Build from studentInfo that was fetched earlier
+                studentContext = {
+                    rawGrade: studentInfo.grade || storedGradeLevel,
+                    programName: studentInfo.courseName || null,
+                    programCode: null,
+                    degreeLevel: extractDegreeLevel(studentInfo.grade || storedGradeLevel)
+                };
+            }
 
             console.log('📚 Retry Student Context:', studentContext);
-            console.log('🎓 Extracted degree level:', studentContext.degreeLevel, 'from grade:', studentInfo.grade);
+            console.log('🎓 Degree level:', studentContext.degreeLevel);
 
             // Force regenerate with AI - pass gradeLevel and student context
             const geminiResults = await analyzeAssessmentWithGemini(
@@ -1468,13 +1493,58 @@ export const useAssessmentResults = () => {
                     // Get the latest result and update it
                     const latestResult = await assessmentService.getLatestResult(user.id);
                     if (latestResult) {
+                        // Extract individual scores from AI results for database columns
+                        const updateData = {
+                            gemini_results: validatedResults,
+                            updated_at: new Date().toISOString()
+                        };
+
+                        // Extract and store individual score components
+                        if (validatedResults.riasec) {
+                            updateData.riasec_scores = validatedResults.riasec.scores;
+                            updateData.riasec_code = validatedResults.riasec.code;
+                        }
+                        if (validatedResults.aptitude) {
+                            updateData.aptitude_scores = validatedResults.aptitude.scores;
+                            updateData.aptitude_overall = validatedResults.aptitude.overallScore;
+                        }
+                        if (validatedResults.bigFive) {
+                            updateData.bigfive_scores = validatedResults.bigFive;
+                        }
+                        if (validatedResults.workValues) {
+                            updateData.work_values_scores = validatedResults.workValues.scores;
+                        }
+                        if (validatedResults.employability) {
+                            updateData.employability_scores = validatedResults.employability.skillScores;
+                            updateData.employability_readiness = validatedResults.employability.overallReadiness;
+                        }
+                        if (validatedResults.knowledge) {
+                            updateData.knowledge_score = validatedResults.knowledge.percentage;
+                            updateData.knowledge_details = validatedResults.knowledge;
+                        }
+                        if (validatedResults.careerFit) {
+                            updateData.career_fit = validatedResults.careerFit;
+                        }
+                        if (validatedResults.skillGap) {
+                            updateData.skill_gap = validatedResults.skillGap;
+                        }
+                        if (validatedResults.roadmap) {
+                            updateData.roadmap = validatedResults.roadmap;
+                        }
+                        if (validatedResults.profileSnapshot) {
+                            updateData.profile_snapshot = validatedResults.profileSnapshot;
+                        }
+                        if (validatedResults.finalNote) {
+                            updateData.final_note = validatedResults.finalNote;
+                        }
+                        if (validatedResults.overallSummary) {
+                            updateData.overall_summary = validatedResults.overallSummary;
+                        }
+
                         // Update the existing result with new AI analysis
                         const { error: updateError } = await supabase
                             .from('personal_assessment_results')
-                            .update({
-                                gemini_results: validatedResults,
-                                updated_at: new Date().toISOString()
-                            })
+                            .update(updateData)
                             .eq('id', latestResult.id);
 
                         if (updateError) {
