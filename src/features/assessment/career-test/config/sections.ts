@@ -207,7 +207,7 @@ export const AFTER_10TH_SECTIONS: Omit<SectionConfig, 'icon'>[] = [
   },
   {
     id: 'aptitude',
-    title: 'Multi-Aptitude',
+    title: 'Stream Based Aptitude',
     description: "Measure your cognitive strengths across verbal, numerical, logical, spatial, and clerical domains.",
     color: "amber",
     isTimed: true,
@@ -257,7 +257,7 @@ export const COMPREHENSIVE_SECTIONS: Omit<SectionConfig, 'icon'>[] = [
   },
   {
     id: 'aptitude',
-    title: 'Multi-Aptitude',
+    title: 'Stream Based Aptitude',
     description: "Measure your cognitive strengths across verbal, numerical, logical, spatial, and clerical domains.",
     color: "amber",
     isTimed: true,

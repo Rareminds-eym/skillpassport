@@ -939,7 +939,7 @@ const AssessmentTest = () => {
                 },
                 {
                     id: 'aptitude',
-                    title: 'Multi-Aptitude',
+                    title: 'Stream Based Aptitude',
                     icon: <Brain className="w-6 h-6 text-amber-500" />,
                     description: "Measure your cognitive strengths across verbal, numerical, logical, spatial, and clerical domains.",
                     color: "amber",
@@ -1034,7 +1034,7 @@ const AssessmentTest = () => {
                 },
                 {
                     id: 'aptitude',
-                    title: 'Multi-Aptitude',
+                    title: 'Stream Based Aptitude',
                     icon: <Zap className="w-6 h-6 text-amber-500" />,
                     description: "Measure your cognitive strengths across verbal, numerical, logical, spatial, and clerical domains.",
                     color: "amber",

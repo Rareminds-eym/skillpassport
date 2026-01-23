@@ -104,7 +104,7 @@ const getSectionIconPath = (sectionId: string): string => {
     // Employability Skills
     'employability': '/assets/Assessment Icons/Employability Skills.png',
     
-    // Multi-Aptitude
+    // Stream Based Aptitude
     'aptitude': '/assets/Assessment Icons/Multi-Aptitude.png',
     
     // Stream Knowledge
@@ -1904,7 +1904,7 @@ const AssessmentTestPage: React.FC = () => {
   
   // Main Assessment UI
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
       {/* Progress Header */}
       <div>
         <ProgressHeader

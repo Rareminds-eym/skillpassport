@@ -14,7 +14,7 @@
  * - Big Five Personality Assessment
  * - Work Values Assessment
  * - Employability Skills (Self-Rating + SJT)
- * - Multi-Aptitude Testing
+ * - Stream Based Aptitude Testing
  * - Adaptive Aptitude Testing
  * - Stream-Specific Knowledge Tests
  * - AI-Powered Question Generation
