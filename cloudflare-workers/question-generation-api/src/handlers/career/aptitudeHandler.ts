@@ -62,6 +62,10 @@ export async function handleAptitudeGeneration(
     let categories = getCategories(isAfter10);
     const moduleTitles = getModuleTitles(isAfter10);
 
+    // Categories define the question distribution (default: 50 total questions)
+    // After12/College: Verbal(8) + Numerical(8) + Abstract(20) + Spatial(8) + Clerical(6) = 50
+    // After10: Math(10) + Science(10) + English(10) + Social(10) + Computer(10) = 50
+    
     // Override category counts if questionsPerCategory is provided
     if (questionsPerCategory && questionsPerCategory > 0) {
       console.log(`🔧 Overriding category counts with ${questionsPerCategory} questions per category`);
@@ -81,15 +85,25 @@ export async function handleAptitudeGeneration(
       : categories.filter(c => ['spatial', 'clerical'].includes(c.id));
 
     console.log('📦 Generating batch 1...');
+    console.log('📋 Batch 1 categories:', batch1Categories.map(c => `${c.name}(${c.count})`).join(', '));
     const batch1 = await generateBatchWithRetry(1, batch1Categories, isAfter10, streamContext, claudeKey, openRouterKey);
     console.log(`✅ Batch 1 complete: ${batch1.length} questions`);
+    console.log('📊 Batch 1 breakdown:', batch1.reduce((acc, q) => {
+      acc[q.category] = (acc[q.category] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>));
 
     console.log('⏳ Waiting 3s before batch 2...');
     await delay(3000);
 
     console.log('📦 Generating batch 2...');
+    console.log('📋 Batch 2 categories:', batch2Categories.map(c => `${c.name}(${c.count})`).join(', '));
     const batch2 = await generateBatchWithRetry(2, batch2Categories, isAfter10, streamContext, claudeKey, openRouterKey);
     console.log(`✅ Batch 2 complete: ${batch2.length} questions`);
+    console.log('📊 Batch 2 breakdown:', batch2.reduce((acc, q) => {
+      acc[q.category] = (acc[q.category] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>));
 
     // Combine and format questions
     const allQuestions = [...batch1, ...batch2].map((q: any, idx: number) => ({
@@ -103,6 +117,13 @@ export async function handleAptitudeGeneration(
 
     const expectedTotal = categories.reduce((sum, c) => sum + c.count, 0);
     console.log(`✅ Total aptitude questions generated: ${allQuestions.length}/${expectedTotal}`);
+    
+    // Log final breakdown by category
+    const finalBreakdown = allQuestions.reduce((acc, q) => {
+      acc[q.category] = (acc[q.category] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    console.log('📊 Final question breakdown by category:', finalBreakdown);
 
     // Validate total count
     if (allQuestions.length < expectedTotal) {
@@ -193,8 +214,14 @@ async function generateBatch(
     : buildAptitudePrompt(categoriesText, streamContext);
 
   const systemPrompt = isAfter10 
-    ? `You are an expert educational assessment creator for 10th grade students. Generate EXACTLY ${totalQuestions} questions total covering school subjects. Generate ONLY valid JSON.`
-    : `You are an expert psychometric assessment creator. Generate EXACTLY ${totalQuestions} questions total. Generate ONLY valid JSON.`;
+    ? `You are an expert educational assessment creator for 10th grade students. 
+       CRITICAL: Generate EXACTLY ${totalQuestions} questions for this batch (part of a 50-question assessment). 
+       Count carefully and ensure you generate the EXACT number requested for each category.
+       Generate ONLY valid JSON.`
+    : `You are an expert psychometric assessment creator. 
+       CRITICAL: Generate EXACTLY ${totalQuestions} questions for this batch (part of a 50-question assessment). 
+       Count carefully and ensure you generate the EXACT number requested for each category.
+       Generate ONLY valid JSON.`;
 
   let jsonText: string;
 
@@ -204,7 +231,7 @@ async function generateBatch(
       jsonText = await callClaudeAPI(claudeKey, {
         systemPrompt,
         userPrompt: prompt,
-        maxTokens: 6000,
+        maxTokens: 8000,  // Increased from 6000 to allow full generation without truncation
         temperature: 0.7 + (batchNum * 0.05)
       });
     } catch (claudeError: any) {
