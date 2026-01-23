@@ -22,6 +22,7 @@ import {
   IconCalculator,
   IconUsers
 } from '@tabler/icons-react';
+import { formatStreamId } from '../../../../utils/formatters';
 
 interface AssessmentsTabProps {
   assessmentResults: AssessmentResult[];
@@ -331,10 +332,9 @@ const AssessmentsTab: React.FC<AssessmentsTabProps> = ({
     }
 
     if (assessment.stream_id) {
-      const streamName = assessment.stream_id.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
       basicInfo.push({
         label: 'Assessment Stream',
-        value: streamName,
+        value: formatStreamId(assessment.stream_id),
         description: 'Assessment category or stream'
       });
     }

@@ -3,6 +3,8 @@
  * Clean, modern glass effect with blue accents
  */
 
+import { formatStreamId } from '../../../../utils/formatters';
+
 const ReportHeader = ({ studentInfo, gradeLevel }) => {
     // Debug
     console.log('ReportHeader gradeLevel:', gradeLevel);
@@ -116,7 +118,7 @@ const ReportHeader = ({ studentInfo, gradeLevel }) => {
     const infoItems = [
         { label: 'Student Name', value: studentInfo.name },
         { label: rollNumberLabel, value: studentInfo.regNo },
-        { label: 'Programme/Stream', value: formatStreamDisplay(studentInfo.stream || studentInfo.branchField || '—') },
+        { label: 'Programme/Stream', value: formatStreamId(studentInfo.stream || studentInfo.branchField) || '—' },
         { label: gradeCourseField.label, value: gradeCourseField.value },
         { label: institutionLabel, value: (studentInfo.college && studentInfo.college !== '—') ? studentInfo.college : studentInfo.school, truncate: true },
         { label: 'Assessment Date', value: new Date().toLocaleDateString() },
