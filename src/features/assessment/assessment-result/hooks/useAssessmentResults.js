@@ -890,13 +890,17 @@ export const useAssessmentResults = () => {
                     if (directResult.gemini_results && typeof directResult.gemini_results === 'object' && Object.keys(directResult.gemini_results).length > 0) {
                         const geminiResults = directResult.gemini_results;
 
-                        // Validate that AI analysis is complete (has RIASEC scores)
-                        const hasValidRiasec = geminiResults.riasec?.scores &&
-                            Object.keys(geminiResults.riasec.scores).length > 0 &&
-                            Object.values(geminiResults.riasec.scores).some(score => score > 0);
+                        // Validate that AI analysis is complete (has RIASEC data)
+                        // More lenient validation - just check if RIASEC data exists
+                        const hasValidRiasec = geminiResults.riasec && (
+                            (geminiResults.riasec.scores && Object.keys(geminiResults.riasec.scores).length > 0) ||
+                            (geminiResults.riasec.topThree && geminiResults.riasec.topThree.length > 0) ||
+                            (geminiResults.riasec.code && geminiResults.riasec.code.length > 0)
+                        );
 
                         if (!hasValidRiasec) {
-                            console.log('⚠️ Result has gemini_results but RIASEC scores are empty/invalid');
+                            console.log('⚠️ Result has gemini_results but RIASEC data is missing/invalid');
+                            console.log('   RIASEC data:', geminiResults.riasec);
                             console.log('   Will regenerate AI analysis');
                             
                             // Set grade level before falling through
@@ -978,14 +982,18 @@ export const useAssessmentResults = () => {
                     if (result.gemini_results && typeof result.gemini_results === 'object' && Object.keys(result.gemini_results).length > 0) {
                         const geminiResults = result.gemini_results;
 
-                        // Validate that AI analysis is complete (has RIASEC scores)
-                        const hasValidRiasec = geminiResults.riasec?.scores &&
-                            Object.keys(geminiResults.riasec.scores).length > 0 &&
-                            Object.values(geminiResults.riasec.scores).some(score => score > 0);
+                        // Validate that AI analysis is complete (has RIASEC data)
+                        // More lenient validation - just check if RIASEC data exists
+                        const hasValidRiasec = geminiResults.riasec && (
+                            (geminiResults.riasec.scores && Object.keys(geminiResults.riasec.scores).length > 0) ||
+                            (geminiResults.riasec.topThree && geminiResults.riasec.topThree.length > 0) ||
+                            (geminiResults.riasec.code && geminiResults.riasec.code.length > 0)
+                        );
 
                         if (!hasValidRiasec) {
-                            console.log('⚠️ Database result has gemini_results but RIASEC scores are empty/invalid');
-                            console.log('   RIASEC scores:', geminiResults.riasec?.scores);
+                            console.log('⚠️ Database result has gemini_results but RIASEC data is missing/invalid');
+                            console.log('   RIASEC data:', geminiResults.riasec);
+                            console.log('   Available gemini_results keys:', Object.keys(geminiResults));
                             console.log('   Will regenerate AI analysis');
 
                             // Set grade level from attempt before falling through
@@ -1201,14 +1209,18 @@ export const useAssessmentResults = () => {
                 if (latestResult?.gemini_results && typeof latestResult.gemini_results === 'object' && Object.keys(latestResult.gemini_results).length > 0) {
                     const geminiResults = latestResult.gemini_results;
 
-                    // Validate that AI analysis is complete (has RIASEC scores with non-zero values)
-                    const hasValidRiasec = geminiResults.riasec?.scores &&
-                        Object.keys(geminiResults.riasec.scores).length > 0 &&
-                        Object.values(geminiResults.riasec.scores).some(score => score > 0);
+                    // Validate that AI analysis is complete (has RIASEC scores)
+                    // More lenient validation - just check if RIASEC data exists
+                    const hasValidRiasec = geminiResults.riasec && (
+                        (geminiResults.riasec.scores && Object.keys(geminiResults.riasec.scores).length > 0) ||
+                        (geminiResults.riasec.topThree && geminiResults.riasec.topThree.length > 0) ||
+                        (geminiResults.riasec.code && geminiResults.riasec.code.length > 0)
+                    );
 
                     if (!hasValidRiasec) {
-                        console.log('⚠️ Latest result has gemini_results but RIASEC scores are empty/invalid');
-                        console.log('   RIASEC scores:', geminiResults.riasec?.scores);
+                        console.log('⚠️ Latest result has gemini_results but RIASEC data is missing/invalid');
+                        console.log('   RIASEC data:', geminiResults.riasec);
+                        console.log('   Available gemini_results keys:', Object.keys(geminiResults));
                         console.log('   Redirecting to assessment test...');
 
                         navigate('/student/assessment/test');
