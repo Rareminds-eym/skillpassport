@@ -42,7 +42,7 @@ export const getRequisitionById = async (requisitionId: string) => {
 /**
  * Get a single opportunity by ID
  */
-export const getOpportunityById = async (opportunityId: number) => {
+export const getOpportunityById = async (opportunityId: string) => {
   try {
     const { data, error } = await supabase
       .from('opportunities')
@@ -82,7 +82,7 @@ export const getRequisitionsWithStats = async () => {
  * Get all pipeline candidates for an opportunity
  * If opportunityId is empty, fetch all candidates from all opportunities
  */
-export const getPipelineCandidates = async (opportunityId?: number) => {
+export const getPipelineCandidates = async (opportunityId?: string) => {
   try {
     let query = supabase
       .from('pipeline_candidates_detailed')
@@ -106,7 +106,7 @@ export const getPipelineCandidates = async (opportunityId?: number) => {
 /**
  * Get pipeline candidates for a specific stage
  */
-export const getPipelineCandidatesByStage = async (opportunityId: number, stage: string) => {
+export const getPipelineCandidatesByStage = async (opportunityId: string, stage: string) => {
   try {
     // First, fetch pipeline candidates
     const { data: pipelineCandidates, error: pcError } = await supabase
@@ -135,6 +135,7 @@ export const getPipelineCandidatesByStage = async (opportunityId: number, stage:
     const studentIds = [...new Set(pipelineCandidates.map(pc => pc.student_id))];
 
     // Fetch student data with relational tables
+    // Note: pipeline_candidates.student_id references students.id (not user_id)
     const { data: students, error: studentsError } = await supabase
       .from('students')
       .select(`
@@ -142,7 +143,7 @@ export const getPipelineCandidatesByStage = async (opportunityId: number, stage:
         college_school_name, university, branch_field, course_name, district_name,
         skills!skills_student_id_fkey(id, name, enabled, approval_status)
       `)
-      .in('user_id', studentIds);
+      .in('id', studentIds);
 
     if (studentsError) {
       console.error(`[Pipeline Service] Error fetching students for stage ${stage}:`, {
@@ -154,7 +155,7 @@ export const getPipelineCandidatesByStage = async (opportunityId: number, stage:
       // Continue without student data rather than failing completely
     }
 
-    // Create a map of students by user_id for quick lookup
+    // Create a map of students by id for quick lookup
     const studentsMap = new Map();
     students?.forEach(student => {
       // Filter skills to only enabled ones (include all approval statuses)
@@ -164,7 +165,7 @@ export const getPipelineCandidatesByStage = async (opportunityId: number, stage:
             .map((s: any) => s.name)
         : [];
       
-      studentsMap.set(student.user_id, {
+      studentsMap.set(student.id, {
         ...student,
         // Map actual DB columns to UI-friendly names
         dept: student.branch_field || student.course_name,
@@ -192,7 +193,7 @@ export const getPipelineCandidatesByStage = async (opportunityId: number, stage:
  * Get pipeline candidates with advanced filters and sorting (SQL-optimized)
  */
 export const getPipelineCandidatesWithFilters = async (
-  opportunityId: number,
+  opportunityId: string,
   filters: {
     stages?: string[]
     skills?: string[]
@@ -306,6 +307,7 @@ export const getPipelineCandidatesWithFilters = async (
     const studentIds = [...new Set(pipelineCandidates.map((pc: any) => pc.student_id))];
 
     // Fetch student data with relational tables
+    // Note: pipeline_candidates.student_id references students.id (not user_id)
     const { data: students, error: studentsError } = await supabase
       .from('students')
       .select(`
@@ -313,14 +315,14 @@ export const getPipelineCandidatesWithFilters = async (
         college_school_name, university, branch_field, course_name, district_name,
         skills!skills_student_id_fkey(id, name, enabled, approval_status)
       `)
-      .in('user_id', studentIds);
+      .in('id', studentIds);
 
     if (studentsError) {
       console.error('Error fetching students for filters:', studentsError);
       // Continue without student data
     }
 
-    // Create a map of students by user_id for quick lookup
+    // Create a map of students by id for quick lookup
     const studentsMap = new Map();
     students?.forEach(student => {
       // Filter skills to only enabled ones (include all approval statuses)
@@ -330,7 +332,7 @@ export const getPipelineCandidatesWithFilters = async (
             .map((s: any) => s.name)
         : [];
       
-      studentsMap.set(student.user_id, {
+      studentsMap.set(student.id, {
         ...student,
         // Map actual DB columns to UI-friendly names
         dept: student.branch_field || student.course_name,
@@ -356,7 +358,7 @@ export const getPipelineCandidatesWithFilters = async (
     if (filters.skills && filters.skills.length > 0) {
       filteredData = filteredData.filter(candidate => {
         const studentSkills = candidate.students?.skills || [];
-        return filters.skills.some(skill => 
+        return filters.skills!.some(skill => 
           studentSkills.some((s: string) => s.toLowerCase().includes(skill.toLowerCase()))
         );
       });
@@ -366,7 +368,7 @@ export const getPipelineCandidatesWithFilters = async (
     if (filters.departments && filters.departments.length > 0) {
       filteredData = filteredData.filter(candidate => {
         const dept = candidate.students?.dept || '';
-        return filters.departments.includes(dept);
+        return filters.departments!.includes(dept);
       });
     }
 
@@ -374,16 +376,16 @@ export const getPipelineCandidatesWithFilters = async (
     if (filters.locations && filters.locations.length > 0) {
       filteredData = filteredData.filter(candidate => {
         const location = candidate.students?.location || '';
-        return filters.locations.includes(location);
+        return filters.locations!.includes(location);
       });
     }
 
     // Filter by AI score range
-    if (filters.aiScoreRange) {
+    if (filters.aiScoreRange && (filters.aiScoreRange.min !== undefined || filters.aiScoreRange.max !== undefined)) {
       filteredData = filteredData.filter(candidate => {
         const score = candidate.students?.ai_score_overall || 0;
-        const meetsMin = filters.aiScoreRange.min ? score >= filters.aiScoreRange.min : true;
-        const meetsMax = filters.aiScoreRange.max ? score <= filters.aiScoreRange.max : true;
+        const meetsMin = filters.aiScoreRange!.min !== undefined ? score >= filters.aiScoreRange!.min : true;
+        const meetsMax = filters.aiScoreRange!.max !== undefined ? score <= filters.aiScoreRange!.max : true;
         return meetsMin && meetsMax;
       });
     }
@@ -429,14 +431,14 @@ export const getPipelineCandidatesWithFilters = async (
 /**
  * Get all pipeline candidates grouped by stage
  */
-export const getAllPipelineCandidatesByStage = async (opportunityId: number) => {
+export const getAllPipelineCandidatesByStage = async (opportunityId: string) => {
   try {
     const { data, error } = await getPipelineCandidates(opportunityId);
     
     if (error) throw error;
 
     // Group candidates by stage
-    const grouped = {
+    const grouped: Record<string, any[]> = {
       sourced: [],
       screened: [],
       interview_1: [],
@@ -462,7 +464,7 @@ export const getAllPipelineCandidatesByStage = async (opportunityId: number) => 
  * Add candidate to pipeline
  */
 export const addCandidateToPipeline = async (pipelineData: {
-  opportunity_id: number;
+  opportunity_id: string | number;
   student_id: string;
   candidate_name: string;
   candidate_email?: string;
@@ -474,6 +476,55 @@ export const addCandidateToPipeline = async (pipelineData: {
   next_action_notes?: string;
 }) => {
   try {
+    // Convert IDs to strings (for backward compatibility)
+    const opportunityIdStr = String(pipelineData.opportunity_id);
+    
+    // Check if candidate already exists in this pipeline
+    const { data: existingCandidate, error: checkError } = await supabase
+      .from('pipeline_candidates')
+      .select('id, stage, status')
+      .eq('opportunity_id', opportunityIdStr)
+      .eq('student_id', pipelineData.student_id)
+      .maybeSingle();
+
+    if (checkError) {
+      console.error('Error checking for existing candidate:', checkError);
+    }
+
+    if (existingCandidate) {
+      // Candidate already exists
+      if (existingCandidate.status === 'active') {
+        return {
+          data: null,
+          error: {
+            code: 'DUPLICATE_CANDIDATE',
+            message: `Candidate is already in this pipeline (${existingCandidate.stage} stage)`,
+            details: existingCandidate
+          }
+        };
+      } else {
+        // Reactivate rejected candidate
+        const { data: reactivated, error: reactivateError } = await supabase
+          .from('pipeline_candidates')
+          .update({
+            status: 'active',
+            stage: pipelineData.stage || 'sourced',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingCandidate.id)
+          .select()
+          .single();
+
+        if (reactivateError) throw reactivateError;
+
+        return { 
+          data: reactivated, 
+          error: null,
+          message: 'Candidate reactivated in pipeline'
+        };
+      }
+    }
+    
     // Fetch student's AI score and employability data from relational tables
     let aiScore = null;
     let employabilityScore = null;
@@ -482,7 +533,7 @@ export const addCandidateToPipeline = async (pipelineData: {
       const { data: studentData, error: studentError } = await supabase
         .from('students')
         .select('ai_score_overall, employability_score')
-        .eq('user_id', pipelineData.student_id)
+        .eq('id', pipelineData.student_id)
         .single();
       
       if (!studentError && studentData) {
@@ -506,23 +557,30 @@ export const addCandidateToPipeline = async (pipelineData: {
     const { data, error } = await supabase
       .from('pipeline_candidates')
       .insert([{
-        ...pipelineData,
+        opportunity_id: opportunityIdStr,
+        student_id: pipelineData.student_id,
+        candidate_name: pipelineData.candidate_name,
+        candidate_email: pipelineData.candidate_email,
+        candidate_phone: pipelineData.candidate_phone,
         stage: stage,
         source: pipelineData.source || 'talent_pool',
         status: 'active',
+        added_by: pipelineData.added_by,
+        next_action: pipelineData.next_action,
         recruiter_notes: recruiterNotes || pipelineData.next_action_notes || null
       }])
       .select()
       .single();
 
     if (error) {
-      // Check for duplicate entry
+      // Check for duplicate entry (fallback)
       if (error.code === '23505') {
         return {
           data: null,
           error: {
-            ...error,
-            message: 'Candidate is already in this pipeline'
+            code: 'DUPLICATE_CANDIDATE',
+            message: 'Candidate is already in this pipeline',
+            details: error.details
           }
         };
       }
@@ -541,14 +599,14 @@ export const addCandidateToPipeline = async (pipelineData: {
     };
 
     const applicationStatus = stageToStatusMap[stage];
-    if (applicationStatus && pipelineData.student_id && pipelineData.opportunity_id) {
+    if (applicationStatus && pipelineData.student_id && opportunityIdStr) {
       try {
         // Check if applied_jobs record exists
         const { data: existingApplication } = await supabase
           .from('applied_jobs')
           .select('id')
           .eq('student_id', pipelineData.student_id)
-          .eq('opportunity_id', pipelineData.opportunity_id)
+          .eq('opportunity_id', opportunityIdStr)
           .maybeSingle();
 
         if (existingApplication) {
@@ -596,22 +654,44 @@ export const addCandidateToPipeline = async (pipelineData: {
  * Move candidate to a different stage
  */
 export const moveCandidateToStage = async (
-  candidateId: number,
+  candidateId: string | number,
   newStage: string,
   performedBy?: string,
   notes?: string
 ) => {
+  // Convert to string if number (for backward compatibility)
+  const candidateIdStr = String(candidateId);
+  
+  console.log('[Pipeline Service] moveCandidateToStage called:', {
+    candidateId,
+    candidateIdStr,
+    newStage,
+    performedBy,
+    notes
+  });
+  
   try {
     // Get current candidate data with student info
     const { data: currentData, error: fetchError } = await supabase
       .from('pipeline_candidates')
       .select('stage, student_id, candidate_name, candidate_email, opportunity_id')
-      .eq('id', candidateId)
+      .eq('id', candidateIdStr)
       .single();
+
+    console.log('[Pipeline Service] Fetch current data result:', {
+      data: currentData,
+      error: fetchError
+    });
 
     if (fetchError) throw fetchError;
 
     const previousStage = currentData.stage;
+
+    console.log('[Pipeline Service] Updating candidate stage:', {
+      candidateIdStr,
+      previousStage,
+      newStage
+    });
 
     // Update the candidate
     const { data, error } = await supabase
@@ -622,9 +702,14 @@ export const moveCandidateToStage = async (
         stage_changed_at: new Date().toISOString(),
         stage_changed_by: performedBy
       })
-      .eq('id', candidateId)
+      .eq('id', candidateIdStr)
       .select()
       .single();
+
+    console.log('[Pipeline Service] Update result:', {
+      data,
+      error
+    });
 
     if (error) throw error;
 
@@ -665,7 +750,7 @@ export const moveCandidateToStage = async (
 
     // Log the stage change
     await logPipelineActivity({
-      pipeline_candidate_id: candidateId,
+      pipeline_candidate_id: candidateIdStr,
       activity_type: 'stage_change',
       from_stage: previousStage,
       to_stage: newStage,
@@ -676,7 +761,13 @@ export const moveCandidateToStage = async (
 
     return { data, error: null };
   } catch (error) {
-    console.error('Error moving candidate:', error);
+    console.error('[Pipeline Service] Error moving candidate:', error);
+    console.error('[Pipeline Service] Error details:', {
+      message: (error as any)?.message,
+      details: (error as any)?.details,
+      hint: (error as any)?.hint,
+      code: (error as any)?.code
+    });
     return { data: null, error };
   }
 };
@@ -685,12 +776,14 @@ export const moveCandidateToStage = async (
  * Update next action for candidate
  */
 export const updateNextAction = async (
-  candidateId: number,
+  candidateId: string | number,
   nextAction: string,
   nextActionDate?: string,
   notes?: string
 ) => {
   try {
+    const candidateIdStr = String(candidateId);
+    
     const { data, error } = await supabase
       .from('pipeline_candidates')
       .update({
@@ -698,7 +791,7 @@ export const updateNextAction = async (
         next_action_date: nextActionDate,
         next_action_notes: notes
       })
-      .eq('id', candidateId)
+      .eq('id', candidateIdStr)
       .select()
       .single();
 
@@ -714,11 +807,13 @@ export const updateNextAction = async (
  * Reject candidate
  */
 export const rejectCandidate = async (
-  candidateId: number,
+  candidateId: string | number,
   rejectionReason?: string,
   performedBy?: string
 ) => {
   try {
+    const candidateIdStr = String(candidateId);
+    
     const { data, error } = await supabase
       .from('pipeline_candidates')
       .update({
@@ -727,7 +822,7 @@ export const rejectCandidate = async (
         rejection_reason: rejectionReason,
         rejection_date: new Date().toISOString()
       })
-      .eq('id', candidateId)
+      .eq('id', candidateIdStr)
       .select()
       .single();
 
@@ -735,9 +830,9 @@ export const rejectCandidate = async (
 
     // Log rejection
     await logPipelineActivity({
-      pipeline_candidate_id: candidateId,
+      pipeline_candidate_id: candidateIdStr,
       activity_type: 'stage_change',
-      from_stage: data.previous_stage,
+      from_stage: data.previous_stage || undefined,
       to_stage: 'rejected',
       activity_details: { reason: rejectionReason },
       performed_by: performedBy,
@@ -755,18 +850,20 @@ export const rejectCandidate = async (
  * Update candidate rating and notes
  */
 export const updateCandidateRating = async (
-  candidateId: number,
+  candidateId: string | number,
   rating: number,
   notes?: string
 ) => {
   try {
+    const candidateIdStr = String(candidateId);
+    
     const { data, error } = await supabase
       .from('pipeline_candidates')
       .update({
         recruiter_rating: rating,
         recruiter_notes: notes
       })
-      .eq('id', candidateId)
+      .eq('id', candidateIdStr)
       .select()
       .single();
 
@@ -782,15 +879,17 @@ export const updateCandidateRating = async (
  * Assign candidate to interviewer/recruiter
  */
 export const assignCandidate = async (
-  candidateId: number,
+  candidateId: string | number,
   assignedTo: string,
   performedBy?: string
 ) => {
   try {
+    const candidateIdStr = String(candidateId);
+    
     const { data, error } = await supabase
       .from('pipeline_candidates')
       .update({ assigned_to: assignedTo })
-      .eq('id', candidateId)
+      .eq('id', candidateIdStr)
       .select()
       .single();
 
@@ -798,7 +897,7 @@ export const assignCandidate = async (
 
     // Log assignment
     await logPipelineActivity({
-      pipeline_candidate_id: candidateId,
+      pipeline_candidate_id: candidateIdStr,
       activity_type: 'note_added',
       activity_details: { assigned_to: assignedTo },
       performed_by: performedBy,
@@ -815,12 +914,14 @@ export const assignCandidate = async (
 /**
  * Remove candidate from pipeline
  */
-export const removeCandidateFromPipeline = async (candidateId: number) => {
+export const removeCandidateFromPipeline = async (candidateId: string | number) => {
   try {
+    const candidateIdStr = String(candidateId);
+    
     const { error } = await supabase
       .from('pipeline_candidates')
       .delete()
-      .eq('id', candidateId);
+      .eq('id', candidateIdStr);
 
     if (error) throw error;
     return { error: null };
@@ -836,9 +937,9 @@ export const removeCandidateFromPipeline = async (candidateId: number) => {
  * Log pipeline activity
  */
 export const logPipelineActivity = async (activityData: {
-  pipeline_candidate_id: number;
+  pipeline_candidate_id: string;
   activity_type: string;
-  from_stage?: string;
+  from_stage?: string | null;
   to_stage?: string;
   activity_details?: any;
   performed_by?: string;
@@ -862,7 +963,7 @@ export const logPipelineActivity = async (activityData: {
 /**
  * Get activity history for a candidate
  */
-export const getCandidateActivities = async (candidateId: number) => {
+export const getCandidateActivities = async (candidateId: string) => {
   try {
     const { data, error } = await supabase
       .from('pipeline_activities')
@@ -884,7 +985,7 @@ export const getCandidateActivities = async (candidateId: number) => {
  * Bulk move candidates to stage
  */
 export const bulkMoveCandidates = async (
-  candidateIds: number[],
+  candidateIds: (string | number)[],
   newStage: string,
   performedBy?: string
 ) => {
@@ -909,7 +1010,7 @@ export const bulkMoveCandidates = async (
  * Bulk reject candidates
  */
 export const bulkRejectCandidates = async (
-  candidateIds: number[],
+  candidateIds: (string | number)[],
   rejectionReason?: string,
   performedBy?: string
 ) => {
@@ -935,7 +1036,7 @@ export const bulkRejectCandidates = async (
 /**
  * Get pipeline statistics for an opportunity
  */
-export const getPipelineStatistics = async (opportunityId: number) => {
+export const getPipelineStatistics = async (opportunityId: string) => {
   try {
     const { data, error } = await getPipelineCandidates(opportunityId);
     
