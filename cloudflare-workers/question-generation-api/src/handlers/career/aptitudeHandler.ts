@@ -81,14 +81,14 @@ export async function handleAptitudeGeneration(
       : categories.filter(c => ['spatial', 'clerical'].includes(c.id));
 
     console.log('📦 Generating batch 1...');
-    const batch1 = await generateBatch(1, batch1Categories, isAfter10, streamContext, claudeKey, openRouterKey);
+    const batch1 = await generateBatchWithRetry(1, batch1Categories, isAfter10, streamContext, claudeKey, openRouterKey);
     console.log(`✅ Batch 1 complete: ${batch1.length} questions`);
 
     console.log('⏳ Waiting 3s before batch 2...');
     await delay(3000);
 
     console.log('📦 Generating batch 2...');
-    const batch2 = await generateBatch(2, batch2Categories, isAfter10, streamContext, claudeKey, openRouterKey);
+    const batch2 = await generateBatchWithRetry(2, batch2Categories, isAfter10, streamContext, claudeKey, openRouterKey);
     console.log(`✅ Batch 2 complete: ${batch2.length} questions`);
 
     // Combine and format questions
@@ -101,7 +101,18 @@ export async function handleAptitudeGeneration(
       moduleTitle: moduleTitles[q.category] || q.category
     }));
 
-    console.log(`✅ Total aptitude questions generated: ${allQuestions.length}`);
+    const expectedTotal = categories.reduce((sum, c) => sum + c.count, 0);
+    console.log(`✅ Total aptitude questions generated: ${allQuestions.length}/${expectedTotal}`);
+
+    // Validate total count
+    if (allQuestions.length < expectedTotal) {
+      console.warn(`⚠️ WARNING: Generated ${allQuestions.length} questions but expected ${expectedTotal}. This may affect assessment accuracy.`);
+    } else if (allQuestions.length > expectedTotal) {
+      console.log(`✂️ Trimming ${allQuestions.length - expectedTotal} extra questions to match expected count of ${expectedTotal}`);
+      allQuestions.splice(expectedTotal); // Keep only the expected number
+    }
+
+    console.log(`📊 Final question count: ${allQuestions.length}`);
 
     // Save to cache
     if (studentId) {
@@ -113,6 +124,57 @@ export async function handleAptitudeGeneration(
     console.error('❌ Aptitude generation error:', error);
     return errorResponse(error.message || 'Failed to generate aptitude questions', 500);
   }
+}
+
+async function generateBatchWithRetry(
+  batchNum: number,
+  batchCategories: any[],
+  isAfter10: boolean,
+  streamContext: any,
+  claudeKey?: string,
+  openRouterKey?: string,
+  maxRetries: number = 3
+): Promise<any[]> {
+  const totalQuestions = batchCategories.reduce((sum, c) => sum + c.count, 0);
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`🔄 Batch ${batchNum}, Attempt ${attempt}/${maxRetries}: Generating ${totalQuestions} questions`);
+      
+      const questions = await generateBatch(
+        batchNum,
+        batchCategories,
+        isAfter10,
+        streamContext,
+        claudeKey,
+        openRouterKey
+      );
+
+      // Validate question count
+      if (questions.length >= totalQuestions) {
+        console.log(`✅ Batch ${batchNum}: Generated ${questions.length}/${totalQuestions} questions (success)`);
+        return questions.slice(0, totalQuestions); // Return exact count
+      } else {
+        console.warn(`⚠️ Batch ${batchNum}, Attempt ${attempt}: Only generated ${questions.length}/${totalQuestions} questions`);
+        
+        if (attempt < maxRetries) {
+          console.log(`🔄 Retrying batch ${batchNum} (attempt ${attempt + 1}/${maxRetries})...`);
+          await delay(2000); // Wait before retry
+        } else {
+          console.error(`❌ Batch ${batchNum}: Failed to generate ${totalQuestions} questions after ${maxRetries} attempts. Got ${questions.length} questions.`);
+          return questions; // Return what we have
+        }
+      }
+    } catch (error: any) {
+      console.error(`❌ Batch ${batchNum}, Attempt ${attempt} error:`, error.message);
+      if (attempt === maxRetries) {
+        throw error;
+      }
+      await delay(2000);
+    }
+  }
+  
+  return []; // Fallback
 }
 
 async function generateBatch(

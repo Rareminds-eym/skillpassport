@@ -906,6 +906,15 @@ export function normalizeStreamId(programName) {
  */
 export function validateQuestion(question, questionType) {
   const errors = [];
+  const autoFixes = [];
+  
+  // Auto-fix: Normalize question text field
+  if (!question.text && question.question) {
+    question.text = question.question;
+    autoFixes.push('Normalized question text field');
+  } else if (question.text && !question.question) {
+    question.question = question.text;
+  }
   
   // Check required fields
   if (!question.text && !question.question) {
@@ -913,8 +922,15 @@ export function validateQuestion(question, questionType) {
   }
   
   const questionText = question.text || question.question || '';
-  if (questionText.length < 10 || questionText.length > 500) {
-    errors.push(`Question text length ${questionText.length} is outside valid range (10-500)`);
+  
+  // More lenient text length validation - only reject if critically short or absurdly long
+  if (questionText.length < 5) {
+    errors.push(`Question text too short: ${questionText.length} characters`);
+  } else if (questionText.length > 1000) {
+    errors.push(`Question text too long: ${questionText.length} characters`);
+  } else if (questionText.length < 10) {
+    // Warn but don't reject
+    autoFixes.push(`Question text is short (${questionText.length} chars) but acceptable`);
   }
   
   // Check options
@@ -1031,12 +1047,38 @@ export function validateQuestion(question, questionType) {
   
   // Check type/subtype for categorization
   if (questionType === 'aptitude' && !question.subtype && !question.category) {
-    errors.push('Missing subtype/category for aptitude question');
+    // Auto-fix: Try to infer category from other fields
+    if (question.skill_tag) {
+      const inferredCategory = question.skill_tag.split('_')[0];
+      question.category = inferredCategory;
+      autoFixes.push(`Inferred category "${inferredCategory}" from skill_tag`);
+    } else if (question.moduleTitle) {
+      // Try to extract from moduleTitle like "A) Verbal Reasoning"
+      const match = question.moduleTitle.match(/\b(verbal|numerical|abstract|spatial|clerical)\b/i);
+      if (match) {
+        question.category = match[1].toLowerCase();
+        autoFixes.push(`Inferred category "${question.category}" from moduleTitle`);
+      } else {
+        // Default to 'verbal' as fallback
+        question.category = 'verbal';
+        autoFixes.push('Assigned default category "verbal" (no category info found)');
+      }
+    } else {
+      // Default to 'verbal' as fallback
+      question.category = 'verbal';
+      autoFixes.push('Assigned default category "verbal" (no category info found)');
+    }
+  }
+  
+  // Log auto-fixes if any
+  if (autoFixes.length > 0) {
+    console.log(`🔧 Auto-fixed question ${question.id || 'unknown'}:`, autoFixes);
   }
   
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
+    autoFixed: autoFixes.length > 0
   };
 }
 
@@ -1050,11 +1092,15 @@ export function validateQuestion(question, questionType) {
 export function validateQuestionBatch(questions, questionType, expectedCount) {
   const valid = [];
   const invalid = [];
+  let autoFixedCount = 0;
   
   questions.forEach((q, idx) => {
     const validation = validateQuestion(q, questionType);
     if (validation.isValid) {
       valid.push(q);
+      if (validation.autoFixed) {
+        autoFixedCount++;
+      }
     } else {
       console.warn(`❌ Question ${idx + 1} failed validation:`, validation.errors);
       invalid.push({ question: q, errors: validation.errors });
@@ -1063,9 +1109,9 @@ export function validateQuestionBatch(questions, questionType, expectedCount) {
   
   const needsMore = valid.length < expectedCount;
   
-  console.log(`📊 Validation results: ${valid.length}/${expectedCount} valid, ${invalid.length} invalid`);
+  console.log(`📊 Validation results: ${valid.length}/${expectedCount} valid, ${invalid.length} invalid${autoFixedCount > 0 ? `, ${autoFixedCount} auto-fixed` : ''}`);
   
-  return { valid, invalid, needsMore };
+  return { valid, invalid, needsMore, autoFixedCount };
 }
 
 /**
@@ -1514,32 +1560,30 @@ export async function generateStreamKnowledgeQuestions(streamId, questionCount =
         console.warn(`⚠️ Filtered out ${validation.invalid.length} invalid knowledge questions`);
       }
       
-      // Check if we have sufficient valid questions
-      if (validQuestions.length < questionCount) {
-        console.warn(`⚠️ Only ${validQuestions.length}/${questionCount} valid knowledge questions after validation`);
+      // STRICT: Must have EXACTLY the expected count
+      if (validQuestions.length !== questionCount) {
+        console.warn(`⚠️ Question count mismatch: ${validQuestions.length}/${questionCount} knowledge questions`);
         
         if (attempt < maxRetries) {
           const needed = questionCount - validQuestions.length;
-          console.log(`⏳ Need ${needed} more valid questions, retrying (attempt ${attempt + 1}/${maxRetries})...`);
+          console.log(`🔄 Retrying to get exactly ${questionCount} knowledge questions (attempt ${attempt + 1}/${maxRetries})...`);
           await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
           continue;
         } else {
-          console.warn(`⚠️ Proceeding with ${validQuestions.length} valid questions after ${maxRetries} attempts`);
+          console.error(`❌ Failed to get exactly ${questionCount} knowledge questions after ${maxRetries} attempts. Got ${validQuestions.length}.`);
+          return null; // Reject - must be exactly 20
         }
       }
       
-      // Ensure final count is exactly 20 (or questionCount)
-      const finalQuestions = validQuestions.slice(0, questionCount);
-      
-      console.log(`✅ Final knowledge question count: ${finalQuestions.length}/${questionCount}`);
+      console.log(`✅ Validation passed: Exactly ${questionCount} valid knowledge questions`);
       
       // If API returned questions but didn't save them, save from frontend as fallback
-      if (finalQuestions.length > 0 && studentId && !data.cached) {
-        console.log('💾 Saving knowledge questions from frontend as fallback...');
-        await saveKnowledgeQuestions(studentId, effectiveStreamId, attemptId, finalQuestions, gradeLevel);
+      if (validQuestions.length > 0 && studentId && !data.cached) {
+        console.log('💾 Saving knowledge questions to database...');
+        await saveKnowledgeQuestions(studentId, effectiveStreamId, attemptId, validQuestions, gradeLevel);
       }
       
-      return finalQuestions;
+      return validQuestions;
     } catch (error) {
       // Handle network/fetch errors
       const errorInfo = handleNetworkError(error, attempt, maxRetries);
@@ -1638,50 +1682,33 @@ export async function generateAptitudeQuestions(streamId, questionCount = 50, st
       const validQuestions = validation.valid;
       console.log(`📊 Validation: ${validQuestions.length} valid, ${validation.invalid.length} invalid`);
       
-      // Check if we have sufficient valid questions (80% threshold)
-      if (validQuestions.length < questionCount) {
-        console.warn(`⚠️ Insufficient valid questions: ${validQuestions.length}/${questionCount}`);
+      // STRICT: Must have EXACTLY the expected count
+      if (validQuestions.length !== questionCount) {
+        console.warn(`⚠️ Question count mismatch: ${validQuestions.length}/${questionCount} (${questionCount - validQuestions.length} missing)`);
         
-        const threshold = Math.floor(questionCount * 0.8);
-        
-        if (validQuestions.length >= threshold) {
-          console.log(`✅ Proceeding with ${validQuestions.length} questions (>= ${Math.floor((threshold/questionCount)*100)}% threshold)`);
-          
-          // Save valid questions if we have studentId
-          if (validQuestions.length > 0 && studentId && !data.cached) {
-            console.log('💾 Saving valid questions from frontend as fallback...');
-            await saveAptitudeQuestions(studentId, streamId, attemptId, validQuestions, gradeLevel);
-          }
-          
-          return validQuestions;
-        }
-        
-        // If below threshold and we have retries left, request additional questions
+        // If we have retries left, try again
         if (attempt < maxRetries) {
           const needed = questionCount - validQuestions.length;
-          console.log(`⏳ Need ${needed} more valid questions, retrying (attempt ${attempt}/${maxRetries})...`);
+          console.log(`🔄 Retrying to get exactly ${questionCount} questions (attempt ${attempt + 1}/${maxRetries})...`);
           await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
           continue;
         }
         
-        // Last attempt - return what we have if it's at least 50%
-        const minThreshold = Math.floor(questionCount * 0.5);
-        if (validQuestions.length >= minThreshold) {
-          console.log(`⚠️ Final attempt: Proceeding with ${validQuestions.length} questions (>= 50% threshold)`);
-          
-          if (validQuestions.length > 0 && studentId && !data.cached) {
-            console.log('💾 Saving valid questions from frontend as fallback...');
-            await saveAptitudeQuestions(studentId, streamId, attemptId, validQuestions, gradeLevel);
-          }
-          
-          return validQuestions;
-        }
-        
-        console.error(`❌ Insufficient valid questions after all retries: ${validQuestions.length}/${questionCount}`);
-        return null;
+        // Last attempt - REJECT if not exactly the expected count
+        console.error(`❌ Failed to get exactly ${questionCount} questions after ${maxRetries} attempts. Got ${validQuestions.length}.`);
+        return null; // Reject - must be exactly 50
       }
       
-      // We have enough valid questions - ensure final count matches expected count
+      // We have EXACTLY the expected count - save and return
+      console.log(`✅ Validation passed: Exactly ${questionCount} valid questions`);
+      
+      // Save valid questions if we have studentId
+      if (validQuestions.length > 0 && studentId && !data.cached) {
+        console.log('💾 Saving questions to database...');
+        await saveAptitudeQuestions(studentId, streamId, attemptId, validQuestions, gradeLevel);
+      }
+      
+      return validQuestions;
       const finalQuestions = validQuestions.slice(0, questionCount);
       console.log(`✅ Final question count: ${finalQuestions.length}/${questionCount}`);
       

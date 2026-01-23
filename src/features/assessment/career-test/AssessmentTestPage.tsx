@@ -2032,7 +2032,14 @@ const AssessmentTestPage: React.FC = () => {
               isAdaptive={currentSection.isAdaptive}
               isTimed={currentSection.isTimed}
               showAIPoweredBadge={currentSection.id === 'aptitude' || currentSection.id === 'knowledge'}
-              isLoading={currentSection.isAdaptive && adaptiveAptitude.loading}
+              isLoading={
+                // Show loading for adaptive aptitude (21 questions)
+                (currentSection.isAdaptive && adaptiveAptitude.loading) ||
+                // Show loading for multi-aptitude (50 questions) when AI questions are still loading
+                (currentSection.id === 'aptitude' && !currentSection.isAdaptive && questionsLoading) ||
+                // Show loading for knowledge section when AI questions are still loading
+                (currentSection.id === 'knowledge' && questionsLoading)
+              }
               onStart={handleStartSection}
             />
           )}
