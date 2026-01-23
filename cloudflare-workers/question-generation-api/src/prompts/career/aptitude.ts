@@ -6,6 +6,8 @@ import type { StreamContext } from '../../types';
 
 export const APTITUDE_PROMPT = `You are an expert psychometric assessment creator. Generate aptitude test questions for {{STREAM_NAME}} stream career assessment.
 
+⚠️ CRITICAL: You MUST generate the EXACT number of questions specified for each category below. Do NOT generate more or fewer questions.
+
 Generate questions for these categories with EXACT counts:
 {{CATEGORIES}}
 
