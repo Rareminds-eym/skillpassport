@@ -10,9 +10,11 @@
 
 import { AnimatePresence, motion } from 'framer-motion';
 import {
+  ArrowRight,
   Check,
   CheckCircle2,
   ChevronRight,
+  Clock,
   Loader2,
   Lock,
   Mail,
@@ -24,7 +26,12 @@ import {
   X
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import {
+  formatRegistrationDate,
+  isPreRegistrationActive,
+  PRE_REGISTRATION_END_DATE
+} from '../../config/registrationConfig';
 import Footer from '../../components/Footer';
 import Header from '../../layouts/Header';
 import paymentsApiService from '../../services/paymentsApiService';
@@ -582,6 +589,97 @@ export default function SimpleEventRegistration() {
       setLoading(false);
     }
   };
+
+  // Pre-Registration Closed View - Show when deadline has passed
+  if (!isPreRegistrationActive()) {
+    return (
+      <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+        <Header />
+        <main className="flex-1 flex items-center justify-center px-4 py-16">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5 }}
+            className="w-full max-w-lg"
+          >
+            <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/50 overflow-hidden">
+              {/* Header */}
+              <div className="relative p-10 text-center overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-amber-500 via-orange-500 to-red-500" />
+                <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDYwIEwgNjAgMCIgc3Ryb2tlPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMSkiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3QgZmlsbD0idXJsKCNncmlkKSIgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIvPjwvc3ZnPg==')] opacity-30" />
+                <div className="relative">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+                    className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-5 ring-4 ring-white/30"
+                  >
+                    <Clock className="w-10 h-10 text-white" strokeWidth={2} />
+                  </motion.div>
+                  <motion.h1
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="text-2xl font-bold text-white"
+                  >
+                    Pre-Registration Closed
+                  </motion.h1>
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.4 }}
+                    className="text-amber-100 mt-2"
+                  >
+                    The pre-registration period has ended
+                  </motion.p>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="p-8">
+                <div className="text-center space-y-4">
+                  <p className="text-gray-600">
+                    Pre-registration was available until
+                  </p>
+                  <div className="p-4 bg-gray-50 rounded-xl">
+                    <p className="text-lg font-semibold text-gray-900">
+                      {formatRegistrationDate(PRE_REGISTRATION_END_DATE)}
+                    </p>
+                    <p className="text-sm text-gray-500 mt-1">11:59 PM IST</p>
+                  </div>
+
+                  <div className="pt-4">
+                    <p className="text-gray-700 font-medium">
+                      Full registration is now open!
+                    </p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Create your account and get started with Skill Passport today.
+                    </p>
+                  </div>
+                </div>
+
+                <Link
+                  to="/signup"
+                  className="w-full h-14 mt-8 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 flex items-center justify-center gap-2"
+                >
+                  Proceed to Full Registration
+                  <ArrowRight className="w-5 h-5" />
+                </Link>
+
+                <p className="text-center text-sm text-gray-500 mt-6">
+                  Already have an account?{' '}
+                  <Link to="/login" className="text-blue-600 hover:text-blue-700 font-medium">
+                    Sign in
+                  </Link>
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   // Success View
   if (success && orderDetails) {
