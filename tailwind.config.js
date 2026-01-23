@@ -16,6 +16,7 @@ export default {
         'fade-in-up': 'fadeInUp 0.3s ease-out forwards',
         'slide-down': 'slideDown 0.3s ease-out forwards',
         'slide-up': 'slideUp 0.3s ease-out forwards',
+        'shake': 'shake 0.5s ease-in-out',
       },
       keyframes: {
         shimmer: {
@@ -37,6 +38,11 @@ export default {
         slideUp: {
           '0%': { opacity: '0', transform: 'translateY(10px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        shake: {
+          '0%, 100%': { transform: 'translateX(0)' },
+          '10%, 30%, 50%, 70%, 90%': { transform: 'translateX(-4px)' },
+          '20%, 40%, 60%, 80%': { transform: 'translateX(4px)' },
         },
       },
       colors: {
