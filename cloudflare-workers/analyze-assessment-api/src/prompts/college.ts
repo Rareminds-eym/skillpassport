@@ -328,10 +328,11 @@ ${after10StreamSection}
 ${JSON.stringify(assessmentData.riasecAnswers, null, 2)}
 
 RIASEC SCORING RULES:
-- Response 1-3: 0 points
-- Response 4: 1 point
-- Response 5: 2 points
-- Maximum score per type = 20
+- Response 1-2: 0 points
+- Response 3: 1 point
+- Response 4: 2 points
+- Response 5: 3 points
+- Maximum score per type = 24 (8 questions × 3 points max)
 
 ⚠️ CRITICAL RIASEC topThree CALCULATION:
 1. Calculate the total score for each of the 6 RIASEC types (R, I, A, S, E, C)
@@ -436,7 +437,7 @@ Return ONLY a valid JSON object with this EXACT structure (no markdown, no extra
   },
   "riasec": {
     "scores": {"R": 0, "I": 0, "A": 0, "S": 0, "E": 0, "C": 0},
-    "maxScore": 20,
+    "maxScore": 24,
     "code": "<3-letter code>",
     "topThree": ["<letter>", "<letter>", "<letter>"],
     "interpretation": "<2-3 sentences>"

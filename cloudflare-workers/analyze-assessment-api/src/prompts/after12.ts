@@ -37,12 +37,13 @@ You MUST use this mapping to calculate scores precisely:
    - If answer is an array (multiselect): For each selected option, look up its RIASEC type and add 2 points
    - If answer is a single string: Look up the RIASEC type and add 2 points
    - If answer is a number 1-5 (rating): Use strengthType or context to determine RIASEC type, then:
-     * Response 1-3: 0 points
-     * Response 4: 1 point
-     * Response 5: 2 points
+     * Response 1-2: 0 points
+     * Response 3: 1 point
+     * Response 4: 2 points
+     * Response 5: 3 points
 2. Sum all points for each RIASEC type (R, I, A, S, E, C)
-3. Calculate maxScore = 20 (or highest score if higher)
-4. Calculate percentage for each type: (score / maxScore) × 100
+3. Calculate maxScore = 24 (8 questions × 3 points max per question)
+4. Calculate percentage for each type: (score / 24) × 100
 5. Identify top 3 types by score
 
 ## ⚠️ CRITICAL: ARTISTIC (A) RIASEC CAREER MATCHING ⚠️
@@ -211,7 +212,7 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
     "topThree": ["Top 3 RIASEC codes"],
     "scores": { "R": 0, "I": 0, "A": 0, "S": 0, "E": 0, "C": 0 },
     "percentages": { "R": 0, "I": 0, "A": 0, "S": 0, "E": 0, "C": 0 },
-    "maxScore": 20,
+    "maxScore": 24,
     "interpretation": "What their interests mean for college major and career selection"
   },
   "aptitude": {

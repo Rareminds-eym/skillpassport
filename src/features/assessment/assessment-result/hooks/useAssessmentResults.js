@@ -5,6 +5,8 @@ import * as assessmentService from '../../../../services/assessmentService';
 import { saveRecommendations } from '../../../../services/courseRecommendationService';
 import { analyzeAssessmentWithGemini, addCourseRecommendations } from '../../../../services/geminiAssessmentService';
 import { validateAssessmentResults } from '../utils/assessmentValidation';
+import { validateAptitudeScores } from '../../../../services/aptitudeScoreValidator';
+import { validateRiasecScores } from '../../../../services/riasecScoreValidator';
 import {
     riasecQuestions,
     bigFiveQuestions,
@@ -251,7 +253,7 @@ export const useAssessmentResults = () => {
     const [validationWarnings, setValidationWarnings] = useState([]);
 
     // Helper function to apply validation to results
-    const applyValidation = (geminiResults, rawAnswers = {}, sectionTimings = {}) => {
+    const applyValidation = async (geminiResults, rawAnswers = {}, sectionTimings = {}) => {
         const { results: validatedResults, warnings } = validateAssessmentResults(
             geminiResults,
             rawAnswers,
@@ -261,6 +263,56 @@ export const useAssessmentResults = () => {
         if (warnings.length > 0) {
             console.log('⚠️ Assessment validation warnings:', warnings);
             setValidationWarnings(warnings);
+        }
+
+        // Validate and correct RIASEC scores if we have the necessary data
+        if (validatedResults.riasec && rawAnswers && Object.keys(rawAnswers).length > 0) {
+            try {
+                console.log('🔍 Validating RIASEC scores...');
+                const correctedRiasec = validateRiasecScores(
+                    validatedResults.riasec,
+                    rawAnswers
+                );
+                
+                if (correctedRiasec._corrected) {
+                    console.log('✅ RIASEC scores corrected');
+                    console.log('📊 Before:', validatedResults.riasec.scores);
+                    console.log('📊 After:', correctedRiasec.scores);
+                    validatedResults.riasec = correctedRiasec;
+                    console.log('📊 Applied to validatedResults:', validatedResults.riasec.scores);
+                }
+            } catch (error) {
+                console.error('❌ Error validating RIASEC scores:', error);
+                // Continue with original scores if validation fails
+            }
+        }
+
+        // Validate and correct aptitude scores if we have the necessary data
+        if (validatedResults.aptitude && rawAnswers && Object.keys(rawAnswers).length > 0) {
+            try {
+                // Fetch aptitude questions for this student
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    const aptitudeQuestions = await fetchAIAptitudeQuestions(user.id, Object.keys(rawAnswers));
+                    
+                    if (aptitudeQuestions && aptitudeQuestions.length > 0) {
+                        console.log('🔍 Validating aptitude scores with', aptitudeQuestions.length, 'questions');
+                        const correctedAptitude = validateAptitudeScores(
+                            validatedResults.aptitude,
+                            rawAnswers,
+                            aptitudeQuestions
+                        );
+                        
+                        if (correctedAptitude._corrected) {
+                            console.log('✅ Aptitude scores corrected');
+                            validatedResults.aptitude = correctedAptitude;
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Error validating aptitude scores:', error);
+                // Continue with original scores if validation fails
+            }
         }
 
         return validatedResults;
@@ -814,6 +866,92 @@ export const useAssessmentResults = () => {
         if (attemptId) {
             // Load results from database - ALWAYS prefer database over localStorage
             try {
+                // STEP 1: Try to find result by attempt_id first (most direct path)
+                console.log('🔍 STEP 1: Looking for result by attempt_id:', attemptId);
+                const { data: directResult, error: directError } = await supabase
+                    .from('personal_assessment_results')
+                    .select('*')
+                    .eq('attempt_id', attemptId)
+                    .maybeSingle();
+
+                console.log('   Direct result lookup:', {
+                    found: !!directResult,
+                    error: directError?.message || 'none',
+                    hasGeminiResults: !!directResult?.gemini_results
+                });
+
+                // If we found a result directly, use it
+                if (directResult) {
+                    console.log('✅ Found result directly by attempt_id');
+                    
+                    // Check if AI analysis exists and is valid
+                    if (directResult.gemini_results && typeof directResult.gemini_results === 'object' && Object.keys(directResult.gemini_results).length > 0) {
+                        const geminiResults = directResult.gemini_results;
+
+                        // Validate that AI analysis is complete (has RIASEC scores)
+                        const hasValidRiasec = geminiResults.riasec?.scores &&
+                            Object.keys(geminiResults.riasec.scores).length > 0 &&
+                            Object.values(geminiResults.riasec.scores).some(score => score > 0);
+
+                        if (!hasValidRiasec) {
+                            console.log('⚠️ Result has gemini_results but RIASEC scores are empty/invalid');
+                            console.log('   Will regenerate AI analysis');
+                            
+                            // Set grade level before falling through
+                            if (directResult.grade_level) {
+                                setGradeLevel(directResult.grade_level);
+                                setGradeLevelFromAttempt(true);
+                                gradeLevelFromAttemptRef.current = true;
+                            }
+                            
+                            // Fall through to regenerate
+                        } else {
+                            // Valid AI analysis exists - use it
+                            const validatedResults = await applyValidation(geminiResults, {});
+                            setResults(validatedResults);
+
+                            // Set grade level
+                            if (directResult.grade_level) {
+                                setGradeLevel(directResult.grade_level);
+                                setGradeLevelFromAttempt(true);
+                                gradeLevelFromAttemptRef.current = true;
+                            }
+
+                            loadedAttemptIdRef.current = attemptId;
+                            setLoading(false);
+                            return;
+                        }
+                    } else {
+                        // Result exists but no AI analysis - AUTO-GENERATE IT!
+                        console.log('🔥 Result exists but missing AI analysis - will auto-generate');
+                        
+                        // Set grade level
+                        if (directResult.grade_level) {
+                            setGradeLevel(directResult.grade_level);
+                            setGradeLevelFromAttempt(true);
+                            gradeLevelFromAttemptRef.current = true;
+                        }
+
+                        // Check if we already tried auto-retrying
+                        const retryKey = `auto_retry_done_attempt_${attemptId}`;
+                        const alreadyRetried = sessionStorage.getItem(retryKey);
+
+                        if (retryCompleted || alreadyRetried) {
+                            console.log('⏭️ Skipping auto-retry - already completed/attempted');
+                            setError(new Error("Unable to retrieve assessment report. Please click 'Retry' to regenerate."));
+                            setLoading(false);
+                            return;
+                        }
+
+                        // Trigger auto-retry
+                        console.log('🚀 Setting autoRetry flag to TRUE...');
+                        setAutoRetry(true);
+                        return;
+                    }
+                }
+
+                // STEP 2: If direct lookup failed, try the old way (via attempt table)
+                console.log('🔍 STEP 2: Trying lookup via personal_assessment_attempts table');
                 const attempt = await assessmentService.getAttemptWithResults(attemptId);
 
                 console.log('🔥🔥🔥 ATTEMPT LOOKUP DEBUG 🔥🔥🔥');
@@ -859,7 +997,7 @@ export const useAssessmentResults = () => {
                         } else {
                             // Valid AI analysis exists - use it
                             // Apply validation to correct RIASEC topThree and detect aptitude patterns
-                            const validatedResults = applyValidation(geminiResults, attempt.all_responses || {});
+                            const validatedResults = await applyValidation(geminiResults, attempt.all_responses || {});
                             
                             // DISABLED: Course generation during assessment
                             // Courses are now generated on-demand when user clicks a job role
@@ -1063,7 +1201,7 @@ export const useAssessmentResults = () => {
                     } else {
                         console.log('Loaded results from database');
                         // Apply validation to correct RIASEC topThree and detect aptitude patterns
-                        const validatedResults = applyValidation(geminiResults);
+                        const validatedResults = await applyValidation(geminiResults);
                         setResults(validatedResults);
 
                         // Set grade level from result
@@ -1321,7 +1459,7 @@ export const useAssessmentResults = () => {
             }
 
             // Apply validation to correct RIASEC topThree and detect aptitude patterns
-            const validatedResults = applyValidation(geminiResults, answers, sectionTimings);
+            const validatedResults = await applyValidation(geminiResults, answers, sectionTimings);
 
             // ✅ Save to database only (no localStorage)
             try {

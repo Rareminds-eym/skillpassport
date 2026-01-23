@@ -1,9 +1,9 @@
-name: Deploy Cloudflare Workers
+name: Deploy Development Workers
 
 on:
   push:
     branches:
-      - production
+      - dev
     paths:
       - 'cloudflare-workers/**'
   workflow_dispatch:
@@ -70,7 +70,7 @@ jobs:
     needs: detect-changes
     runs-on: ubuntu-latest
     environment:
-      name: production
+      name: development
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
@@ -137,74 +137,74 @@ jobs:
       #     fi
       #   continue-on-error: true
 
-      - name: Deploy ${{ matrix.worker }}
+      - name: Deploy ${{ matrix.worker }} (Development)
         if: steps.check-worker.outputs.exists == 'true'
         working-directory: cloudflare-workers/${{ matrix.worker }}
         run: |
-          echo "🚀 Deploying ${{ matrix.worker }} to production..."
-          wrangler deploy
+          echo "🧪 Deploying ${{ matrix.worker }}-dev to development..."
+          wrangler deploy --name ${{ matrix.worker }}-dev
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
-      - name: Set secrets for ${{ matrix.worker }}
+      - name: Set secrets for ${{ matrix.worker }}-dev
         if: steps.check-worker.outputs.exists == 'true'
         working-directory: cloudflare-workers/${{ matrix.worker }}
         run: |
-          echo "🔐 Setting secrets for ${{ matrix.worker }}..."
+          echo "🔐 Setting secrets for ${{ matrix.worker }}-dev..."
           
           # Common secrets for all workers
           if [ -n "${{ secrets.VITE_SUPABASE_URL }}" ]; then
-            echo "${{ secrets.VITE_SUPABASE_URL }}" | wrangler secret put VITE_SUPABASE_URL 2>/dev/null || true
+            echo "${{ secrets.VITE_SUPABASE_URL }}" | wrangler secret put VITE_SUPABASE_URL --name ${{ matrix.worker }}-dev 2>/dev/null || true
           fi
           if [ -n "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" ]; then
-            echo "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" | wrangler secret put SUPABASE_SERVICE_ROLE_KEY 2>/dev/null || true
+            echo "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" | wrangler secret put SUPABASE_SERVICE_ROLE_KEY --name ${{ matrix.worker }}-dev 2>/dev/null || true
           fi
           
           # Worker-specific secrets
           case "${{ matrix.worker }}" in
             "embedding-api")
               if [ -n "${{ secrets.OPENROUTER_API_KEY }}" ]; then
-                echo "${{ secrets.OPENROUTER_API_KEY }}" | wrangler secret put OPENROUTER_API_KEY 2>/dev/null || true
+                echo "${{ secrets.OPENROUTER_API_KEY }}" | wrangler secret put OPENROUTER_API_KEY --name ${{ matrix.worker }}-dev 2>/dev/null || true
               fi
               ;;
             "career-api"|"assessment-api")
               if [ -n "${{ secrets.VITE_OPENROUTER_API_KEY }}" ]; then
-                echo "${{ secrets.VITE_OPENROUTER_API_KEY }}" | wrangler secret put OPENROUTER_API_KEY 2>/dev/null || true
+                echo "${{ secrets.VITE_OPENROUTER_API_KEY }}" | wrangler secret put OPENROUTER_API_KEY --name ${{ matrix.worker }}-dev 2>/dev/null || true
               fi
               ;;
             "payments-api")
               if [ -n "${{ secrets.RAZORPAY_KEY_ID }}" ]; then
-                echo "${{ secrets.RAZORPAY_KEY_ID }}" | wrangler secret put RAZORPAY_KEY_ID 2>/dev/null || true
+                echo "${{ secrets.RAZORPAY_KEY_ID }}" | wrangler secret put RAZORPAY_KEY_ID --name ${{ matrix.worker }}-dev 2>/dev/null || true
               fi
               if [ -n "${{ secrets.RAZORPAY_KEY_SECRET }}" ]; then
-                echo "${{ secrets.RAZORPAY_KEY_SECRET }}" | wrangler secret put RAZORPAY_KEY_SECRET 2>/dev/null || true
+                echo "${{ secrets.RAZORPAY_KEY_SECRET }}" | wrangler secret put RAZORPAY_KEY_SECRET --name ${{ matrix.worker }}-dev 2>/dev/null || true
               fi
               if [ -n "${{ secrets.RAZORPAY_WEBHOOK_SECRET }}" ]; then
-                echo "${{ secrets.RAZORPAY_WEBHOOK_SECRET }}" | wrangler secret put RAZORPAY_WEBHOOK_SECRET 2>/dev/null || true
+                echo "${{ secrets.RAZORPAY_WEBHOOK_SECRET }}" | wrangler secret put RAZORPAY_WEBHOOK_SECRET --name ${{ matrix.worker }}-dev 2>/dev/null || true
               fi
               ;;
             "storage-api")
               if [ -n "${{ secrets.R2_ACCESS_KEY_ID }}" ]; then
-                echo "${{ secrets.R2_ACCESS_KEY_ID }}" | wrangler secret put R2_ACCESS_KEY_ID 2>/dev/null || true
+                echo "${{ secrets.R2_ACCESS_KEY_ID }}" | wrangler secret put R2_ACCESS_KEY_ID --name ${{ matrix.worker }}-dev 2>/dev/null || true
               fi
               if [ -n "${{ secrets.R2_SECRET_ACCESS_KEY }}" ]; then
-                echo "${{ secrets.R2_SECRET_ACCESS_KEY }}" | wrangler secret put R2_SECRET_ACCESS_KEY 2>/dev/null || true
+                echo "${{ secrets.R2_SECRET_ACCESS_KEY }}" | wrangler secret put R2_SECRET_ACCESS_KEY --name ${{ matrix.worker }}-dev 2>/dev/null || true
               fi
               if [ -n "${{ secrets.R2_BUCKET_NAME }}" ]; then
-                echo "${{ secrets.R2_BUCKET_NAME }}" | wrangler secret put R2_BUCKET_NAME 2>/dev/null || true
+                echo "${{ secrets.R2_BUCKET_NAME }}" | wrangler secret put R2_BUCKET_NAME --name ${{ matrix.worker }}-dev 2>/dev/null || true
               fi
               ;;
             "email-api")
               if [ -n "${{ secrets.RESEND_API_KEY }}" ]; then
-                echo "${{ secrets.RESEND_API_KEY }}" | wrangler secret put RESEND_API_KEY 2>/dev/null || true
+                echo "${{ secrets.RESEND_API_KEY }}" | wrangler secret put RESEND_API_KEY --name ${{ matrix.worker }}-dev 2>/dev/null || true
               fi
               ;;
             "otp-api")
               if [ -n "${{ secrets.TWILIO_ACCOUNT_SID }}" ]; then
-                echo "${{ secrets.TWILIO_ACCOUNT_SID }}" | wrangler secret put TWILIO_ACCOUNT_SID 2>/dev/null || true
+                echo "${{ secrets.TWILIO_ACCOUNT_SID }}" | wrangler secret put TWILIO_ACCOUNT_SID --name ${{ matrix.worker }}-dev 2>/dev/null || true
               fi
               if [ -n "${{ secrets.TWILIO_AUTH_TOKEN }}" ]; then
-                echo "${{ secrets.TWILIO_AUTH_TOKEN }}" | wrangler secret put TWILIO_AUTH_TOKEN 2>/dev/null || true
+                echo "${{ secrets.TWILIO_AUTH_TOKEN }}" | wrangler secret put TWILIO_AUTH_TOKEN --name ${{ matrix.worker }}-dev 2>/dev/null || true
               fi
               ;;
           esac
@@ -218,37 +218,37 @@ jobs:
     steps:
       - name: Deployment Summary
         run: |
-          echo "## 🚀 Cloudflare Workers Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "## 🧪 Development Workers Deployment" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| Status | ${{ needs.deploy-workers.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Environment | Production |" >> $GITHUB_STEP_SUMMARY
+          echo "| Environment | Development |" >> $GITHUB_STEP_SUMMARY
           echo "| Branch | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Trigger | ${{ github.event_name }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Triggered by | ${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 📦 Workers" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Development Workers" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Worker | URL |" >> $GITHUB_STEP_SUMMARY
           echo "|--------|-----|" >> $GITHUB_STEP_SUMMARY
-          echo "| assessment-api | https://assessment-api.dark-mode-d021.workers.dev |" >> $GITHUB_STEP_SUMMARY
-          echo "| career-api | https://career-api.dark-mode-d021.workers.dev |" >> $GITHUB_STEP_SUMMARY
-          echo "| course-api | https://course-api.dark-mode-d021.workers.dev |" >> $GITHUB_STEP_SUMMARY
-          echo "| email-api | https://email-api.dark-mode-d021.workers.dev |" >> $GITHUB_STEP_SUMMARY
-          echo "| embedding-api | https://embedding-api.dark-mode-d021.workers.dev |" >> $GITHUB_STEP_SUMMARY
-          echo "| fetch-certificate | https://fetch-certificate.dark-mode-d021.workers.dev |" >> $GITHUB_STEP_SUMMARY
-          echo "| otp-api | https://otp-api.dark-mode-d021.workers.dev |" >> $GITHUB_STEP_SUMMARY
-          echo "| payments-api | https://payments-api.dark-mode-d021.workers.dev |" >> $GITHUB_STEP_SUMMARY
-          echo "| storage-api | https://storage-api.dark-mode-d021.workers.dev |" >> $GITHUB_STEP_SUMMARY
-          echo "| streak-api | https://streak-api.dark-mode-d021.workers.dev |" >> $GITHUB_STEP_SUMMARY
-          echo "| user-api | https://user-api.dark-mode-d021.workers.dev |" >> $GITHUB_STEP_SUMMARY
+          echo "| assessment-api-dev | https://assessment-api-dev.dark-mode-d021.workers.dev |" >> $GITHUB_STEP_SUMMARY
+          echo "| career-api-dev | https://career-api-dev.dark-mode-d021.workers.dev |" >> $GITHUB_STEP_SUMMARY
+          echo "| course-api-dev | https://course-api-dev.dark-mode-d021.workers.dev |" >> $GITHUB_STEP_SUMMARY
+          echo "| email-api-dev | https://email-api-dev.dark-mode-d021.workers.dev |" >> $GITHUB_STEP_SUMMARY
+          echo "| embedding-api-dev | https://embedding-api-dev.dark-mode-d021.workers.dev |" >> $GITHUB_STEP_SUMMARY
+          echo "| fetch-certificate-dev | https://fetch-certificate-dev.dark-mode-d021.workers.dev |" >> $GITHUB_STEP_SUMMARY
+          echo "| otp-api-dev | https://otp-api-dev.dark-mode-d021.workers.dev |" >> $GITHUB_STEP_SUMMARY
+          echo "| payments-api-dev | https://payments-api-dev.dark-mode-d021.workers.dev |" >> $GITHUB_STEP_SUMMARY
+          echo "| storage-api-dev | https://storage-api-dev.dark-mode-d021.workers.dev |" >> $GITHUB_STEP_SUMMARY
+          echo "| streak-api-dev | https://streak-api-dev.dark-mode-d021.workers.dev |" >> $GITHUB_STEP_SUMMARY
+          echo "| user-api-dev | https://user-api-dev.dark-mode-d021.workers.dev |" >> $GITHUB_STEP_SUMMARY
 
       - name: Notify on Failure
         if: failure()
         run: |
-          echo "::error::Worker deployment failed! Check the logs above for details."
-          echo "## ❌ Worker Deployment Failed" >> $GITHUB_STEP_SUMMARY
+          echo "::error::Development worker deployment failed! Check the logs above for details."
+          echo "## ❌ Development Worker Deployment Failed" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "One or more workers failed to deploy. Please review the workflow logs." >> $GITHUB_STEP_SUMMARY
+          echo "One or more development workers failed to deploy. Please review the workflow logs." >> $GITHUB_STEP_SUMMARY
