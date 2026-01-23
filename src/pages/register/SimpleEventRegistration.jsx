@@ -486,6 +486,81 @@ export default function SimpleEventRegistration() {
     setPaymentError(null);
 
     try {
+      // Check for duplicate registration
+      const { data: existingReg, error: checkError } = await supabase
+        .from('pre_registrations')
+        .select('id, payment_status, razorpay_order_id')
+        .eq('email', form.email.trim().toLowerCase())
+        .maybeSingle();
+
+      if (existingReg) {
+        if (existingReg.payment_status === 'completed') {
+          setPaymentError('You have already registered with this email.');
+          setLoading(false);
+          return;
+        } else if (existingReg.payment_status === 'pending') {
+          // Reuse existing pending registration instead of creating a new one
+          const orderData = await paymentsApiService.createEventOrder({
+            amount: REGISTRATION_FEE * 100,
+            currency: 'INR',
+            registrationId: existingReg.id,
+            planName: `Pre-Registration - ${campaign}`,
+            userEmail: form.email.trim(),
+            userName: form.name.trim(),
+            origin: window.location.origin,
+          }, null);
+
+          const options = {
+            key: orderData.key,
+            amount: orderData.amount,
+            currency: orderData.currency,
+            name: 'Skill Passport',
+            description: 'Pre-Registration Fee',
+            order_id: orderData.id,
+            prefill: {
+              name: form.name.trim(),
+              email: form.email.trim(),
+              contact: form.phone.replace(/\D/g, ''),
+            },
+            theme: { color: '#1e40af' },
+            handler: async (response) => {
+              try {
+                await supabase
+                  .from('pre_registrations')
+                  .update({
+                    payment_status: 'completed',
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_signature: response.razorpay_signature,
+                  })
+                  .eq('id', existingReg.id);
+
+                setSuccess(true);
+                setOrderDetails({
+                  orderId: response.razorpay_order_id,
+                  paymentId: response.razorpay_payment_id,
+                  amount: REGISTRATION_FEE,
+                });
+              } catch (err) {
+                console.error('Update error:', err);
+                setPaymentError('Payment successful but update failed. Please contact support.');
+              } finally {
+                setLoading(false);
+              }
+            },
+            modal: { ondismiss: () => setLoading(false) },
+          };
+
+          const razorpay = new window.Razorpay(options);
+          razorpay.on('payment.failed', (response) => {
+            setPaymentError(response.error?.description || 'Payment failed. Please try again.');
+            setLoading(false);
+          });
+          razorpay.open();
+          return; // Exit early since we're reusing existing registration
+        }
+      }
+
       const registrationData = {
         full_name: form.name.trim(),
         email: form.email.trim().toLowerCase(),
@@ -512,7 +587,7 @@ export default function SimpleEventRegistration() {
         userEmail: form.email.trim(),
         userName: form.name.trim(),
         origin: window.location.origin,
-      });
+      }, null); // Pass null for token since this is a public registration
 
       const options = {
         key: orderData.key,

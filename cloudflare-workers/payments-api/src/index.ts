@@ -2535,9 +2535,12 @@ async function handleCreateEventOrder(request: Request, env: Env): Promise<Respo
   if (isProductionSite) {
     keyId = getRazorpayKeyId(env);
     keySecret = env.RAZORPAY_KEY_SECRET;
+    console.log('[CREATE-EVENT] Using PRODUCTION credentials');
   } else {
     keyId = env.TEST_RAZORPAY_KEY_ID || getRazorpayKeyId(env);
     keySecret = env.TEST_RAZORPAY_KEY_SECRET || env.RAZORPAY_KEY_SECRET;
+    console.log('[CREATE-EVENT] Using TEST credentials');
+
     // Cap amount at test limit for non-production sites
     if (amount > TEST_MODE_MAX_AMOUNT) {
       console.log(`TEST MODE: Capping amount from ₹${amount / 100} to ₹${TEST_MODE_MAX_AMOUNT / 100}`);
@@ -2545,7 +2548,13 @@ async function handleCreateEventOrder(request: Request, env: Env): Promise<Respo
     }
   }
 
+  console.log(`[CREATE-EVENT] Key ID starts with: ${keyId?.substring(0, 8)}...`);
+  console.log(`[CREATE-EVENT] Key Secret exists: ${!!keySecret}`);
+  console.log(`[CREATE-EVENT] Key Secret length: ${keySecret?.length}`);
+  console.log(`[CREATE-EVENT] Amount: ${amount}`);
+
   if (!keyId || !keySecret) {
+    console.error('[CREATE-EVENT] Missing payment configuration');
     return jsonResponse({ error: 'Payment service not configured' }, 500);
   }
 

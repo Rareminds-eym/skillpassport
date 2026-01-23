@@ -17,10 +17,10 @@
  * - resumeSubscription()       - Resume paused subscription
  */
 
-const WORKER_URL = 'https://payments-api.dark-mode-d021.workers.dev';
+const WORKER_URL = import.meta.env.VITE_PAYMENTS_API_URL || 'https://payments-api.dark-mode-d021.workers.dev';
 
-if (!WORKER_URL) {
-  console.warn('⚠️ VITE_PAYMENTS_API_URL not configured. Payments API calls will fail.');
+if (!import.meta.env.VITE_PAYMENTS_API_URL) {
+  console.warn('⚠️ VITE_PAYMENTS_API_URL not configured. Using default production URL.');
 }
 
 const getBaseUrl = () => {
