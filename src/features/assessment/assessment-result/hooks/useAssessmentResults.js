@@ -230,6 +230,7 @@ export const useAssessmentResults = () => {
     // Use ref to track grade level from attempt synchronously (avoids race condition with async state updates)
     const gradeLevelFromAttemptRef = useRef(false);
     const loadedAttemptIdRef = useRef(null); // Track loaded attempt to prevent loop
+    const streamFromAssessmentRef = useRef(null); // Track stream_id from assessment to prevent fetchStudentInfo from overwriting
     const [studentInfo, setStudentInfo] = useState({
         name: '—',
         regNo: '—',
@@ -655,7 +656,7 @@ export const useAssessmentResults = () => {
                         rollNumberType: rollNumberType,
                         college: collegeName,  // Only show college for college students
                         school: schoolName,    // Only show school for school students
-                        stream: derivedStream,
+                        stream: streamFromAssessmentRef.current || derivedStream, // Use assessment stream if available, otherwise derived
                         grade: studentGrade,
                         branchField: programName, // Use program name instead of branch_field
                         courseName: programName   // Use program name for course name too
@@ -937,6 +938,17 @@ export const useAssessmentResults = () => {
                                 gradeLevelFromAttemptRef.current = true; // Set ref synchronously to prevent race condition
                             }
 
+                            // Update studentInfo with actual stream_id from assessment result
+                            if (attempt.stream_id || result.stream_id) {
+                                const actualStreamId = attempt.stream_id || result.stream_id;
+                                console.log('📚 Updating studentInfo.stream with actual stream_id:', actualStreamId);
+                                streamFromAssessmentRef.current = actualStreamId; // Set ref to prevent fetchStudentInfo from overwriting
+                                setStudentInfo(prev => ({
+                                    ...prev,
+                                    stream: actualStreamId
+                                }));
+                            }
+
                             // ✅ REMOVED: localStorage caching (database is source of truth)
 
                             // DISABLED: Course recommendation saving
@@ -1086,6 +1098,16 @@ export const useAssessmentResults = () => {
                             setGradeLevel(latestResult.grade_level);
                             setGradeLevelFromAttempt(true);
                             gradeLevelFromAttemptRef.current = true; // Set ref synchronously to prevent race condition
+                        }
+
+                        // Update studentInfo with actual stream_id from assessment result
+                        if (latestResult.stream_id) {
+                            console.log('📚 Updating studentInfo.stream with actual stream_id:', latestResult.stream_id);
+                            streamFromAssessmentRef.current = latestResult.stream_id; // Set ref to prevent fetchStudentInfo from overwriting
+                            setStudentInfo(prev => ({
+                                ...prev,
+                                stream: latestResult.stream_id
+                            }));
                         }
 
                         // ✅ REMOVED: localStorage caching (database is source of truth)
@@ -1443,6 +1465,16 @@ export const useAssessmentResults = () => {
             setError(null); // Clear error only on success
             setRetryCompleted(true); // Mark retry as completed to prevent re-triggering
             console.log('✅ AI analysis regenerated successfully');
+
+            // Update studentInfo with actual stream_id from attempt
+            if (stream) {
+                console.log('📚 Updating studentInfo.stream with actual stream_id:', stream);
+                streamFromAssessmentRef.current = stream; // Set ref to prevent fetchStudentInfo from overwriting
+                setStudentInfo(prev => ({
+                    ...prev,
+                    stream: stream
+                }));
+            }
 
         } catch (e) {
             console.error('Regeneration failed:', e);

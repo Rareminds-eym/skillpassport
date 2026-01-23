@@ -24,6 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../../Students/components/ui/dialog';
+import { formatStreamId } from '../../../utils/formatters';
 
 // Import section components from assessment-result
 import ProfileSection from '../../../features/assessment/assessment-result/components/sections/ProfileSection';
@@ -231,7 +232,7 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
           name: student?.name || '—',
           regNo: student?.registration_number || '—',
           college: student?.college_name || student?.college || '—',
-          stream: assessmentResult?.stream_id?.toUpperCase() || assessmentResult?.stream?.toUpperCase() || '—',
+          stream: formatStreamId(assessmentResult?.stream_id || assessmentResult?.stream),
           assessmentDate: assessmentResult?.created_at
             ? new Date(assessmentResult.created_at).toLocaleDateString('en-US', {
                 year: 'numeric',
@@ -347,7 +348,7 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
         name: student?.name || '—',
         regNo: student?.registration_number || '—',
         college: student?.college_name || student?.colleges?.name || student?.college || '—',
-        stream: data?.stream?.toUpperCase() || '—',
+        stream: formatStreamId(data?.stream_id || data?.stream),
         assessmentDate: data?.created_at
           ? new Date(data.created_at).toLocaleDateString('en-US', {
               year: 'numeric',
