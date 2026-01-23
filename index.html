@@ -34,20 +34,6 @@
           return path === '/' || path === '';
         }
         
-        // Aggressive function to force close Zoho chat
-        function forceCloseZohoChat() {
-          if (window.$zoho && window.$zoho.salesiq) {
-            // Hide the chat window
-            if ($zoho.salesiq.chatwindow) {
-              $zoho.salesiq.chatwindow.visible('hide');
-            }
-            // Hide the float button
-            if ($zoho.salesiq.floatwindow) {
-              $zoho.salesiq.floatwindow.visible('hide');
-            }
-          }
-        }
-        
         // Function to update widget visibility
         function updateWidgetVisibility() {
           if (window.$zoho && window.$zoho.salesiq && window.$zoho.salesiq.floatwindow) {
@@ -66,23 +52,25 @@
           widgetcode: "siq85740827d442fdfad727c23eb50d61276e1e478af9841b5169a99498fc35da01", 
           values:{}, 
           ready:function(){
-            console.log('Zoho CRM widget loaded - forcing closed state');
-            
-            // Immediately force close
-            forceCloseZohoChat();
-            
-            // Force close multiple times to ensure it stays closed
-            setTimeout(forceCloseZohoChat, 100);
-            setTimeout(forceCloseZohoChat, 300);
-            setTimeout(forceCloseZohoChat, 500);
-            setTimeout(forceCloseZohoChat, 1000);
-            setTimeout(forceCloseZohoChat, 2000);
-            
+            console.log('Zoho CRM widget loaded');
+            // Prevent auto-opening and keep chat window minimized
+            if (window.$zoho && window.$zoho.salesiq) {
+              // Disable auto-popup
+              if ($zoho.salesiq.visitor) {
+                $zoho.salesiq.visitor.trigger('disable');
+              }
+              // Hide chat window
+              if ($zoho.salesiq.chatwindow) {
+                $zoho.salesiq.chatwindow.visible('hide');
+                $zoho.salesiq.chatwindow.minimize();
+              }
+              // Hide float button on non-home pages
+              if ($zoho.salesiq.floatwindow) {
+                $zoho.salesiq.floatwindow.visible(isHomePage() ? 'show' : 'hide');
+              }
+            }
             // Initial visibility check
             setTimeout(updateWidgetVisibility, 500);
-            
-            // Continuously monitor and force close every 2 seconds
-            setInterval(forceCloseZohoChat, 2000);
           }
         };
         
@@ -98,19 +86,11 @@
           if (lastPath !== window.location.pathname) {
             lastPath = window.location.pathname;
             updateWidgetVisibility();
-            forceCloseZohoChat();
           }
         }, 300);
         
         // Also listen to popstate for back/forward navigation
-        window.addEventListener('popstate', function() {
-          updateWidgetVisibility();
-          forceCloseZohoChat();
-        });
-        
-        // Force close on any page load/interaction
-        window.addEventListener('load', forceCloseZohoChat);
-        document.addEventListener('DOMContentLoaded', forceCloseZohoChat);
+        window.addEventListener('popstate', updateWidgetVisibility);
       })();
     </script>
 
