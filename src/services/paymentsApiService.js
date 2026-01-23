@@ -17,10 +17,10 @@
  * - resumeSubscription()       - Resume paused subscription
  */
 
-const WORKER_URL = import.meta.env.VITE_PAYMENTS_API_URL;
+const WORKER_URL = import.meta.env.VITE_PAYMENTS_API_URL || 'https://payments-api.dark-mode-d021.workers.dev';
 
-if (!WORKER_URL) {
-  console.warn('⚠️ VITE_PAYMENTS_API_URL not configured. Payments API calls will fail.');
+if (!import.meta.env.VITE_PAYMENTS_API_URL) {
+  console.warn('⚠️ VITE_PAYMENTS_API_URL not configured. Using default production URL.');
 }
 
 const getBaseUrl = () => {
@@ -61,7 +61,7 @@ export async function createOrder({ amount, currency = 'INR', planId, planName, 
     const error = await response.json().catch(() => ({}));
     console.error('[createOrder] API Error:', error);
     // Include razorpay error details if available
-    const errorMessage = error.razorpay_error 
+    const errorMessage = error.razorpay_error
       ? `${error.error}: ${error.razorpay_error}`
       : (error.error || 'Failed to create order');
     throw new Error(errorMessage);
@@ -175,7 +175,7 @@ export async function checkSubscriptionAccess(token) {
         showWarning: false,
       };
     }
-    
+
     const error = await response.json().catch(() => ({}));
     throw new Error(error.error || 'Failed to check subscription access');
   }

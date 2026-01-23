@@ -9,12 +9,14 @@ interface Event {
   event_type?: string;
   start_date?: string;
   end_date?: string;
-  location?: string;
+  venue?: string; // college_events uses 'venue' not 'location'
   status?: string;
   organizer?: string;
   max_participants?: number;
   registered_count?: number;
   is_registered?: boolean;
+  attended?: boolean; // college_event_registrations has 'attended' field
+  registered_at?: string;
   created_at?: string;
 }
 
@@ -34,13 +36,14 @@ const EventsTab: React.FC<EventsTabProps> = ({ student, loading: externalLoading
       
       setLoading(true);
       try {
-        // Fetch ONLY events the student has registered for
+        // COLLEGE EVENT SYSTEM - Fetch events the student has registered for
+        // Note: This uses college_event_registrations (not event_registrations which is for paid external events)
         const { data: registrations, error: regError } = await supabase
-          .from('event_registrations')
+          .from('college_event_registrations')
           .select(`
             event_id,
             registered_at,
-            status,
+            attended,
             college_events (
               id,
               title,
@@ -48,7 +51,7 @@ const EventsTab: React.FC<EventsTabProps> = ({ student, loading: externalLoading
               event_type,
               start_date,
               end_date,
-              location,
+              venue,
               status,
               organizer,
               max_participants,
@@ -61,7 +64,7 @@ const EventsTab: React.FC<EventsTabProps> = ({ student, loading: externalLoading
           console.error('Error fetching student events:', regError);
           // Fallback: try direct query if join fails
           const { data: directRegs } = await supabase
-            .from('event_registrations')
+            .from('college_event_registrations')
             .select('event_id')
             .eq('student_id', student.id);
           
@@ -84,7 +87,7 @@ const EventsTab: React.FC<EventsTabProps> = ({ student, loading: externalLoading
             .map(r => ({
               ...(r.college_events as any),
               is_registered: true,
-              registration_status: r.status,
+              attended: r.attended,
               registered_at: r.registered_at
             }))
             .sort((a, b) => {
@@ -247,10 +250,10 @@ const EventsTab: React.FC<EventsTabProps> = ({ student, loading: externalLoading
                       )}
                     </div>
                     
-                    {event.location && (
+                    {event.venue && (
                       <div className="flex items-center">
                         <MapPinIcon className="h-4 w-4 mr-1" />
-                        {event.location}
+                        {event.venue}
                       </div>
                     )}
                     
