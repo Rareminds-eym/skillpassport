@@ -52,7 +52,7 @@ const Opportunities = () => {
   const { user } = useAuth();
   const userEmail = localStorage.getItem('userEmail') || user?.email;
   const { studentData } = useStudentDataByEmail(userEmail);
-  const studentId = user?.id || studentData?.id;
+  const studentId = studentData?.id; // Use students.id (database ID)
 
   // Left sidebar tab state
   const [activeTab, setActiveTab] = useState('my-jobs'); // 'my-jobs' or 'my-applications'
