@@ -6,6 +6,10 @@ export const SCHOOL_SUBJECT_PROMPT = `You are an expert educational assessment c
 
 Generate questions to assess the student's aptitude across school subjects. This will help recommend the best stream for them.
 
+⚠️ CRITICAL: You MUST generate the EXACT number of questions specified for each subject below.
+⚠️ COUNT CAREFULLY: If a subject requires 10 questions, generate EXACTLY 10 questions for that subject.
+⚠️ DO NOT generate more or fewer questions than specified.
+
 Generate questions for these subjects with EXACT counts:
 {{CATEGORIES}}
 
@@ -67,7 +71,9 @@ IMPORTANT:
 - Use sequential numeric IDs (1, 2, 3, etc.)
 - Each question must have exactly 4 options
 - Include the "subject" field for each question
-- Questions should be appropriate for 10th grade level`;
+- Questions should be appropriate for 10th grade level
+
+⚠️ FINAL REMINDER: Before submitting your response, COUNT the questions in each subject to ensure you have generated the EXACT number specified above.`;
 
 export function buildSchoolSubjectPrompt(
   categoriesText: string,
