@@ -36,7 +36,7 @@ export const getStudentPortfolioByEmail = async (email) => {
           state,
           organization_type
         ),
-        university:organizations!students_universityid_fkey (
+        universityInfo:organizations!students_universityid_fkey (
           id,
           name,
           code,
