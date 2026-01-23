@@ -2493,14 +2493,16 @@ async function handleCreateEventOrder(request: Request, env: Env): Promise<Respo
     planName?: string;
     userEmail?: string;
     userName?: string;
+    userPhone?: string;
+    campaign?: string;
     origin?: string;
   };
 
-  const { amount: originalAmount, currency, registrationId, planName, userEmail, userName, origin: bodyOrigin } = body;
+  const { amount: originalAmount, currency, registrationId, planName, userEmail, userName, userPhone, campaign, origin: bodyOrigin } = body;
 
-  // Validate required fields
-  if (!originalAmount || !currency || !registrationId || !userEmail) {
-    return jsonResponse({ error: 'Missing required fields' }, 400);
+  // Validate required fields (registrationId is now optional)
+  if (!originalAmount || !currency || !userEmail) {
+    return jsonResponse({ error: 'Missing required fields: amount, currency, userEmail' }, 400);
   }
 
   if (originalAmount <= 0) {
@@ -2568,19 +2570,75 @@ async function handleCreateEventOrder(request: Request, env: Env): Promise<Respo
     tableName = 'pre_registrations';
   }
 
-  // Verify registration exists
-  const { data: registration, error: regError } = await supabaseAdmin
-    .from(tableName)
-    .select('id, payment_status')
-    .eq('id', registrationId)
-    .maybeSingle();
+  let finalRegistrationId = registrationId;
+  let registration: any;
 
-  if (regError || !registration) {
-    return jsonResponse({ error: 'Registration not found' }, 404);
+  // If no registrationId provided, check for existing or create new
+  if (!finalRegistrationId) {
+    // Check for existing registration by email
+    const { data: existingReg } = await supabaseAdmin
+      .from(tableName)
+      .select('id, payment_status, payment_history')
+      .eq('email', userEmail.toLowerCase())
+      .maybeSingle();
+
+    if (existingReg) {
+      if (existingReg.payment_status === 'completed') {
+        return jsonResponse({ error: 'You have already registered with this email.' }, 400);
+      }
+      // Reuse existing pending registration
+      finalRegistrationId = existingReg.id;
+      registration = existingReg;
+      console.log(`[CREATE-EVENT] Reusing existing registration: ${finalRegistrationId}`);
+    } else {
+      // Create new registration
+      const registrationData: any = {
+        full_name: userName || '',
+        email: userEmail.toLowerCase(),
+        phone: userPhone || '',
+        amount: amountInRupees,
+        campaign: campaign || 'direct',
+        role_type: 'pre_registration',
+        payment_status: 'pending',
+      };
+
+      const { data: newReg, error: insertError } = await supabaseAdmin
+        .from(tableName)
+        .insert(registrationData)
+        .select('id, payment_status, payment_history')
+        .single();
+
+      if (insertError) {
+        console.error('[CREATE-EVENT] Failed to create registration:', insertError);
+        return jsonResponse({ error: 'Failed to create registration' }, 500);
+      }
+
+      finalRegistrationId = newReg.id;
+      registration = newReg;
+      console.log(`[CREATE-EVENT] Created new registration: ${finalRegistrationId}`);
+    }
+  } else {
+    // Verify provided registration exists
+    const { data: existingReg, error: regError } = await supabaseAdmin
+      .from(tableName)
+      .select('id, payment_status, payment_history')
+      .eq('id', finalRegistrationId!)
+      .maybeSingle();
+
+    if (regError || !existingReg) {
+      return jsonResponse({ error: 'Registration not found' }, 404);
+    }
+
+    registration = existingReg;
+  }
+
+  // At this point, finalRegistrationId is guaranteed to be defined
+  if (!finalRegistrationId) {
+    return jsonResponse({ error: 'Failed to determine registration ID' }, 500);
   }
 
   // Create Razorpay order
-  const receipt = `event_${Date.now()}_${registrationId.substring(0, 8)}`;
+  const receipt = `event_${Date.now()}_${finalRegistrationId.substring(0, 8)}`;
   const razorpayAuth = btoa(`${keyId}:${keySecret}`);
 
   const razorpayResponse = await fetch('https://api.razorpay.com/v1/orders', {
@@ -2594,7 +2652,7 @@ async function handleCreateEventOrder(request: Request, env: Env): Promise<Respo
       currency,
       receipt,
       notes: {
-        registration_id: registrationId,
+        registration_id: finalRegistrationId,
         plan_name: planName,
         user_email: userEmail,
         user_name: userName,
@@ -2618,13 +2676,26 @@ async function handleCreateEventOrder(request: Request, env: Env): Promise<Respo
   }
 
   const order = await razorpayResponse.json() as any;
-  console.log(`Event order created: ${order.id} for registration: ${registrationId}`);
+  console.log(`Event order created: ${order.id} for registration: ${finalRegistrationId}`);
 
-  // Update registration with order ID
+  // Add payment attempt to history
+  const paymentHistory = (registration.payment_history as any[]) || [];
+  paymentHistory.push({
+    order_id: order.id,
+    payment_id: null,
+    status: 'pending',
+    created_at: new Date().toISOString(),
+    error: null
+  });
+
+  // Update registration with order ID and payment history
   await supabaseAdmin
-    .from('event_registrations')
-    .update({ razorpay_order_id: order.id })
-    .eq('id', registrationId);
+    .from(tableName)
+    .update({ 
+      razorpay_order_id: order.id,
+      payment_history: paymentHistory
+    })
+    .eq('id', finalRegistrationId);
 
   return jsonResponse({
     success: true,
@@ -2633,6 +2704,98 @@ async function handleCreateEventOrder(request: Request, env: Env): Promise<Respo
     currency: order.currency,
     receipt: order.receipt,
     key: keyId,
+    registrationId: finalRegistrationId, // Return registration ID to frontend
+  });
+}
+
+// ==================== UPDATE EVENT PAYMENT STATUS ====================
+
+async function handleUpdateEventPaymentStatus(request: Request, env: Env): Promise<Response> {
+  const body = await request.json() as {
+    registrationId?: string;
+    orderId?: string;
+    paymentId?: string;
+    status?: 'completed' | 'failed';
+    error?: string;
+    planName?: string;
+  };
+
+  const { registrationId, orderId, paymentId, status, error: errorMessage, planName } = body;
+
+  // Validate required fields
+  if (!registrationId || !orderId || !status) {
+    return jsonResponse({ error: 'Missing required fields: registrationId, orderId, status' }, 400);
+  }
+
+  if (!['completed', 'failed'].includes(status)) {
+    return jsonResponse({ error: 'Status must be either "completed" or "failed"' }, 400);
+  }
+
+  const supabaseUrl = getSupabaseUrl(env);
+  const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
+
+  // Determine table name based on planName
+  let tableName = 'event_registrations';
+  if (planName && planName.toLowerCase().startsWith('pre-registration')) {
+    tableName = 'pre_registrations';
+  }
+
+  // Get current registration and payment history
+  const { data: registration, error: regError } = await supabaseAdmin
+    .from(tableName)
+    .select('id, payment_history, razorpay_order_id')
+    .eq('id', registrationId)
+    .maybeSingle();
+
+  if (regError || !registration) {
+    return jsonResponse({ error: 'Registration not found' }, 404);
+  }
+
+  // Update payment history
+  const paymentHistory = (registration.payment_history as any[]) || [];
+  const updatedHistory = paymentHistory.map(attempt => {
+    if (attempt.order_id === orderId) {
+      return {
+        ...attempt,
+        payment_id: paymentId || attempt.payment_id,
+        status: status,
+        completed_at: new Date().toISOString(),
+        error: errorMessage || null
+      };
+    }
+    return attempt;
+  });
+
+  // Prepare update data
+  const updateData: any = {
+    payment_history: updatedHistory
+  };
+
+  if (status === 'completed') {
+    updateData.payment_status = 'completed';
+    updateData.razorpay_payment_id = paymentId;
+  } else if (status === 'failed') {
+    updateData.payment_status = 'failed';
+  }
+
+  // Update registration
+  const { error: updateError } = await supabaseAdmin
+    .from(tableName)
+    .update(updateData)
+    .eq('id', registrationId);
+
+  if (updateError) {
+    console.error('[UPDATE-EVENT-PAYMENT] Update error:', updateError);
+    return jsonResponse({ error: 'Failed to update payment status' }, 500);
+  }
+
+  console.log(`[UPDATE-EVENT-PAYMENT] Updated registration ${registrationId} to ${status}`);
+
+  return jsonResponse({
+    success: true,
+    status: status,
+    registration_id: registrationId,
+    order_id: orderId
   });
 }
 
@@ -2678,6 +2841,8 @@ export default {
           return await handleCreateOrder(request, env);
         case '/create-event-order':
           return await handleCreateEventOrder(request, env);
+        case '/update-event-payment-status':
+          return await handleUpdateEventPaymentStatus(request, env);
         case '/verify-payment':
           return await handleVerifyPayment(request, env);
         case '/webhook':

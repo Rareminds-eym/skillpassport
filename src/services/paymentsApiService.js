@@ -72,27 +72,57 @@ export async function createOrder({ amount, currency = 'INR', planId, planName, 
 
 /**
  * Create a Razorpay order for event registration
+ * Worker handles: registration creation/lookup + order creation + payment history
  * @param {Object} params - Order parameters
  * @param {number} params.amount - Amount in paise
  * @param {string} params.currency - Currency code
- * @param {string} params.registrationId - Event registration ID
+ * @param {string} params.registrationId - Event registration ID (optional - worker can create)
  * @param {string} params.planName - Event name
  * @param {string} params.userEmail - User's email
  * @param {string} params.userName - User's name
+ * @param {string} params.userPhone - User's phone
+ * @param {string} params.campaign - Campaign name
  * @param {string} params.origin - Request origin for test/prod detection
  * @param {string} token - Auth token (optional for events)
- * @returns {Promise<Object>} Order details from Razorpay
+ * @returns {Promise<Object>} Order details from Razorpay + registration ID
  */
-export async function createEventOrder({ amount, currency = 'INR', registrationId, planName, userEmail, userName, origin }, token) {
+export async function createEventOrder({ amount, currency = 'INR', registrationId, planName, userEmail, userName, userPhone, campaign, origin }, token) {
   const response = await fetch(`${getBaseUrl()}/create-event-order`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify({ amount, currency, registrationId, planName, userEmail, userName, origin }),
+    body: JSON.stringify({ amount, currency, registrationId, planName, userEmail, userName, userPhone, campaign, origin }),
   });
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
     throw new Error(error.error || 'Failed to create event order');
+  }
+
+  return response.json();
+}
+
+/**
+ * Update event payment status (success or failure)
+ * Worker handles: payment history tracking + status updates
+ * @param {Object} params - Payment status update parameters
+ * @param {string} params.registrationId - Registration ID (UUID)
+ * @param {string} params.orderId - Razorpay order ID
+ * @param {string} params.paymentId - Razorpay payment ID (optional for failures)
+ * @param {string} params.status - Payment status ('completed' or 'failed')
+ * @param {string} params.error - Error message (optional, for failures)
+ * @param {string} params.planName - Plan name (to determine table)
+ * @returns {Promise<Object>} Update result
+ */
+export async function updateEventPaymentStatus({ registrationId, orderId, paymentId, status, error, planName }) {
+  const response = await fetch(`${getBaseUrl()}/update-event-payment-status`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ registrationId, orderId, paymentId, status, error, planName }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Failed to update payment status');
   }
 
   return response.json();
@@ -293,6 +323,7 @@ export default {
   // Payment
   createOrder,
   createEventOrder,
+  updateEventPaymentStatus,
   verifyPayment,
   // Subscription management
   getSubscription,

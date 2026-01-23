@@ -51,3 +51,9 @@ dist-ssr
 # Local config
 mcpopencode.json
 opencode.json
+
+# Documentation archives (optional - uncomment to exclude from git)
+# docs/archive/
+# tests/archive/
+# database/archive/
+# scripts/archive/
