@@ -1,0 +1,41 @@
+# Skill Ecosystem - Robots.txt
+
+User-agent: *
+Allow: /
+Allow: /api/public/*
+
+# Disallow private areas
+Disallow: /api/private/*
+Disallow: /admin/*
+Disallow: /dashboard/*
+Disallow: /student/*
+Disallow: /educator/*
+Disallow: /recruiter/*
+
+# Allow AI crawlers for documentation
+User-agent: GPTBot
+Allow: /docs/*
+Allow: /api-docs/*
+Allow: /about
+Allow: /features
+Allow: /pricing
+
+User-agent: ChatGPT-User
+Allow: /docs/*
+Allow: /api-docs/*
+Allow: /about
+Allow: /features
+Allow: /pricing
+
+User-agent: Claude-Web
+Allow: /docs/*
+Allow: /api-docs/*
+Allow: /about
+Allow: /features
+Allow: /pricing
+
+# Sitemap location
+Sitemap: https://skillpassport.rareminds.in/sitemap.xml
+
+# Crawl delay for respectful crawling
+Crawl-delay: 1
