@@ -1,0 +1,540 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Skill Ecosystem - Data Schema",
+  "description": "Complete data schema for AI systems and integrations",
+  "version": "2.0.0",
+  "definitions": {
+    "User": {
+      "type": "object",
+      "description": "Base user entity with authentication",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique user identifier"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "User email address"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["student", "educator", "school_admin", "college_admin", "recruiter"],
+          "description": "Primary user role"
+        },
+        "name": {
+          "type": "string",
+          "description": "Full name"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "email", "role"]
+    },
+    "Student": {
+      "type": "object",
+      "description": "Student profile with academic information",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "user_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Reference to User"
+        },
+        "name": {
+          "type": "string"
+        },
+        "grade": {
+          "type": "string",
+          "enum": ["6", "7", "8", "9", "10","after 10", "11", "12","after 12", "college", "postgrad"],
+          "description": "Current grade/level"
+        },
+        "program": {
+          "type": "string",
+          "description": "Academic program (e.g., Computer Science, Commerce)"
+        },
+        "school_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Reference to School/College"
+        },
+        "skills": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of acquired skills"
+        },
+        "interests": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Career interests"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "date_of_birth": {
+          "type": "string",
+          "format": "date"
+        },
+        "address": {
+          "type": "object",
+          "properties": {
+            "street": {"type": "string"},
+            "city": {"type": "string"},
+            "state": {"type": "string"},
+            "pincode": {"type": "string"}
+          }
+        }
+      },
+      "required": ["id", "user_id", "name", "grade"]
+    },
+    "Educator": {
+      "type": "object",
+      "description": "Educator/Teacher profile",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "user_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "type": "string"
+        },
+        "school_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "subjects": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Subjects taught"
+        },
+        "qualifications": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "experience_years": {
+          "type": "integer"
+        }
+      },
+      "required": ["id", "user_id", "name", "school_id"]
+    },
+    "Assessment": {
+      "type": "object",
+      "description": "Career or skill assessment",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "title": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["career", "skill", "academic"],
+          "description": "Assessment type"
+        },
+        "description": {
+          "type": "string"
+        },
+        "grade_levels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Applicable grade levels"
+        },
+        "duration": {
+          "type": "integer",
+          "description": "Duration in minutes"
+        },
+        "questions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Question"
+          }
+        },
+        "created_by": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "required": ["id", "title", "type"]
+    },
+    "Question": {
+      "type": "object",
+      "description": "Assessment question",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string",
+          "description": "Question text"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["mcq", "multiple_select", "likert", "text", "rating"],
+          "description": "Question type"
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Answer options (for MCQ/multiple select)"
+        },
+        "correct_answer": {
+          "type": ["string", "array"],
+          "description": "Correct answer(s) for grading"
+        },
+        "points": {
+          "type": "number",
+          "description": "Points for correct answer"
+        },
+        "category": {
+          "type": "string",
+          "description": "Question category (e.g., RIASEC type)"
+        }
+      },
+      "required": ["id", "text", "type"]
+    },
+    "AssessmentResult": {
+      "type": "object",
+      "description": "Student assessment result",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "assessment_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "student_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "score": {
+          "type": "number",
+          "description": "Overall score"
+        },
+        "riasec_scores": {
+          "type": "object",
+          "properties": {
+            "realistic": {"type": "number"},
+            "investigative": {"type": "number"},
+            "artistic": {"type": "number"},
+            "social": {"type": "number"},
+            "enterprising": {"type": "number"},
+            "conventional": {"type": "number"}
+          },
+          "description": "RIASEC personality scores (for career assessments)"
+        },
+        "recommendations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "career": {"type": "string"},
+              "match_score": {"type": "number"},
+              "reasoning": {"type": "string"}
+            }
+          },
+          "description": "AI-generated career recommendations"
+        },
+        "skill_gaps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Identified skill gaps"
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "assessment_id", "student_id", "score"]
+    },
+    "Opportunity": {
+      "type": "object",
+      "description": "Job, internship, or training opportunity",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "title": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["job", "internship", "training"],
+          "description": "Opportunity type"
+        },
+        "company": {
+          "type": "string",
+          "description": "Company or organization name"
+        },
+        "description": {
+          "type": "string"
+        },
+        "required_skills": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "preferred_skills": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "grade_level": {
+          "type": "string",
+          "description": "Minimum grade/education level"
+        },
+        "location": {
+          "type": "string"
+        },
+        "duration": {
+          "type": "string",
+          "description": "Duration (for internships/training)"
+        },
+        "stipend": {
+          "type": "string",
+          "description": "Compensation details"
+        },
+        "posted_by": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Recruiter user ID"
+        },
+        "posted_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "deadline": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "title", "type", "company"]
+    },
+    "Application": {
+      "type": "object",
+      "description": "Student application to opportunity",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "opportunity_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "student_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["applied", "screening", "interview", "offer", "hired", "rejected"],
+          "description": "Application status"
+        },
+        "cover_letter": {
+          "type": "string"
+        },
+        "resume_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "match_score": {
+          "type": "number",
+          "description": "AI-calculated match score (0-100)"
+        },
+        "applied_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "opportunity_id", "student_id", "status"]
+    },
+    "Course": {
+      "type": "object",
+      "description": "Learning course",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "title": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["internal", "external"],
+          "description": "Internal (institution) or external (marketplace)"
+        },
+        "category": {
+          "type": "string",
+          "description": "Course category"
+        },
+        "description": {
+          "type": "string"
+        },
+        "duration": {
+          "type": "integer",
+          "description": "Duration in hours"
+        },
+        "level": {
+          "type": "string",
+          "enum": ["beginner", "intermediate", "advanced"]
+        },
+        "skills": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Skills taught"
+        },
+        "price": {
+          "type": "number",
+          "description": "Price (0 for free courses)"
+        },
+        "currency": {
+          "type": "string",
+          "default": "INR"
+        },
+        "instructor": {
+          "type": "string"
+        },
+        "rating": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "enrolled_count": {
+          "type": "integer"
+        }
+      },
+      "required": ["id", "title", "type"]
+    },
+    "Enrollment": {
+      "type": "object",
+      "description": "Student course enrollment",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "course_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "student_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "enrolled_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "progress": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Completion percentage"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "completed", "dropped"]
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "certificate_url": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": ["id", "course_id", "student_id", "status"]
+    },
+    "School": {
+      "type": "object",
+      "description": "Educational institution",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["school", "college", "university"]
+        },
+        "address": {
+          "type": "object",
+          "properties": {
+            "street": {"type": "string"},
+            "city": {"type": "string"},
+            "state": {"type": "string"},
+            "pincode": {"type": "string"}
+          }
+        },
+        "contact": {
+          "type": "object",
+          "properties": {
+            "email": {"type": "string", "format": "email"},
+            "phone": {"type": "string"},
+            "website": {"type": "string", "format": "uri"}
+          }
+        },
+        "parent_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Parent institution (for hierarchy)"
+        }
+      },
+      "required": ["id", "name", "type"]
+    }
+  },
+  "relationships": {
+    "student_to_user": "one-to-one",
+    "student_to_school": "many-to-one",
+    "student_to_courses": "many-to-many (via enrollments)",
+    "student_to_opportunities": "many-to-many (via applications)",
+    "educator_to_school": "many-to-one",
+    "educator_to_subjects": "many-to-many",
+    "application_to_opportunity": "many-to-one",
+    "application_to_student": "many-to-one",
+    "assessment_result_to_assessment": "many-to-one",
+    "assessment_result_to_student": "many-to-one"
+  }
+}

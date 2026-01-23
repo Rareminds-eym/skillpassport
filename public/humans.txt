@@ -1,0 +1,52 @@
+# humanstxt.org/
+# The humans responsible & technology colophon
+
+# TEAM
+
+    Product -- Rareminds Team
+    Location -- India
+
+# THANKS
+
+    Students, Educators, and Institutions using our platform
+
+# TECHNOLOGY COLOPHON
+
+    ## Frontend
+    React 18
+    TypeScript
+    Vite
+    TailwindCSS
+    React Query
+    React Router
+
+    ## Backend
+    Supabase (PostgreSQL)
+    Edge Functions
+    Cloudflare Workers
+    Cloudflare R2
+
+    ## AI Services
+    OpenRouter
+    Claude 3
+    GPT-4
+    Gemini Pro
+    OpenAI Embeddings
+
+    ## Infrastructure
+    Netlify (Frontend Hosting)
+    Supabase (Backend)
+    Cloudflare (CDN & Workers)
+
+    ## Payment
+    Razorpay
+
+    ## Analytics
+    Custom Analytics Dashboard
+
+# SITE
+
+    Last update: 2026/01/23
+    Standards: HTML5, CSS3, ES2022
+    Components: React Components
+    Software: VS Code, Git

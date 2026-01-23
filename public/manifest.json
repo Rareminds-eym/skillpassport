@@ -1,0 +1,71 @@
+{
+  "name": "Skill Ecosystem",
+  "short_name": "SkillPassport",
+  "description": "Educational management and AI-powered career development platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3b82f6",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/RMLogo.webp",
+      "sizes": "192x192",
+      "type": "image/webp",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/RMLogo.webp",
+      "sizes": "512x512",
+      "type": "image/webp",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": [
+    "education",
+    "productivity",
+    "business"
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/dashboard.jpg",
+      "sizes": "1280x720",
+      "type": "image/jpeg",
+      "label": "Student Dashboard"
+    },
+    {
+      "src": "/screenshots/assessment.jpg",
+      "sizes": "1280x720",
+      "type": "image/jpeg",
+      "label": "Career Assessment"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "View your dashboard",
+      "url": "/dashboard",
+      "icons": [
+        {
+          "src": "/icons/dashboard.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Courses",
+      "short_name": "Courses",
+      "description": "Browse courses",
+      "url": "/courses",
+      "icons": [
+        {
+          "src": "/icons/courses.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
+}
