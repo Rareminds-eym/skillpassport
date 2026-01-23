@@ -147,8 +147,8 @@ const sendConfirmationEmail = async (details) => {
         <table style="width:100%;max-width:480px;background:#ffffff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,0.1);overflow:hidden;">
           <tr>
             <td style="padding:48px 40px;text-align:center;background:linear-gradient(135deg,#1e40af 0%,#3b82f6 100%);">
-              <div style="width:64px;height:64px;background:rgba(255,255,255,0.2);border-radius:50%;margin:0 auto 20px;line-height:64px;">
-                <span style="color:#fff;font-size:32px;">✓</span>
+              <div style="width:80px;height:80px;background:rgba(255,255,255,0.2);border-radius:50%;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;">
+                <img src="https://www.pngall.com/wp-content/uploads/13/Check-PNG-File.png" alt="Success" style="width:48px;height:48px;display:block;margin:0 auto;" />
               </div>
               <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:600;">Pre-Registration Confirmed</h1>
               <p style="margin:8px 0 0;color:#bfdbfe;font-size:14px;">Welcome to Skill Passport</p>
@@ -171,13 +171,25 @@ const sendConfirmationEmail = async (details) => {
               
               <div style="margin-top:32px;padding:28px;background:linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%);border-radius:12px;text-align:center;border:1px solid #e2e8f0;">
                 <p style="margin:0 0 20px;color:#334155;font-size:15px;font-weight:600;">Need assistance? We're here to help!</p>
-                <table style="width:100%;border-collapse:separate;border-spacing:12px 0;">
+                <table cellpadding="0" cellspacing="0" border="0" style="width:100%;">
                   <tr>
-                    <td style="width:50%;">
-                      <a href="mailto:marketing@rareminds.in" style="display:block;padding:14px 20px;background:#1e40af;color:#ffffff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:500;">✉️ Email Us</a>
+                    <td style="width:50%;padding-right:6px;">
+                      <table cellpadding="0" cellspacing="0" border="0" style="width:100%;">
+                        <tr>
+                          <td style="background:#1e40af;border-radius:8px;text-align:center;">
+                            <a href="mailto:marketing@rareminds.in" style="display:block;padding:14px 20px;color:#ffffff;text-decoration:none;font-size:14px;font-weight:500;">✉️ Email Us</a>
+                          </td>
+                        </tr>
+                      </table>
                     </td>
-                    <td style="width:50%;">
-                      <a href="tel:+919562481100" style="display:block;padding:14px 20px;background:#ffffff;color:#1e40af;text-decoration:none;border-radius:8px;font-size:14px;font-weight:500;border:2px solid #1e40af;">📞 Call Us</a>
+                    <td style="width:50%;padding-left:6px;">
+                      <table cellpadding="0" cellspacing="0" border="0" style="width:100%;">
+                        <tr>
+                          <td style="background:#ffffff;border:2px solid #1e40af;border-radius:8px;text-align:center;">
+                            <a href="tel:+919562481100" style="display:block;padding:12px 20px;color:#1e40af;text-decoration:none;font-size:14px;font-weight:500;">📞 Call Us</a>
+                          </td>
+                        </tr>
+                      </table>
                     </td>
                   </tr>
                 </table>
