@@ -180,7 +180,7 @@ export const SectionIntroScreen: React.FC<SectionIntroScreenProps> = ({
         className="flex flex-wrap justify-center gap-4 mb-8 text-sm text-gray-600"
       >
         <span className="px-3 py-1 bg-gray-100 rounded-full">
-          {isAdaptive ? '21 questions' : `${questionCount} questions`}
+          {isAdaptive ? '50 questions' : `${questionCount} questions`}
         </span>
         {isTimed && timeLimit && (
           <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full">

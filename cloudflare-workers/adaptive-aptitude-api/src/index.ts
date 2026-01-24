@@ -27,7 +27,7 @@ export interface Env {
   VITE_OPENROUTER_API_KEY?: string;
 }
 
-type GradeLevel = 'middle_school' | 'high_school';
+type GradeLevel = 'middle_school' | 'high_school' | 'higher_secondary';
 type TestPhase = 'diagnostic_screener' | 'adaptive_core' | 'stability_confirmation';
 type DifficultyLevel = 1 | 2 | 3 | 4 | 5;
 type Subtag = 
@@ -175,6 +175,26 @@ VARIETY REQUIREMENTS FOR HIGH SCHOOL:
 - Change numerical values and scales significantly between questions
 - Use different types of data: percentages, ratios, statistics, probabilities, etc.
 - Create original problems - avoid repeating similar patterns or structures`,
+
+  higher_secondary: `You are creating aptitude test questions for HIGHER SECONDARY / COLLEGE students (grades 11-12+, ages 16-22).
+
+CRITICAL GUIDELINES FOR HIGHER SECONDARY / COLLEGE:
+- Use advanced vocabulary and complex sentence structures
+- Questions should be intellectually challenging and require critical thinking
+- Use scenarios relevant to young adults: college life, career planning, professional scenarios, advanced academics, research
+- Mathematical concepts: advanced algebra, statistics, data analysis, probability, logical deduction, quantitative reasoning
+- Logical reasoning: complex syllogisms, multi-step deductions, pattern recognition, analytical thinking
+- Verbal reasoning: sophisticated analogies, contextual vocabulary, inference, comprehension of complex texts
+- Include abstract reasoning and higher-order thinking skills
+- Can reference professional aptitude test formats (similar to GRE, GMAT, CAT style questions)
+- Questions should prepare students for competitive exams and professional assessments
+
+VARIETY REQUIREMENTS FOR HIGHER SECONDARY / COLLEGE:
+- Use DIVERSE scenarios: business analytics, scientific research, professional situations, academic contexts, etc.
+- Vary the contexts: different industries, professional roles, academic disciplines, real-world applications
+- Change numerical values, scales, and complexity significantly between questions
+- Use different types of data: complex statistics, multi-variable problems, data interpretation, logical puzzles
+- Create original, sophisticated problems - avoid repeating patterns or structures`,
 };
 
 const SUBTAG_DESCRIPTIONS: Record<Subtag, string> = {
@@ -573,6 +593,7 @@ function getFallbackQuestion(
   excludeTexts: Set<string> = new Set()
 ): Question {
   // Select appropriate fallbacks based on grade level
+  // higher_secondary uses high school fallbacks (same difficulty level)
   const fallbacks = gradeLevel === 'middle_school' ? MIDDLE_SCHOOL_FALLBACKS : HIGH_SCHOOL_FALLBACKS;
   const subtagFallbacks = fallbacks[subtag] || fallbacks.numerical_reasoning;
   
@@ -933,9 +954,9 @@ async function generateDiagnosticScreenerQuestions(
   }
 
   const phase: TestPhase = 'diagnostic_screener';
-  const selectedSubtags = selectSubtagsForScreener(6, 3);
+  const selectedSubtags = selectSubtagsForScreener(8, 4);
   
-  // Phase 1: ALL 6 questions at Level 3 (baseline) for tier classification
+  // Phase 1: ALL 8 questions at Level 3 (baseline) for tier classification
   const questionSpecs: { difficulty: DifficultyLevel; subtag: Subtag }[] = [
     { difficulty: 3, subtag: selectedSubtags[0] },
     { difficulty: 3, subtag: selectedSubtags[1] },
@@ -943,12 +964,14 @@ async function generateDiagnosticScreenerQuestions(
     { difficulty: 3, subtag: selectedSubtags[3] },
     { difficulty: 3, subtag: selectedSubtags[4] },
     { difficulty: 3, subtag: selectedSubtags[5] },
+    { difficulty: 3, subtag: selectedSubtags[6] },
+    { difficulty: 3, subtag: selectedSubtags[7] },
   ];
 
   // Track all used question IDs to prevent duplicates within this batch
   const usedQuestionIds = new Set<string>(excludeQuestionIds);
   
-  const allQuestions: (Question | undefined)[] = new Array(6);
+  const allQuestions: (Question | undefined)[] = new Array(8);
   const missingSpecs: { difficulty: DifficultyLevel; subtag: Subtag; index: number }[] = [];
   let cachedCount = 0;
 
@@ -1489,8 +1512,8 @@ export default {
         const body = await request.json() as any;
         const { gradeLevel, excludeQuestionIds = [], excludeQuestionTexts = [] } = body;
 
-        if (!gradeLevel || !['middle_school', 'high_school'].includes(gradeLevel)) {
-          return jsonResponse({ error: 'Valid gradeLevel is required (middle_school or high_school)' }, 400);
+        if (!gradeLevel || !['middle_school', 'high_school', 'higher_secondary'].includes(gradeLevel)) {
+          return jsonResponse({ error: 'Valid gradeLevel is required (middle_school, high_school, or higher_secondary)' }, 400);
         }
 
         const result = await generateDiagnosticScreenerQuestions(env, gradeLevel, excludeQuestionIds, excludeQuestionTexts);

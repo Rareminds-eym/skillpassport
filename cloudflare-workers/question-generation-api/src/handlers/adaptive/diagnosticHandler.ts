@@ -114,9 +114,9 @@ async function generateDiagnosticScreenerQuestions(
   }
 
   const phase: TestPhase = 'diagnostic_screener';
-  const selectedSubtags = selectSubtagsForScreener(6, 3);
+  const selectedSubtags = selectSubtagsForScreener(8, 4);
   
-  // Phase 1: All 6 questions at Level 3 (baseline) to establish starting ability
+  // Phase 1: All 8 questions at Level 3 (baseline) to establish starting ability
   const questionSpecs: { difficulty: DifficultyLevel; subtag: Subtag }[] = [
     { difficulty: 3, subtag: selectedSubtags[0] },
     { difficulty: 3, subtag: selectedSubtags[1] },
@@ -124,10 +124,12 @@ async function generateDiagnosticScreenerQuestions(
     { difficulty: 3, subtag: selectedSubtags[3] },
     { difficulty: 3, subtag: selectedSubtags[4] },
     { difficulty: 3, subtag: selectedSubtags[5] },
+    { difficulty: 3, subtag: selectedSubtags[6] },
+    { difficulty: 3, subtag: selectedSubtags[7] },
   ];
 
   const usedQuestionIds = new Set<string>(excludeQuestionIds);
-  const allQuestions: (AdaptiveQuestion | undefined)[] = new Array(6);
+  const allQuestions: (AdaptiveQuestion | undefined)[] = new Array(8);
   const missingSpecs: { difficulty: DifficultyLevel; subtag: Subtag; index: number }[] = [];
   let cachedCount = 0;
 

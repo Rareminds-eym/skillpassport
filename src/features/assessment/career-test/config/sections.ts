@@ -118,7 +118,8 @@ export const MIDDLE_SCHOOL_SECTIONS: Omit<SectionConfig, 'icon'>[] = [
     description: "A smart test that adjusts to your skill level. It gets easier or harder based on how you're doing!",
     color: "indigo",
     isAdaptive: true,
-    instruction: "Take your time with each question. There's no rush - just do your best!"
+    individualTimeLimit: 300, // 5 minutes per question for middle school
+    instruction: "Take your time with each question. You have 5 minutes per question - just do your best!"
   }
 ];
 
@@ -163,7 +164,8 @@ export const HIGH_SCHOOL_SECTIONS: Omit<SectionConfig, 'icon'>[] = [
     description: "An intelligent test that adapts to your ability level for accurate aptitude measurement.",
     color: "indigo",
     isAdaptive: true,
-    instruction: "Answer each question carefully. The test will adapt to your performance level."
+    individualTimeLimit: 60, // 1 minute per question
+    instruction: "Answer each question carefully. You have 1 minute per question."
   }
 ];
 
@@ -206,6 +208,15 @@ export const AFTER_10TH_SECTIONS: Omit<SectionConfig, 'icon'>[] = [
     instruction: "How well does each statement describe you?"
   },
   {
+    id: 'adaptive_aptitude',
+    title: 'Adaptive Aptitude Test',
+    description: "An intelligent test that adapts to your ability level for accurate aptitude measurement.",
+    color: "indigo",
+    isAdaptive: true,
+    individualTimeLimit: 60, // 1 minute per question
+    instruction: "Answer each question carefully. You have 1 minute per question."
+  },
+  {
     id: 'aptitude',
     title: 'Multi-Aptitude',
     description: "Measure your cognitive strengths across verbal, numerical, logical, spatial, and clerical domains.",
@@ -220,7 +231,7 @@ export const AFTER_10TH_SECTIONS: Omit<SectionConfig, 'icon'>[] = [
 
 /**
  * Section definitions for After 12th and College
- * Full comprehensive assessment with 6 sections including stream-specific knowledge
+ * Full comprehensive assessment with 7 sections including stream-specific knowledge
  */
 export const COMPREHENSIVE_SECTIONS: Omit<SectionConfig, 'icon'>[] = [
   {
@@ -254,6 +265,15 @@ export const COMPREHENSIVE_SECTIONS: Omit<SectionConfig, 'icon'>[] = [
     color: "green",
     responseScale: RESPONSE_SCALES.selfDescription5,
     instruction: "How well does each statement describe you?"
+  },
+  {
+    id: 'adaptive_aptitude',
+    title: 'Adaptive Aptitude Test',
+    description: "An intelligent test that adapts to your ability level for accurate aptitude measurement.",
+    color: "indigo",
+    isAdaptive: true,
+    individualTimeLimit: 60, // 1 minute per question
+    instruction: "Answer each question carefully. You have 1 minute per question."
   },
   {
     id: 'aptitude',
