@@ -95,6 +95,7 @@ const FloatingAIButton: React.FC = () => {
           className="focus:outline-none p-0 m-0 border-0 bg-transparent"
           aria-label="Open Career AI Assistant"
           tabIndex={0}
+          data-tour="floating-ai-button"
         >
           <img 
             src="/ai.gif" 

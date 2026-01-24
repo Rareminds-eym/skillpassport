@@ -62,6 +62,7 @@ import {
     DropdownMenuTrigger,
 } from "../../components/Students/components/ui/dropdown-menu";
 import { LampContainer } from "../../components/Students/components/ui/lamp";
+import { TourTriggerButton, studentDashboardTour, useTour, useTourProgress } from "../../components/Tours";
 import {
     educationData,
     experienceData,
@@ -98,6 +99,60 @@ const StudentDashboard = () => {
   // For sticky Recent Updates: show only one when Suggested Next Steps touches it
   const [showAllRecentUpdates, setShowAllRecentUpdates] = useState(false);
   // Remove sticky when showing all
+
+  // Tour hooks - only use if TourProvider is available
+  let startTour, isTourActive, shouldAutoStart, tourLoading, isCompleted, isSkipped;
+  
+  try {
+    const tourContext = useTour();
+    const tourProgressContext = useTourProgress(studentDashboardTour.id);
+    startTour = tourContext.startTour;
+    isTourActive = tourContext.isTourActive;
+    shouldAutoStart = tourProgressContext.shouldAutoStart;
+    tourLoading = tourProgressContext.loading;
+    isCompleted = tourProgressContext.isCompleted;
+    isSkipped = tourProgressContext.isSkipped;
+  } catch (error) {
+    // TourProvider not available, skip tour functionality
+    startTour = null;
+    isTourActive = false;
+    shouldAutoStart = false;
+    tourLoading = false;
+    isCompleted = false;
+    isSkipped = false;
+  }
+
+  // Auto-start tour for first-time users
+  useEffect(() => {
+    // Only log when tour might start or when there are issues
+    if (shouldAutoStart || isCompleted || isSkipped) {
+      console.log('🎯 Dashboard tour check:', {
+        shouldAutoStart,
+        isCompleted,
+        isSkipped,
+        tourLoading,
+        willStart: startTour && !isViewingOthersProfile && shouldAutoStart && !isTourActive && !tourLoading && !isCompleted && !isSkipped
+      });
+    }
+    
+    // Additional safeguards: don't start if tour is completed or skipped
+    if (isCompleted || isSkipped) {
+      return;
+    }
+    
+    if (startTour && !isViewingOthersProfile && shouldAutoStart && !isTourActive && !tourLoading) {
+      // Small delay to ensure DOM elements are rendered
+      const timer = setTimeout(() => {
+        // Double-check completion status before starting
+        if (isCompleted || isSkipped) {
+          return;
+        }
+        startTour(studentDashboardTour);
+      }, 1000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isViewingOthersProfile, shouldAutoStart, isTourActive, startTour, tourLoading, isCompleted, isSkipped]);
   const [recentUpdatesSticky, setRecentUpdatesSticky] = useState(true);
   const [recentUpdatesCollapsed, setRecentUpdatesCollapsed] = useState(false);
 
@@ -614,6 +669,7 @@ const StudentDashboard = () => {
     assessment: (
       <Card
         key="assessment"
+        data-tour="assessment-card"
         className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
       >
         <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
@@ -868,6 +924,7 @@ const StudentDashboard = () => {
     opportunities: (
       <Card
         key="opportunities"
+        data-tour="opportunities-card"
         className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
       >
         <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
@@ -1036,6 +1093,7 @@ const StudentDashboard = () => {
     technicalSkills: (
       <Card
         key="technicalSkills"
+        data-tour="technical-skills-card"
         className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
       >
         <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
@@ -1114,6 +1172,7 @@ const StudentDashboard = () => {
     projects: (
       <Card
         key="projects"
+        data-tour="projects-card"
         className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
       >
         <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
@@ -1205,6 +1264,7 @@ const StudentDashboard = () => {
     education: (
       <Card
         key="education"
+        data-tour="education-card"
         className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
       >
         <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
@@ -1307,6 +1367,7 @@ const StudentDashboard = () => {
     training: (
       <Card
         key="training"
+        data-tour="training-card"
         className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
       >
         <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
@@ -1504,6 +1565,7 @@ const StudentDashboard = () => {
     certificates: (
       <Card
         key="certificates"
+        data-tour="certificates-card"
         className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
       >
          <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
@@ -1610,6 +1672,7 @@ const StudentDashboard = () => {
        experience: (
   <Card
     key="experience"
+    data-tour="experience-card"
     className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
   >
     <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
@@ -1706,6 +1769,7 @@ const StudentDashboard = () => {
     softSkills: (
       <Card
         key="softSkills"
+        data-tour="soft-skills-card"
         className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
       >
         <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
@@ -1789,35 +1853,21 @@ const StudentDashboard = () => {
   // Define 3x3 grid layout
   const threeByThreeCards = [
     "assessment",
-    "trainings", 
+    "training", 
     "opportunities",
-    "Projects", 
-    "Certificates", 
-    "My experience",
-    "Education", 
+    "projects", 
+    "certificates", 
+    "experience",
+    "education", 
     "technicalSkills", 
     "softSkills"
   ];
-
-  // Map the display names to actual card keys
-  const cardNameMapping = {
-    "assessment": "assessment",
-    "trainings": "training",
-    "opportunities": "opportunities",
-    "Projects": "projects",
-    "Certificates": "certificates",
-    "My experience": "experience",
-    "Education": "education",
-    "technicalSkills": "technicalSkills",
-    "softSkills": "softSkills"
-  };
 
   const render3x3Grid = () => {
     return (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-12">
         {threeByThreeCards.map((cardName, index) => {
-          const cardKey = cardNameMapping[cardName];
-          const card = allCards[cardKey];
+          const card = allCards[cardName];
           if (!card) return null;
           
           return (
@@ -1857,6 +1907,7 @@ const StudentDashboard = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {/* Dashboard Tab */}
                 <button
+                  data-tour="dashboard-tab"
                   onClick={() => setActiveView('dashboard')}
                   className={`relative text-left p-4 rounded-lg transition-all ${
                     activeView === 'dashboard'
@@ -1887,6 +1938,7 @@ const StudentDashboard = () => {
 
                 {/* Analytics Tab */}
                 <button
+                  data-tour="analytics-tab"
                   onClick={() => setActiveView('analytics')}
                   className={`relative text-left p-4 rounded-lg transition-all ${
                     activeView === 'analytics'
@@ -1940,6 +1992,29 @@ const StudentDashboard = () => {
                   return firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
                 })()}!
               </motion.h1>
+              
+              {/* Tour Trigger Button - Development Mode Only */}
+              {!isViewingOthersProfile && startTour && import.meta.env.DEV && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5, duration: 0.5 }}
+                  className="flex justify-center mt-6 -mb-6 relative z-50"
+                >
+                  <div className="relative">
+                    <TourTriggerButton
+                      tourConfig={studentDashboardTour}
+                      variant="outline"
+                      size="sm"
+                      className="bg-white/90 backdrop-blur-sm border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 shadow-md"
+                    />
+                    {/* Dev Mode Indicator */}
+                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-1 py-0.5 rounded text-[10px] font-bold">
+                      DEV
+                    </span>
+                  </div>
+                </motion.div>
+              )}
             </LampContainer>
 
             {/* Institution Card - Show organization info if student belongs to one */}
