@@ -29,9 +29,9 @@ export default {
       return jsonResponse({ status: 'ok', service: 'email-api' });
     }
 
-    // Only allow POST and GET methods
-    if (request.method !== 'POST' && request.method !== 'GET') {
-      return errorResponse('Method not allowed. Use POST to send emails or GET to download receipts.', null, 405);
+    // Only allow POST for sending emails
+    if (request.method !== 'POST') {
+      return errorResponse('Method not allowed. Use POST to send emails.', null, 405);
     }
 
     try {
