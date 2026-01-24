@@ -37,6 +37,7 @@ import Pagination from '../../components/educator/Pagination';
 import { useAuth } from '../../context/AuthContext';
 import { useOpportunities } from '../../hooks/useOpportunities';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
+import { useProfileCompletion } from '../../hooks/useProfileCompletion';
 import AppliedJobsService from '../../services/appliedJobsService';
 import SavedJobsService from '../../services/savedJobsService';
 
@@ -52,7 +53,10 @@ const Opportunities = () => {
   const { user } = useAuth();
   const userEmail = localStorage.getItem('userEmail') || user?.email;
   const { studentData } = useStudentDataByEmail(userEmail);
-  const studentId = user?.id || studentData?.id;
+  const studentId = studentData?.id; // Use students.id (database ID)
+
+  // Check profile completion status
+  const { canApplyToJobs, needsProfileCompletion, isLoading: profileCheckLoading } = useProfileCompletion(studentId, !!studentId);
 
   // Left sidebar tab state
   const [activeTab, setActiveTab] = useState('my-jobs'); // 'my-jobs' or 'my-applications'
@@ -365,6 +369,13 @@ const Opportunities = () => {
       return;
     }
 
+    // Check if profile is complete before allowing application
+    if (needsProfileCompletion) {
+      // Navigate to settings page
+      navigate('/student/settings');
+      return;
+    }
+
     if (appliedJobs.has(opportunity.id)) {
       return;
     }
@@ -549,6 +560,9 @@ const Opportunities = () => {
                   totalCount={totalCount}
                   totalPages={totalPages}
                   isServerPaginated={true}
+                  canApplyToJobs={canApplyToJobs}
+                  needsProfileCompletion={needsProfileCompletion}
+                  navigate={navigate}
                 />
               </>
             )}
@@ -613,7 +627,10 @@ const MyJobsContent = ({
   studentData,
   totalCount = 0,
   totalPages: serverTotalPages = 1,
-  isServerPaginated = false
+  isServerPaginated = false,
+  canApplyToJobs,
+  needsProfileCompletion,
+  navigate
 }) => {
   // Use server-side pagination values when available
   const totalPages = isServerPaginated ? serverTotalPages : Math.max(1, Math.ceil(opportunities.length / opportunitiesPerPage));
@@ -909,6 +926,9 @@ const MyJobsContent = ({
                 isApplied={appliedJobs.has(selectedOpportunity?.id)}
                 isSaved={savedJobs.has(selectedOpportunity?.id)}
                 isApplying={isApplying}
+                canApplyToJobs={canApplyToJobs}
+                needsProfileCompletion={needsProfileCompletion}
+                navigate={navigate}
               />
             </div>
           </div>

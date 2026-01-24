@@ -49,7 +49,7 @@ const getSectionIconPath = (sectionId: string): string => {
     // Employability Skills
     'employability': '/assets/Assessment Icons/Employability Skills.png',
     
-    // Multi-Aptitude
+    // Stream Based Aptitude
     'aptitude': '/assets/Assessment Icons/Multi-Aptitude.png',
     
     // Stream Knowledge

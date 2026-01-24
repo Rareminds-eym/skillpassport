@@ -287,12 +287,11 @@ const AnimatedProgressRing = ({ percentage, color, delay = 0 }) => {
 /**
  * Career Card Component
  * Displays individual career recommendation with animation
- * Features flip effect on hover - content fades out, CTA rotates in
+ * Features clickable card with "View Full Track" indicator
  */
 const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificRoles = [], onCardClick }) => {
     const ref = useRef(null);
     const isInView = useInView(ref, { once: true, amount: 0.3 });
-    const [isHovered, setIsHovered] = useState(false);
 
     if (!cluster) return null;
 
@@ -357,35 +356,26 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                         transition={{ duration: 0.6, delay: 0.2 }}
                         className={`flex justify-center ${reverse ? 'md:order-2' : 'md:order-1'}`}
                     >
-                        {/* Outer Container with Gradient Border - Flip Card Effect */}
+                        {/* Outer Container with Gradient Border - Clickable Card */}
                         <div
-                            className="relative rounded-[10px] p-[1px] cursor-pointer"
+                            className="relative rounded-[10px] p-[1px] cursor-pointer transition-all duration-300 hover:scale-105"
                             style={{
                                 width: '100%',
                                 maxWidth: '320px',
                                 minHeight: '280px',
-                                background: isHovered
-                                    ? `radial-gradient(circle 230px at 0% 0%, ${config.accent}, #0c0d0d)`
-                                    : `radial-gradient(circle 230px at 0% 0%, ${config.accentLight}, #0c0d0d)`,
-                                borderRadius: isHovered ? '15px' : '10px',
-                                transform: isHovered ? 'scale(1.05)' : 'scale(1)',
-                                boxShadow: isHovered
-                                    ? `0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 25px 5px ${config.shadow}`
-                                    : `0 10px 30px -5px rgba(0, 0, 0, 0.3), 0 0 15px 3px ${config.shadow}`,
-                                transition: 'all 0.4s ease'
+                                background: `radial-gradient(circle 230px at 0% 0%, ${config.accentLight}, #0c0d0d)`,
+                                borderRadius: '10px',
+                                boxShadow: `0 10px 30px -5px rgba(0, 0, 0, 0.3), 0 0 15px 3px ${config.shadow}`,
                             }}
-                            onMouseEnter={() => setIsHovered(true)}
-                            onMouseLeave={() => setIsHovered(false)}
                             onClick={handleCardClick}
                         >
-                            {/* Animated Dot - Hidden on hover */}
+                            {/* Animated Dot - Always visible */}
                             <div
-                                className="absolute w-[5px] aspect-square rounded-full z-[2] transition-opacity duration-300"
+                                className="absolute w-[5px] aspect-square rounded-full z-[2]"
                                 style={{
                                     backgroundColor: '#fff',
                                     boxShadow: `0 0 10px ${config.accentLight}`,
                                     animation: 'moveDot 6s linear infinite',
-                                    opacity: isHovered ? 0 : 1
                                 }}
                             />
 
@@ -429,123 +419,67 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                                 />
                                 <div className="absolute w-[2px] h-full" style={{ right: '10%' }} />
 
-                                {/* First Content - Main Card Content (visible by default) */}
-                                <div
-                                    className="absolute inset-0 flex flex-col justify-center transition-all duration-400 rounded-[9px]"
-                                    style={{
-                                        opacity: isHovered ? 0 : 1,
-                                        height: isHovered ? '0px' : '100%',
-                                        overflow: 'hidden'
-                                    }}
-                                >
-                                    <div className="relative z-[1] px-8 py-6">
-                                        {/* Header with number badge and title */}
-                                        <div className="flex items-center gap-3 mb-6">
-                                            <div
-                                                className="w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-lg"
+                                {/* Main Card Content */}
+                                <div className="relative z-[1] px-8 py-6">
+                                    {/* Header with number badge and title */}
+                                    <div className="flex items-center gap-3 mb-6">
+                                        <div
+                                            className="w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-lg"
+                                            style={{ backgroundColor: config.accent }}
+                                        >
+                                            {index + 1}
+                                        </div>
+                                        <div className="flex-1">
+                                            <span
+                                                className="inline-block px-3 py-1 text-white text-xs font-semibold rounded-full mb-1"
                                                 style={{ backgroundColor: config.accent }}
                                             >
-                                                {index + 1}
-                                            </div>
-                                            <div className="flex-1">
-                                                <span
-                                                    className="inline-block px-3 py-1 text-white text-xs font-semibold rounded-full mb-1"
-                                                    style={{ backgroundColor: config.accent }}
-                                                >
-                                                    {fitType}
-                                                </span>
-                                                <h3 className="text-lg sm:text-xl font-bold text-white">{cluster.title}</h3>
+                                                {fitType}
+                                            </span>
+                                            <h3 className="text-lg sm:text-xl font-bold text-white">{cluster.title}</h3>
+                                        </div>
+                                    </div>
+
+                                    {/* Top Roles & Salary Section */}
+                                    {specificRoles && specificRoles.length > 0 && (
+                                        <div className="mt-2 mb-4">
+                                            <h5
+                                                className="text-xs font-bold uppercase mb-3 tracking-wider"
+                                                style={{ color: config.accentLight }}
+                                            >
+                                                TOP ROLES & SALARY
+                                            </h5>
+                                            <div className="space-y-2">
+                                                {specificRoles.slice(0, 3).map((role, idx) => {
+                                                    const name = getRoleName(role);
+                                                    const salary = formatSalary(role);
+                                                    return (
+                                                        <div key={idx} className="flex items-center justify-between">
+                                                            <span className="text-gray-200 text-base">{name}</span>
+                                                            {salary && (
+                                                                <span className="text-green-400 font-semibold text-base">{salary}</span>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
+                                    )}
 
-                                        {/* Top Roles & Salary Section */}
-                                        {specificRoles && specificRoles.length > 0 && (
-                                            <div className="mt-2">
-                                                <h5
-                                                    className="text-xs font-bold uppercase mb-3 tracking-wider"
-                                                    style={{ color: config.accentLight }}
-                                                >
-                                                    TOP ROLES & SALARY
-                                                </h5>
-                                                <div className="space-y-2">
-                                                    {specificRoles.slice(0, 3).map((role, idx) => {
-                                                        const name = getRoleName(role);
-                                                        const salary = formatSalary(role);
-                                                        return (
-                                                            <div key={idx} className="flex items-center justify-between">
-                                                                <span className="text-gray-200 text-base">{name}</span>
-                                                                {salary && (
-                                                                    <span className="text-green-400 font-semibold text-base">{salary}</span>
-                                                                )}
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
+                                    {/* View Full Track Indicator */}
+                                    <div className="flex items-center justify-center mt-6 pt-4 border-t border-white/10">
+                                        <div className="flex items-center gap-2 text-white/80 text-sm">
+                                            <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center">
+                                                <Rocket className="w-3 h-3" />
                                             </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Second Content - CTA (visible on hover, rotates in) */}
-                                <div
-                                    className="absolute inset-0 flex flex-col items-center justify-center transition-all duration-400 rounded-[9px]"
-                                    style={{
-                                        opacity: isHovered ? 1 : 0,
-                                        height: isHovered ? '100%' : '0%',
-                                        transform: isHovered ? 'rotate(0deg)' : 'rotate(90deg) scale(-1)',
-                                        overflow: 'hidden',
-                                        background: 'linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 50%, #000000 100%)'
-                                    }}
-                                >
-                                    <div className="text-center px-6">
-                                        <motion.div
-                                            animate={{
-                                                y: isHovered ? [0, -5, 0] : 0,
-                                            }}
-                                            transition={{ duration: 1.5, repeat: Infinity }}
-                                            className="mb-4"
-                                        >
-                                            <div
-                                                className="w-16 h-16 rounded-full flex items-center justify-center mx-auto"
-                                                style={{
-                                                    backgroundColor: '#2a2a2a',
-                                                    border: '2px solid #404040',
-                                                    boxShadow: '0 0 20px rgba(255, 255, 255, 0.1)'
-                                                }}
-                                            >
-                                                <Rocket className="w-8 h-8 text-white" />
-                                            </div>
-                                        </motion.div>
-                                        <h4 className="text-xl font-bold mb-2 text-white">
-                                            Explore {cluster.title}
-                                        </h4>
-                                        <p className="text-gray-300 text-sm mb-4">
-                                            View role-specific courses, career roadmap, required skills, and growth opportunities
-                                        </p>
-                                        <motion.div
-                                            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium cursor-pointer"
-                                            style={{
-                                                backgroundColor: '#333333',
-                                                color: '#ffffff',
-                                                border: '1px solid #4a4a4a'
-                                            }}
-                                            whileHover={{
-                                                backgroundColor: '#ffffff',
-                                                color: '#000000',
-                                                scale: 1.05,
-                                                boxShadow: '0 0 20px rgba(255, 255, 255, 0.3)'
-                                            }}
-                                            whileTap={{ scale: 0.95 }}
-                                            transition={{ duration: 0.2 }}
-                                        >
-                                            <span>View Full Track</span>
-                                            <motion.span
+                                            <span>Click to View Full Track</span>
+                                            <motion.div
                                                 animate={{ x: [0, 4, 0] }}
-                                                transition={{ duration: 1, repeat: Infinity }}
+                                                transition={{ duration: 1.5, repeat: Infinity }}
                                             >
-                                                →
-                                            </motion.span>
-                                        </motion.div>
+                                                <ChevronRight className="w-4 h-4" />
+                                            </motion.div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

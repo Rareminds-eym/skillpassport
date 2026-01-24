@@ -34,9 +34,9 @@ interface Opportunity {
 }
 
 interface Applicant {
-  id: number;
+  id: string;  // Changed to string for UUID
   student_id: string;
-  opportunity_id: number;
+  opportunity_id: string;  // Changed to string for UUID
   application_status: string;
   applied_at: string;
   viewed_at?: string;
@@ -134,6 +134,11 @@ const ApplicantsList: React.FC = () => {
     try {
       // Fetch all applicants from applied_jobs table with pipeline data
       const applicantsData = await AppliedJobsService.getAllApplicants();
+      
+      console.log('[ApplicantsList] Fetched applicants data:', {
+        count: applicantsData?.length,
+        sample: applicantsData?.[0]
+      });
       
       // Get unique opportunity IDs for the dropdown
       const uniqueOpportunities = [...new Set(
@@ -297,10 +302,22 @@ const ApplicantsList: React.FC = () => {
   };
 
   const handleMoveToPipelineStage = async (applicant: Applicant, newStage: string) => {
+    console.log('[ApplicantsList] handleMoveToPipelineStage called:', {
+      applicant: {
+        id: applicant.id,
+        student_id: applicant.student_id,
+        opportunity_id: applicant.opportunity_id,
+        pipeline_candidate_id: applicant.pipeline_candidate_id,
+        pipeline_stage: applicant.pipeline_stage,
+        application_status: applicant.application_status
+      },
+      newStage
+    });
+    
     // If candidate is not in pipeline yet but has applied/viewed status, add them first
     if (!applicant.pipeline_candidate_id && (applicant.application_status === 'applied' || applicant.application_status === 'viewed')) {
       try {
-        // Add candidate to pipeline first
+        // Add candidate to pipeline first using the service
         const { data: student } = await supabase
           .from('students')
           .select('name, email, contact_number')
@@ -312,44 +329,51 @@ const ApplicantsList: React.FC = () => {
           return;
         }
 
-        // Use opportunity_id directly instead of requisition
-        const opportunityId = applicant.opportunity_id;
+        // Use the addCandidateToPipeline service which handles duplicates
+        const { addCandidateToPipeline } = await import('../../services/pipelineService');
+        
+        const result = await addCandidateToPipeline({
+          opportunity_id: applicant.opportunity_id,
+          student_id: applicant.student_id,
+          candidate_name: student.name || 'Unknown Student',
+          candidate_email: student.email || '',
+          candidate_phone: student.contact_number || '',
+          stage: newStage,
+          source: 'direct_application',
+          added_by: user?.id || undefined
+        });
 
-        // Add to pipeline using opportunity_id
-        const { data: newCandidate, error: insertError } = await supabase
-          .from('pipeline_candidates')
-          .insert({
-            opportunity_id: opportunityId,
-            student_id: applicant.student_id,
-            candidate_name: student.name || 'Unknown Student',
-            candidate_email: student.email || '',
-            candidate_phone: student.contact_number || '',
-            stage: newStage,
-            source: 'direct_application',
-            status: 'active',
-            added_at: new Date().toISOString(),
-            stage_changed_at: new Date().toISOString(),
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .select()
-          .single();
-
-        if (insertError) {
-          throw insertError;
+        if (result.error) {
+          const errorCode = (result.error as any).code;
+          if (errorCode === 'DUPLICATE_CANDIDATE' || errorCode === '23505') {
+            alert('This candidate is already in the pipeline. Refreshing...');
+            fetchApplicants(); // Refresh to show current state
+            return;
+          }
+          throw result.error;
         }
 
+        // Refresh applicants list to show updated pipeline status
+        fetchApplicants();
         
       } catch (error) {
         console.error('Error adding candidate to pipeline:', error);
-        alert('Failed to add candidate to pipeline. Please try again.');
+        const errorMsg = (error as any)?.message || 'Failed to add candidate to pipeline';
+        alert(errorMsg);
         return;
       }
     } else if (!applicant.pipeline_candidate_id) {
+      console.log('[ApplicantsList] Candidate not in pipeline and not in applied/viewed status');
       alert('This applicant is not in the pipeline system yet');
       return;
     } else {
       // Use existing pipeline movement function
+      console.log('[ApplicantsList] Moving existing pipeline candidate:', {
+        pipeline_candidate_id: applicant.pipeline_candidate_id,
+        newStage,
+        user_id: user?.id
+      });
+      
       try {
         const result = await moveCandidateToStage(
           applicant.pipeline_candidate_id,
@@ -358,11 +382,18 @@ const ApplicantsList: React.FC = () => {
           `Moved to ${newStage} stage`
         );
 
+        console.log('[ApplicantsList] moveCandidateToStage result:', result);
+
         if (result.error) {
+          console.error('[ApplicantsList] Error from moveCandidateToStage:', result.error);
           throw result.error;
         }
+        
+        // Refresh applicants list to show updated stage
+        console.log('[ApplicantsList] Refreshing applicants list...');
+        fetchApplicants();
       } catch (error) {
-        console.error('Error moving candidate:', error);
+        console.error('[ApplicantsList] Error moving candidate:', error);
         alert('Failed to move candidate. Please try again.');
         return;
       }
@@ -447,8 +478,8 @@ const ApplicantsList: React.FC = () => {
       withdrawn: { label: 'Withdrawn', color: 'bg-gray-100 text-gray-700', icon: '←' },
     };
 
-    const config = statusConfig[applicant.status] || { 
-      label: applicant.status || 'Unknown', 
+    const config = statusConfig[applicant.application_status] || { 
+      label: applicant.application_status || 'Unknown', 
       color: 'bg-gray-100 text-gray-700', 
       icon: '📝' 
     };
@@ -517,9 +548,9 @@ const ApplicantsList: React.FC = () => {
       applicant.pipeline_stage === statusFilter ||
       currentStatus === statusFilter;
 
-    // Filter by opportunity
+    // Filter by opportunity (UUID comparison)
     const matchesRequisition = selectedRequisition === 'all' || 
-      applicant.opportunity_id === Number(selectedRequisition);
+      applicant.opportunity_id === selectedRequisition;
     
     return matchesSearch && matchesStatus && matchesRequisition;
   });

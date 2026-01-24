@@ -5,11 +5,14 @@
  * @module features/assessment/components/GradeSelectionScreen
  */
 
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Award, AlertCircle, ChevronRight, Clock, Loader2, Sparkles } from 'lucide-react';
 import { Button } from '../../../components/Students/components/ui/button';
 import { Card, CardContent } from '../../../components/Students/components/ui/card';
 import { Label } from '../../../components/Students/components/ui/label';
+import { ProfileCompletionModal } from '../../../components/assessment/ProfileCompletionModal';
+import { useAuth } from '../../../context/AuthContext';
 
 /**
  * @typedef {Object} GradeSelectionScreenProps
@@ -224,135 +227,6 @@ const GradeOptionButton = ({ option, onClick, additionalInfo, studentProgram }) 
 };
 
 /**
- * Incomplete Profile Screen
- */
-const IncompleteProfileScreen = ({ onNavigateToSettings, onNavigateToDashboard, profileData }) => {
-  const missingFields = [];
-  const currentValues = [];
-
-  // Analyze what's missing
-  const hasGrade = profileData?.grade || profileData?.school_classes?.grade;
-  const hasSchoolId = profileData?.school_id;
-  const hasCollegeId = profileData?.university_college_id;
-  const hasSchoolClassId = profileData?.school_class_id;
-
-  // Determine student type
-  const isSchoolStudent = hasSchoolId && !hasCollegeId;
-  const isCollegeStudent = hasCollegeId && !hasSchoolId;
-  const isUndetermined = !hasSchoolId && !hasCollegeId;
-
-  // Build missing fields list
-  if (isSchoolStudent || isUndetermined) {
-    if (!hasGrade) {
-      missingFields.push('Grade/Class information');
-    }
-    if (!hasSchoolClassId && !hasGrade) {
-      missingFields.push('Class/Section assignment');
-    }
-  }
-
-  if (isCollegeStudent || isUndetermined) {
-    if (!hasCollegeId) {
-      missingFields.push('College/University selection');
-    }
-  }
-
-  // Show current values
-  if (profileData) {
-    if (profileData.grade) currentValues.push(`Grade: ${profileData.grade}`);
-    if (profileData.school_classes?.grade) currentValues.push(`Class Grade: ${profileData.school_classes.grade}`);
-    if (profileData.school_id) currentValues.push(`School ID: ${profileData.school_id}`);
-    if (profileData.university_college_id) currentValues.push(`College ID: ${profileData.university_college_id}`);
-    if (profileData.program?.name) currentValues.push(`Program: ${profileData.program.name}`);
-    if (profileData.course_name) currentValues.push(`Course: ${profileData.course_name}`);
-  }
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-2xl border-none shadow-2xl">
-        <CardContent className="p-8">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-              <AlertCircle className="w-8 h-8 text-white" />
-            </div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">Complete Your Profile</h1>
-            <p className="text-gray-600">Please update your personal information to take the assessment</p>
-          </div>
-
-          <div className="bg-amber-50 rounded-xl p-6 mb-6 border border-amber-200">
-            <div className="flex gap-3">
-              <AlertCircle className="w-6 h-6 text-amber-600 shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <p className="font-semibold text-amber-800 mb-2">Missing Information</p>
-                <p className="text-sm text-amber-700 mb-3">
-                  We couldn't determine your grade level or class. Please update the following:
-                </p>
-                
-                {missingFields.length > 0 && (
-                  <div className="mb-4">
-                    <p className="text-xs font-semibold text-amber-800 mb-1">Required Fields:</p>
-                    <ul className="text-sm text-amber-700 list-disc list-inside space-y-1">
-                      {missingFields.map((field, idx) => (
-                        <li key={idx}>{field}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {isUndetermined && (
-                  <div className="bg-amber-100 rounded-lg p-3 mb-3">
-                    <p className="text-xs font-semibold text-amber-900 mb-1">Student Type Not Determined</p>
-                    <p className="text-xs text-amber-800">
-                      Please specify if you are a <strong>School Student</strong> (add grade/class) or <strong>College Student</strong> (add college/university).
-                    </p>
-                  </div>
-                )}
-
-                {currentValues.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-amber-200">
-                    <p className="text-xs font-semibold text-amber-800 mb-1">Current Profile Data:</p>
-                    <div className="text-xs text-amber-700 space-y-0.5">
-                      {currentValues.map((value, idx) => (
-                        <div key={idx}>• {value}</div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-blue-50 rounded-xl p-4 mb-6 border border-blue-200">
-            <p className="text-sm font-semibold text-blue-800 mb-2">What to do:</p>
-            <ol className="text-sm text-blue-700 space-y-1 list-decimal list-inside">
-              <li>Click "Go to Profile Settings" below</li>
-              <li>Update your {isSchoolStudent ? 'Grade/Class' : isCollegeStudent ? 'College/Program' : 'Grade or College'} information</li>
-              <li>Save your changes</li>
-              <li>Return to take the assessment</li>
-            </ol>
-          </div>
-
-          <Button
-            onClick={onNavigateToSettings}
-            className="w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-6"
-          >
-            Go to Profile Settings
-          </Button>
-          
-          <Button
-            variant="outline"
-            onClick={onNavigateToDashboard}
-            className="w-full mt-3 py-4"
-          >
-            Back to Dashboard
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
-
-/**
  * Loading Screen
  */
 const LoadingScreen = () => (
@@ -380,6 +254,8 @@ export const GradeSelectionScreen = ({
   profileData = null,
 }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   // Check if student has incomplete profile
   const hasIncompleteProfile = shouldFilterByGrade && !detectedGradeLevel && !isCollegeStudent;
@@ -389,16 +265,12 @@ export const GradeSelectionScreen = ({
     return <LoadingScreen />;
   }
 
-  // Show incomplete profile message
-  if (hasIncompleteProfile) {
-    return (
-      <IncompleteProfileScreen
-        onNavigateToSettings={() => navigate('/student/settings')}
-        onNavigateToDashboard={() => navigate('/student/dashboard')}
-        profileData={profileData}
-      />
-    );
-  }
+  // Handle profile completion
+  const handleProfileComplete = () => {
+    setShowProfileModal(false);
+    // Refresh the page to re-evaluate the student's profile
+    window.location.reload();
+  };
 
   // Filter options based on visibility rules
   const visibilityContext = {
@@ -426,6 +298,27 @@ export const GradeSelectionScreen = ({
             <p className="text-gray-600">Select your grade level to get started</p>
           </div>
 
+          {/* Show incomplete profile warning with modal trigger */}
+          {hasIncompleteProfile && (
+            <div className="bg-amber-50 rounded-xl p-6 mb-6 border border-amber-200">
+              <div className="flex gap-3">
+                <AlertCircle className="w-6 h-6 text-amber-600 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-semibold text-amber-800 mb-2">Profile Incomplete</p>
+                  <p className="text-sm text-amber-700 mb-3">
+                    We need some additional information to provide you with the most accurate assessment.
+                  </p>
+                  <Button
+                    onClick={() => setShowProfileModal(true)}
+                    className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-semibold"
+                  >
+                    Complete Profile
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-4">
             <Label className="text-sm font-semibold text-gray-700">Choose Your Grade Level</Label>
 
@@ -438,6 +331,23 @@ export const GradeSelectionScreen = ({
                 studentProgram={studentProgram}
               />
             ))}
+
+            {/* Show fallback when no options are visible */}
+            {visibleOptions.length === 0 && !hasIncompleteProfile && (
+              <div className="text-center py-8">
+                <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-600 mb-2">No Options Available</h3>
+                <p className="text-gray-500 mb-4">
+                  We couldn't determine the appropriate assessment options for your profile.
+                </p>
+                <Button
+                  onClick={() => setShowProfileModal(true)}
+                  variant="outline"
+                >
+                  Update Profile
+                </Button>
+              </div>
+            )}
           </div>
 
           <div className="mt-8 p-4 bg-blue-50 rounded-xl border border-blue-100">
@@ -451,6 +361,15 @@ export const GradeSelectionScreen = ({
           </div>
         </CardContent>
       </Card>
+
+      {/* Profile Completion Modal */}
+      <ProfileCompletionModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        onComplete={handleProfileComplete}
+        userEmail={user?.email || ''}
+        profileData={profileData}
+      />
     </div>
   );
 };

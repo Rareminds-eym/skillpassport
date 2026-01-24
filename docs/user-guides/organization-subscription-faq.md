@@ -44,7 +44,7 @@ Final Amount = Subtotal - Discount + Tax
 
 ### Can I get a custom quote for large orders?
 
-Yes, contact sales@skillpassport.com for orders over 1,000 seats.
+Yes, contact marketing@rareminds.in for orders over 1,000 seats.
 
 ### Are there annual billing discounts?
 

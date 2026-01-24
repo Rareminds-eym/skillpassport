@@ -62,6 +62,10 @@ export async function handleAptitudeGeneration(
     let categories = getCategories(isAfter10);
     const moduleTitles = getModuleTitles(isAfter10);
 
+    // Categories define the question distribution (default: 50 total questions)
+    // After12/College: Verbal(8) + Numerical(8) + Abstract(20) + Spatial(8) + Clerical(6) = 50
+    // After10: Math(10) + Science(10) + English(10) + Social(10) + Computer(10) = 50
+    
     // Override category counts if questionsPerCategory is provided
     if (questionsPerCategory && questionsPerCategory > 0) {
       console.log(`🔧 Overriding category counts with ${questionsPerCategory} questions per category`);
@@ -81,15 +85,25 @@ export async function handleAptitudeGeneration(
       : categories.filter(c => ['spatial', 'clerical'].includes(c.id));
 
     console.log('📦 Generating batch 1...');
-    const batch1 = await generateBatch(1, batch1Categories, isAfter10, streamContext, claudeKey, openRouterKey);
+    console.log('📋 Batch 1 categories:', batch1Categories.map(c => `${c.name}(${c.count})`).join(', '));
+    const batch1 = await generateBatchWithRetry(1, batch1Categories, isAfter10, streamContext, claudeKey, openRouterKey);
     console.log(`✅ Batch 1 complete: ${batch1.length} questions`);
+    console.log('📊 Batch 1 breakdown:', batch1.reduce((acc, q) => {
+      acc[q.category] = (acc[q.category] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>));
 
     console.log('⏳ Waiting 3s before batch 2...');
     await delay(3000);
 
     console.log('📦 Generating batch 2...');
-    const batch2 = await generateBatch(2, batch2Categories, isAfter10, streamContext, claudeKey, openRouterKey);
+    console.log('📋 Batch 2 categories:', batch2Categories.map(c => `${c.name}(${c.count})`).join(', '));
+    const batch2 = await generateBatchWithRetry(2, batch2Categories, isAfter10, streamContext, claudeKey, openRouterKey);
     console.log(`✅ Batch 2 complete: ${batch2.length} questions`);
+    console.log('📊 Batch 2 breakdown:', batch2.reduce((acc, q) => {
+      acc[q.category] = (acc[q.category] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>));
 
     // Combine and format questions
     const allQuestions = [...batch1, ...batch2].map((q: any, idx: number) => ({
@@ -101,7 +115,25 @@ export async function handleAptitudeGeneration(
       moduleTitle: moduleTitles[q.category] || q.category
     }));
 
-    console.log(`✅ Total aptitude questions generated: ${allQuestions.length}`);
+    const expectedTotal = categories.reduce((sum, c) => sum + c.count, 0);
+    console.log(`✅ Total aptitude questions generated: ${allQuestions.length}/${expectedTotal}`);
+    
+    // Log final breakdown by category
+    const finalBreakdown = allQuestions.reduce((acc, q) => {
+      acc[q.category] = (acc[q.category] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    console.log('📊 Final question breakdown by category:', finalBreakdown);
+
+    // Validate total count
+    if (allQuestions.length < expectedTotal) {
+      console.warn(`⚠️ WARNING: Generated ${allQuestions.length} questions but expected ${expectedTotal}. This may affect assessment accuracy.`);
+    } else if (allQuestions.length > expectedTotal) {
+      console.log(`✂️ Trimming ${allQuestions.length - expectedTotal} extra questions to match expected count of ${expectedTotal}`);
+      allQuestions.splice(expectedTotal); // Keep only the expected number
+    }
+
+    console.log(`📊 Final question count: ${allQuestions.length}`);
 
     // Save to cache
     if (studentId) {
@@ -113,6 +145,57 @@ export async function handleAptitudeGeneration(
     console.error('❌ Aptitude generation error:', error);
     return errorResponse(error.message || 'Failed to generate aptitude questions', 500);
   }
+}
+
+async function generateBatchWithRetry(
+  batchNum: number,
+  batchCategories: any[],
+  isAfter10: boolean,
+  streamContext: any,
+  claudeKey?: string,
+  openRouterKey?: string,
+  maxRetries: number = 3
+): Promise<any[]> {
+  const totalQuestions = batchCategories.reduce((sum, c) => sum + c.count, 0);
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`🔄 Batch ${batchNum}, Attempt ${attempt}/${maxRetries}: Generating ${totalQuestions} questions`);
+      
+      const questions = await generateBatch(
+        batchNum,
+        batchCategories,
+        isAfter10,
+        streamContext,
+        claudeKey,
+        openRouterKey
+      );
+
+      // Validate question count
+      if (questions.length >= totalQuestions) {
+        console.log(`✅ Batch ${batchNum}: Generated ${questions.length}/${totalQuestions} questions (success)`);
+        return questions.slice(0, totalQuestions); // Return exact count
+      } else {
+        console.warn(`⚠️ Batch ${batchNum}, Attempt ${attempt}: Only generated ${questions.length}/${totalQuestions} questions`);
+        
+        if (attempt < maxRetries) {
+          console.log(`🔄 Retrying batch ${batchNum} (attempt ${attempt + 1}/${maxRetries})...`);
+          await delay(2000); // Wait before retry
+        } else {
+          console.error(`❌ Batch ${batchNum}: Failed to generate ${totalQuestions} questions after ${maxRetries} attempts. Got ${questions.length} questions.`);
+          return questions; // Return what we have
+        }
+      }
+    } catch (error: any) {
+      console.error(`❌ Batch ${batchNum}, Attempt ${attempt} error:`, error.message);
+      if (attempt === maxRetries) {
+        throw error;
+      }
+      await delay(2000);
+    }
+  }
+  
+  return []; // Fallback
 }
 
 async function generateBatch(
@@ -131,8 +214,14 @@ async function generateBatch(
     : buildAptitudePrompt(categoriesText, streamContext);
 
   const systemPrompt = isAfter10 
-    ? `You are an expert educational assessment creator for 10th grade students. Generate EXACTLY ${totalQuestions} questions total covering school subjects. Generate ONLY valid JSON.`
-    : `You are an expert psychometric assessment creator. Generate EXACTLY ${totalQuestions} questions total. Generate ONLY valid JSON.`;
+    ? `You are an expert educational assessment creator for 10th grade students. 
+       CRITICAL: Generate EXACTLY ${totalQuestions} questions for this batch (part of a 50-question assessment). 
+       Count carefully and ensure you generate the EXACT number requested for each category.
+       Generate ONLY valid JSON.`
+    : `You are an expert psychometric assessment creator. 
+       CRITICAL: Generate EXACTLY ${totalQuestions} questions for this batch (part of a 50-question assessment). 
+       Count carefully and ensure you generate the EXACT number requested for each category.
+       Generate ONLY valid JSON.`;
 
   let jsonText: string;
 
@@ -142,7 +231,7 @@ async function generateBatch(
       jsonText = await callClaudeAPI(claudeKey, {
         systemPrompt,
         userPrompt: prompt,
-        maxTokens: 6000,
+        maxTokens: 8000,  // Increased from 6000 to allow full generation without truncation
         temperature: 0.7 + (batchNum * 0.05)
       });
     } catch (claudeError: any) {
