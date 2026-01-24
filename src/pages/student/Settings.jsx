@@ -86,6 +86,7 @@ const Settings = () => {
 
   const [showAllRecentUpdates, setShowAllRecentUpdates] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
+  const [profileActiveTab, setProfileActiveTab] = useState("personal");
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -941,8 +942,40 @@ const Settings = () => {
                     </span>
                   </CardTitle>
                 </CardHeader>
+                
+                {/* Horizontal Tabs for Profile Sections */}
+                <div className="bg-white rounded-2xl border border-gray-200 p-2 shadow-sm mb-6">
+                  <div className="flex justify-between gap-2 overflow-x-auto">
+                    {[
+                      { id: "personal", label: "Personal Info", icon: User },
+                      { id: "institution", label: "Institution Details", icon: Briefcase },
+                      { id: "academic", label: "Academic Details", icon: Briefcase },
+                      { id: "guardian", label: "Guardian Info", icon: Shield },
+                      { id: "social", label: "Social Links", icon: Globe },
+                    ].map((tab) => {
+                      const Icon = tab.icon;
+                      const isActive = (profileActiveTab || "personal") === tab.id;
+                      return (
+                        <button
+                          key={tab.id}
+                          onClick={() => setProfileActiveTab(tab.id)}
+                          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
+                            isActive
+                              ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md"
+                              : "text-gray-600 hover:bg-gray-100"
+                          }`}
+                        >
+                          <Icon className="h-4 w-4" />
+                          {tab.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 <CardContent className="pt-6 p-6 space-y-8">
                   {/* Personal Information */}
+                  {(profileActiveTab === "personal") && (
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                       <User className="w-5 h-5 text-blue-600" />
@@ -1071,99 +1104,103 @@ const Settings = () => {
                         </select>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Address Information */}
-                  <div className="pt-6 border-t border-slate-100">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                      <MapPin className="w-5 h-5 text-blue-600" />
-                      Address Information
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Address */}
-                      <div className="space-y-2 md:col-span-2">
-                        <label className="text-sm font-semibold text-gray-700">
-                          Address
-                        </label>
-                        <textarea
-                          value={profileData.address}
-                          onChange={(e) =>
-                            handleProfileChange("address", e.target.value)
-                          }
-                          rows={3}
-                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm resize-none"
-                          placeholder="Enter your full address"
-                        />
-                      </div>
+                    {/* Address Information */}
+                    <div className="pt-6 border-t border-slate-100 mt-8">
+                      <h4 className="text-md font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-blue-500" />
+                        Address Information
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Address */}
+                        <div className="space-y-2 md:col-span-2">
+                          <label className="text-sm font-semibold text-gray-700">
+                            Address
+                          </label>
+                          <textarea
+                            value={profileData.address}
+                            onChange={(e) =>
+                              handleProfileChange("address", e.target.value)
+                            }
+                            rows={3}
+                            className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm resize-none"
+                            placeholder="Enter your full address"
+                          />
+                        </div>
 
-                      {/* City */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-gray-700">
-                          City
-                        </label>
-                        <input
-                          type="text"
-                          value={profileData.location}
-                          onChange={(e) =>
-                            handleProfileChange("location", e.target.value)
-                          }
-                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-                          placeholder="Enter city"
-                        />
-                      </div>
+                        {/* City */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-semibold text-gray-700">
+                            City
+                          </label>
+                          <input
+                            type="text"
+                            value={profileData.location}
+                            onChange={(e) =>
+                              handleProfileChange("location", e.target.value)
+                            }
+                            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                            placeholder="Enter city"
+                          />
+                        </div>
 
-                      {/* State */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-gray-700">
-                          State
-                        </label>
-                        <input
-                          type="text"
-                          value={profileData.state}
-                          onChange={(e) =>
-                            handleProfileChange("state", e.target.value)
-                          }
-                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-                          placeholder="Enter state"
-                        />
-                      </div>
+                        {/* State */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-semibold text-gray-700">
+                            State
+                          </label>
+                          <input
+                            type="text"
+                            value={profileData.state}
+                            onChange={(e) =>
+                              handleProfileChange("state", e.target.value)
+                            }
+                            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                            placeholder="Enter state"
+                          />
+                        </div>
 
-                      {/* Country */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-gray-700">
-                          Country
-                        </label>
-                        <input
-                          type="text"
-                          value={profileData.country}
-                          onChange={(e) =>
-                            handleProfileChange("country", e.target.value)
-                          }
-                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-                          placeholder="Enter country"
-                        />
-                      </div>
+                        {/* Country */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-semibold text-gray-700">
+                            Country
+                          </label>
+                          <input
+                            type="text"
+                            value={profileData.country}
+                            onChange={(e) =>
+                              handleProfileChange("country", e.target.value)
+                            }
+                            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                            placeholder="Enter country"
+                          />
+                        </div>
 
-                      {/* Pincode */}
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-gray-700">
-                          Pincode
-                        </label>
-                        <input
-                          type="text"
-                          value={profileData.pincode}
-                          onChange={(e) =>
-                            handleProfileChange("pincode", e.target.value)
-                          }
-                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-                          placeholder="Enter pincode"
-                        />
+                        {/* Pincode */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-semibold text-gray-700">
+                            Pincode
+                          </label>
+                          <input
+                            type="text"
+                            value={profileData.pincode}
+                            onChange={(e) =>
+                              handleProfileChange("pincode", e.target.value)
+                            }
+                            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                            placeholder="Enter pincode"
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Institutional IDs Section */}
-                  <div className="pt-6 border-t border-slate-100">
+
+                  </div>
+                  )}
+
+                  {/* Institution Details */}
+                  {(profileActiveTab === "institution") && (
+                  <div>
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                         <Briefcase className="w-5 h-5 text-blue-600" />
@@ -1704,122 +1741,126 @@ const Settings = () => {
                         )}
                       </div>
                     </div>
+                  </div>
+                  )}
 
-                    {/* Academic Details Subsection - Added from Academic Information */}
-                    <div className="mt-8 pt-6 border-t border-slate-100">
-                      <h4 className="text-md font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                        <Briefcase className="w-4 h-4 text-blue-500" />
-                        Academic Details
-                      </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Registration Number */}
-                        <div className="space-y-2">
-                          <label className="text-sm font-semibold text-gray-700">
-                            Registration Number
-                          </label>
-                          <input
-                            type="text"
-                            value={profileData.registrationNumber}
-                            onChange={(e) =>
-                              handleProfileChange(
-                                "registrationNumber",
-                                e.target.value
-                              )
-                            }
-                            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-                            placeholder="Enter registration number"
-                          />
-                        </div>
+                  {/* Academic Details */}
+                  {(profileActiveTab === "academic") && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <Briefcase className="w-5 h-5 text-blue-600" />
+                      Academic Details
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Registration Number */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">
+                          Registration Number
+                        </label>
+                        <input
+                          type="text"
+                          value={profileData.registrationNumber}
+                          onChange={(e) =>
+                            handleProfileChange(
+                              "registrationNumber",
+                              e.target.value
+                            )
+                          }
+                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                          placeholder="Enter registration number"
+                        />
+                      </div>
 
-                        {/* Enrollment Number */}
-                        <div className="space-y-2">
-                          <label className="text-sm font-semibold text-gray-700">
-                            Enrollment Number
-                          </label>
-                          <input
-                            type="text"
-                            value={profileData.enrollmentNumber}
-                            onChange={(e) =>
-                              handleProfileChange(
-                                "enrollmentNumber",
-                                e.target.value
-                              )
-                            }
-                            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-                            placeholder="Enter enrollment number"
-                          />
-                        </div>
+                      {/* Enrollment Number */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">
+                          Enrollment Number
+                        </label>
+                        <input
+                          type="text"
+                          value={profileData.enrollmentNumber}
+                          onChange={(e) =>
+                            handleProfileChange(
+                              "enrollmentNumber",
+                              e.target.value
+                            )
+                          }
+                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                          placeholder="Enter enrollment number"
+                        />
+                      </div>
 
-                        {/* Current CGPA */}
-                        <div className="space-y-2">
-                          <label className="text-sm font-semibold text-gray-700">
-                            Current CGPA
-                          </label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            max="10"
-                            value={profileData.currentCgpa}
-                            onChange={(e) =>
-                              handleProfileChange("currentCgpa", e.target.value)
-                            }
-                            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-                            placeholder="Enter current CGPA"
-                          />
-                        </div>
+                      {/* Current CGPA */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">
+                          Current CGPA
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max="10"
+                          value={profileData.currentCgpa}
+                          onChange={(e) =>
+                            handleProfileChange("currentCgpa", e.target.value)
+                          }
+                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                          placeholder="Enter current CGPA"
+                        />
+                      </div>
 
-                        {/* Grade */}
-                        <div className="space-y-2">
-                          <label className="text-sm font-semibold text-gray-700">
-                            Grade/Class
-                          </label>
-                          <select
-                            value={profileData.grade}
-                            onChange={(e) =>
-                              handleProfileChange("grade", e.target.value)
-                            }
-                            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-                          >
-                            <option value="">Select Grade/Class</option>
-                            <option value="Grade 6">Grade 6</option>
-                            <option value="Grade 7">Grade 7</option>
-                            <option value="Grade 8">Grade 8</option>
-                            <option value="Grade 9">Grade 9</option>
-                            <option value="Grade 10">Grade 10</option>
-                            <option value="Grade 11">Grade 11</option>
-                            <option value="Grade 12">Grade 12</option>
-                            <option value="Diploma">Diploma</option>
-                            <option value="UG Year 1">UG Year 1</option>
-                            <option value="UG Year 2">UG Year 2</option>
-                            <option value="UG Year 3">UG Year 3</option>
-                            <option value="UG Year 4">UG Year 4</option>
-                            <option value="PG Year 1">PG Year 1</option>
-                            <option value="PG Year 2">PG Year 2</option>
-                            <option value="PG">PG</option>
-                          </select>
-                        </div>
+                      {/* Grade */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">
+                          Grade/Class
+                        </label>
+                        <select
+                          value={profileData.grade}
+                          onChange={(e) =>
+                            handleProfileChange("grade", e.target.value)
+                          }
+                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                        >
+                          <option value="">Select Grade/Class</option>
+                          <option value="Grade 6">Grade 6</option>
+                          <option value="Grade 7">Grade 7</option>
+                          <option value="Grade 8">Grade 8</option>
+                          <option value="Grade 9">Grade 9</option>
+                          <option value="Grade 10">Grade 10</option>
+                          <option value="Grade 11">Grade 11</option>
+                          <option value="Grade 12">Grade 12</option>
+                          <option value="Diploma">Diploma</option>
+                          <option value="UG Year 1">UG Year 1</option>
+                          <option value="UG Year 2">UG Year 2</option>
+                          <option value="UG Year 3">UG Year 3</option>
+                          <option value="UG Year 4">UG Year 4</option>
+                          <option value="PG Year 1">PG Year 1</option>
+                          <option value="PG Year 2">PG Year 2</option>
+                          <option value="PG">PG</option>
+                        </select>
+                      </div>
 
-                        {/* Grade Start Date */}
-                        <div className="space-y-2">
-                          <label className="text-sm font-semibold text-gray-700">
-                            Grade Start Date
-                          </label>
-                          <input
-                            type="date"
-                            value={profileData.gradeStartDate}
-                            onChange={(e) =>
-                              handleProfileChange("gradeStartDate", e.target.value)
-                            }
-                            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-                          />
-                        </div>
+                      {/* Grade Start Date */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">
+                          Grade Start Date
+                        </label>
+                        <input
+                          type="date"
+                          value={profileData.gradeStartDate}
+                          onChange={(e) =>
+                            handleProfileChange("gradeStartDate", e.target.value)
+                          }
+                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                        />
                       </div>
                     </div>
                   </div>
+                  )}
 
                   {/* Guardian Information */}
-                  <div className="pt-6 border-t border-slate-100">
+                  {(profileActiveTab === "guardian") && (
+                  <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                       <Shield className="w-5 h-5 text-blue-600" />
                       Guardian Information
@@ -1899,49 +1940,44 @@ const Settings = () => {
                       </div>
                     </div>
                   </div>
+                  )}
 
-                  {/* Bio */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                      <Briefcase className="w-4 h-4 text-gray-500" />
-                      Bio
-                    </label>
-                    <textarea
-                      value={profileData.bio}
-                      onChange={(e) =>
-                        handleProfileChange("bio", e.target.value)
-                      }
-                      rows={4}
-                      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm resize-none"
-                      placeholder="Tell us about yourself..."
-                    />
-                  </div>
 
-                  {/* Bio */}
-                  <div className="pt-6 border-t border-slate-100">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                      Bio
-                    </h3>
-                    <div className="space-y-2">
-                      <textarea
-                        value={profileData.bio}
-                        onChange={(e) =>
-                          handleProfileChange("bio", e.target.value)
-                        }
-                        rows={4}
-                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm resize-none"
-                        placeholder="Tell us about yourself..."
-                      />
-                    </div>
-                  </div>
+
+
 
                   {/* Social Links */}
-                  <div className="pt-6 border-t border-slate-100">
+                  {(profileActiveTab === "social") && (
+                  <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                       <Globe className="w-5 h-5 text-blue-600" />
                       Social Links
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                    {/* Bio Section */}
+                    <div className="mb-8">
+                      <h4 className="text-md font-semibold text-gray-800 mb-4">
+                        Bio
+                      </h4>
+                      <div className="space-y-2">
+                        <textarea
+                          value={profileData.bio}
+                          onChange={(e) =>
+                            handleProfileChange("bio", e.target.value)
+                          }
+                          rows={4}
+                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm resize-none"
+                          placeholder="Tell us about yourself..."
+                        />
+                      </div>
+                    </div>
+
+                    {/* Social Links */}
+                    <div className="pt-6 border-t border-slate-100">
+                      <h4 className="text-md font-semibold text-gray-800 mb-4">
+                        Social Media & Portfolio Links
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {[
                         {
                           key: "linkedIn",
@@ -1989,8 +2025,10 @@ const Settings = () => {
                           />
                         </div>
                       ))}
+                      </div>
                     </div>
                   </div>
+                  )}
 
                   {/* Save Button */}
                   <div className="flex justify-end pt-6 border-t border-slate-100">
