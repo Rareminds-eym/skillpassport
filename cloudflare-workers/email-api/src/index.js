@@ -44,20 +44,29 @@ export default {
 
   /**
    * Scheduled CRON Handler for Automated Countdown Emails
+   * Uses ctx.waitUntil to allow background processing beyond request completion
    */
   async scheduled(event, env, ctx) {
     console.log('Starting scheduled countdown email job...');
     
-    try {
-      // Process new countdown emails
-      await processCountdownEmails(env);
-      
-      // Retry failed emails
-      await retryFailedEmails(env);
-      
-      console.log('Countdown email job completed successfully');
-    } catch (error) {
-      console.error('Error in scheduled countdown email job:', error);
-    }
+    // Use ctx.waitUntil to allow async work to complete
+    // This extends execution time beyond the initial response
+    const processEmails = async () => {
+      try {
+        // Process new countdown emails
+        await processCountdownEmails(env);
+        
+        // Retry failed emails
+        await retryFailedEmails(env);
+        
+        console.log('Countdown email job completed successfully');
+      } catch (error) {
+        console.error('Error in scheduled countdown email job:', error);
+        // Don't throw - let the job complete even if there's an error
+      }
+    };
+    
+    // Schedule the work to continue in the background
+    ctx.waitUntil(processEmails());
   },
 };

@@ -12,6 +12,8 @@ import {
 import { EMAIL_STATUS, DEFAULT_FROM_EMAIL, DEFAULT_FROM_NAME } from '../config/constants.js';
 
 export async function processIndividualCountdownEmail(supabase, env, preReg, daysUntilLaunch, launchDate) {
+  let trackingRecord = null;
+  
   try {
     // Check if email already sent for this countdown day
     const { data: existingEmail } = await checkEmailAlreadySent(
@@ -22,12 +24,12 @@ export async function processIndividualCountdownEmail(supabase, env, preReg, day
 
     if (existingEmail) {
       console.log(`Email already sent to ${preReg.email} for countdown day ${daysUntilLaunch}`);
-      return;
+      return { status: 'skipped', email: preReg.email, reason: 'already_sent' };
     }
 
     // Create email tracking record
     const scheduledAt = new Date();
-    const { data: trackingRecord, error: insertError } = await createEmailTracking(supabase, {
+    const { data: trackingData, error: insertError } = await createEmailTracking(supabase, {
       pre_registration_id: preReg.id,
       email_status: EMAIL_STATUS.QUEUED,
       scheduled_at: scheduledAt.toISOString(),
@@ -41,9 +43,10 @@ export async function processIndividualCountdownEmail(supabase, env, preReg, day
 
     if (insertError) {
       console.error(`Error creating tracking record for ${preReg.email}:`, insertError);
-      return;
+      throw new Error(`Failed to create tracking record: ${insertError.message}`);
     }
 
+    trackingRecord = trackingData;
     console.log(`Sending countdown email to ${preReg.email}...`);
 
     // Update status to sending
@@ -75,18 +78,26 @@ export async function processIndividualCountdownEmail(supabase, env, preReg, day
     });
 
     console.log(`✓ Email sent successfully to ${preReg.email}`);
+    return { status: 'success', email: preReg.email };
 
   } catch (error) {
     console.error(`Error sending email to ${preReg.email}:`, error);
 
-    // Update status to failed
+    // Update status to failed if tracking record exists
     if (trackingRecord?.id) {
-      await updateEmailTracking(supabase, trackingRecord.id, {
-        email_status: EMAIL_STATUS.FAILED,
-        failed_at: new Date().toISOString(),
-        error_message: error.message,
-        retry_count: 1
-      });
+      try {
+        await updateEmailTracking(supabase, trackingRecord.id, {
+          email_status: EMAIL_STATUS.FAILED,
+          failed_at: new Date().toISOString(),
+          error_message: error.message || 'Unknown error',
+          retry_count: 1
+        });
+      } catch (updateError) {
+        console.error(`Failed to update tracking record for ${preReg.email}:`, updateError);
+      }
     }
+    
+    // Re-throw to be caught by Promise.allSettled
+    throw error;
   }
 }

@@ -13,7 +13,7 @@ export const CORS_HEADERS = {
 export const DEFAULT_FROM_EMAIL = 'noreply@rareminds.in';
 export const DEFAULT_FROM_NAME = 'Skill Passport';
 
-export const COUNTDOWN_DAYS = [7, 5, 3, 1];
+export const COUNTDOWN_DAYS = [8, 7, 6, 5, 4, 3, 2, 1];
 export const MAX_RETRY_ATTEMPTS = 3;
 export const RETRY_BATCH_SIZE = 10;
 
