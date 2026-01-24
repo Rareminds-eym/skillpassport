@@ -546,6 +546,16 @@ export class SchoolAdminNotificationService {
    */
   static async approveProject(projectId, approverId, notes = '') {
     try {
+      // Validate inputs
+      if (!projectId || projectId === 'undefined') {
+        throw new Error('Invalid project ID');
+      }
+      if (!approverId || approverId === 'undefined') {
+        throw new Error('Invalid approver ID - user not authenticated');
+      }
+
+      console.log('🔍 Approving project:', { projectId, approverId });
+
       // Direct database update since approve_project function doesn't exist
       const { data, error } = await supabase
         .from('projects')
@@ -593,6 +603,16 @@ export class SchoolAdminNotificationService {
       if (!notes || notes.trim() === '') {
         throw new Error('Rejection reason is required');
       }
+
+      // Validate inputs
+      if (!projectId || projectId === 'undefined') {
+        throw new Error('Invalid project ID');
+      }
+      if (!rejectorId || rejectorId === 'undefined') {
+        throw new Error('Invalid rejector ID - user not authenticated');
+      }
+
+      console.log('🔍 Rejecting project:', { projectId, rejectorId });
 
       // Direct database update since reject_project function doesn't exist
       const { data, error } = await supabase
