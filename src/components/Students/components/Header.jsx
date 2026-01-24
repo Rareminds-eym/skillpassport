@@ -220,6 +220,7 @@ const Header = ({ activeTab, setActiveTab }) => {
             {tabs.map((tab) => (
               <button
                 key={tab.id}
+                data-tour={`nav-${tab.id}`}
                 onClick={() => handleTabClick(tab)}
                 className={`group flex items-center py-2 px-1.5 lg:px-2 xl:px-2 text-sm font-medium rounded-md transition-all duration-200 whitespace-nowrap ${activeTab === tab.id || (tab.id === "digital-portfolio" && isDigitalPortfolioRoute)
                   ? "bg-primary-50 text-primary-700"

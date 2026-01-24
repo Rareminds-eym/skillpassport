@@ -3,6 +3,7 @@ import { Toaster as HotToaster } from 'react-hot-toast';
 import { BrowserRouter } from 'react-router-dom';
 import { ToastProvider } from './components/Recruiter/components/Toast';
 import { Toaster } from './components/Students/components/ui/toaster';
+import { TourProvider } from './components/Tours';
 import SubscriptionPrefetch from './components/Subscription/SubscriptionPrefetch';
 import { AuthProvider } from './context/AuthContext';
 import { SearchProvider } from './context/SearchContext';
@@ -35,33 +36,35 @@ function App() {
               <SubscriptionProvider>
                 <SearchProvider>
                   <ToastProvider>
-                    <SubscriptionPrefetch />
-                    <AppRoutes />
-                    <Toaster />
-                  <HotToaster 
-                    position="top-right"
-                    toastOptions={{
-                      duration: 5000,
-                      style: {
-                        background: '#fff',
-                        color: '#363636',
-                      },
-                      success: {
-                        duration: 3000,
-                        iconTheme: {
-                          primary: '#10b981',
-                          secondary: '#fff',
+                    <TourProvider>
+                      <SubscriptionPrefetch />
+                      <AppRoutes />
+                      <Toaster />
+                    <HotToaster 
+                      position="top-right"
+                      toastOptions={{
+                        duration: 5000,
+                        style: {
+                          background: '#fff',
+                          color: '#363636',
                         },
-                      },
-                      error: {
-                        duration: 4000,
-                        iconTheme: {
-                          primary: '#ef4444',
-                          secondary: '#fff',
+                        success: {
+                          duration: 3000,
+                          iconTheme: {
+                            primary: '#10b981',
+                            secondary: '#fff',
+                          },
                         },
-                      },
-                    }}
-                  />
+                        error: {
+                          duration: 4000,
+                          iconTheme: {
+                            primary: '#ef4444',
+                            secondary: '#fff',
+                          },
+                        },
+                      }}
+                    />
+                    </TourProvider>
                   </ToastProvider>
                 </SearchProvider>
               </SubscriptionProvider>

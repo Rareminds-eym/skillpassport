@@ -41,6 +41,9 @@ import {
 // Import Career Track Modal
 import CareerTrackModal from './components/CareerTrackModal';
 
+// Import Tours
+import { AssessmentResultTour } from '../../../components/Tours';
+
 // Import UI effects
 import { TextGenerateEffect } from '../../../components/ui/text-generate-effect';
 
@@ -289,7 +292,7 @@ const AnimatedProgressRing = ({ percentage, color, delay = 0 }) => {
  * Displays individual career recommendation with animation
  * Features clickable card with "View Full Track" indicator
  */
-const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificRoles = [], onCardClick }) => {
+const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificRoles = [], onCardClick, ...props }) => {
     const ref = useRef(null);
     const isInView = useInView(ref, { once: true, amount: 0.3 });
 
@@ -366,8 +369,10 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                                 background: `radial-gradient(circle 230px at 0% 0%, ${config.accentLight}, #0c0d0d)`,
                                 borderRadius: '10px',
                                 boxShadow: `0 10px 30px -5px rgba(0, 0, 0, 0.3), 0 0 15px 3px ${config.shadow}`,
+                                zIndex: 100, // Ensure card appears above tour spotlight
                             }}
                             onClick={handleCardClick}
+                            {...props}
                         >
                             {/* Animated Dot - Always visible */}
                             <div
@@ -992,7 +997,7 @@ const AssessmentResult = () => {
     });
 
     return (
-        <>
+        <AssessmentResultTour autoStart={true}>
             {/* Inject print styles */}
             <style dangerouslySetInnerHTML={{ __html: PRINT_STYLES }} />
 
@@ -1015,7 +1020,7 @@ const AssessmentResult = () => {
                     className={`fixed top-0 left-0 right-0 z-50 w-full transition-transform duration-300 ${isNavbarVisible ? 'translate-y-0' : '-translate-y-full'
                         }`}
                 >
-                    <div className="relative flex justify-between items-center bg-white/95 backdrop-blur-md shadow-md border-b border-gray-200 px-6 py-3">
+                    <div className="relative flex justify-between items-center bg-white/95 backdrop-blur-md shadow-md border-b border-gray-200 px-6 py-3" data-tour="navigation-actions">
                         <Button
                             variant="ghost"
                             onClick={() => navigate('/student/dashboard')}
@@ -1125,7 +1130,7 @@ const AssessmentResult = () => {
                     <ReportHeader studentInfo={studentInfo} gradeLevel={gradeLevel} />
 
                     {/* Overall Summary Banner */}
-                    <div className="bg-white rounded-xl shadow-lg overflow-hidden my-8">
+                    <div className="bg-white rounded-xl shadow-lg overflow-hidden my-8" data-tour="ai-summary">
                         <div className="bg-gradient-to-r from-slate-800 to-slate-700 p-6">
                             <div className="flex items-start gap-3">
                                 <div
@@ -1571,6 +1576,7 @@ const AssessmentResult = () => {
                                     </motion.div>
 
                                     {/* Career Cards */}
+                                    <div data-tour="career-tracks">
                                     {careerFit && careerFit.clusters && careerFit.clusters.length > 0 ? (
                                         careerFit.clusters.map((cluster, index) => (
                                             <CareerCard
@@ -1586,6 +1592,7 @@ const AssessmentResult = () => {
                                                             'exploreLater'
                                                 ] || cluster.specificRoles || []}
                                                 onCardClick={handleTrackClick}
+                                                data-tour={`career-track-${index + 1}`}
                                             />
                                         ))
                                     ) : (
@@ -1595,6 +1602,7 @@ const AssessmentResult = () => {
                                             <p className="text-slate-400 text-sm">Your personalized career recommendations are being calculated.</p>
                                         </div>
                                     )}
+                                    </div>
 
                                     {/* Career Track Detail Modal */}
                                     {selectedTrack && (
@@ -2162,7 +2170,7 @@ const AssessmentResult = () => {
 
                             {/* CAREER TAB CONTENT */}
                             {activeRecommendationTab === 'career' && careerFit && careerFit.clusters && careerFit.clusters.length > 0 && (
-                                <div className="space-y-8">
+                                <div className="space-y-8" data-tour="career-tracks">
                                     {/* Career Recommendations using CareerCard components */}
                                     {careerFit.clusters.map((cluster, index) => (
                                         <CareerCard
@@ -2178,6 +2186,7 @@ const AssessmentResult = () => {
                                                         'exploreLater'
                                             ] || cluster.specificRoles || []}
                                             onCardClick={handleTrackClick}
+                                            data-tour={`career-track-${index + 1}`}
                                         />
                                     ))}
                                 </div>
@@ -2210,7 +2219,7 @@ const AssessmentResult = () => {
                     {/* ═══════════════════════════════════════════════════════════════════════════════ */}
                     {gradeLevel !== 'after10' && gradeLevel !== 'after12' && careerFit && careerFit.clusters && careerFit.clusters.length > 0 && (
                         <div className="mb-8">
-                            <div className="space-y-8">
+                            <div className="space-y-8" data-tour="career-tracks">
                                 {/* Career Recommendations using CareerCard components with original colorful design */}
                                 {careerFit.clusters.map((cluster, index) => (
                                     <CareerCard
@@ -2226,6 +2235,7 @@ const AssessmentResult = () => {
                                                     'exploreLater'
                                         ] || cluster.specificRoles || []}
                                         onCardClick={handleTrackClick}
+                                        data-tour={`career-track-${index + 1}`}
                                     />
                                 ))}
                             </div>
@@ -2263,8 +2273,7 @@ const AssessmentResult = () => {
                     </DialogContent>
                 </Dialog>
             </div>
-
-        </>
+        </AssessmentResultTour>
     );
 };
 

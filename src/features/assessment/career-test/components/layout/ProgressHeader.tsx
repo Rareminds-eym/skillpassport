@@ -80,7 +80,7 @@ export const ProgressHeader: React.FC<ProgressHeaderProps> = ({
               )}
               
               {/* Progress Badge */}
-              <div className="flex items-center gap-3 bg-indigo-50 px-2 py-1 rounded-lg border border-indigo-100">
+              <div className="flex items-center gap-3 bg-indigo-50 px-2 py-1 rounded-lg border border-indigo-100" data-tour="progress-percentage">
                 <div className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse" />
                 <span className="text-xs font-semibold text-indigo-700">
                   {Math.round(progress)}% Complete
@@ -92,7 +92,7 @@ export const ProgressHeader: React.FC<ProgressHeaderProps> = ({
       </div>
 
       {/* Section Steps - Below Navbar */}
-      <div className="max-w-4xl mx-auto px-4 mt-6 mb-6">
+      <div className="max-w-4xl mx-auto px-4 mt-6 mb-6" data-tour="section-progress">
         {/* Circles and Lines Row */}
         <div className="flex items-center">
           {sections.map((section, idx) => {
