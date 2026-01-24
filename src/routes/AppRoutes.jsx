@@ -39,6 +39,7 @@ const About = lazy(() => import("../pages/homepage/About"));
 const Contact = lazy(() => import("../pages/homepage/Contact"));
 const TermsAndConditions = lazy(() => import("../pages/TermsAndConditions"));
 const PrivacyPolicy = lazy(() => import("../pages/PrivacyPolicy"));
+const Receipt = lazy(() => import("../pages/Receipt"));
 const PuterDemo = lazy(() => import("../pages/puter/PuterDemo"));
 const SubscriptionPlans = lazy(() =>
   import("../pages/subscription/SubscriptionPlans")
@@ -505,6 +506,9 @@ const AppRoutes = () => {
       <Routes>
         {/* Simple Event Registration - Social media campaigns (standalone, no layout) */}
         <Route path="/register" element={<SimpleEventRegistration />} />
+        
+        {/* Receipt Page - Download PDF receipt */}
+        <Route path="/receipt/:orderId" element={<Receipt />} />
 
         {/* Event Sales - Standalone without layout (no header/footer) */}
         <Route path="/signup/plans" element={<EventSales />} />
