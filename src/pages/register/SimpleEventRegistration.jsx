@@ -348,64 +348,97 @@ const InputField = ({ label, icon: Icon, error, verified, disabled, rightElement
 );
 
 // Terms Modal Component
-const TermsModal = ({ isOpen, onClose }) => (
-  <AnimatePresence>
-    {isOpen && (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-      >
+const TermsModal = ({ isOpen, onClose, onAccept }) => {
+  const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
+  const scrollRef = useCallback((node) => {
+    if (node) {
+      const handleScroll = () => {
+        const { scrollTop, scrollHeight, clientHeight } = node;
+        // Check if scrolled to bottom (with 10px threshold)
+        if (scrollTop + clientHeight >= scrollHeight - 10) {
+          setHasScrolledToBottom(true);
+        }
+      };
+      node.addEventListener('scroll', handleScroll);
+      // Check initial state (in case content is short enough to not need scrolling)
+      if (node.scrollHeight <= node.clientHeight) {
+        setHasScrolledToBottom(true);
+      }
+      return () => node.removeEventListener('scroll', handleScroll);
+    }
+  }, []);
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
         <motion.div
-          initial={{ scale: 0.95, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.95, opacity: 0 }}
-          onClick={(e) => e.stopPropagation()}
-          className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          onClick={onClose}
         >
-          <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-blue-600">
-            <h3 className="text-xl font-bold text-white">Terms & Conditions</h3>
-            <button onClick={onClose} className="text-white/80 hover:text-white transition-colors p-1 hover:bg-white/10 rounded-lg">
-              <X className="w-6 h-6" />
-            </button>
-          </div>
-          <div className="p-8 overflow-y-auto max-h-[60vh] prose prose-sm max-w-none">
-            <h4 className="text-gray-900 font-bold text-lg mb-3">Pre-Registration Agreement</h4>
-            <p className="text-gray-600 mb-4">By completing this pre-registration, you agree to the following terms:</p>
-            <ul className="text-gray-600 space-y-3 mb-6">
-              <li>The registration fee of ₹{REGISTRATION_FEE} is non-refundable once payment is processed.</li>
-              <li>Your personal information will be used solely for registration and communication purposes.</li>
-              <li>You will receive email notifications regarding your registration status and upcoming events.</li>
-              <li>Access to the platform and services will be provided upon successful verification.</li>
-              <li>You agree to abide by our code of conduct and usage policies.</li>
-            </ul>
-            <h4 className="text-gray-900 font-bold text-lg mb-3">Payment Terms</h4>
-            <p className="text-gray-600 mb-6">
-              All payments are processed securely through Razorpay. Your payment information is encrypted
-              and never stored on our servers. By proceeding with payment, you authorize the charge of
-              ₹{REGISTRATION_FEE} to your chosen payment method.
-            </p>
-            <h4 className="text-gray-900 font-bold text-lg mb-3">Privacy Policy</h4>
-            <p className="text-gray-600">
-              We are committed to protecting your privacy. Your data is handled in accordance with
-              applicable data protection laws and will not be shared with third parties without your consent.
-            </p>
-          </div>
-          <div className="p-6 bg-gray-50 border-t border-gray-100">
-            <button
-              onClick={onClose}
-              className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl transition-all shadow-lg hover:shadow-xl"
-            >
-              I Understand
-            </button>
-          </div>
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden"
+          >
+            <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-blue-600">
+              <h3 className="text-xl font-bold text-white">Terms & Conditions</h3>
+              <button onClick={onClose} className="text-white/80 hover:text-white transition-colors p-1 hover:bg-white/10 rounded-lg">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div ref={scrollRef} className="p-8 overflow-y-auto max-h-[60vh] prose prose-sm max-w-none">
+              <h4 className="text-gray-900 font-bold text-lg mb-3">Pre-Registration Terms</h4>
+              <p className="text-gray-600 mb-4">By signing up, you agree to the following:</p>
+              <ul className="text-gray-600 space-y-3 mb-6">
+                <li>The pre-registration fee is ₹{REGISTRATION_FEE} and cannot be refunded once paid.</li>
+                <li>Your personal details will be used only for registration and official communication.</li>
+                <li>You will receive emails about your registration status and upcoming updates/events.</li>
+                <li>Access to the platform will be provided after successful verification.</li>
+                <li>You agree to follow our code of conduct and usage rules while using the platform.</li>
+              </ul>
+              <h4 className="text-gray-900 font-bold text-lg mb-3">Payment Information</h4>
+              <p className="text-gray-600 mb-6">
+                Payments are processed securely through Razorpay. Your payment details are encrypted and never stored on our servers. By making the payment, you approve the ₹{REGISTRATION_FEE} charge.
+              </p>
+              <h4 className="text-gray-900 font-bold text-lg mb-3">Privacy</h4>
+              <p className="text-gray-600">
+                We respect your privacy and protect your data. Your information will not be shared with third parties without your consent, unless required by law.
+              </p>
+              {!hasScrolledToBottom && (
+                <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg text-center">
+                  <p className="text-sm text-blue-700 font-medium">Please scroll down to read all terms</p>
+                </div>
+              )}
+            </div>
+            <div className="p-6 bg-gray-50 border-t border-gray-100">
+              <button
+                onClick={() => {
+                  if (hasScrolledToBottom) {
+                    onAccept();
+                    onClose();
+                  }
+                }}
+                disabled={!hasScrolledToBottom}
+                className={`w-full py-4 font-bold rounded-2xl transition-all shadow-lg ${
+                  hasScrolledToBottom
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-xl cursor-pointer'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+              >
+                {hasScrolledToBottom ? 'Accept' : 'Scroll to Accept'}
+              </button>
+            </div>
+          </motion.div>
         </motion.div>
-      </motion.div>
-    )}
-  </AnimatePresence>
-);
+      )}
+    </AnimatePresence>
+  );
+};
 
 export default function SimpleEventRegistration() {
   const [searchParams] = useSearchParams();
@@ -431,6 +464,7 @@ export default function SimpleEventRegistration() {
   // Consent states
   const [consentGiven, setConsentGiven] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
+  const [hasReadTerms, setHasReadTerms] = useState(false);
 
   useEffect(() => {
     loadRazorpay()
@@ -1050,23 +1084,32 @@ export default function SimpleEventRegistration() {
               transition={{ delay: 0.4 }}
               className="mt-6"
             >
-              <label className="flex items-start gap-3 cursor-pointer group p-4 rounded-xl border border-gray-200 hover:border-blue-300 transition-all duration-200 bg-white hover:bg-blue-50/30">
+              <label className={`flex items-start gap-3 p-4 rounded-xl border border-gray-200 transition-all duration-200 bg-white ${
+                hasReadTerms 
+                  ? 'cursor-pointer group hover:border-blue-300 hover:bg-blue-50/30' 
+                  : 'cursor-not-allowed opacity-60'
+              }`}>
                 <div className="relative mt-0.5">
                   <input
                     type="checkbox"
                     checked={consentGiven}
+                    disabled={!hasReadTerms}
                     onChange={(e) => {
-                      setConsentGiven(e.target.checked);
-                      if (errors.consent) setErrors(prev => ({ ...prev, consent: null }));
+                      if (hasReadTerms) {
+                        setConsentGiven(e.target.checked);
+                        if (errors.consent) setErrors(prev => ({ ...prev, consent: null }));
+                      }
                     }}
                     className="sr-only peer"
                   />
                   <div className={`w-5 h-5 rounded-md border-2 transition-all duration-200 flex items-center justify-center shadow-sm
-                    ${consentGiven
-                      ? 'bg-blue-600 border-blue-600 shadow-blue-200'
-                      : errors.consent
-                        ? 'border-red-400 bg-red-50'
-                        : 'border-gray-300 bg-white group-hover:border-blue-400'
+                    ${!hasReadTerms
+                      ? 'border-gray-300 bg-gray-100'
+                      : consentGiven
+                        ? 'bg-blue-600 border-blue-600 shadow-blue-200'
+                        : errors.consent
+                          ? 'border-red-400 bg-red-50'
+                          : 'border-gray-300 bg-white group-hover:border-blue-400'
                     }`}
                   >
                     {consentGiven && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />}
@@ -1082,6 +1125,11 @@ export default function SimpleEventRegistration() {
                     Terms & Conditions
                   </button>
                   {' '}and consent to the payment of ₹{REGISTRATION_FEE} for pre-registration.
+                  {!hasReadTerms && (
+                    <span className="block mt-1 text-xs text-amber-600 font-medium">
+                      Please read the Terms & Conditions first
+                    </span>
+                  )}
                 </span>
               </label>
               {errors.consent && (
@@ -1177,7 +1225,15 @@ export default function SimpleEventRegistration() {
       <Footer />
 
       {/* Terms Modal */}
-      <TermsModal isOpen={showTerms} onClose={() => setShowTerms(false)} />
+      <TermsModal 
+        isOpen={showTerms} 
+        onClose={() => setShowTerms(false)} 
+        onAccept={() => {
+          setHasReadTerms(true);
+          setConsentGiven(true);
+          if (errors.consent) setErrors(prev => ({ ...prev, consent: null }));
+        }}
+      />
     </div>
   );
 }
