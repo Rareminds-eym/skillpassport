@@ -29,9 +29,6 @@ import * as assessmentService from '../../../services/assessmentService';
 // @ts-ignore - JS service
 import { normalizeStreamId } from '../../../services/careerAssessmentAIService';
 
-// Tours
-import { AssessmentTestTour, TourTriggerButton, assessmentTestTour } from '../../../components/Tours';
-
 // Hooks
 import { useAssessmentFlow } from './hooks/useAssessmentFlow';
 import { useStudentGrade } from './hooks/useStudentGrade';
@@ -1907,8 +1904,7 @@ const AssessmentTestPage: React.FC = () => {
   
   // Main Assessment UI
   return (
-    <AssessmentTestTour autoStart={true}>
-      <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50">
       {/* Progress Header */}
       <div>
         <ProgressHeader
@@ -1929,16 +1925,6 @@ const AssessmentTestPage: React.FC = () => {
       {/* Test Mode Controls (Dev only) */}
       {isDevMode && testMode && (
         <div className="max-w-4xl mx-auto px-4 py-2">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-4">
-              <TourTriggerButton
-                tourConfig={assessmentTestTour}
-                variant="outline"
-                size="sm"
-                className="bg-white/90 backdrop-blur-sm border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 shadow-md"
-              />
-            </div>
-          </div>
           <TestModeControls
             onAutoFillAll={autoFillAllAnswers}
             onSkipToAptitude={() => {
@@ -2191,7 +2177,6 @@ const AssessmentTestPage: React.FC = () => {
         )}
       </AnimatePresence>
     </div>
-    </AssessmentTestTour>
   );
 };
 

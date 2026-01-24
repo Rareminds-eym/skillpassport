@@ -55,12 +55,12 @@ export const MCQQuestion: React.FC<MCQQuestionProps> = ({
       )}
 
       {/* Question Text */}
-      <h3 className="text-xl md:text-2xl font-medium text-gray-800 leading-snug" data-tour="question-content">
+      <h3 className="text-xl md:text-2xl font-medium text-gray-800 leading-snug">
         {questionText}
       </h3>
 
       {/* Options */}
-      <div className="space-y-3 mt-6" data-tour="answer-options">
+      <div className="space-y-3 mt-6">
         {options.map((option, idx) => {
           const optionLabel = String.fromCharCode(65 + idx); // A, B, C, D
           const isSelected = selectedAnswer === option;

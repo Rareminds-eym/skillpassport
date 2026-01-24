@@ -87,12 +87,12 @@ export const AdaptiveQuestion: React.FC<AdaptiveQuestionProps> = ({
       </div>
 
       {/* Question Text */}
-      <h3 className="text-xl md:text-2xl font-medium text-gray-800 leading-snug" data-tour="question-content">
+      <h3 className="text-xl md:text-2xl font-medium text-gray-800 leading-snug">
         {questionText}
       </h3>
 
       {/* Options */}
-      <div className="space-y-3 mt-6" data-tour="answer-options">
+      <div className="space-y-3 mt-6">
         {['A', 'B', 'C', 'D'].map((optionKey) => {
           const optionText = options[optionKey];
           if (!optionText) return null;
