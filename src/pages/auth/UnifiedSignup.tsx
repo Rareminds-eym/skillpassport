@@ -1,18 +1,26 @@
 import { City, Country, State } from 'country-state-city';
 import {
-    AlertCircle,
-    ArrowRight,
-    Award,
-    CheckCircle,
-    ChevronDown,
-    Eye, EyeOff,
-    Globe,
-    Loader2,
-    Share2,
-    TrendingUp
+  AlertCircle,
+  ArrowRight,
+  Award,
+  CheckCircle,
+  ChevronDown,
+  Clock,
+  Eye, EyeOff,
+  Globe,
+  Loader2,
+  Share2,
+  TrendingUp
 } from 'lucide-react';
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+// @ts-ignore - JS module without types
+import {
+  formatRegistrationDate,
+  getTimeUntilFullRegOpens,
+  isFullRegistrationOpen,
+  FULL_REGISTRATION_START_DATE
+} from '../../config/registrationConfig';
 // @ts-ignore - JS module without types
 import { sendOtp, verifyOtp as verifyOtpApi } from '../../services/otpService';
 // @ts-ignore - JS module without types
@@ -233,7 +241,7 @@ const LANGUAGES = [
 const UnifiedSignup = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  
+
   // Get return URL from query params or session storage (for invitation flow)
   const returnUrl = searchParams.get('returnUrl') || sessionStorage.getItem('invitation_return_url');
 
@@ -339,9 +347,9 @@ const UnifiedSignup = () => {
   };
 
   // Check if OTP verification should be skipped (for localhost/development and production)
-  const skipOtpVerification = 
-    import.meta.env.VITE_SKIP_OTP_VERIFICATION === 'true' || 
-    window.location.hostname === 'localhost' || 
+  const skipOtpVerification =
+    import.meta.env.VITE_SKIP_OTP_VERIFICATION === 'true' ||
+    window.location.hostname === 'localhost' ||
     window.location.hostname === '127.0.0.1' ||
     window.location.origin === 'https://skillpassport.pages.dev';
 
@@ -401,7 +409,7 @@ const UnifiedSignup = () => {
       // Use the user-api worker for signup with proper rollback support
       // This ensures no orphaned auth users are created
       const USER_API_URL = import.meta.env.VITE_USER_API_URL || 'https://user-api.dark-mode-d021.workers.dev';
-      
+
       const response = await fetch(`${USER_API_URL}/signup`, {
         method: 'POST',
         headers: {
@@ -467,12 +475,12 @@ const UnifiedSignup = () => {
         navigate(returnUrl);
       } else {
         // Redirect to subscription plans page to choose a plan
-        navigate(`/subscription/plans/${entityType}/purchase`, { 
-          state: { 
+        navigate(`/subscription/plans/${entityType}/purchase`, {
+          state: {
             message: 'Account created successfully! Please choose a plan to continue.',
             email: state.email,
             userId: userId
-          } 
+          }
         });
       }
     } catch (error: unknown) {
@@ -480,6 +488,150 @@ const UnifiedSignup = () => {
       setState(prev => ({ ...prev, loading: false, error: errorMessage }));
     }
   };
+
+  // Countdown state for when registration is not yet open
+  const [countdown, setCountdown] = useState(getTimeUntilFullRegOpens());
+
+  // Update countdown every second
+  useEffect(() => {
+    if (isFullRegistrationOpen()) return; // Don't run timer if already open
+
+    const timer = setInterval(() => {
+      const newCountdown = getTimeUntilFullRegOpens();
+      setCountdown(newCountdown);
+      if (newCountdown.open) {
+        clearInterval(timer);
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // Registration Not Yet Open View - Show before Feb 9, 2026
+  if (!isFullRegistrationOpen()) {
+    return (
+      <div className="flex min-h-screen bg-white">
+        {/* LEFT SIDE: Branding */}
+        <div className="hidden lg:flex lg:w-5/12 bg-slate-900 relative overflow-hidden flex-col justify-center p-12 text-white">
+          <div className="absolute top-0 left-0 w-full h-full opacity-20 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
+          <div className="absolute -top-24 -left-24 w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
+          <div className="absolute top-1/2 -right-24 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
+
+          <div className="relative z-10 max-w-lg mx-auto space-y-16">
+            <div className="space-y-4">
+              <h1 className="text-4xl md:text-5xl font-bold leading-tight">
+                Empower Students. Verify Real Skills.
+              </h1>
+              <p className="text-lg text-slate-300 leading-relaxed">
+                Guide students and verify their skills for better opportunities.
+              </p>
+            </div>
+
+            <div className="space-y-5">
+              <div className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10">
+                <div className="p-2 rounded-lg bg-blue-500/20 text-blue-300">
+                  <Award className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg">Showcase verified skills</h3>
+                  <p className="text-slate-400 text-sm">Display your authenticated credentials to stand out.</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10">
+                <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-300">
+                  <Share2 className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg">Share with recruiters worldwide</h3>
+                  <p className="text-slate-400 text-sm">Connect with employers across the globe instantly.</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10">
+                <div className="p-2 rounded-lg bg-purple-500/20 text-purple-300">
+                  <TrendingUp className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg">Track employability score</h3>
+                  <p className="text-slate-400 text-sm">Monitor and improve your career readiness metrics.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT SIDE: Coming Soon Message */}
+        <div className="flex-1 flex flex-col justify-center items-center px-4 sm:px-6 lg:px-20 xl:px-24 py-12">
+          <div className="w-full max-w-lg space-y-8 text-center">
+            {/* Mobile Logo */}
+            <div className="lg:hidden flex justify-center mb-8">
+              <div className="bg-blue-600 p-2 rounded-xl shadow-lg">
+                <Globe className="w-6 h-6 text-white" />
+              </div>
+            </div>
+
+            {/* Icon */}
+            <div className="flex justify-center">
+              <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/30">
+                <Clock className="w-10 h-10 text-white" />
+              </div>
+            </div>
+
+            {/* Title */}
+            <div className="space-y-2">
+              <h2 className="text-3xl font-bold tracking-tight text-gray-900">Registration Opens Soon</h2>
+              <p className="text-gray-500">
+                Full registration will be available on {formatRegistrationDate(FULL_REGISTRATION_START_DATE)}
+              </p>
+            </div>
+
+            {/* Countdown Timer */}
+            <div className="grid grid-cols-4 gap-4 py-6">
+              <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                <p className="text-3xl font-bold text-blue-600">{countdown.days}</p>
+                <p className="text-sm text-gray-500 mt-1">Days</p>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                <p className="text-3xl font-bold text-blue-600">{countdown.hours}</p>
+                <p className="text-sm text-gray-500 mt-1">Hours</p>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                <p className="text-3xl font-bold text-blue-600">{countdown.minutes}</p>
+                <p className="text-sm text-gray-500 mt-1">Minutes</p>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                <p className="text-3xl font-bold text-blue-600">{countdown.seconds}</p>
+                <p className="text-sm text-gray-500 mt-1">Seconds</p>
+              </div>
+            </div>
+
+            {/* Pre-registration CTA */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
+              <p className="text-gray-700 font-medium mb-3">
+                Want early access?
+              </p>
+              <p className="text-sm text-gray-600 mb-4">
+                Pre-register now to secure your spot and get notified when full registration opens!
+              </p>
+              <Link
+                to="/register"
+                className="inline-flex items-center justify-center gap-2 w-full py-4 px-6 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all active:scale-[0.98]"
+              >
+                Pre-Register Now
+                <ArrowRight className="w-5 h-5" />
+              </Link>
+            </div>
+
+            {/* Login Link */}
+            <p className="text-sm text-gray-600">
+              Already have an account? <Link to="/login" className="font-semibold text-blue-600 hover:text-blue-700 hover:underline">Sign in</Link>
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-white">
@@ -619,7 +771,7 @@ const UnifiedSignup = () => {
                         <span className="text-gray-700">{selectedCountry.dialCode}</span>
                         <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${countryCodeDropdownOpen ? 'rotate-180' : ''}`} />
                       </button>
-                      
+
                       {/* Dropdown Menu */}
                       {countryCodeDropdownOpen && (
                         <div className="absolute top-full left-0 mt-1 w-64 max-h-72 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-xl z-50 py-1">
@@ -668,9 +820,9 @@ const UnifiedSignup = () => {
                         {state.verifyingOtp ? '...' : 'Verify'}
                       </button>
                     </div>
-                    <button 
-                      type="button" 
-                      onClick={() => setState(prev => ({ ...prev, otpSent: false, otp: '' }))} 
+                    <button
+                      type="button"
+                      onClick={() => setState(prev => ({ ...prev, otpSent: false, otp: '' }))}
                       className="mt-2 text-sm text-gray-500 hover:text-gray-700"
                     >
                       Skip verification

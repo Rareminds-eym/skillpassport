@@ -46,49 +46,49 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
 // Import modular handlers
 import {
-    handleCancelAddon,
-    handleCheckAddonAccess,
-    handleCreateAddonOrder,
-    handleCreateBundleOrder,
-    handleGetAddonCatalog,
-    handleGetUserEntitlements,
-    handleVerifyAddonPayment,
-    handleVerifyBundlePayment
+  handleCancelAddon,
+  handleCheckAddonAccess,
+  handleCreateAddonOrder,
+  handleCreateBundleOrder,
+  handleGetAddonCatalog,
+  handleGetUserEntitlements,
+  handleVerifyAddonPayment,
+  handleVerifyBundlePayment
 } from './handlers/addons';
 import {
-    handleExpireEntitlements,
-    handleProcessAutoRenewals,
-    handleProcessEntitlementLifecycle,
-    handleSendRenewalReminders
+  handleExpireEntitlements,
+  handleProcessAutoRenewals,
+  handleProcessEntitlementLifecycle,
+  handleSendRenewalReminders
 } from './handlers/entitlementLifecycle';
 import {
-    handleAcceptInvitation,
-    handleAssignLicense,
-    handleBulkAssignLicenses,
-    handleBulkInviteMembers,
-    handleCalculateOrgPricing,
-    handleCalculateSeatAdditionCost,
-    handleCancelInvitation,
-    handleConfigureAutoAssignment,
-    handleCreateLicensePool,
-    handleDownloadInvoice,
-    // Billing handlers
-    handleGetBillingDashboard,
-    handleGetCostProjection,
-    handleGetInvitations,
-    handleGetInvitationStats,
-    handleGetInvoiceHistory,
-    handleGetLicensePools,
-    handleGetOrgSubscriptions,
-    handleGetUserAssignments,
-    // Invitation handlers
-    handleInviteMember,
-    handlePurchaseOrgSubscription,
-    handleResendInvitation,
-    handleTransferLicense,
-    handleUnassignLicense,
-    handleUpdatePoolAllocation,
-    handleUpdateSeatCount
+  handleAcceptInvitation,
+  handleAssignLicense,
+  handleBulkAssignLicenses,
+  handleBulkInviteMembers,
+  handleCalculateOrgPricing,
+  handleCalculateSeatAdditionCost,
+  handleCancelInvitation,
+  handleConfigureAutoAssignment,
+  handleCreateLicensePool,
+  handleDownloadInvoice,
+  // Billing handlers
+  handleGetBillingDashboard,
+  handleGetCostProjection,
+  handleGetInvitations,
+  handleGetInvitationStats,
+  handleGetInvoiceHistory,
+  handleGetLicensePools,
+  handleGetOrgSubscriptions,
+  handleGetUserAssignments,
+  // Invitation handlers
+  handleInviteMember,
+  handlePurchaseOrgSubscription,
+  handleResendInvitation,
+  handleTransferLicense,
+  handleUnassignLicense,
+  handleUpdatePoolAllocation,
+  handleUpdateSeatCount
 } from './handlers/organization';
 import { handleGetSubscriptionFeatures, handleGetSubscriptionPlan, handleGetSubscriptionPlans } from './handlers/plans';
 
@@ -184,7 +184,7 @@ async function authenticateUser(request: Request, env: Env): Promise<{ user: any
   const token = authHeader.replace('Bearer ', '');
   const supabaseUrl = getSupabaseUrl(env);
   const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
-  
+
   const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
   if (error || !user) return null;
 
@@ -213,10 +213,10 @@ function isProductionRequest(request: Request): boolean {
  */
 function getRazorpayCredentialsForRequest(request: Request, env: Env): { keyId: string; keySecret: string; isProduction: boolean } {
   const isProduction = isProductionRequest(request);
-  
+
   let keyId: string;
   let keySecret: string;
-  
+
   if (isProduction) {
     // Production: Use LIVE credentials
     keyId = getRazorpayKeyId(env);
@@ -228,11 +228,11 @@ function getRazorpayCredentialsForRequest(request: Request, env: Env): { keyId: 
     keySecret = env.TEST_RAZORPAY_KEY_SECRET || env.RAZORPAY_KEY_SECRET;
     console.log('[RAZORPAY] Using TEST credentials for development');
   }
-  
+
   if (!keySecret) {
     throw new Error('RAZORPAY_KEY_SECRET is not configured');
   }
-  
+
   return { keyId, keySecret, isProduction };
 }
 
@@ -301,7 +301,7 @@ async function sendEmailViaWorker(
   console.log(`[EMAIL] Starting email send to: ${to}`);
   console.log(`[EMAIL] Subject: ${subject}`);
   console.log(`[EMAIL] From: ${fromName} <${from}>`);
-  
+
   try {
     const requestBody = JSON.stringify({
       to,
@@ -310,11 +310,11 @@ async function sendEmailViaWorker(
       from,
       fromName,
     });
-    
+
     console.log(`[EMAIL] Request body length: ${requestBody.length} chars`);
-    
+
     let response: Response;
-    
+
     // Use Service Binding if available (more reliable for worker-to-worker)
     if (env.EMAIL_SERVICE) {
       console.log(`[EMAIL] Using Service Binding to email-api`);
@@ -338,7 +338,7 @@ async function sendEmailViaWorker(
     }
 
     console.log(`[EMAIL] Response status: ${response.status}`);
-    
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`[EMAIL] Failed with status ${response.status}: ${errorText}`);
@@ -380,20 +380,20 @@ async function sendPaymentConfirmationEmail(
   }
 
   const { paymentId, orderId, amount, planName, billingCycle, subscriptionEndDate, receiptUrl } = paymentDetails;
-  
+
   console.log(`[EMAIL] receiptUrl received: ${receiptUrl || 'NOT PROVIDED'}`);
   console.log(`[EMAIL] Will include receipt button: ${receiptUrl ? 'YES' : 'NO'}`);
-  
-  const formatAmount = (a: number) => new Intl.NumberFormat('en-IN', { 
-    style: 'currency', 
-    currency: 'INR', 
-    minimumFractionDigits: 0 
+
+  const formatAmount = (a: number) => new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: 0
   }).format(a);
 
-  const formatDate = (d: string) => new Date(d).toLocaleDateString('en-US', { 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
+  const formatDate = (d: string) => new Date(d).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
   });
 
   // Receipt download button HTML (only if receiptUrl is provided)
@@ -501,7 +501,7 @@ async function sendPaymentConfirmationEmail(
   if (success) {
     console.log(`Payment confirmation email sent to ${email}`);
   }
-  
+
   return success;
 }
 
@@ -527,10 +527,10 @@ async function generateReceiptPdfBase64(receiptData: {
   paymentDate: string;
 }): Promise<string> {
   const { paymentId, orderId, amount, planName, billingCycle, subscriptionEndDate, userName, userEmail, paymentMethod, paymentDate } = receiptData;
-  
+
   console.log(`[PDF-GEN] ========== STARTING PDF GENERATION ==========`);
   console.log(`[PDF-GEN] Payment ID: ${paymentId}`);
-  
+
   const formatAmount = (a: number) => `Rs. ${a.toLocaleString('en-IN')}`;
 
   try {
@@ -538,34 +538,34 @@ async function generateReceiptPdfBase64(receiptData: {
     console.log(`[PDF-GEN] Step 1: Creating PDF document...`);
     const pdfDoc = await PDFDocument.create();
     console.log(`[PDF-GEN] Step 1: Done`);
-    
+
     // Embed font
     console.log(`[PDF-GEN] Step 2: Embedding font...`);
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
     console.log(`[PDF-GEN] Step 2: Done`);
-    
+
     // Add a page
     console.log(`[PDF-GEN] Step 3: Adding page...`);
     const page = pdfDoc.addPage([595, 842]); // A4
     const { height } = page.getSize();
     console.log(`[PDF-GEN] Step 3: Done`);
-    
+
     // Simple text drawing
     console.log(`[PDF-GEN] Step 4: Drawing text...`);
     let y = height - 50;
-    
+
     // Title
     page.drawText('PAYMENT RECEIPT', { x: 50, y, size: 24, font: boldFont, color: rgb(0.15, 0.39, 0.92) });
     y -= 40;
-    
+
     page.drawText('RareMinds - Skill Passport', { x: 50, y, size: 12, font, color: rgb(0.4, 0.4, 0.4) });
     y -= 50;
-    
+
     // Transaction Details
     page.drawText('Transaction Details', { x: 50, y, size: 14, font: boldFont, color: rgb(0.1, 0.1, 0.1) });
     y -= 25;
-    
+
     page.drawText(`Reference: ${paymentId}`, { x: 50, y, size: 10, font, color: rgb(0.2, 0.2, 0.2) });
     y -= 18;
     page.drawText(`Order ID: ${orderId}`, { x: 50, y, size: 10, font, color: rgb(0.2, 0.2, 0.2) });
@@ -576,13 +576,13 @@ async function generateReceiptPdfBase64(receiptData: {
     y -= 18;
     page.drawText(`Status: Success`, { x: 50, y, size: 10, font, color: rgb(0.13, 0.77, 0.37) });
     y -= 40;
-    
+
     // Amount
     page.drawText('Amount Paid', { x: 50, y, size: 14, font: boldFont, color: rgb(0.1, 0.1, 0.1) });
     y -= 25;
     page.drawText(formatAmount(amount), { x: 50, y, size: 20, font: boldFont, color: rgb(0.15, 0.39, 0.92) });
     y -= 50;
-    
+
     // Customer Details
     page.drawText('Customer Details', { x: 50, y, size: 14, font: boldFont, color: rgb(0.1, 0.1, 0.1) });
     y -= 25;
@@ -590,7 +590,7 @@ async function generateReceiptPdfBase64(receiptData: {
     y -= 18;
     page.drawText(`Email: ${userEmail}`, { x: 50, y, size: 10, font, color: rgb(0.2, 0.2, 0.2) });
     y -= 40;
-    
+
     // Subscription Details
     page.drawText('Subscription Details', { x: 50, y, size: 14, font: boldFont, color: rgb(0.1, 0.1, 0.1) });
     y -= 25;
@@ -600,21 +600,21 @@ async function generateReceiptPdfBase64(receiptData: {
     y -= 18;
     page.drawText(`Valid Until: ${subscriptionEndDate}`, { x: 50, y, size: 10, font, color: rgb(0.2, 0.2, 0.2) });
     y -= 50;
-    
+
     // Footer
     page.drawText('Thank you for your payment!', { x: 50, y, size: 12, font: boldFont, color: rgb(0.15, 0.39, 0.92) });
     y -= 20;
     page.drawText('For support: marketing@rareminds.in', { x: 50, y, size: 9, font, color: rgb(0.5, 0.5, 0.5) });
     y -= 15;
     page.drawText(`Generated: ${new Date().toLocaleString()}`, { x: 50, y, size: 8, font, color: rgb(0.6, 0.6, 0.6) });
-    
+
     console.log(`[PDF-GEN] Step 4: Done`);
-    
+
     // Save PDF
     console.log(`[PDF-GEN] Step 5: Saving PDF...`);
     const pdfBytes = await pdfDoc.save();
     console.log(`[PDF-GEN] Step 5: Done - ${pdfBytes.length} bytes`);
-    
+
     // Convert to base64
     console.log(`[PDF-GEN] Step 6: Converting to base64...`);
     let binary = '';
@@ -623,7 +623,7 @@ async function generateReceiptPdfBase64(receiptData: {
     }
     const base64 = btoa(binary);
     console.log(`[PDF-GEN] Step 6: Done - ${base64.length} chars`);
-    
+
     console.log(`[PDF-GEN] ========== PDF GENERATION SUCCESS ==========`);
     return base64;
   } catch (error) {
@@ -655,7 +655,7 @@ async function uploadReceiptToR2(
   console.log(`[RECEIPT] Filename: ${filename}`);
   console.log(`[RECEIPT] Base64 length: ${pdfBase64.length} chars`);
   console.log(`[RECEIPT] STORAGE_SERVICE binding available: ${!!env.STORAGE_SERVICE}`);
-  
+
   try {
     const requestBody = JSON.stringify({
       pdfBase64,
@@ -664,12 +664,12 @@ async function uploadReceiptToR2(
       userName,
       filename,
     });
-    
+
     console.log(`[RECEIPT] Request body size: ${requestBody.length} bytes`);
-    
+
     let response: Response;
     const startTime = Date.now();
-    
+
     // Use Service Binding if available (required for worker-to-worker communication)
     if (env.STORAGE_SERVICE) {
       console.log(`[RECEIPT] Using Service Binding to storage-api`);
@@ -686,7 +686,7 @@ async function uploadReceiptToR2(
       const uploadEndpoint = `${storageUrl}/upload-payment-receipt`;
       console.log(`[RECEIPT] Using HTTP fetch to: ${uploadEndpoint}`);
       console.warn(`[RECEIPT] WARNING: HTTP fetch may fail with error 1042 for same-account workers`);
-      
+
       response = await fetch(uploadEndpoint, {
         method: 'POST',
         headers: {
@@ -695,7 +695,7 @@ async function uploadReceiptToR2(
         body: requestBody,
       });
     }
-    
+
     const duration = Date.now() - startTime;
     console.log(`[RECEIPT] Response received in ${duration}ms`);
     console.log(`[RECEIPT] Response status: ${response.status} ${response.statusText}`);
@@ -715,9 +715,9 @@ async function uploadReceiptToR2(
       console.error(`[RECEIPT] Failed to parse response JSON: ${parseError}`);
       return { success: false, error: `Invalid JSON response: ${responseText.substring(0, 100)}` };
     }
-    
+
     console.log(`[RECEIPT] Parsed result:`, JSON.stringify(result));
-    
+
     if (result.success && result.fileKey) {
       console.log(`[RECEIPT] ========== RECEIPT UPLOAD SUCCESS ==========`);
       console.log(`[RECEIPT] File Key: ${result.fileKey}`);
@@ -725,7 +725,7 @@ async function uploadReceiptToR2(
     } else {
       console.warn(`[RECEIPT] Upload returned success=${result.success}, fileKey=${result.fileKey}`);
     }
-    
+
     return result;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -753,7 +753,7 @@ async function handleCreateOrder(request: Request, env: Env): Promise<Response> 
   if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
 
   const { user, supabase } = auth;
-  
+
   // Get credentials based on request origin (production vs development)
   const { keyId, keySecret, isProduction } = getRazorpayCredentialsForRequest(request, env);
   console.log(`[CREATE-ORDER] Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
@@ -794,7 +794,7 @@ async function handleCreateOrder(request: Request, env: Env): Promise<Response> 
   // This prevents users from paying when they already have valid subscription access
   const supabaseUrl = getSupabaseUrl(env);
   const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
-  
+
   // Check for active subscriptions
   const { data: existingSubscription, error: subCheckError } = await supabaseAdmin
     .from('subscriptions')
@@ -809,9 +809,9 @@ async function handleCreateOrder(request: Request, env: Env): Promise<Response> 
     const message = existingSubscription.status === 'cancelled'
       ? `You have a cancelled subscription that is still active until ${new Date(existingSubscription.subscription_end_date).toLocaleDateString()}`
       : 'You already have an active subscription';
-    
+
     console.log(`[CREATE-ORDER] Blocked: User ${user.id} already has ${existingSubscription.status} ${existingSubscription.plan_type} subscription`);
-    
+
     return jsonResponse({
       error: message,
       code: 'SUBSCRIPTION_EXISTS',
@@ -866,7 +866,7 @@ async function handleCreateOrder(request: Request, env: Env): Promise<Response> 
   if (!razorpayResponse.ok) {
     const errorText = await razorpayResponse.text();
     console.error('Razorpay API Error:', razorpayResponse.status, errorText);
-    return jsonResponse({ 
+    return jsonResponse({
       error: 'Unable to create payment order',
       razorpay_status: razorpayResponse.status,
       razorpay_error: errorText
@@ -909,7 +909,7 @@ async function handleCreateOrder(request: Request, env: Env): Promise<Response> 
 async function handleCreateOrgOrder(request: Request, env: Env, user: any): Promise<Response> {
   const supabaseUrl = getSupabaseUrl(env);
   const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
-  
+
   // Get credentials based on request origin
   const { keyId, keySecret, isProduction } = getRazorpayCredentialsForRequest(request, env);
   console.log(`[CREATE-ORG-ORDER] Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
@@ -985,7 +985,7 @@ async function handleCreateOrgOrder(request: Request, env: Env, user: any): Prom
   if (!razorpayResponse.ok) {
     const errorText = await razorpayResponse.text();
     console.error('[CREATE-ORG-ORDER] Razorpay API Error:', razorpayResponse.status, errorText);
-    return jsonResponse({ 
+    return jsonResponse({
       error: 'Unable to create payment order',
       razorpay_status: razorpayResponse.status,
       razorpay_error: errorText
@@ -1031,7 +1031,7 @@ async function handleCreateOrgOrder(request: Request, env: Env, user: any): Prom
 async function handleVerifyOrgPayment(request: Request, env: Env, supabase: SupabaseClient, user: any): Promise<Response> {
   const supabaseUrl = getSupabaseUrl(env);
   const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
-  
+
   // Get credentials based on request origin
   const { keyId, keySecret, isProduction } = getRazorpayCredentialsForRequest(request, env);
   console.log(`[VERIFY-ORG-PAYMENT] Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
@@ -1104,7 +1104,7 @@ async function handleVerifyOrgPayment(request: Request, env: Env, supabase: Supa
   }
 
   const paymentDetails = await paymentResponse.json() as any;
-  
+
   if (paymentDetails.status !== 'captured' && paymentDetails.status !== 'authorized') {
     console.error('[VERIFY-ORG-PAYMENT] Payment not completed:', paymentDetails.status);
     return jsonResponse({ error: 'Payment not completed' }, 400);
@@ -1120,7 +1120,7 @@ async function handleVerifyOrgPayment(request: Request, env: Env, supabase: Supa
   // The frontend passes plan codes like 'basic', 'professional', 'enterprise'
   // but the database expects a UUID
   let subscriptionPlanId = purchaseData.planId;
-  
+
   // Check if planId is not a UUID (i.e., it's a plan code)
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (!uuidRegex.test(purchaseData.planId)) {
@@ -1131,12 +1131,12 @@ async function handleVerifyOrgPayment(request: Request, env: Env, supabase: Supa
       .eq('plan_code', purchaseData.planId)
       .eq('is_active', true)
       .single();
-    
+
     if (planError || !planData) {
       console.error('[VERIFY-ORG-PAYMENT] Plan not found:', planError);
       return jsonResponse({ error: `Subscription plan '${purchaseData.planId}' not found` }, 400);
     }
-    
+
     subscriptionPlanId = planData.id;
     console.log(`[VERIFY-ORG-PAYMENT] Found plan UUID: ${subscriptionPlanId}`);
   }
@@ -1249,7 +1249,7 @@ function calculateSubscriptionEndDate(billingCycle: string): string {
 async function handleVerifyPayment(request: Request, env: Env): Promise<Response> {
   const supabaseUrl = getSupabaseUrl(env);
   const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
-  
+
   // Get credentials based on request origin (production vs development)
   const { keyId, keySecret, isProduction } = getRazorpayCredentialsForRequest(request, env);
   console.log(`[VERIFY-PAYMENT] Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
@@ -1361,8 +1361,8 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
     .eq('id', order.user_id)
     .maybeSingle();
 
-  const fullName = userData 
-    ? `${userData.firstName || ''} ${userData.lastName || ''}`.trim() 
+  const fullName = userData
+    ? `${userData.firstName || ''} ${userData.lastName || ''}`.trim()
     : order.user_name || 'User';
   const userEmail = userData?.email || order.user_email || '';
   const userPhone = userData?.phone || null;
@@ -1392,12 +1392,12 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
     // Check if this is the same plan type - if so, treat as renewal/extension
     const isSamePlan = existingActiveSubscription.plan_type?.toLowerCase() === planType?.toLowerCase();
     const renewalTimestamp = new Date().toISOString();
-    
+
     if (isSamePlan) {
       // Same plan - extend the subscription end date and update payment info
       const currentEndDate = new Date(existingActiveSubscription.subscription_end_date);
       const extensionDate = new Date(Math.max(currentEndDate.getTime(), Date.now()));
-      
+
       // Add billing cycle duration to the later of current end date or now
       if (billingCycle.toLowerCase().includes('year')) {
         extensionDate.setFullYear(extensionDate.getFullYear() + 1);
@@ -1468,7 +1468,7 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
       // Different plan type - user is trying to subscribe to a different plan
       // Return existing subscription info without creating duplicate
       console.log(`[VERIFY-PAYMENT] User ${order.user_id} has active ${existingActiveSubscription.plan_type}, tried to get ${planType}`);
-      
+
       return jsonResponse({
         success: true,
         verified: true,
@@ -1492,12 +1492,12 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
   // First try to use plan.id if provided (this is plan_code from frontend), otherwise lookup by plan name
   let planId: string | null = null;
   const planCode = plan?.id; // Frontend sends plan_code as 'id' (e.g., 'basic', 'professional')
-  
+
   if (planCode) {
     // Map frontend plan codes to database plan_codes
     // Frontend uses 'professional', database uses 'pro'
     const dbPlanCode = planCode === 'professional' ? 'pro' : planCode;
-    
+
     // Lookup plan_id from subscription_plans by plan_code
     const { data: planRecord } = await supabaseAdmin
       .from('subscription_plans')
@@ -1506,7 +1506,7 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
       .eq('role_type', 'student')
       .eq('business_type', 'b2c')
       .maybeSingle();
-    
+
     if (planRecord) {
       planId = planRecord.id;
       console.log(`[VERIFY-PAYMENT] Resolved plan_id ${planId} from plan_code "${dbPlanCode}"`);
@@ -1514,7 +1514,7 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
       console.warn(`[VERIFY-PAYMENT] Could not resolve plan_id for plan_code "${dbPlanCode}"`);
     }
   }
-  
+
   // Fallback: lookup by plan name if plan_code lookup failed
   if (!planId && planType) {
     const { data: planRecord } = await supabaseAdmin
@@ -1524,7 +1524,7 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
       .eq('role_type', 'student')
       .eq('business_type', 'b2c')
       .maybeSingle();
-    
+
     if (planRecord) {
       planId = planRecord.id;
       console.log(`[VERIFY-PAYMENT] Resolved plan_id ${planId} from plan_type "${planType}" (fallback)`);
@@ -1618,14 +1618,14 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
   console.log(`[VERIFY-PAYMENT] Subscription ID: ${subscription.id}`);
   console.log(`[VERIFY-PAYMENT] Payment ID: ${razorpay_payment_id}`);
   console.log(`[VERIFY-PAYMENT] User ID: ${order.user_id}`);
-  
+
   try {
-    const formatDate = (d: string) => new Date(d).toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
+    const formatDate = (d: string) => new Date(d).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
     });
-    
+
     console.log(`[VERIFY-PAYMENT] Generating receipt PDF base64...`);
     const receiptPdfBase64 = await generateReceiptPdfBase64({
       paymentId: razorpay_payment_id,
@@ -1640,24 +1640,24 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
       paymentDate: formatDate(now),
     });
     console.log(`[VERIFY-PAYMENT] Receipt PDF base64 generated, length: ${receiptPdfBase64.length}`);
-    
+
     const filename = `Receipt-${razorpay_payment_id.slice(-8)}-${new Date().toISOString().split('T')[0]}.pdf`;
     console.log(`[VERIFY-PAYMENT] Calling uploadReceiptToR2 with filename: ${filename}`);
-    
+
     const uploadResult = await uploadReceiptToR2(env, receiptPdfBase64, razorpay_payment_id, order.user_id, filename, fullName);
     console.log(`[VERIFY-PAYMENT] Upload result:`, JSON.stringify(uploadResult));
-    
+
     if (uploadResult.success && uploadResult.fileKey) {
       receiptUrl = getReceiptDownloadUrl(env, uploadResult.fileKey);
       console.log(`[VERIFY-PAYMENT] Receipt URL generated: ${receiptUrl}`);
-      
+
       // Store receipt URL in subscription record
       console.log(`[VERIFY-PAYMENT] Updating subscription ${subscription.id} with receipt_url...`);
       const { error: updateError } = await supabaseAdmin
         .from('subscriptions')
         .update({ receipt_url: receiptUrl })
         .eq('id', subscription.id);
-      
+
       if (updateError) {
         console.error(`[VERIFY-PAYMENT] Failed to update subscription with receipt_url:`, updateError);
         receiptUploadError = `DB update failed: ${updateError.message}`;
@@ -1728,7 +1728,7 @@ async function handleWebhook(request: Request, env: Env): Promise<Response> {
   }
 
   const rawBody = await request.text();
-  
+
   // Only verify signature if webhook secret is configured
   if (env.RAZORPAY_WEBHOOK_SECRET) {
     const isValid = await verifyWebhookSignature(rawBody, signature, env.RAZORPAY_WEBHOOK_SECRET);
@@ -2184,7 +2184,7 @@ interface SubscriptionAccessResponse {
 async function handleCheckSubscriptionAccess(request: Request, env: Env): Promise<Response> {
   const auth = await authenticateUser(request, env);
   if (!auth) {
-    return jsonResponse({ 
+    return jsonResponse({
       success: false,
       hasAccess: false,
       accessReason: 'no_subscription',
@@ -2231,28 +2231,28 @@ async function handleCheckSubscriptionAccess(request: Request, env: Env): Promis
     .eq('status', 'active')
     .maybeSingle();
 
-  console.log(`[CheckAccess] Active license check result:`, { 
-    found: !!licenseAssignment, 
+  console.log(`[CheckAccess] Active license check result:`, {
+    found: !!licenseAssignment,
     error: licenseError?.message,
-    status: licenseAssignment?.status 
+    status: licenseAssignment?.status
   });
 
   if (!licenseError && licenseAssignment) {
     const orgSub = licenseAssignment.organization_subscriptions as any;
-    
+
     // Check if organization subscription is active and not expired
     if (orgSub && orgSub.status === 'active') {
       const orgEndDate = new Date(orgSub.end_date);
-      
+
       if (orgEndDate > now) {
         // Check if license assignment has its own expiry
         const licenseExpiry = licenseAssignment.expires_at ? new Date(licenseAssignment.expires_at) : null;
         const effectiveEndDate = licenseExpiry && licenseExpiry < orgEndDate ? licenseExpiry : orgEndDate;
-        
+
         if (effectiveEndDate > now) {
           const daysUntilExpiry = Math.ceil((effectiveEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
           const showExpiringWarning = daysUntilExpiry <= 7;
-          
+
           // Build a subscription-like object for the response
           const orgSubscriptionInfo = {
             id: orgSub.id,
@@ -2275,7 +2275,7 @@ async function handleCheckSubscriptionAccess(request: Request, env: Env): Promis
             subscription: orgSubscriptionInfo,
             showWarning: showExpiringWarning,
             warningType: showExpiringWarning ? 'expiring_soon' : undefined,
-            warningMessage: showExpiringWarning 
+            warningMessage: showExpiringWarning
               ? `Your organization license expires in ${daysUntilExpiry} day${daysUntilExpiry !== 1 ? 's' : ''}`
               : undefined,
             daysUntilExpiry,
@@ -2312,10 +2312,10 @@ async function handleCheckSubscriptionAccess(request: Request, env: Env): Promis
     .limit(1)
     .maybeSingle();
 
-  console.log(`[CheckAccess] Revoked license check result:`, { 
-    found: !!revokedLicense, 
+  console.log(`[CheckAccess] Revoked license check result:`, {
+    found: !!revokedLicense,
     error: revokedError?.message,
-    revokedAt: revokedLicense?.revoked_at 
+    revokedAt: revokedLicense?.revoked_at
   });
 
   // ============================================================================
@@ -2339,7 +2339,7 @@ async function handleCheckSubscriptionAccess(request: Request, env: Env): Promis
 
   if (error) {
     console.error('Subscription access check error:', error);
-    return jsonResponse({ 
+    return jsonResponse({
       success: false,
       hasAccess: false,
       accessReason: 'no_subscription',
@@ -2431,7 +2431,7 @@ async function handleCheckSubscriptionAccess(request: Request, env: Env): Promis
   // Case 3: Active and not expired
   if (endDate > now) {
     const showExpiringWarning = daysUntilExpiry <= 7;
-    
+
     const response: SubscriptionAccessResponse = {
       success: true,
       hasAccess: true,
@@ -2439,7 +2439,7 @@ async function handleCheckSubscriptionAccess(request: Request, env: Env): Promis
       subscription,
       showWarning: showExpiringWarning,
       warningType: showExpiringWarning ? 'expiring_soon' : undefined,
-      warningMessage: showExpiringWarning 
+      warningMessage: showExpiringWarning
         ? `Your subscription expires in ${daysUntilExpiry} day${daysUntilExpiry !== 1 ? 's' : ''}`
         : undefined,
       daysUntilExpiry,
@@ -2452,7 +2452,7 @@ async function handleCheckSubscriptionAccess(request: Request, env: Env): Promis
   if (daysUntilExpiry >= -GRACE_PERIOD_DAYS) {
     const daysIntoGrace = Math.abs(daysUntilExpiry);
     const daysLeftInGrace = GRACE_PERIOD_DAYS - daysIntoGrace;
-    
+
     const response: SubscriptionAccessResponse = {
       success: true,
       hasAccess: true,
@@ -2493,14 +2493,16 @@ async function handleCreateEventOrder(request: Request, env: Env): Promise<Respo
     planName?: string;
     userEmail?: string;
     userName?: string;
+    userPhone?: string;
+    campaign?: string;
     origin?: string;
   };
 
-  const { amount: originalAmount, currency, registrationId, planName, userEmail, userName, origin: bodyOrigin } = body;
+  const { amount: originalAmount, currency, registrationId, planName, userEmail, userName, userPhone, campaign, origin: bodyOrigin } = body;
 
-  // Validate required fields
-  if (!originalAmount || !currency || !registrationId || !userEmail) {
-    return jsonResponse({ error: 'Missing required fields' }, 400);
+  // Validate required fields (registrationId is now optional)
+  if (!originalAmount || !currency || !userEmail) {
+    return jsonResponse({ error: 'Missing required fields: amount, currency, userEmail' }, 400);
   }
 
   if (originalAmount <= 0) {
@@ -2535,9 +2537,12 @@ async function handleCreateEventOrder(request: Request, env: Env): Promise<Respo
   if (isProductionSite) {
     keyId = getRazorpayKeyId(env);
     keySecret = env.RAZORPAY_KEY_SECRET;
+    console.log('[CREATE-EVENT] Using PRODUCTION credentials');
   } else {
     keyId = env.TEST_RAZORPAY_KEY_ID || getRazorpayKeyId(env);
     keySecret = env.TEST_RAZORPAY_KEY_SECRET || env.RAZORPAY_KEY_SECRET;
+    console.log('[CREATE-EVENT] Using TEST credentials');
+
     // Cap amount at test limit for non-production sites
     if (amount > TEST_MODE_MAX_AMOUNT) {
       console.log(`TEST MODE: Capping amount from ₹${amount / 100} to ₹${TEST_MODE_MAX_AMOUNT / 100}`);
@@ -2545,26 +2550,95 @@ async function handleCreateEventOrder(request: Request, env: Env): Promise<Respo
     }
   }
 
+  console.log(`[CREATE-EVENT] Key ID starts with: ${keyId?.substring(0, 8)}...`);
+  console.log(`[CREATE-EVENT] Key Secret exists: ${!!keySecret}`);
+  console.log(`[CREATE-EVENT] Key Secret length: ${keySecret?.length}`);
+  console.log(`[CREATE-EVENT] Amount: ${amount}`);
+
   if (!keyId || !keySecret) {
+    console.error('[CREATE-EVENT] Missing payment configuration');
     return jsonResponse({ error: 'Payment service not configured' }, 500);
   }
 
   const supabaseUrl = getSupabaseUrl(env);
   const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
 
-  // Verify registration exists
-  const { data: registration, error: regError } = await supabaseAdmin
-    .from('event_registrations')
-    .select('id, payment_status')
-    .eq('id', registrationId)
-    .maybeSingle();
+  // Determine table name based on planName
+  // Pre-Registration plans use 'pre_registrations' table
+  let tableName = 'event_registrations';
+  if (planName && planName.toLowerCase().startsWith('pre-registration')) {
+    tableName = 'pre_registrations';
+  }
 
-  if (regError || !registration) {
-    return jsonResponse({ error: 'Registration not found' }, 404);
+  let finalRegistrationId = registrationId;
+  let registration: any;
+
+  // If no registrationId provided, check for existing or create new
+  if (!finalRegistrationId) {
+    // Check for existing registration by email
+    const { data: existingReg } = await supabaseAdmin
+      .from(tableName)
+      .select('id, payment_status, payment_history')
+      .eq('email', userEmail.toLowerCase())
+      .maybeSingle();
+
+    if (existingReg) {
+      if (existingReg.payment_status === 'completed') {
+        return jsonResponse({ error: 'You have already registered with this email.' }, 400);
+      }
+      // Reuse existing pending registration
+      finalRegistrationId = existingReg.id;
+      registration = existingReg;
+      console.log(`[CREATE-EVENT] Reusing existing registration: ${finalRegistrationId}`);
+    } else {
+      // Create new registration
+      const registrationData: any = {
+        full_name: userName || '',
+        email: userEmail.toLowerCase(),
+        phone: userPhone || '',
+        amount: amountInRupees,
+        campaign: campaign || 'direct',
+        role_type: 'pre_registration',
+        payment_status: 'pending',
+      };
+
+      const { data: newReg, error: insertError } = await supabaseAdmin
+        .from(tableName)
+        .insert(registrationData)
+        .select('id, payment_status, payment_history')
+        .single();
+
+      if (insertError) {
+        console.error('[CREATE-EVENT] Failed to create registration:', insertError);
+        return jsonResponse({ error: 'Failed to create registration' }, 500);
+      }
+
+      finalRegistrationId = newReg.id;
+      registration = newReg;
+      console.log(`[CREATE-EVENT] Created new registration: ${finalRegistrationId}`);
+    }
+  } else {
+    // Verify provided registration exists
+    const { data: existingReg, error: regError } = await supabaseAdmin
+      .from(tableName)
+      .select('id, payment_status, payment_history')
+      .eq('id', finalRegistrationId!)
+      .maybeSingle();
+
+    if (regError || !existingReg) {
+      return jsonResponse({ error: 'Registration not found' }, 404);
+    }
+
+    registration = existingReg;
+  }
+
+  // At this point, finalRegistrationId is guaranteed to be defined
+  if (!finalRegistrationId) {
+    return jsonResponse({ error: 'Failed to determine registration ID' }, 500);
   }
 
   // Create Razorpay order
-  const receipt = `event_${Date.now()}_${registrationId.substring(0, 8)}`;
+  const receipt = `event_${Date.now()}_${finalRegistrationId.substring(0, 8)}`;
   const razorpayAuth = btoa(`${keyId}:${keySecret}`);
 
   const razorpayResponse = await fetch('https://api.razorpay.com/v1/orders', {
@@ -2578,7 +2652,7 @@ async function handleCreateEventOrder(request: Request, env: Env): Promise<Respo
       currency,
       receipt,
       notes: {
-        registration_id: registrationId,
+        registration_id: finalRegistrationId,
         plan_name: planName,
         user_email: userEmail,
         user_name: userName,
@@ -2589,26 +2663,39 @@ async function handleCreateEventOrder(request: Request, env: Env): Promise<Respo
   if (!razorpayResponse.ok) {
     const errorData = await razorpayResponse.text();
     console.error('Razorpay API Error:', razorpayResponse.status, errorData);
-    
+
     let errorMessage = 'Unable to create payment order. Please try again.';
     try {
       const parsedError = JSON.parse(errorData);
       if (parsedError.error?.description) {
         errorMessage = parsedError.error.description;
       }
-    } catch {}
-    
+    } catch { }
+
     return jsonResponse({ error: errorMessage }, 500);
   }
 
   const order = await razorpayResponse.json() as any;
-  console.log(`Event order created: ${order.id} for registration: ${registrationId}`);
+  console.log(`Event order created: ${order.id} for registration: ${finalRegistrationId}`);
 
-  // Update registration with order ID
+  // Add payment attempt to history
+  const paymentHistory = (registration.payment_history as any[]) || [];
+  paymentHistory.push({
+    order_id: order.id,
+    payment_id: null,
+    status: 'pending',
+    created_at: new Date().toISOString(),
+    error: null
+  });
+
+  // Update registration with order ID and payment history
   await supabaseAdmin
-    .from('event_registrations')
-    .update({ razorpay_order_id: order.id })
-    .eq('id', registrationId);
+    .from(tableName)
+    .update({ 
+      razorpay_order_id: order.id,
+      payment_history: paymentHistory
+    })
+    .eq('id', finalRegistrationId);
 
   return jsonResponse({
     success: true,
@@ -2617,6 +2704,98 @@ async function handleCreateEventOrder(request: Request, env: Env): Promise<Respo
     currency: order.currency,
     receipt: order.receipt,
     key: keyId,
+    registrationId: finalRegistrationId, // Return registration ID to frontend
+  });
+}
+
+// ==================== UPDATE EVENT PAYMENT STATUS ====================
+
+async function handleUpdateEventPaymentStatus(request: Request, env: Env): Promise<Response> {
+  const body = await request.json() as {
+    registrationId?: string;
+    orderId?: string;
+    paymentId?: string;
+    status?: 'completed' | 'failed';
+    error?: string;
+    planName?: string;
+  };
+
+  const { registrationId, orderId, paymentId, status, error: errorMessage, planName } = body;
+
+  // Validate required fields
+  if (!registrationId || !orderId || !status) {
+    return jsonResponse({ error: 'Missing required fields: registrationId, orderId, status' }, 400);
+  }
+
+  if (!['completed', 'failed'].includes(status)) {
+    return jsonResponse({ error: 'Status must be either "completed" or "failed"' }, 400);
+  }
+
+  const supabaseUrl = getSupabaseUrl(env);
+  const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
+
+  // Determine table name based on planName
+  let tableName = 'event_registrations';
+  if (planName && planName.toLowerCase().startsWith('pre-registration')) {
+    tableName = 'pre_registrations';
+  }
+
+  // Get current registration and payment history
+  const { data: registration, error: regError } = await supabaseAdmin
+    .from(tableName)
+    .select('id, payment_history, razorpay_order_id')
+    .eq('id', registrationId)
+    .maybeSingle();
+
+  if (regError || !registration) {
+    return jsonResponse({ error: 'Registration not found' }, 404);
+  }
+
+  // Update payment history
+  const paymentHistory = (registration.payment_history as any[]) || [];
+  const updatedHistory = paymentHistory.map(attempt => {
+    if (attempt.order_id === orderId) {
+      return {
+        ...attempt,
+        payment_id: paymentId || attempt.payment_id,
+        status: status,
+        completed_at: new Date().toISOString(),
+        error: errorMessage || null
+      };
+    }
+    return attempt;
+  });
+
+  // Prepare update data
+  const updateData: any = {
+    payment_history: updatedHistory
+  };
+
+  if (status === 'completed') {
+    updateData.payment_status = 'completed';
+    updateData.razorpay_payment_id = paymentId;
+  } else if (status === 'failed') {
+    updateData.payment_status = 'failed';
+  }
+
+  // Update registration
+  const { error: updateError } = await supabaseAdmin
+    .from(tableName)
+    .update(updateData)
+    .eq('id', registrationId);
+
+  if (updateError) {
+    console.error('[UPDATE-EVENT-PAYMENT] Update error:', updateError);
+    return jsonResponse({ error: 'Failed to update payment status' }, 500);
+  }
+
+  console.log(`[UPDATE-EVENT-PAYMENT] Updated registration ${registrationId} to ${status}`);
+
+  return jsonResponse({
+    success: true,
+    status: status,
+    registration_id: registrationId,
+    order_id: orderId
   });
 }
 
@@ -2662,11 +2841,13 @@ export default {
           return await handleCreateOrder(request, env);
         case '/create-event-order':
           return await handleCreateEventOrder(request, env);
+        case '/update-event-payment-status':
+          return await handleUpdateEventPaymentStatus(request, env);
         case '/verify-payment':
           return await handleVerifyPayment(request, env);
         case '/webhook':
           return await handleWebhook(request, env);
-        
+
         // Subscription management endpoints
         case '/get-subscription':
           return await handleGetSubscription(request, env);
@@ -2680,11 +2861,11 @@ export default {
           return await handlePauseSubscription(request, env);
         case '/resume-subscription':
           return await handleResumeSubscription(request, env);
-        
+
         // Cron/Admin endpoints
         case '/expire-subscriptions':
           return await handleExpireSubscriptions(env);
-        
+
         // Subscription Plans endpoints (public)
         case '/subscription-plans':
           return await handleGetSubscriptionPlans(request, env);
@@ -2692,7 +2873,7 @@ export default {
           return await handleGetSubscriptionPlan(request, env);
         case '/subscription-features':
           return await handleGetSubscriptionFeatures(request, env);
-        
+
         // Add-On endpoints
         case '/addon-catalog':
           return await handleGetAddonCatalog(request, env);
@@ -2710,7 +2891,7 @@ export default {
           return await handleCancelAddon(request, env);
         case '/check-addon-access':
           return await handleCheckAddonAccess(request, env);
-        
+
         // Organization Subscription endpoints
         // Organization Order endpoints (Razorpay integration)
         case '/create-org-order':
@@ -2720,7 +2901,7 @@ export default {
             return await handleCreateOrgOrder(request, env, auth.user);
           }
           break;
-        
+
         case '/verify-org-payment':
           if (request.method === 'POST') {
             const auth = await authenticateUser(request, env);
@@ -2728,7 +2909,7 @@ export default {
             return await handleVerifyOrgPayment(request, env, auth.supabase, auth.user);
           }
           break;
-        
+
         case '/org-subscriptions/calculate-pricing':
           if (request.method === 'POST') {
             const auth = await authenticateUser(request, env);
@@ -2736,7 +2917,7 @@ export default {
             return await handleCalculateOrgPricing(request, env, auth.supabase, auth.user.id);
           }
           break;
-        
+
         case '/org-subscriptions/purchase':
           if (request.method === 'POST') {
             const auth = await authenticateUser(request, env);
@@ -2744,7 +2925,7 @@ export default {
             return await handlePurchaseOrgSubscription(request, env, auth.supabase, auth.user.id);
           }
           break;
-        
+
         case '/org-subscriptions':
           if (request.method === 'GET') {
             const auth = await authenticateUser(request, env);
@@ -2752,29 +2933,29 @@ export default {
             return await handleGetOrgSubscriptions(request, env, auth.supabase, auth.user.id);
           }
           break;
-        
+
         // License Pool endpoints
         case '/license-pools':
           const authPool = await authenticateUser(request, env);
           if (!authPool) return jsonResponse({ error: 'Unauthorized' }, 401);
-          
+
           if (request.method === 'POST') {
             return await handleCreateLicensePool(request, env, authPool.supabase, authPool.user.id);
           } else if (request.method === 'GET') {
             return await handleGetLicensePools(request, env, authPool.supabase, authPool.user.id);
           }
           break;
-        
+
         // License Assignment endpoints
         case '/license-assignments':
           const authAssign = await authenticateUser(request, env);
           if (!authAssign) return jsonResponse({ error: 'Unauthorized' }, 401);
-          
+
           if (request.method === 'POST') {
             return await handleAssignLicense(request, env, authAssign.supabase, authAssign.user.id);
           }
           break;
-        
+
         case '/license-assignments/bulk':
           if (request.method === 'POST') {
             const auth = await authenticateUser(request, env);
@@ -2782,7 +2963,7 @@ export default {
             return await handleBulkAssignLicenses(request, env, auth.supabase, auth.user.id);
           }
           break;
-        
+
         case '/license-assignments/transfer':
           if (request.method === 'POST') {
             const auth = await authenticateUser(request, env);
@@ -2790,7 +2971,7 @@ export default {
             return await handleTransferLicense(request, env, auth.supabase, auth.user.id);
           }
           break;
-        
+
         // Organization Billing endpoints
         case '/org-billing/dashboard':
           if (request.method === 'GET') {
@@ -2799,7 +2980,7 @@ export default {
             return await handleGetBillingDashboard(request, env, auth.supabase, auth.user.id);
           }
           break;
-        
+
         case '/org-billing/invoices':
           if (request.method === 'GET') {
             const auth = await authenticateUser(request, env);
@@ -2807,7 +2988,7 @@ export default {
             return await handleGetInvoiceHistory(request, env, auth.supabase, auth.user.id);
           }
           break;
-        
+
         case '/org-billing/cost-projection':
           if (request.method === 'GET') {
             const auth = await authenticateUser(request, env);
@@ -2815,7 +2996,7 @@ export default {
             return await handleGetCostProjection(request, env, auth.supabase, auth.user.id);
           }
           break;
-        
+
         case '/org-billing/calculate-seat-addition':
           if (request.method === 'POST') {
             const auth = await authenticateUser(request, env);
@@ -2823,19 +3004,19 @@ export default {
             return await handleCalculateSeatAdditionCost(request, env, auth.supabase, auth.user.id);
           }
           break;
-        
+
         // Organization Invitation endpoints
         case '/org-invitations':
           const authInv = await authenticateUser(request, env);
           if (!authInv) return jsonResponse({ error: 'Unauthorized' }, 401);
-          
+
           if (request.method === 'POST') {
             return await handleInviteMember(request, env, authInv.supabase, authInv.user.id);
           } else if (request.method === 'GET') {
             return await handleGetInvitations(request, env, authInv.supabase, authInv.user.id);
           }
           break;
-        
+
         case '/org-invitations/bulk':
           if (request.method === 'POST') {
             const auth = await authenticateUser(request, env);
@@ -2843,7 +3024,7 @@ export default {
             return await handleBulkInviteMembers(request, env, auth.supabase, auth.user.id);
           }
           break;
-        
+
         case '/org-invitations/accept':
           if (request.method === 'POST') {
             const auth = await authenticateUser(request, env);
@@ -2851,7 +3032,7 @@ export default {
             return await handleAcceptInvitation(request, env, auth.supabase, auth.user.id);
           }
           break;
-        
+
         case '/org-invitations/stats':
           if (request.method === 'GET') {
             const auth = await authenticateUser(request, env);
@@ -2859,7 +3040,7 @@ export default {
             return await handleGetInvitationStats(request, env, auth.supabase, auth.user.id);
           }
           break;
-        
+
         // Entitlement lifecycle endpoints (for cron jobs)
         case '/process-entitlement-lifecycle':
           return await handleProcessEntitlementLifecycle(request, env);
@@ -2869,7 +3050,7 @@ export default {
           return await handleSendRenewalReminders(request, env);
         case '/process-auto-renewals':
           return await handleProcessAutoRenewals(request, env);
-        
+
         // Health check
         case '/health':
           const configStatus = {
@@ -2880,13 +3061,13 @@ export default {
             razorpay_key_secret: !!env.RAZORPAY_KEY_SECRET,
           };
           const allConfigured = Object.values(configStatus).every(Boolean);
-          return jsonResponse({ 
+          return jsonResponse({
             status: allConfigured ? 'ok' : 'misconfigured',
             timestamp: new Date().toISOString(),
             config: configStatus,
             endpoints: [
               'POST /create-order',
-              'POST /create-event-order', 
+              'POST /create-event-order',
               'POST /verify-payment',
               'POST /webhook',
               'GET  /get-subscription',
@@ -2949,20 +3130,20 @@ export default {
             email_note: 'Email sending uses Cloudflare Worker (email-api) with SMTP.',
             storage_api_url: env.STORAGE_API_URL || STORAGE_API_URL,
           });
-        
+
         // Debug endpoint to test storage connection
         case '/debug-storage':
           const storageUrl = env.STORAGE_API_URL || STORAGE_API_URL;
           console.log(`[DEBUG-STORAGE] Testing storage API`);
           console.log(`[DEBUG-STORAGE] STORAGE_SERVICE binding available: ${!!env.STORAGE_SERVICE}`);
-          
+
           try {
             let healthResponse: Response;
             let uploadResponse: Response;
-            
+
             // Test the storage API health endpoint
             console.log(`[DEBUG-STORAGE] Fetching health endpoint...`);
-            
+
             if (env.STORAGE_SERVICE) {
               console.log(`[DEBUG-STORAGE] Using Service Binding`);
               healthResponse = await env.STORAGE_SERVICE.fetch('https://storage-api/health');
@@ -2972,25 +3153,25 @@ export default {
                 headers: { 'User-Agent': 'payments-api-worker' },
               });
             }
-            
+
             console.log(`[DEBUG-STORAGE] Health response status: ${healthResponse.status}`);
             const healthText = await healthResponse.text();
             console.log(`[DEBUG-STORAGE] Health response body: ${healthText}`);
-            
+
             let healthData;
             try {
               healthData = JSON.parse(healthText);
             } catch {
               healthData = { raw: healthText };
             }
-            
+
             // Test a simple upload
             const testBase64 = btoa('Test receipt content for debugging');
             const testPaymentId = `debug_${Date.now()}`;
             const testUserId = 'debug_user';
-            
+
             console.log(`[DEBUG-STORAGE] Attempting test upload...`);
-            
+
             if (env.STORAGE_SERVICE) {
               uploadResponse = await env.STORAGE_SERVICE.fetch('https://storage-api/upload-payment-receipt', {
                 method: 'POST',
@@ -3005,7 +3186,7 @@ export default {
             } else {
               uploadResponse = await fetch(`${storageUrl}/upload-payment-receipt`, {
                 method: 'POST',
-                headers: { 
+                headers: {
                   'Content-Type': 'application/json',
                   'User-Agent': 'payments-api-worker',
                 },
@@ -3017,19 +3198,19 @@ export default {
                 }),
               });
             }
-            
+
             const uploadStatus = uploadResponse.status;
             const uploadText = await uploadResponse.text();
             console.log(`[DEBUG-STORAGE] Upload response status: ${uploadStatus}`);
             console.log(`[DEBUG-STORAGE] Upload response body: ${uploadText}`);
-            
+
             let uploadData;
             try {
               uploadData = JSON.parse(uploadText);
             } catch {
               uploadData = { raw: uploadText };
             }
-            
+
             return jsonResponse({
               storage_service_binding: !!env.STORAGE_SERVICE,
               storage_api_url: storageUrl,
@@ -3055,23 +3236,23 @@ export default {
               default_storage_url: STORAGE_API_URL,
             }, 500);
           }
-        
+
         // Debug endpoint to test Razorpay connectivity
         case '/debug-razorpay':
           try {
             const { keyId, keySecret, isProduction } = getRazorpayCredentialsForRequest(request, env);
             const razorpayAuth = btoa(`${keyId}:${keySecret}`);
-            
+
             // Test Razorpay API by fetching account details
             const testResponse = await fetch('https://api.razorpay.com/v1/payments?count=1', {
               headers: {
                 'Authorization': `Basic ${razorpayAuth}`,
               },
             });
-            
+
             const testStatus = testResponse.status;
             const testBody = await testResponse.text();
-            
+
             return jsonResponse({
               success: testResponse.ok,
               environment: isProduction ? 'PRODUCTION' : 'DEVELOPMENT',
@@ -3086,7 +3267,7 @@ export default {
               error: err instanceof Error ? err.message : String(err),
             }, 500);
           }
-        
+
         default:
           // Handle dynamic routes for organization endpoints
           if (path.startsWith('/org-subscriptions/') && path.includes('/seats')) {
@@ -3097,11 +3278,11 @@ export default {
               return await handleUpdateSeatCount(request, env, auth.supabase, auth.user.id, subscriptionId);
             }
           }
-          
+
           if (path.startsWith('/license-assignments/') && !path.includes('/bulk')) {
             const auth = await authenticateUser(request, env);
             if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
-            
+
             const parts = path.split('/');
             if (parts[2] === 'user' && parts[3]) {
               // GET /license-assignments/user/:userId
@@ -3115,16 +3296,16 @@ export default {
               }
             }
           }
-          
+
           // Handle dynamic routes for invitation endpoints
           if (path.startsWith('/org-invitations/') && !path.includes('/bulk') && !path.includes('/accept') && !path.includes('/stats')) {
             const auth = await authenticateUser(request, env);
             if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
-            
+
             const parts = path.split('/');
             const invitationId = parts[2];
             const action = parts[3];
-            
+
             if (invitationId && action === 'resend') {
               // PUT /org-invitations/:id/resend
               if (request.method === 'PUT') {
@@ -3137,52 +3318,52 @@ export default {
               }
             }
           }
-          
+
           // Handle dynamic routes for license pool endpoints
           if (path.startsWith('/license-pools/') && path.includes('/allocation')) {
             const auth = await authenticateUser(request, env);
             if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
-            
+
             const parts = path.split('/');
             const poolId = parts[2];
-            
+
             // PUT /license-pools/:id/allocation
             if (request.method === 'PUT' && poolId) {
               return await handleUpdatePoolAllocation(request, env, auth.supabase, auth.user.id, poolId);
             }
           }
-          
+
           // Handle dynamic routes for license pool auto-assignment
           if (path.startsWith('/license-pools/') && path.includes('/auto-assignment')) {
             const auth = await authenticateUser(request, env);
             if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
-            
+
             const parts = path.split('/');
             const poolId = parts[2];
-            
+
             // POST /license-pools/:id/auto-assignment
             if (request.method === 'POST' && poolId) {
               return await handleConfigureAutoAssignment(request, env, auth.supabase, auth.user.id, poolId);
             }
           }
-          
+
           // Handle dynamic routes for invoice download
           if (path.startsWith('/org-billing/invoice/') && path.includes('/download')) {
             const auth = await authenticateUser(request, env);
             if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
-            
+
             const parts = path.split('/');
             const invoiceId = parts[3];
-            
+
             // GET /org-billing/invoice/:id/download
             if (request.method === 'GET' && invoiceId) {
               return await handleDownloadInvoice(request, env, auth.supabase, auth.user.id, invoiceId);
             }
           }
-          
+
           return jsonResponse({ error: 'Not found' }, 404);
       }
-      
+
       // If we reach here, the method was not allowed for the matched route
       return jsonResponse({ error: 'Method not allowed' }, 405);
     } catch (error) {
@@ -3194,16 +3375,16 @@ export default {
   // Scheduled handler for cron triggers
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
     console.log('[CRON] Scheduled event triggered at:', new Date().toISOString());
-    
+
     try {
       // Create a mock request for the lifecycle handler
       const request = new Request('https://payments-api/process-entitlement-lifecycle', {
         method: 'POST',
       });
-      
+
       const response = await handleProcessEntitlementLifecycle(request, env);
       const result = await response.json();
-      
+
       console.log('[CRON] Entitlement lifecycle processing result:', JSON.stringify(result));
     } catch (error) {
       console.error('[CRON] Error in scheduled handler:', error);
