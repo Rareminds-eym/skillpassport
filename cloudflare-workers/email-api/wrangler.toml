@@ -3,9 +3,9 @@ main = "src/index.js"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
 
-# Schedule countdown emails to run daily at 9:00 AM UTC (2:30 PM IST)
+# Schedule countdown emails to run daily at 6:50 AM UTC (12:20 PM IST)
 [triggers]
-crons = ["0 9 * * *"]
+crons = ["50 6 * * *"]
 
 [vars]
 SMTP_HOST = "email-smtp.ap-south-1.amazonaws.com"

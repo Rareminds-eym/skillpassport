@@ -93,6 +93,11 @@ const SimpleEventRegistration = lazy(() =>
   import("../pages/register/SimpleEventRegistration")
 );
 
+// Skill Passport Pre-Registration (dedicated landing page)
+const SkillPassportPreRegistration = lazy(() =>
+  import("../pages/register/SkillPassportPreRegistration")
+);
+
 const Register = lazy(() => import("../pages/auth/components/SignIn/Register"));
 const UnifiedLogin = lazy(() => import("../pages/auth/UnifiedLogin"));
 const UnifiedSignup = lazy(() => import("../pages/auth/UnifiedSignup"));
@@ -504,8 +509,11 @@ const AppRoutes = () => {
     <Suspense fallback={<Loader />}>
       <ScrollToTop />
       <Routes>
-        {/* Simple Event Registration - Social media campaigns (standalone, no layout) */}
-        <Route path="/register" element={<SimpleEventRegistration />} />
+        {/* Skill Passport Pre-Registration - Main landing page */}
+        <Route path="/register" element={<SkillPassportPreRegistration />} />
+        
+        {/* Simple Event Registration - Alternative route for campaigns */}
+        <Route path="/register/event" element={<SimpleEventRegistration />} />
         
         {/* Receipt Page - Download PDF receipt */}
         <Route path="/receipt/:orderId" element={<Receipt />} />
