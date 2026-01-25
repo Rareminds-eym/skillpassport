@@ -1097,12 +1097,12 @@ export default function SimpleEventRegistration() {
               <div className="hidden md:block w-px h-8 bg-gray-300"></div>
               <div className="flex items-center gap-3">
                 <Users className="w-6 h-6 text-indigo-600 flex-shrink-0" />
-                <span className="font-medium">Trusted by Educational Institutions</span>
+                <span className="font-medium">Trusted by educational institutions and learners across India</span>
               </div>
               <div className="hidden md:block w-px h-8 bg-gray-300"></div>
               <div className="flex items-center gap-3">
                 <Target className="w-6 h-6 text-indigo-600 flex-shrink-0" />
-                <span className="font-medium">Focused on Applied Learning</span>
+                <span className="font-medium">Focused on applied learning, employability, and skill development</span>
               </div>
             </motion.div>
           </motion.div>

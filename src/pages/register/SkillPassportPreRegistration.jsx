@@ -731,10 +731,10 @@ export default function SkillPassportPreRegistration() {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             {[
-              { icon: Mail, title: 'Instant Confirmation', desc: 'Confirmation email sent immediately' },
-              { icon: Zap, title: 'Early Access', desc: 'Priority access to the platform' },
-              { icon: Users, title: 'Priority Onboarding', desc: 'Dedicated support during launch' },
-              { icon: Award, title: 'Exclusive Benefits', desc: 'Special perks for early users' }
+              { icon: Mail, title: 'Instant Confirmation', desc: ' via email' },
+              { icon: Zap, title: 'Early Access', desc: 'to the Skill Passport platform' },
+              { icon: Users, title: 'Priority Onboarding', desc: 'during launch phase' },
+              { icon: Award, title: 'Exclusive Benefits', desc: 'available only to early users' }
             ].map((benefit, idx) => (
               <motion.div
                 key={idx}
@@ -764,7 +764,7 @@ export default function SkillPassportPreRegistration() {
               No recurring charges. No hidden fees.
             </p>
             <p className="text-lg text-gray-600">
-              One-time payment of ₹250 for lifetime early access
+              One-time payment of ₹250 for early access
             </p>
           </motion.div>
         </div>
@@ -809,12 +809,12 @@ export default function SkillPassportPreRegistration() {
               <div className="hidden md:block w-px h-8 bg-gray-300"></div>
               <div className="flex items-center gap-3">
                 <Users className="w-6 h-6 text-indigo-600 flex-shrink-0" />
-                <span className="font-medium">Trusted by Educational Institutions</span>
+                <span className="font-medium">Trusted by educational institutions and learners across India </span>
               </div>
               <div className="hidden md:block w-px h-8 bg-gray-300"></div>
               <div className="flex items-center gap-3">
                 <Target className="w-6 h-6 text-indigo-600 flex-shrink-0" />
-                <span className="font-medium">Focused on Applied Learning</span>
+                <span className="font-medium">Focused on applied learning, employability, and skill development</span>
               </div>
             </motion.div>
           </motion.div>
@@ -877,7 +877,7 @@ export default function SkillPassportPreRegistration() {
             >
               {/* Email Card */}
               <motion.a
-                href="mailto:support@rareminds.in"
+                href="mailto:marketing@rareminds.in"
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -894,7 +894,7 @@ export default function SkillPassportPreRegistration() {
                       Have questions? Send us an email and we'll get back to you within 24 hours.
                     </p>
                     <div className="flex items-center gap-1 text-blue-600 font-medium text-xs group-hover:gap-1.5 transition-all">
-                      <span>support@rareminds.in</span>
+                      <span>marketing@rareminds.in</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </div>
                   </div>
