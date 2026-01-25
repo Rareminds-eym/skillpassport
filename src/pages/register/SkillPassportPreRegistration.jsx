@@ -34,6 +34,7 @@ import Footer from '../../components/Footer';
 import Header from '../../layouts/Header';
 import { Sparkles } from '@/components/ui/sparkles';
 import { PulseBeams } from '@/components/ui/pulse-beams';
+import { BoltStyleChat } from '@/components/ui/bolt-style-chat';
 
 const COLORS_TOP = ["#3B82F6"];
 
@@ -486,6 +487,8 @@ export default function SkillPassportPreRegistration() {
         </div>
       </section>
 
+      
+
       {/* WHO IS THIS FOR */}
       <section className="py-20 bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -631,6 +634,22 @@ export default function SkillPassportPreRegistration() {
         </div>
       </section>
 
+       {/* EARLY ACCESS PRE-REGISTRATION SECTION */}
+      <section className="bg-white">
+        <BoltStyleChat
+          title="Early Access Pre-Registration"
+          subtitle="Secure your early access to Skill Passport with a one-time pre-registration fee."
+          announcementText="Registration Fee: ₹250"
+          announcementHref="#"
+          buttonText="Secure payment via Razorpay"
+          buttonHref="/register/event?campaign=skill-passport"
+          showButtonIcon={true}
+          highlightWord="pay"
+        />
+      </section>
+
+
+      
       {/* WHY SKILL PASSPORT MATTERS */}
       <section className="py-20 bg-gray-50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -929,6 +948,8 @@ export default function SkillPassportPreRegistration() {
           </div>
         </div>
       </section>
+
+     
 
       <Footer />
     </div>

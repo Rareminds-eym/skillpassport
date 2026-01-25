@@ -1,6 +1,6 @@
 'use client'
 
-import { Bolt } from 'lucide-react'
+import { Bolt, CreditCard } from 'lucide-react'
 import { ShinyButton } from './shiny-button'
 
 // Ray Background with Bottom Wave Effect
@@ -64,6 +64,8 @@ interface BoltChatProps {
   buttonText?: string
   buttonHref?: string
   onButtonClick?: () => void
+  showButtonIcon?: boolean
+  highlightWord?: string
 }
 
 export function BoltStyleChat({
@@ -73,7 +75,9 @@ export function BoltStyleChat({
   announcementHref = "#",
   buttonText = "Get Started",
   buttonHref = "#",
-  onButtonClick
+  onButtonClick,
+  showButtonIcon = false,
+  highlightWord = "build"
 }: BoltChatProps) {
   return (
     <div className="relative flex flex-col items-center justify-center py-16 sm:py-20 w-full overflow-hidden bg-white">
@@ -89,7 +93,7 @@ export function BoltStyleChat({
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 tracking-tight mb-2">
             {title}{' '}
             <span className="bg-gradient-to-b from-[#3b82f6] via-[#2563eb] to-[#1e40af] bg-clip-text text-transparent italic">
-              build
+              {highlightWord}
             </span>
             {' '}today?
           </h1>
@@ -101,12 +105,18 @@ export function BoltStyleChat({
           {buttonHref && buttonHref !== '#' ? (
             <a href={buttonHref}>
               <ShinyButton onClick={onButtonClick}>
-                {buttonText}
+                <span className="flex items-center justify-center gap-2">
+                  {showButtonIcon && <CreditCard className="w-4 h-4" />}
+                  <span>{buttonText}</span>
+                </span>
               </ShinyButton>
             </a>
           ) : (
             <ShinyButton onClick={onButtonClick}>
-              {buttonText}
+              <span className="flex items-center justify-center gap-2">
+                {showButtonIcon && <CreditCard className="w-4 h-4" />}
+                <span>{buttonText}</span>
+              </span>
             </ShinyButton>
           )}
         </div>
