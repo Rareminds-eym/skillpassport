@@ -1,6 +1,5 @@
 'use client'
 
-import React from 'react'
 import { Bolt } from 'lucide-react'
 import { ShinyButton } from './shiny-button'
 
@@ -99,9 +98,17 @@ export function BoltStyleChat({
 
         {/* Shiny Button */}
         <div className="mt-4">
-          <ShinyButton href={buttonHref} onClick={onButtonClick}>
-            {buttonText}
-          </ShinyButton>
+          {buttonHref && buttonHref !== '#' ? (
+            <a href={buttonHref}>
+              <ShinyButton onClick={onButtonClick}>
+                {buttonText}
+              </ShinyButton>
+            </a>
+          ) : (
+            <ShinyButton onClick={onButtonClick}>
+              {buttonText}
+            </ShinyButton>
+          )}
         </div>
       </div>
     </div>
