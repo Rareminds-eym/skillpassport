@@ -35,7 +35,6 @@ import Header from '../../layouts/Header';
 import { Sparkles } from '@/components/ui/sparkles';
 import { PulseBeams } from '@/components/ui/pulse-beams';
 
-import { BoltStyleChat } from '@/components/ui/bolt-style-chat';
 const COLORS_TOP = ["#3B82F6", "#06B6D4", "#8B5CF6", "#EC4899"];
 
 // Beam configuration for PulseBeams
@@ -197,7 +196,6 @@ export default function SkillPassportPreRegistration() {
   const color = useMotionValue(COLORS_TOP[0]);
 
   useEffect(() => {
-
     animate(color, COLORS_TOP, {
       ease: "easeInOut",
       duration: 10,
@@ -467,7 +465,7 @@ export default function SkillPassportPreRegistration() {
                   </li>
                   <li className="flex items-start gap-3">
                     <SparklesIcon className="w-5 h-5 flex-shrink-0 mt-1" />
-                    <span>A structured way to show what you can do</span>
+                    <span>A structured way to show what you can do, not just what you studied</span>
                   </li>
                 </ul>
               </div>
@@ -682,7 +680,7 @@ export default function SkillPassportPreRegistration() {
               <div className="space-y-4">
                 {[
                   'Demonstrate industry-relevant skills',
-                  'Organize learning, projects, and certifications',
+                  'Organize learning, projects, and certifications in one place',
                   'Present yourself with clarity and confidence'
                 ].map((solution, idx) => (
                   <div key={idx} className="flex items-center gap-4 bg-gradient-to-r from-blue-50 to-indigo-50 p-5 rounded-2xl shadow-sm border border-blue-200">
@@ -713,11 +711,6 @@ export default function SkillPassportPreRegistration() {
         </div>
       </section>
 
-      {/* HERO DITHERING CTA SECTION */}
-      <BoltStyleChat title="Ready to build your" subtitle="Secure your early access to Skill Passport with a one-time pre-registration fee of ₹250." announcementText="Early Access Pre-Registration" placeholder="What skills do you want to showcase?" onSend={(msg) => window.location.href = "/register/event?campaign=skill-passport"} />
-
-
-
       {/* WHAT YOU GET SECTION */}
       <section className="py-20 bg-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -731,6 +724,9 @@ export default function SkillPassportPreRegistration() {
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
               What You Get After Pre-Registration
             </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Once you complete pre-registration, you will receive:
+            </p>
           </motion.div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
