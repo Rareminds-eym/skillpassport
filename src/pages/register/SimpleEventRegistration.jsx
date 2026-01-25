@@ -994,24 +994,27 @@ export default function SimpleEventRegistration() {
               )}
             </AnimatePresence>
 
-            {/* Pre-Registration Details */}
+            {/* Submit Button */}
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.45 }}
-              className="mt-6 text-center"
+              transition={{ delay: 0.5 }}
+              className="mt-6"
             >
               <ShinyButton
                 onClick={handlePayment}
-                disabled={loading || !consentGiven}
-                className="w-full relative overflow-hidden"
+                disabled={isProcessing || !consentGiven}
+                className="w-full py-4 text-base font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
               >
-                {loading ? (
-                  <Loader2 className="w-5 h-5 animate-spin mx-auto" />
+                {isProcessing ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Processing...</span>
+                  </div>
                 ) : (
                   <div className="flex items-center justify-center gap-2">
                     <Lock className="w-4 h-4" />
-                    <span>Complete Pre-Registration</span>
+                    <span>Pre-register Now</span>
                     <ChevronRight className="w-4 h-4" />
                   </div>
                 )}
