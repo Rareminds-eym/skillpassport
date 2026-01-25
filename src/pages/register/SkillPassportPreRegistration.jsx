@@ -35,7 +35,7 @@ import Header from '../../layouts/Header';
 import { Sparkles } from '@/components/ui/sparkles';
 import { PulseBeams } from '@/components/ui/pulse-beams';
 
-const COLORS_TOP = ["#3B82F6", "#06B6D4", "#8B5CF6", "#EC4899"];
+const COLORS_TOP = ["#3B82F6"];
 
 // Beam configuration for PulseBeams
 const beams = [
