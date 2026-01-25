@@ -1001,18 +1001,14 @@ export default function SimpleEventRegistration() {
               transition={{ delay: 0.45 }}
               className="mt-6 text-center"
             >
-              <h3 className="text-lg font-bold text-gray-900 mb-2">
-                PRE-REGISTRATION DETAILS
-              </h3>
-              <p className="text-base font-semibold text-gray-800 mb-2">
-                Early Access Pre-Registration
-              </p>
-              <p className="text-sm text-gray-600 mb-3">
-                Secure your early access to Skill Passport with a one-time pre-registration fee.
-              </p>
-              <div className="mb-2">
-                <span className="text-sm text-gray-700">Registration Fee: </span>
-                <span className="text-2xl font-bold text-blue
+              <ShinyButton
+                onClick={handlePayment}
+                disabled={loading || !consentGiven}
+                className="w-full relative overflow-hidden"
+              >
+                {loading ? (
+                  <Loader2 className="w-5 h-5 animate-spin mx-auto" />
+                ) : (
                   <div className="flex items-center justify-center gap-2">
                     <Lock className="w-4 h-4" />
                     <span>Complete Pre-Registration</span>
