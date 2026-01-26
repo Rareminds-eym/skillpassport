@@ -13,10 +13,10 @@ import { PipelineCandidate, STAGE_LABELS } from './types';
 
 interface CandidateCardProps {
   candidate: PipelineCandidate;
-  onMove: (candidateId: number, newStage: string) => void;
+  onMove: (candidateId: string, newStage: string) => void;
   onView: (candidate: PipelineCandidate) => void;
   isSelected: boolean;
-  onToggleSelect: (candidateId: number) => void;
+  onToggleSelect: (candidateId: string) => void;
   onSendEmail: (candidate: PipelineCandidate) => void;
   onNextAction?: (candidate: PipelineCandidate) => void;
   stageColor: string;

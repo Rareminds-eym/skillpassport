@@ -669,7 +669,10 @@ const OpportunityPreview = ({
   onToggleSave,
   isApplied = false, 
   isSaved = false,
-  isApplying = false 
+  isApplying = false,
+  canApplyToJobs = true,
+  needsProfileCompletion = false,
+  navigate
 }) => {
   // State for expanding sections
   const [showAllRequirements, setShowAllRequirements] = React.useState(false);
@@ -1366,7 +1369,12 @@ const OpportunityPreview = ({
                 {/* Primary Apply Button */}
                 <button 
                   onClick={() => {
-                    if (!isApplied && !isApplying) {
+                    if (needsProfileCompletion && !isApplied) {
+                      // Navigate to settings page if profile is incomplete
+                      if (navigate) {
+                        navigate('/student/settings');
+                      }
+                    } else if (!isApplied && !isApplying) {
                       setShowApplicationModal(true);
                     }
                   }}
@@ -1376,6 +1384,8 @@ const OpportunityPreview = ({
                       ? 'bg-green-600 text-white cursor-not-allowed'
                       : isApplying
                       ? 'bg-gray-400 text-white cursor-wait'
+                      : needsProfileCompletion
+                      ? 'bg-amber-600 hover:bg-amber-700 text-white hover:shadow-xl active:scale-[0.98]'
                       : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-xl active:scale-[0.98]'
                   }`}
                 >
@@ -1394,6 +1404,11 @@ const OpportunityPreview = ({
                       <>
                         <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                         Submitting...
+                      </>
+                    ) : needsProfileCompletion ? (
+                      <>
+                        <AlertCircle className="w-5 h-5" />
+                        Complete Profile Info
                       </>
                     ) : (
                       <>
@@ -1433,7 +1448,11 @@ const OpportunityPreview = ({
               
               {/* Additional Info */}
               <p className="text-xs text-gray-500 text-center mt-3">
-                {isApplied ? '✓ Track your application in the Applications tab' : '💡 One-click application with your saved profile'}
+                {isApplied 
+                  ? '✓ Track your application in the Applications tab' 
+                  : needsProfileCompletion 
+                  ? '⚠️ Complete your profile to apply for jobs' 
+                  : '💡 One-click application with your saved profile'}
               </p>
             </div>
           </div>

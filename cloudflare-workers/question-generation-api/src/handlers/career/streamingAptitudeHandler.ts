@@ -67,7 +67,7 @@ export async function handleStreamingAptitudeGeneration(
 
       // Batch 1 - Send ASAP
       await sendEvent({ type: 'status', message: 'Generating batch 1...' });
-      const batch1 = await generateBatch(batch1Categories, isAfter10, streamContext, claudeKey, openRouterKey);
+      const batch1 = await generateBatchWithRetry(1, batch1Categories, isAfter10, streamContext, claudeKey, openRouterKey, sendEvent);
       const formattedBatch1 = batch1.map((q: any, idx: number) => ({
         ...q,
         id: generateUUID(),
@@ -80,7 +80,7 @@ export async function handleStreamingAptitudeGeneration(
 
       // Batch 2
       await sendEvent({ type: 'status', message: 'Generating batch 2...' });
-      const batch2 = await generateBatch(batch2Categories, isAfter10, streamContext, claudeKey, openRouterKey);
+      const batch2 = await generateBatchWithRetry(2, batch2Categories, isAfter10, streamContext, claudeKey, openRouterKey, sendEvent);
       const formattedBatch2 = batch2.map((q: any, idx: number) => ({
         ...q,
         id: generateUUID(),
@@ -93,7 +93,7 @@ export async function handleStreamingAptitudeGeneration(
 
       // Batch 3
       await sendEvent({ type: 'status', message: 'Generating batch 3...' });
-      const batch3 = await generateBatch(batch3Categories, isAfter10, streamContext, claudeKey, openRouterKey);
+      const batch3 = await generateBatchWithRetry(3, batch3Categories, isAfter10, streamContext, claudeKey, openRouterKey, sendEvent);
       const formattedBatch3 = batch3.map((q: any, idx: number) => ({
         ...q,
         id: generateUUID(),
@@ -103,6 +103,12 @@ export async function handleStreamingAptitudeGeneration(
       }));
       totalQuestions += formattedBatch3.length;
       await sendEvent({ type: 'batch', batchNumber: 3, questions: formattedBatch3, totalSoFar: totalQuestions });
+
+      // Validate total
+      const expectedTotal = categories.reduce((sum, c) => sum + c.count, 0);
+      if (totalQuestions < expectedTotal) {
+        await sendEvent({ type: 'warning', message: `Generated ${totalQuestions}/${expectedTotal} questions. Some questions may be missing.` });
+      }
 
       // Complete
       await sendEvent({ type: 'complete', totalQuestions });
@@ -129,6 +135,64 @@ export async function handleStreamingAptitudeGeneration(
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
+}
+
+async function generateBatchWithRetry(
+  batchNum: number,
+  batchCategories: any[],
+  isAfter10: boolean,
+  streamContext: any,
+  claudeKey?: string,
+  openRouterKey?: string,
+  sendEvent?: (data: any) => Promise<void>,
+  maxRetries: number = 3
+): Promise<any[]> {
+  if (batchCategories.length === 0) return [];
+  
+  const totalQuestions = batchCategories.reduce((sum, c) => sum + c.count, 0);
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      if (sendEvent && attempt > 1) {
+        await sendEvent({ type: 'status', message: `Retrying batch ${batchNum} (attempt ${attempt}/${maxRetries})...` });
+      }
+      
+      const questions = await generateBatch(
+        batchCategories,
+        isAfter10,
+        streamContext,
+        claudeKey,
+        openRouterKey
+      );
+
+      // Validate question count
+      if (questions.length >= totalQuestions) {
+        console.log(`✅ Batch ${batchNum}: Generated ${questions.length}/${totalQuestions} questions (success)`);
+        return questions.slice(0, totalQuestions); // Return exact count
+      } else {
+        console.warn(`⚠️ Batch ${batchNum}, Attempt ${attempt}: Only generated ${questions.length}/${totalQuestions} questions`);
+        
+        if (attempt < maxRetries) {
+          console.log(`🔄 Retrying batch ${batchNum} (attempt ${attempt + 1}/${maxRetries})...`);
+          await new Promise(resolve => setTimeout(resolve, 2000)); // Wait before retry
+        } else {
+          console.error(`❌ Batch ${batchNum}: Failed to generate ${totalQuestions} questions after ${maxRetries} attempts. Got ${questions.length} questions.`);
+          if (sendEvent) {
+            await sendEvent({ type: 'warning', message: `Batch ${batchNum} incomplete: ${questions.length}/${totalQuestions} questions` });
+          }
+          return questions; // Return what we have
+        }
+      }
+    } catch (error: any) {
+      console.error(`❌ Batch ${batchNum}, Attempt ${attempt} error:`, error.message);
+      if (attempt === maxRetries) {
+        throw error;
+      }
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+  }
+  
+  return []; // Fallback
 }
 
 async function generateBatch(

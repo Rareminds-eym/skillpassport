@@ -45,9 +45,9 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
   const [showQuickView, setShowQuickView] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<PipelineCandidate | null>(null);
   const [globalSearch, setGlobalSearch] = useState('');
-  const [movingCandidates, setMovingCandidates] = useState<number[]>([]);
+  const [movingCandidates, setMovingCandidates] = useState<string[]>([]); // Changed to string for UUID
   const [showAIRecommendedOnly, setShowAIRecommendedOnly] = useState(false);
-  const [selectedCandidates, setSelectedCandidates] = useState<number[]>([]);
+  const [selectedCandidates, setSelectedCandidates] = useState<string[]>([]); // Changed to string for UUID
 
   // Modal states
   const [showAddFromTalentPool, setShowAddFromTalentPool] = useState(false);
@@ -115,7 +115,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
   }, [opportunitiesLoading, opportunities, selectedJob]);
 
   // Handlers
-  const handleCandidateMove = async (candidateId: number, newStage: string) => {
+  const handleCandidateMove = async (candidateId: string, newStage: string) => {
     let movedCandidate: PipelineCandidate | null = null;
     let oldStage: string | null = null;
 
@@ -287,7 +287,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
     addToast('success', 'Pipeline Exported!', `${allCandidates.length} candidates exported successfully`);
   };
 
-  const toggleCandidateSelection = (candidateId: number) => {
+  const toggleCandidateSelection = (candidateId: string) => {
     setSelectedCandidates(prev =>
       prev.includes(candidateId) ? prev.filter(id => id !== candidateId) : [...prev, candidateId]
     );
@@ -333,7 +333,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
         // Candidate not in pipeline, add them directly to screened
         const result = await addCandidateToPipeline({
           opportunity_id: selectedJob,
-          student_id: pipelineCandidate?.student_id || rec.applicantId.toString(),
+          student_id: pipelineCandidate?.student_id || rec.applicantId,  // UUID is already string
           candidate_name: rec.studentName || pipelineCandidate?.name || 'Unknown',
           candidate_email: pipelineCandidate?.email || '',
           stage: 'screened',

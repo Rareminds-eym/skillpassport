@@ -1,7 +1,7 @@
 // Pipeline component types
 
 export interface PipelineCandidate {
-  id: number;
+  id: string; // UUID
   name: string;
   email: string;
   phone: string;
@@ -12,7 +12,7 @@ export interface PipelineCandidate {
   ai_score_overall: number;
   last_updated: string;
   created_at?: string;
-  student_id: number;
+  student_id: string; // UUID
   stage: string;
   source: string;
   next_action?: string;
@@ -30,7 +30,7 @@ export interface PipelineData {
 }
 
 export interface AIRecommendation {
-  applicantId: number;
+  applicantId: string; // UUID
   studentName: string;
   positionTitle: string;
   matchScore: number;

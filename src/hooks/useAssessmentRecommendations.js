@@ -63,7 +63,14 @@ export const useAssessmentRecommendations = (studentIdOrUserId, enabled = true) 
         
         // Mark as having completed assessment if result exists with completed status
         if (result.status === 'completed') {
+          console.log('✅ Found completed assessment result');
           setHasCompletedAssessment(true);
+        } else {
+          console.log('❌ No completed assessment result found (status:', result.status, ')');
+          setHasCompletedAssessment(false);
+          setRecommendations(null);
+          setLoading(false);
+          return;
         }
 
         // Store the attempt_id for navigation
@@ -144,8 +151,8 @@ export const useAssessmentRecommendations = (studentIdOrUserId, enabled = true) 
     recommendations,
     loading,
     error,
-    // hasAssessment is true if there's a completed result, even without detailed recommendations
-    hasAssessment: hasCompletedAssessment || !!recommendations,
+    // hasAssessment is true ONLY if there's a completed result
+    hasAssessment: hasCompletedAssessment,
     // New: check for in-progress assessment
     hasInProgressAssessment,
     inProgressAttempt,

@@ -37,7 +37,7 @@ export const SectionCompleteScreen: React.FC<SectionCompleteScreenProps> = ({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3 }}
-      className="min-h-[600px] flex flex-col items-center justify-center text-center p-8 bg-gray-50"
+      className="min-h-[600px] flex flex-col items-center justify-center text-center p-8 bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50"
     >
       {/* Success Icon */}
       <motion.div

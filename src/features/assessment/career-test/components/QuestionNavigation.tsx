@@ -58,8 +58,8 @@ export const QuestionNavigation: React.FC<QuestionNavigationProps> = ({
           className={`
             flex items-center gap-2 px-8 py-3 transition-all duration-300
             ${isAnswered && !isSubmitting && !isSaving
-              ? 'w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold shadow-md hover:shadow-lg transform hover:scale-105'
-              : 'bg-white/60 border border-blue-200/50 text-gray-500 cursor-not-allowed'
+              ? 'bg-gradient-to-r from-blue-600 to-blue-600 hover:from-blue-700 hover:to-blue-700 text-white shadow-lg shadow-blue-500/30 hover:shadow-xl'
+              : 'bg-gray-200 text-gray-500 cursor-not-allowed'
             }
           `}
         >

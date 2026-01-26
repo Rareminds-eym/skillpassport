@@ -6,22 +6,29 @@ import { supabase } from '../lib/supabaseClient';
 export class SavedJobsService {
   /**
    * Save a job opportunity
-   * @param {string} studentId - Student's UUID
-   * @param {number} opportunityId - Opportunity's ID
+   * @param {string} studentId - Student's ID (students.id)
+   * @param {string} opportunityId - Opportunity's ID (UUID)
    * @returns {Promise<Object>} Save result
    */
   static async saveJob(studentId, opportunityId) {
     try {
+      console.log('💾 saveJob called with:', { studentId, opportunityId });
 
-      // Check if already saved
+      // Check if already saved (use maybeSingle instead of single)
       const { data: existing, error: checkError } = await supabase
         .from('saved_jobs')
         .select('id')
         .eq('student_id', studentId)
         .eq('opportunity_id', opportunityId)
-        .single();
+        .maybeSingle(); // Changed from .single() to .maybeSingle()
+
+      if (checkError) {
+        console.error('❌ Error checking saved job:', checkError);
+        throw checkError;
+      }
 
       if (existing) {
+        console.log('ℹ️ Job already saved');
         return {
           success: true,
           message: 'Job is already saved',
@@ -31,6 +38,7 @@ export class SavedJobsService {
       }
 
       // Insert saved job
+      console.log('📝 Inserting saved job...');
       const { data, error } = await supabase
         .from('saved_jobs')
         .insert([
@@ -47,7 +55,7 @@ export class SavedJobsService {
         throw error;
       }
 
-
+      console.log('✅ Job saved successfully');
       return {
         success: true,
         message: 'Job saved successfully!',

@@ -118,8 +118,8 @@ export default function EventSalesFailure() {
           {/* Footer */}
           <p className="text-center text-sm text-gray-500 mt-6">
             Need help? Contact us at{' '}
-            <a href="mailto:support@rareminds.in" className="text-blue-600 hover:underline">
-              support@rareminds.in
+            <a href="mailto:marketing@rareminds.in" className="text-blue-600 hover:underline">
+              marketing@rareminds.in
             </a>
           </p>
         </div>

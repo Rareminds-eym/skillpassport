@@ -154,7 +154,8 @@ export async function generateAssessment(courseName, level = 'Intermediate', que
 
     // Call backend API (Cloudflare Worker) to generate assessment
     // Use unified question generation API
-    const backendUrl = import.meta.env.VITE_QUESTION_GENERATION_API_URL || 
+    const backendUrl = import.meta.env.VITE_EXTERNAL_API_KEY || 
+      import.meta.env.VITE_QUESTION_GENERATION_API_URL || 
       'https://question-generation-api.dark-mode-d021.workers.dev';
     const apiUrl = `${backendUrl}/api/assessment/generate`;
 
