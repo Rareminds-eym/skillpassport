@@ -183,6 +183,15 @@ export const getStudentByEmail = async (email) => {
       languages: data.languages || [],
       interests: data.interests || [],
       
+      // New fields for gap years, work experience, and academic info
+      gapInStudies: data.gap_in_studies || false,
+      gapYears: data.gap_years || 0,
+      gapReason: data.gap_reason || '',
+      workExperience: data.work_experience || '',
+      aadharNumber: data.aadhar_number || '',
+      backlogsHistory: data.backlogs_history || '',
+      currentBacklogs: data.current_backlogs || 0,
+      
       // Generate passport ID from registration number
       passportId: data.registration_number ? `SP-${data.registration_number}` : 'SP-0000',
       verified: true,
@@ -642,6 +651,15 @@ export const getStudentById = async (studentId) => {
       hobbies: data.hobbies || [],
       languages: data.languages || [],
       interests: data.interests || [],
+      
+      // New fields for gap years, work experience, and academic info
+      gapInStudies: data.gap_in_studies || false,
+      gapYears: data.gap_years || 0,
+      gapReason: data.gap_reason || '',
+      workExperience: data.work_experience || '',
+      aadharNumber: data.aadhar_number || '',
+      backlogsHistory: data.backlogs_history || '',
+      currentBacklogs: data.current_backlogs || 0,
       
       // Generate passport ID from registration number
       passportId: data.registration_number ? `SP-${data.registration_number}` : 'SP-0000',
@@ -1343,7 +1361,23 @@ export async function updateStudentByEmail(email, updates) {
       'grade': 'grade',
       'section': 'section',
       'roll_number': 'roll_number',
-      'admission_number': 'admission_number'
+      'admission_number': 'admission_number',
+      
+      // New fields for gap years, work experience, and academic info
+      'gapInStudies': 'gap_in_studies',
+      'gap_in_studies': 'gap_in_studies',
+      'gapYears': 'gap_years',
+      'gap_years': 'gap_years',
+      'gapReason': 'gap_reason',
+      'gap_reason': 'gap_reason',
+      'workExperience': 'work_experience',
+      'work_experience': 'work_experience',
+      'aadharNumber': 'aadhar_number',
+      'aadhar_number': 'aadhar_number',
+      'backlogsHistory': 'backlogs_history',
+      'backlogs_history': 'backlogs_history',
+      'currentBacklogs': 'current_backlogs',
+      'current_backlogs': 'current_backlogs'
     };
 
     // Apply field mapping
@@ -1403,7 +1437,8 @@ export async function updateStudentByEmail(email, updates) {
       'resume_imported_at', 'skill_summary', 'course_name', 'contact_dial_code', 'trainer_name', 
       'is_deleted', 'deleted_at', 'deleted_by', 'grade', 'section', 'roll_number', 
       'admission_number', 'college_id', 'hobbies', 'languages', 'interests', 'category', 
-      'quota', 'youtube_link', 'notification_settings'
+      'quota', 'youtube_link', 'notification_settings', 'gap_in_studies', 'gap_years', 
+      'gap_reason', 'work_experience', 'aadhar_number', 'backlogs_history', 'current_backlogs'
     ];
 
     const filteredUpdates = {};

@@ -1,12 +1,19 @@
 import {
     AlertCircle,
+    Award,
     Bell,
     Briefcase,
+    Building2,
+    Calendar,
     ChevronRight,
     CreditCard,
+    Download,
+    Edit,
     Eye,
     EyeOff,
+    FileText,
     Globe,
+    GraduationCap,
     Lock,
     Mail,
     MapPin,
@@ -15,6 +22,8 @@ import {
     Save,
     Settings as SettingsIcon,
     Shield,
+    Trash2,
+    Upload,
     User
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -28,9 +37,11 @@ import {
 } from "../../components/Students/components/ui/card";
 import { useAuth } from "../../context/AuthContext";
 import { useStudentSettings } from "../../hooks/useStudentSettings";
+import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
 import { useInstitutions } from "../../hooks/useInstitutions";
 
 import { SubscriptionSettingsSection } from "../../components/Subscription/SubscriptionSettingsSection";
+import { EducationEditModal } from "../../components/Students/components/ProfileEditModals";
 import { useToast } from "../../hooks/use-toast";
 import useStudentMessageNotifications from "../../hooks/useStudentMessageNotifications";
 import { useStudentUnreadCount } from "../../hooks/useStudentMessages";
@@ -49,6 +60,13 @@ const Settings = () => {
     updateProfile,
     updatePassword,
   } = useStudentSettings(userEmail);
+
+  // Get education data from the same source as Dashboard
+  const {
+    studentData: studentDataWithEducation,
+    loading: educationLoading,
+    updateEducation,
+  } = useStudentDataByEmail(userEmail);
 
   // Get student ID for messaging
   const studentId = studentData?.id;
@@ -92,6 +110,16 @@ const Settings = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const savingRef = useRef(false);
+
+  // Resume file handling state
+  const [resumeFile, setResumeFile] = useState(null);
+  const [resumeUploading, setResumeUploading] = useState(false);
+  const [resumeFileName, setResumeFileName] = useState("");
+  const [resumeUploadDate, setResumeUploadDate] = useState("");
+
+  // Education management state
+  const [educationData, setEducationData] = useState([]);
+  const [showEducationModal, setShowEducationModal] = useState(false);
 
   // State for custom institution entry (B2C students)
   const [showCustomSchool, setShowCustomSchool] = useState(false);
@@ -366,6 +394,7 @@ const Settings = () => {
     facebook: "",
     instagram: "",
     portfolio: "",
+    resumeUrl: "",
   });
 
   // Password settings state
@@ -441,6 +470,15 @@ const Settings = () => {
         facebook: studentData.facebook || "",
         instagram: studentData.instagram || "",
         portfolio: studentData.portfolio || "",
+        resumeUrl: studentData.resumeUrl || "",
+        // New fields for gap years, work experience, and academic info
+        gapInStudies: studentData.gapInStudies || false,
+        gapYears: studentData.gapYears || 0,
+        gapReason: studentData.gapReason || "",
+        workExperience: studentData.workExperience || "",
+        aadharNumber: studentData.aadharNumber || "",
+        backlogsHistory: studentData.backlogsHistory || "",
+        currentBacklogs: studentData.currentBacklogs || 0,
       });
 
       // Detect custom entries (B2C students) and show custom input fields
@@ -472,8 +510,40 @@ const Settings = () => {
       if (studentData.privacySettings && !savingRef.current) {
         setPrivacySettings(studentData.privacySettings);
       }
+
+      // Initialize resume data
+      if (studentData.resumeUrl) {
+        // Extract filename from URL or use a default name
+        const urlParts = studentData.resumeUrl.split('/');
+        const fileName = urlParts[urlParts.length - 1] || 'resume.pdf';
+        setResumeFileName(fileName);
+        
+        // Set upload date if available, otherwise use a placeholder
+        setResumeUploadDate(studentData.resume_imported_at ? 
+          new Date(studentData.resume_imported_at).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: '2-digit'
+          }) : 'Previously uploaded'
+        );
+      }
+
+      // Initialize education data
+      if (studentDataWithEducation?.education && Array.isArray(studentDataWithEducation.education)) {
+        setEducationData(studentDataWithEducation.education);
+      }
     }
   }, [studentData, userEmail]);
+
+  // Separate useEffect for education data
+  useEffect(() => {
+    if (studentDataWithEducation?.education && Array.isArray(studentDataWithEducation.education)) {
+      console.log('📚 Education data loaded:', studentDataWithEducation.education);
+      setEducationData(studentDataWithEducation.education);
+    } else {
+      console.log('📚 No education data found:', studentDataWithEducation);
+    }
+  }, [studentDataWithEducation]);
 
   const handleProfileChange = (field, value) => {
     setProfileData((prev) => ({ ...prev, [field]: value }));
@@ -489,6 +559,165 @@ const Settings = () => {
 
   const handlePrivacyChange = (setting, value) => {
     setPrivacySettings((prev) => ({ ...prev, [setting]: value }));
+  };
+
+  // Resume file handling functions
+  const handleResumeFileSelect = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      // Validate file type
+      const allowedTypes = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/rtf'
+      ];
+      
+      if (!allowedTypes.includes(file.type)) {
+        toast({
+          title: "Invalid File Type",
+          description: "Please upload a PDF, DOC, DOCX, or RTF file.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Validate file size (2MB limit)
+      if (file.size > 2 * 1024 * 1024) {
+        toast({
+          title: "File Too Large",
+          description: "Please upload a file smaller than 2MB.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setResumeFile(file);
+      setResumeFileName(file.name);
+    }
+  };
+
+  const handleResumeUpload = async () => {
+    if (!resumeFile) return;
+
+    setResumeUploading(true);
+    try {
+      // For now, we'll simulate the upload and store the file name
+      // In a real implementation, you would upload to your storage service
+      
+      // Simulate upload delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Create a mock URL (in real implementation, this would come from your storage service)
+      const mockUrl = `https://storage.example.com/resumes/${userEmail}/${resumeFile.name}`;
+      
+      // Update profile data with the new resume URL
+      const updatedProfileData = {
+        ...profileData,
+        resumeUrl: mockUrl
+      };
+      
+      setProfileData(updatedProfileData);
+      setResumeUploadDate(new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit'
+      }));
+
+      // Save to database
+      await updateProfile(updatedProfileData);
+
+      toast({
+        title: "Success",
+        description: "Resume uploaded successfully",
+      });
+
+      // Clear file input
+      setResumeFile(null);
+      
+    } catch (error) {
+      console.error('Resume upload error:', error);
+      toast({
+        title: "Upload Failed",
+        description: "Failed to upload resume. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setResumeUploading(false);
+    }
+  };
+
+  const handleResumeDelete = async () => {
+    try {
+      const updatedProfileData = {
+        ...profileData,
+        resumeUrl: ""
+      };
+      
+      setProfileData(updatedProfileData);
+      setResumeFileName("");
+      setResumeUploadDate("");
+
+      await updateProfile(updatedProfileData);
+
+      toast({
+        title: "Success",
+        description: "Resume removed successfully",
+      });
+    } catch (error) {
+      console.error('Resume delete error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to remove resume. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleResumeDownload = () => {
+    if (profileData.resumeUrl) {
+      window.open(profileData.resumeUrl, '_blank');
+    }
+  };
+
+  // Education management functions
+  const handleEducationSave = async (educationList) => {
+    try {
+      setIsSaving(true);
+      
+      // Update education using the same service as Dashboard
+      const result = await updateEducation(educationList);
+      
+      if (result.success) {
+        setEducationData(educationList);
+        setShowEducationModal(false);
+        
+        toast({
+          title: "Success",
+          description: "Education updated successfully",
+        });
+        
+        // Refresh recent updates if available
+        try {
+          if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+            await refreshRecentUpdates();
+          }
+        } catch (refreshError) {
+          console.warn('Could not refresh recent updates:', refreshError);
+        }
+      } else {
+        throw new Error(result.error || 'Failed to update education');
+      }
+    } catch (error) {
+      console.error('Education save error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update education. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleSaveProfile = async () => {
@@ -711,7 +940,7 @@ const Settings = () => {
   ];
 
   // Show loading state
-  if (studentLoading) {
+  if (studentLoading || educationLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
@@ -1189,6 +1418,148 @@ const Settings = () => {
                             }
                             className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
                             placeholder="Enter pincode"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Additional Profile Information */}
+                    <div className="pt-6 border-t border-slate-100 mt-8">
+                      <h4 className="text-md font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-blue-500" />
+                        Additional Information
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Aadhar Number */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-semibold text-gray-700">
+                            Aadhar Number
+                          </label>
+                          <input
+                            type="text"
+                            value={profileData.aadharNumber}
+                            onChange={(e) => {
+                              // Only allow digits and limit to 12 characters
+                              const value = e.target.value.replace(/\D/g, '').slice(0, 12);
+                              handleProfileChange("aadharNumber", value);
+                            }}
+                            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                            placeholder="Enter 12-digit Aadhar number"
+                            maxLength="12"
+                          />
+                          {profileData.aadharNumber && profileData.aadharNumber.length !== 12 && (
+                            <p className="text-xs text-red-500">Aadhar number must be exactly 12 digits</p>
+                          )}
+                        </div>
+
+                        {/* Gap in Studies */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-semibold text-gray-700">
+                            Gap in Studies
+                          </label>
+                          <select
+                            value={profileData.gapInStudies}
+                            onChange={(e) => {
+                              const hasGap = e.target.value === 'true';
+                              handleProfileChange("gapInStudies", hasGap);
+                              // Reset gap years and reason if no gap
+                              if (!hasGap) {
+                                handleProfileChange("gapYears", 0);
+                                handleProfileChange("gapReason", "");
+                              }
+                            }}
+                            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                          >
+                            <option value={false}>No Gap</option>
+                            <option value={true}>Yes, I have gap years</option>
+                          </select>
+                        </div>
+
+                        {/* Gap Years - Only show if gap in studies is true */}
+                        {profileData.gapInStudies && (
+                          <div className="space-y-2">
+                            <label className="text-sm font-semibold text-gray-700">
+                              Number of Gap Years
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              max="10"
+                              value={profileData.gapYears}
+                              onChange={(e) =>
+                                handleProfileChange("gapYears", parseInt(e.target.value) || 0)
+                              }
+                              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                              placeholder="Enter number of gap years"
+                            />
+                          </div>
+                        )}
+
+                        {/* Gap Reason - Only show if gap in studies is true */}
+                        {profileData.gapInStudies && (
+                          <div className="space-y-2 md:col-span-2">
+                            <label className="text-sm font-semibold text-gray-700">
+                              Reason for Gap
+                            </label>
+                            <textarea
+                              value={profileData.gapReason}
+                              onChange={(e) =>
+                                handleProfileChange("gapReason", e.target.value)
+                              }
+                              rows={3}
+                              className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm resize-none"
+                              placeholder="Explain the reason for gap in studies (e.g., health issues, family reasons, preparation for competitive exams, etc.)"
+                            />
+                          </div>
+                        )}
+
+                        {/* Work Experience */}
+                        <div className="space-y-2 md:col-span-2">
+                          <label className="text-sm font-semibold text-gray-700">
+                            Work Experience
+                          </label>
+                          <textarea
+                            value={profileData.workExperience}
+                            onChange={(e) =>
+                              handleProfileChange("workExperience", e.target.value)
+                            }
+                            rows={4}
+                            className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm resize-none"
+                            placeholder="Describe your work experience, internships, part-time jobs, or any professional experience (include company names, roles, duration, and key responsibilities)"
+                          />
+                        </div>
+
+                        {/* Current Backlogs */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-semibold text-gray-700">
+                            Current Backlogs
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="50"
+                            value={profileData.currentBacklogs}
+                            onChange={(e) =>
+                              handleProfileChange("currentBacklogs", parseInt(e.target.value) || 0)
+                            }
+                            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                            placeholder="Number of current pending backlogs"
+                          />
+                        </div>
+
+                        {/* Backlogs History */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-semibold text-gray-700">
+                            Backlogs History
+                          </label>
+                          <textarea
+                            value={profileData.backlogsHistory}
+                            onChange={(e) =>
+                              handleProfileChange("backlogsHistory", e.target.value)
+                            }
+                            rows={3}
+                            className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm resize-none"
+                            placeholder="Describe your academic backlogs history, subjects, reasons, and how you cleared them (if applicable)"
                           />
                         </div>
                       </div>
@@ -1855,6 +2226,100 @@ const Settings = () => {
                         />
                       </div>
                     </div>
+
+                    {/* Education Section */}
+                    <div className="pt-8 border-t border-slate-100 mt-8">
+                      <div className="flex items-center justify-between mb-6">
+                        <h4 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                          <GraduationCap className="w-5 h-5 text-blue-600" />
+                          Education
+                        </h4>
+                        <Button
+                          onClick={() => setShowEducationModal(true)}
+                          className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+                        >
+                          <Plus className="w-4 h-4" />
+                          Add education
+                        </Button>
+                      </div>
+
+                      {educationData.length === 0 ? (
+                        <div className="text-center py-8 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
+                          <GraduationCap className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                          <p className="text-gray-600 text-base font-medium">
+                            No education added yet
+                          </p>
+                          <p className="text-gray-500 text-sm mt-1">
+                            Add your educational qualifications to showcase your academic background
+                          </p>
+                          {/* Debug info */}
+                          <p className="text-xs text-gray-400 mt-2">
+                            Debug: {educationData.length} total records
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {educationData
+                            .sort((a, b) => {
+                              const yearA = parseInt(a.yearOfPassing) || 0;
+                              const yearB = parseInt(b.yearOfPassing) || 0;
+                              return yearB - yearA; // Descending order
+                            })
+                            .map((education, idx) => (
+                              <div
+                                key={education.id || `edu-${idx}`}
+                                className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
+                              >
+                                <div className="flex items-start justify-between gap-3 mb-2">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <h4 className="text-base font-bold text-gray-900">
+                                        {education.degree || "N/A"}
+                                      </h4>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setShowEducationModal(true)}
+                                        className="p-1 h-6 w-6 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                                      >
+                                        <Edit className="w-3 h-3" />
+                                      </Button>
+                                    </div>
+                                    
+                                    <p className="text-sm text-gray-600 font-medium mb-1">
+                                      {education.university || education.institution || "N/A"}
+                                    </p>
+                                    
+                                    <div className="flex items-center gap-4 text-sm text-gray-500">
+                                      {education.yearOfPassing && (
+                                        <span>{education.yearOfPassing}</span>
+                                      )}
+                                      {education.status && (
+                                        <>
+                                          {education.yearOfPassing && <span>|</span>}
+                                          <span className="capitalize">{education.status}</span>
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
+                                  
+                                  {education.status && (
+                                    <Badge
+                                      className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                        education.status === "ongoing"
+                                          ? "bg-blue-100 text-blue-700"
+                                          : "bg-green-100 text-green-700"
+                                      }`}
+                                    >
+                                      {education.status}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   )}
 
@@ -1970,6 +2435,145 @@ const Settings = () => {
                           placeholder="Tell us about yourself..."
                         />
                       </div>
+                    </div>
+
+                    {/* Resume Upload Section */}
+                    <div className="pt-6 border-t border-slate-100 mb-8">
+                      <h4 className="text-md font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-blue-500" />
+                        Resume
+                      </h4>
+                      
+                      {profileData.resumeUrl ? (
+                        // Show existing resume
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 bg-blue-100 rounded-lg">
+                                <FileText className="w-5 h-5 text-blue-600" />
+                              </div>
+                              <div>
+                                <p className="font-medium text-gray-900">{resumeFileName}</p>
+                                <p className="text-sm text-gray-500">Uploaded on {resumeUploadDate}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={handleResumeDownload}
+                                className="flex items-center gap-1"
+                              >
+                                <Download className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={handleResumeDelete}
+                                className="flex items-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                          
+                          {/* Update Resume Button */}
+                          <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center bg-gray-50/50">
+                            <input
+                              type="file"
+                              id="resume-update"
+                              accept=".pdf,.doc,.docx,.rtf"
+                              onChange={handleResumeFileSelect}
+                              className="hidden"
+                            />
+                            <label
+                              htmlFor="resume-update"
+                              className="cursor-pointer flex flex-col items-center gap-2"
+                            >
+                              <div className="p-3 bg-blue-100 rounded-full">
+                                <Upload className="w-6 h-6 text-blue-600" />
+                              </div>
+                              <div>
+                                <p className="font-medium text-blue-600">Update resume</p>
+                                <p className="text-sm text-gray-500">Supported Formats: doc, docx, rtf, pdf, upto 2 MB</p>
+                              </div>
+                            </label>
+                          </div>
+                        </div>
+                      ) : (
+                        // Show upload area when no resume exists
+                        <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center bg-gray-50/50">
+                          <input
+                            type="file"
+                            id="resume-upload"
+                            accept=".pdf,.doc,.docx,.rtf"
+                            onChange={handleResumeFileSelect}
+                            className="hidden"
+                          />
+                          <label
+                            htmlFor="resume-upload"
+                            className="cursor-pointer flex flex-col items-center gap-3"
+                          >
+                            <div className="p-4 bg-blue-100 rounded-full">
+                              <Upload className="w-8 h-8 text-blue-600" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-blue-600 text-lg">Update resume</p>
+                              <p className="text-sm text-gray-500 mt-1">Supported Formats: doc, docx, rtf, pdf, upto 2 MB</p>
+                            </div>
+                          </label>
+                        </div>
+                      )}
+
+                      {/* Upload Progress/Button */}
+                      {resumeFile && (
+                        <div className="mt-4 p-4 bg-blue-50 rounded-xl border border-blue-200">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <FileText className="w-5 h-5 text-blue-600" />
+                              <div>
+                                <p className="font-medium text-blue-900">{resumeFile.name}</p>
+                                <p className="text-sm text-blue-600">
+                                  {(resumeFile.size / (1024 * 1024)).toFixed(2)} MB
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                type="button"
+                                onClick={handleResumeUpload}
+                                disabled={resumeUploading}
+                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                              >
+                                {resumeUploading ? (
+                                  <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                    Uploading...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Upload className="w-4 h-4 mr-2" />
+                                    Upload
+                                  </>
+                                )}
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => {
+                                  setResumeFile(null);
+                                  setResumeFileName("");
+                                }}
+                                disabled={resumeUploading}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Social Links */}
@@ -2617,6 +3221,16 @@ const Settings = () => {
           </div>
         </div>
       </div>
+
+      {/* Education Edit Modal */}
+      {showEducationModal && (
+        <EducationEditModal
+          isOpen={showEducationModal}
+          onClose={() => setShowEducationModal(false)}
+          data={educationData}
+          onSave={handleEducationSave}
+        />
+      )}
     </div>
   );
 };

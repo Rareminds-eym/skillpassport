@@ -20,6 +20,7 @@ import { Progress } from "../ui/progress";
 import { Textarea } from "../ui/textarea";
 import { FIELD_CONFIGS } from "./fieldConfigs";
 import { calculateDuration, calculateProgress, generateUuid, isValidUrl, parsePositiveNumber, parseSkills } from "./utils";
+import ProfileItemModal from "./ProfileItemModal";
 
 const UnifiedProfileEditModal = ({ 
   isOpen, 
@@ -37,6 +38,10 @@ const UnifiedProfileEditModal = ({
   const [editingIndex, setEditingIndex] = useState(singleEditMode ? 0 : null);
   const [isFormOpen, setIsFormOpen] = useState(singleEditMode);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // State for separate item modal
+  const [isItemModalOpen, setIsItemModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
 
   useEffect(() => {
     if (data) {
@@ -374,6 +379,39 @@ const UnifiedProfileEditModal = ({
     ));
   };
 
+  // Handlers for separate item modal
+  const handleAddItem = () => {
+    setEditingItem(null);
+    setIsItemModalOpen(true);
+  };
+
+  const handleEditItem = (index) => {
+    setEditingItem({ ...items[index], index });
+    setIsItemModalOpen(true);
+  };
+
+  const handleSaveItem = async (savedItem) => {
+    if (editingItem && editingItem.index !== undefined) {
+      // Update existing item
+      setItems(prev => prev.map((item, idx) => 
+        idx === editingItem.index 
+          ? { ...savedItem, processing: true }
+          : item
+      ));
+      toast({ title: "Updated", description: `${config.title} updated. Click 'Save All Changes' to save to database.` });
+    } else {
+      // Add new item
+      const newItem = {
+        ...savedItem,
+        processing: true,
+      };
+      setItems(prev => [...prev, newItem]);
+      toast({ title: "Added", description: `${config.title} added. Click 'Save All Changes' to save to database.` });
+    }
+    setIsItemModalOpen(false);
+    setEditingItem(null);
+  };
+
   const handleSubmit = async () => {
     setIsSaving(true);
     try {
@@ -583,6 +621,12 @@ const UnifiedProfileEditModal = ({
 
   // Render form for multi-item mode (add/edit within list)
   const renderForm = () => {
+    // For types that should use separate modals, don't show inline form
+    const usesSeparateModal = ['education', 'experience', 'training', 'projects', 'certificates'];
+    if (usesSeparateModal.includes(type)) {
+      return null; // The Add button is now in the header
+    }
+
     if (!isFormOpen) {
       return (
         <Button onClick={startAdding} variant="outline" className="w-full border-dashed bg-blue-50 text-blue-600 hover:bg-blue-100">
@@ -695,7 +739,19 @@ const UnifiedProfileEditModal = ({
         </div>
 
         <div className="flex gap-1">
-          <Button variant="ghost" size="sm" onClick={() => startEditing(index)} className="text-blue-600 hover:bg-blue-50">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => {
+              const usesSeparateModal = ['education', 'experience', 'training', 'projects', 'certificates'];
+              if (usesSeparateModal.includes(type)) {
+                handleEditItem(index);
+              } else {
+                startEditing(index);
+              }
+            }} 
+            className="text-blue-600 hover:bg-blue-50"
+          >
             <PenSquare className="w-4 h-4" />
           </Button>
           <Button variant="ghost" size="sm" onClick={() => deleteItem(index)} className="text-red-500 hover:bg-red-50">
@@ -816,57 +872,132 @@ const UnifiedProfileEditModal = ({
 
   // Render multi-item mode - list with add/edit capabilities
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
-        <DialogHeader className="flex-shrink-0">
-          <DialogTitle className="flex items-center gap-2">
-            {Icon && <Icon className="w-5 h-5" />}
-            Edit {config.title}
-          </DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center gap-2">
+                {Icon && <Icon className="w-5 h-5" />}
+                Edit {config.title}
+              </DialogTitle>
+              {(() => {
+                const usesSeparateModal = ['education', 'experience', 'training', 'projects', 'certificates'];
+                if (usesSeparateModal.includes(type)) {
+                  return (
+                    <Button 
+                      onClick={handleAddItem}
+                      size="sm"
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      {config.addButtonText}
+                    </Button>
+                  );
+                }
+                return null;
+              })()}
+            </div>
+          </DialogHeader>
 
-        {/* Scrollable Content Area */}
-        <div className="flex-1 overflow-y-auto pr-2 -mr-2">
-          <div className="space-y-4">
-            {/* Item List */}
-            {items.length > 0 ? (
-              <div className="space-y-3">
-                {items.map((item, index) => renderItemCard(item, index))}
-              </div>
-            ) : (
-              <p className="text-center text-gray-500 py-8">{config.emptyMessage}</p>
-            )}
+          {/* Scrollable Content Area */}
+          <div className="flex-1 overflow-y-auto pr-2 -mr-2">
+            <div className="space-y-4">
+              {/* Item List */}
+              {items.length > 0 ? (
+                <div className="space-y-3">
+                  {items
+                    .sort((a, b) => {
+                      // Sort by the most relevant date field in descending order (most recent first)
+                      const getDate = (item) => {
+                        // For education
+                        if (item.yearOfPassing) return new Date(item.yearOfPassing, 11, 31);
+                        if (item.year) return new Date(item.year, 11, 31);
+                        
+                        // For experience, training, projects
+                        if (item.endDate) return new Date(item.endDate);
+                        if (item.end_date) return new Date(item.end_date);
+                        if (item.completedDate) return new Date(item.completedDate);
+                        if (item.completed_date) return new Date(item.completed_date);
+                        
+                        // For certificates
+                        if (item.issueDate) return new Date(item.issueDate);
+                        if (item.issue_date) return new Date(item.issue_date);
+                        if (item.issuedOn) return new Date(item.issuedOn);
+                        if (item.date) return new Date(item.date);
+                        
+                        // Fallback to start dates
+                        if (item.startDate) return new Date(item.startDate);
+                        if (item.start_date) return new Date(item.start_date);
+                        
+                        // Fallback to creation date
+                        if (item.created_at) return new Date(item.created_at);
+                        
+                        return new Date(0); // Default to epoch if no date found
+                      };
+                      
+                      const dateA = getDate(a);
+                      const dateB = getDate(b);
+                      return dateB - dateA; // Descending order (most recent first)
+                    })
+                    .map((item, index) => renderItemCard(item, index))
+                  }
+                </div>
+              ) : (
+                <p className="text-center text-gray-500 py-8">{config.emptyMessage}</p>
+              )}
 
-            {/* Add/Edit Form */}
-            {renderForm()}
+              {/* Add/Edit Form */}
+              {renderForm()}
+            </div>
           </div>
-        </div>
 
-        {/* Fixed Footer with Save All */}
-        <div className="flex-shrink-0 flex justify-end gap-3 pt-4 border-t bg-white">
-          <Button variant="outline" onClick={onClose} disabled={isSaving}>
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleSubmit} 
-            disabled={isSaving}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            {isSaving ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4 mr-2" />
-                Save All Changes
-              </>
-            )}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+          {/* Fixed Footer with Save All */}
+          <div className="flex-shrink-0 flex justify-end gap-3 pt-4 border-t bg-white">
+            <Button variant="outline" onClick={onClose} disabled={isSaving}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSubmit} 
+              disabled={isSaving}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  Save All Changes
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Separate Item Modal */}
+      {(() => {
+        const usesSeparateModal = ['education', 'experience', 'training', 'projects', 'certificates'];
+        if (usesSeparateModal.includes(type)) {
+          return (
+            <ProfileItemModal
+              isOpen={isItemModalOpen}
+              onClose={() => {
+                setIsItemModalOpen(false);
+                setEditingItem(null);
+              }}
+              type={type}
+              item={editingItem}
+              onSave={handleSaveItem}
+            />
+          );
+        }
+        return null;
+      })()}
+    </>
   );
 };
 
