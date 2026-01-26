@@ -37,7 +37,6 @@ import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import Footer from '../../components/Footer';
 import OTPInput from '../../components/OTPInput';
 import Header from '../../layouts/Header';
-import { supabase } from '../../lib/supabaseClient';
 import paymentsApiService from '../../services/paymentsApiService';
 import { ShinyButton } from '../../components/ui/shiny-button';
 import { Sparkles } from '@/components/ui/sparkles';
