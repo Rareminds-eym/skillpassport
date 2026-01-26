@@ -15,9 +15,9 @@ function RayBackground() {
         }}
       />
       
-      {/* Bottom Blue Circular Wave Effect - Responsive */}
+      {/* Bottom Blue Circular Wave Effect - Hidden on Mobile, Visible on Desktop */}
       <div 
-        className="absolute bottom-0 left-1/2 w-[1200px] h-[600px] sm:w-[1800px] sm:h-[900px] md:w-[2400px] md:h-[1200px] lg:w-[3043px] lg:h-[1500px]"
+        className="hidden md:block absolute bottom-0 left-1/2 w-[1200px] h-[600px] sm:w-[1800px] sm:h-[900px] md:w-[2400px] md:h-[1200px] lg:w-[3043px] lg:h-[1500px]"
         style={{ transform: 'translate(-50%, 50%)' }}
       >
         <div className="absolute w-full h-full rounded-full -mt-[13px]" style={{ background: 'radial-gradient(43.89% 25.74% at 50.02% 2.76%, #ffffff 0%, #ffffff 100%)', border: '12px solid #93c5fd', zIndex: 5 }} />
@@ -105,7 +105,7 @@ export function BoltStyleChat({
           {buttonHref && buttonHref !== '#' ? (
             <a href={buttonHref}>
               <ShinyButton onClick={onButtonClick}>
-                <span className="flex items-center justify-center gap-2">
+                <span className="flex items-center justify-center gap-2 whitespace-nowrap">
                   {showButtonIcon && <CreditCard className="w-4 h-4" />}
                   <span>{buttonText}</span>
                 </span>
@@ -113,7 +113,7 @@ export function BoltStyleChat({
             </a>
           ) : (
             <ShinyButton onClick={onButtonClick}>
-              <span className="flex items-center justify-center gap-2">
+              <span className="flex items-center justify-center gap-2 whitespace-nowrap">
                 {showButtonIcon && <CreditCard className="w-4 h-4" />}
                 <span>{buttonText}</span>
               </span>

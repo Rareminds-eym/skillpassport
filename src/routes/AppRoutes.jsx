@@ -512,9 +512,6 @@ const AppRoutes = () => {
         {/* Skill Passport Pre-Registration - Main landing page */}
         <Route path="/register" element={<SkillPassportPreRegistration />} />
         
-        {/* Simple Event Registration - Alternative route for campaigns */}
-        <Route path="/register/event" element={<SimpleEventRegistration />} />
-        
         {/* Receipt Page - Download PDF receipt */}
         <Route path="/receipt/:orderId" element={<Receipt />} />
 
