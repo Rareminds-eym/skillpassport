@@ -39,6 +39,7 @@ const About = lazy(() => import("../pages/homepage/About"));
 const Contact = lazy(() => import("../pages/homepage/Contact"));
 const TermsAndConditions = lazy(() => import("../pages/TermsAndConditions"));
 const PrivacyPolicy = lazy(() => import("../pages/PrivacyPolicy"));
+const Receipt = lazy(() => import("../pages/Receipt"));
 const PuterDemo = lazy(() => import("../pages/puter/PuterDemo"));
 const SubscriptionPlans = lazy(() =>
   import("../pages/subscription/SubscriptionPlans")
@@ -90,6 +91,11 @@ const EventSalesFailure = lazy(() =>
 // Simple Event Registration (social media campaigns)
 const SimpleEventRegistration = lazy(() =>
   import("../pages/register/SimpleEventRegistration")
+);
+
+// Skill Passport Pre-Registration (dedicated landing page)
+const SkillPassportPreRegistration = lazy(() =>
+  import("../pages/register/SkillPassportPreRegistration")
 );
 
 const Register = lazy(() => import("../pages/auth/components/SignIn/Register"));
@@ -503,8 +509,14 @@ const AppRoutes = () => {
     <Suspense fallback={<Loader />}>
       <ScrollToTop />
       <Routes>
-        {/* Simple Event Registration - Social media campaigns (standalone, no layout) */}
-        <Route path="/register" element={<SimpleEventRegistration />} />
+        {/* Skill Passport Pre-Registration - Main landing page */}
+        <Route path="/register" element={<SkillPassportPreRegistration />} />
+        
+        {/* Simple Event Registration - Alternative route for campaigns */}
+        <Route path="/register/event" element={<SimpleEventRegistration />} />
+        
+        {/* Receipt Page - Download PDF receipt */}
+        <Route path="/receipt/:orderId" element={<Receipt />} />
 
         {/* Event Sales - Standalone without layout (no header/footer) */}
         <Route path="/signup/plans" element={<EventSales />} />
