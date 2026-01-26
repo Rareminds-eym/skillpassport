@@ -13,6 +13,7 @@ import SearchBar from '../../../components/common/SearchBar';
 import AssessmentReportDrawer from '../../../components/shared/AssessmentReportDrawer';
 import { useAuth } from '../../../context/AuthContext';
 import { supabase } from '../../../lib/supabaseClient';
+import { formatStreamId } from '../../../utils/formatters';
 
 // Types
 interface AssessmentResult {
@@ -158,7 +159,7 @@ const AssessmentCard = ({
         </div>
         <div className="flex flex-col items-end space-y-1 ml-3">
           <span className="text-xs font-medium px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full">
-            {result.stream_id?.toUpperCase() || 'N/A'}
+            {formatStreamId(result.stream_id) || 'N/A'}
           </span>
           <span
             className={`text-xs px-2 py-0.5 rounded ${
@@ -829,7 +830,7 @@ const CollegeAdminAssessmentResults: React.FC = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className="px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-700 rounded">
-                              {result.stream_id?.toUpperCase() || 'N/A'}
+                              {formatStreamId(result.stream_id) || 'N/A'}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-mono font-bold text-indigo-600">

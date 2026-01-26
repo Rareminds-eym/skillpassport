@@ -15,6 +15,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SearchBar from '../../../components/common/SearchBar';
 import { supabase } from '../../../lib/supabaseClient';
+import { formatStreamId } from '../../../utils/formatters';
 
 // Types
 interface AssessmentResult {
@@ -148,7 +149,7 @@ const AssessmentCard = ({ result, onView }: { result: AssessmentResult; onView: 
         </div>
         <div className="flex flex-col items-end space-y-1 ml-3">
           <span className="text-xs font-medium px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full">
-            {result.stream_id?.toUpperCase() || 'N/A'}
+            {formatStreamId(result.stream_id) || 'N/A'}
           </span>
           <span className={`text-xs px-2 py-0.5 rounded ${
             result.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
@@ -264,7 +265,7 @@ const AssessmentDetailModal = ({
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <div className="bg-gray-50 rounded-lg p-4 text-center">
                 <p className="text-xs text-gray-500 mb-1">Stream</p>
-                <p className="font-semibold text-indigo-600">{result.stream_id?.toUpperCase() || 'N/A'}</p>
+                <p className="font-semibold text-indigo-600">{formatStreamId(result.stream_id) || 'N/A'}</p>
               </div>
               <div className="bg-gray-50 rounded-lg p-4 text-center">
                 <p className="text-xs text-gray-500 mb-1">Status</p>
@@ -984,7 +985,7 @@ const UniversityAdminAssessmentResults: React.FC = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className="px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-700 rounded">
-                              {result.stream_id?.toUpperCase() || 'N/A'}
+                              {formatStreamId(result.stream_id) || 'N/A'}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-mono font-bold text-indigo-600">

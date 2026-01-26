@@ -9,15 +9,15 @@ interface KanbanColumnProps {
   count: number;
   color: string;
   candidates: PipelineCandidate[];
-  onCandidateMove: (candidateId: number, newStage: string) => void;
+  onCandidateMove: (candidateId: string, newStage: string) => void;
   onCandidateView: (candidate: PipelineCandidate) => void;
-  selectedCandidates: number[];
-  onToggleSelect: (candidateId: number) => void;
+  selectedCandidates: string[];
+  onToggleSelect: (candidateId: string) => void;
   onSendEmail: (candidate: PipelineCandidate) => void;
   onAddClick: () => void;
   onNextAction?: (candidate: PipelineCandidate) => void;
   stageKey: string;
-  movingCandidates?: number[];
+  movingCandidates?: string[];
 }
 
 const getBorderColor = (color: string): string => {

@@ -24,6 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../../Students/components/ui/dialog';
+import { formatStreamId } from '../../../utils/formatters';
 
 // Import section components from assessment-result
 import ProfileSection from '../../../features/assessment/assessment-result/components/sections/ProfileSection';
@@ -226,12 +227,14 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
       // If assessmentResult is passed directly, use it instead of fetching
       if (assessmentResult?.gemini_results) {
         console.log('Using passed assessment result directly');
+        console.log('Assessment result stream_id:', assessmentResult?.stream_id);
+        console.log('Assessment result stream:', assessmentResult?.stream);
         setResults(assessmentResult.gemini_results);
         setStudentInfo({
           name: student?.name || '—',
           regNo: student?.registration_number || '—',
           college: student?.college_name || student?.college || '—',
-          stream: assessmentResult?.stream_id?.toUpperCase() || assessmentResult?.stream?.toUpperCase() || '—',
+          stream: formatStreamId(assessmentResult?.stream_id || assessmentResult?.stream) || '—',
           assessmentDate: assessmentResult?.created_at
             ? new Date(assessmentResult.created_at).toLocaleDateString('en-US', {
                 year: 'numeric',
@@ -244,8 +247,19 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
       } else {
         fetchAssessmentResults();
       }
+    } else if (!isOpen) {
+      // Reset state when drawer closes to ensure fresh data on next open
+      setResults(null);
+      setError(null);
+      setStudentInfo({
+        name: '—',
+        regNo: '—',
+        college: '—',
+        stream: '—',
+        assessmentDate: '—',
+      });
     }
-  }, [isOpen, student?.id, assessmentResult]);
+  }, [isOpen, student?.id, assessmentResult?.stream_id, assessmentResult?.stream, assessmentResult?.gemini_results, assessmentResult?.created_at]);
 
   const fetchAssessmentResults = async () => {
     setLoading(true);
@@ -305,6 +319,8 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
         .single();
 
       console.log('Assessment query result:', { data, fetchError });
+      console.log('Fetched stream_id:', data?.stream_id);
+      console.log('Fetched stream:', data?.stream);
 
       if (fetchError) {
         console.error('Assessment fetch error:', fetchError);
@@ -347,7 +363,7 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
         name: student?.name || '—',
         regNo: student?.registration_number || '—',
         college: student?.college_name || student?.colleges?.name || student?.college || '—',
-        stream: data?.stream?.toUpperCase() || '—',
+        stream: formatStreamId(data?.stream_id || data?.stream) || '—',
         assessmentDate: data?.created_at
           ? new Date(data.created_at).toLocaleDateString('en-US', {
               year: 'numeric',
@@ -356,6 +372,8 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
             })
           : '—',
       });
+      
+      console.log('Set studentInfo with stream:', formatStreamId(data?.stream_id || data?.stream) || '—');
     } catch (err) {
       console.error('Error fetching assessment results:', err);
       setError('Failed to load assessment results.');

@@ -6,6 +6,10 @@ import type { StreamContext } from '../../types';
 
 export const APTITUDE_PROMPT = `You are an expert psychometric assessment creator. Generate aptitude test questions for {{STREAM_NAME}} stream career assessment.
 
+⚠️ CRITICAL: You MUST generate the EXACT number of questions specified for each category below. 
+⚠️ COUNT CAREFULLY: If a category requires 8 questions, generate EXACTLY 8 questions for that category.
+⚠️ DO NOT generate more or fewer questions than specified.
+
 Generate questions for these categories with EXACT counts:
 {{CATEGORIES}}
 
@@ -43,7 +47,9 @@ CRITICAL: The "correct_answer" field MUST contain the EXACT TEXT of the correct 
 DO NOT use "Option A", "Option B", etc. - use the actual answer text.
 Example: If the correct answer is the second option, and options[1] is "Photosynthesis", then correct_answer should be "Photosynthesis", NOT "Option B".
 
-IMPORTANT: Use sequential numeric IDs (1, 2, 3, etc.) for each question.`;
+IMPORTANT: Use sequential numeric IDs (1, 2, 3, etc.) for each question.
+
+⚠️ FINAL REMINDER: Before submitting your response, COUNT the questions in each category to ensure you have generated the EXACT number specified above.`;
 
 export function buildAptitudePrompt(
   categoriesText: string,

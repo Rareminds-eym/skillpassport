@@ -5,6 +5,8 @@
  * Optimized for A4 print (210mm x 297mm) with 15mm margins
  */
 
+import { formatStreamId } from '../../../../utils/formatters';
+
 /**
  * @typedef {Object} StudentInfo
  * @property {string} name - Student's full name
@@ -330,7 +332,7 @@ const NotebookLabel = ({ studentInfo, description }) => {
           {/* Row 1, Col 3: Programme/Stream */}
           <div>
             <span style={labelStyle}>Programme/Stream</span>
-            <span style={valueStyle}>{safeInfo.stream}</span>
+            <span style={valueStyle}>{formatStreamId(safeInfo.stream) || '—'}</span>
           </div>
           
           {/* Row 2, Col 1: Grade */}

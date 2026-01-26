@@ -413,6 +413,64 @@ export const getAttemptResponses = async (attemptId) => {
 };
 
 /**
+ * Validate RIASEC scores for suspicious patterns
+ * @param {Object} riasecScores - RIASEC scores object { R, I, A, S, E, C }
+ * @returns {Object} - { isValid: boolean, warning: string|null }
+ */
+const validateRIASECScores = (riasecScores) => {
+  if (!riasecScores || typeof riasecScores !== 'object') {
+    return { isValid: true, warning: null };
+  }
+
+  const scores = Object.values(riasecScores);
+  if (scores.length === 0) {
+    return { isValid: true, warning: null };
+  }
+
+  // Check if all scores are equal
+  const uniqueScores = new Set(scores);
+  if (uniqueScores.size === 1) {
+    const equalValue = scores[0];
+    return {
+      isValid: false,
+      warning: `All RIASEC scores are equal (${equalValue}). This may indicate an extraction or calculation error.`
+    };
+  }
+
+  return { isValid: true, warning: null };
+};
+
+/**
+ * Validate aptitude scores for suspicious patterns
+ * @param {Object} aptitudeScores - Aptitude scores object with categories
+ * @returns {Object} - { isValid: boolean, warning: string|null }
+ */
+const validateAptitudeScores = (aptitudeScores) => {
+  if (!aptitudeScores || typeof aptitudeScores !== 'object') {
+    return { isValid: true, warning: null };
+  }
+
+  // Check if all correct counts are zero
+  const categories = Object.values(aptitudeScores);
+  if (categories.length === 0) {
+    return { isValid: true, warning: null };
+  }
+
+  const allZero = categories.every(category => {
+    return category && category.correct === 0;
+  });
+
+  if (allZero) {
+    return {
+      isValid: false,
+      warning: 'All aptitude scores show 0 correct answers. This may indicate an extraction or scoring error.'
+    };
+  }
+
+  return { isValid: true, warning: null };
+};
+
+/**
  * Complete an assessment attempt and save results
  * 
  * IMPORTANT: This function saves results FIRST, then marks the attempt as completed.
@@ -439,6 +497,22 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
   console.log('  riasec:', JSON.stringify(geminiResults?.riasec));
   console.log('  riasec.scores:', JSON.stringify(geminiResults?.riasec?.scores));
   console.log('  riasec.code:', geminiResults?.riasec?.code);
+
+  // ============================================================================
+  // VALIDATION: Check for suspicious score patterns (Requirement 6.4, 6.5)
+  // ============================================================================
+  
+  // Validate RIASEC scores
+  const riasecValidation = validateRIASECScores(geminiResults?.riasec?.scores);
+  if (!riasecValidation.isValid) {
+    console.warn('⚠️ RIASEC VALIDATION WARNING:', riasecValidation.warning);
+  }
+
+  // Validate aptitude scores
+  const aptitudeValidation = validateAptitudeScores(geminiResults?.aptitude?.scores);
+  if (!aptitudeValidation.isValid) {
+    console.warn('⚠️ APTITUDE VALIDATION WARNING:', aptitudeValidation.warning);
+  }
 
   // ============================================================================
   // CRITICAL VALIDATION: Ensure AI returned complete data
@@ -559,6 +633,32 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
   console.log('  employabilityScores:', employabilityScores, isSimplifiedAssessment ? '(excluded for simplified)' : '');
   console.log('  knowledgeScore:', knowledgeScore, isSimplifiedAssessment ? '(excluded for simplified)' : '');
   console.log('  careerFit exists:', !!careerFit);
+
+  // ============================================================================
+  // DETAILED LOGGING: Log extracted score values before database save (Requirement 6.3, 6.6)
+  // ============================================================================
+  console.log('📝 === EXTRACTED SCORES BEFORE DATABASE SAVE ===');
+  console.log('📝 RIASEC Scores:', JSON.stringify(riasecScores, null, 2));
+  console.log('📝 RIASEC Code:', riasecCode);
+  console.log('📝 Aptitude Scores:', JSON.stringify(aptitudeScores, null, 2));
+  console.log('📝 Aptitude Overall:', aptitudeOverall);
+  console.log('📝 BigFive Scores:', JSON.stringify(bigfiveScores, null, 2));
+  
+  if (!isSimplifiedAssessment) {
+    console.log('📝 Work Values Scores:', JSON.stringify(workValuesScores, null, 2));
+    console.log('📝 Employability Scores:', JSON.stringify(employabilityScores, null, 2));
+    console.log('📝 Employability Readiness:', employabilityReadiness);
+    console.log('📝 Knowledge Score:', knowledgeScore);
+  }
+  
+  // Log warnings for suspicious patterns
+  if (riasecValidation && !riasecValidation.isValid) {
+    console.warn('⚠️ SUSPICIOUS PATTERN DETECTED:', riasecValidation.warning);
+  }
+  if (aptitudeValidation && !aptitudeValidation.isValid) {
+    console.warn('⚠️ SUSPICIOUS PATTERN DETECTED:', aptitudeValidation.warning);
+  }
+  console.log('📝 === END EXTRACTED SCORES ===');
 
   const dataToInsert = {
     attempt_id: attemptId,
@@ -853,6 +953,86 @@ export const getInProgressAttempt = async (studentIdOrUserId) => {
   }
 
   /**
+   * Validate that an attempt has all required fields and correct data structure
+   * Validates: Requirements 2.4, 3.2
+   * @param {object} attempt - The attempt object to validate
+   * @returns {boolean} True if valid, false otherwise
+   */
+  const validateAttemptStructure = (attempt) => {
+    if (!attempt) return false;
+    
+    // Required fields that must exist
+    const requiredFields = [
+      'id',
+      'student_id',
+      'stream_id',
+      'grade_level',
+      'status',
+      'created_at',
+      'current_section_index',
+      'current_question_index'
+    ];
+    
+    // Check all required fields exist
+    for (const field of requiredFields) {
+      if (attempt[field] === undefined || attempt[field] === null) {
+        console.error(`❌ Validation failed: Missing required field '${field}'`);
+        return false;
+      }
+    }
+    
+    // Validate field types
+    if (typeof attempt.id !== 'string') {
+      console.error('❌ Validation failed: id must be a string (UUID)');
+      return false;
+    }
+    
+    if (typeof attempt.student_id !== 'string') {
+      console.error('❌ Validation failed: student_id must be a string (UUID)');
+      return false;
+    }
+    
+    if (typeof attempt.stream_id !== 'string') {
+      console.error('❌ Validation failed: stream_id must be a string (UUID)');
+      return false;
+    }
+    
+    if (typeof attempt.grade_level !== 'string') {
+      console.error('❌ Validation failed: grade_level must be a string');
+      return false;
+    }
+    
+    if (attempt.status !== 'in_progress') {
+      console.error(`❌ Validation failed: status must be 'in_progress', got '${attempt.status}'`);
+      return false;
+    }
+    
+    if (typeof attempt.current_section_index !== 'number') {
+      console.error('❌ Validation failed: current_section_index must be a number');
+      return false;
+    }
+    
+    if (typeof attempt.current_question_index !== 'number') {
+      console.error('❌ Validation failed: current_question_index must be a number');
+      return false;
+    }
+    
+    // Validate joined data structure (Requirements 3.2)
+    if (!attempt.stream || typeof attempt.stream !== 'object') {
+      console.error('❌ Validation failed: stream data must be present and be an object');
+      return false;
+    }
+    
+    if (!Array.isArray(attempt.responses)) {
+      console.error('❌ Validation failed: responses must be an array');
+      return false;
+    }
+    
+    console.log('✅ Attempt structure validation passed');
+    return true;
+  };
+
+  /**
    * Helper function to check if an attempt has meaningful progress
    * An attempt is considered "started" if it has:
    * - At least one response in personal_assessment_responses table, OR
@@ -931,17 +1111,34 @@ export const getInProgressAttempt = async (studentIdOrUserId) => {
     .eq('status', 'in_progress')
     .order('created_at', { ascending: false })
     .limit(1)
-    .maybeSingle();
+    .single();
 
+  // Handle "no rows found" case explicitly
   if (error) {
-    console.error('Error fetching in-progress attempt:', error);
-    throw error;
+    if (error.code === 'PGRST116') {
+      // No rows found - this is expected, return null
+      console.log('No in-progress attempt found (direct lookup)');
+      data = null;
+      error = null;
+    } else {
+      // Actual error - log and throw
+      console.error('Error fetching in-progress attempt:', error);
+      throw error;
+    }
   }
 
   // If found, check if it has actual progress
   if (data) {
+    console.log('✅ Found in-progress attempt (direct lookup):', data.id);
+    
+    // Validate attempt structure before proceeding
+    if (!validateAttemptStructure(data)) {
+      console.error('❌ Attempt failed validation, returning null');
+      return null;
+    }
+    
     if (hasProgress(data)) {
-      console.log('✅ Found in-progress attempt with progress (direct lookup):', data.id);
+      console.log('✅ Attempt has progress, returning it');
       
       // Fetch adaptive progress if there's an adaptive session
       if (data.adaptive_aptitude_session_id) {
@@ -1002,16 +1199,32 @@ export const getInProgressAttempt = async (studentIdOrUserId) => {
       .eq('status', 'in_progress')
       .order('created_at', { ascending: false })
       .limit(1)
-      .maybeSingle();
+      .single();
 
+    // Handle "no rows found" case explicitly
     if (attemptError) {
-      console.error('Error fetching attempt by student.id:', attemptError);
-      return null;
+      if (attemptError.code === 'PGRST116') {
+        // No rows found - this is expected
+        console.log('No in-progress attempt found (user_id lookup)');
+        return null;
+      } else {
+        // Actual error - log and return null
+        console.error('Error fetching attempt by student.id:', attemptError);
+        return null;
+      }
     }
 
     if (attemptData) {
+      console.log('✅ Found in-progress attempt (user_id lookup):', attemptData.id);
+      
+      // Validate attempt structure before proceeding
+      if (!validateAttemptStructure(attemptData)) {
+        console.error('❌ Attempt failed validation, returning null');
+        return null;
+      }
+      
       if (hasProgress(attemptData)) {
-        console.log('✅ Found in-progress attempt with progress (via user_id lookup):', attemptData.id);
+        console.log('✅ Attempt has progress, returning it');
         
         // Fetch adaptive progress if there's an adaptive session
         if (attemptData.adaptive_aptitude_session_id) {

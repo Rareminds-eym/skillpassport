@@ -16,7 +16,99 @@
 import type { AssessmentData } from '../types';
 
 export function buildHigherSecondaryPrompt(assessmentData: AssessmentData, answersHash: number): string {
+  // Extract student context for stream-specific guidance
+  const studentContext = assessmentData.studentContext;
+  const selectedStream = studentContext?.selectedStream || assessmentData.stream;
+  const selectedCategory = studentContext?.selectedCategory;
+  
+  // Determine stream category from stream ID if not explicitly provided
+  const getStreamCategory = (stream: string): string | null => {
+    const streamLower = stream.toLowerCase();
+    if (streamLower.includes('arts') || streamLower.includes('humanities')) return 'arts';
+    if (streamLower.includes('science') || streamLower.includes('pcm') || streamLower.includes('pcb')) return 'science';
+    if (streamLower.includes('commerce')) return 'commerce';
+    return null;
+  };
+  
+  const streamCategory = selectedCategory || getStreamCategory(selectedStream);
+  
+  // Build stream-specific instructions
+  const streamSpecificInstructions = streamCategory ? `
+
+## ⚠️ CRITICAL: STUDENT'S SELECTED STREAM CATEGORY
+
+**This student has selected the ${streamCategory.toUpperCase()} stream.**
+**Specific Stream**: ${selectedStream}
+
+${streamCategory === 'arts' ? `
+### 🎨 ARTS/HUMANITIES STREAM - MANDATORY REQUIREMENTS
+
+This student is in the ARTS/HUMANITIES stream. Your career recommendations MUST reflect this:
+
+**WHAT TO RECOMMEND:**
+✅ Arts & Humanities careers: Writer, Journalist, Psychologist, Lawyer, Teacher, Social Worker
+✅ Creative fields: Designer, Artist, Content Creator, Media Professional, Filmmaker
+✅ Social Sciences: Counselor, HR Professional, Public Relations, NGO Management
+✅ Liberal Arts programs: BA, BFA, LLB, Journalism, Psychology, Sociology, Political Science
+✅ Arts-aligned entrance exams: CLAT (Law), CUET (Central Universities), JMI, BHU Arts
+
+**WHAT NOT TO RECOMMEND:**
+❌ NO Engineering careers (Mechanical, Civil, Electrical, Software Engineer)
+❌ NO Medical careers (Doctor, Dentist, Pharmacist, Nurse)
+❌ NO Pure Science careers (Physicist, Chemist, Biologist, Researcher)
+❌ NO Technology careers (Data Scientist, AI Engineer, IT Professional)
+❌ NO Science programs (B.Tech, MBBS, B.Sc Physics/Chemistry)
+❌ NO Science entrance exams (JEE, NEET, BITSAT)
+
+**CAREER CLUSTER REQUIREMENTS:**
+- Cluster 1 (High Fit): Core Arts careers based on their RIASEC profile
+- Cluster 2 (Medium Fit): Adjacent Arts/Creative careers
+- Cluster 3 (Explore): Interdisciplinary Arts careers
+
+**VALIDATION:** Before finalizing, verify that ZERO careers from Science/Engineering/Medical fields are included!
+
+` : streamCategory === 'science' ? `
+### 🔬 SCIENCE STREAM - MANDATORY REQUIREMENTS
+
+This student is in the SCIENCE stream. Your career recommendations MUST reflect this:
+
+**WHAT TO RECOMMEND:**
+✅ Engineering: Mechanical, Civil, Electrical, Computer Science, Aerospace
+✅ Medical: Doctor, Dentist, Pharmacist, Physiotherapist, Medical Researcher
+✅ Technology: Software Engineer, Data Scientist, AI/ML Engineer, IT Professional
+✅ Pure Sciences: Physicist, Chemist, Biologist, Research Scientist
+✅ Science programs: B.Tech, MBBS, B.Sc, BCA, Pharmacy
+✅ Science entrance exams: JEE Main/Advanced, NEET, BITSAT, AIIMS
+
+**WHAT NOT TO RECOMMEND:**
+❌ NO Pure Arts careers (Writer, Journalist, Artist, Filmmaker)
+❌ NO Law careers (Lawyer, Legal Advisor)
+❌ NO Pure Commerce careers (CA without engineering, Business Management)
+❌ NO Arts programs (BA, BFA, LLB without science component)
+
+` : streamCategory === 'commerce' ? `
+### 💼 COMMERCE STREAM - MANDATORY REQUIREMENTS
+
+This student is in the COMMERCE stream. Your career recommendations MUST reflect this:
+
+**WHAT TO RECOMMEND:**
+✅ Finance & Accounting: CA, CFA, Financial Analyst, Investment Banker
+✅ Business: MBA, Business Manager, Entrepreneur, Marketing Professional
+✅ Banking: Bank Manager, Actuary, Risk Analyst
+✅ Commerce programs: B.Com, BBA, CA, CMA, MBA
+✅ Commerce entrance exams: CA Foundation, CUET Commerce, IPM, BBA entrance
+
+**WHAT NOT TO RECOMMEND:**
+❌ NO Pure Engineering careers (Mechanical, Civil, Electrical Engineer)
+❌ NO Medical careers (Doctor, Dentist, Pharmacist)
+❌ NO Pure Arts careers (Writer, Journalist, Artist)
+❌ NO Science programs (B.Tech, MBBS, B.Sc)
+
+` : ''}
+` : '';
+
   return `You are an expert career counselor for higher secondary students (grades 11-12). These students have already chosen their academic stream and are preparing for college entrance exams and career decisions.
+${streamSpecificInstructions}
 
 ## CRITICAL: This must be DETERMINISTIC - same input = same output always
 Session ID: ${answersHash}

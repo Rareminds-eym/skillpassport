@@ -31,10 +31,16 @@ const ProjectDetailsModal = ({ project, isOpen, onClose, onAction, currentUserId
       return;
     }
 
+    const projectId = project.id || project.project_id;
+    if (!projectId) {
+      toast.error('Invalid project ID');
+      return;
+    }
+
     setIsProcessing(true);
     try {
       await SchoolAdminNotificationService.approveProject(
-        project.project_id, 
+        projectId, 
         currentUserId, 
         notes
       );
@@ -63,10 +69,16 @@ const ProjectDetailsModal = ({ project, isOpen, onClose, onAction, currentUserId
       return;
     }
 
+    const projectId = project.id || project.project_id;
+    if (!projectId) {
+      toast.error('Invalid project ID');
+      return;
+    }
+
     setIsProcessing(true);
     try {
       await SchoolAdminNotificationService.rejectProject(
-        project.project_id, 
+        projectId, 
         currentUserId, 
         notes
       );

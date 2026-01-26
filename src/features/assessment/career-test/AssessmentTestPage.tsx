@@ -104,7 +104,7 @@ const getSectionIconPath = (sectionId: string): string => {
     // Employability Skills
     'employability': '/assets/Assessment Icons/Employability Skills.png',
     
-    // Multi-Aptitude
+    // Stream Based Aptitude
     'aptitude': '/assets/Assessment Icons/Multi-Aptitude.png',
     
     // Stream Knowledge
@@ -445,9 +445,10 @@ const AssessmentTestPage: React.FC = () => {
   useEffect(() => {
     if (!flow.gradeLevel) return;
     
-    // For stream-based assessments (higher_secondary, after12, college), wait for stream selection
+    // For stream-based assessments (after12, college), wait for stream selection
     // For middle/highschool, build sections immediately
     // For after10, we use 'general' stream which is set automatically in handleGradeSelect
+    // For higher_secondary, students select their stream (Science/Commerce/Arts) before assessment
     const needsStream = ['higher_secondary', 'after12', 'college'].includes(flow.gradeLevel);
     const canBuild = flow.studentStream || !needsStream;
     
@@ -584,83 +585,49 @@ const AssessmentTestPage: React.FC = () => {
   
   // Timer effects
   useEffect(() => {
-    console.log('⏱️ Timer useEffect triggered:', {
-      showSectionIntro: flow.showSectionIntro,
-      showSectionComplete: flow.showSectionComplete,
-      isSubmitting: flow.isSubmitting,
-      currentSectionIndex: flow.currentSectionIndex,
-      elapsedTime: flow.elapsedTime,
-      sectionsLength: sections.length
-    });
-    
     if (flow.showSectionIntro || flow.showSectionComplete || flow.isSubmitting) {
-      console.log('⏱️ Timer BLOCKED - Early return due to:', {
-        showSectionIntro: flow.showSectionIntro,
-        showSectionComplete: flow.showSectionComplete,
-        isSubmitting: flow.isSubmitting
-      });
       return;
     }
     
     const currentSection = sections[flow.currentSectionIndex];
     if (!currentSection) {
-      console.log('⏱️ Timer BLOCKED - No current section');
       return;
     }
-    
-    console.log('⏱️ Timer ACTIVE - Section:', {
-      sectionId: currentSection.id,
-      sectionTitle: currentSection.title,
-      isTimed: currentSection.isTimed,
-      isAptitude: currentSection.isAptitude,
-      isKnowledge: currentSection.isKnowledge,
-      timeRemaining: flow.timeRemaining,
-      elapsedTime: flow.elapsedTime
-    });
+
     
     // For aptitude and knowledge sections: ALWAYS use elapsed time counter
     // These sections use per-question timers, not section-level countdown
     if (currentSection.isAptitude || currentSection.isKnowledge) {
-      console.log('⏱️ Starting elapsed time counter (aptitude/knowledge section)');
       const interval = setInterval(() => {
-        console.log('⏱️ Elapsed time tick:', flow.elapsedTime, '→', flow.elapsedTime + 1);
         flow.setElapsedTime(flow.elapsedTime + 1);
       }, 1000);
       return () => {
-        console.log('⏱️ Cleaning up elapsed time counter');
         clearInterval(interval);
       };
     }
     
     // Elapsed time counter for non-timed sections
     if (!currentSection.isTimed || flow.timeRemaining === null) {
-      console.log('⏱️ Starting elapsed time counter (non-timed or timeRemaining not set)');
       const interval = setInterval(() => {
-        console.log('⏱️ Elapsed time tick:', flow.elapsedTime, '→', flow.elapsedTime + 1);
         flow.setElapsedTime(flow.elapsedTime + 1);
       }, 1000);
       return () => {
-        console.log('⏱️ Cleaning up elapsed time counter');
         clearInterval(interval);
       };
     }
     
     // Countdown timer for timed sections (not aptitude/knowledge)
     if (currentSection.isTimed && flow.timeRemaining !== null && flow.timeRemaining > 0) {
-      console.log('⏱️ Starting countdown timer for timed section');
       const interval = setInterval(() => {
-        console.log('⏱️ Countdown tick:', flow.timeRemaining, '→', flow.timeRemaining! - 1);
         flow.setTimeRemaining(flow.timeRemaining! - 1);
       }, 1000);
       return () => {
-        console.log('⏱️ Cleaning up countdown timer');
         clearInterval(interval);
       };
     }
     
     // Auto-advance when time runs out
     if (currentSection.isTimed && flow.timeRemaining === 0) {
-      console.log('⏱️ Time expired - auto-advancing');
       handleNextQuestion();
     }
   }, [flow.showSectionIntro, flow.showSectionComplete, flow.isSubmitting, flow.currentSectionIndex, flow.timeRemaining, flow.elapsedTime, sections]);
@@ -772,11 +739,6 @@ const AssessmentTestPage: React.FC = () => {
       const currentSection = sections[flow.currentSectionIndex];
       const timerRemaining = currentSection?.isTimed ? flow.timeRemaining : null;
       
-      console.log('⏱️ Auto-saving timer state:', {
-        elapsedTime: flow.elapsedTime,
-        timerRemaining,
-        sectionIndex: flow.currentSectionIndex
-      });
       
       dbUpdateProgress(
         flow.currentSectionIndex,
@@ -1508,7 +1470,8 @@ const AssessmentTestPage: React.FC = () => {
         currentAttempt,
         userId: user?.id || null,
         timeRemaining: flow.timeRemaining,
-        elapsedTime: flow.elapsedTime
+        elapsedTime: flow.elapsedTime,
+        selectedCategory: flow.selectedCategory
       });
     } else {
       console.log('⏭️ [NEXT SECTION] Moving to next section with optimized save strategy');
@@ -1883,26 +1846,12 @@ const AssessmentTestPage: React.FC = () => {
     
     const progressPercentage = totalQuestions > 0 ? (answeredQuestions / totalQuestions) * 100 : 0;
     
-    console.log('📊 [MAIN PROGRESS] Calculation:', {
-      totalQuestions,
-      answeredQuestions,
-      progressPercentage: Math.round(progressPercentage),
-      currentSectionIndex: flow.currentSectionIndex,
-      currentQuestionIndex: flow.currentQuestionIndex,
-      sectionsBreakdown: sections.map((s, i) => ({
-        id: s.id,
-        questions: s.questions?.length || (s.isAdaptive ? 21 : 0),
-        isCompleted: i < flow.currentSectionIndex,
-        isCurrent: i === flow.currentSectionIndex
-      }))
-    });
-    
     return progressPercentage;
   };
   
   // Main Assessment UI
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
       {/* Progress Header */}
       <div>
         <ProgressHeader
@@ -2030,7 +1979,14 @@ const AssessmentTestPage: React.FC = () => {
               isAdaptive={currentSection.isAdaptive}
               isTimed={currentSection.isTimed}
               showAIPoweredBadge={currentSection.id === 'aptitude' || currentSection.id === 'knowledge'}
-              isLoading={currentSection.isAdaptive && adaptiveAptitude.loading}
+              isLoading={
+                // Show loading for adaptive aptitude (21 questions)
+                (currentSection.isAdaptive && adaptiveAptitude.loading) ||
+                // Show loading for multi-aptitude (50 questions) when AI questions are still loading
+                (currentSection.id === 'aptitude' && !currentSection.isAdaptive && questionsLoading) ||
+                // Show loading for knowledge section when AI questions are still loading
+                (currentSection.id === 'knowledge' && questionsLoading)
+              }
               onStart={handleStartSection}
             />
           )}
@@ -2079,8 +2035,9 @@ const AssessmentTestPage: React.FC = () => {
                   
                   {/* Per-Question Countdown Timer - Top Right (for aptitude/knowledge sections ONLY) */}
                   {((currentSection?.isAptitude && flow.aptitudePhase === 'individual') || currentSection?.isKnowledge) && flow.aptitudeQuestionTimer !== null && (
-                    <div className={`text-xs font-semibold flex items-center gap-1.5 px-2 py-1 rounded-lg ${flow.aptitudeQuestionTimer <= 10 ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'
-                      }`}>
+                    <div className={`text-sm font-semibold flex items-center gap-1.5 ${
+                      flow.aptitudeQuestionTimer <= 10 ? 'text-red-600' : 'text-orange-600'
+                    }`}>
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <circle cx="12" cy="12" r="10" strokeWidth="2"/>
                         <path strokeLinecap="round" strokeWidth="2" d="M12 6v6l4 2"/>
