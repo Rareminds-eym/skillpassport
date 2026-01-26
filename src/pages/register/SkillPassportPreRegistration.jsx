@@ -26,7 +26,11 @@ import {
   FileCheck,
   ArrowRight,
   Award,
-  Rocket
+  Rocket,
+  BadgeCheck,
+  Clock,
+  FastForward,
+  Crown
 } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { useEffect } from 'react';
@@ -732,6 +736,173 @@ export default function SkillPassportPreRegistration() {
 
       {/* WHAT YOU GET SECTION - Infographic Style */}
       <section className="py-20 bg-gradient-to-b from-gray-50 to-white overflow-hidden relative">
+        <style>{`
+          .infographic-item {
+            --p: 0;
+            --sgn-p: calc(2 * var(--p) - 1);
+            --offset-x: 100px;
+            --offset-y: 12px;
+            --angle: 5deg;
+            --shadow-opacity: 0.5;
+            
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            margin-bottom: calc(-1 * var(--offset-y));
+            padding: 1.5rem 0;
+            position: relative;
+            
+            background: 
+              conic-gradient(
+                from calc(var(--p) * var(--angle) * -1 + var(--sgn-p) * -90deg)
+                at calc(var(--p) * 100% - var(--sgn-p) * var(--offset-x)) -3px,
+                hsla(0, 0%, 0%, calc((1 - var(--p)) * var(--shadow-opacity))),
+                hsla(0, 0%, 0%, calc(var(--p) * var(--shadow-opacity))) var(--angle),
+                transparent 0%
+              ),
+              linear-gradient(
+                calc(var(--sgn-p) * 90deg),
+                var(--c0) var(--offset-x),
+                var(--c1)
+              );
+            
+            clip-path: polygon(
+              calc(var(--p) * 100%) 50%,
+              calc(var(--p) * 100% - var(--sgn-p) * var(--offset-x) * 0.5) 0,
+              calc((1 - var(--p)) * 100% + var(--sgn-p) * var(--offset-x)) var(--offset-y),
+              calc((1 - var(--p)) * 100% + var(--sgn-p) * var(--offset-x)) calc(100% - var(--offset-y)),
+              calc(var(--p) * 100% - var(--sgn-p) * var(--offset-x) * 0.5) 100%
+            );
+          }
+          
+          .infographic-item:first-child {
+            background: linear-gradient(
+              calc(var(--sgn-p) * 90deg),
+              var(--c0) var(--offset-x),
+              var(--c1)
+            );
+          }
+          
+          .infographic-item:nth-child(2n) {
+            --p: 1;
+            transform: translateX(30px);
+          }
+          
+          .infographic-item:nth-child(2n+1) {
+            transform: translateX(-30px);
+          }
+          
+          .infographic-counter {
+            grid-column: 2;
+            grid-row: 1 / span 2;
+            padding: 0 12px;
+            font-size: 4rem;
+            font-weight: bold;
+            color: rgba(0, 0, 0, 0.1);
+            text-align: center;
+            align-self: center;
+          }
+          
+          .infographic-icon {
+            grid-row: 1 / span 2;
+            padding: 0 12px;
+            color: #324265ff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            align-self: center;
+          }
+          
+          .infographic-item[style*="--p: 0"] .infographic-icon {
+            grid-column: 3;
+            text-align: right;
+          }
+          
+          .infographic-item[style*="--p: 1"] .infographic-icon {
+            grid-column: 1;
+            text-align: left;
+          }
+          
+          .infographic-title {
+            grid-row: 1;
+            font-size: 1.875rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #111827;
+            padding: 0.25rem 12px;
+            white-space: nowrap;
+          }
+          
+          .infographic-text {
+            grid-row: 2;
+            font-size: 1.125rem;
+            line-height: 1.75;
+            color: #1f2937;
+            padding: 0.25rem 12px;
+          }
+          
+          .infographic-item[style*="--p: 0"] .infographic-title,
+          .infographic-item[style*="--p: 0"] .infographic-text {
+            grid-column: 1;
+            text-align: left;
+            padding-left: 2rem;
+            padding-right: 100px;
+          }
+          
+          .infographic-item[style*="--p: 1"] .infographic-title,
+          .infographic-item[style*="--p: 1"] .infographic-text {
+            grid-column: 3;
+            text-align: right;
+            padding-left: 100px;
+            padding-right: 2rem;
+          }
+          
+          @media (max-width: 768px) {
+            .infographic-item {
+              grid-template-columns: 1fr;
+              --offset-x: 0px;
+              clip-path: none;
+              border-radius: 1rem;
+              margin-bottom: 1rem;
+              padding: 1.5rem;
+            }
+            
+            .infographic-counter {
+              display: none;
+            }
+            
+            .infographic-icon {
+              grid-column: 1 !important;
+              grid-row: 1;
+              text-align: center;
+              padding: 0 0 1rem 0;
+            }
+            
+            .infographic-icon svg {
+              width: 3.5rem;
+              height: 3.5rem;
+              margin: 0 auto;
+            }
+            
+            .infographic-title,
+            .infographic-text {
+              grid-column: 1 !important;
+              text-align: center !important;
+              padding: 0.5rem 0 !important;
+            }
+            
+            .infographic-title {
+              grid-row: 2;
+              font-size: 1.5rem;
+            }
+            
+            .infographic-text {
+              grid-row: 3;
+              font-size: 1rem;
+            }
+          }
+        `}</style>
+
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -743,130 +914,71 @@ export default function SkillPassportPreRegistration() {
             <h2 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
               What You Get After Pre-Registration
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
               Once you complete pre-registration, you will receive:
             </p>
-            
-            {/* How It Works Note */}
-            <div className="inline-block bg-blue-50 border-2 border-blue-200 rounded-2xl p-6 max-w-2xl">
-              <p className="text-sm text-gray-700 leading-relaxed">
-                <strong className="text-blue-700">How?!</strong> A single variable makes the difference between the odd and even items.{' '}
-                <code className="bg-white px-2 py-1 rounded text-xs font-mono text-blue-600">
-                  article:nth-child(2n) {'{ --p: 1 }'}
-                </code>
-              </p>
-            </div>
           </motion.div>
 
           {/* Infographic Cards */}
-          <div className="space-y-0 max-w-5xl mx-auto">
+          <div className="max-w-5xl mx-auto">
             {[
               {
-                colors: ['#f94144', '#fc9c9e'],
-                icon: '📧',
+                colors: ['#3B82F6', '#60A5FA'],
+                Icon: BadgeCheck,
                 title: 'Instant Confirmation',
                 text: 'Receive immediate email confirmation with your registration details and next steps.'
               },
               {
-                colors: ['#f8961e', '#fbbe74'],
-                icon: '🚀',
+                colors: ['#D1D5DB', '#E5E7EB'],
+                Icon: Clock,
                 title: 'Early Access',
                 text: 'Get priority access to the Skill Passport platform before the public launch.'
               },
               {
-                colors: ['#90be6d', '#bfd9ab'],
-                icon: '👤',
+                colors: ['#3B82F6', '#60A5FA'],
+                Icon: FastForward,
                 title: 'Priority Onboarding',
                 text: 'Enjoy personalized onboarding support during the launch phase.'
               },
               {
-                colors: ['#5c7b99', '#a6b7c9'],
-                icon: '🎁',
+                colors: ['#D1D5DB', '#E5E7EB'],
+                Icon: Crown,
                 title: 'Exclusive Benefits',
                 text: 'Access special features and benefits available only to early users.'
               }
             ].map((item, idx) => {
               const isEven = idx % 2 === 1;
-              const clipAngle = 5;
-              const offsetX = 100;
-              const offsetY = 12;
               
               return (
-                <motion.article
+                <motion.div
                   key={idx}
                   initial={{ opacity: 0, x: isEven ? 50 : -50 }}
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.6, delay: idx * 0.15 }}
-                  className="relative grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4 items-center -mb-3"
+                  className="infographic-item"
                   style={{
-                    background: `linear-gradient(${isEven ? -90 : 90}deg, ${item.colors[0]} ${offsetX}px, ${item.colors[1]})`,
-                    clipPath: `polygon(
-                      ${isEven ? '100%' : '0%'} 50%,
-                      ${isEven ? `calc(100% - ${offsetX * 0.5}px)` : `${offsetX * 0.5}px`} 0,
-                      ${isEven ? `${offsetX}px` : `calc(100% - ${offsetX}px)`} ${offsetY}px,
-                      ${isEven ? `${offsetX}px` : `calc(100% - ${offsetX}px)`} calc(100% - ${offsetY}px),
-                      ${isEven ? `calc(100% - ${offsetX * 0.5}px)` : `${offsetX * 0.5}px`} 100%
-                    )`,
-                    padding: '1.5rem 0',
-                    boxShadow: idx === 0 ? 'none' : `
-                      ${isEven ? '' : '-'}${Math.cos((clipAngle * Math.PI) / 180) * offsetX * 0.5}px 
-                      ${Math.sin((clipAngle * Math.PI) / 180) * offsetX * 0.5}px 
-                      20px rgba(0, 0, 0, 0.15)
-                    `
+                    '--c0': item.colors[0],
+                    '--c1': item.colors[1],
+                    '--p': isEven ? 1 : 0
                   }}
                 >
-                  {/* Counter Number */}
-                  <div 
-                    className="hidden md:flex items-center justify-center text-6xl font-bold text-gray-900/10 order-2"
-                    style={{ 
-                      gridColumn: 2,
-                      gridRow: '1 / span 2',
-                      padding: `0 ${offsetY}px`
-                    }}
-                  >
+                  <div className="infographic-counter">
                     {String(idx + 1).padStart(2, '0')}
                   </div>
-
-                  {/* Icon */}
-                  <div 
-                    className="flex items-center justify-center text-7xl md:text-8xl order-1 md:order-none"
-                    style={{
-                      gridColumn: isEven ? 3 : 1,
-                      gridRow: '1 / span 2',
-                      padding: `0 ${offsetY}px`,
-                      filter: 'brightness(0) invert(0.0625)'
-                    }}
-                  >
-                    {item.icon}
+                  
+                  <div className="infographic-icon">
+                    <item.Icon className="w-20 h-20" strokeWidth={1.5} />
                   </div>
-
-                  {/* Title */}
-                  <h3 
-                    className="text-2xl md:text-3xl font-bold text-gray-900 uppercase order-3 md:order-none"
-                    style={{
-                      gridColumn: isEven ? 1 : 3,
-                      gridRow: 1,
-                      padding: `0.25rem ${isEven ? `${offsetX}px` : `${offsetY}px`} 0.25rem ${isEven ? `${offsetY}px` : `${offsetX}px`}`,
-                      textAlign: isEven ? 'right' : 'left'
-                    }}
-                  >
+                  
+                  <h3 className="infographic-title">
                     {item.title}
                   </h3>
-
-                  {/* Description */}
-                  <p 
-                    className="text-base md:text-lg text-gray-800 leading-relaxed order-4 md:order-none"
-                    style={{
-                      gridColumn: isEven ? 1 : 3,
-                      gridRow: 2,
-                      padding: `0.25rem ${isEven ? `${offsetX}px` : `${offsetY}px`} 0.25rem ${isEven ? `${offsetY}px` : `${offsetX}px`}`,
-                      textAlign: isEven ? 'right' : 'left'
-                    }}
-                  >
+                  
+                  <p className="infographic-text">
                     {item.text}
                   </p>
-                </motion.article>
+                </motion.div>
               );
             })}
           </div>
