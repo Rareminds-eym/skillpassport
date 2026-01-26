@@ -11,7 +11,6 @@
 
 import { motion, useMotionTemplate, useMotionValue, animate } from 'framer-motion';
 import {
-  Award,
   BookOpen,
   Briefcase,
   Check,
@@ -24,9 +23,10 @@ import {
   TrendingUp,
   Users,
   X,
-  Zap,
   FileCheck,
-  ArrowRight
+  ArrowRight,
+  Award,
+  Rocket
 } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { useEffect } from 'react';
@@ -363,7 +363,7 @@ export default function SkillPassportPreRegistration() {
                   desc: 'Go beyond marksheets with skill-based proof',
                 },
                 {
-                  icon: SparklesIcon,
+                  icon: Rocket,
                   title: 'Future Ready',
                   desc: 'Showcase what you can do, not just what you studied',
                 },
@@ -730,9 +730,9 @@ export default function SkillPassportPreRegistration() {
         </div>
       </section>
 
-      {/* WHAT YOU GET SECTION */}
-      <section className="py-20 bg-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* WHAT YOU GET SECTION - Infographic Style */}
+      <section className="py-20 bg-gradient-to-b from-gray-50 to-white overflow-hidden relative">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -740,51 +740,157 @@ export default function SkillPassportPreRegistration() {
             transition={{ duration: 0.6 }}
             className="text-center mb-16"
           >
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+            <h2 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
               What You Get After Pre-Registration
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
               Once you complete pre-registration, you will receive:
             </p>
+            
+            {/* How It Works Note */}
+            <div className="inline-block bg-blue-50 border-2 border-blue-200 rounded-2xl p-6 max-w-2xl">
+              <p className="text-sm text-gray-700 leading-relaxed">
+                <strong className="text-blue-700">How?!</strong> A single variable makes the difference between the odd and even items.{' '}
+                <code className="bg-white px-2 py-1 rounded text-xs font-mono text-blue-600">
+                  article:nth-child(2n) {'{ --p: 1 }'}
+                </code>
+              </p>
+            </div>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+          {/* Infographic Cards */}
+          <div className="space-y-0 max-w-5xl mx-auto">
             {[
-              { icon: Mail, title: 'Instant Confirmation', desc: ' via email' },
-              { icon: Zap, title: 'Early Access', desc: 'to the Skill Passport platform' },
-              { icon: Users, title: 'Priority Onboarding', desc: 'during launch phase' },
-              { icon: Award, title: 'Exclusive Benefits', desc: 'available only to early users' }
-            ].map((benefit, idx) => (
-              <motion.div
-                key={idx}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: idx * 0.1 }}
-                className="bg-gradient-to-br from-blue-50 to-indigo-50 p-8 rounded-3xl shadow-lg border-2 border-blue-100 hover:shadow-xl transition-all duration-300"
-              >
-                <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mb-6">
-                  <benefit.icon className="w-8 h-8 text-white" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">{benefit.title}</h3>
-                <p className="text-gray-600">{benefit.desc}</p>
-              </motion.div>
-            ))}
+              {
+                colors: ['#f94144', '#fc9c9e'],
+                icon: '📧',
+                title: 'Instant Confirmation',
+                text: 'Receive immediate email confirmation with your registration details and next steps.'
+              },
+              {
+                colors: ['#f8961e', '#fbbe74'],
+                icon: '🚀',
+                title: 'Early Access',
+                text: 'Get priority access to the Skill Passport platform before the public launch.'
+              },
+              {
+                colors: ['#90be6d', '#bfd9ab'],
+                icon: '👤',
+                title: 'Priority Onboarding',
+                text: 'Enjoy personalized onboarding support during the launch phase.'
+              },
+              {
+                colors: ['#5c7b99', '#a6b7c9'],
+                icon: '🎁',
+                title: 'Exclusive Benefits',
+                text: 'Access special features and benefits available only to early users.'
+              }
+            ].map((item, idx) => {
+              const isEven = idx % 2 === 1;
+              const clipAngle = 5;
+              const offsetX = 100;
+              const offsetY = 12;
+              
+              return (
+                <motion.article
+                  key={idx}
+                  initial={{ opacity: 0, x: isEven ? 50 : -50 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.6, delay: idx * 0.15 }}
+                  className="relative grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4 items-center -mb-3"
+                  style={{
+                    background: `linear-gradient(${isEven ? -90 : 90}deg, ${item.colors[0]} ${offsetX}px, ${item.colors[1]})`,
+                    clipPath: `polygon(
+                      ${isEven ? '100%' : '0%'} 50%,
+                      ${isEven ? `calc(100% - ${offsetX * 0.5}px)` : `${offsetX * 0.5}px`} 0,
+                      ${isEven ? `${offsetX}px` : `calc(100% - ${offsetX}px)`} ${offsetY}px,
+                      ${isEven ? `${offsetX}px` : `calc(100% - ${offsetX}px)`} calc(100% - ${offsetY}px),
+                      ${isEven ? `calc(100% - ${offsetX * 0.5}px)` : `${offsetX * 0.5}px`} 100%
+                    )`,
+                    padding: '1.5rem 0',
+                    boxShadow: idx === 0 ? 'none' : `
+                      ${isEven ? '' : '-'}${Math.cos((clipAngle * Math.PI) / 180) * offsetX * 0.5}px 
+                      ${Math.sin((clipAngle * Math.PI) / 180) * offsetX * 0.5}px 
+                      20px rgba(0, 0, 0, 0.15)
+                    `
+                  }}
+                >
+                  {/* Counter Number */}
+                  <div 
+                    className="hidden md:flex items-center justify-center text-6xl font-bold text-gray-900/10 order-2"
+                    style={{ 
+                      gridColumn: 2,
+                      gridRow: '1 / span 2',
+                      padding: `0 ${offsetY}px`
+                    }}
+                  >
+                    {String(idx + 1).padStart(2, '0')}
+                  </div>
+
+                  {/* Icon */}
+                  <div 
+                    className="flex items-center justify-center text-7xl md:text-8xl order-1 md:order-none"
+                    style={{
+                      gridColumn: isEven ? 3 : 1,
+                      gridRow: '1 / span 2',
+                      padding: `0 ${offsetY}px`,
+                      filter: 'brightness(0) invert(0.0625)'
+                    }}
+                  >
+                    {item.icon}
+                  </div>
+
+                  {/* Title */}
+                  <h3 
+                    className="text-2xl md:text-3xl font-bold text-gray-900 uppercase order-3 md:order-none"
+                    style={{
+                      gridColumn: isEven ? 1 : 3,
+                      gridRow: 1,
+                      padding: `0.25rem ${isEven ? `${offsetX}px` : `${offsetY}px`} 0.25rem ${isEven ? `${offsetY}px` : `${offsetX}px`}`,
+                      textAlign: isEven ? 'right' : 'left'
+                    }}
+                  >
+                    {item.title}
+                  </h3>
+
+                  {/* Description */}
+                  <p 
+                    className="text-base md:text-lg text-gray-800 leading-relaxed order-4 md:order-none"
+                    style={{
+                      gridColumn: isEven ? 1 : 3,
+                      gridRow: 2,
+                      padding: `0.25rem ${isEven ? `${offsetX}px` : `${offsetY}px`} 0.25rem ${isEven ? `${offsetY}px` : `${offsetX}px`}`,
+                      textAlign: isEven ? 'right' : 'left'
+                    }}
+                  >
+                    {item.text}
+                  </p>
+                </motion.article>
+              );
+            })}
           </div>
 
+          {/* Bottom CTA Card */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className="mt-16 text-center bg-gradient-to-r from-emerald-50 to-teal-50 p-10 rounded-3xl border-2 border-emerald-200"
+            transition={{ duration: 0.6, delay: 0.8 }}
+            className="mt-20 relative"
           >
-            <p className="text-2xl font-bold text-gray-900 mb-2">
-              No recurring charges. No hidden fees.
-            </p>
-            <p className="text-lg text-gray-600">
-              One-time payment of ₹250 for early access
-            </p>
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-3xl blur-xl opacity-20" />
+            <div className="relative bg-gradient-to-r from-emerald-50 to-teal-50 p-10 rounded-3xl border-2 border-emerald-200 text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-500 rounded-full mb-4">
+                <Check className="w-8 h-8 text-white" />
+              </div>
+              <p className="text-3xl font-bold text-gray-900 mb-2">
+                No recurring charges. No hidden fees.
+              </p>
+              <p className="text-xl text-gray-600">
+                One-time payment of ₹250 for early access
+              </p>
+            </div>
           </motion.div>
         </div>
       </section>
