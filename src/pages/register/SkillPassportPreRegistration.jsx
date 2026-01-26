@@ -220,7 +220,7 @@ export default function SkillPassportPreRegistration() {
       {/* HERO SECTION - Aurora Background with CSS Stars */}
       <motion.section
         style={{ backgroundImage }}
-        className="relative grid min-h-screen place-content-center overflow-hidden bg-white px-4 py-24 text-gray-900"
+        className="relative grid min-h-screen place-content-center overflow-hidden bg-white px-4 py-16 sm:py-20 md:py-24 text-gray-900"
       >
         {/* CSS Animated Stars Background */}
         <div className="absolute inset-0 z-0">
@@ -265,23 +265,23 @@ export default function SkillPassportPreRegistration() {
         <div className="relative z-10 w-full mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center max-w-[1400px] mx-auto">
             {/* Left Column - Content */}
-            <div className="space-y-6 lg:space-y-8">
+            <div className="space-y-4 sm:space-y-6 lg:space-y-8">
               {/* Badge with Lottie */}
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.6 }}
-                className="inline-flex items-center gap-3 px-5 py-2.5 bg-white/70 backdrop-blur-md rounded-full border-2 border-gray-500"
+                className="inline-flex items-center gap-2 sm:gap-3 px-4 sm:px-5 py-2 sm:py-2.5 bg-white/70 backdrop-blur-md rounded-full border-2 border-gray-500"
               >
-                <div className="w-7 h-7 flex-shrink-0">
+                <div className="w-6 h-6 sm:w-7 sm:h-7 flex-shrink-0">
                   <DotLottieReact
                     src="https://lottie.host/1689bbd3-291d-4b13-9da5-2882f580c526/7rNvhtQCvu.lottie"
                     loop
                     autoplay
-                    style={{ width: '28px', height: '28px' }}
+                    style={{ width: '100%', height: '100%' }}
                   />
                 </div>
-                <span className="text-gray-800 text-sm font-bold tracking-wide">FOR STUDENTS ONLY</span>
+                <span className="text-gray-800 text-xs sm:text-sm font-bold tracking-wide">FOR STUDENTS ONLY</span>
               </motion.div>
 
               {/* Headline */}
@@ -290,8 +290,9 @@ export default function SkillPassportPreRegistration() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.1 }}
               >
-                <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold leading-tight mb-4 text-gray-900">
-                  Turn Your Skills Into Proof. Not Just a Resume.
+                <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold leading-tight mb-3 sm:mb-4 text-gray-900">
+                  Turn Your Skills Into Proof.{' '}
+                  <span className="whitespace-nowrap">Not Just a Resume.</span>
                 </h1>
               </motion.div>
 
@@ -300,7 +301,7 @@ export default function SkillPassportPreRegistration() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.2 }}
-                className="text-base sm:text-lg lg:text-xl text-gray-700 leading-relaxed"
+                className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-700 leading-relaxed"
               >
                 Skill Passport is a verified digital profile that helps students showcase real, job-ready skills—recognized by mentors, institutions, and employers.
               </motion.p>
@@ -310,22 +311,22 @@ export default function SkillPassportPreRegistration() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.3 }}
-                className="flex flex-col sm:flex-row gap-4"
+                className="flex flex-col sm:flex-row gap-3 sm:gap-4"
               >
                 <motion.a
                   href="/register/event?campaign=skill-passport"
                   style={{ border, boxShadow }}
                   whileHover={{ scale: 1.015 }}
                   whileTap={{ scale: 0.985 }}
-                  className="group relative inline-flex items-center justify-center gap-2 px-8 py-4 bg-white/30 backdrop-blur-2xl text-gray-900 font-bold text-base lg:text-lg rounded-full transition-all duration-300 hover:bg-white/40 shadow-[0_8px_32px_0_rgba(255,255,255,0.3)] hover:shadow-[0_12px_48px_0_rgba(255,255,255,0.4)] border-2 border-gray-600"
+                  className="group relative inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 sm:py-4 bg-white/30 backdrop-blur-2xl text-gray-900 font-bold text-sm sm:text-base lg:text-lg rounded-full transition-all duration-300 hover:bg-white/40 shadow-[0_8px_32px_0_rgba(255,255,255,0.3)] hover:shadow-[0_12px_48px_0_rgba(255,255,255,0.4)] border-2 border-gray-600"
                 >
                   Pre-register Now
-                  <ArrowRight className="w-5 h-5 transition-transform group-hover:-rotate-45 group-active:-rotate-12" />
+                  <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 transition-transform group-hover:-rotate-45 group-active:-rotate-12" />
                 </motion.a>
 
                 <a
                   href="#what-is-skill-passport"
-                  className="inline-flex items-center justify-center gap-3 px-8 py-4 bg-black backdrop-blur-sm border-2 border-gray-800 text-white font-bold text-base lg:text-lg rounded-full hover:bg-gray-900 hover:border-gray-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+                  className="inline-flex items-center justify-center gap-2 sm:gap-3 px-6 sm:px-8 py-3 sm:py-4 bg-black backdrop-blur-sm border-2 border-gray-800 text-white font-bold text-sm sm:text-base lg:text-lg rounded-full hover:bg-gray-900 hover:border-gray-700 transition-all duration-300 shadow-lg hover:shadow-xl"
                 >
                   Learn More
                 </a>
@@ -336,9 +337,9 @@ export default function SkillPassportPreRegistration() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.6, delay: 0.4 }}
-                className="flex items-center gap-3 text-xs sm:text-sm text-gray-600"
+                className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-600"
               >
-                <ShieldCheck className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
                 <span>Built by Rareminds • ISO 9001 & ISO 21001 Certified</span>
               </motion.div>
             </div>
@@ -348,7 +349,7 @@ export default function SkillPassportPreRegistration() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8, delay: 0.3 }}
-              className="grid grid-cols-2 gap-4 lg:gap-6"
+              className="grid grid-cols-2 gap-3 sm:gap-4 lg:gap-6"
             >
               {[
                 {
@@ -381,10 +382,10 @@ export default function SkillPassportPreRegistration() {
                   className="relative group"
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300 opacity-0 group-hover:opacity-100" />
-                  <div className="relative bg-white/90 backdrop-blur-md border border-gray-200 p-5 lg:p-6 rounded-2xl hover:border-blue-400/50 transition-all duration-300 h-full shadow-sm">
-                    <benefit.icon className="w-7 h-7 lg:w-8 lg:h-8 text-blue-600 mb-3" />
-                    <h3 className="text-gray-900 font-bold text-sm lg:text-base mb-2">{benefit.title}</h3>
-                    <p className="text-gray-600 text-xs leading-relaxed">{benefit.desc}</p>
+                  <div className="relative bg-white/90 backdrop-blur-md border border-gray-200 p-4 sm:p-5 lg:p-6 rounded-xl sm:rounded-2xl hover:border-blue-400/50 transition-all duration-300 h-full shadow-sm">
+                    <benefit.icon className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-blue-600 mb-2 sm:mb-3" />
+                    <h3 className="text-gray-900 font-bold text-xs sm:text-sm lg:text-base mb-1 sm:mb-2">{benefit.title}</h3>
+                    <p className="text-gray-600 text-[10px] sm:text-xs leading-relaxed">{benefit.desc}</p>
                   </div>
                 </motion.div>
               ))}
@@ -397,11 +398,11 @@ export default function SkillPassportPreRegistration() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, delay: 1, repeat: Infinity, repeatType: 'reverse' }}
-          className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-10"
+          className="absolute bottom-6 sm:bottom-8 left-1/2 transform -translate-x-1/2 z-10"
         >
           <div className="flex flex-col items-center gap-2 text-gray-600">
-            <span className="text-xs uppercase tracking-wider">Scroll to explore</span>
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <span className="text-[10px] sm:text-xs uppercase tracking-wider">Scroll to explore</span>
+            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -414,21 +415,21 @@ export default function SkillPassportPreRegistration() {
       </motion.section>
 
       {/* WHAT IS SKILL PASSPORT */}
-      <section id="what-is-skill-passport" className="py-20 bg-gray-50">
+      <section id="what-is-skill-passport" className="py-12 sm:py-16 md:py-20 bg-gray-50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="text-center mb-16"
+            className="text-center mb-10 sm:mb-12 md:mb-16"
           >
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-4 sm:mb-6">
               What is Skill Passport?
             </h2>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 gap-12 items-center">
+          <div className="grid md:grid-cols-2 gap-8 sm:gap-10 md:gap-12 items-center">
             <motion.div
               initial={{ opacity: 0, x: -30 }}
               whileInView={{ opacity: 1, x: 0 }}
@@ -436,12 +437,12 @@ export default function SkillPassportPreRegistration() {
               transition={{ duration: 0.6 }}
               className="space-y-6"
             >
-              <div className="bg-white p-8 rounded-3xl shadow-lg border border-gray-100">
-                <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mb-6">
-                  <X className="w-8 h-8 text-red-600" />
+              <div className="bg-white p-6 sm:p-8 rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-red-100 rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-6">
+                  <X className="w-6 h-6 sm:w-8 sm:h-8 text-red-600" />
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-4">The Problem</h3>
-                <p className="text-gray-600 text-lg leading-relaxed">
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 sm:mb-4">The Problem</h3>
+                <p className="text-gray-600 text-base sm:text-lg leading-relaxed">
                   Most students have skills—but no credible way to prove them.
                 </p>
               </div>
@@ -454,22 +455,22 @@ export default function SkillPassportPreRegistration() {
               transition={{ duration: 0.6 }}
               className="space-y-6"
             >
-              <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-8 rounded-3xl shadow-xl text-white">
-                <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-6">
-                  <Check className="w-8 h-8 text-white" />
+              <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-6 sm:p-8 rounded-2xl sm:rounded-3xl shadow-xl text-white">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white/20 backdrop-blur-sm rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-6">
+                  <Check className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
                 </div>
-                <h3 className="text-2xl font-bold mb-4">The Solution</h3>
-                <ul className="space-y-3 text-lg">
-                  <li className="flex items-start gap-3">
-                    <SparklesIcon className="w-5 h-5 flex-shrink-0 mt-1" />
+                <h3 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">The Solution</h3>
+                <ul className="space-y-2 sm:space-y-3 text-base sm:text-lg">
+                  <li className="flex items-start gap-2 sm:gap-3">
+                    <Check className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 mt-1" />
                     <span>A single digital profile of your skills</span>
                   </li>
-                  <li className="flex items-start gap-3">
-                    <SparklesIcon className="w-5 h-5 flex-shrink-0 mt-1" />
+                  <li className="flex items-start gap-2 sm:gap-3">
+                    <Check className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 mt-1" />
                     <span>Verified learning and project credentials</span>
                   </li>
-                  <li className="flex items-start gap-3">
-                    <SparklesIcon className="w-5 h-5 flex-shrink-0 mt-1" />
+                  <li className="flex items-start gap-2 sm:gap-3">
+                    <Check className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 mt-1" />
                     <span>A structured way to show what you can do, not just what you studied</span>
                   </li>
                 </ul>
@@ -482,9 +483,9 @@ export default function SkillPassportPreRegistration() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="mt-12 text-center"
+            className="mt-8 sm:mt-10 md:mt-12 text-center"
           >
-            <p className="text-2xl font-bold text-gray-900">
+            <p className="text-xl sm:text-2xl font-bold text-gray-900">
               This is your skill identity—designed for the real world.
             </p>
           </motion.div>
@@ -494,27 +495,38 @@ export default function SkillPassportPreRegistration() {
       
 
       {/* WHO IS THIS FOR */}
-      <section className="py-20 bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
+      <section className="py-12 sm:py-16 md:py-20 bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="text-center mb-24"
+            className="text-center mb-12 sm:mb-16 md:mb-24"
           >
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-4 sm:mb-6">
               Who is This For?
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-3xl mx-auto px-4">
               Skill Passport is designed for students who are serious about their career
             </p>
+            {/* Lottie Animation - Mobile Only */}
+            <div className="lg:hidden mb-6 sm:mb-8 flex justify-center">
+              <div className="w-40 h-40 sm:w-48 sm:h-48">
+                <DotLottieReact
+                  src="https://lottie.host/8762c3c1-db94-4087-9ccc-46615033bf52/2wX4r7hVjN.lottie"
+                  loop
+                  autoplay
+                  className="w-full h-full"
+                />
+              </div>
+            </div>
           </motion.div>
 
           {/* Circular Orbit Layout */}
           <div className="relative max-w-5xl mx-auto">
             {/* Mobile: Stack vertically */}
-            <div className="flex flex-col gap-8 lg:hidden">
+            <div className="flex flex-col gap-4 sm:gap-6 md:gap-8 lg:hidden">
               {[
                 { 
                   icon: GraduationCap, 
@@ -543,17 +555,17 @@ export default function SkillPassportPreRegistration() {
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.5, delay: idx * 0.1 }}
-                  className="flex items-center gap-4 bg-white p-6 rounded-2xl shadow-lg"
+                  className="flex items-center gap-3 sm:gap-4 bg-white p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl shadow-lg"
                 >
-                  <div className={`w-16 h-16 bg-gradient-to-br ${persona.color} rounded-full flex items-center justify-center flex-shrink-0 relative`}
+                  <div className={`w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-gradient-to-br ${persona.color} rounded-full flex items-center justify-center flex-shrink-0 relative`}
                     style={{
                       boxShadow: '0 8px 30px rgba(59, 130, 246, 0.5), inset 0 -4px 8px rgba(0, 0, 0, 0.2), inset 0 4px 8px rgba(255, 255, 255, 0.3)'
                     }}
                   >
-                    <persona.icon className="w-8 h-8 text-white relative z-10" />
+                    <persona.icon className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-white relative z-10" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-base font-bold text-gray-900">{persona.desc}</p>
+                    <p className="text-sm sm:text-base font-bold text-gray-900">{persona.desc}</p>
                   </div>
                 </motion.div>
               ))}
@@ -655,39 +667,39 @@ export default function SkillPassportPreRegistration() {
 
       
       {/* WHY SKILL PASSPORT MATTERS */}
-      <section className="py-20 bg-gray-50">
+      <section className="py-12 sm:py-16 md:py-20 bg-gray-50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="text-center mb-16"
+            className="text-center mb-10 sm:mb-12 md:mb-16"
           >
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-4 sm:mb-6">
               Why Skill Passport Matters
             </h2>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 gap-12 mb-16">
+          <div className="grid md:grid-cols-2 gap-8 sm:gap-10 md:gap-12 mb-10 sm:mb-12 md:mb-16">
             <motion.div
               initial={{ opacity: 0, x: -30 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6 }}
             >
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">Today's Problem</h3>
-              <div className="space-y-4">
+              <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">Today's Problem</h3>
+              <div className="space-y-3 sm:space-y-4">
                 {[
                   'Degrees are common',
                   'Resumes look the same',
                   'Employers care about skills, not just scores'
                 ].map((problem, idx) => (
-                  <div key={idx} className="flex items-center gap-4 bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
-                    <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <X className="w-5 h-5 text-red-600" />
+                  <div key={idx} className="flex items-center gap-3 sm:gap-4 bg-white p-4 sm:p-5 rounded-xl sm:rounded-2xl shadow-sm border border-gray-200">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <X className="w-4 h-4 sm:w-5 sm:h-5 text-red-600" />
                     </div>
-                    <span className="text-gray-700 font-medium">{problem}</span>
+                    <span className="text-gray-700 font-medium text-sm sm:text-base">{problem}</span>
                   </div>
                 ))}
               </div>
@@ -699,18 +711,18 @@ export default function SkillPassportPreRegistration() {
               viewport={{ once: true }}
               transition={{ duration: 0.6 }}
             >
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">Skill Passport Helps You</h3>
-              <div className="space-y-4">
+              <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">Skill Passport Helps You</h3>
+              <div className="space-y-3 sm:space-y-4">
                 {[
                   'Demonstrate industry-relevant skills',
                   'Organize learning, projects, and certifications in one place',
                   'Present yourself with clarity and confidence'
                 ].map((solution, idx) => (
-                  <div key={idx} className="flex items-center gap-4 bg-gradient-to-r from-blue-50 to-indigo-50 p-5 rounded-2xl shadow-sm border border-blue-200">
-                    <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Check className="w-5 h-5 text-white" />
+                  <div key={idx} className="flex items-center gap-3 sm:gap-4 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 sm:p-5 rounded-xl sm:rounded-2xl shadow-sm border border-blue-200">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                      <Check className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                     </div>
-                    <span className="text-gray-900 font-medium">{solution}</span>
+                    <span className="text-gray-900 font-medium text-sm sm:text-base">{solution}</span>
                   </div>
                 ))}
               </div>
@@ -722,12 +734,12 @@ export default function SkillPassportPreRegistration() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="text-center bg-white p-10 rounded-3xl shadow-xl border-2 border-gray-100"
+            className="text-center bg-white p-6 sm:p-8 md:p-10 rounded-2xl sm:rounded-3xl shadow-xl border-2 border-gray-100"
           >
-            <p className="text-2xl font-bold text-gray-900 mb-4">
+            <p className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 sm:mb-4">
               This is not another course.
             </p>
-            <p className="text-xl text-gray-600">
+            <p className="text-base sm:text-lg md:text-xl text-gray-600">
               This is how your skills are seen and recognised.
             </p>
           </motion.div>
@@ -735,7 +747,8 @@ export default function SkillPassportPreRegistration() {
       </section>
 
       {/* WHAT YOU GET SECTION - Infographic Style */}
-      <section className="py-20 bg-gradient-to-b from-gray-50 to-white overflow-hidden relative">
+      <section className="py-12 sm:py-16 md:py-20 bg-gradient-to-b from-gray-50 to-white relative">
+        <div className="overflow-hidden px-4 sm:px-0">
         <style>{`
           .infographic-item {
             --p: 0;
@@ -795,17 +808,20 @@ export default function SkillPassportPreRegistration() {
           .infographic-counter {
             grid-column: 2;
             grid-row: 1 / span 2;
-            padding: 0 12px;
+            padding: 0 1.5rem;
             font-size: 4rem;
             font-weight: bold;
             color: rgba(0, 0, 0, 0.1);
             text-align: center;
             align-self: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
           }
           
           .infographic-icon {
             grid-row: 1 / span 2;
-            padding: 0 12px;
+            padding: 0 1.5rem;
             color: #324265ff;
             display: flex;
             align-items: center;
@@ -813,14 +829,17 @@ export default function SkillPassportPreRegistration() {
             align-self: center;
           }
           
+          .infographic-icon svg {
+            width: 5rem;
+            height: 5rem;
+          }
+          
           .infographic-item[style*="--p: 0"] .infographic-icon {
             grid-column: 3;
-            text-align: right;
           }
           
           .infographic-item[style*="--p: 1"] .infographic-icon {
             grid-column: 1;
-            text-align: left;
           }
           
           .infographic-title {
@@ -857,14 +876,70 @@ export default function SkillPassportPreRegistration() {
             padding-right: 2rem;
           }
           
-          @media (max-width: 768px) {
+          /* Tablet Styles (768px - 1024px) */
+          @media (max-width: 1024px) and (min-width: 768px) {
             .infographic-item {
-              grid-template-columns: 1fr;
-              --offset-x: 0px;
-              clip-path: none;
-              border-radius: 1rem;
-              margin-bottom: 1rem;
-              padding: 1.5rem;
+              --offset-x: 70px;
+              padding: 1.25rem 0;
+            }
+            
+            .infographic-item:nth-child(2n) {
+              transform: translateX(20px);
+            }
+            
+            .infographic-item:nth-child(2n+1) {
+              transform: translateX(-20px);
+            }
+            
+            .infographic-counter {
+              font-size: 3rem;
+              padding: 0 8px;
+            }
+            
+            .infographic-icon svg {
+              width: 4rem;
+              height: 4rem;
+            }
+            
+            .infographic-title {
+              font-size: 1.5rem;
+              white-space: normal;
+            }
+            
+            .infographic-text {
+              font-size: 1rem;
+            }
+            
+            .infographic-item[style*="--p: 0"] .infographic-title,
+            .infographic-item[style*="--p: 0"] .infographic-text {
+              padding-left: 1.5rem;
+              padding-right: 70px;
+            }
+            
+            .infographic-item[style*="--p: 1"] .infographic-title,
+            .infographic-item[style*="--p: 1"] .infographic-text {
+              padding-left: 70px;
+              padding-right: 1.5rem;
+            }
+          }
+          
+          /* Mobile Styles (below 768px) */
+          @media (max-width: 767px) {
+            .infographic-item {
+              --offset-x: 40px;
+              grid-template-columns: auto 1fr;
+              grid-template-rows: auto auto;
+              margin-bottom: calc(-1 * var(--offset-y));
+              padding: 1rem 1rem;
+              gap: 0.75rem;
+            }
+            
+            .infographic-item:nth-child(2n) {
+              transform: translateX(10px);
+            }
+            
+            .infographic-item:nth-child(2n+1) {
+              transform: translateX(-10px);
             }
             
             .infographic-counter {
@@ -872,33 +947,77 @@ export default function SkillPassportPreRegistration() {
             }
             
             .infographic-icon {
-              grid-column: 1 !important;
-              grid-row: 1;
-              text-align: center;
-              padding: 0 0 1rem 0;
+              grid-column: 1;
+              grid-row: 1 / span 2;
+              padding: 0 1rem 0 0.5rem;
+              align-self: flex-start;
+              padding-top: 0.25rem;
             }
             
             .infographic-icon svg {
-              width: 3.5rem;
-              height: 3.5rem;
-              margin: 0 auto;
-            }
-            
-            .infographic-title,
-            .infographic-text {
-              grid-column: 1 !important;
-              text-align: center !important;
-              padding: 0.5rem 0 !important;
+              width: 2.5rem;
+              height: 2.5rem;
             }
             
             .infographic-title {
-              grid-row: 2;
-              font-size: 1.5rem;
+              grid-column: 2;
+              grid-row: 1;
+              font-size: 1.125rem;
+              white-space: normal;
+              text-align: left !important;
+              padding: 0 1rem 0.25rem 0 !important;
+              font-weight: 700;
             }
             
             .infographic-text {
-              grid-row: 3;
+              grid-column: 2;
+              grid-row: 2;
+              font-size: 0.875rem;
+              text-align: left !important;
+              padding: 0 1rem 0 0 !important;
+              line-height: 1.5;
+            }
+          }
+          
+          /* Small Mobile (below 480px) */
+          @media (max-width: 479px) {
+            .infographic-item {
+              --offset-x: 30px;
+              padding: 0.875rem 0.75rem 0.875rem 3rem;
+            }
+            
+            .infographic-item:nth-child(2n) {
+              transform: translateX(8px);
+            }
+            
+            .infographic-item:nth-child(2n+1) {
+              transform: translateX(-8px);
+            }
+            
+            .infographic-counter {
+              font-size: 1.75rem;
+              padding: 0 0.4rem;
+            }
+            
+            .infographic-icon {
+              padding: 0 0.75rem 0 0;
+              margin-left: -2.25rem;
+            }
+            
+            .infographic-icon svg {
+              width: 2.25rem;
+              height: 2.25rem;
+            }
+            
+            .infographic-title {
               font-size: 1rem;
+              padding: 0 0.75rem 0.25rem 0 !important;
+            }
+            
+            .infographic-text {
+              font-size: 0.8125rem;
+              padding: 0 0.75rem 0 0 !important;
+              line-height: 1.45;
             }
           }
         `}</style>
@@ -909,12 +1028,12 @@ export default function SkillPassportPreRegistration() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="text-center mb-16"
+            className="text-center mb-10 sm:mb-12 md:mb-16"
           >
-            <h2 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-4 sm:mb-6">
               What You Get After Pre-Registration
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-3xl mx-auto px-4">
               Once you complete pre-registration, you will receive:
             </p>
           </motion.div>
@@ -989,21 +1108,22 @@ export default function SkillPassportPreRegistration() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: 0.8 }}
-            className="mt-20 relative"
+            className="mt-12 sm:mt-16 md:mt-20 relative"
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-3xl blur-xl opacity-20" />
-            <div className="relative bg-gradient-to-r from-emerald-50 to-teal-50 p-10 rounded-3xl border-2 border-emerald-200 text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-500 rounded-full mb-4">
-                <Check className="w-8 h-8 text-white" />
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-2xl sm:rounded-3xl blur-xl opacity-20" />
+            <div className="relative bg-gradient-to-r from-emerald-50 to-teal-50 p-6 sm:p-8 md:p-10 rounded-2xl sm:rounded-3xl border-2 border-emerald-200 text-center">
+              <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 bg-emerald-500 rounded-full mb-3 sm:mb-4">
+                <Check className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
               </div>
-              <p className="text-3xl font-bold text-gray-900 mb-2">
+              <p className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-2 px-2">
                 No recurring charges. No hidden fees.
               </p>
-              <p className="text-xl text-gray-600">
+              <p className="text-base sm:text-lg md:text-xl text-gray-600 px-2">
                 One-time payment of ₹250 for early access
               </p>
             </div>
           </motion.div>
+        </div>
         </div>
       </section>
 
@@ -1021,13 +1141,13 @@ export default function SkillPassportPreRegistration() {
               <img 
                 src="/RareMinds.webp" 
                 alt="Rareminds Logo" 
-                className="h-16 mx-auto mb-6"
+                className="h-12 md:h-16 mx-auto mb-6"
               />
             </div>
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-4 md:mb-6">
               About Rareminds
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-12 leading-relaxed">
+            <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-3xl mx-auto mb-12 leading-relaxed px-4">
               Rareminds is a learning and transformation organization focused on building future-ready skills for students and professionals.
             </p>
 
@@ -1037,21 +1157,21 @@ export default function SkillPassportPreRegistration() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5 }}
-              className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-12 text-gray-700 text-lg mt-20 mb-16"
+              className="flex flex-col md:flex-row items-start md:items-center justify-center gap-4 md:gap-8 lg:gap-12 text-gray-700 text-sm sm:text-base md:text-lg mt-12 md:mt-16 lg:mt-20 mb-12 md:mb-16"
             >
-              <div className="flex items-center gap-3">
-                <ShieldCheck className="w-6 h-6 text-indigo-600 flex-shrink-0" />
-                <span className="font-medium">ISO 9001 & ISO 21001 Certified</span>
+              <div className="flex items-start md:items-center gap-3 w-full md:w-auto">
+                <ShieldCheck className="w-5 h-5 md:w-6 md:h-6 text-indigo-600 flex-shrink-0 mt-0.5 md:mt-0" />
+                <span className="font-medium text-left">ISO 9001 & ISO 21001 Certified</span>
               </div>
               <div className="hidden md:block w-px h-8 bg-gray-300"></div>
-              <div className="flex items-center gap-3">
-                <Users className="w-6 h-6 text-indigo-600 flex-shrink-0" />
-                <span className="font-medium">Trusted by educational institutions and learners across India </span>
+              <div className="flex items-start md:items-center gap-3 w-full md:w-auto">
+                <Users className="w-5 h-5 md:w-6 md:h-6 text-indigo-600 flex-shrink-0 mt-0.5 md:mt-0" />
+                <span className="font-medium text-left">Trusted by educational institutions and learners across India</span>
               </div>
               <div className="hidden md:block w-px h-8 bg-gray-300"></div>
-              <div className="flex items-center gap-3">
-                <Target className="w-6 h-6 text-indigo-600 flex-shrink-0" />
-                <span className="font-medium">Focused on applied learning, employability, and skill development</span>
+              <div className="flex items-start md:items-center gap-3 w-full md:w-auto">
+                <Target className="w-5 h-5 md:w-6 md:h-6 text-indigo-600 flex-shrink-0 mt-0.5 md:mt-0" />
+                <span className="font-medium text-left">Focused on applied learning, employability, and skill development</span>
               </div>
             </motion.div>
           </motion.div>
@@ -1072,7 +1192,7 @@ export default function SkillPassportPreRegistration() {
       </section>
 
       {/* NEED HELP */}
-      <section className="py-8 bg-white">
+      <section className="py-8 md:py-12 lg:py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Heading */}
           <motion.div
@@ -1080,28 +1200,30 @@ export default function SkillPassportPreRegistration() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="text-center mb-8"
+            className="text-center mb-6 md:mb-8 lg:mb-12"
           >
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900">
               Need Some Help?
             </h2>
           </motion.div>
 
-          <div className="grid lg:grid-cols-[1.2fr,1fr] gap-16 items-center max-w-6xl mx-auto">
-            {/* Left Column - Large Animation */}
+          <div className="grid lg:grid-cols-[1.2fr,1fr] gap-6 md:gap-10 lg:gap-16 items-center max-w-6xl mx-auto">
+            {/* Left Column - Responsive Animation */}
             <motion.div
               initial={{ opacity: 0, x: -30 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6 }}
-              className="flex justify-center lg:justify-end"
+              className="flex justify-center lg:justify-end order-1"
             >
-              <DotLottieReact
-                src="https://lottie.host/3ae3ba03-21ac-4b70-90e3-f349c2360211/wRnTObzkdE.lottie"
-                loop
-                autoplay
-                style={{ width: '500px', height: '500px' }}
-              />
+              <div className="w-full max-w-[260px] sm:max-w-[320px] md:max-w-[380px] lg:max-w-[500px]">
+                <DotLottieReact
+                  src="https://lottie.host/3ae3ba03-21ac-4b70-90e3-f349c2360211/wRnTObzkdE.lottie"
+                  loop
+                  autoplay
+                  className="w-full h-auto"
+                />
+              </div>
             </motion.div>
 
             {/* Right Column - Compact Contact Info */}
@@ -1110,7 +1232,7 @@ export default function SkillPassportPreRegistration() {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6 }}
-              className="space-y-3"
+              className="space-y-3 md:space-y-4 lg:space-y-5 order-2"
             >
               {/* Email Card */}
               <motion.a
@@ -1119,20 +1241,20 @@ export default function SkillPassportPreRegistration() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: 0.1 }}
-                className="group block p-4 bg-white rounded-xl border-2 border-gray-200 hover:border-blue-500 hover:shadow-md transition-all duration-300"
+                className="group block p-5 md:p-6 bg-white rounded-2xl border-2 border-gray-200 hover:border-blue-500 hover:shadow-lg transition-all duration-300"
               >
-                <div className="flex items-start gap-2.5">
-                  <div className="flex-shrink-0 w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
-                    <Mail className="w-5 h-5 text-white" />
+                <div className="flex items-start gap-3 md:gap-4">
+                  <div className="flex-shrink-0 w-12 h-12 md:w-14 md:h-14 bg-blue-500 rounded-xl flex items-center justify-center">
+                    <Mail className="w-6 h-6 md:w-7 md:h-7 text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-bold text-gray-900 mb-0.5">Email Support</h3>
-                    <p className="text-xs text-gray-600 mb-1.5 leading-snug">
+                    <h3 className="text-base md:text-lg font-bold text-gray-900 mb-1 md:mb-2">Email Support</h3>
+                    <p className="text-sm md:text-base text-gray-600 mb-2 md:mb-3 leading-relaxed">
                       Have questions? Send us an email and we'll get back to you within 24 hours.
                     </p>
-                    <div className="flex items-center gap-1 text-blue-600 font-medium text-xs group-hover:gap-1.5 transition-all">
-                      <span>marketing@rareminds.in</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
+                    <div className="flex items-center gap-1.5 text-blue-600 font-medium text-sm md:text-base group-hover:gap-2 transition-all">
+                      <span className="break-all">marketing@rareminds.in</span>
+                      <ArrowRight className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
                     </div>
                   </div>
                 </div>
@@ -1144,19 +1266,19 @@ export default function SkillPassportPreRegistration() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: 0.2 }}
-                className="block p-4 bg-white rounded-xl border-2 border-gray-200"
+                className="block p-5 md:p-6 bg-white rounded-2xl border-2 border-gray-200"
               >
-                <div className="flex items-start gap-2.5">
-                  <div className="flex-shrink-0 w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
-                    <Phone className="w-5 h-5 text-white" />
+                <div className="flex items-start gap-3 md:gap-4">
+                  <div className="flex-shrink-0 w-12 h-12 md:w-14 md:h-14 bg-green-500 rounded-xl flex items-center justify-center">
+                    <Phone className="w-6 h-6 md:w-7 md:h-7 text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-bold text-gray-900 mb-0.5">WhatsApp Support</h3>
-                    <p className="text-xs text-gray-600 mb-1.5 leading-snug">
+                    <h3 className="text-base md:text-lg font-bold text-gray-900 mb-1 md:mb-2">WhatsApp Support</h3>
+                    <p className="text-sm md:text-base text-gray-600 mb-2 md:mb-3 leading-relaxed">
                       Get instant support via WhatsApp after completing your registration.
                     </p>
-                    <div className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-50 text-green-700 rounded-md text-xs font-medium">
-                      <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 md:px-3.5 md:py-2 bg-green-50 text-green-700 rounded-lg text-xs md:text-sm font-medium">
+                      <span className="w-2 h-2 bg-green-500 rounded-full"></span>
                       Available after registration
                     </div>
                   </div>
