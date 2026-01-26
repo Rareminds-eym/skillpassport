@@ -802,7 +802,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
           className="text-center text-xs sm:text-sm text-gray-500 mt-5 sm:mt-6 px-4"
         >
           Need help?{' '}
-          <a href="mailto:marketing@rareminds.in" className="text-blue-600 hover:text-blue-700 font-semibold underline underline-offset-2">
+          <a href="https://rareminds.in/contact" className="text-blue-600 hover:text-blue-700 font-semibold underline underline-offset-2">
             Contact Support
           </a>
         </motion.p>

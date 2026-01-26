@@ -276,7 +276,7 @@ const TimelineSection = () => {
         </div>
 
         {/* Bottom CTA */}
-        <motion.div
+        {/* <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -289,7 +289,7 @@ const TimelineSection = () => {
           <p className="text-base sm:text-lg md:text-xl text-gray-600">
             This is how your skills are seen and recognized.
           </p>
-        </motion.div>
+        </motion.div> */}
       </div>
     </section>
   );
