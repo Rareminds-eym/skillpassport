@@ -186,16 +186,6 @@ function App() {
 // Gold theme
 <Sparkles color="#d4af37" />
 
-// Multi-color (requires custom options)
-<Sparkles 
-  options={{
-    particles: {
-      color: {
-        value: ["#8350e8", "#3b82f6", "#14b8a6"]
-      }
-    }
-  }}
-/>
 ```
 
 ### Performance Optimization
