@@ -375,7 +375,7 @@ export async function getNextQuestion(sessionId: string): Promise<NextQuestionRe
   const totalQuestionsAnswered = sessionData.questions_answered as number;
   const maxTotalQuestions = DEFAULT_ADAPTIVE_TEST_CONFIG.phases.diagnostic_screener.maxQuestions +
     DEFAULT_ADAPTIVE_TEST_CONFIG.phases.adaptive_core.maxQuestions +
-    DEFAULT_ADAPTIVE_TEST_CONFIG.phases.stability_confirmation.maxQuestions; // 6 + 11 + 4 = 21
+    DEFAULT_ADAPTIVE_TEST_CONFIG.phases.stability_confirmation.maxQuestions; // 8 + 36 + 6 = 50
 
   // Hard limit: if we've answered max questions, complete the test
   if (totalQuestionsAnswered >= maxTotalQuestions) {
@@ -393,7 +393,7 @@ export async function getNextQuestion(sessionId: string): Promise<NextQuestionRe
   }
 
   // For adaptive_core phase, generate questions dynamically based on current difficulty
-  // Limit to maxQuestions for this phase (10)
+  // Limit to maxQuestions for this phase (36)
   const adaptiveCoreQuestionsAnswered = totalQuestionsAnswered - DEFAULT_ADAPTIVE_TEST_CONFIG.phases.diagnostic_screener.maxQuestions;
   if (currentPhase === 'adaptive_core' && adaptiveCoreQuestionsAnswered < DEFAULT_ADAPTIVE_TEST_CONFIG.phases.adaptive_core.maxQuestions) {
     // Get all previously answered question IDs to exclude (including question text to prevent content duplicates)
@@ -872,7 +872,7 @@ export async function submitAnswer(options: SubmitAnswerOptions): Promise<Answer
   }
 
   // Determine if test is complete
-  // Hard limit: max 21 questions total (6 + 11 + 4)
+  // Hard limit: max 50 questions total (8 + 36 + 6)
   const maxTotalQuestions = DEFAULT_ADAPTIVE_TEST_CONFIG.phases.diagnostic_screener.maxQuestions +
     DEFAULT_ADAPTIVE_TEST_CONFIG.phases.adaptive_core.maxQuestions +
     DEFAULT_ADAPTIVE_TEST_CONFIG.phases.stability_confirmation.maxQuestions;

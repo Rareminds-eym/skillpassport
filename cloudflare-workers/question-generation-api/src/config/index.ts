@@ -20,7 +20,7 @@ export const OPENROUTER_MODEL = 'google/gemini-2.0-flash-exp:free';
 export const CLAUDE_MODEL = 'claude-3-haiku-20240307';
 
 // =============================================================================
-// ADAPTIVE TEST CONFIG (21 questions total: 6 + 11 + 4)
+// ADAPTIVE TEST CONFIG (50 questions total: 8 + 36 + 6)
 // =============================================================================
 
 export const ALL_SUBTAGS: Subtag[] = [
@@ -32,16 +32,16 @@ export const ALL_SUBTAGS: Subtag[] = [
   'pattern_recognition',
 ];
 
-// Phase 1: Diagnostic Screener - 6 questions at Level 3 (baseline)
-export const DIAGNOSTIC_QUESTION_COUNT = 6;
+// Phase 1: Diagnostic Screener - 8 questions at Level 3 (baseline)
+export const DIAGNOSTIC_QUESTION_COUNT = 8;
 
-// Phase 2: Adaptive Core - 11 truly adaptive questions
-export const ADAPTIVE_MIN_QUESTIONS = 11;
-export const ADAPTIVE_MAX_QUESTIONS = 11;
+// Phase 2: Adaptive Core - 36 truly adaptive questions
+export const ADAPTIVE_MIN_QUESTIONS = 36;
+export const ADAPTIVE_MAX_QUESTIONS = 36;
 
-// Phase 3: Stability Confirmation - 4 questions to confirm aptitude level
-export const STABILITY_MIN_QUESTIONS = 4;
-export const STABILITY_MAX_QUESTIONS = 4;
+// Phase 3: Stability Confirmation - 6 questions to confirm aptitude level
+export const STABILITY_MIN_QUESTIONS = 6;
+export const STABILITY_MAX_QUESTIONS = 6;
 
 // =============================================================================
 // CAREER ASSESSMENT CONFIG

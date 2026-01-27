@@ -679,7 +679,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
             <label className={`flex items-start gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg sm:rounded-xl border border-gray-200 transition-all duration-200 bg-white ${
               hasReadTerms 
                 ? 'cursor-pointer group hover:border-blue-300 hover:bg-blue-50/30' 
-                : 'cursor-not-allowed opacity-60'
+                : 'cursor-not-allowed'
             }`}>
               <div className="relative mt-0.5 flex-shrink-0">
                 <input
@@ -707,16 +707,40 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                   {consentGiven && <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" strokeWidth={3} />}
                 </div>
               </div>
-              <span className="text-xs sm:text-sm text-gray-700 leading-relaxed">
-                I agree to the{' '}
+              <span className="text-xs sm:text-sm leading-relaxed">
+                <span className={`${!hasReadTerms ? 'text-gray-400' : 'text-gray-700'}`}>
+                  I agree to the{' '}
+                </span>
                 <button
                   type="button"
                   onClick={() => setShowTerms(true)}
-                  className="text-blue-600 hover:text-blue-700 font-semibold underline underline-offset-2 min-h-[44px] inline-flex items-center"
+                  className="text-blue-600 hover:text-blue-700 font-semibold underline underline-offset-2 min-h-[44px] inline-flex items-center gap-1 transition-all duration-300"
                 >
-                  Terms & Conditions
+                  {!hasReadTerms && (
+                    <motion.span
+                      animate={{ 
+                        opacity: [1, 0.4, 1],
+                        scale: [1, 1.1, 1]
+                      }}
+                      transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                      className="inline-flex text-blue-600"
+                    >
+                      →
+                    </motion.span>
+                  )}
+                  <motion.span
+                    animate={!hasReadTerms ? {
+                      backgroundColor: ['rgba(59, 130, 246, 0)', 'rgba(59, 130, 246, 0.15)', 'rgba(59, 130, 246, 0)']
+                    } : {}}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                    className="px-1 rounded"
+                  >
+                    Terms & Conditions
+                  </motion.span>
                 </button>
-                {' '}and consent to the payment of ₹{REGISTRATION_FEE} for pre-registration.
+                <span className={`${!hasReadTerms ? 'text-gray-400' : 'text-gray-700'}`}>
+                  {' '}and consent to the payment of ₹{REGISTRATION_FEE} for pre-registration.
+                </span>
                 {!hasReadTerms && (
                   <span className="block mt-1 text-xs text-amber-600 font-medium">
                     Please read the Terms & Conditions first
