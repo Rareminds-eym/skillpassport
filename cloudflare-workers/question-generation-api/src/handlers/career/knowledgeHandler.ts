@@ -80,6 +80,16 @@ export async function handleKnowledgeGeneration(
     }));
 
     console.log(`✅ Total knowledge questions generated: ${allQuestions.length}`);
+    
+    // Ensure we have exactly the requested number of questions
+    if (allQuestions.length > questionCount) {
+      console.warn(`⚠️ Generated ${allQuestions.length} questions, trimming to ${questionCount}`);
+      allQuestions.splice(questionCount); // Remove excess questions
+    } else if (allQuestions.length < questionCount) {
+      console.warn(`⚠️ Generated only ${allQuestions.length} questions, expected ${questionCount}`);
+    }
+    
+    console.log(`✅ Final knowledge questions count: ${allQuestions.length}`);
 
     // Save to cache
     if (studentId) {
@@ -138,5 +148,13 @@ async function generateKnowledgeBatch(
   }
 
   const result = repairAndParseJSON(jsonText);
-  return result.questions || [];
+  const questions = result.questions || [];
+  
+  // Ensure we don't exceed the requested count per batch
+  if (questions.length > count) {
+    console.warn(`⚠️ Batch ${batchNum} generated ${questions.length} questions, trimming to ${count}`);
+    return questions.slice(0, count);
+  }
+  
+  return questions;
 }

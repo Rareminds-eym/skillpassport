@@ -266,7 +266,7 @@ const AssessmentTestPage: React.FC = () => {
   const [assessmentStarted, setAssessmentStarted] = useState(false);
   const [skipResumeCheck, setSkipResumeCheck] = useState(false); // Flag to skip resume check after abandoning
   const [adaptiveAptitudeAnswer, setAdaptiveAptitudeAnswer] = useState<string | null>(null);
-  const [adaptiveQuestionTimer, setAdaptiveQuestionTimer] = useState(90); // 90 seconds per question
+  const [adaptiveQuestionTimer, setAdaptiveQuestionTimer] = useState(60); // Default 60 seconds, will be updated based on section config
   
   // Toast notification state for save errors
   const [toastError, setToastError] = useState<string | null>(null);
@@ -670,11 +670,15 @@ const AssessmentTestPage: React.FC = () => {
       if (adaptiveAptitudeAnswer) {
         adaptiveAptitude.submitAnswer(adaptiveAptitudeAnswer as 'A' | 'B' | 'C' | 'D');
         setAdaptiveAptitudeAnswer(null);
-        setAdaptiveQuestionTimer(90); // Reset for next question
+        // Reset timer based on current section's individualTimeLimit
+        const currentSection = sections[flow.currentSectionIndex];
+        setAdaptiveQuestionTimer(currentSection?.individualTimeLimit || 60);
       } else {
         // No answer selected, auto-submit 'A' as default
         adaptiveAptitude.submitAnswer('A');
-        setAdaptiveQuestionTimer(90); // Reset for next question
+        // Reset timer based on current section's individualTimeLimit
+        const currentSection = sections[flow.currentSectionIndex];
+        setAdaptiveQuestionTimer(currentSection?.individualTimeLimit || 60);
       }
     }
   }, [adaptiveQuestionTimer, adaptiveAptitudeAnswer, adaptiveAptitude.currentQuestion, adaptiveAptitude.loading, adaptiveAptitude.submitting, flow.showSectionIntro, flow.showSectionComplete, flow.currentSectionIndex, sections]);
@@ -682,9 +686,10 @@ const AssessmentTestPage: React.FC = () => {
   // Reset adaptive timer when question changes
   useEffect(() => {
     if (adaptiveAptitude.currentQuestion) {
-      setAdaptiveQuestionTimer(90);
+      const currentSection = sections[flow.currentSectionIndex];
+      setAdaptiveQuestionTimer(currentSection?.individualTimeLimit || 60);
     }
-  }, [adaptiveAptitude.currentQuestion?.id]);
+  }, [adaptiveAptitude.currentQuestion?.id, flow.currentSectionIndex, sections]);
   
   // Auto-start adaptive section once questions are loaded
   // This handles the case where user clicked "Start Section" but questions were still loading
@@ -1195,6 +1200,8 @@ const AssessmentTestPage: React.FC = () => {
     
     // Initialize adaptive test
     if (currentSection?.isAdaptive && !adaptiveAptitude.session) {
+      // Initialize adaptive timer based on section config
+      setAdaptiveQuestionTimer(currentSection.individualTimeLimit || 60);
       // Set pending flag so useEffect knows to start section when questions load
       adaptiveStartPendingRef.current = true;
       // Start the adaptive test (async - questions will load in background)
@@ -1819,7 +1826,7 @@ const AssessmentTestPage: React.FC = () => {
     let answeredQuestions = 0;
     
     sections.forEach((section, idx) => {
-      const sectionQuestions = section.questions?.length || (section.isAdaptive ? 21 : 0);
+      const sectionQuestions = section.questions?.length || (section.isAdaptive ? 50 : 0);
       totalQuestions += sectionQuestions;
       
       if (idx < flow.currentSectionIndex) {
@@ -1861,7 +1868,7 @@ const AssessmentTestPage: React.FC = () => {
           progress={calculateProgress()}
           adaptiveProgress={adaptiveAptitude.progress ? {
             questionsAnswered: adaptiveAptitude.progress.questionsAnswered,
-            estimatedTotalQuestions: 21
+            estimatedTotalQuestions: 50
           } : null}
           isDevMode={isDevMode}
           testMode={testMode}
@@ -1980,7 +1987,7 @@ const AssessmentTestPage: React.FC = () => {
               isTimed={currentSection.isTimed}
               showAIPoweredBadge={currentSection.id === 'aptitude' || currentSection.id === 'knowledge'}
               isLoading={
-                // Show loading for adaptive aptitude (21 questions)
+                // Show loading for adaptive aptitude (50 questions)
                 (currentSection.isAdaptive && adaptiveAptitude.loading) ||
                 // Show loading for multi-aptitude (50 questions) when AI questions are still loading
                 (currentSection.id === 'aptitude' && !currentSection.isAdaptive && questionsLoading) ||
@@ -2017,7 +2024,7 @@ const AssessmentTestPage: React.FC = () => {
                 ? (adaptiveAptitude.progress?.questionsAnswered || 0)
                 : flow.currentQuestionIndex}
               totalQuestions={currentSection?.isAdaptive
-                ? (adaptiveAptitude.progress?.estimatedTotalQuestions || 21)
+                ? (adaptiveAptitude.progress?.estimatedTotalQuestions || 50)
                 : (currentSection?.questions?.length || 0)}
               elapsedTime={flow.elapsedTime}
               showNoWrongAnswers={!currentSection?.isAptitude && !currentSection?.isAdaptive}
@@ -2029,7 +2036,7 @@ const AssessmentTestPage: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div className="text-base font-semibold text-indigo-600">
                     QUESTION {currentSection?.isAdaptive
-                      ? `${(adaptiveAptitude.progress?.questionsAnswered || 0) + 1} / ${adaptiveAptitude.progress?.estimatedTotalQuestions || 21}`
+                      ? `${(adaptiveAptitude.progress?.questionsAnswered || 0) + 1} / ${adaptiveAptitude.progress?.estimatedTotalQuestions || 50}`
                       : `${flow.currentQuestionIndex + 1} / ${currentSection?.questions?.length || 0}`}
                   </div>
                   
