@@ -43,7 +43,7 @@ const FloatingAIButton: React.FC = () => {
   };
 
   return (
-    <div className="fixed bottom-2 right-2 z-50 select-none">
+    <div className="fixed bottom-2 right-2 z-50 select-none" data-tour="floating-ai-button">
       <div className="relative flex items-center justify-center">
         <AnimatePresence>
           {isTooltipVisible && (
