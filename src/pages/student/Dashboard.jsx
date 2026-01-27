@@ -256,7 +256,25 @@ const StudentDashboard = () => {
       ? tableProjects
       : userData.projects;
     if (!Array.isArray(projectsData)) return [];
-    return projectsData.filter((project) => project && project.enabled !== false);
+    return projectsData
+      .filter((project) => project && project.enabled !== false)
+      .sort((a, b) => {
+        // Sort by end date or completion date in descending order (most recent first)
+        const getDate = (project) => {
+          if (project.endDate) return new Date(project.endDate);
+          if (project.end_date) return new Date(project.end_date);
+          if (project.completedDate) return new Date(project.completedDate);
+          if (project.completed_date) return new Date(project.completed_date);
+          if (project.startDate) return new Date(project.startDate);
+          if (project.start_date) return new Date(project.start_date);
+          if (project.year) return new Date(project.year, 11, 31);
+          return new Date(0); // Default to epoch if no date found
+        };
+        
+        const dateA = getDate(a);
+        const dateB = getDate(b);
+        return dateB - dateA; // Descending order (most recent first)
+      });
   }, [tableProjects, userData.projects]);
 
   const enabledCertificates = useMemo(() => {
@@ -265,7 +283,23 @@ const StudentDashboard = () => {
       ? tableCertificates
       : userData.certificates;
     if (!Array.isArray(certificatesData)) return [];
-    return certificatesData.filter((cert) => cert && cert.enabled !== false);
+    return certificatesData
+      .filter((cert) => cert && cert.enabled !== false)
+      .sort((a, b) => {
+        // Sort by issue date or year in descending order (most recent first)
+        const getDate = (cert) => {
+          if (cert.issueDate) return new Date(cert.issueDate);
+          if (cert.issue_date) return new Date(cert.issue_date);
+          if (cert.issuedOn) return new Date(cert.issuedOn);
+          if (cert.date) return new Date(cert.date);
+          if (cert.year) return new Date(cert.year, 11, 31);
+          return new Date(0); // Default to epoch if no date found
+        };
+        
+        const dateA = getDate(a);
+        const dateB = getDate(b);
+        return dateB - dateA; // Descending order (most recent first)
+      });
   }, [tableCertificates, userData.certificates]);
 
   // Fetch opportunities data from Supabase
@@ -1254,6 +1288,12 @@ const StudentDashboard = () => {
                   education.enabled !== false &&
                   (education.approval_status === "verified" || education.approval_status === "approved")
                 )
+                .sort((a, b) => {
+                  // Sort by year in descending order (most recent first)
+                  const yearA = parseInt(a.yearOfPassing || a.year || a.endYear || 0);
+                  const yearB = parseInt(b.yearOfPassing || b.year || b.endYear || 0);
+                  return yearB - yearA; // Descending order
+                })
                 .map((education, idx) => (
                   <div
                     key={education.id || `edu-${idx}`}
@@ -1390,6 +1430,23 @@ const StudentDashboard = () => {
               <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2 blue-scrollbar">
                 {userData.training
                   .filter((t) => t.enabled !== false && (t.approval_status === "verified" || t.approval_status === "approved"))
+                  .sort((a, b) => {
+                    // Sort by completion date or start date in descending order (most recent first)
+                    const getDate = (training) => {
+                      if (training.completedDate) return new Date(training.completedDate);
+                      if (training.completed_date) return new Date(training.completed_date);
+                      if (training.endDate) return new Date(training.endDate);
+                      if (training.end_date) return new Date(training.end_date);
+                      if (training.startDate) return new Date(training.startDate);
+                      if (training.start_date) return new Date(training.start_date);
+                      if (training.year) return new Date(training.year, 11, 31);
+                      return new Date(0); // Default to epoch if no date found
+                    };
+                    
+                    const dateA = getDate(a);
+                    const dateB = getDate(b);
+                    return dateB - dateA; // Descending order (most recent first)
+                  })
                   .map((training, idx) => {
             // Calculate progress
             const statusLower = (training.status || "").toLowerCase();
@@ -1661,6 +1718,25 @@ const StudentDashboard = () => {
           exp.enabled !== false &&
           (exp.approval_status === "verified" || exp.approval_status === "approved")
         )
+        .sort((a, b) => {
+          // Sort by end date/year in descending order (most recent first)
+          // Try multiple date field formats
+          const getEndDate = (exp) => {
+            if (exp.endDate) return new Date(exp.endDate);
+            if (exp.end_date) return new Date(exp.end_date);
+            if (exp.endYear) return new Date(exp.endYear, 11, 31); // December 31st of end year
+            if (exp.year) return new Date(exp.year, 11, 31);
+            // If no end date, use start date
+            if (exp.startDate) return new Date(exp.startDate);
+            if (exp.start_date) return new Date(exp.start_date);
+            if (exp.startYear) return new Date(exp.startYear, 0, 1); // January 1st of start year
+            return new Date(0); // Default to epoch if no date found
+          };
+          
+          const dateA = getEndDate(a);
+          const dateB = getEndDate(b);
+          return dateB - dateA; // Descending order (most recent first)
+        })
         .map((exp, idx) => (
           <div
           key={exp.id || `exp-${idx}`}
