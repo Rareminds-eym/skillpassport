@@ -1,0 +1,23 @@
+// Tour Configuration Exports
+// Centralized export for all tour configurations
+
+export {
+  DASHBOARD_TOUR_STEPS,
+  DASHBOARD_TOUR_OPTIONS,
+  DASHBOARD_TOUR_STYLES,
+  DASHBOARD_TOUR_LOCALE,
+} from './dashboardTourConfig';
+
+export {
+  ASSESSMENT_TEST_TOUR_STEPS,
+  ASSESSMENT_TEST_TOUR_OPTIONS,
+  ASSESSMENT_TEST_TOUR_STYLES,
+  ASSESSMENT_TEST_TOUR_LOCALE,
+} from './assessmentTestTourConfig';
+
+export {
+  ASSESSMENT_RESULT_TOUR_STEPS,
+  ASSESSMENT_RESULT_TOUR_OPTIONS,
+  ASSESSMENT_RESULT_TOUR_STYLES,
+  ASSESSMENT_RESULT_TOUR_LOCALE,
+} from './assessmentResultTourConfig';

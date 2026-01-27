@@ -84,6 +84,9 @@ import { useStudentRealtimeActivities } from "../../hooks/useStudentRealtimeActi
 import { supabase } from "../../lib/supabaseClient";
 // Debug utilities removed for production cleanliness
 
+// Import Tour Components - Now handled globally
+// Tours are managed by GlobalTourManager in App.tsx
+
 const StudentDashboard = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -614,6 +617,7 @@ const StudentDashboard = () => {
     assessment: (
       <Card
         key="assessment"
+        data-tour="assessment-card"
         className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
       >
         <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
@@ -868,6 +872,7 @@ const StudentDashboard = () => {
     opportunities: (
       <Card
         key="opportunities"
+        data-tour="opportunities-card"
         className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
       >
         <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
@@ -1036,6 +1041,7 @@ const StudentDashboard = () => {
     technicalSkills: (
       <Card
         key="technicalSkills"
+        data-tour="technical-skills-card"
         className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
       >
         <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
@@ -1114,6 +1120,7 @@ const StudentDashboard = () => {
     projects: (
       <Card
         key="projects"
+        data-tour="projects-card"
         className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
       >
         <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
@@ -1205,6 +1212,7 @@ const StudentDashboard = () => {
     education: (
       <Card
         key="education"
+        data-tour="education-card"
         className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
       >
         <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
@@ -1307,6 +1315,7 @@ const StudentDashboard = () => {
     training: (
       <Card
         key="training"
+        data-tour="training-card"
         className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
       >
         <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
@@ -1504,6 +1513,7 @@ const StudentDashboard = () => {
     certificates: (
       <Card
         key="certificates"
+        data-tour="certificates-card"
         className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
       >
          <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
@@ -1610,6 +1620,7 @@ const StudentDashboard = () => {
        experience: (
   <Card
     key="experience"
+    data-tour="experience-card"
     className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
   >
     <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
@@ -1706,6 +1717,7 @@ const StudentDashboard = () => {
     softSkills: (
       <Card
         key="softSkills"
+        data-tour="soft-skills-card"
         className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
       >
         <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
@@ -1834,17 +1846,18 @@ const StudentDashboard = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] py-6 px-4">
-      {/* Hot-toast notification container */}
+        
+        {/* Hot-toast notification container */}
       <Toaster
         position="top-right"
         toastOptions={{
           style: {
-            zIndex: 9999,
+            zIndex: 60,
           },
           duration: 5000,
         }}
         containerStyle={{
-          zIndex: 9999,
+          zIndex: 60,
         }}
       />
 
@@ -1857,6 +1870,7 @@ const StudentDashboard = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {/* Dashboard Tab */}
                 <button
+                  data-tour="dashboard-tab"
                   onClick={() => setActiveView('dashboard')}
                   className={`relative text-left p-4 rounded-lg transition-all ${
                     activeView === 'dashboard'
@@ -1887,6 +1901,7 @@ const StudentDashboard = () => {
 
                 {/* Analytics Tab */}
                 <button
+                  data-tour="analytics-tab"
                   onClick={() => setActiveView('analytics')}
                   className={`relative text-left p-4 rounded-lg transition-all ${
                     activeView === 'analytics'
@@ -1994,7 +2009,7 @@ const StudentDashboard = () => {
                 duration: 0.8,
                 ease: "easeInOut",
               }}
-              className="-mt-48 relative z-50"
+              className="-mt-48 relative z-10"
             >
               {render3x3Grid()}
             </motion.div>
@@ -2266,7 +2281,7 @@ const StudentDashboard = () => {
           onSave={(data) => handleSave("certificates", data)}
         />
       )}
-    </div>
+      </div>
   );
 };
 

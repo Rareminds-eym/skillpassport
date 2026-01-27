@@ -35,7 +35,7 @@ export const QuestionNavigation: React.FC<QuestionNavigationProps> = ({
   onNext
 }) => {
   return (
-    <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-100">
+    <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-100" data-tour="navigation-controls">
       {/* Previous Button */}
       <Button
         variant="outline"

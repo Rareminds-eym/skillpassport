@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Tour Scroll Lock Styles */
+.tour-scroll-locked {
+  /* Additional styles for when scroll is locked during tours */
+  /* Scrollbar width compensation is handled dynamically in JavaScript */
+}
+
 @layer base {
   :root {
     --gradient-color: #8350e8;
@@ -116,6 +122,16 @@ code {
 .blue-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: #60a5fa #dbeafe;
+}
+
+/* Hide scrollbar utility */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* Internet Explorer 10+ */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Safari and Chrome */
 }
 
 /* Hide scrollbar utility */
@@ -280,6 +296,105 @@ textarea:focus-visible {
 
 .z-50 {
   z-index: 50;
+}
+
+/* Tour overlay customization - ensure overlay goes behind navbar but tooltip appears above */
+.__floater__open {
+  z-index: 45 !important;
+}
+
+.__floater__body {
+  z-index: 45 !important;
+}
+
+/* Joyride overlay should go behind navbar */
+.react-joyride__overlay {
+  z-index: 35 !important;
+}
+
+/* Joyride tooltip should appear above navbar */
+.react-joyride__tooltip {
+  z-index: 45 !important;
+}
+
+/* Joyride spotlight should go behind navbar */
+.react-joyride__spotlight {
+  z-index: 35 !important;
+}
+
+/* Responsive tour tooltip styles */
+@media (max-width: 640px) {
+  .react-joyride__tooltip {
+    max-width: 340px !important;
+    width: 90vw !important;
+    padding: 20px !important;
+    font-size: 13px !important;
+  }
+  
+  .react-joyride__tooltip h3 {
+    font-size: 16px !important;
+    margin-bottom: 10px !important;
+  }
+  
+  .react-joyride__tooltip p {
+    font-size: 13px !important;
+    margin-bottom: 16px !important;
+  }
+  
+  .react-joyride__tooltip button {
+    font-size: 13px !important;
+    padding: 10px 20px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .react-joyride__tooltip {
+    max-width: 300px !important;
+    width: 95vw !important;
+    padding: 16px !important;
+    font-size: 12px !important;
+  }
+  
+  .react-joyride__tooltip h3 {
+    font-size: 15px !important;
+    margin-bottom: 8px !important;
+  }
+  
+  .react-joyride__tooltip p {
+    font-size: 12px !important;
+    margin-bottom: 14px !important;
+  }
+  
+  .react-joyride__tooltip button {
+    font-size: 12px !important;
+    padding: 8px 16px !important;
+  }
+}
+
+/* Tour scroll lock styles - less aggressive approach */
+body.tour-scroll-locked {
+  /* Don't use position fixed or overflow hidden - let joyride handle scrolling */
+}
+
+/* Ensure tour elements can still scroll programmatically */
+.react-joyride__overlay,
+.react-joyride__tooltip,
+.__floater__ {
+  pointer-events: auto !important;
+}
+
+/* Allow smooth scrolling for tour elements */
+.react-joyride__overlay,
+.react-joyride__tooltip {
+  scroll-behavior: smooth !important;
+}
+
+/* Global scroll unlock on page load */
+body {
+  overflow: auto !important;
+  position: static !important;
+  top: auto !important;
+  width: auto !important;
 }
 
 /* Custom shadows */

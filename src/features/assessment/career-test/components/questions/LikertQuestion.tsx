@@ -38,12 +38,12 @@ export const LikertQuestion: React.FC<LikertQuestionProps> = ({
   return (
     <div className="space-y-6">
       {/* Question Text */}
-      <h3 className="text-xl md:text-2xl font-medium text-gray-800 leading-snug">
+      <h3 className="text-xl md:text-2xl font-medium text-gray-800 leading-snug" data-tour="question-content">
         {questionText}
       </h3>
 
       {/* Rating Scale */}
-      <div className="flex flex-wrap justify-center gap-3 mt-6">
+      <div className="flex flex-wrap justify-center gap-3 mt-6" data-tour="answer-options">
         {responseScale.map((option, idx) => {
           const isSelected = selectedValue === option.value;
           
